@@ -1,5 +1,5 @@
 # Назначение файла: сборка панели администратора на Node.js.
-# Используются yarn, TypeScript и Prisma.
+# Используются Yarn Berry (v4), TypeScript и Prisma.
 FROM node:18
 
 WORKDIR /admin
@@ -10,7 +10,8 @@ ENV TZ="UTC"
 COPY package.json ./
 COPY yarn.lock ./
 
-RUN yarn install --frozen-lockfile --production
+RUN corepack enable && corepack prepare yarn@stable --activate
+RUN yarn install --immutable --mode=skip-build
 COPY . .
 
 RUN npm i -g typescript

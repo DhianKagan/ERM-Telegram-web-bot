@@ -31,7 +31,8 @@
     "seed:prisma": "node dist/sources/prisma/seeds/run",
     "seed:all": "yarn seed:typeorm && yarn seed:sequelize && yarn seed:mongoose && yarn seed:mikro-orm && yarn seed:prisma",
     "clean": "rimraf dist",
-    "copy-theme": "copyfiles -u 1 src/themes/**/theme.bundle.js src/themes/**/*.css dist/"
+    "copy-theme": "copyfiles -u 1 src/themes/**/theme.bundle.js src/themes/**/*.css dist/",
+    "test": "node --loader ts-node/esm tests/theme.test.ts"
   },
   "mikro-orm": {
     "useTsNode": true,

@@ -1,6 +1,7 @@
+// Схема Prisma для панели администратора. Описывает модели и источники данных.
 datasource db {
-  provider = "mongodb"
-  url      = env("MONGODB_URI")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {

@@ -6,6 +6,8 @@ services:
     env_file:
       - .env
     restart: always
+    depends_on:
+      - mongo_db
   admin:
     build:
       context: ./admin
@@ -14,3 +16,28 @@ services:
     env_file:
       - .env
     restart: always
+    depends_on:
+      - mongo_db
+      - postgres_db
+  mongo_db:
+    container_name: adminjs-example-mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_db_example_app:/data/db
+  postgres_db:
+    container_name: adminjs-example-postgres
+    image: postgres
+    environment:
+      - POSTGRES_DB=adminjs
+      - POSTGRES_USER=adminjs
+      - POSTGRES_PASSWORD=adminjs
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_db_example_app:/var/lib/postgresql/data
+
+volumes:
+  mongo_db_example_app:
+  postgres_db_example_app:

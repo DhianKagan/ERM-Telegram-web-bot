@@ -21,12 +21,20 @@
    git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
    ```
 2. Скопируйте `.env.example` в `.env` и при необходимости измените значения.
+   Для подключения MongoDB укажите переменную `MONGO_DATABASE_URL`.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash
-    docker-compose up --build
-    ```
-    Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`. Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
+   docker-compose up --build
+   ```
+   Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, а также поднимет контейнеры MongoDB и Postgres.
+   Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
+
+При необходимости можно собрать единый образ из корневого `Dockerfile`:
+```bash
+docker build -t task-manager .
+docker run --env-file .env -p 3000:3000 task-manager
+```
 
 ### Развёртывание на [Pella](https://www.pella.app)
 1. Подключите репозиторий к сервису и выберите проект.
@@ -67,3 +75,6 @@ project-root/
 
 ## Лицензия
 Проект распространяется под лицензией MIT.
+
+## CI с Docker
+Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы при каждом pull request.

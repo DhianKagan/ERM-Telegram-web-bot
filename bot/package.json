@@ -1,10 +1,10 @@
 {
   "name": "telegram-task-bot",
   "version": "1.0.0",
-  "main": "bot.js",
+  "main": "src/bot/bot.js",
   "scripts": {
     "test": "jest",
-    "start": "nodemon bot.js"
+    "start": "nodemon src/bot/bot.js"
   },
   "author": "",
   "license": "ISC",

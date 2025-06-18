@@ -20,7 +20,8 @@
    git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
    ```
 2. Скопируйте `.env.example` в `.env` и при необходимости измените значения.
-3. Запустите контейнеры:
+3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
+4. Запустите контейнеры:
    ```bash
    docker-compose up --build
    ```

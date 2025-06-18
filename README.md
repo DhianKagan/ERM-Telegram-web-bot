@@ -11,7 +11,6 @@
 
 ### Требования
 - Docker и Docker Compose
-- Учетная запись Google Cloud
 - Учётная запись MongoDB Atlas
 
 ### Локальный запуск
@@ -27,52 +26,11 @@
    ```
    Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
-### Развертывание на Google Cloud Run
-1. Авторизуйтесь в Google Cloud:
-   ```bash
-   gcloud auth login
-   gcloud config set project <PROJECT_ID>
-   gcloud config set run/region <REGION>
-   ```
-2. Разверните сервисы:
-   ```bash
-   gcloud run deploy bot-service \
-    --source ./bot \
-    --set-env-vars BOT_TOKEN=$BOT_TOKEN,JWT_SECRET=$JWT_SECRET,MONGODB_URI=$MONGODB_URI,R2_ENDPOINT=$R2_ENDPOINT,R2_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME=$R2_BUCKET_NAME \
-    --allow-unauthenticated
-
-   gcloud run deploy admin-service \
-    --source ./admin \
-   --set-env-vars ADMIN_EMAIL=$ADMIN_EMAIL,ADMIN_PASSWORD=$ADMIN_PASSWORD,MONGODB_URI=$MONGODB_URI \
-   --allow-unauthenticated
-  ```
-
-### Развертывание на DigitalOcean App Platform
-1. Соберите образы и загрузите их в DigitalOcean Container Registry:
-   ```bash
-   doctl registry login
-   docker build -t registry.digitalocean.com/<REGISTRY_NAME>/bot ./bot
-   docker build -t registry.digitalocean.com/<REGISTRY_NAME>/admin ./admin
-   docker push registry.digitalocean.com/<REGISTRY_NAME>/bot
-   docker push registry.digitalocean.com/<REGISTRY_NAME>/admin
-   ```
-2. Создайте приложение с двумя сервисами: бот в роли Worker и панель как Web Service.
-3. В настройках обоих сервисов укажите переменные окружения:
-   `BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-4. Подробности описаны в [официальном руководстве DigitalOcean](https://docs.digitalocean.com/products/app-platform/).
-
-
-### Развертывание на Back4App
-1. Зарегистрируйтесь на [Back4App](https://www.back4app.com/) и создайте новое приложение в разделе *Containers*.
-2. Подключите этот репозиторий через GitHub или укажите Docker-образы для сервисов `bot` и `admin`.
-3. В параметрах контейнеров задайте переменные окружения: `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-4. Запустите деплой и дождитесь статуса *Running* для обоих контейнеров.
-
-### Развёртывание на Pella
-1. Подключите репозиторий к Pella, выберите проект.
-2. В настройках выберите рабочую директорию `bot` или `admin` в зависимости от сервиса.
-3. Укажите версию Node `18` и задайте переменные окружения, приведённые в `.env.example`.
-4. Команда запуска для бота:
+### Развёртывание на [Pella](https://www.pella.app)
+1. Подключите репозиторий к сервису и выберите проект.
+2. Для каждого контейнера задайте рабочую директорию `bot` или `admin`.
+3. Укажите версию Node `18` и переменные окружения из `.env.example`.
+4. Команда запуска бота:
    ```bash
    node src/bot/bot.js
    ```

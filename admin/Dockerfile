@@ -9,6 +9,7 @@ ENV TZ="UTC"
 
 COPY package.json ./
 COPY yarn.lock ./
+COPY .yarnrc.yml ./
 
 RUN corepack enable && corepack prepare yarn@stable --activate
 RUN yarn install --immutable --mode=skip-build

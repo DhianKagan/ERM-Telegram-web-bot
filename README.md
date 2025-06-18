@@ -24,9 +24,10 @@
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash
-    docker-compose up --build
-    ```
-    Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`. Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
+   docker-compose up --build
+   ```
+   Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, а также поднимет контейнеры MongoDB и Postgres.
+   Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
 ### Развёртывание на [Pella](https://www.pella.app)
 1. Подключите репозиторий к сервису и выберите проект.

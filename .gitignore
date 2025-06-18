@@ -1,0 +1,16 @@
+# зависимости
+node_modules/
+
+# переменные окружения
+.env
+
+# логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+*.tar
+
+# другие
+.DS_Store

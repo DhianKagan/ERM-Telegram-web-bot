@@ -15,9 +15,9 @@ RUN corepack enable && corepack prepare yarn@stable --activate
 RUN yarn install --immutable --mode=skip-build
 COPY . .
 
+RUN npx prisma generate
 RUN npm i -g typescript
 RUN yarn build
-RUN npx prisma generate
 RUN rm -rf src
 
 ENV ADMIN_JS_SKIP_BUNDLE="true"

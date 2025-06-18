@@ -1,3 +1,4 @@
+<!-- Назначение файла: политика безопасности. -->
 # Security Policy
 
 ## Supported Versions

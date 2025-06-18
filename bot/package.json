@@ -4,7 +4,7 @@
   "main": "src/bot/bot.js",
   "scripts": {
     "test": "jest",
-    "start": "nodemon src/bot/bot.js"
+    "start": "node src/api/api.js & node src/bot/bot.js"
   },
   "author": "",
   "license": "ISC",

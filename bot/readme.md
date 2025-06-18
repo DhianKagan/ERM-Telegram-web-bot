@@ -1,47 +1,47 @@
-Telegram Task Manager Bot with JWT Authentication
+Телеграм-бот для управления задачами с аутентификацией JWT
 
-    This project is a Telegram bot for managing tasks within a group. It allows admins to create and assign tasks to group members, and group members can view and update their task statuses. The bot is secured with JWT authentication for API endpoints.
+    Этот проект представляет собой Telegram-бота для управления задачами в группе. Администраторы могут создавать задачи и назначать их участникам, а участники — просматривать и обновлять статус своих задач. Для API используется защита с помощью JWT.
 
-Features
+Возможности
 
-Admin Features
+Функционал администратора
 
-    - Create tasks and assign them to specific users.
+    - Создание задач и назначение их конкретным пользователям.
 
-    - View tasks assigned to users and overall task progress.
+    - Просмотр задач пользователей и общего прогресса.
 
-User Features
+Функционал пользователя
 
-    - List tasks assigned to them.
+    - Список назначенных задач.
 
-    - Update task statuses (in-progress, completed).
+    - Обновление статуса задачи (в процессе, завершена).
 
-API Features
+Функции API
 
-    - Provides RESTful API endpoints to retrieve tasks and their statuses.
+    - REST API для получения списка задач и их статусов.
 
-    - Secured with JWT authentication.
+    - Защита с помощью JWT.
 
-Project Structure
+Структура проекта
 
 telegram-task-bot/
 |
-├── src/                # Core application logic
-│   ├── bot/            # Telegram bot logic
-│   ├── services/       # Business logic (task creation, assignment, status updates)
-│   ├── db/             # Database models and connection setup
-│   ├── api/            # REST API implementation
-│   └── auth/           # Authentication and authorization logic
+├── src/                # основная логика приложения
+│   ├── bot/            # логика Telegram-бота
+│   ├── services/       # бизнес-логика (создание задач, назначение, обновление статуса)
+│   ├── db/             # модели базы данных и подключение
+│   ├── api/            # реализация REST API
+│   └── auth/           # логика аутентификации и авторизации
 |
-├── config/             # Configuration files (e.g., environment variables, secrets)
-├── tests/              # Unit and integration tests
-├── Dockerfile          # Dockerfile for containerization
-├── cloudbuild.yaml     # Google Cloud Build configuration
-└── README.md           # Project documentation
+├── config/             # конфигурационные файлы (переменные окружения, секреты)
+├── tests/              # модульные и интеграционные тесты
+├── Dockerfile          # файл сборки Docker-образа
+├── cloudbuild.yaml     # конфигурация Google Cloud Build
+└── README.md           # документация проекта
 
-Getting Started
+Начало работы
 
-Prerequisites
+Необходимые условия
 
 Node.js
 
@@ -49,24 +49,24 @@ npm
 
 Docker
 
-Google Cloud SDK (for deployment)
+Google Cloud SDK (для деплоя)
 
-Installation
+Установка
 
-Clone the repository:
+Клонируйте репозиторий:
 
     - git clone https://github.com/a-kashif-ahmed/telegram-task-bot.git
     - cd telegram-task-bot
 
-Install dependencies:
+Установите зависимости:
 
     - npm install
 
-Set up environment variables in a .env file:
+Настройте переменные окружения в файле .env:
 
 
 
-Start the bot:
+Запустите бота:
 
     - node src/bot/bot.js
 

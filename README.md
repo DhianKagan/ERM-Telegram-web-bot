@@ -17,14 +17,7 @@
    git clone https://github.com/a-kashif-ahmed/Telegram-Task-Manager-Bot.git bot
    git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
    ```
-2. Создайте файл `.env` в корне с переменными окружения:
-   ```env
-   TELEGRAM_BOT_TOKEN=your_bot_token
-   JWT_SECRET=secret_key
-   MONGODB_URI=mongodb_connection_string
-   ADMIN_EMAIL=admin@example.com
-   ADMIN_PASSWORD=strong_password
-   ```
+2. Скопируйте `.env.example` в `.env` и при необходимости измените значения.
 3. Запустите контейнеры:
    ```bash
    docker-compose up --build
@@ -72,6 +65,7 @@ project-root/
 ├── CHANGELOG.md        # история версий
 ├── bot/                # исходный код Telegram-бота
 ├── admin/              # приложение AdminJS
+├── .env.example        # пример переменных
 ├── .env                # переменные окружения
 ├── Dockerfile          # сборка контейнера
 ├── docker-compose.yml  # локальное развертывание

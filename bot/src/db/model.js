@@ -3,7 +3,7 @@ require('dotenv').config()
 const mongoose = require('mongoose')
 
 if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(process.env.MONGODB_URI)
+  mongoose.connect(process.env.MONGO_DATABASE_URL)
 }
 
 const taskSchema = new mongoose.Schema({

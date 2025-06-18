@@ -1,5 +1,4 @@
 # Назначение файла: конфигурация Docker Compose для бота и панели.
-version: '3.8'
 services:
   bot:
     build:

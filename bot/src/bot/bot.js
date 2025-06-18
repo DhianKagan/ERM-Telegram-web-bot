@@ -1,11 +1,11 @@
-const { Telegraf } = require('telegraf');
-const {createTask, assignTask, listUserTasks, updateTaskStatus} = require('../services/service')
-const { verifyAdmin} = require('../auth/auth')
-const bot = new Telegraf(process.env.BOT_TOKEN);
-require('dotenv').config({ path: './config/.env' });
+// Основной файл бота Telegram
+require('dotenv').config()
+const { Telegraf } = require('telegraf')
+const { createTask, assignTask, listUserTasks, updateTaskStatus } = require('../services/service')
+const { verifyAdmin, generateToken } = require('../auth/auth')
+const bot = new Telegraf(process.env.BOT_TOKEN)
 const express = require('express');
 const he = require('../api/api')
-require('dotenv').config()
 const app = express();
 const setupsql = require('../db/model')
 setupsql();
@@ -51,6 +51,6 @@ bot.command('update_task_status', (ctx) => {
   updateTaskStatus(taskId, status);
   ctx.reply('Task status updated successfully!');
 });
-console.log("hehe");
-app.listen(process.env.PORT, () => console.log('API running on port 3000'));
-bot.launch();
+console.log('Bot started')
+app.listen(process.env.PORT || 3000, () => console.log('API running'))
+bot.launch()

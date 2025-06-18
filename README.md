@@ -4,6 +4,7 @@
 Файл описывает проект и способы его развертывания.
 
 Каталог `bot` содержит код бота, `admin` — интерфейс AdminJS.
+Оба каталога включают собственные `Dockerfile` для сборки образов.
 
 Дополнительная информация о плане разработки представлена в файле `ROADMAP.md`, а история изменений ведется в `CHANGELOG.md`.
 
@@ -23,9 +24,9 @@
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash
-   docker-compose up --build
-   ```
-   Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
+    docker-compose up --build
+    ```
+    Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`. Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
 ### Развёртывание на [Pella](https://www.pella.app)
 1. Подключите репозиторий к сервису и выберите проект.
@@ -55,10 +56,11 @@ project-root/
 ├── ROADMAP.md          # план разработки
 ├── CHANGELOG.md        # история версий
 ├── bot/                # исходный код Telegram-бота
+│   └── Dockerfile      # контейнер бота
 ├── admin/              # приложение AdminJS
+│   └── Dockerfile      # контейнер панели
 ├── .env.example        # пример переменных
 ├── .env                # переменные окружения
-├── Dockerfile          # сборка контейнера
 ├── docker-compose.yml  # локальное развертывание
 └── README.md           # документация
 ```

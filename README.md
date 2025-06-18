@@ -47,9 +47,23 @@
 
    gcloud run deploy admin-service \
      --source ./admin \
-     --set-env-vars ADMIN_EMAIL=$ADMIN_EMAIL,ADMIN_PASSWORD=$ADMIN_PASSWORD,MONGODB_URI=$MONGODB_URI \
-     --allow-unauthenticated
+    --set-env-vars ADMIN_EMAIL=$ADMIN_EMAIL,ADMIN_PASSWORD=$ADMIN_PASSWORD,MONGODB_URI=$MONGODB_URI \
+    --allow-unauthenticated
+  ```
+
+### Развертывание на DigitalOcean App Platform
+1. Соберите образы и загрузите их в DigitalOcean Container Registry:
+   ```bash
+   doctl registry login
+   docker build -t registry.digitalocean.com/<REGISTRY_NAME>/bot ./bot
+   docker build -t registry.digitalocean.com/<REGISTRY_NAME>/admin ./admin
+   docker push registry.digitalocean.com/<REGISTRY_NAME>/bot
+   docker push registry.digitalocean.com/<REGISTRY_NAME>/admin
    ```
+2. Создайте приложение с двумя сервисами: бот в роли Worker и панель как Web Service.
+3. В настройках обоих сервисов укажите переменные окружения:
+   `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+4. Подробности описаны в [официальном руководстве DigitalOcean](https://docs.digitalocean.com/products/app-platform/).
 
 ## Структура проекта
 ```

@@ -1,41 +1,20 @@
-// Работа с задачами через MySQL
-require('dotenv').config()
-const mysql = require('mysql2/promise')
-const pool = mysql.createPool(process.env.MYSQL_DATABASE_URL)
+// Сервис для управления задачами в MongoDB
+const Task = require('../db/model')
 
-// Function to create a task
 async function createTask(description) {
-    const [rows] = await pool.execute(
-        'INSERT INTO tasks (task_description, status) VALUES (?, ?)',
-        [description, 'pending']
-    )
-    return rows
+  return Task.create({ task_description: description })
 }
 
-// Function to assign a task to a user
 async function assignTask(userId, taskId) {
-    await pool.execute(
-        'UPDATE tasks SET assigned_user_id = ? WHERE task_id = ?',
-        [userId, taskId]
-    )
+  await Task.findByIdAndUpdate(taskId, { assigned_user_id: userId })
 }
 
-// Function to list tasks assigned to a user
 async function listUserTasks(userId) {
-    const [rows] = await pool.execute(
-        'SELECT * FROM tasks WHERE assigned_user_id = ?',
-        [userId]
-    )
-    return rows
+  return Task.find({ assigned_user_id: userId })
 }
 
-// Function to update the status of a task
 async function updateTaskStatus(taskId, status) {
-    await pool.execute(
-        'UPDATE tasks SET status = ? WHERE task_id = ?',
-        [status, taskId]
-    )
+  await Task.findByIdAndUpdate(taskId, { status })
 }
 
-module.exports = { createTask, assignTask, listUserTasks, updateTaskStatus };
-
+module.exports = { createTask, assignTask, listUserTasks, updateTaskStatus }

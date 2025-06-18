@@ -1,6 +1,6 @@
 datasource db {
-  provider = "mysql"
-  url      = env("MYSQL_DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
 generator client {

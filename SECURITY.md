@@ -1,22 +1,17 @@
-<!-- Назначение файла: политика безопасности. -->
-# Security Policy
+<!-- Назначение файла: политика безопасности проекта. -->
+# Политика безопасности
 
-## Supported Versions
+## Поддерживаемые версии
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+В таблице указано, какие версии получают обновления безопасности.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Версия | Поддержка          |
+| ------ | ------------------ |
+| 0.1.x  | :white_check_mark: |
+| < 0.1  | :x:                |
 
-## Reporting a Vulnerability
+## Сообщение об уязвимости
 
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Сообщайте о найденных уязвимостях через [Issues](https://github.com/example/repo/issues)
+или письмом на security@example.com. Мы ответим в течение двух рабочих дней и
+согласуем дальнейшие действия.

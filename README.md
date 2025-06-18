@@ -12,7 +12,7 @@
 ### Требования
 - Docker и Docker Compose
 - Учетная запись Google Cloud
-- MySQL сервер для хранения данных
+- Учётная запись MongoDB Atlas
 
 ### Локальный запуск
 1. Клонируйте репозитории исходных проектов в соответствующие каталоги:
@@ -36,15 +36,15 @@
    ```
 2. Разверните сервисы:
    ```bash
-    gcloud run deploy bot-service \
-     --source ./bot \
-     --set-env-vars BOT_TOKEN=$BOT_TOKEN,JWT_SECRET=$JWT_SECRET,MYSQL_DATABASE_URL=$MYSQL_DATABASE_URL \
-     --allow-unauthenticated
+   gcloud run deploy bot-service \
+    --source ./bot \
+    --set-env-vars BOT_TOKEN=$BOT_TOKEN,JWT_SECRET=$JWT_SECRET,MONGODB_URI=$MONGODB_URI,R2_ENDPOINT=$R2_ENDPOINT,R2_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME=$R2_BUCKET_NAME \
+    --allow-unauthenticated
 
    gcloud run deploy admin-service \
-     --source ./admin \
-    --set-env-vars ADMIN_EMAIL=$ADMIN_EMAIL,ADMIN_PASSWORD=$ADMIN_PASSWORD,MYSQL_DATABASE_URL=$MYSQL_DATABASE_URL \
-    --allow-unauthenticated
+    --source ./admin \
+   --set-env-vars ADMIN_EMAIL=$ADMIN_EMAIL,ADMIN_PASSWORD=$ADMIN_PASSWORD,MONGODB_URI=$MONGODB_URI \
+   --allow-unauthenticated
   ```
 
 ### Развертывание на DigitalOcean App Platform
@@ -58,7 +58,7 @@
    ```
 2. Создайте приложение с двумя сервисами: бот в роли Worker и панель как Web Service.
 3. В настройках обоих сервисов укажите переменные окружения:
-   `BOT_TOKEN`, `JWT_SECRET`, `MYSQL_DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+   `BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 4. Подробности описаны в [официальном руководстве DigitalOcean](https://docs.digitalocean.com/products/app-platform/).
 
 

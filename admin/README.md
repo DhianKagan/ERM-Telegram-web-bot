@@ -37,12 +37,6 @@ $ npx prisma generate     # создаёт Prisma Client в node_modules
 $ yarn migration:up
 ```
 
-Примечание: если при миграции Prisma MySQL появится ошибка:
-```
-Error: P1017: Server has closed the connection.
-```
-Подождите минуту или две, пока запустится MySQL, и повторите попытку.
-
 После этого можно запустить приложение
 ```bash
 $ yarn build:watch      # оставьте команду запущенной при разработке

@@ -1,3 +1,4 @@
+// Middleware JWT для проверки доступа к API
 const jwt = require('jsonwebtoken');
 
 const secretKey = process.env.JWT_SECRET || 'your-secret-key';

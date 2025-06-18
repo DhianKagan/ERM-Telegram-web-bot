@@ -21,6 +21,7 @@
    git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
    ```
 2. Скопируйте `.env.example` в `.env` и при необходимости измените значения.
+   Для подключения MongoDB укажите переменную `MONGO_DATABASE_URL`.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash

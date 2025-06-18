@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 3000
 
 
-CMD ["node", "src/bot/bot.js"]
+CMD ["npm", "start"]

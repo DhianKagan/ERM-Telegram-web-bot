@@ -1,85 +1,81 @@
-## AdminJS-example-app
+## Пример приложения AdminJS
 
-Example application using [adminjs](https://github.com/SoftwareBrothers/adminjs)
+Пример приложения на основе [adminjs](https://github.com/SoftwareBrothers/adminjs)
 
-## Demo
+## Демонстрация
 
-You can check out the current demo version at: https://demo.adminjs.co
+Актуальная демонстрация доступна по адресу: https://demo.adminjs.co
 
-Login: admin@example.com  
-Password: password
+Логин: admin@example.com
+Пароль: password
 
-## Prerequisites
+## Предварительные требования
 
-Install Docker if you don't have it: https://docs.docker.com/desktop/#download-and-install
+Установите Docker, если его нет: https://docs.docker.com/desktop/#download-and-install
 
-Run:
+Запустите:
 ```bash
 $ docker-compose up -d
 ```
-to setup databases.
+для запуска баз данных.
 
-Make sure your `.env` file is configured. If you didn't do any changes to `docker-compose.yml` file,
-the default contents of the `.env` file should work for you.
+Убедитесь, что файл `.env` настроен. Если вы не изменяли `docker-compose.yml`,
+значения по умолчанию из `.env` подойдут.
 
-## Starting the app
+## Запуск приложения
 
-First, install all dependencies
-
+Сначала установите все зависимости
 ```bash
 yarn install --frozen-lockfile
 ```
 
-Make sure you have all environmental variables set up (read the previous paragraph).
+Убедитесь, что все переменные окружения заданы (см. предыдущий раздел).
 
-Then create postgres database and run migrations:
-
+Затем создайте базу postgres и выполните миграции:
 ```bash
-$ npx prisma generate     # # this sets up Prisma Client in your node_modules
+$ npx prisma generate     # создаёт Prisma Client в node_modules
 $ yarn migration:up
 ```
 
-Note: If you see the error below when Prisma MySQL migration is run:
+Примечание: если при миграции Prisma MySQL появится ошибка:
 ```
 Error: P1017: Server has closed the connection.
 ```
-Please wait a minute or two for the MySQL server to start and retry.
+Подождите минуту или две, пока запустится MySQL, и повторите попытку.
 
-In the end, you can launch the app
-
+После этого можно запустить приложение
 ```bash
-$ yarn build:watch      # keep it running if developing
-$ yarn start:dev        # in a separate terminal tab, concurrently
+$ yarn build:watch      # оставьте команду запущенной при разработке
+$ yarn start:dev        # во второй вкладке терминала
 ```
 
-By default the app will be available under: `http://localhost:3000/admin`
+По умолчанию приложение доступно по адресу: `http://localhost:3000/admin`
 
-## Developing the app
+## Разработка приложения
 
-The best way of developing the app is to do this via https://github.com/SoftwareBrothers/adminjs-dev.
+Лучший способ разработки — использовать https://github.com/SoftwareBrothers/adminjs-dev.
 
-Alternatively, you can fork and clone each repository separately and link them using:
+Также можно форкнуть и клонировать каждый репозиторий отдельно и связать их с помощью:
 
 * `yarn link`
 * `npm link`
 
-to see your local changes.
+чтобы видеть локальные изменения.
 
 #### Sequelize
-##### migrations
+##### миграции
 - `yarn sequelize migration:generate --name init`
 - `yarn sequelize db:migrate`
 - `yarn sequelize db:migrate:undo`
 
 #### Typeorm
-##### migrations
+##### миграции
 - `yarn typeorm migration:generate -n init`
 - `yarn typeorm migration:run`
 - `yarn typeorm migration:revert`
 
-
 #### mikro-orm
-##### migrations
+##### миграции
 - `yarn mikro-orm migration:create`
 - `yarn mikro-orm migration:up`
 - `yarn mikro-orm migration:down`
@@ -87,15 +83,15 @@ to see your local changes.
 #### prisma
 - `npx prisma migrate dev --schema prisma/schema.prisma`
 
-## License
+## Лицензия
 
-AdminJS is copyrighted © 2023 rst.software. It is a free software, and may be redistributed under the terms specified in the [LICENSE](LICENSE.md) file.
+AdminJS © 2023 rst.software. Это свободное ПО, распространяемое на условиях, указанных в файле [LICENSE](LICENSE.md).
 
-## About rst.software
+## О компании rst.software
 
 <img src="https://pbs.twimg.com/profile_images/1367119173604810752/dKVlj1YY_400x400.jpg" width=150>
 
-We’re an open, friendly team that helps clients from all over the world to transform their businesses and create astonishing products.
+Мы открытая и дружелюбная команда, помогающая клиентам по всему миру трансформировать бизнес и создавать отличные продукты.
 
-* We are available for [hire](https://www.rst.software/estimate-your-project).
-* If you want to work for us - check out the [career page](https://www.rst.software/join-us).
+* Мы открыты для [нанятия](https://www.rst.software/estimate-your-project).
+* Если хотите работать у нас — загляните на [страницу вакансий](https://www.rst.software/join-us).

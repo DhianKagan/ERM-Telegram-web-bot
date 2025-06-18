@@ -1,4 +1,6 @@
-FROM node:16
+# Назначение файла: сборка панели администратора на Node.js.
+# Используются yarn, TypeScript и Prisma.
+FROM node:18
 
 WORKDIR /admin
 

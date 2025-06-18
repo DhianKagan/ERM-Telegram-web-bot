@@ -1,3 +1,4 @@
+# Docker Compose для запуска бота и панели AdminJS
 version: '3.8'
 services:
   bot:

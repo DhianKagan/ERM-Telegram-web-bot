@@ -1,0 +1,17 @@
+# Назначение файла: CI для проверки Docker
+# Модули: docker compose config и docker compose build
+name: "Docker"
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Проверка docker-compose.yml
+        run: docker compose config
+      - name: Сборка образов
+        run: docker compose build

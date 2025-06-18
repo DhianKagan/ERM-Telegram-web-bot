@@ -29,6 +29,12 @@
    Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, а также поднимет контейнеры MongoDB и Postgres.
    Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
+При необходимости можно собрать единый образ из корневого `Dockerfile`:
+```bash
+docker build -t task-manager .
+docker run --env-file .env -p 3000:3000 task-manager
+```
+
 ### Развёртывание на [Pella](https://www.pella.app)
 1. Подключите репозиторий к сервису и выберите проект.
 2. Для каждого контейнера задайте рабочую директорию `bot` или `admin`.
@@ -68,3 +74,6 @@ project-root/
 
 ## Лицензия
 Проект распространяется под лицензией MIT.
+
+## CI с Docker
+Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы при каждом pull request.

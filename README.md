@@ -1,5 +1,7 @@
 # Telegram Task Manager Bot + AdminJS
 
+Файл описывает проект и способы его развертывания.
+
 Каталог `bot` содержит код бота, `admin` — интерфейс AdminJS.
 
 Дополнительная информация о плане разработки представлена в файле `ROADMAP.md`, а история изменений ведется в `CHANGELOG.md`.
@@ -57,6 +59,13 @@
 3. В настройках обоих сервисов укажите переменные окружения:
    `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 4. Подробности описаны в [официальном руководстве DigitalOcean](https://docs.digitalocean.com/products/app-platform/).
+
+
+### Развертывание на Back4App
+1. Зарегистрируйтесь на [Back4App](https://www.back4app.com/) и создайте новое приложение в разделе *Containers*.
+2. Подключите этот репозиторий через GitHub или укажите Docker-образы для сервисов `bot` и `admin`.
+3. В параметрах контейнеров задайте переменные окружения: `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`, `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+4. Запустите деплой и дождитесь статуса *Running* для обоих контейнеров.
 
 ## Структура проекта
 ```

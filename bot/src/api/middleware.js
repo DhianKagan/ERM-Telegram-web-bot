@@ -1,6 +1,21 @@
-// Middleware проверки JWT из заголовка Authorization (Bearer или токен).
+// Middleware проверки JWT и базовая обработка ошибок.
 // Модуль: jsonwebtoken
 const jwt = require('jsonwebtoken');
+
+// Обёртка для перехвата ошибок асинхронных функций
+const asyncHandler = fn => async (req, res, next) => {
+  try {
+    await fn(req, res, next);
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Обработчик ошибок API
+function errorHandler(err, _req, res, _next) {
+  console.error(err);
+  res.status(500).json({ error: err.message });
+}
 
 const secretKey = process.env.JWT_SECRET;
 if (!secretKey) {
@@ -30,4 +45,4 @@ function verifyToken(req, res, next) {
   });
 }
 
-module.exports = { verifyToken };
+module.exports = { verifyToken, asyncHandler, errorHandler };

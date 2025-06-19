@@ -15,11 +15,11 @@
 - Учётная запись MongoDB Atlas
 
 ### Локальный запуск
-1. Клонируйте репозитории исходных проектов в соответствующие каталоги:
+1. Склонируйте текущий репозиторий с модифицированным кодом:
    ```bash
-   git clone https://github.com/a-kashif-ahmed/Telegram-Task-Manager-Bot.git bot
-   git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
+   git clone https://github.com/AgroxOD/agrmcs.git
    ```
+   Каталоги `bot` и `admin` уже содержат необходимые исходники.
 2. Перед запуском создайте файл `.env` на основе `.env.example`:
    ```bash
    cp .env.example .env

@@ -1,4 +1,5 @@
 // HTTP API и раздача мини-приложения. Модули: express, service, middleware, errorHandler
+require('dotenv').config()
 const express = require('express')
 const path = require('path')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus } = require('../services/service')

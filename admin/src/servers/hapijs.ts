@@ -1,3 +1,7 @@
+/**
+ * Назначение: запуск Hapi сервера с AdminJS и подключением БД.
+ * Ключевые модули: @hapi/hapi, AdminJS, MikroORM, TypeORM.
+ */
 import { init } from '../sources/mikroorm/config.js';
 import dataSource from '../sources/typeorm/config.js';
 import { generateAdminJSConfig } from '../admin/index.js';

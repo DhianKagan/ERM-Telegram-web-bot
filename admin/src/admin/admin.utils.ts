@@ -1,3 +1,7 @@
+/**
+ * Назначение: вспомогательные функции для определения HTTP метода и действия.
+ * Ключевые модули: ActionRequest из AdminJS.
+ */
 import { ActionRequest } from 'adminjs';
 
 export const isPOSTMethod = ({ method }: ActionRequest): boolean => method.toLowerCase() === 'post';

@@ -1,3 +1,8 @@
+/**
+ * Назначение: конфигурирование AdminJS. Подключает адаптеры баз данных,
+ * компоненты, страницы, темы и локализацию.
+ * Ключевые модули: AdminJS, адаптеры различных ORM, компонент Loader.
+ */
 // Adapters
 import { Database as MikroormDatabase, Resource as MikroormResource } from '@adminjs/mikroorm';
 import { Database as MongooseDatabase, Resource as MongooseResource } from '@adminjs/mongoose';

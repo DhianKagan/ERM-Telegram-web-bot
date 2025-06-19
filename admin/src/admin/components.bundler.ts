@@ -1,3 +1,7 @@
+/**
+ * Назначение: регистрация и переопределение React-компонентов AdminJS.
+ * Ключевые модули: ComponentLoader, path, url.
+ */
 import { ComponentLoader, OverridableComponent } from 'adminjs';
 import path from 'path';
 import * as url from 'url';

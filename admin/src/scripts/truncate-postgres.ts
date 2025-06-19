@@ -1,3 +1,7 @@
+/**
+ * Назначение: удаление данных в таблицах Postgres через функцию truncate.
+ * Ключевые модули: dotenv и sequelize.
+ */
 import dotenv from 'dotenv';
 dotenv.config({
   path: `${process.cwd()}/.env`,

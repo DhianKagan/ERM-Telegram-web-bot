@@ -1,3 +1,8 @@
+/**
+ * Назначение: создание аутентифицированных роутеров для AdminJS на Express и
+ * Fastify. Используются сессии и хеширование паролей.
+ * Ключевые модули: AdminJSExpress, AdminJSFastify, express-session, argon2.
+ */
 import AdminJSExpress from '@adminjs/express';
 import AdminJSFastify from '@adminjs/fastify';
 import AdminJS from 'adminjs';

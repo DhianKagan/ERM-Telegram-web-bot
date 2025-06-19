@@ -1,3 +1,7 @@
+/**
+ * Назначение: настройка и запуск сервера Fastify с подключением AdminJS.
+ * Ключевые модули: fastify, mongoose, AdminJS, fastify-static.
+ */
 import fastify from 'fastify';
 import mongoose from 'mongoose';
 import AdminJS from 'adminjs';

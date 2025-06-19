@@ -1,3 +1,7 @@
+/**
+ * Назначение: инициализация NestJS приложения с админкой AdminJS.
+ * Ключевые модули: NestFactory, ValidationPipe, mongoose.
+ */
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import mongoose from 'mongoose';

@@ -12,7 +12,7 @@ COPY yarn.lock ./
 COPY .yarnrc.yml ./
 
 RUN corepack enable && corepack prepare yarn@stable --activate
-RUN yarn install --immutable --mode=skip-build
+RUN yarn install --immutable
 COPY . .
 
 RUN npx prisma generate

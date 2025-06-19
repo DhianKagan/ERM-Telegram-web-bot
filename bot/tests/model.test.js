@@ -1,3 +1,4 @@
+// Тестирование модели MongoDB. Используется Mongoose модель Task.
 process.env.NODE_ENV = 'test'
 const Task = require('../src/db/model')
 

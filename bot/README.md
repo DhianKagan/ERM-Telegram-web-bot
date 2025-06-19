@@ -25,7 +25,7 @@
 
 Структура проекта
 
-telegram-task-bot/
+agrmcs/bot/
 |
 ├── src/                # основная логика приложения
 │   ├── bot/            # логика Telegram-бота
@@ -55,8 +55,8 @@ Docker
 
 Клонируйте репозиторий:
 
-    - git clone https://github.com/a-kashif-ahmed/telegram-task-bot.git
-    - cd telegram-task-bot
+    - git clone https://github.com/AgroxOD/agrmcs.git
+    - cd agrmcs/bot
 
 Установите зависимости:
 

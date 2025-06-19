@@ -14,6 +14,6 @@
 
 ## Сообщение об уязвимости
 
-Сообщайте о найденных уязвимостях через [Issues](https://github.com/example/repo/issues)
+Сообщайте о найденных уязвимостях через [Issues](https://github.com/AgroxOD/agrmcs/issues)
 или письмом на security@example.com. Мы ответим в течение двух рабочих дней и
 согласуем дальнейшие действия.

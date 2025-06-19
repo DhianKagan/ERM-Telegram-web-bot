@@ -22,5 +22,6 @@ app.post('/tasks/:id/status', verifyToken, async (req, res) => {
   res.json({ status: 'ok' })
 })
 
-app.listen(process.env.PORT || 3001)
+// По умолчанию API слушает порт 3000
+app.listen(process.env.PORT || 3000)
 module.exports = app

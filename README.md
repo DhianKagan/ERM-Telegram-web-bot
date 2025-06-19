@@ -24,7 +24,7 @@
    ```bash
    cp .env.example .env
    ```
-    Далее заполните переменные, например `MONGO_DATABASE_URL` и `APP_URL`.
+    Далее заполните переменные, например `MONGO_DATABASE_URL`, `APP_URL` и `PORT`.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash

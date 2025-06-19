@@ -31,6 +31,7 @@
    docker-compose up --build
    ```
    Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, запустит контейнер MongoDB.
+   Фронтенд AdminJS компилируется в процессе сборки образа.
    Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
 При необходимости можно собрать единый образ из корневого `Dockerfile`:

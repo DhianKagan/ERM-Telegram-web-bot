@@ -1,9 +1,12 @@
-// Подключение к MongoDB и определение модели задач
+// Подключение к MongoDB и определение модели задач. Модули: dotenv, mongoose
 require('dotenv').config()
 const mongoose = require('mongoose')
 
 if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(process.env.MONGO_DATABASE_URL)
+  mongoose.connect(process.env.MONGO_DATABASE_URL).catch(e => {
+    console.error('Ошибка подключения к MongoDB:', e.message)
+    process.exit(1)
+  })
 }
 
 const taskSchema = new mongoose.Schema({

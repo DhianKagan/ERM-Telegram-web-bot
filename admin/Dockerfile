@@ -18,7 +18,7 @@ COPY . .
 RUN npx prisma generate
 RUN npm i -g typescript
 RUN yarn build
-RUN npx adminjs bundle
+RUN node bundle.mjs
 RUN rm -rf src
 
 EXPOSE 3000

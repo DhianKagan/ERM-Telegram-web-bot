@@ -1,7 +1,11 @@
-// Middleware JWT для проверки доступа к API
+// Middleware JWT для проверки доступа к API. Модуль: jsonwebtoken
 const jwt = require('jsonwebtoken');
 
-const secretKey = process.env.JWT_SECRET || 'your-secret-key';
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey) {
+  console.error('Переменная JWT_SECRET не задана');
+  process.exit(1);
+}
 
 // Middleware to verify JWT token
 function verifyToken(req, res, next) {

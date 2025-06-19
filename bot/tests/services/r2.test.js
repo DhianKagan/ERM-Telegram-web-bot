@@ -1,3 +1,4 @@
+// Тестирование загрузки файлов в R2. Используется AWS SDK клиент.
 const { uploadFile, client } = require('../../src/services/r2')
 
 test('uploadFile calls client.send', async () => {

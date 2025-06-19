@@ -1,4 +1,4 @@
-# Назначение файла: конфигурация Docker Compose для бота и панели.
+# Назначение файла: конфигурация Docker Compose для бота и MongoDB.
 # Секреты загружаются из `.env` и не хранятся в репозитории.
 services:
   bot:
@@ -9,18 +9,10 @@ services:
     restart: always
     depends_on:
       - mongo_db
-  admin:
-    build:
-      context: ./admin
     ports:
       - "3000:3000"
-    env_file:
-      - .env
-    restart: always
-    depends_on:
-      - mongo_db
   mongo_db:
-    container_name: adminjs-example-mongo
+    container_name: task-bot-mongo
     image: mongo
     ports:
       - "27017:27017"

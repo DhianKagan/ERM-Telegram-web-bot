@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Создание .env
         run: |
           cat <<EOF > .env
@@ -26,6 +27,7 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
           EOF
+
       - name: Проверка docker-compose.yml
         run: docker compose config
       - name: Сборка образов

@@ -18,7 +18,6 @@ import {
   CreateComplicatedResource,
   CreateUserResource,
 } from '../sources/mongoose/resources/index.js';
-import { CryptoDatabase } from '../sources/rest/crypto-database.js';
 import './components.bundler.js';
 import { componentLoader } from './components.bundler.js';
 import { AuthUsers } from './constants/authUsers.js';
@@ -31,7 +30,6 @@ AdminJS.registerAdapter({ Database: MongooseDatabase, Resource: MongooseResource
 
 export const menu: Record<string, ResourceOptions['navigation']> = {
   mongoose: { name: 'Mongoose', icon: 'Folder' },
-  rest: { name: 'REST', icon: 'Link' },
 };
 
 export const generateAdminJSConfig: () => AdminJSOptions = () => ({
@@ -40,10 +38,10 @@ export const generateAdminJSConfig: () => AdminJSOptions = () => ({
   locale,
   assets: {
     styles: ['/custom.css'],
-    scripts: process.env.NODE_ENV === 'production' ? ['/gtm.js'] : [],
+    scripts: [],
   },
   branding: {
-    companyName: 'AdminJS demo page',
+    companyName: 'AGR MCS ERM',
     favicon: '/favicon.ico',
     theme: {
       colors: { primary100: '#4D70EB' },
@@ -53,12 +51,6 @@ export const generateAdminJSConfig: () => AdminJSOptions = () => ({
   availableThemes: [light, dark, noSidebar, customTheme],
   componentLoader,
   pages,
-  env: {
-    STORYBOOK_URL: process.env.STORYBOOK_URL,
-    GITHUB_URL: process.env.GITHUB_URL,
-    SLACK_URL: process.env.SLACK_URL,
-    DOCUMENTATION_URL: process.env.DOCUMENTATION_URL,
-  },
   resources: [
     CreateAdminResource(),
     CreateUserResource(),
@@ -66,7 +58,6 @@ export const generateAdminJSConfig: () => AdminJSOptions = () => ({
     CreateArticleResource(),
     CreateCommentResource(),
     CreateComplicatedResource(),
-    new CryptoDatabase(),
   ],
 });
 

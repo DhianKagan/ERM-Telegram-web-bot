@@ -11,7 +11,8 @@
 <input id="newTask" placeholder="Новая задача"/>
 <button onclick="addTask()">Создать</button>
 <script>
-const token = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : '';
+const params = new URLSearchParams(location.search);
+const token = params.get('token') || '';
 async function loadTasks() {
   const r = await fetch('/tasks', { headers: { Authorization: token } });
   document.getElementById('tasks').innerHTML = (await r.json()).map(t => `<li>${t.task_description} — ${t.status}</li>`).join('');

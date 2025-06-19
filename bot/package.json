@@ -15,7 +15,8 @@
     "node-telegram-bot-api": "^0.66.0",
     "telegraf": "^3.38.0",
     "mongoose": "^7.0.2",
-    "@aws-sdk/client-s3": "^3.496.0"
+    "@aws-sdk/client-s3": "^3.496.0",
+    "jsonwebtoken": "^9"
   },
   "devDependencies": {
     "jest": "^29.7.0",

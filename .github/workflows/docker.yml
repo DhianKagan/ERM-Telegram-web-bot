@@ -18,7 +18,6 @@ jobs:
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           CHAT_ID=${{ secrets.CHAT_ID }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
-          JWT_MISSING_STATUS=${{ secrets.JWT_MISSING_STATUS }}
           MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
           R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}

@@ -10,8 +10,6 @@ import path from 'path';
 import * as url from 'url';
 
 import { createAuthUsers, generateAdminJSConfig } from '../admin/index.js';
-import { init } from '../sources/mikroorm/config.js';
-import dataSource from '../sources/typeorm/config.js';
 import { fastifyAuthenticatedRouter } from '../admin/router.js';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
@@ -28,8 +26,6 @@ const attachAdminJS = async () => {
 const run = async (): Promise<void> => {
   try {
     await mongoose.connect(process.env.MONGO_DATABASE_URL);
-    await init();
-    await dataSource.initialize();
 
     app.register(fastifyStatic, {
       root: path.join(__dirname, '../assets'),

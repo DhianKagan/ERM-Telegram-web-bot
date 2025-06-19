@@ -47,5 +47,12 @@ bot.command('upload_file', async (ctx) => {
   await uploadFile(Buffer.from(data.join(' ')), name)
   ctx.reply('Файл загружен в R2')
 })
+
+bot.command('app', async (ctx) => {
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${process.env.APP_URL}?token=${token}`
+  ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
+})
 bot.launch()
 console.log('Bot started')

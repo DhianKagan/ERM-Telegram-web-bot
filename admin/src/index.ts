@@ -1,3 +1,8 @@
+/**
+ * Назначение: точка входа административного приложения. Подгружает переменные
+ * окружения и запускает выбранный сервер.
+ * Ключевые модули: dotenv и различные серверы Express, Fastify, Hapi, NestJS.
+ */
 import dotenv from 'dotenv';
 dotenv.config({
   path: `${process.cwd()}/.env`,

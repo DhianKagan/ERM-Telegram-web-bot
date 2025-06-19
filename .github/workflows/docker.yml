@@ -1,5 +1,5 @@
-# Назначение файла: CI для проверки Docker
-# Модули: docker compose config и docker compose build
+# Назначение файла: CI для проверки Docker и сборки образов
+# Модули: создание .env из Repository secrets, docker compose config и build
 name: "Docker"
 on:
   push:
@@ -11,6 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Создание .env
+        run: |
+          cat <<EOF > .env
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          CHAT_ID=${{ secrets.CHAT_ID }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_MISSING_STATUS=${{ secrets.JWT_MISSING_STATUS }}
+          MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
+          R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          EOF
+
       - name: Проверка docker-compose.yml
         run: docker compose config
       - name: Сборка образов

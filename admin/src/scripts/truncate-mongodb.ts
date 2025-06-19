@@ -1,3 +1,7 @@
+/**
+ * Назначение: очистка коллекций MongoDB для демонстрационной базы.
+ * Ключевые модули: dotenv, mongoose и модели Mongoose.
+ */
 import dotenv from 'dotenv';
 dotenv.config({
   path: `${process.cwd()}/.env`,

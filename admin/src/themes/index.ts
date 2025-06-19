@@ -1,3 +1,7 @@
+/**
+ * Назначение: подключение пользовательской темы для AdminJS.
+ * Ключевые модули: path, url, ThemeConfig.
+ */
 import path from 'path';
 import url from 'url';
 

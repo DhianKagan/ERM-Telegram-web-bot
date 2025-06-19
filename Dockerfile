@@ -8,7 +8,7 @@ COPY bot/package*.json ./bot/
 COPY admin/package.json ./admin/
 COPY admin/yarn.lock ./admin/
 COPY admin/.yarnrc.yml ./admin/
-RUN cd admin && corepack enable && corepack prepare yarn@stable --activate && yarn install --immutable --mode=skip-build && cd .. && cd bot && npm install && cd ..
+RUN cd admin && corepack enable && corepack prepare yarn@stable --activate && yarn install --immutable && cd .. && cd bot && npm install && cd ..
 
 # Копирование исходников
 COPY bot ./bot

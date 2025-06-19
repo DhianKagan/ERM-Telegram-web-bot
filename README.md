@@ -20,8 +20,11 @@
    git clone https://github.com/a-kashif-ahmed/Telegram-Task-Manager-Bot.git bot
    git clone https://github.com/SoftwareBrothers/adminjs-example-app.git admin
    ```
-2. Скопируйте `.env.example` в `.env` и при необходимости измените значения.
-   Для подключения MongoDB укажите переменную `MONGO_DATABASE_URL`.
+2. Перед запуском создайте файл `.env` на основе `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+   Далее заполните переменные, например `MONGO_DATABASE_URL` для подключения MongoDB.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash

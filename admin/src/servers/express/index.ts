@@ -1,3 +1,7 @@
+/**
+ * Назначение: конфигурация и запуск сервера Express с AdminJS.
+ * Ключевые модули: express, mongoose, AdminJS, cors.
+ */
 import path from 'path';
 import mongoose from 'mongoose';
 import express, { Express } from 'express';

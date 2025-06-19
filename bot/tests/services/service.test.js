@@ -1,3 +1,4 @@
+// Тесты сервиса задач. Используются мок модели и функции service.
 jest.mock('../../src/db/model', () => ({
   create: jest.fn().mockResolvedValue({ status: 'pending' }),
   findByIdAndUpdate: jest.fn().mockResolvedValue(),

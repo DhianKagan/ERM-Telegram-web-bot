@@ -1,3 +1,7 @@
+/**
+ * Назначение: описание параметров пользовательской темы.
+ * Ключевые модули: ThemeConfig, overrides.
+ */
 import type { ThemeConfig } from 'adminjs';
 import { overrides } from './overrides.js';
 

@@ -7,19 +7,7 @@ services:
     volumes:
       - mongo_db_example_app:/data/db
 
-  postgres_db:
-    container_name: adminjs-example-postgres
-    image: postgres
-    environment:
-      - POSTGRES_DB=adminjs
-      - POSTGRES_USER=adminjs
-      - POSTGRES_PASSWORD=adminjs
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres_db_example_app:/var/lib/postgresql/data
 
 
 volumes:
   mongo_db_example_app:
-  postgres_db_example_app:

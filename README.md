@@ -30,7 +30,7 @@
    ```bash
    docker-compose up --build
    ```
-   Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, а также поднимет контейнеры MongoDB и Postgres.
+   Compose соберёт образы из `bot/Dockerfile` и `admin/Dockerfile`, запустит контейнер MongoDB.
    Бот будет работать в Telegram, а интерфейс AdminJS откроется на `http://localhost:3000/admin`.
 
 При необходимости можно собрать единый образ из корневого `Dockerfile`:

@@ -1,3 +1,7 @@
+/**
+ * Назначение: демонстрационная страница без внешнего контента.
+ * Модули: компоненты AdminJS для отображения записи.
+ */
 import { Box, H3, Text } from '@adminjs/design-system';
 import { BasePropertyProps } from 'adminjs';
 import React from 'react';
@@ -10,9 +14,7 @@ const DontTouchThis = (props: BasePropertyProps) => {
       <Box variant="container" boxShadow="card">
         <H3>Example of a simple page</H3>
         <Text>Where you can put almost everything like this:</Text>
-        <Box as="div">
-          <img src="https://i.redd.it/rd39yuiy9ns21.jpg" alt="stupid cat" width={300} />
-        </Box>
+        <Box as="div" />
       </Box>
       <Box variant="container" boxShadow="card">
         <Text>Or (more likely), operate on a returned record:</Text>

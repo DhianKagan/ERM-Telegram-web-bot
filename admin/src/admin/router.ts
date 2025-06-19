@@ -1,14 +1,15 @@
 /**
  * Назначение: создание аутентифицированных роутеров для AdminJS на Express и
  * Fastify. Используются сессии и хеширование паролей.
- * Ключевые модули: AdminJSExpress, AdminJSFastify, express-session, argon2.
+ * Ключевые модули: AdminJSExpress, AdminJSFastify, express-session,
+ * connect-mongo, argon2.
  */
 import AdminJSExpress from '@adminjs/express';
 import AdminJSFastify from '@adminjs/fastify';
 import AdminJS from 'adminjs';
 import argon2 from 'argon2';
 import { FastifyInstance } from 'fastify';
-import ConnectPgSimple from 'connect-pg-simple';
+import MongoStore from 'connect-mongo';
 import session from 'express-session';
 import { Router } from 'express';
 
@@ -24,16 +25,13 @@ export const authenticateUser = async (email, password) => {
   return null;
 };
 
-export const expressAuthenticatedRouter = (adminJs: AdminJS, router: Router | null = null) => {
-  const ConnectSession = ConnectPgSimple(session);
-
-  const sessionStore = new ConnectSession({
-    conObject: {
-      connectionString: process.env.POSTGRES_DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production',
-    },
-    tableName: 'session',
-    createTableIfMissing: true,
+export const expressAuthenticatedRouter = (
+  adminJs: AdminJS,
+  router: Router | null = null,
+) => {
+  const sessionStore = MongoStore.create({
+    mongoUrl: process.env.MONGO_DATABASE_URL,
+    collectionName: 'session',
   });
 
   return AdminJSExpress.buildAuthenticatedRouter(

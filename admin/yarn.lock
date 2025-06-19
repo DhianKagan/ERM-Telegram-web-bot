@@ -3961,14 +3961,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/connect-pg-simple@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "@types/connect-pg-simple@npm:7.0.0"
+"@types/connect-mongo@npm:3.1.6":
+  version: 3.1.6
+  resolution: "@types/connect-mongo@npm:3.1.6"
   dependencies:
-    "@types/express": "npm:*"
-    "@types/express-session": "npm:*"
-    "@types/pg": "npm:*"
-  checksum: 10c0/b86d0d44cd02de380ee088bc3510f3c8ee9bf08f9002a0d3e3acb3f2fd956a573734b5f5f9d8faef8c11786da72157481ff08512b44b03322d5ca38e7e49a195
+    connect-mongo: "npm:*"
+  checksum: 10c0/105ef0ed9f1641a421c5559caf050a9fd76277fe542e6bdb281455d3745bd7851ab15a6b4ee79ff782ac95c0dfe8d9e69615803d16eeedd4fbed3577432adf7a
   languageName: node
   linkType: hard
 
@@ -4017,7 +4015,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/express-session@npm:*, @types/express-session@npm:^1.17.7":
+"@types/express-session@npm:^1.17.7":
   version: 1.17.7
   resolution: "@types/express-session@npm:1.17.7"
   dependencies:
@@ -4101,17 +4099,6 @@ __metadata:
   version: 4.0.0
   resolution: "@types/parse-json@npm:4.0.0"
   checksum: 10c0/1d3012ab2fcdad1ba313e1d065b737578f6506c8958e2a7a5bdbdef517c7e930796cb1599ee067d5dee942fb3a764df64b5eef7e9ae98548d776e86dcffba985
-  languageName: node
-  linkType: hard
-
-"@types/pg@npm:*, @types/pg@npm:^8.6.5":
-  version: 8.6.6
-  resolution: "@types/pg@npm:8.6.6"
-  dependencies:
-    "@types/node": "npm:*"
-    pg-protocol: "npm:*"
-    pg-types: "npm:^2.2.0"
-  checksum: 10c0/cb73b78db41b5b4ef6f52bc268f1284be74e5c98c74a7305423eec9cf80d383a489b85bb9371ad176ae9d5adbd2758dff0dcbccfdf2f38f86c13d976948333aa
   languageName: node
   linkType: hard
 
@@ -4724,6 +4711,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"asn1.js@npm:^5.4.1":
+  version: 5.4.1
+  resolution: "asn1.js@npm:5.4.1"
+  dependencies:
+    bn.js: "npm:^4.0.0"
+    inherits: "npm:^2.0.1"
+    minimalistic-assert: "npm:^1.0.0"
+    safer-buffer: "npm:^2.1.0"
+  checksum: 10c0/b577232fa6069cc52bb128e564002c62b2b1fe47f7137bdcd709c0b8495aa79cee0f8cc458a831b2d8675900eea0d05781b006be5e1aa4f0ae3577a73ec20324
+  languageName: node
+  linkType: hard
+
 "asynckit@npm:^0.4.0":
   version: 0.4.0
   resolution: "asynckit@npm:0.4.0"
@@ -4879,6 +4878,13 @@ __metadata:
   version: 3.7.2
   resolution: "bluebird@npm:3.7.2"
   checksum: 10c0/680de03adc54ff925eaa6c7bb9a47a0690e8b5de60f4792604aae8ed618c65e6b63a7893b57ca924beaf53eee69c5af4f8314148c08124c550fe1df1add897d2
+  languageName: node
+  linkType: hard
+
+"bn.js@npm:^4.0.0":
+  version: 4.12.2
+  resolution: "bn.js@npm:4.12.2"
+  checksum: 10c0/09a249faa416a9a1ce68b5f5ec8bbca87fe54e5dd4ef8b1cc8a4969147b80035592bddcb1e9cc814c3ba79e573503d5c5178664b722b509fb36d93620dba9b57
   languageName: node
   linkType: hard
 
@@ -5460,13 +5466,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"connect-pg-simple@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "connect-pg-simple@npm:8.0.0"
+"connect-mongo@npm:*, connect-mongo@npm:5.1.0":
+  version: 5.1.0
+  resolution: "connect-mongo@npm:5.1.0"
   dependencies:
-    "@types/pg": "npm:^8.6.5"
-    pg: "npm:^8.8.0"
-  checksum: 10c0/2a7f5b7bddac5229e3eca85b0293d6370568da1f7b3503f85d7f829c55396cdb6af5c7554ee18dd5dfc90f2ef60d839648c9730d4a234c8707753ac5a3ebc8db
+    debug: "npm:^4.3.1"
+    kruptein: "npm:^3.0.0"
+  peerDependencies:
+    express-session: ^1.17.1
+    mongodb: ">= 5.1.0 < 7"
+  checksum: 10c0/78f34bc09684290f7d3afde447f71793dba33159069a24d929b31dfc517d1ffd52b614dfa34c5eb00700dda5a9d87d7af7d43c2c518c1f6bb6aa3761571a8e70
   languageName: node
   linkType: hard
 
@@ -6534,7 +6543,7 @@ __metadata:
     "@nestjs/typeorm": "npm:^9.0.1"
     "@prisma/client": "npm:^4.11.0"
     "@types/argon2": "npm:^0.15.0"
-    "@types/connect-pg-simple": "npm:^7.0.0"
+    "@types/connect-mongo": "npm:3.1.6"
     "@types/cors": "npm:^2.8.13"
     "@types/express-session": "npm:^1.17.7"
     "@types/lodash": "npm:^4.14.191"
@@ -6547,7 +6556,7 @@ __metadata:
     argon2: "npm:^0.30.3"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.14.0"
-    connect-pg-simple: "npm:^8.0.0"
+    connect-mongo: "npm:5.1.0"
     copyfiles: "npm:^2.4.1"
     cors: "npm:^2.8.5"
     dotenv: "npm:^16.0.3"
@@ -8464,6 +8473,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"kruptein@npm:^3.0.0":
+  version: 3.0.8
+  resolution: "kruptein@npm:3.0.8"
+  dependencies:
+    asn1.js: "npm:^5.4.1"
+  checksum: 10c0/32e5f36b90ba3d17ea8e618bc4c39d8b819b92ce33c46dce9d063fcf35b17665a40baf526ae5dda7819643f5a513739b21565b4293264dd5c74a645e67388710
+  languageName: node
+  linkType: hard
+
 "levn@npm:^0.4.1":
   version: 0.4.1
   resolution: "levn@npm:0.4.1"
@@ -8860,6 +8878,13 @@ __metadata:
   version: 2.1.0
   resolution: "mimic-fn@npm:2.1.0"
   checksum: 10c0/b26f5479d7ec6cc2bce275a08f146cf78f5e7b661b18114e2506dd91ec7ec47e7a25bf4360e5438094db0560bcc868079fb3b1fb3892b833c1ecbf63f80c95a4
+  languageName: node
+  linkType: hard
+
+"minimalistic-assert@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "minimalistic-assert@npm:1.0.1"
+  checksum: 10c0/96730e5601cd31457f81a296f521eb56036e6f69133c0b18c13fe941109d53ad23a4204d946a0d638d7f3099482a0cec8c9bb6d642604612ce43ee536be3dddd
   languageName: node
   linkType: hard
 
@@ -9831,14 +9856,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg-protocol@npm:*, pg-protocol@npm:^1.6.0":
+"pg-protocol@npm:^1.6.0":
   version: 1.6.0
   resolution: "pg-protocol@npm:1.6.0"
   checksum: 10c0/318a4d1e9cebd3927b10a8bc412f5017117a1f9a5fafb628d75847da7d1ab81c33250de58596bd0990029e14e92a995a851286d60fc236692299faf509572213
   languageName: node
   linkType: hard
 
-"pg-types@npm:^2.1.0, pg-types@npm:^2.2.0":
+"pg-types@npm:^2.1.0":
   version: 2.2.0
   resolution: "pg-types@npm:2.2.0"
   dependencies:
@@ -9851,7 +9876,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg@npm:8.10.0, pg@npm:^8.10.0, pg@npm:^8.8.0":
+"pg@npm:8.10.0, pg@npm:^8.10.0":
   version: 8.10.0
   resolution: "pg@npm:8.10.0"
   dependencies:
@@ -11105,7 +11130,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"safer-buffer@npm:>= 2.1.2 < 3, safer-buffer@npm:>= 2.1.2 < 3.0.0":
+"safer-buffer@npm:>= 2.1.2 < 3, safer-buffer@npm:>= 2.1.2 < 3.0.0, safer-buffer@npm:^2.1.0":
   version: 2.1.2
   resolution: "safer-buffer@npm:2.1.2"
   checksum: 10c0/7e3c8b2e88a1841c9671094bbaeebd94448111dd90a81a1f606f3f67708a6ec57763b3b47f06da09fc6054193e0e6709e77325415dc8422b04497a8070fa02d4

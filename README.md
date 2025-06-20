@@ -25,20 +25,21 @@
    ```bash
    cp .env.example .env
    ```
-   Далее заполните переменные, например `MONGO_DATABASE_URL`, `APP_URL` и `PORT`.
+   Далее заполните переменные, например `MONGO_DATABASE_URL`, `APP_URL`, `PORT` и `HOST_PORT`.
    Переменная `LOCALE` определяет язык панели администратора (по умолчанию `en`).
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
    ```bash
-   docker-compose up --build
-   ```
+  docker-compose up --build
+  ```
   Compose соберёт образ бота и запустит MongoDB.
   Мини‑приложение открывается ссылкой из команды `/app`.
+  При занятости порта 3000 укажите другой `HOST_PORT` в `.env`.
 
 При необходимости можно собрать единый образ из корневого `Dockerfile`:
 ```bash
 docker build -t task-manager .
-docker run --env-file .env -p 3000:3000 task-manager
+docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
 ```
 
 ### Развёртывание на [Pella](https://www.pella.app)

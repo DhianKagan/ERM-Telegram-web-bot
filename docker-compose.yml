@@ -1,5 +1,6 @@
 # Назначение файла: конфигурация Docker Compose для бота и MongoDB.
 # Секреты загружаются из `.env` и не хранятся в репозитории.
+# Порт хоста можно задать через переменную `HOST_PORT`.
 services:
   bot:
     build:
@@ -10,7 +11,7 @@ services:
     depends_on:
       - mongo_db
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:${PORT:-3000}"
   mongo_db:
     container_name: task-bot-mongo
     image: mongo

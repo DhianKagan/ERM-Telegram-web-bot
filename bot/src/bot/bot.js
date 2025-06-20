@@ -54,5 +54,6 @@ bot.command('app', async (ctx) => {
   const url = `${process.env.APP_URL}?token=${token}`
   ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
 })
-bot.launch()
-console.log('Bot started')
+bot.launch().then(() => console.log('Bot started'))
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))

@@ -2,6 +2,10 @@
 require('dotenv').config()
 const mongoose = require('mongoose')
 
+if (!process.env.MONGO_DATABASE_URL) {
+  console.error('MONGO_DATABASE_URL не задан')
+  process.exit(1)
+}
 if (process.env.NODE_ENV !== 'test') {
   mongoose.connect(process.env.MONGO_DATABASE_URL).catch(e => {
     console.error('Ошибка подключения к MongoDB:', e.message)

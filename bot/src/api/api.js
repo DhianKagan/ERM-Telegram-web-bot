@@ -26,5 +26,6 @@ app.post('/tasks/:id/status', verifyToken, asyncHandler(async (req, res) => {
 app.use(errorHandler)
 
 // По умолчанию API слушает порт 3000
-app.listen(process.env.PORT || 3000)
+const port = process.env.PORT || 3000
+app.listen(port, () => console.log(`API on port ${port}`))
 module.exports = app

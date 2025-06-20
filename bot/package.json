@@ -14,9 +14,12 @@
     "express": "^5.1.0",
     "node-telegram-bot-api": "^0.66.0",
     "telegraf": "^3.38.0",
-    "mongoose": "^7.0.2",
+    "mongoose": "^8.16.0",
     "@aws-sdk/client-s3": "^3.496.0",
-    "jsonwebtoken": "^9"
+    "jsonwebtoken": "^9",
+    "adminjs": "^7.8.16",
+    "@adminjs/express": "^6.1.1",
+    "@adminjs/mongoose": "^4.1.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",

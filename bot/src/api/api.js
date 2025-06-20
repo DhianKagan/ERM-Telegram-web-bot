@@ -4,10 +4,18 @@ const express = require('express')
 const path = require('path')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware');
+const AdminJS = require("adminjs");
+const AdminJSExpress = require("@adminjs/express");
+const AdminJSMongoose = require("@adminjs/mongoose");
+const Task = require("../db/model");
 const app = express()
 app.use(express.json())
 app.use(express.static(path.join(__dirname, '../../public')))
 
+AdminJS.registerAdapter(AdminJSMongoose);
+const admin = new AdminJS({ rootPath: "/admin", resources: [{ resource: Task }] });
+const adminRouter = AdminJSExpress.buildRouter(admin);
+app.use(admin.options.rootPath, adminRouter);
 app.get('/tasks', verifyToken, asyncHandler(async (req, res) => {
   const tasks = req.query.userId ? await listUserTasks(req.query.userId) : await listAllTasks()
   res.json(tasks)

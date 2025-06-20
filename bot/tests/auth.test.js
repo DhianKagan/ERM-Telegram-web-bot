@@ -5,6 +5,7 @@ jest.mock('node-telegram-bot-api', () => {
   }))
 })
 jest.mock('jsonwebtoken')
+process.env.JWT_SECRET = 'test'
 const { verifyAdmin, generateToken } = require('../src/auth/auth')
 const jwt = require('jsonwebtoken')
 

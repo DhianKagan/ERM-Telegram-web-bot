@@ -37,6 +37,7 @@
   ```bash
   npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
   npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
+  # или ./scripts/build_client.sh
   ```
 
 

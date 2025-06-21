@@ -97,6 +97,10 @@ project-root/
 ```bash
 npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
 ```
+Или воспользуйтесь скриптом:
+```bash
+./scripts/build_client.sh
+```
 Если команда завершается ошибкой `next: not found`, сначала установите зависимости:
 ```bash
 npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log

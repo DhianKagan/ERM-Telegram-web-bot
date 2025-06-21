@@ -23,7 +23,8 @@ docker compose config
 ## Деплой
 Перед развёртыванием убедитесь, что статический фронтенд собран командой
 `npm --prefix bot run build-client` или через `Procfile`.
- - Если в логах встречается `GET /dashboard/` со статусом `404`, запустите `npm --prefix bot run build-client` и убедитесь, что каталог `bot/public` заполнен.
+- Если в логах встречается `GET /dashboard/` со статусом `404`, запустите `npm --prefix bot run build-client` и убедитесь, что каталог `bot/public` заполнен.
+- При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - Если сборка завершается ошибкой `next: not found`, сначала выполните `npm --prefix bot/client install`.
 - После обновления зависимостей повторяйте `npm --prefix bot/client install` и затем `npm --prefix bot run build-client`.
 - Для поиска ошибок сохраняйте вывод в лог:

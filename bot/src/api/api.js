@@ -5,6 +5,8 @@ require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
+const fs = require('fs')
+const { execSync } = require('child_process')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
@@ -13,6 +15,13 @@ const { generateToken } = require('../auth/auth')
 ;(async () => {
   const { Task, Group, User } = require('../db/model')
   const app = express()
+  // при отсутствии статических файлов выполняем сборку мини-приложения
+  const root = path.join(__dirname, '../..')
+  const pub = path.join(root, 'public')
+  if (fs.readdirSync(pub).length <= 1) {
+    console.log('Сборка интерфейса...')
+    execSync('npm run build-client', { cwd: root, stdio: 'inherit' })
+  }
   // доверяем только первому прокси, чтобы получать корректный IP
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)

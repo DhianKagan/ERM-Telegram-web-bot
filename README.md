@@ -22,9 +22,10 @@
    Каталог `bot` уже содержит необходимые исходники.
 2. Перед запуском создайте файл `.env` на основе `.env.example`:
    ```bash
-  cp .env.example .env
+ cp .env.example .env
   ```
   Далее заполните переменные из `.env.example`, например `MONGO_DATABASE_URL`, `APP_URL`, `PORT` и `HOST_PORT`.
+  Файл `.env` не хранится в репозитории и указан в `.gitignore`.
   Для входа в мини‑приложение задайте `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:

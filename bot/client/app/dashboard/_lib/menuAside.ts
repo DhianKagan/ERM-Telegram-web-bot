@@ -30,6 +30,11 @@ const menuAside: MenuAsideItem[] = [
     icon: mdiTable,
   },
   {
+    href: "/dashboard/tasks",
+    label: "Tasks",
+    icon: mdiTable,
+  },
+  {
     href: "/dashboard/forms",
     label: "Forms",
     icon: mdiSquareEditOutline,

@@ -19,3 +19,4 @@ docker compose config
 ## Деплой
 Перед развёртыванием убедитесь, что статический фронтенд собран командой
 `npm --prefix bot run build-client` или через `Procfile`.
+- Если при обращении к `/dashboard/` получаете 404, выполните `npm --prefix bot run build-client` и проверьте каталог `bot/public`.

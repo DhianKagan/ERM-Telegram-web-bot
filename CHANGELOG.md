@@ -27,4 +27,5 @@
 - Добавлены issue templates и файл `CONTRIBUTING.md`.
 - Добавлен раздел "Обзор текущего состояния" в README с плюсами и минусами проекта.
 - Страница `/dashboard/tasks` подключена к API и отображает данные из MongoDB.
+- Добавлен файл `docs/telegram_bot_manual.md` с инструкцией по настройке команд и вебхуков Telegram-бота.
 

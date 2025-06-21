@@ -1,0 +1,15 @@
+name: "Фича"
+description: "Предложить улучшение"
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Описание"
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "Зачем"

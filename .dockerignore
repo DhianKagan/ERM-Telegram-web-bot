@@ -1,0 +1,6 @@
+# Назначение: исключить лишние файлы из контекста Docker
+.git
+node_modules
+Dockerfile
+docker-compose.yml
+*.md

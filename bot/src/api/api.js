@@ -1,5 +1,6 @@
-// HTTP API и раздача мини-приложения. Модули: express, express-rate-limit,
-// сервисы и middleware. Включает маршрут /health для проверки статуса.
+// HTTP API и мини-приложение. Модули: express, express-rate-limit,
+// сервисы и middleware. Используются tasksRateLimiter и loginRateLimiter,
+// есть маршрут /health для проверки статуса.
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
@@ -20,15 +21,21 @@ const { generateToken } = require('../auth/auth')
   // простая проверка работоспособности контейнера
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-  // Define rate limiter: maximum 100 requests per 15 minutes
+  // лимит запросов к задачам: 100 за 15 минут
   const tasksRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     message: { error: 'Too many requests, please try again later.' }
+  })
+  // лимит попыток входа: 10 за 15 минут
+  const loginRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many login attempts, please try later.' }
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  app.post('/auth/login', asyncHandler(async (req, res) => {
+  app.post('/auth/login', loginRateLimiter, asyncHandler(async (req, res) => {
     const { email, password } = req.body
     if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
       return res.status(500).json({ error: 'Credentials not set' })

@@ -1,4 +1,5 @@
-// HTTP API и раздача мини-приложения. Модули: express, service, middleware, AdminJS
+// HTTP API и раздача мини-приложения. Модули: express, AdminJS, AdminJSExpress,
+// AdminJS Mongoose, сервисы и middleware
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
@@ -9,7 +10,7 @@ const AdminJS = require('adminjs').default
 
 ;(async () => {
   const { default: AdminJSExpress } = await import('@adminjs/express')
-  const { default: AdminJSMongoose } = await import('@adminjs/mongoose')
+  const { Database, Resource } = await import('@adminjs/mongoose')
   const Task = require('../db/model')
   const app = express()
   app.use(express.json())
@@ -22,7 +23,7 @@ const AdminJS = require('adminjs').default
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  AdminJS.registerAdapter(AdminJSMongoose)
+  AdminJS.registerAdapter({ Database, Resource })
   const admin = new AdminJS({ rootPath: '/admin', resources: [{ resource: Task }] })
   const adminRouter = AdminJSExpress.buildRouter(admin)
   app.use(admin.options.rootPath, adminRouter)

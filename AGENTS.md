@@ -42,3 +42,4 @@ docker compose config
 - Страница `/dashboard/tasks` должна получать данные из MongoDB через API.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.
 
+

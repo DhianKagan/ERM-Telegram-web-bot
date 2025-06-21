@@ -14,6 +14,7 @@ async function api(path: string, options: RequestInit = {}) {
   if (t) headers.Authorization = `Bearer ${t}`
   if (options.headers) Object.assign(headers, options.headers as Record<string, string>)
   const res = await fetch(base + path, { ...options, headers })
+
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }

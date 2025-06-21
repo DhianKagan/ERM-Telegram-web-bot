@@ -1,4 +1,5 @@
-// HTTP API и раздача мини-приложения. Модули: express, сервисы и middleware
+// HTTP API и раздача мини-приложения. Модули: express, express-rate-limit,
+// сервисы и middleware
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
@@ -10,9 +11,9 @@ const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 ;(async () => {
   const { Task, Group, User } = require('../db/model')
   const app = express()
-  // доверяем первому прокси для корректной работы express-rate-limit
-  // и получения реального IP пользователя из заголовка X-Forwarded-For
-  app.enable('trust proxy')
+  // доверяем только первому прокси, чтобы получать корректный IP
+  // и не допустить обход rate limit по X-Forwarded-For
+  app.set('trust proxy', 1)
   app.use(express.json())
 
   // Define rate limiter: maximum 100 requests per 15 minutes

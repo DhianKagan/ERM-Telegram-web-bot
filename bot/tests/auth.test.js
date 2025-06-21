@@ -1,9 +1,9 @@
-// Тесты модуля auth: проверка админа и JWT. Используются node-telegram-bot-api, jsonwebtoken.
-jest.mock('node-telegram-bot-api', () => {
-  return jest.fn().mockImplementation(() => ({
-    getChatAdministrators: jest.fn().mockResolvedValue([{ user: { id: 1 } }])
+// Тесты модуля auth: проверка админа и JWT. Используются telegraf и jsonwebtoken.
+jest.mock('telegraf', () => ({
+  Telegraf: jest.fn().mockImplementation(() => ({
+    telegram: { getChatAdministrators: jest.fn().mockResolvedValue([{ user: { id: 1 } }]) }
   }))
-})
+}))
 jest.mock('jsonwebtoken')
 process.env.JWT_SECRET = 'test'
 const { verifyAdmin, generateToken } = require('../src/auth/auth')

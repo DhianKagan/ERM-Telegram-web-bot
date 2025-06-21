@@ -4,25 +4,26 @@
   "main": "src/bot/bot.js",
   "scripts": {
     "test": "jest",
-    "start": "node src/api/api.js & node src/bot/bot.js",
+    "start": "concurrently \"node src/api/api.js\" \"node src/bot/bot.js\"",
     "build-client": "IS_OUTPUT_EXPORT=1 npm --prefix client run build && rm -rf public && mv client/out public"
   },
   "postinstall": "npm --prefix client install && npm run build-client",
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Бот задач с REST API, запускаемый через concurrently",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.496.0",
+    "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "telegraf": "^3.38.0",
-    "mongoose": "^8.16.0",
-    "@aws-sdk/client-s3": "^3.496.0",
+    "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "^9",
-    "express-rate-limit": "^7.5.1"
+    "mongoose": "^8.16.0",
+    "telegraf": "^3.38.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^7.0.0",
-    "mongodb-memory-server": "^8.12.1"
+    "mongodb-memory-server": "^8.12.1",
+    "supertest": "^7.0.0"
   }
 }

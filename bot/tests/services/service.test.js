@@ -1,8 +1,12 @@
 // Тесты сервиса задач. Используются мок модели и функции service.
 jest.mock('../../src/db/model', () => ({
-  create: jest.fn().mockResolvedValue({ status: 'pending' }),
-  findByIdAndUpdate: jest.fn().mockResolvedValue(),
-  find: jest.fn().mockResolvedValue([{ id: 1 }])
+  Task: {
+    create: jest.fn().mockResolvedValue({ status: 'pending' }),
+    findByIdAndUpdate: jest.fn().mockResolvedValue(),
+    find: jest.fn().mockResolvedValue([{ id: 1 }])
+  },
+  Group: {},
+  User: {}
 }))
 
 const { createTask, assignTask, listUserTasks } = require('../../src/services/service')

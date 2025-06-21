@@ -107,3 +107,4 @@ npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/n
 Используйте прокси или окружение с открытым доступом к сети, иначе `npm` не сможет загрузить необходимые пакеты.
 Если при установке выводится предупреждение `Unknown env config "http-proxy"`,
 замените переменную окружения `http-proxy` на `HTTP_PROXY` или `npm_config_proxy`.
+

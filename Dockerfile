@@ -5,10 +5,13 @@ WORKDIR /app
 
 # Установка зависимостей
 COPY bot/package*.json ./bot/
-RUN cd bot && npm install && cd ..
+COPY bot/client/package*.json ./bot/client/
+RUN cd bot && npm install && npm --prefix client install && cd ..
 
 # Копирование исходников
 COPY bot ./bot
+
+RUN cd bot && npm --prefix client run build && cd ..
 
 EXPOSE 3000
 CMD ["npm", "--prefix", "bot", "start"]

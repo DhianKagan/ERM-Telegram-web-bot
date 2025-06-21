@@ -4,8 +4,10 @@
   "main": "src/bot/bot.js",
   "scripts": {
     "test": "jest",
-    "start": "node src/api/api.js & node src/bot/bot.js"
+    "start": "node src/api/api.js & node src/bot/bot.js",
+    "build-client": "npm --prefix client run build"
   },
+  "postinstall": "npm --prefix client install && npm run build-client",
   "author": "",
   "license": "ISC",
   "description": "",

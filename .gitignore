@@ -1,5 +1,7 @@
 # Назначение файла: список игнорируемых файлов.
 node_modules/
+bot/public/*
+!bot/public/.gitkeep
 
 # переменные окружения
 .env

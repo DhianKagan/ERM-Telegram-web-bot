@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "start": "node src/api/api.js & node src/bot/bot.js",
-    "build-client": "npm --prefix client run build"
+    "build-client": "IS_OUTPUT_EXPORT=1 npm --prefix client run build && rm -rf public && mv client/out public"
   },
   "postinstall": "npm --prefix client install && npm run build-client",
   "author": "",

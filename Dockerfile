@@ -11,7 +11,7 @@ RUN cd bot && npm install && npm --prefix client install && cd ..
 # Копирование исходников
 COPY bot ./bot
 
-RUN cd bot && npm --prefix client run build && cd ..
+RUN cd bot && npm run build-client && cd ..
 
 EXPOSE 3000
 CMD ["npm", "--prefix", "bot", "start"]

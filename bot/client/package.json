@@ -1,33 +1,41 @@
 {
-  "name": "client",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier 'app/**/*.{tsx,ts,js}' --write"
   },
   "dependencies": {
-    "autoprefixer": "^10.4.21",
-    "axios": "^1.10.0",
-    "postcss": "^8.5.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.2",
-    "tailwindcss": "^4.1.10",
-    "@tailwindcss/postcss": "^4.1.10"
+    "@mdi/js": "^7.0.96",
+    "@reduxjs/toolkit": "^2.5.1",
+    "chart.js": "^4.4.0",
+    "formik": "^2.4.2",
+    "next": "15.1.7",
+    "numeral": "^2.0.6",
+    "react": "19.0.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "19.0.0",
+    "react-redux": "^9.2.0",
+    "swr": "^2.2.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.25.0",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
-    "@vitejs/plugin-react": "^4.4.1",
-    "eslint": "^9.25.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
-    "globals": "^16.0.0",
-    "vite": "^6.3.5"
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/postcss": "^4.0.8",
+    "@types/lodash": "^4.17.15",
+    "@types/node": "^20",
+    "@types/numeral": "^2.0.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-redux": "^7.1.25",
+    "eslint": "^9",
+    "eslint-config-next": "15.1.7",
+    "eslint-config-prettier": "^9.0.0",
+    "postcss": "^8",
+    "prettier": "^3.0.3",
+    "tailwindcss": "^4.0.8",
+    "typescript": "^5"
   }
 }

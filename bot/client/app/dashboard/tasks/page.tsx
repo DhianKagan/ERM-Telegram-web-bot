@@ -5,13 +5,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SectionMain from "../_components/Section/Main";
-import SectionTitleLineWithButton from "../_components/Section/TitleLineWithButton";
+import SectionMain from "../../_components/Section/Main";
+import SectionTitleLineWithButton from "../../_components/Section/TitleLineWithButton";
 import { mdiTable } from "@mdi/js";
 import { getTasks } from "../../_lib/api";
 
+type Task = { _id: string; task_description: string; status: string };
+
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
   useEffect(() => {
     getTasks().then(setTasks).catch(console.error);
   }, []);

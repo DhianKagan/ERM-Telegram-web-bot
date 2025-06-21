@@ -10,14 +10,20 @@
 <ul id="tasks"></ul>
 <input id="newTask" placeholder="Новая задача"/>
 <button onclick="addTask()">Создать</button>
-<button id="adminBtn">Админ-панель</button>
-<div id="adminFrame" style="display:none;height:600px">
-  <iframe src="/admin" style="width:100%;height:100%"></iframe>
-</div>
+
+<h3>Группы</h3>
+<ul id="groups"></ul>
+<input id="newGroup" placeholder="Новая группа"/>
+<button onclick="addGroup()">Создать</button>
+
+<h3>Пользователи</h3>
+<ul id="users"></ul>
+<input id="newUser" placeholder="ID"/>
+<input id="newUsername" placeholder="Имя"/>
+<button onclick="addUser()">Создать</button>
 <script>
 const params = new URLSearchParams(location.search);
 const token = params.get('token') || '';
-if (params.get('admin') === '1') document.getElementById('adminFrame').style.display = 'block';
 async function loadTasks() {
   const r = await fetch('/tasks', { headers: { Authorization: token } });
   document.getElementById('tasks').innerHTML = (await r.json()).map(t => `<li>${t.task_description} — ${t.status}</li>`).join('');
@@ -27,10 +33,28 @@ async function addTask() {
   await fetch('/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: token }, body: JSON.stringify({ description }) });
   loadTasks();
 }
+async function loadGroups(){
+  const r = await fetch('/groups', { headers: { Authorization: token } })
+  document.getElementById('groups').innerHTML = (await r.json()).map(g => `<li>${g.name}</li>`).join('')
+}
+async function addGroup(){
+  const name = document.getElementById('newGroup').value
+  await fetch('/groups', { method:'POST', headers:{'Content-Type':'application/json', Authorization: token}, body: JSON.stringify({ name }) })
+  loadGroups()
+}
+async function loadUsers(){
+  const r = await fetch('/users', { headers: { Authorization: token } })
+  document.getElementById('users').innerHTML = (await r.json()).map(u => `<li>${u.username}</li>`).join('')
+}
+async function addUser(){
+  const id = document.getElementById('newUser').value
+  const username = document.getElementById('newUsername').value
+  await fetch('/users', { method:'POST', headers:{'Content-Type':'application/json', Authorization: token}, body: JSON.stringify({ id, username }) })
+  loadUsers()
+}
 loadTasks();
-document.getElementById('adminBtn').onclick = () => {
-  document.getElementById('adminFrame').style.display = 'block';
-};
+loadGroups();
+loadUsers();
 </script>
 </body>
 </html>

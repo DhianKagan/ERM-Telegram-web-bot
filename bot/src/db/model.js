@@ -1,4 +1,4 @@
-// Подключение к MongoDB и определение модели задач. Модули: dotenv, mongoose
+// Подключение к MongoDB и определение моделей. Модули: dotenv, mongoose
 require('dotenv').config()
 const mongoose = require('mongoose')
 
@@ -15,8 +15,16 @@ if (process.env.NODE_ENV !== 'test') {
 
 const taskSchema = new mongoose.Schema({
   assigned_user_id: Number,
+  group_id: mongoose.Schema.Types.ObjectId,
   task_description: { type: String, required: true },
   status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' }
 }, { timestamps: true })
 
-module.exports = mongoose.model('Task', taskSchema)
+const groupSchema = new mongoose.Schema({ name: String })
+const userSchema = new mongoose.Schema({ telegram_id: Number, username: String })
+
+const Task = mongoose.model('Task', taskSchema)
+const Group = mongoose.model('Group', groupSchema)
+const User = mongoose.model('User', userSchema)
+
+module.exports = { Task, Group, User }

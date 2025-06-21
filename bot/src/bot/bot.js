@@ -56,15 +56,6 @@ bot.command('app', async (ctx) => {
   ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
 })
 
-bot.command('admin', async (ctx) => {
-  if (!await verifyAdmin(ctx.from.id)) {
-    ctx.reply('Unauthorized')
-    return
-  }
-  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin: true })
-  const url = `${process.env.APP_URL}?token=${token}&admin=1`
-  ctx.replyWithHTML(`<a href="${url}">Панель администрирования</a>`, { disable_web_page_preview: true })
-})
 bot.launch().then(() => console.log('Bot started'))
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

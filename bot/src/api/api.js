@@ -1,17 +1,14 @@
-// HTTP API и раздача мини-приложения. Модули: express, AdminJS, AdminJSExpress,
-// AdminJS Mongoose, сервисы и middleware
+// HTTP API и раздача мини-приложения. Модули: express, сервисы и middleware
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
-const { createTask, listUserTasks, listAllTasks, updateTaskStatus } = require('../services/service')
+const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
+  createGroup, listGroups, createUser, listUsers } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
-const AdminJS = require('adminjs').default
 
 ;(async () => {
-  const { default: AdminJSExpress } = await import('@adminjs/express')
-  const { Database, Resource } = await import('@adminjs/mongoose')
-  const Task = require('../db/model')
+  const { Task, Group, User } = require('../db/model')
   const app = express()
   app.use(express.json())
 
@@ -23,10 +20,6 @@ const AdminJS = require('adminjs').default
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  AdminJS.registerAdapter({ Database, Resource })
-  const admin = new AdminJS({ rootPath: '/admin', resources: [{ resource: Task }] })
-  const adminRouter = AdminJSExpress.buildRouter(admin)
-  app.use(admin.options.rootPath, adminRouter)
 
   app.get('/tasks', tasksRateLimiter, verifyToken, asyncHandler(async (req, res) => {
     const tasks = req.query.userId ? await listUserTasks(req.query.userId) : await listAllTasks()
@@ -36,6 +29,22 @@ const AdminJS = require('adminjs').default
   app.post('/tasks', verifyToken, asyncHandler(async (req, res) => {
     const task = await createTask(req.body.description)
     res.json(task)
+  }))
+
+  app.get('/groups', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listGroups())
+  }))
+  app.post('/groups', verifyToken, asyncHandler(async (req, res) => {
+    const group = await createGroup(req.body.name)
+    res.json(group)
+  }))
+
+  app.get('/users', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listUsers())
+  }))
+  app.post('/users', verifyToken, asyncHandler(async (req, res) => {
+    const user = await createUser(req.body.id, req.body.username)
+    res.json(user)
   }))
 
   app.post('/tasks/:id/status', verifyToken, asyncHandler(async (req, res) => {

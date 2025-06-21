@@ -1,4 +1,5 @@
-// Основной файл бота Telegram
+// Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
+// загрузку файлов в R2 и JWT-аутентификацию.
 require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const { createTask, assignTask, listUserTasks, updateTaskStatus } = require('../services/service')
@@ -53,6 +54,16 @@ bot.command('app', async (ctx) => {
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${process.env.APP_URL}?token=${token}`
   ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
+})
+
+bot.command('admin', async (ctx) => {
+  if (!await verifyAdmin(ctx.from.id)) {
+    ctx.reply('Unauthorized')
+    return
+  }
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin: true })
+  const url = `${process.env.APP_URL}?token=${token}&admin=1`
+  ctx.replyWithHTML(`<a href="${url}">Панель администрирования</a>`, { disable_web_page_preview: true })
 })
 bot.launch().then(() => console.log('Bot started'))
 process.once('SIGINT', () => bot.stop('SIGINT'))

@@ -17,6 +17,7 @@
 <script>
 const params = new URLSearchParams(location.search);
 const token = params.get('token') || '';
+if (params.get('admin') === '1') document.getElementById('adminFrame').style.display = 'block';
 async function loadTasks() {
   const r = await fetch('/tasks', { headers: { Authorization: token } });
   document.getElementById('tasks').innerHTML = (await r.json()).map(t => `<li>${t.task_description} — ${t.status}</li>`).join('');

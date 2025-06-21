@@ -6,6 +6,7 @@
 
 import { Formik, Form, Field } from "formik";
 import { useRouter } from "next/navigation";
+import { login } from "../../_lib/api";
 import Button from "../../_components/Button";
 import Buttons from "../../_components/Buttons";
 import Divider from "../../_components/Divider";
@@ -21,9 +22,9 @@ type LoginForm = {
 export default function LoginForm() {
   const router = useRouter();
 
-  const handleSubmit = (formValues: LoginForm) => {
-    router.push("/dashboard");
-    console.log("Form values", formValues);
+  const handleSubmit = async (formValues: LoginForm) => {
+    await login(formValues.login, formValues.password);
+    router.push("/dashboard/tasks");
   };
 
   const initialValues: LoginForm = {

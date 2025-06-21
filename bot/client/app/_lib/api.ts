@@ -9,11 +9,12 @@ function token() {
 }
 
 async function api(path: string, options: RequestInit = {}) {
-  const opts = {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}), Authorization: token() ? `Bearer ${token()}` : undefined },
-    ...options,
-  }
-  const res = await fetch(base + path, opts)
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const t = token()
+  if (t) headers.Authorization = `Bearer ${t}`
+  if (options.headers) Object.assign(headers, options.headers as Record<string, string>)
+  const res = await fetch(base + path, { ...options, headers })
+
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }

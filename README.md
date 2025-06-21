@@ -24,9 +24,10 @@
    ```bash
  cp .env.example .env
   ```
-  Далее заполните переменные из `.env.example`, например `MONGO_DATABASE_URL`, `APP_URL`, `PORT` и `HOST_PORT`.
-  Файл `.env` не хранится в репозитории и указан в `.gitignore`.
-  Для входа в мини‑приложение задайте `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
+ Далее заполните переменные из `.env.example`, например `MONGO_DATABASE_URL`, `APP_URL`, `PORT` и `HOST_PORT`.
+ Файл `.env` не хранится в репозитории и указан в `.gitignore`.
+ Для входа в мини‑приложение задайте `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
+ Перед запуском можно проверить конфигурацию командой `docker compose config`. Без созданного `.env` она выдаст ошибку о его отсутствии.
 3. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 4. Запустите контейнеры:
   ```bash

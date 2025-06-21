@@ -4,11 +4,24 @@
 <head>
 <meta charset="UTF-8" />
 <title>Task Mini App</title>
+<style>
+body{font-family:Arial, sans-serif;margin:2em}
+h3{margin-top:1em}
+input,select,button{margin:.3em 0}
+ul{list-style:none;padding:0}
+li{margin:.5em 0}
+</style>
 </head>
 <body>
 <h3>Задачи</h3>
 <ul id="tasks"></ul>
 <input id="newTask" placeholder="Новая задача"/>
+<input id="taskDueDate" type="date"/>
+<select id="taskPriority">
+  <option value="low">Низкий</option>
+  <option value="medium">Средний</option>
+  <option value="high">Высокий</option>
+</select>
 <button onclick="addTask()">Создать</button>
 
 <h3>Группы</h3>
@@ -25,13 +38,31 @@
 const params = new URLSearchParams(location.search);
 const token = params.get('token') || '';
 async function loadTasks() {
-  const r = await fetch('/tasks', { headers: { Authorization: token } });
-  document.getElementById('tasks').innerHTML = (await r.json()).map(t => `<li>${t.task_description} — ${t.status}</li>`).join('');
+  const r = await fetch('/tasks', { headers: { Authorization: token } })
+  document.getElementById('tasks').innerHTML = (await r.json()).map(t =>
+    `<li>${t.task_description} (${t.priority}) — ${t.status} до `+
+    `${t.due_date ? new Date(t.due_date).toLocaleDateString() : '—'}`+
+    ` <button onclick="setStatus('${t._id}','completed')">✔</button></li>`
+  ).join('')
 }
 async function addTask() {
-  const description = document.getElementById('newTask').value;
-  await fetch('/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: token }, body: JSON.stringify({ description }) });
-  loadTasks();
+  const description = document.getElementById('newTask').value
+  const dueDate = document.getElementById('taskDueDate').value
+  const priority = document.getElementById('taskPriority').value
+  await fetch('/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: token },
+    body: JSON.stringify({ description, dueDate, priority })
+  })
+  loadTasks()
+}
+async function setStatus(id, status){
+  await fetch(`/tasks/${id}/status`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization: token},
+    body: JSON.stringify({ status })
+  })
+  loadTasks()
 }
 async function loadGroups(){
   const r = await fetch('/groups', { headers: { Authorization: token } })

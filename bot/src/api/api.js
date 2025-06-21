@@ -10,8 +10,9 @@ const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 ;(async () => {
   const { Task, Group, User } = require('../db/model')
   const app = express()
-  // доверяем прокси для правильного определения IP
-  app.set('trust proxy', 1)
+  // доверяем первому прокси для корректной работы express-rate-limit
+  // и получения реального IP пользователя из заголовка X-Forwarded-For
+  app.enable('trust proxy')
   app.use(express.json())
 
   // Define rate limiter: maximum 100 requests per 15 minutes

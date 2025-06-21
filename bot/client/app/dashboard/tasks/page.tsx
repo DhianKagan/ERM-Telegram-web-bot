@@ -9,12 +9,14 @@ import SectionMain from "../../_components/Section/Main";
 import SectionTitleLineWithButton from "../../_components/Section/TitleLineWithButton";
 import { mdiTable } from "@mdi/js";
 import { getTasks, createTask } from "../../_lib/api";
+import NotificationBar from "../../_components/NotificationBar";
 
 type Task = { _id: string; task_description: string; status: string };
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [description, setDescription] = useState('')
+  const [notification, setNotification] = useState('')
 
   useEffect(() => {
     getTasks().then(setTasks).catch(console.error)
@@ -25,11 +27,18 @@ export default function TasksPage() {
     const t = await createTask(description)
     setTasks([...tasks, t])
     setDescription('')
+    setNotification('Задача добавлена')
+    setTimeout(() => setNotification(''), 3000)
   }
 
   return (
     <SectionMain>
       <SectionTitleLineWithButton icon={mdiTable} title="Tasks" main />
+      {notification && (
+        <NotificationBar color="success" icon={mdiTable} key={notification}>
+          {notification}
+        </NotificationBar>
+      )}
       <div className="flex mb-4 space-x-2">
         <input
           value={description}

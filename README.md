@@ -79,6 +79,9 @@ project-root/
 ## CI с Docker
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.
 
+## Внесение вклада
+Перед разработкой создайте задачу через шаблон в `.github/ISSUE_TEMPLATE` и изучите [CONTRIBUTING.md](CONTRIBUTING.md). При каждом изменении обновляйте документацию и `CHANGELOG.md`.
+
 ## Безопасность
 Файл `.env` содержит секреты и предназначен только для локальной разработки.
 Создайте его на основе `.env.example` и не публикуйте в репозитории.

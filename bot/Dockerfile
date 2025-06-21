@@ -1,5 +1,5 @@
 # Назначение файла: сборка и запуск контейнера телеграм-бота.
-# Используются Node.js и npm для установки зависимостей.
+# Используются Node.js и npm; запускается скрипт с concurrently.
 FROM node:20 AS build
 WORKDIR /app
 COPY package*.json ./

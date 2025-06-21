@@ -7,6 +7,7 @@ const path = require('path')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
+const { generateToken } = require('../auth/auth')
 
 ;(async () => {
   const { Task, Group, User } = require('../db/model')
@@ -23,6 +24,18 @@ const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
     message: { error: 'Too many requests, please try again later.' }
   })
   app.use(express.static(path.join(__dirname, '../../public')))
+
+  app.post('/auth/login', asyncHandler(async (req, res) => {
+    const { email, password } = req.body
+    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+      return res.status(500).json({ error: 'Credentials not set' })
+    }
+    if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+    const token = generateToken({ id: 0, username: email, isAdmin: true })
+    res.json({ token, role: 'admin', name: 'Администратор' })
+  }))
 
 
   app.get('/tasks', tasksRateLimiter, verifyToken, asyncHandler(async (req, res) => {

@@ -29,3 +29,10 @@ export async function getTasks() {
   return api('/tasks')
 }
 
+export async function createTask(description: string) {
+  return api('/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ description })
+  })
+}
+

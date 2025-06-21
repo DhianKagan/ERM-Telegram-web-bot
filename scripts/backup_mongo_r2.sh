@@ -1,12 +1,16 @@
 #!/bin/bash
 # Назначение: резервное копирование MongoDB в облачное хранилище R2.
-# Модули: mongodump, gzip, aws cli.
+# Модули: mongodump, gzip, aws cli. Используется set -a для экспорта
+# переменных из .env без явного перечисления.
 set -e
-if [ ! -f .env ]; then
+DIR=$(dirname "$0")/..
+if [ ! -f "$DIR/.env" ]; then
   echo ".env не найден" >&2
   exit 1
 fi
-export $(grep -v '^#' .env | xargs)
+set -a
+. "$DIR/.env"
+set +a
 TS=$(date +%Y-%m-%d_%H-%M-%S)
 FILE="mongo_$TS.archive.gz"
 mongodump --uri "$MONGO_DATABASE_URL" --archive | gzip > "$FILE"

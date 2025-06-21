@@ -95,17 +95,16 @@ project-root/
 ### Ошибка 404 на `/dashboard`
 Если в логах появляется ответ `404` на `GET /dashboard/`, значит статический интерфейс не сгенерирован. Выполните сборку фронтенда:
 ```bash
-npm --prefix bot run build-client
+npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
 ```
 Если команда завершается ошибкой `next: not found`, сначала установите зависимости:
 ```bash
-npm --prefix bot/client install
+npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
 ```
 Затем повторите сборку. Убедитесь, что каталог `bot/public` содержит статические файлы, и проверьте логи сервиса на отсутствие ответов `404`.
 После обновления зависимостей рекомендуется снова выполнить `npm --prefix bot/client install` и `npm --prefix bot run build-client`.
 Если в процессе установки или сборки появляются ошибки, связанные с недоступностью `nextjs.org`, это означает блокировку домена в текущей среде.
 Используйте прокси или окружение с открытым доступом к сети, иначе `npm` не сможет загрузить необходимые пакеты.
-Если в выводе появляется предупреждение `Unknown env config "http-proxy"`,
-оно связано с переменными `http_proxy` или `https_proxy` в окружении.
-Предупреждение не мешает сборке и его можно игнорировать либо удалить
-эти переменные из настроек среды.
+Если при установке выводится предупреждение `Unknown env config "http-proxy"`,
+замените переменную окружения `http-proxy` на `HTTP_PROXY` или `npm_config_proxy`.
+

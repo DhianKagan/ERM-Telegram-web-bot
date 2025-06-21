@@ -1,5 +1,5 @@
 // HTTP API и раздача мини-приложения. Модули: express, express-rate-limit,
-// сервисы и middleware
+// сервисы и middleware. Включает маршрут /health для проверки статуса.
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
@@ -16,6 +16,9 @@ const { generateToken } = require('../auth/auth')
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
+
+  // простая проверка работоспособности контейнера
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
   // Define rate limiter: maximum 100 requests per 15 minutes
   const tasksRateLimiter = rateLimit({

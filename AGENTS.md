@@ -25,4 +25,10 @@ docker compose config
 `npm --prefix bot run build-client` или через `Procfile`.
  - Если в логах встречается `GET /dashboard/` со статусом `404`, запустите `npm --prefix bot run build-client` и убедитесь, что каталог `bot/public` заполнен.
 - Если сборка завершается ошибкой `next: not found`, сначала выполните `npm --prefix bot/client install`.
+- После обновления зависимостей повторяйте `npm --prefix bot/client install` и затем `npm --prefix bot run build-client`.
+- Для поиска ошибок сохраняйте вывод в лог:
+  ```bash
+  npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
+  npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
+  ```
 - При ошибках сети, связанных с доменом `nextjs.org`, проверьте настройки доступа или используйте прокси.

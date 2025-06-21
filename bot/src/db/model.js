@@ -17,6 +17,8 @@ const taskSchema = new mongoose.Schema({
   assigned_user_id: Number,
   group_id: mongoose.Schema.Types.ObjectId,
   task_description: { type: String, required: true },
+  due_date: Date,
+  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'low' },
   status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' }
 }, { timestamps: true })
 

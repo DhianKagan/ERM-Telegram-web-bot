@@ -4,7 +4,7 @@ const express = require('express')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
-  createGroup, listGroups, createUser, listUsers } = require('../services/service')
+  createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 
 ;(async () => {
@@ -27,8 +27,14 @@ const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
   }))
 
   app.post('/tasks', verifyToken, asyncHandler(async (req, res) => {
-    const task = await createTask(req.body.description)
+    const { description, dueDate, priority } = req.body
+    const task = await createTask(description, dueDate, priority)
     res.json(task)
+  }))
+
+  app.put('/tasks/:id', verifyToken, asyncHandler(async (req, res) => {
+    await updateTask(req.params.id, req.body)
+    res.json({ status: 'ok' })
   }))
 
   app.get('/groups', verifyToken, asyncHandler(async (_req, res) => {

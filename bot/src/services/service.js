@@ -1,8 +1,12 @@
 // Сервис для управления задачами в MongoDB
 const { Task, Group, User } = require('../db/model')
 
-async function createTask(description) {
-  return Task.create({ task_description: description })
+async function createTask(description, dueDate, priority = 'low') {
+  return Task.create({
+    task_description: description,
+    due_date: dueDate,
+    priority
+  })
 }
 
 async function assignTask(userId, taskId) {
@@ -17,8 +21,12 @@ async function listAllTasks () {
   return Task.find()
 }
 
+async function updateTask(id, fields) {
+  await Task.findByIdAndUpdate(id, fields)
+}
+
 async function updateTaskStatus(taskId, status) {
-  await Task.findByIdAndUpdate(taskId, { status })
+  await updateTask(taskId, { status })
 }
 
 async function createGroup(name) {
@@ -41,6 +49,7 @@ module.exports = {
   createTask,
   assignTask,
   listUserTasks,
+  updateTask,
   updateTaskStatus,
   listAllTasks,
   createGroup,

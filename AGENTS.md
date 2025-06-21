@@ -27,3 +27,4 @@ docker compose config
 - Если сборка завершается ошибкой `next: not found`, сначала выполните `npm --prefix bot/client install`.
 - После обновления зависимостей повторяйте `npm --prefix bot/client install` и затем `npm --prefix bot run build-client`.
 - При ошибках сети, связанных с доменом `nextjs.org`, проверьте настройки доступа или используйте прокси.
+- Предупреждение `Unknown env config "http-proxy"` в выводе `npm` не влияет на сборку и может быть проигнорировано.

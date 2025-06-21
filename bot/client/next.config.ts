@@ -6,6 +6,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: process.env.IS_OUTPUT_EXPORT ? "export" : "standalone",
+  trailingSlash: true,
   images: {
     unoptimized: true,
     remotePatterns: [

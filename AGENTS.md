@@ -27,6 +27,7 @@ docker compose config
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - Если сборка завершается ошибкой `next: not found`, сначала выполните `npm --prefix bot/client install`.
 - После обновления зависимостей повторяйте `npm --prefix bot/client install` и затем `npm --prefix bot run build-client`.
+- В `bot/client/next.config.ts` активируйте `trailingSlash`, чтобы `/dashboard` не возвращал 404 после обновления страницы.
 - Для поиска ошибок сохраняйте вывод в лог:
   ```bash
   npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log

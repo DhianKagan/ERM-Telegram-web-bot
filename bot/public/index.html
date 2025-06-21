@@ -1,91 +1,15 @@
-<!-- Мини-приложение Telegram для управления задачами. Использует API бота. -->
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8" />
-<title>Task Mini App</title>
-<style>
-body{font-family:Arial, sans-serif;margin:2em}
-h3{margin-top:1em}
-input,select,button{margin:.3em 0}
-ul{list-style:none;padding:0}
-li{margin:.5em 0}
-</style>
-</head>
-<body>
-<h3>Задачи</h3>
-<ul id="tasks"></ul>
-<input id="newTask" placeholder="Новая задача"/>
-<input id="taskDueDate" type="date"/>
-<select id="taskPriority">
-  <option value="low">Низкий</option>
-  <option value="medium">Средний</option>
-  <option value="high">Высокий</option>
-</select>
-<button onclick="addTask()">Создать</button>
-
-<h3>Группы</h3>
-<ul id="groups"></ul>
-<input id="newGroup" placeholder="Новая группа"/>
-<button onclick="addGroup()">Создать</button>
-
-<h3>Пользователи</h3>
-<ul id="users"></ul>
-<input id="newUser" placeholder="ID"/>
-<input id="newUsername" placeholder="Имя"/>
-<button onclick="addUser()">Создать</button>
-<script>
-const params = new URLSearchParams(location.search);
-const token = params.get('token') || '';
-async function loadTasks() {
-  const r = await fetch('/tasks', { headers: { Authorization: token } })
-  document.getElementById('tasks').innerHTML = (await r.json()).map(t =>
-    `<li>${t.task_description} (${t.priority}) — ${t.status} до `+
-    `${t.due_date ? new Date(t.due_date).toLocaleDateString() : '—'}`+
-    ` <button onclick="setStatus('${t._id}','completed')">✔</button></li>`
-  ).join('')
-}
-async function addTask() {
-  const description = document.getElementById('newTask').value
-  const dueDate = document.getElementById('taskDueDate').value
-  const priority = document.getElementById('taskPriority').value
-  await fetch('/tasks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ description, dueDate, priority })
-  })
-  loadTasks()
-}
-async function setStatus(id, status){
-  await fetch(`/tasks/${id}/status`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json', Authorization: token},
-    body: JSON.stringify({ status })
-  })
-  loadTasks()
-}
-async function loadGroups(){
-  const r = await fetch('/groups', { headers: { Authorization: token } })
-  document.getElementById('groups').innerHTML = (await r.json()).map(g => `<li>${g.name}</li>`).join('')
-}
-async function addGroup(){
-  const name = document.getElementById('newGroup').value
-  await fetch('/groups', { method:'POST', headers:{'Content-Type':'application/json', Authorization: token}, body: JSON.stringify({ name }) })
-  loadGroups()
-}
-async function loadUsers(){
-  const r = await fetch('/users', { headers: { Authorization: token } })
-  document.getElementById('users').innerHTML = (await r.json()).map(u => `<li>${u.username}</li>`).join('')
-}
-async function addUser(){
-  const id = document.getElementById('newUser').value
-  const username = document.getElementById('newUsername').value
-  await fetch('/users', { method:'POST', headers:{'Content-Type':'application/json', Authorization: token}, body: JSON.stringify({ id, username }) })
-  loadUsers()
-}
-loadTasks();
-loadGroups();
-loadUsers();
-</script>
-</body>
+<!-- Мини-приложение в стиле Telegram -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React</title>
+    <script type="module" crossorigin src="/assets/index-VupfWeeY.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cd8opgBF.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

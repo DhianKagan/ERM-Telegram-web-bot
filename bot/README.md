@@ -9,6 +9,7 @@
 - `src/db` — модели MongoDB
 - `src/api` — REST API
 - `src/auth` — аутентификация
+- `client` — исходники мини‑приложения React
 
 ## Требования
 - Node.js
@@ -19,9 +20,10 @@
 ```bash
 git clone https://github.com/AgroxOD/agrmcs.git
 cd agrmcs/bot
-npm install
+npm install # устанавливает зависимости и собирает мини‑приложение
 ```
 Создайте `.env` на основе файла `../.env.example` и задайте `CHAT_ID` через бот @userinfobot.
+При изменении исходников фронтенда запустите `npm run build-client`.
 
 ## Запуск
 ```bash

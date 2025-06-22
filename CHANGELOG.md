@@ -4,6 +4,8 @@
 Все значимые изменения будут фиксироваться в этом файле.
 
 ## [Новый]
+- Унификация доступа к MongoDB через `bot/src/db/queries.js`.
+- Добавлена карта запросов `docs/db_request_map.md`.
 - Добавлен workflow `release.yml` для автоматических GitHub Releases.
 - Создан шаблон Pull Request и файл CODEOWNERS.
 - Добавлен шаблон issue `task.yml` для постановки задач.

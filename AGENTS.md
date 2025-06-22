@@ -80,3 +80,4 @@ docker compose config
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
+\n- Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.

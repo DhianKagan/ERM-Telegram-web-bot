@@ -1,14 +1,16 @@
+// Страница входа пользователя
 import { useState, useContext } from 'react'
-import { login } from '../services/auth'
+import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 export default function Login() {
-  const { setToken } = useContext(AuthContext)
+  const navigate = useNavigate()
+  const { login } = useContext(AuthContext)
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const submit = async () => {
-    const { token } = await login({ email, password: pass })
-    if (token) { setToken(token); localStorage.setItem('token', token) }
+    await login({ email, password: pass })
+    navigate('/dashboard')
   }
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

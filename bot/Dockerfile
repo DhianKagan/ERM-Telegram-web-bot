@@ -3,11 +3,11 @@
 FROM node:20 AS build
 WORKDIR /app
 COPY package*.json ./
-COPY client/package*.json ./client/
-RUN npm ci && npm --prefix client ci
+COPY web/package*.json ./web/
+RUN npm ci && npm --prefix web ci
 
 COPY . .
-RUN npm --prefix client run build && npm prune --omit=dev
+RUN npm --prefix web run build && npm prune --omit=dev
 
 FROM node:20-slim
 WORKDIR /app

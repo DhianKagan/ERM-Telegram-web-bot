@@ -33,11 +33,11 @@
 - При пустой директории `bot/public` API теперь запускает `npm run build-client` автоматически.
 - При использовании Railway отслеживать логи на наличие 404 и в случае ошибки повторять `npm --prefix bot run build-client`.
 - Если в логе сервиса виден запрос `GET /dashboard/` со статусом 404, это признак отсутствия статических файлов; выполните сборку повторно.
-- После обновления зависимостей перед каждой сборкой интерфейса выполняйте `npm --prefix bot/client install`.
-- В `bot/client/next.config.ts` включите `trailingSlash`, чтобы страницы вроде `/dashboard` работали после обновления.
+- После обновления зависимостей перед каждой сборкой интерфейса выполняйте `npm --prefix bot/web install`.
+- В `bot/web/next.config.ts` включите `trailingSlash`, чтобы страницы вроде `/dashboard` работали после обновления.
 - Для диагностики сохраняйте вывод сборки:
   ```bash
-  npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
+  npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
   npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
   # или ./scripts/build_client.sh
   ```

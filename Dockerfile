@@ -5,8 +5,8 @@ WORKDIR /app
 
 # Установка зависимостей и сборка клиента
 COPY bot/package*.json ./bot/
-COPY bot/client/package*.json ./bot/client/
-RUN cd bot && npm ci && npm --prefix client ci && cd ..
+COPY bot/web/package*.json ./bot/web/
+RUN cd bot && npm ci && npm --prefix web ci && cd ..
 COPY bot ./bot
 RUN cd bot && npm run build-client && npm prune --omit=dev && cd ..
 

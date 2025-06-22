@@ -1,6 +1,6 @@
 // Канбан-доска задач
 import React, { useState, useEffect } from 'react'
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import TaskCard from '../components/TaskCard'
 import TaskFormModal from '../components/TaskFormModal'
 import { fetchKanban, updateTaskStatus } from '../services/tasks'

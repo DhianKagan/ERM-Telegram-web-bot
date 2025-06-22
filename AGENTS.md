@@ -95,4 +95,6 @@ docker compose config
 - Зависимости сервера устанавливайте командой `npm ci --prefix bot`. Если `package-lock.json` отсутствует, сначала выполните `npm --prefix bot install`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
 - Соединение с базой выполняет `bot/src/db/connection.js`, модели используют его.
+- Устаревшие опции `useNewUrlParser` и `useUnifiedTopology` удалены, чтобы
+  избежать предупреждений драйвера.
 - Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.

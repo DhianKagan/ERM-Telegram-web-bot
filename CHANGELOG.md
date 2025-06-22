@@ -5,6 +5,7 @@
 
 ## [Новый]
 - Унификация доступа к MongoDB через `bot/src/db/queries.js`.
+- Подключение к базе вынесено в `bot/src/db/connection.js` с пулом соединений.
 - Добавлена карта запросов `docs/db_request_map.md`.
 - Добавлен workflow `release.yml` для автоматических GitHub Releases.
 - Создан шаблон Pull Request и файл CODEOWNERS.

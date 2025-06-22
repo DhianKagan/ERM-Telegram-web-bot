@@ -12,6 +12,7 @@ const path = require('path')
 const fs = require('fs')
 const { execSync } = require('child_process')
 const { swaggerUi, specs } = require('./swagger')
+const tasksRouter = require('../routes/tasks')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask,
   createRole, listRoles, writeLog, listLogs } = require('../services/service')
@@ -190,6 +191,9 @@ const validate = validations => [
       await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`)
       res.json({ status: 'ok' })
     }))
+
+  // новые REST маршруты для расширенной работы с задачами
+  app.use('/api/tasks', tasksRouter)
 
   // SPA fallback: Express 5 требует имя wildcard-параметра
   // поэтому используем "/{*splat}" вместо устаревшего "*"

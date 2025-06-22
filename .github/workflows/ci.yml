@@ -15,9 +15,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm run lint
-      - run: npm test
+      - run: npm ci --prefix bot
+      - run: npm run lint --prefix bot
+      - run: npm test --prefix bot
 
   frontend:
     runs-on: ubuntu-latest

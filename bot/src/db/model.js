@@ -1,9 +1,9 @@
-// Подключение к MongoDB и определение моделей. Модули: mongoose, config
+// Модели MongoDB. Подключение выполняет модуль connection.js
 const mongoose = require('mongoose')
-const { mongoUrl } = require('../config')
+const connect = require('./connection')
 
 if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(mongoUrl).catch(e => {
+  connect().catch(e => {
     console.error('Ошибка подключения к MongoDB:', e.message)
     process.exit(1)
   })

@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import TasksPage from "./pages/TasksPage";
+import TaskKanban from "./pages/TaskKanban";
 import Projects from "./pages/Projects";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
@@ -28,6 +29,7 @@ export default function App() {
             <Routes>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/tasks/kanban" element={<TaskKanban />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/admin" element={<Admin />} />

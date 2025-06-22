@@ -15,6 +15,7 @@ import {
 const items = [
   { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
+  { to: "/tasks/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/admin", label: "Админ", icon: Cog6ToothIcon },

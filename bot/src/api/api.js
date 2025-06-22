@@ -182,8 +182,9 @@ const validate = validations => [
       res.json({ status: 'ok' })
     }))
 
-  // SPA fallback: отдаём index.html при прямом переходе по маршруту
-  app.get('*', (_req, res) => {
+  // SPA fallback: Express 5 требует имя wildcard-параметра
+  // поэтому используем "/{*splat}" вместо устаревшего "*"
+  app.get('/{*splat}', (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
 

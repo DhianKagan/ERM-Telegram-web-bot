@@ -65,6 +65,7 @@
 - Во фронтенд добавлены компоненты Sidebar, Header и DashboardPage из TailAdmin на TypeScript.
 - Настроен TypeScript в каталоге `bot/web` и подключён tsconfig.
 - Интерфейс полностью адаптирован к дизайну TailAdmin с использованием `@heroicons/react`.
+- Для стабильной работы React добавлена зависимость `@heroicons/react` и проверка наличия элемента `#root` в `main.tsx`.
 
 
 

@@ -1,14 +1,14 @@
 // Главный компонент панели задач
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
-import Tasks from './pages/Tasks'
-import Logs from './pages/Logs'
-import Roles from './pages/Roles'
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Tasks from "./pages/Tasks";
+import Logs from "./pages/Logs";
+import Roles from "./pages/Roles";
 
 export default function App() {
   return (
     <Router>
-      <div className="p-4 space-y-4">
+      <div className="gradient-bg min-h-screen space-y-4 p-4">
         <h1 className="text-2xl font-bold">Админ-панель</h1>
         <nav className="space-x-4">
           <Link to="/tasks">Задачи</Link>
@@ -23,5 +23,5 @@ export default function App() {
         </Routes>
       </div>
     </Router>
-  )
+  );
 }

@@ -41,9 +41,9 @@
   который прекращает запуск при отсутствии обязательных значений.
 3. Установите зависимости серверной части:
    ```bash
-   npm --prefix bot install
+   npm ci --prefix bot || npm --prefix bot install
    ```
-   Без них линтер `npx eslint bot/src` выдаст ошибку `Cannot find module '@eslint/js'`.
+   Если `package-lock.json` отсутствует, сперва выполняется `npm install` для его создания. Без зависимостей линтер `npx eslint bot/src` выдаст ошибку `Cannot find module '@eslint/js'`.
   Для входа в мини‑приложение задайте `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
   Перед запуском можно проверить конфигурацию командой `docker compose config`. Без созданного `.env` она выдаст ошибку о его отсутствии.
 4. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.

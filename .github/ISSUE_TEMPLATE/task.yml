@@ -1,0 +1,41 @@
+name: "Задача"
+description: "Универсальный шаблон для задач"
+title: "[Task] "
+labels: [task]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: "Адрес / Локация"
+  - type: input
+    id: deadline
+    attributes:
+      label: "Срок выполнения"
+  - type: textarea
+    id: task
+    attributes:
+      label: "Задача"
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: "Статус"
+      options:
+        - "\U0001f7ea Не начато"
+        - "\u23F3 В процессе"
+        - "\u2705 Готово"
+    validations:
+      required: true
+  - type: input
+    id: responsible
+    attributes:
+      label: "Ответственный"
+  - type: input
+    id: controller
+    attributes:
+      label: "Контролёр"
+  - type: textarea
+    id: comment
+    attributes:
+      label: "Комментарий"

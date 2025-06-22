@@ -1,18 +1,19 @@
-// Загрузка файлов в облачное хранилище R2
+// Загрузка файлов в облачное хранилище R2. Модули: aws-sdk, config
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3')
 
+const { r2 } = require('../config')
 const client = new S3Client({
   region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
+  endpoint: r2.endpoint,
   forcePathStyle: true,
   credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+    accessKeyId: r2.accessKeyId,
+    secretAccessKey: r2.secretAccessKey
   }
 })
 
 async function uploadFile(buffer, key) {
-  const cmd = new PutObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: key, Body: buffer })
+  const cmd = new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: buffer })
   await client.send(cmd)
 }
 

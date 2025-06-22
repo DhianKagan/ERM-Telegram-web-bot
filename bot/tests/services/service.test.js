@@ -1,4 +1,8 @@
 // Тесты сервиса задач. Используются мок модели и функции service.
+process.env.BOT_TOKEN = 't'
+process.env.CHAT_ID = '1'
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
+process.env.JWT_SECRET = 's'
 jest.mock('../../src/db/model', () => ({
   Task: {
     create: jest.fn().mockResolvedValue({ status: 'pending' }),

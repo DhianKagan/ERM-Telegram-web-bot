@@ -2,7 +2,7 @@
 // сервисы и middleware. Используются tasksRateLimiter, loginRateLimiter и
 // spaRateLimiter для ограничения /{*splat}. Есть маршрут /health для проверки
 // статуса.
-require('dotenv').config()
+const config = require('../config')
 const express = require('express')
 const rateLimit = require('express-rate-limit')
 const helmet = require('helmet')
@@ -78,10 +78,10 @@ const validate = validations => [
     ]),
     asyncHandler(async (req, res) => {
     const { email, password } = req.body
-    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+    if (!config.adminEmail || !config.adminPassword) {
       return res.status(500).json({ error: 'Credentials not set' })
     }
-    if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+    if (email !== config.adminEmail || password !== config.adminPassword) {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
     const token = generateToken({ id: 0, username: email, isAdmin: true })
@@ -199,6 +199,6 @@ const validate = validations => [
 
   app.use(errorHandler)
 
-  const port = process.env.PORT || 3000
+  const port = config.port
   app.listen(port, () => console.log(`API on port ${port}`))
 })()

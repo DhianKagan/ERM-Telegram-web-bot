@@ -1,16 +1,12 @@
 // Проверка прав администратора и генерация JWT. Модули: telegraf, jsonwebtoken
-require('dotenv').config()
+const { botToken, jwtSecret, chatId } = require('../config')
 const { Telegraf } = require('telegraf')
 const jwt = require('jsonwebtoken')
-const bot = new Telegraf(process.env.BOT_TOKEN)
-const secretKey = process.env.JWT_SECRET
-if (!secretKey) {
-  console.error('Переменная JWT_SECRET не задана')
-  process.exit(1)
-}
+const bot = new Telegraf(botToken)
+const secretKey = jwtSecret
 
 async function verifyAdmin (userId) {
-  const admins = await bot.telegram.getChatAdministrators(process.env.CHAT_ID)
+  const admins = await bot.telegram.getChatAdministrators(chatId)
   return admins.some(a => a.user.id === userId)
 }
 

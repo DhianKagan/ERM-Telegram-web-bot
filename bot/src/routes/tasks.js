@@ -14,6 +14,8 @@ router.get('/', verifyToken, [
   query('to').optional().isISO8601()
 ], ctrl.list)
 
+router.get('/:id', verifyToken, [param('id').isMongoId()], ctrl.detail)
+
 router.post('/', verifyToken, [
   body('title').isString().notEmpty(),
   body('description').optional().isString(),

@@ -13,6 +13,7 @@
 | PUT | /tasks/:id | Обновление задачи |
 | POST | /tasks/:id/status | Изменение статуса |
 | GET | /api/tasks | Расширенный список задач |
+| GET | /api/tasks/:id | Получить задачу |
 | PATCH | /api/tasks/:id | Редактирование задачи |
 | PATCH | /api/tasks/:id/time | Добавить время |
 | POST | /api/tasks/bulk | Массовое обновление |

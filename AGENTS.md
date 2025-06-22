@@ -57,6 +57,7 @@ docker compose config
 - На этой странице должна быть форма создания новой задачи.
 - При успешном создании задачи отображайте `NotificationBar` со статусом `success`.
 - Используйте файл `docs/telegram_bot_manual.md` как руководство по настройке команд и вебхуков Telegram-бота.
+- Для быстрого обновления меню можно запустить `scripts/set_bot_commands.sh`, файл `scripts/bot_commands.json` содержит пример команд.
 - Для расширенных вызовов Telegram применяйте модуль `bot/src/services/telegramApi.js`.
 - Бот регистрирует пользователей через `/start` и поддерживает команды `/list_users` и `/add_user` для админов.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.

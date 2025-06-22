@@ -67,6 +67,7 @@
 - Стили обновлены из архива `free-react-tailwind-admin-dashboard-main.zip`, дизайн ближе к демо TailAdmin.
 - Улучшены страницы входа, регистрации и профиля, логика вынесена в контекст AuthContext.
 - Добавлена доска Kanban для задач с drag&drop.
+- Исправлена ошибка линтера в компоненте Kanban.
 - Drag&drop переведён на `@hello-pangea/dnd` с поддержкой React 19.
 - Настраиваем автоматический деплой на Railway через GitHub Actions.
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.

@@ -13,7 +13,7 @@ export default function TaskKanban() {
 
   useEffect(() => { fetchKanban().then(setTasks) }, [])
 
-  const onDragEnd = async ({ source, destination, draggableId }) => {
+  const onDragEnd = async ({ destination, draggableId }) => {
     if (!destination) return
     const status = columns[destination.droppableId]
     await updateTaskStatus(draggableId, status)

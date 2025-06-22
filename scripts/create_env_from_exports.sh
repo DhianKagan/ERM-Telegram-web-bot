@@ -9,6 +9,10 @@ EXAMPLE="$DIR/.env.example"
 
 
 
+if [[ -f $ENV_FILE ]]; then
+  echo "$ENV_FILE уже существует" >&2
+  exit 0
+fi
 if [[ ! -f $EXAMPLE ]]; then
   echo "$EXAMPLE не найден" >&2
   exit 1

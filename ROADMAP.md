@@ -64,6 +64,7 @@
 - Описаны лучшие практики CI/CD в разделе README.
 - Во фронтенд добавлены компоненты Sidebar, Header и DashboardPage из TailAdmin на TypeScript.
 - Настроен TypeScript в каталоге `bot/web` и подключён tsconfig.
+- Интерфейс полностью адаптирован к дизайну TailAdmin с использованием `@heroicons/react`.
 
 
 

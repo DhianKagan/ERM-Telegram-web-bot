@@ -4,6 +4,7 @@ require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const { createTask, assignTask, listUserTasks, updateTaskStatus } = require('../services/service')
 const { uploadFile } = require('../services/r2')
+const { call } = require('../services/telegramApi')
 const { verifyAdmin, generateToken } = require('../auth/auth')
 const bot = new Telegraf(process.env.BOT_TOKEN)
 require('../db/model')
@@ -47,6 +48,29 @@ bot.command('upload_file', async (ctx) => {
   const [name, ...data] = ctx.message.text.split(' ').slice(1)
   await uploadFile(Buffer.from(data.join(' ')), name)
   ctx.reply('Файл загружен в R2')
+})
+
+bot.command('send_photo', async (ctx) => {
+  const url = ctx.message.text.split(' ')[1]
+  if (!url) return ctx.reply('Укажите ссылку на фото')
+  await call('sendPhoto', { chat_id: ctx.chat.id, photo: url })
+})
+
+bot.command('edit_last', async (ctx) => {
+  const [id, ...text] = ctx.message.text.split(' ').slice(1)
+  if (!id) return ctx.reply('Укажите id сообщения')
+  await call('editMessageText', { chat_id: ctx.chat.id, message_id: Number(id), text: text.join(' ') })
+})
+
+bot.on('inline_query', async (ctx) => {
+  const q = ctx.inlineQuery.query
+  const results = [{
+    type: 'article',
+    id: '1',
+    title: 'Эхо',
+    input_message_content: { message_text: q }
+  }]
+  await ctx.answerInlineQuery(results, { cache_time: 0 })
 })
 
 bot.command('app', async (ctx) => {

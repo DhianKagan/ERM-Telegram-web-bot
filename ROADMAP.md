@@ -60,6 +60,7 @@
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Добавлен шаблон pull request и файл CODEOWNERS.
 - Интегрируем дополнительные возможности Telegram Bot API через `telegramApi.js`.
+- Описаны лучшие практики CI/CD в разделе README.
 
 
 

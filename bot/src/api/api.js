@@ -13,6 +13,7 @@ const fs = require('fs')
 const { execSync } = require('child_process')
 const { swaggerUi, specs } = require('./swagger')
 const tasksRouter = require('../routes/tasks')
+const authUserRouter = require('../routes/authUser')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask,
   createRole, listRoles, writeLog, listLogs } = require('../services/service')
@@ -192,6 +193,8 @@ const validate = validations => [
       res.json({ status: 'ok' })
     }))
 
+  // авторизация пользователей и личный кабинет
+  app.use('/api/auth', authUserRouter)
   // новые REST маршруты для расширенной работы с задачами
   app.use('/api/tasks', tasksRouter)
 

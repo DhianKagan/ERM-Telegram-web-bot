@@ -24,7 +24,8 @@
     "mongoose": "^8.16.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "telegraf": "^3.38.0"
+    "telegraf": "^3.38.0",
+    "bcrypt": "^5.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

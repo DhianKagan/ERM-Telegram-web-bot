@@ -54,3 +54,7 @@ docker compose config
 Перед созданием PR проверяйте успешное развёртывание на https://railway.app.
 
 
+
+## Поддержка зависимостей
+- Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
+- Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.

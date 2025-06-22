@@ -69,6 +69,7 @@
 - Добавлен шаблон pull request и файл CODEOWNERS.
 - Создан issue template `task.yml` для универсальных задач.
 - Интегрируем дополнительные возможности Telegram Bot API через `telegramApi.js`.
+- Бот через команду `/start` автоматически создаёт пользователя в базе и предоставляет админам команды `/list_users` и `/add_user`.
 - Описаны лучшие практики CI/CD в разделе README.
 - Во фронтенд добавлены компоненты Sidebar, Header и DashboardPage из TailAdmin на TypeScript.
 - Настроен TypeScript в каталоге `bot/web` и подключён tsconfig.

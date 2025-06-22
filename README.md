@@ -63,7 +63,7 @@ docker build -t task-manager .
 docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
 ```
 
-### Развёртывание на [Railway](https://railway.app)
+### Развёртывание на [Railway](https://railway.com)
 1. Создайте новый проект и подключите репозиторий.
 2. Выберите Node `20` или совместимую версию.
 3. В настройках задайте переменные из `.env.example`.

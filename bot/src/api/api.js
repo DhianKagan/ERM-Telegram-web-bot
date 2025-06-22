@@ -13,7 +13,8 @@ const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const { generateToken } = require('../auth/auth')
 
 ;(async () => {
-  const { Task, Group, User } = require('../db/model')
+  // подключение моделей и базы данных
+  require('../db/model')
   const app = express()
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..')

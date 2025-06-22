@@ -25,12 +25,11 @@ docker compose config
 `npm --prefix bot run build-client` или через `Procfile`.
 - Если в логах встречается `GET /dashboard/` со статусом `404`, запустите `npm --prefix bot run build-client` и убедитесь, что каталог `bot/public` заполнен.
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
-- Если сборка завершается ошибкой `next: not found`, сначала выполните `npm --prefix bot/client install`.
-- После обновления зависимостей повторяйте `npm --prefix bot/client install` и затем `npm --prefix bot run build-client`.
-- В `bot/client/next.config.ts` активируйте `trailingSlash`, чтобы `/dashboard` не возвращал 404 после обновления страницы.
+- После обновления зависимостей используйте `npm --prefix bot/web install` и затем `npm --prefix bot run build-client`.
+- В каталоге `bot/web` результат сборки помещается в `bot/public`.
 - Для поиска ошибок сохраняйте вывод в лог:
   ```bash
-  npm --prefix bot/client install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
+  npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
   npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
   # или используйте ./scripts/build_client.sh
   ```

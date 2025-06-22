@@ -7,14 +7,17 @@ const rateLimit = require('express-rate-limit')
 const path = require('path')
 const fs = require('fs')
 const { execSync } = require('child_process')
-const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
-  createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
+const setupSwagger = require('./swagger')
+  const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
+  createGroup, listGroups, createUser, listUsers, updateTask,
+  createLog, listLogs } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const { generateToken } = require('../auth/auth')
 
 ;(async () => {
   const { Task, Group, User } = require('../db/model')
   const app = express()
+  setupSwagger(app)
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..')
   const pub = path.join(root, 'public')
@@ -57,14 +60,32 @@ const { generateToken } = require('../auth/auth')
   }))
 
 
+  /**
+   * @swagger
+   * /tasks:
+   *   get:
+   *     summary: Список задач
+   *     security: [{ bearerAuth: [] }]
+   *     responses:
+   *       200:
+   *         description: OK
+   */
   app.get('/tasks', tasksRateLimiter, verifyToken, asyncHandler(async (req, res) => {
     const tasks = req.query.userId ? await listUserTasks(req.query.userId) : await listAllTasks()
     res.json(tasks)
   }))
 
+  /**
+   * @swagger
+   * /tasks:
+   *   post:
+   *     summary: Создать задачу
+   *     security: [{ bearerAuth: [] }]
+   */
   app.post('/tasks', verifyToken, asyncHandler(async (req, res) => {
     const { description, dueDate, priority } = req.body
     const task = await createTask(description, dueDate, priority)
+    await createLog(`Task created: ${description}`)
     res.json(task)
   }))
 
@@ -87,6 +108,17 @@ const { generateToken } = require('../auth/auth')
   app.post('/users', verifyToken, asyncHandler(async (req, res) => {
     const user = await createUser(req.body.id, req.body.username)
     res.json(user)
+  }))
+
+  /**
+   * @swagger
+   * /logs:
+   *   get:
+   *     summary: Список логов
+   *     security: [{ bearerAuth: [] }]
+   */
+  app.get('/logs', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listLogs())
   }))
 
   app.post('/tasks/:id/status', verifyToken, asyncHandler(async (req, res) => {

@@ -17,3 +17,5 @@ yarn-error.log*
 
 # другие
 .DS_Store
+bot/web/dist/
+bot/web/node_modules/

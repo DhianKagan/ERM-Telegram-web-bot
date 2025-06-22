@@ -1,5 +1,5 @@
 // Сервис для управления задачами в MongoDB
-const { Task, Group, User } = require('../db/model')
+const { Task, Group, User, Log } = require('../db/model')
 
 async function createTask(description, dueDate, priority = 'low') {
   return Task.create({
@@ -45,6 +45,14 @@ async function listUsers() {
   return User.find()
 }
 
+async function createLog(message) {
+  return Log.create({ message })
+}
+
+async function listLogs() {
+  return Log.find().sort({ createdAt: -1 }).limit(100)
+}
+
 module.exports = {
   createTask,
   assignTask,
@@ -55,5 +63,7 @@ module.exports = {
   createGroup,
   listGroups,
   createUser,
-  listUsers
+  listUsers,
+  createLog,
+  listLogs
 }

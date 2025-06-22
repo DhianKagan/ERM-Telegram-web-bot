@@ -5,9 +5,13 @@
   "scripts": {
     "test": "jest",
     "start": "concurrently \"node src/api/api.js\" \"node src/bot/bot.js\"",
-    "build-client": "IS_OUTPUT_EXPORT=1 npm --prefix client run build && rm -rf public && mv client/out public"
+    "build-client": "IS_OUTPUT_EXPORT=1 npm --prefix web run build && rm -rf public && cp -r web/dist public",
+    "lint": "eslint \"src/**/*.js\"",
+    "prepare": "husky install",
+    "migrate": "node ../../scripts/migrate.js",
+    "seed": "node ../../scripts/seed.js"
   },
-  "postinstall": "npm --prefix client install && npm run build-client",
+  "postinstall": "npm --prefix web install && npm run build-client",
   "author": "",
   "license": "ISC",
   "description": "Бот задач с REST API, запускаемый через concurrently",
@@ -19,14 +23,21 @@
     "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "^9",
     "mongoose": "^8.16.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "telegraf": "^3.38.0"
   },
   "devDependencies": {
+    "eslint": "^9",
+    "husky": "^9",
     "jest": "^29.7.0",
+    "lint-staged": "^15",
     "mongodb-memory-server": "^8.12.1",
     "supertest": "^7.0.0"
   },
   "jest": {
-    "testMatch": ["<rootDir>/tests/**/*.test.js"]
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ]
   }
 }

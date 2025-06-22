@@ -24,9 +24,11 @@ const taskSchema = new mongoose.Schema({
 
 const groupSchema = new mongoose.Schema({ name: String })
 const userSchema = new mongoose.Schema({ telegram_id: Number, username: String })
+const logSchema = new mongoose.Schema({ message: String }, { timestamps: true })
 
 const Task = mongoose.model('Task', taskSchema)
 const Group = mongoose.model('Group', groupSchema)
 const User = mongoose.model('User', userSchema)
+const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Group, User }
+module.exports = { Task, Group, User, Log }

@@ -1,11 +1,18 @@
-import { useState } from 'react'
-import { register } from '../services/auth'
+// Страница регистрации пользователя
+import { useState, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AuthContext } from '../context/AuthContext'
 
 export default function Register() {
+  const navigate = useNavigate()
+  const { register } = useContext(AuthContext)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
-  const submit = () => register({ name, email, password: pass })
+  const submit = async () => {
+    await register({ name, email, password: pass })
+    navigate('/dashboard')
+  }
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">

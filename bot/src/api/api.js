@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit')
 const path = require('path')
 const fs = require('fs')
 const { execSync } = require('child_process')
+const { swaggerUi, specs } = require('./swagger')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
@@ -27,6 +28,7 @@ const { generateToken } = require('../auth/auth')
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs))
 
   // простая проверка работоспособности контейнера
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
@@ -58,6 +60,14 @@ const { generateToken } = require('../auth/auth')
   }))
 
 
+  /**
+   * @swagger
+   * /tasks:
+   *   get:
+   *     summary: Получить список задач
+   *     security:
+   *       - bearerAuth: []
+   */
   app.get('/tasks', tasksRateLimiter, verifyToken, asyncHandler(async (req, res) => {
     const tasks = req.query.userId ? await listUserTasks(req.query.userId) : await listAllTasks()
     res.json(tasks)

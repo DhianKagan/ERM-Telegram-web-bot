@@ -12,6 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Установка зависимостей
+        run: npm --prefix bot install
+
+      - name: Запуск линтера
+        run: npx eslint bot/src
+
+      - name: Тесты
+        run: npm --prefix bot test
+
       - name: Создание .env
         run: |
           cat <<EOF > .env

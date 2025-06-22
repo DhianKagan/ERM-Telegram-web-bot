@@ -67,6 +67,7 @@ docker compose config
 
 Перед созданием PR проверяйте успешное развёртывание на https://railway.com.
 - Для работы используйте новый CLI: `npm install -g @railway/cli` и команду `railway status`.
+- При ошибке `connect ENETUNREACH` задайте переменные `HTTP_PROXY` и `HTTPS_PROXY` или скачайте архив CLI с GitHub Releases, затем выполните `railway status`.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.

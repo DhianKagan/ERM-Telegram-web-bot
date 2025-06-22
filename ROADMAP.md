@@ -28,6 +28,7 @@
 
 - Использование платформы [Railway](https://railway.com) для публикации сервисов.
 - Установка нового CLI `@railway/cli` и проверка `railway status` перед каждым PR.
+- При ошибке `connect ENETUNREACH` задавайте `HTTP_PROXY`/`HTTPS_PROXY` или скачивайте CLI с GitHub Releases.
 - Конфигурация CI/CD (например, GitHub Actions).
 - Добавить сборку фронтенда в Procfile, чтобы исключить ошибку 404 при деплое.
 - Проверять наличие каталога `bot/public` после сборки для устранения ошибки 404 на `/dashboard`.

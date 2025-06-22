@@ -78,6 +78,11 @@ docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
    ```bash
    npm install -g @railway/cli
    ```
+   При ошибке `connect ENETUNREACH` укажите прокси через `HTTP_PROXY` и `HTTPS_PROXY` либо скачайте архив из GitHub Releases.
+   После установки проверьте:
+   ```bash
+   railway status
+   ```
 6. Нажмите Deploy и дождитесь запуска контейнера.
 
 ## Интерфейс

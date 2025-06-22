@@ -1,6 +1,8 @@
 <!-- Назначение файла: документация проекта и общие инструкции. -->
 # Telegram Task Manager Bot + Mini App
 
+[![Docker CI](https://github.com/user/agrmcs/actions/workflows/docker.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/docker.yml) [![Release](https://github.com/user/agrmcs/actions/workflows/release.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/release.yml)
+
 Файл описывает проект и способы его развертывания.
 
 Каталог `bot` содержит код бота и статическое мини-приложение Telegram.
@@ -84,6 +86,16 @@ project-root/
 
 ## Лицензия
 Проект распространяется под лицензией MIT.
+## Релизы
+Релизы формируются автоматически при создании тега `vX.Y.Z`. После публикации можно скачать архив и Docker-образ.
+```bash
+docker pull agrmcs:vX.Y.Z
+```
+Или установить через npm:
+```bash
+npm install agrmcs@vX.Y.Z
+```
+
 
 ## CI с Docker
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.

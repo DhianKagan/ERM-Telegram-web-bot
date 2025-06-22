@@ -33,6 +33,8 @@ docker compose config
   npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
   # или используйте ./scripts/build_client.sh
   ```
+  Перед запуском `docker compose build` убедитесь, что запущен Docker daemon,
+  иначе появится сообщение `Cannot connect to the Docker daemon`.
 
 ## Документация
 - При добавлении функционала обновляйте раздел «В разработке» в `ROADMAP.md`.

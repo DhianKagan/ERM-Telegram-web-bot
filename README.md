@@ -91,7 +91,7 @@ docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
 
 ## Интерфейс
 
-Фронтенд построен на React + Vite + Tailwind и использует элементы из демонстрационного проекта TailAdmin. Стили обновлены с помощью архива `free-react-tailwind-admin-dashboard-main.zip`, поэтому меню и шапка максимально повторяют демо. Помимо разделов Dashboard, Tasks, Logs и Roles добавлена страница `/charts` с примером графика на основе `react-chartjs-2`. При создании задач выводится `NotificationBar` со статусом `success`. Канбан‑доска использует библиотеку `@hello-pangea/dnd`, совместимую с React 19.
+ Фронтенд построен на React + Vite + Tailwind и использует элементы из демонстрационного проекта TailAdmin. Стили обновлены из архива `free-react-tailwind-admin-dashboard-main.zip`, поэтому меню и шапка максимально повторяют демо. Помимо разделов Dashboard, Tasks, Logs и Roles добавлена страница `/charts` с примером графика на основе `react-chartjs-2`. Задачи отображаются на новой странице `/tasks`, оформленной как `task-list` из TailAdmin, есть фильтры по статусу и кнопка добавления. При создании задач выводится `NotificationBar` со статусом `success`. Канбан‑доска использует библиотеку `@hello-pangea/dnd`, совместимую с React 19.
 
 ## Структура проекта
 ```

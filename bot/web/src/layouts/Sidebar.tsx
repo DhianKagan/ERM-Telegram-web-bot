@@ -5,18 +5,20 @@ import { useSidebar } from "../context/SidebarContext";
 import {
   HomeIcon,
   ClipboardDocumentListIcon,
-  DocumentTextIcon,
-  UsersIcon,
-  ChartBarIcon,
+  RectangleStackIcon,
+  ChartPieIcon,
+  Cog6ToothIcon,
+  UserCircleIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const items = [
   { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
-  { to: "/logs", label: "Логи", icon: DocumentTextIcon },
-  { to: "/roles", label: "Роли", icon: UsersIcon },
-  { to: "/charts", label: "Charts", icon: ChartBarIcon },
+  { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
+  { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
+  { to: "/admin", label: "Админ", icon: Cog6ToothIcon },
+  { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
 export default function Sidebar() {

@@ -7,10 +7,11 @@ import {
   Navigate,
 } from "react-router-dom";
 import Tasks from "./pages/Tasks";
-import Logs from "./pages/Logs";
-import Roles from "./pages/Roles";
+import Projects from "./pages/Projects";
+import Reports from "./pages/Reports";
+import Admin from "./pages/Admin";
+import Profile from "./pages/Profile";
 import DashboardPage from "./pages/dashboard/DashboardPage";
-import Charts from "./pages/Charts";
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -27,9 +28,10 @@ export default function App() {
             <Routes>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/tasks" element={<Tasks />} />
-              <Route path="/logs" element={<Logs />} />
-              <Route path="/roles" element={<Roles />} />
-              <Route path="/charts" element={<Charts />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
           </main>

@@ -4,9 +4,17 @@
 В этом документе описаны базовые шаги для конфигурации и использования функций бота согласно [Telegram Bot API](https://core.telegram.org/bots/api). Предполагается, что бот развёрнут из каталога `bot`.
 
 ## Получение токена
-1. Запустите диалог с [@BotFather](https://t.me/BotFather).
-2. Создайте нового бота командой `/newbot` и сохраните выданный токен доступа.
-3. Запишите токен в переменную `BOT_TOKEN` файла `.env`.
+1. Откройте диалог с [@BotFather](https://t.me/BotFather).
+2. Введите команду `/newbot` и следуйте подсказкам для задания имени и юзернейма.
+3. После создания BotFather выдаст токен доступа вида `123456:ABC-DEF` — скопируйте его.
+4. Запишите токен в переменную `BOT_TOKEN` файла `.env`.
+
+### Настройка описания и ссылки
+Вы также можете настроить описание и аватар:
+```bash
+curl "https://api.telegram.org/bot${BOT_TOKEN}/setMyDescription" -d 'description=Task manager bot'
+curl "https://api.telegram.org/bot${BOT_TOKEN}/setChatPhoto" -F "photo=@avatar.png"
+```
 
 ## Установка команд бота
 Telegram позволяет задать список команд для подсказок пользователю:
@@ -17,6 +25,12 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
                     {"command":"help","description":"Справка"}]}'
 ```
 Команды будут отображаться в меню клиента Telegram.
+
+Для упрощения в репозитории есть файл `scripts/bot_commands.json` с набором типовых команд и скрипт `scripts/set_bot_commands.sh`:
+```bash
+BOT_TOKEN=123 scripts/set_bot_commands.sh
+```
+Скрипт отправит содержимое JSON в метод `setMyCommands` и обновит меню бота.
 
 ## Работа с вебхуками
 Наш проект по умолчанию использует метод `getUpdates`, но поддерживает вебхуки для большей надёжности:

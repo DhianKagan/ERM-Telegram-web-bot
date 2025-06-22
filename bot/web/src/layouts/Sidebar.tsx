@@ -11,10 +11,13 @@ import {
 } from "@heroicons/react/24/outline";
 
 const items = [
-  { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
-  { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
-  { to: "/logs", label: "Логи", icon: DocumentTextIcon },
-  { to: "/roles", label: "Роли", icon: UsersIcon },
+
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/tasks", label: "Задачи" },
+  { to: "/logs", label: "Логи" },
+  { to: "/roles", label: "Роли" },
+  { to: "/charts", label: "Charts" },
+
 ];
 
 export default function Sidebar() {

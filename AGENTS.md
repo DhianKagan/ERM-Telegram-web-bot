@@ -53,7 +53,8 @@ docker compose config
 - Новая страница `/dashboard/charts` демонстрирует работу `ChartLineSample`.
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 - Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
-- Для иконок используем библиотеку `@heroicons/react`.
+- При доработке интерфейса ориентируйтесь на демо https://react-demo.tailadmin.com.
+
 Перед созданием PR проверяйте успешное развёртывание на https://railway.app.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
 ## Поддержка зависимостей

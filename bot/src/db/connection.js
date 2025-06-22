@@ -3,7 +3,9 @@
 const mongoose = require('mongoose')
 const { mongoUrl } = require('../config')
 
-const opts = { maxPoolSize: 10, useNewUrlParser: true, useUnifiedTopology: true }
+// Для версии mongoose 8 опции useNewUrlParser и useUnifiedTopology
+// больше не требуются, оставляем только размер пула
+const opts = { maxPoolSize: 10 }
 let connecting
 
 module.exports = async function connect() {

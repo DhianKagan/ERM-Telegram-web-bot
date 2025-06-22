@@ -12,6 +12,11 @@
 | POST | /tasks | Создание задачи |
 | PUT | /tasks/:id | Обновление задачи |
 | POST | /tasks/:id/status | Изменение статуса |
+| GET | /api/tasks | Расширенный список задач |
+| PATCH | /api/tasks/:id | Редактирование задачи |
+| PATCH | /api/tasks/:id/time | Добавить время |
+| POST | /api/tasks/bulk | Массовое обновление |
+| GET | /api/tasks/report/summary | KPI отчёт |
 | GET | /groups | Список групп |
 | POST | /groups | Создание группы |
 | GET | /users | Список пользователей |

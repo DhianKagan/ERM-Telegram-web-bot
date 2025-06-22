@@ -9,13 +9,22 @@ if (process.env.NODE_ENV !== 'test') {
   })
 }
 
+const checklistItemSchema = new mongoose.Schema({
+  text: String,
+  done: { type: Boolean, default: false }
+}, { _id: false })
+
 const taskSchema = new mongoose.Schema({
-  assigned_user_id: Number,
-  group_id: mongoose.Schema.Types.ObjectId,
-  task_description: { type: String, required: true },
+  title: { type: String, required: true },
+  task_description: String,
   due_date: Date,
+  assigned_user_id: Number,
+  assignees: [Number],
+  group_id: mongoose.Schema.Types.ObjectId,
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'low' },
-  status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' }
+  status: { type: String, enum: ['new', 'in-progress', 'done'], default: 'new' },
+  checklist: [checklistItemSchema],
+  time_spent: { type: Number, default: 0 }
 }, { timestamps: true })
 
 const groupSchema = new mongoose.Schema({ name: String })

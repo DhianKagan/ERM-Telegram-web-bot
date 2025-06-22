@@ -6,7 +6,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import Tasks from "./pages/Tasks";
+import TasksPage from "./pages/TasksPage";
 import Projects from "./pages/Projects";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
@@ -27,7 +27,7 @@ export default function App() {
           <main className="mt-12 p-4 md:ml-52">
             <Routes>
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/tasks" element={<TasksPage />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/admin" element={<Admin />} />

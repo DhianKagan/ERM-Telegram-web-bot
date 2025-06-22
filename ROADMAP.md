@@ -60,6 +60,7 @@
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Добавлен шаблон pull request и файл CODEOWNERS.
+- Создан issue template `task.yml` для универсальных задач.
 - Интегрируем дополнительные возможности Telegram Bot API через `telegramApi.js`.
 - Описаны лучшие практики CI/CD в разделе README.
 - Во фронтенд добавлены компоненты Sidebar, Header и DashboardPage из TailAdmin на TypeScript.

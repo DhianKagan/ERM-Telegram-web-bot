@@ -8,6 +8,7 @@ const items = [
   { to: "/tasks", label: "Задачи" },
   { to: "/logs", label: "Логи" },
   { to: "/roles", label: "Роли" },
+  { to: "/charts", label: "Charts" },
 ];
 
 export default function Sidebar() {

@@ -54,6 +54,7 @@
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
 - Для PostCSS в React‑фронтенде используется плагин `@tailwindcss/postcss`.
 - Во фронтенд добавлен Prettier и градиентный фон из шаблона React Vite Tailwind.
+- В интерфейс интегрирован пример дизайна TailAdmin: страницы повторяют стили оригинала, добавлена страница Charts и компонент NotificationBar.
 - Настраиваем автоматический деплой на Railway через GitHub Actions.
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.
 - Расширяем документацию по сценарию использования API.

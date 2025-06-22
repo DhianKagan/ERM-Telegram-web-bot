@@ -1,5 +1,5 @@
 // Middleware проверки JWT и базовая обработка ошибок.
-// Модуль: jsonwebtoken
+// Модули: jsonwebtoken, config
 const jwt = require('jsonwebtoken');
 
 // Обёртка для перехвата ошибок асинхронных функций
@@ -18,11 +18,8 @@ function errorHandler(err, _req, res, _next) {
   res.status(500).json({ error: err.message });
 }
 
-const secretKey = process.env.JWT_SECRET;
-if (!secretKey) {
-  console.error('Переменная JWT_SECRET не задана');
-  process.exit(1);
-}
+const { jwtSecret } = require('../config');
+const secretKey = jwtSecret;
 
 // Проверка JWT-токена
 function verifyToken(req, res, next) {

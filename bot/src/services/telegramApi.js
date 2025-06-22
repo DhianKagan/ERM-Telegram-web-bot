@@ -1,7 +1,7 @@
-// Сервис прямых вызовов Telegram Bot API. Модули: node.js fetch
+// Сервис прямых вызовов Telegram Bot API. Модули: node.js fetch, config
 /* global fetch */
-require('dotenv').config()
-const BASE = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/`
+const { botToken } = require('../config')
+const BASE = `https://api.telegram.org/bot${botToken}/`
 
 async function call(method, params = {}) {
   const res = await fetch(BASE + method, {

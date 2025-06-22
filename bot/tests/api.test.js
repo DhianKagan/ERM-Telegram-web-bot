@@ -7,6 +7,9 @@ jest.unmock('jsonwebtoken')
 
 let app
 beforeAll(async () => {
+  process.env.BOT_TOKEN = 't'
+  process.env.CHAT_ID = '1'
+  process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
   process.env.JWT_SECRET = 'secret'
   process.env.ADMIN_EMAIL = 'admin@test.com'
   process.env.ADMIN_PASSWORD = 'pass'

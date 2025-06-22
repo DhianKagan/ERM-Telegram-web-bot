@@ -1,13 +1,9 @@
-// Подключение к MongoDB и определение моделей. Модули: dotenv, mongoose
-require('dotenv').config()
+// Подключение к MongoDB и определение моделей. Модули: mongoose, config
 const mongoose = require('mongoose')
+const { mongoUrl } = require('../config')
 
-if (!process.env.MONGO_DATABASE_URL) {
-  console.error('MONGO_DATABASE_URL не задан')
-  process.exit(1)
-}
 if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(process.env.MONGO_DATABASE_URL).catch(e => {
+  mongoose.connect(mongoUrl).catch(e => {
     console.error('Ошибка подключения к MongoDB:', e.message)
     process.exit(1)
   })

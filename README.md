@@ -169,7 +169,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Через модуль `telegramApi.js` доступны любые методы Telegram Bot API, реализованы `sendPhoto`, редактирование сообщений и inline-режим.
 - ESLint проверяет весь серверный код.
 - Внедрены `helmet` и `cors`, входные данные проверяются через `express-validator`.
-- Добавлен fallback `app.get('*')`, теперь обновление страниц не приводит к `404`.
+ - Для Express 5 добавлен fallback `app.get('/{*splat}')`, обновление страниц не приводит к `404`.
 
 ### Минусы
 - Части бизнес‑логики ещё требуют доработки.

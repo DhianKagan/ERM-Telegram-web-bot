@@ -201,6 +201,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Внедрены `helmet` и `cors`, входные данные проверяются через `express-validator`.
 - Для Express 5 добавлен fallback `app.get('/{*splat}')`, обновление страниц не приводит к `404`.
 - Для fallback маршрута настроен rate limit, предотвращающий массовые запросы.
+- Запрос `/api/tasks/:id` тоже ограничен (100 в 15 минут), что защищает API.
 
 ### Минусы
 - Части бизнес‑логики ещё требуют доработки.

@@ -1,10 +1,14 @@
 // Роуты задач: CRUD, время, массовые действия
 const express = require('express')
+const rateLimit = require('express-rate-limit')
 const { body, param, query } = require('express-validator')
 const ctrl = require('../controllers/tasks')
 const { verifyToken } = require('../api/middleware')
 
 const router = express.Router()
+
+// Лимитирует 100 запросов к детали задачи за 15 минут
+const detailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })
 
 router.get('/', verifyToken, [
   query('project').optional().isMongoId(),
@@ -14,7 +18,7 @@ router.get('/', verifyToken, [
   query('to').optional().isISO8601()
 ], ctrl.list)
 
-router.get('/:id', verifyToken, [param('id').isMongoId()], ctrl.detail)
+router.get('/:id', verifyToken, detailLimiter, [param('id').isMongoId()], ctrl.detail)
 
 router.post('/', verifyToken, [
   body('title').isString().notEmpty(),

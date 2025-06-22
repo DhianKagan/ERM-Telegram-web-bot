@@ -78,6 +78,7 @@
   `npm --prefix bot audit fix --force` и проверяем `npm --prefix bot outdated`.
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
+- Добавлен маршрут `/api/tasks/:id` для получения одной задачи.
 - Добавлен шаблон pull request и файл CODEOWNERS.
 - Создан issue template `task.yml` для универсальных задач.
 - Интегрируем дополнительные возможности Telegram Bot API через `telegramApi.js`.

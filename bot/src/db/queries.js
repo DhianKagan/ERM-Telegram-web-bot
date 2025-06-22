@@ -5,6 +5,10 @@ async function createTask(data) {
   return Task.create(data)
 }
 
+async function getTask(id) {
+  return Task.findById(id)
+}
+
 async function assignTask(userId, taskId) {
   return Task.findByIdAndUpdate(taskId, { assigned_user_id: userId })
 }
@@ -100,6 +104,7 @@ module.exports = {
   listAllTasks,
   updateTask,
   updateTaskStatus,
+  getTask,
   getTasks,
   addTime,
   bulkUpdate,

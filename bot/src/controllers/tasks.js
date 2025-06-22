@@ -13,6 +13,12 @@ exports.list = async (req, res) => {
   res.json(tasks)
 }
 
+exports.detail = async (req, res) => {
+  const task = await service.getById(req.params.id)
+  if (!task) return res.sendStatus(404)
+  res.json(task)
+}
+
 exports.create = [handle, async (req, res) => {
   const task = await service.create(req.body)
   res.status(201).json(task)

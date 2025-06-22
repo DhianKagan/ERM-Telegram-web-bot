@@ -93,3 +93,4 @@ docker compose config
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
 - Зависимости сервера устанавливайте командой `npm ci --prefix bot`. Если `package-lock.json` отсутствует, сначала выполните `npm --prefix bot install`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
+- Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.

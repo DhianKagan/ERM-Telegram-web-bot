@@ -4,6 +4,9 @@
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
+const helmet = require('helmet')
+const cors = require('cors')
+const { body, validationResult } = require('express-validator')
 const path = require('path')
 const fs = require('fs')
 const { execSync } = require('child_process')
@@ -12,6 +15,15 @@ const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
   createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const { generateToken } = require('../auth/auth')
+
+const validate = validations => [
+  ...validations,
+  (req, res, next) => {
+    const errors = validationResult(req)
+    if (errors.isEmpty()) return next()
+    res.status(400).json({ errors: errors.array() })
+  }
+]
 
 ;(async () => {
   // подключение моделей и базы данных
@@ -28,6 +40,8 @@ const { generateToken } = require('../auth/auth')
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
+  app.use(helmet())
+  app.use(cors())
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs))
 
   // простая проверка работоспособности контейнера
@@ -47,7 +61,12 @@ const { generateToken } = require('../auth/auth')
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  app.post('/auth/login', loginRateLimiter, asyncHandler(async (req, res) => {
+  app.post('/auth/login', loginRateLimiter,
+    validate([
+      body('email').isString().notEmpty(),
+      body('password').notEmpty()
+    ]),
+    asyncHandler(async (req, res) => {
     const { email, password } = req.body
     if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
       return res.status(500).json({ error: 'Credentials not set' })
@@ -73,7 +92,13 @@ const { generateToken } = require('../auth/auth')
     res.json(tasks)
   }))
 
-  app.post('/tasks', verifyToken, asyncHandler(async (req, res) => {
+  app.post('/tasks', verifyToken,
+    validate([
+      body('description').isString().notEmpty(),
+      body('dueDate').optional().isISO8601(),
+      body('priority').optional().isIn(['low', 'medium', 'high'])
+    ]),
+    asyncHandler(async (req, res) => {
     const { description, dueDate, priority } = req.body
     const task = await createTask(description, dueDate, priority)
     res.json(task)
@@ -87,7 +112,9 @@ const { generateToken } = require('../auth/auth')
   app.get('/groups', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
-  app.post('/groups', verifyToken, asyncHandler(async (req, res) => {
+  app.post('/groups', verifyToken,
+    validate([body('name').isString().notEmpty()]),
+    asyncHandler(async (req, res) => {
     const group = await createGroup(req.body.name)
     res.json(group)
   }))
@@ -95,12 +122,19 @@ const { generateToken } = require('../auth/auth')
   app.get('/users', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listUsers())
   }))
-  app.post('/users', verifyToken, asyncHandler(async (req, res) => {
+  app.post('/users', verifyToken,
+    validate([
+      body('id').isInt(),
+      body('username').isString().notEmpty()
+    ]),
+    asyncHandler(async (req, res) => {
     const user = await createUser(req.body.id, req.body.username)
     res.json(user)
   }))
 
-  app.post('/tasks/:id/status', verifyToken, asyncHandler(async (req, res) => {
+  app.post('/tasks/:id/status', verifyToken,
+    validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
+    asyncHandler(async (req, res) => {
     await updateTaskStatus(req.params.id, req.body.status)
     res.json({ status: 'ok' })
   }))

@@ -10,6 +10,7 @@ import {
   mdiAlertCircle,
   mdiSquareEditOutline,
   mdiTable,
+  mdiChartLine,
   mdiViewList,
   mdiTelevisionGuide,
   mdiResponsive,
@@ -33,6 +34,11 @@ const menuAside: MenuAsideItem[] = [
     href: "/dashboard/tasks",
     label: "Tasks",
     icon: mdiTable,
+  },
+  {
+    href: "/dashboard/charts",
+    label: "Charts",
+    icon: mdiChartLine,
   },
   {
     href: "/dashboard/forms",

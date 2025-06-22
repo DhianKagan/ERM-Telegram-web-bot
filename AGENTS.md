@@ -44,5 +44,6 @@ docker compose config
 - При успешном создании задачи отображайте `NotificationBar` со статусом `success`.
 - Используйте файл `docs/telegram_bot_manual.md` как руководство по настройке команд и вебхуков Telegram-бота.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.
+- Новая страница `/dashboard/charts` демонстрирует работу `ChartLineSample`.
 
 

@@ -25,6 +25,7 @@ docker compose config
 - Фронтенд теперь расположен в каталоге `bot/web`, Dockerfile и скрипты используют его вместо устаревшего `bot/client`.
 - Перед сборкой установите зависимости фронтенда: `npm --prefix bot/web install`
 - Если в логах появляется `GET /dashboard/` со статусом `404`, пересоберите фронтенд `npm --prefix bot run build-client` и убедитесь в наличии fallback `app.get('/{*splat}')` в API.
+- Для fallback добавлен rate limiter, чтобы исключить перегрузку сервера.
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - После обновления зависимостей повторяйте `npm --prefix bot/web install` и затем `npm --prefix bot run build-client`.
 - Для сборки Tailwind используйте плагин `@tailwindcss/postcss` в файле `postcss.config.js`.

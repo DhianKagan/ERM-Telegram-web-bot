@@ -1,6 +1,7 @@
 // HTTP API и мини-приложение. Модули: express, express-rate-limit,
-// сервисы и middleware. Используются tasksRateLimiter и loginRateLimiter,
-// есть маршрут /health для проверки статуса.
+// сервисы и middleware. Используются tasksRateLimiter, loginRateLimiter и
+// spaRateLimiter для ограничения /{*splat}. Есть маршрут /health для проверки
+// статуса.
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
@@ -59,6 +60,14 @@ const validate = validations => [
     windowMs: 15 * 60 * 1000,
     max: 10,
     message: { error: 'Too many login attempts, please try later.' }
+  })
+  // ограничение обращений к SPA: 50 в минуту
+  const spaRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 50,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
@@ -184,7 +193,7 @@ const validate = validations => [
 
   // SPA fallback: Express 5 требует имя wildcard-параметра
   // поэтому используем "/{*splat}" вместо устаревшего "*"
-  app.get('/{*splat}', (_req, res) => {
+  app.get('/{*splat}', spaRateLimiter, (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
 

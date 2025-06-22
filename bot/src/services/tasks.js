@@ -6,6 +6,7 @@ async function create(data) {
 }
 
 async function get(filters = {}) {
+  if (filters.kanban) return Task.find({}).sort('-createdAt')
   const q = {}
   if (filters.project) q.group_id = filters.project
   if (filters.status) q.status = filters.status

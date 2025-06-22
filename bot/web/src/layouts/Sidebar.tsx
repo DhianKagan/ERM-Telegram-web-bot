@@ -24,17 +24,17 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className={`fixed z-20 h-full w-52 border-r bg-white p-4 transition-transform dark:border-gray-800 dark:bg-gray-900 ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+      className={`fixed z-20 h-full w-60 border-r border-gray-200 bg-white p-4 transition-transform dark:border-gray-800 dark:bg-gray-900 ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
     >
       <button onClick={toggle} className="mb-4 md:hidden">
         <XMarkIcon className="h-5 w-5" />
       </button>
-      <nav className="space-y-2">
+      <nav className="mt-4 space-y-2">
         {items.map((i) => (
           <Link
             key={i.to}
             to={i.to}
-            className={`flex items-center gap-2 rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 ${pathname === i.to ? "font-semibold" : ""}`}
+            className={`flex items-center gap-2 rounded-lg px-2 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 ${pathname === i.to ? "bg-gray-100 dark:bg-gray-800 font-semibold" : ""}`}
           >
             <i.icon className="h-5 w-5" />
             {i.label}

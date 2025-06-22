@@ -56,6 +56,7 @@ docker compose config
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 - Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
 - При доработке интерфейса ориентируйтесь на демо https://react-demo.tailadmin.com.
+- Для актуализации стилей используйте архив `free-react-tailwind-admin-dashboard-main.zip` в корне.
 - Перед запуском убедитесь, что HTML содержит элемент `#root`, иначе React выдаст ошибку 130.
 - Если ошибка сохраняется, проверьте наличие свойства `icon` у пунктов меню Sidebar.
 

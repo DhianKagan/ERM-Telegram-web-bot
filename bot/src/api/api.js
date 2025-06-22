@@ -177,10 +177,15 @@ const validate = validations => [
   app.post('/tasks/:id/status', verifyToken,
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
-    await updateTaskStatus(req.params.id, req.body.status)
-    await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`)
-    res.json({ status: 'ok' })
-  }))
+      await updateTaskStatus(req.params.id, req.body.status)
+      await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`)
+      res.json({ status: 'ok' })
+    }))
+
+  // SPA fallback: отдаём index.html при прямом переходе по маршруту
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(pub, 'index.html'))
+  })
 
   app.use(errorHandler)
 

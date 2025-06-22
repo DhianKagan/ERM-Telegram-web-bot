@@ -50,4 +50,6 @@ docker compose config
 - Новая страница `/dashboard/charts` демонстрирует работу `ChartLineSample`.
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 
+Перед созданием PR проверяйте успешное развёртывание на https://railway.app.
+
 

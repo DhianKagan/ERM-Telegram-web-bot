@@ -6,9 +6,16 @@ import '../bot/src/db/model.js'
 await mongoose.connection.db.collection('tasks').createIndex({ due_date: 1 })
 await mongoose.connection.db.collection('tasks').createIndex({ status: 1 })
 await mongoose.connection.db.collection('tasks').createIndex({ priority: 1 })
+await mongoose.connection.db.collection('tasks').createIndex({ group_id: 1 })
+await mongoose.connection.db.collection('tasks').createIndex({ assigned_user_id: 1 })
 await mongoose.connection.db.collection('users').createIndex(
   { telegram_id: 1 },
   { unique: true }
 )
+await mongoose.connection.db.collection('roles').createIndex(
+  { name: 1 },
+  { unique: true }
+)
+await mongoose.connection.db.collection('logs').createIndex({ level: 1 })
 console.log('Индексы созданы')
 process.exit(0)

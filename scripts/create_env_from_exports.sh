@@ -7,10 +7,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 ENV_FILE="$DIR/.env"
 EXAMPLE="$DIR/.env.example"
 
-if [[ -e $ENV_FILE ]]; then
-  echo "$ENV_FILE уже существует" >&2
-  exit 0
-fi
+
 
 if [[ ! -f $EXAMPLE ]]; then
   echo "$EXAMPLE не найден" >&2
@@ -24,5 +21,4 @@ while IFS= read -r line; do
   val="${!key:-$def}"
   printf '%s=%s\n' "$key" "$val"
 done < "$EXAMPLE" > "$ENV_FILE"
-
-echo "$ENV_FILE создан"
+echo "$ENV_FILE обновлён"

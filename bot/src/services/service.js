@@ -1,11 +1,13 @@
 // Сервис для управления задачами в MongoDB
-const { Task, Group, User } = require('../db/model')
+const { Task, Group, User, Role, Log } = require('../db/model')
 
-async function createTask(description, dueDate, priority = 'low') {
+async function createTask(description, dueDate, priority = 'low', groupId, userId) {
   return Task.create({
     task_description: description,
     due_date: dueDate,
-    priority
+    priority,
+    group_id: groupId,
+    assigned_user_id: userId
   })
 }
 
@@ -45,6 +47,22 @@ async function listUsers() {
   return User.find()
 }
 
+async function createRole(name) {
+  return Role.create({ name })
+}
+
+async function listRoles() {
+  return Role.find()
+}
+
+async function writeLog(message, level = 'info') {
+  return Log.create({ message, level })
+}
+
+async function listLogs() {
+  return Log.find().sort({ createdAt: -1 }).limit(100)
+}
+
 module.exports = {
   createTask,
   assignTask,
@@ -55,5 +73,9 @@ module.exports = {
   createGroup,
   listGroups,
   createUser,
-  listUsers
+  listUsers,
+  createRole,
+  listRoles,
+  writeLog,
+  listLogs
 }

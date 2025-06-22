@@ -12,7 +12,8 @@ const fs = require('fs')
 const { execSync } = require('child_process')
 const { swaggerUi, specs } = require('./swagger')
 const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
-  createGroup, listGroups, createUser, listUsers, updateTask } = require('../services/service')
+  createGroup, listGroups, createUser, listUsers, updateTask,
+  createRole, listRoles, writeLog, listLogs } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const { generateToken } = require('../auth/auth')
 
@@ -95,12 +96,15 @@ const validate = validations => [
   app.post('/tasks', verifyToken,
     validate([
       body('description').isString().notEmpty(),
-      body('dueDate').optional().isISO8601(),
-      body('priority').optional().isIn(['low', 'medium', 'high'])
+      body('dueDate').optional().isISO8601().custom(d => new Date(d) > new Date()),
+      body('priority').optional().isIn(['low', 'medium', 'high']),
+      body('groupId').optional().isMongoId(),
+      body('userId').optional().isInt()
     ]),
     asyncHandler(async (req, res) => {
-    const { description, dueDate, priority } = req.body
-    const task = await createTask(description, dueDate, priority)
+    const { description, dueDate, priority, groupId, userId } = req.body
+    const task = await createTask(description, dueDate, priority, groupId, userId)
+    await writeLog(`Создана задача ${task._id}`)
     res.json(task)
   }))
 
@@ -132,10 +136,49 @@ const validate = validations => [
     res.json(user)
   }))
 
+  /**
+   * @swagger
+   * /roles:
+   *   get:
+   *     summary: Список ролей
+   *     security:
+   *       - bearerAuth: []
+   */
+  app.get('/roles', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listRoles())
+  }))
+  /**
+   * @swagger
+   * /roles:
+   *   post:
+   *     summary: Создать роль
+   *     security:
+   *       - bearerAuth: []
+   */
+  app.post('/roles', verifyToken,
+    validate([body('name').isString().notEmpty()]),
+    asyncHandler(async (req, res) => {
+    const role = await createRole(req.body.name)
+    res.json(role)
+  }))
+
+  /**
+   * @swagger
+   * /logs:
+   *   get:
+   *     summary: Получить последние логи
+   *     security:
+   *       - bearerAuth: []
+   */
+  app.get('/logs', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listLogs())
+  }))
+
   app.post('/tasks/:id/status', verifyToken,
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
     await updateTaskStatus(req.params.id, req.body.status)
+    await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`)
     res.json({ status: 'ok' })
   }))
 

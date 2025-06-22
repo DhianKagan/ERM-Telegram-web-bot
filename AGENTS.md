@@ -62,6 +62,7 @@ docker compose config
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.
 - Новые разделы интерфейса: "Проекты", "Отчёты", "Админ" и "Профиль".
 - Добавлена страница "Канбан" по пути `/tasks/kanban` для управления задачами.
+- Для входа и регистрации добавлены страницы `/login` и `/register`; профиль загружается с `/profile`.
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 - Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
 - При доработке интерфейса ориентируйтесь на демо https://react-demo.tailadmin.com.
@@ -74,6 +75,7 @@ docker compose config
 - Для работы используйте новый CLI: `npm install -g @railway/cli` и команду `railway status`.
 - При ошибке `connect ENETUNREACH` задайте переменные `HTTP_PROXY` и `HTTPS_PROXY` или скачайте архив CLI с GitHub Releases, затем выполните `railway status`.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
+- Для проверки кода используется дополнительный workflow `ci.yml` с MongoDB.
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.

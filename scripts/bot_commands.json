@@ -1,0 +1,10 @@
+{
+  "commands": [
+    {"command": "start", "description": "Запуск"},
+    {"command": "help", "description": "Справка"},
+    {"command": "list_users", "description": "Список пользователей"},
+    {"command": "add_user", "description": "Добавить пользователя"},
+    {"command": "list_tasks", "description": "Мои задачи"},
+    {"command": "create_task", "description": "Новая задача"}
+  ]
+}

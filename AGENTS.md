@@ -52,6 +52,7 @@ docker compose config
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.
 - Новая страница `/dashboard/charts` демонстрирует работу `ChartLineSample`.
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
+- Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
 Перед созданием PR проверяйте успешное развёртывание на https://railway.app.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
 ## Поддержка зависимостей

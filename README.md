@@ -73,7 +73,7 @@ docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
 
 ## Интерфейс
 
-Фронтенд построен на React + Vite + Tailwind и использует элементы из демонстрационного проекта TailAdmin. Боковое меню, шапка и страницы повторяют стили и анимации оригинального шаблона. Помимо разделов Dashboard, Tasks, Logs и Roles добавлена страница `/charts` с примером графика на основе `react-chartjs-2`. При создании задач выводится `NotificationBar` со статусом `success`.
+Фронтенд построен на React + Vite + Tailwind и использует элементы из демонстрационного проекта TailAdmin. Стили обновлены с помощью архива `free-react-tailwind-admin-dashboard-main.zip`, поэтому меню и шапка максимально повторяют демо. Помимо разделов Dashboard, Tasks, Logs и Roles добавлена страница `/charts` с примером графика на основе `react-chartjs-2`. При создании задач выводится `NotificationBar` со статусом `success`.
 
 ## Структура проекта
 ```
@@ -186,3 +186,4 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 ### Итог
 
 Проект представляет готовую базу и быстро разворачивается, но требует модернизации для полноценного продакшна. Интерфейс построен на React + Vite + Tailwind, задействует элементы TailAdmin, включает страницу Charts и уведомления о создании задач. Код фронтенда форматируется Prettier.
+С недавним обновлением стили взяты из архива `free-react-tailwind-admin-dashboard-main.zip`, что приблизило внешний вид к демо TailAdmin.

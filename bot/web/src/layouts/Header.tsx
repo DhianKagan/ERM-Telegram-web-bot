@@ -14,7 +14,7 @@ export default function Header() {
   const { toggle } = useSidebar();
   const { theme, toggle: toggleTheme } = useTheme();
   return (
-    <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b bg-white px-4 md:ml-52 dark:border-gray-800 dark:bg-gray-900">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 md:ml-52">
       <div className="flex items-center gap-2">
         <button onClick={toggle} className="md:hidden">
           <Bars3Icon className="h-6 w-6" />
@@ -22,18 +22,16 @@ export default function Header() {
         <h1 className="font-bold">agrmcs</h1>
       </div>
       <div className="flex items-center gap-4">
-        <input
-          className="rounded-md border border-gray-300 bg-gray-50 px-2 text-sm focus:outline-none dark:border-gray-700 dark:bg-gray-800"
-          placeholder="Поиск"
-        />
-        <button onClick={toggleTheme}>
-          {theme === 'light' ? (
-            <SunIcon className="h-5 w-5" />
-          ) : (
-            <MoonIcon className="h-5 w-5" />
-          )}
+        <div className="relative hidden sm:block">
+          <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
+          </span>
+          <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-800" placeholder="Поиск" />
+        </div>
+        <button onClick={toggleTheme} className="p-2 hover:text-brand-500">
+          {theme === 'light' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
         </button>
-        <button>
+        <button className="p-2 hover:text-brand-500">
           <BellIcon className="h-5 w-5" />
         </button>
       </div>

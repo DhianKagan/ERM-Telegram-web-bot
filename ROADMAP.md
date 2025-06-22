@@ -51,6 +51,7 @@
 - Создана простая админ‑панель управления пользователями и логами.
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
+- Для PostCSS в React‑фронтенде используется плагин `@tailwindcss/postcss`.
 
 
 

@@ -27,6 +27,7 @@ docker compose config
 - Если в логах встречается `GET /dashboard/` со статусом `404`, запустите `npm --prefix bot run build-client` и убедитесь, что каталог `bot/public` заполнен.
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - После обновления зависимостей повторяйте `npm --prefix bot/web install` и затем `npm --prefix bot run build-client`.
+- Для сборки Tailwind используйте плагин `@tailwindcss/postcss` в файле `postcss.config.js`.
 - Для поиска ошибок сохраняйте вывод в лог:
   ```bash
   npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log

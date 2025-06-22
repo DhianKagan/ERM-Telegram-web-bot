@@ -120,6 +120,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 Затем повторите сборку. Убедитесь, что каталог `bot/public` содержит статические файлы.
 При пустой директории `bot/public` сервер выполнит сборку сам, но для актуализации интерфейса лучше запускать `npm --prefix bot run build-client` вручную.
 После обновления зависимостей повторяйте `npm --prefix bot/web install` и `npm --prefix bot run build-client`.
+Для PostCSS используйте плагин `@tailwindcss/postcss`, иначе сборка завершится ошибкой.
 Если установка зависимостей блокируется, убедитесь в доступе к интернету или настройте прокси.
 Если при установке выводится предупреждение `Unknown env config "http-proxy"`,
 замените переменную окружения `http-proxy` на `HTTP_PROXY` или `npm_config_proxy`.

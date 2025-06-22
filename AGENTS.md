@@ -82,6 +82,8 @@ docker compose config
 - Для проверки кода используется дополнительный workflow `ci.yml` с MongoDB.
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
+- При обнаружении уязвимостей применяйте `npm --prefix bot audit fix --force` и
+  снова проверяйте `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
 - Зависимости сервера устанавливайте командой `npm ci --prefix bot`. Если `package-lock.json` отсутствует, сначала выполните `npm --prefix bot install`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.

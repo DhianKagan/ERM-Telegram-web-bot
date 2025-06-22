@@ -70,6 +70,8 @@
 - Drag&drop переведён на `@hello-pangea/dnd` с поддержкой React 19.
 - Настраиваем автоматический деплой на Railway через GitHub Actions.
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.
+- При появлении предупреждений GitHub обновляем зависимости командой
+  `npm --prefix bot audit fix --force` и проверяем `npm --prefix bot outdated`.
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Добавлен шаблон pull request и файл CODEOWNERS.

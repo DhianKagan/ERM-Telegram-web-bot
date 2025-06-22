@@ -43,6 +43,10 @@ async function createUser(id, username) {
   return User.create({ telegram_id: id, username })
 }
 
+async function getUser(id) {
+  return User.findOne({ telegram_id: id })
+}
+
 async function listUsers() {
   return User.find()
 }
@@ -74,6 +78,7 @@ module.exports = {
   listGroups,
   createUser,
   listUsers,
+  getUser,
   createRole,
   listRoles,
   writeLog,

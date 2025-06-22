@@ -2,7 +2,16 @@
 // загрузку файлов в R2 и JWT-аутентификацию.
 const { botToken, appUrl } = require('../config')
 const { Telegraf } = require('telegraf')
-const { createTask, assignTask, listUserTasks, updateTaskStatus } = require('../services/service')
+const {
+  createTask,
+  assignTask,
+  listUserTasks,
+  updateTaskStatus,
+  createUser,
+  listUsers,
+  getUser,
+  listAllTasks
+} = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
 const { verifyAdmin, generateToken } = require('../auth/auth')
@@ -10,7 +19,15 @@ const bot = new Telegraf(botToken)
 require('../db/model')
 
 
-bot.start((ctx) => ctx.reply('Welcome to the Task Manager Bot!'));
+bot.start(async (ctx) => {
+  const user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+    ctx.reply('Вы зарегистрированы в системе.')
+  } else {
+    ctx.reply('С возвращением!')
+  }
+})
 
 bot.command('create_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
@@ -32,16 +49,45 @@ bot.command('assign_task', async (ctx) => {
   ctx.reply('Task assigned successfully!')
 })
 
+bot.command('list_users', async (ctx) => {
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  const users = await listUsers()
+  const msg = users.map(u => `${u.telegram_id} ${u.username}`).join('\n') || 'Нет пользователей'
+  ctx.reply(msg)
+})
+
+bot.command('add_user', async (ctx) => {
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  const [id, username] = ctx.message.text.split(' ').slice(1)
+  if (!id || !username) return ctx.reply('Формат: /add_user id username')
+  await createUser(Number(id), username)
+  ctx.reply('Пользователь добавлен')
+})
+
 bot.command('list_tasks', async (ctx) => {
   const tasks = await listUserTasks(ctx.from.id)
   const taskList = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
   ctx.reply(taskList)
 })
 
+bot.command('register', async (ctx) => {
+  const user = await getUser(ctx.from.id)
+  if (user) return ctx.reply('Вы уже зарегистрированы')
+  await createUser(ctx.from.id, ctx.from.username)
+  ctx.reply('Регистрация успешна')
+})
+
 bot.command('update_task_status', async (ctx) => {
   const [taskId, status] = ctx.message.text.split(' ').slice(1)
   await updateTaskStatus(taskId, status)
   ctx.reply('Task status updated successfully!')
+})
+
+bot.command('list_all_tasks', async (ctx) => {
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  const tasks = await listAllTasks()
+  const text = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
+  ctx.reply(text || 'Нет задач')
 })
 
 bot.command('upload_file', async (ctx) => {

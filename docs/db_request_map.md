@@ -1,0 +1,32 @@
+<!-- Назначение файла: карта запросов к базе и API -->
+# Карта запросов
+
+Ниже перечислены основные операции с MongoDB и соответствующие маршруты API.
+
+| Операция | Функция | Маршрут |
+|----------|---------|---------|
+| Создать задачу | `createTask()` | `POST /tasks` и `POST /api/tasks` |
+| Получить список задач | `getTasks()` | `GET /tasks`, `GET /api/tasks` |
+| Обновить задачу | `updateTask()` | `PUT /tasks/:id`, `PATCH /api/tasks/:id` |
+| Изменить статус | `updateTaskStatus()` | `POST /tasks/:id/status` |
+| Добавить время | `addTime()` | `PATCH /api/tasks/:id/time` |
+| Массовое обновление | `bulkUpdate()` | `POST /api/tasks/bulk` |
+| Сводка по задачам | `summary()` | `GET /api/tasks/report/summary` |
+| Пользователи | `createUser()`, `listUsers()` | `POST /users`, `GET /users` |
+| Группы | `createGroup()`, `listGroups()` | `POST /groups`, `GET /groups` |
+| Роли | `createRole()`, `listRoles()` | `POST /roles`, `GET /roles` |
+| Логи | `writeLog()`, `listLogs()` | `POST /tasks/:id/status`, `GET /logs` |
+
+Команды бота вызывают те же функции через `services/service.js`:
+
+- `/create_task <текст>` — `createTask()`
+- `/assign_task <userId> <taskId>` — `assignTask()`
+- `/list_users` — `listUsers()`
+- `/add_user <id> <username>` — `createUser()`
+- `/list_tasks` — `listUserTasks()`
+- `/update_task_status <taskId> <status>` — `updateTaskStatus()`
+- `/list_all_tasks` — `listAllTasks()`
+- `/upload_file <name> <данные>` — `uploadFile()`
+- `/send_photo <url>` — `call('sendPhoto')`
+- `/edit_last <id> <текст>` — `call('editMessageText')`
+- `/app` — выдаёт ссылку на мини‑приложение

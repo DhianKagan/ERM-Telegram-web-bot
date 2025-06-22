@@ -45,6 +45,8 @@
   ```
 
 ## В разработке
+- Создан общий модуль `bot/src/db/queries.js` для работы с MongoDB.
+- Добавлена карта запросов `docs/db_request_map.md`.
 - Перенос фронтенда на React + Vite + Tailwind завершён.
 - Настроены Jest и Supertest, добавлена интеграция Husky с `eslint` и тестами.
 - Подключён Swagger для генерации документации API.

@@ -44,7 +44,7 @@ export default function TaskKanban() {
           </Droppable>
         ))}
       </DragDropContext>
-      {open && <TaskFormModal onClose={()=>{ setOpen(false); fetchKanban().then(setTasks) }} />}
+      {open && <TaskFormModal onClose={()=>setOpen(false)} onCreate={()=>{ fetchKanban().then(setTasks) }} />}
     </div>
   )
 }

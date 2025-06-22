@@ -1,23 +1,35 @@
 // Страница управления задачами
 import React from 'react'
-import TaskForm from '../components/TaskForm'
+import TaskFormModal from '../components/TaskFormModal'
 import KPIOverview from '../components/KPIOverview'
+import NotificationBar from '../components/NotificationBar'
 
 export default function TasksPage() {
-  const [tasks, setTasks] = React.useState([])
+  const [all, setAll] = React.useState([])
+  const [status, setStatus] = React.useState('all')
   const [selected, setSelected] = React.useState([])
   const [kpi, setKpi] = React.useState({ count: 0, time: 0 })
+  const [open, setOpen] = React.useState(false)
+  const [msg, setMsg] = React.useState('')
 
-  const load = () => {
+  const load = React.useCallback(() => {
     fetch('/api/tasks', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
       .then(r => r.ok ? r.json() : [])
-      .then(data => setTasks(data))
+      .then(setAll)
     fetch('/api/tasks/report/summary', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
       .then(r => r.ok ? r.json() : { count:0, time:0 })
       .then(setKpi)
-  }
+  }, [])
 
   React.useEffect(load, [])
+
+  const tasks = React.useMemo(() => status === 'all' ? all : all.filter(t => t.status === status), [all, status])
+  const counts = React.useMemo(() => ({
+    all: all.length,
+    new: all.filter(t=>t.status==='new').length,
+    'in-progress': all.filter(t=>t.status==='in-progress').length,
+    done: all.filter(t=>t.status==='done').length,
+  }), [all])
 
   const add30 = async id => {
     await fetch(`/api/tasks/${id}/time`, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : ''}, body: JSON.stringify({ minutes: 30 }) })
@@ -26,14 +38,23 @@ export default function TasksPage() {
 
   const changeStatus = async () => {
     await fetch('/api/tasks/bulk', { method:'POST', headers:{'Content-Type':'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : ''}, body: JSON.stringify({ ids:selected, status:'done' }) })
-    setSelected([]); load()
+    setSelected([]); setMsg('Статус обновлён'); load()
   }
 
   return (
     <div className="space-y-4">
       <KPIOverview count={kpi.count} time={kpi.time} />
-      <TaskForm onCreate={task=>{ setTasks([...tasks, task]); load() }} />
-      <table className="min-w-full divide-y divide-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {['all','new','in-progress','done'].map(s => (
+            <button key={s} onClick={()=>setStatus(s)} className={`rounded px-3 py-1 text-sm ${status===s?'bg-blue-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600'}`}>
+              {s==='all'?'Все':s} ({counts[s]})
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>setOpen(true)} className="btn-blue">+ Добавить</button>
+      </div>
+      <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead>
           <tr>
             <th></th>
@@ -50,14 +71,16 @@ export default function TasksPage() {
               <td className="px-4 py-2">{t.title}</td>
               <td className="px-4 py-2">{t.status}</td>
               <td className="px-4 py-2">{t.time_spent}</td>
-              <td><button onClick={()=>add30(t._id)} className="text-sm text-blue-500">+30 мин</button></td>
+              <td><button onClick={()=>add30(t._id)} className="text-xs text-blue-500">+30 мин</button></td>
             </tr>
           ))}
         </tbody>
       </table>
       {selected.length > 0 && (
-        <button onClick={changeStatus} className="rounded bg-green-500 px-3 py-1 text-white">Сменить статус</button>
+        <button onClick={changeStatus} className="btn-green">Сменить статус</button>
       )}
+      {open && <TaskFormModal onClose={()=>setOpen(false)} onCreate={()=>{ setOpen(false); setMsg('Задача создана'); load() }} />}
+      {msg && <NotificationBar message={msg} />}
     </div>
   )
 }

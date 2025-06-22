@@ -1,15 +1,16 @@
 // Модальное окно создания задачи
 import React from 'react'
 
-export default function TaskFormModal({ onClose }) {
+export default function TaskFormModal({ onClose, onCreate }) {
   const [title, setTitle] = React.useState('')
 
   const submit = async () => {
-    await fetch('/api/tasks', {
+    const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' },
       body: JSON.stringify({ title, status: 'todo' })
     })
+    if (res.ok && onCreate) onCreate(await res.json())
     onClose()
   }
 

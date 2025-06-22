@@ -60,6 +60,7 @@
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
 - Реализован fallback маршрута `app.get('/{*splat}')` для корректной работы SPA.
 - Для этого маршрута добавлен rate limiter во избежание атак.
+- Маршрут `/api/tasks/:id` также имеет лимит 100 запросов за 15 минут.
 - Для чтения переменных окружения создан модуль `bot/src/config.js`.
 - Для PostCSS в React‑фронтенде используется плагин `@tailwindcss/postcss`.
 - Во фронтенд добавлен Prettier и градиентный фон из шаблона React Vite Tailwind.

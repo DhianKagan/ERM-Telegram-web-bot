@@ -53,6 +53,7 @@
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
 - Для PostCSS в React‑фронтенде используется плагин `@tailwindcss/postcss`.
+- Во фронтенд добавлен Prettier и градиентный фон из шаблона React Vite Tailwind.
 
 
 

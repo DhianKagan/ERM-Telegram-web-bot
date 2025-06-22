@@ -52,7 +52,7 @@ docker compose config
 - Используйте файл `docs/telegram_bot_manual.md` как руководство по настройке команд и вебхуков Telegram-бота.
 - Для расширенных вызовов Telegram применяйте модуль `bot/src/services/telegramApi.js`.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.
-- Новая страница `/dashboard/charts` демонстрирует работу `ChartLineSample`.
+- Новые разделы интерфейса: "Проекты", "Отчёты", "Админ" и "Профиль".
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 - Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
 - При доработке интерфейса ориентируйтесь на демо https://react-demo.tailadmin.com.

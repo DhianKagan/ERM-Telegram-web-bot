@@ -24,9 +24,16 @@ const taskSchema = new mongoose.Schema({
 
 const groupSchema = new mongoose.Schema({ name: String })
 const userSchema = new mongoose.Schema({ telegram_id: Number, username: String })
+const roleSchema = new mongoose.Schema({ name: String })
+const logSchema = new mongoose.Schema({
+  message: String,
+  level: { type: String, enum: ['info', 'warn', 'error'], default: 'info' }
+}, { timestamps: true })
 
 const Task = mongoose.model('Task', taskSchema)
 const Group = mongoose.model('Group', groupSchema)
 const User = mongoose.model('User', userSchema)
+const Role = mongoose.model('Role', roleSchema)
+const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Group, User }
+module.exports = { Task, Group, User, Role, Log }

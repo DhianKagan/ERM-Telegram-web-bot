@@ -267,6 +267,14 @@ npm run crystal:update-badge
 ```bash
 npm run crystal:sync
 ```
+
+Для проверки обновлений кристализатора выполните:
+
+```bash
+npm run crystal:auto-update
+```
+Скрипт использует `curl https://api.github.com/repos/AgroxOD/crystallization-development/commits`
+и при появлении нового коммита скачивает свежий `crystallizationManager.ts`.
 ```
 ┌──────────┐ ┌──────────────┐ ┌───────────┐
 │ Backlog │ ▶ │ In Progress │ ▶ │ Review │

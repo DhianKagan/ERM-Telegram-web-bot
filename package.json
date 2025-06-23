@@ -16,7 +16,8 @@
     "crystal:list-diamonds": "ts-node --esm crystallizationManager.ts list-diamonds",
     "crystal:list-tasks": "ts-node --esm crystallizationManager.ts list-tasks",
     "crystal:stats": "ts-node --esm crystallizationManager.ts stats",
-    "crystal:loop": "ts-node --esm scripts/run_crystal_loops.ts"
+    "crystal:loop": "ts-node --esm scripts/run_crystal_loops.ts",
+    "crystal:auto-update": "node --loader ts-node/esm scripts/auto_update_crystallizer.ts"
   },
   "dependencies": {
     "ts-node": "^10.9.1",

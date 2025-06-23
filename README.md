@@ -239,8 +239,15 @@ npm run crystal:kpi -- --id AGMCS-002 --score 0.88 --notes "Улучшен те�
 npm run crystal:level -- --id AGMCS-002
 npm run crystal:core -- --principles "Итеративное улучшение,AI для ревью"
 npm run crystal:avg
+npm run crystal:list-diamonds
+npm run crystal:list-tasks
+npm run crystal:list-funcs
+npm run crystal:stats
 npm run crystal:loop
 ```
+Дополнительно есть команды `crystal:init` для создания шаблона `crystallization.json`,
+`crystal:update-badge` для обновления бейджа уровня и `crystal:sync` для
+синхронизации файла между репозиторием и IDE.
 
 Команда `crystal:loop` запускает единый цикл анализа и обновляет KPI всех задач.
 Скрипт повторяет проверки, пока средний уровень не превысит **99%**.

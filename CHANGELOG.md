@@ -8,6 +8,7 @@
 - Tailwind config синхронизирован с шаблоном TailAdmin 1.3, подключены шрифты Inter, Poppins и Roboto.
 - Цикл продолжается, пока средний уровень не достигнет 99%.
 - Добавлена система кристаллизации задач и CLI `crystallizationManager.ts`.
+- Реализованы команды `update-attrs`, `list-diamonds`, `list-funcs`, `list-tasks`, `stats`, `init`, `sync` и `update-badge`.
 - Унификация доступа к MongoDB через `bot/src/db/queries.js`.
 - Подключение к базе вынесено в `bot/src/db/connection.js` с пулом соединений.
 - Добавлена карта запросов `docs/db_request_map.md`.

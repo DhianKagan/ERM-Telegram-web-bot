@@ -103,3 +103,4 @@ docker compose config
 - Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.
 - Добавлена CLI `crystallizationManager.ts` для оценки зрелости задач, команды описаны в README.
 - Сценарий `crystal:loop` запускает лупы кристаллизации для всего репозитория и повторяется, пока средний уровень не превысит 99%.
+- CLI поддерживает команды `update-attrs`, `list-diamonds`, `list-funcs`, `list-tasks`, `stats`, `init`, `sync` и `update-badge`.

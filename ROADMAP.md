@@ -88,6 +88,7 @@
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
+- Добавлены команды `update-attrs`, `list-diamonds`, `list-funcs`, `list-tasks`, `stats`, `init`, `sync` и `update-badge`.
 - Добавлен маршрут `/api/tasks/:id` для получения одной задачи.
 - Добавлен шаблон pull request и файл CODEOWNERS.
 - Создан issue template `task.yml` для универсальных задач.

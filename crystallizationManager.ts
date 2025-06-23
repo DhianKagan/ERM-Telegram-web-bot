@@ -5,6 +5,7 @@
 import fs from 'fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { pathToFileURL } from 'url';
 
 interface KPIEntry {
   iteration: number;
@@ -29,7 +30,7 @@ interface Data {
   kpi_definitions: string[];
 }
 
-class Manager {
+export class Manager {
   file: string;
   data: Data;
   constructor(file = 'crystallization.json') {
@@ -73,42 +74,48 @@ class Manager {
   }
 }
 
-const m = new Manager();
-yargs(hideBin(process.argv))
-  .command('add-task', 'Добавить задачу', (y) => y
-    .option('id', { type: 'string', demandOption: true })
-    .option('title', { type: 'string', demandOption: true })
-    .option('status', { type: 'string', default: 'backlog' })
-    .option('iteration', { type: 'number', default: 0 })
-    .option('final_score', { type: 'number', default: 0 })
-    .option('notes', { type: 'string' }),
-    (argv) => {
-      m.addTask({
-        id: argv.id,
-        title: argv.title,
-        status: argv.status,
-        iteration: argv.iteration,
-        kpi_history: [],
-        final_score: argv.final_score,
-        notes: argv.notes,
-      });
+export function runCLI() {
+  const m = new Manager();
+  yargs(hideBin(process.argv))
+    .command('add-task', 'Добавить задачу', (y) => y
+      .option('id', { type: 'string', demandOption: true })
+      .option('title', { type: 'string', demandOption: true })
+      .option('status', { type: 'string', default: 'backlog' })
+      .option('iteration', { type: 'number', default: 0 })
+      .option('final_score', { type: 'number', default: 0 })
+      .option('notes', { type: 'string' }),
+      (argv) => {
+        m.addTask({
+          id: argv.id,
+          title: argv.title,
+          status: argv.status,
+          iteration: argv.iteration,
+          kpi_history: [],
+          final_score: argv.final_score,
+          notes: argv.notes,
+        });
     })
-  .command('update-kpi', 'Обновить KPI', (y) => y
-    .option('id', { type: 'string', demandOption: true })
-    .option('score', { type: 'number', demandOption: true })
-    .option('notes', { type: 'string' }),
-    (argv) => {
-      m.updateKPI(argv.id, argv.score, argv.notes);
+    .command('update-kpi', 'Обновить KPI', (y) => y
+      .option('id', { type: 'string', demandOption: true })
+      .option('score', { type: 'number', demandOption: true })
+      .option('notes', { type: 'string' }),
+      (argv) => {
+        m.updateKPI(argv.id, argv.score, argv.notes);
     })
-  .command('level', 'Показать уровень задачи', (y) => y.option('id', { type: 'string', demandOption: true }),
-    (argv) => m.level(argv.id))
-  .command('update-core', 'Обновить принципы', (y) => y
-    .option('principles', { type: 'string', demandOption: true })
-    .option('versionIncrement', { type: 'boolean', default: true }),
-    (argv) => {
-      m.updateCore((argv.principles as string).split(','), argv.versionIncrement);
+    .command('level', 'Показать уровень задачи', (y) => y.option('id', { type: 'string', demandOption: true }),
+      (argv) => m.level(argv.id))
+    .command('update-core', 'Обновить принципы', (y) => y
+      .option('principles', { type: 'string', demandOption: true })
+      .option('versionIncrement', { type: 'boolean', default: true }),
+      (argv) => {
+        m.updateCore((argv.principles as string).split(','), argv.versionIncrement);
     })
-  .command('average', 'Средний уровень', () => {}, () => m.average())
-  .demandCommand()
-  .help()
-  .parse();
+    .command('average', 'Средний уровень', () => {}, () => m.average())
+    .demandCommand()
+    .help()
+    .parse();
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCLI();
+}

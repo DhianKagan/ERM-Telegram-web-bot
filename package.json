@@ -7,7 +7,8 @@
     "crystal:kpi": "ts-node crystallizationManager.ts update-kpi",
     "crystal:level": "ts-node crystallizationManager.ts level",
     "crystal:core": "ts-node crystallizationManager.ts update-core",
-    "crystal:avg": "ts-node crystallizationManager.ts average"
+    "crystal:avg": "ts-node crystallizationManager.ts average",
+    "crystal:loop": "ts-node scripts/run_crystal_loops.ts"
   },
   "dependencies": {
     "ts-node": "^10.9.1",

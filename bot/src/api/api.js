@@ -57,6 +57,32 @@ const validate = validations => [
     max: 100,
     message: { error: 'Too many requests, please try again later.' }
   })
+  // лимит запросов к группам и пользователям: 100 за 15 минут
+  const groupsRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const usersRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const rolesRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const logsRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const taskStatusRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: { error: 'Too many requests, please try again later.' }
+  })
   // лимит попыток входа: 10 за 15 минут
   const loginRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -124,20 +150,21 @@ const validate = validations => [
     res.json({ status: 'ok' })
   }))
 
-  app.get('/api/groups', verifyToken, asyncHandler(async (_req, res) => {
+
+  app.get('/api/groups', groupsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
-  app.post('/api/groups', verifyToken,
+  app.post('/api/groups', groupsRateLimiter, verifyToken,
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const group = await createGroup(req.body.name)
     res.json(group)
   }))
 
-  app.get('/api/users', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/users', usersRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listUsers())
   }))
-  app.post('/api/users', verifyToken,
+  app.post('/api/users', usersRateLimiter, verifyToken,
     validate([
       body('id').isInt(),
       body('username').isString().notEmpty()
@@ -155,7 +182,9 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
-  app.get('/api/roles', verifyToken, asyncHandler(async (_req, res) => {
+
+  app.get('/api/roles', rolesRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+
     res.json(await listRoles())
   }))
   /**
@@ -166,7 +195,9 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
-  app.post('/api/roles', verifyToken,
+
+  app.post('/api/roles', rolesRateLimiter, verifyToken,
+
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const role = await createRole(req.body.name)
@@ -181,11 +212,13 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
-  app.get('/api/logs', verifyToken, asyncHandler(async (_req, res) => {
+
+  app.get('/api/logs', logsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listLogs())
   }))
 
-  app.post('/api/tasks/:id/status', verifyToken,
+  app.post('/api/tasks/:id/status', taskStatusRateLimiter, verifyToken,
+
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
       await updateTaskStatus(req.params.id, req.body.status)

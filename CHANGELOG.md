@@ -5,6 +5,7 @@
 
 ## [Новый]
 - Добавлен сценарий `crystal:loop` для запуска лупов кристаллизации всего репозитория.
+- При ошибке `ERR_UNKNOWN_FILE_EXTENSION` рекомендуется выполнить `npm run crystal:auto-update`.
 - Tailwind config синхронизирован с шаблоном TailAdmin 1.3, подключены шрифты Inter, Poppins и Roboto.
 - Цикл продолжается, пока средний уровень не достигнет 99%.
 - Добавлена система кристаллизации задач и CLI `crystallizationManager.ts`.

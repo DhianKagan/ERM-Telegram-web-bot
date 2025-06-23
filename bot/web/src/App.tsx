@@ -6,6 +6,8 @@ import TaskKanban from './pages/TaskKanban'
 import Projects from './pages/Projects'
 import Reports from './pages/Reports'
 import Admin from './pages/Admin'
+import Roles from './pages/Roles'
+import Logs from './pages/Logs'
 import Profile from './pages/Profile'
 import DashboardPage from './pages/DashboardPage'
 import Sidebar from './layouts/Sidebar'
@@ -35,6 +37,8 @@ export default function App() {
                 <Route path="/tasks/kanban" element={<ProtectedRoute><TaskKanban /></ProtectedRoute>} />
                 <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+                <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
+                <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>

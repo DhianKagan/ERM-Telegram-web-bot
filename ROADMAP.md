@@ -61,6 +61,7 @@
 - При ошибке `Cannot find module '@eslint/js'` перед запуском линтера выполняйте `npm --prefix bot install`.
 - Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания.
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
+- Маршруты регистрации и входа теперь валидируют данные через `express-validator`.
 - Реализован fallback маршрута `app.get('/{*splat}')` для корректной работы SPA.
 - Для этого маршрута добавлен rate limiter во избежание атак.
 - Маршрут `/api/tasks/:id` также имеет лимит 100 запросов за 15 минут.

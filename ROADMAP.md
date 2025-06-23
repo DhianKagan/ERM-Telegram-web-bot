@@ -94,6 +94,8 @@
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
 - Добавлен маршрут `/api/tasks/:id` для получения одной задачи.
+- Маршруты `/groups`, `/users`, `/roles` и `/logs` перенесены под префикс `/api`.
+- Статус задач изменяется через `/api/tasks/:id/status`.
 - Добавлен шаблон pull request и файл CODEOWNERS.
 - Создан issue template `task.yml` для универсальных задач.
 - Интегрируем дополнительные возможности Telegram Bot API через `telegramApi.js`.

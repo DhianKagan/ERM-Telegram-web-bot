@@ -17,3 +17,4 @@ yarn-error.log*
 
 # другие
 .DS_Store
+.vscode/

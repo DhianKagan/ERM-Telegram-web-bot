@@ -111,6 +111,8 @@ docker compose config
 - Сценарий `crystal:loop` запускает лупы кристаллизации для всего репозитория и повторяется, пока средний уровень не превысит 99%.
 - Для обновления бейджа кристаллизации используйте `npm run crystal:update-badge`.
 - При работе с IDE синхронизируйте файл `crystallization.json` командой `npm run crystal:sync`.
+- Команда `crystal:auto-update` опрашивает `https://api.github.com/repos/AgroxOD/crystallization-development/commits`
+  и при обнаружении нового коммита обновляет `crystallizationManager.ts`.
 - Перед коммитом проверяйте код командами `npm test --prefix bot`,
   `npx eslint bot/src` и `npm run lint --prefix bot/web`.
 - В случае ошибки авторизации мини‑приложение удаляет токен из `localStorage`,

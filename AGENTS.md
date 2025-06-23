@@ -33,6 +33,7 @@ docker compose config
 - Если в логах появляется `GET /dashboard/` со статусом `404`, пересоберите фронтенд `npm --prefix bot run build-client` и убедитесь в наличии fallback `app.get('/{*splat}')` в API.
 - Для fallback добавлен rate limiter, чтобы исключить перегрузку сервера.
 - Маршрут `/api/tasks/:id` тоже ограничен rate limiter (100 запросов за 15 минут).
+- Путь `/api/auth/login` принимает не более 5 запросов в минуту.
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - После обновления зависимостей повторяйте `npm --prefix bot/web install` и затем `npm --prefix bot run build-client`.
 - Для сборки Tailwind используйте плагин `@tailwindcss/postcss` в файле `postcss.config.js`.

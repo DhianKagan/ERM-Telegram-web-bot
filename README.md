@@ -12,6 +12,7 @@
 За инструкцией по настройке команд и вебхуков бота обратитесь к файлу `docs/telegram_bot_manual.md`. В нём описана работа с BotFather и скрипт `scripts/set_bot_commands.sh` для установки меню. Документация API приведена в `docs/api_reference.md` и доступна через `/api-docs`.
 Среди маршрутов API теперь есть `GET /api/tasks/:id` для получения одной задачи.
 Карта запросов между API и базой описана в `docs/db_request_map.md`.
+Документация по Tailwind-стилям Dashboard находится в `docs/dashboard_tailadmin.md`.
 
 
 ## Быстрый старт

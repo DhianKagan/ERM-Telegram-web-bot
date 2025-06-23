@@ -13,6 +13,7 @@
 - Подключение к базе вынесено в `bot/src/db/connection.js` с пулом соединений.
 - Добавлена карта запросов `docs/db_request_map.md`.
 - Добавлен workflow `release.yml` для автоматических GitHub Releases.
+- В документацию добавлен файл `docs/dashboard_tailadmin.md` с примером верстки Dashboard.
 - Создан шаблон Pull Request и файл CODEOWNERS.
 - Добавлен шаблон issue `task.yml` для постановки задач.
 - В README добавлена секция с лучшими практиками CI/CD.

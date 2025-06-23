@@ -105,3 +105,5 @@ docker compose config
 - Сценарий `crystal:loop` запускает лупы кристаллизации для всего репозитория и повторяется, пока средний уровень не превысит 99%.
 - Для обновления бейджа кристаллизации используйте `npm run crystal:update-badge`.
 - При работе с IDE синхронизируйте файл `crystallization.json` командой `npm run crystal:sync`.
+- Перед коммитом проверяйте код командами `npm test --prefix bot`,
+  `npx eslint bot/src` и `npm run lint --prefix bot/web`.

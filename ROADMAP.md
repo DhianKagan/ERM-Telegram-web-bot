@@ -48,6 +48,7 @@
 - Создан общий модуль `bot/src/db/queries.js` для работы с MongoDB.
 - Добавлена карта запросов `docs/db_request_map.md`.
 - Перенос фронтенда на React + Vite + Tailwind завершён.
+- Tailwind config обновлён по шаблону TailAdmin 1.3, подключены все используемые шрифты.
 - Настроены Jest и Supertest, добавлена интеграция Husky с `eslint` и тестами.
 - Подключён Swagger для генерации документации API.
 - Запущен CI на GitHub Actions с проверкой линтера и тестов.

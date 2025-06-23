@@ -36,6 +36,7 @@ docker compose config
 - При пустой директории `bot/public` сервер сам выполнит `npm run build-client`, однако после обновлений фронтенда сборку лучше запускать вручную.
 - После обновления зависимостей повторяйте `npm --prefix bot/web install` и затем `npm --prefix bot run build-client`.
 - Для сборки Tailwind используйте плагин `@tailwindcss/postcss` в файле `postcss.config.js`.
+- Конфигурация Tailwind должна соответствовать шаблону TailAdmin 1.3 и содержать шрифты Inter, Poppins и Roboto.
 - Для форматирования кода фронтенда запустите `npm --prefix bot/web run format`.
   - Для поиска ошибок сохраняйте вывод в лог:
   ```bash

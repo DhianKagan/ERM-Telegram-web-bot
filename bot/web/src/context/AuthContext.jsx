@@ -8,7 +8,12 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [user, setUser] = useState(null)
   useEffect(() => {
-    if (token) getProfile(token).then(setUser).catch(() => setToken(null))
+    if (token) getProfile(token)
+      .then(setUser)
+      .catch(() => {
+        setToken(null)
+        localStorage.removeItem('token')
+      })
   }, [token])
   const login = async creds => {
     const { token: t } = await apiLogin(creds)

@@ -107,3 +107,5 @@ docker compose config
 - При работе с IDE синхронизируйте файл `crystallization.json` командой `npm run crystal:sync`.
 - Перед коммитом проверяйте код командами `npm test --prefix bot`,
   `npx eslint bot/src` и `npm run lint --prefix bot/web`.
+- В случае ошибки авторизации мини‑приложение удаляет токен из `localStorage`,
+  чтобы исключить повторные 401 при загрузке страниц.

@@ -98,3 +98,4 @@ docker compose config
 - Устаревшие опции `useNewUrlParser` и `useUnifiedTopology` удалены, чтобы
   избежать предупреждений драйвера.
 - Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.
+- Добавлена CLI `crystallizationManager.ts` для оценки зрелости задач, команды описаны в README.

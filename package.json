@@ -1,0 +1,17 @@
+{
+  "name": "agrmcs-crystallization",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crystal:add": "ts-node crystallizationManager.ts add-task",
+    "crystal:kpi": "ts-node crystallizationManager.ts update-kpi",
+    "crystal:level": "ts-node crystallizationManager.ts level",
+    "crystal:core": "ts-node crystallizationManager.ts update-core",
+    "crystal:avg": "ts-node crystallizationManager.ts average"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.4.5",
+    "yargs": "^17.7.2"
+  }
+}

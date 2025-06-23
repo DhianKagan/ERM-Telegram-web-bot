@@ -1,0 +1,29 @@
+{
+  "core_version": 1,
+  "core_principles": [
+    "Итеративное улучшение",
+    "Рефлексия на основе KPI",
+    "Соблюдение современных практик"
+  ],
+  "tasks": [
+    {
+      "id": "AGMCS-001",
+      "title": "Пример задачи: внедрение петли кристаллизации",
+      "status": "crystallized",
+      "iteration": 3,
+      "kpi_history": [
+        { "iteration": 1, "score": 0.65, "notes": "Базовая реализация" },
+        { "iteration": 2, "score": 0.82, "notes": "Добавлен анализ KPI" },
+        { "iteration": 3, "score": 0.94, "notes": "Интеграция с CI/CD и визуализация" }
+      ],
+      "final_score": 0.94,
+      "notes": "Реализовано в соответствии с best practices"
+    }
+  ],
+  "kpi_definitions": [
+    "Code Quality",
+    "Performance",
+    "Test Coverage",
+    "Compliance with Modern Practices"
+  ]
+}

@@ -8,14 +8,14 @@
 | Создать задачу | `createTask()` | `POST /tasks` и `POST /api/tasks` |
 | Получить список задач | `getTasks()` | `GET /tasks`, `GET /api/tasks` |
 | Обновить задачу | `updateTask()` | `PUT /tasks/:id`, `PATCH /api/tasks/:id` |
-| Изменить статус | `updateTaskStatus()` | `POST /tasks/:id/status` |
+| Изменить статус | `updateTaskStatus()` | `POST /api/tasks/:id/status` |
 | Добавить время | `addTime()` | `PATCH /api/tasks/:id/time` |
 | Массовое обновление | `bulkUpdate()` | `POST /api/tasks/bulk` |
 | Сводка по задачам | `summary()` | `GET /api/tasks/report/summary` |
-| Пользователи | `createUser()`, `listUsers()` | `POST /users`, `GET /users` |
-| Группы | `createGroup()`, `listGroups()` | `POST /groups`, `GET /groups` |
-| Роли | `createRole()`, `listRoles()` | `POST /roles`, `GET /roles` |
-| Логи | `writeLog()`, `listLogs()` | `POST /tasks/:id/status`, `GET /logs` |
+| Пользователи | `createUser()`, `listUsers()` | `POST /api/users`, `GET /api/users` |
+| Группы | `createGroup()`, `listGroups()` | `POST /api/groups`, `GET /api/groups` |
+| Роли | `createRole()`, `listRoles()` | `POST /api/roles`, `GET /api/roles` |
+| Логи | `writeLog()`, `listLogs()` | `POST /api/tasks/:id/status`, `GET /api/logs` |
 
 Команды бота вызывают те же функции через `services/service.js`:
 

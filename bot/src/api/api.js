@@ -124,20 +124,20 @@ const validate = validations => [
     res.json({ status: 'ok' })
   }))
 
-  app.get('/groups', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/groups', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
-  app.post('/groups', verifyToken,
+  app.post('/api/groups', verifyToken,
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const group = await createGroup(req.body.name)
     res.json(group)
   }))
 
-  app.get('/users', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/users', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listUsers())
   }))
-  app.post('/users', verifyToken,
+  app.post('/api/users', verifyToken,
     validate([
       body('id').isInt(),
       body('username').isString().notEmpty()
@@ -149,24 +149,24 @@ const validate = validations => [
 
   /**
    * @swagger
-   * /roles:
+   * /api/roles:
    *   get:
    *     summary: Список ролей
    *     security:
    *       - bearerAuth: []
    */
-  app.get('/roles', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/roles', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listRoles())
   }))
   /**
    * @swagger
-   * /roles:
+   * /api/roles:
    *   post:
    *     summary: Создать роль
    *     security:
    *       - bearerAuth: []
    */
-  app.post('/roles', verifyToken,
+  app.post('/api/roles', verifyToken,
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const role = await createRole(req.body.name)
@@ -175,17 +175,17 @@ const validate = validations => [
 
   /**
    * @swagger
-   * /logs:
+   * /api/logs:
    *   get:
    *     summary: Получить последние логи
    *     security:
    *       - bearerAuth: []
    */
-  app.get('/logs', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/logs', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listLogs())
   }))
 
-  app.post('/tasks/:id/status', verifyToken,
+  app.post('/api/tasks/:id/status', verifyToken,
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
       await updateTaskStatus(req.params.id, req.body.status)

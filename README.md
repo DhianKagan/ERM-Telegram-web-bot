@@ -2,6 +2,7 @@
 # Telegram Task Manager Bot + Mini App
 
 [![Docker CI](https://github.com/user/agrmcs/actions/workflows/docker.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/docker.yml) [![Release](https://github.com/user/agrmcs/actions/workflows/release.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/release.yml)
+![Crystallization Level](https://img.shields.io/badge/crystallization-94%25-brightgreen?style=for-the-badge&logo=dependabot)
 
 Файл описывает проект и способы его развертывания.
 
@@ -224,3 +225,30 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 
 Проект представляет готовую базу и быстро разворачивается, но требует модернизации для полноценного продакшна. Интерфейс построен на React + Vite + Tailwind и использует элементы TailAdmin. В Dashboard теперь есть KPI‑карточки, график активности и таблица последних задач. Данные берутся из API через защищённые маршруты. При создании задач выводится уведомление. Код фронтенда форматируется Prettier.
 С недавним обновлением стили взяты из архива `free-react-tailwind-admin-dashboard-main.zip`, что приблизило внешний вид к демо TailAdmin.
+
+## 🧊 Crystallization System
+
+Система отслеживает зрелость задач. Примерные команды:
+
+```bash
+npm run crystal:add -- --id AGMCS-002 --title "Новая задача"
+npm run crystal:kpi -- --id AGMCS-002 --score 0.88 --notes "Улучшен тестовый охват"
+npm run crystal:level -- --id AGMCS-002
+npm run crystal:core -- --principles "Итеративное улучшение,AI для ревью"
+npm run crystal:avg
+```
+
+```
+┌──────────┐ ┌──────────────┐ ┌───────────┐
+│ Backlog │ ▶ │ In Progress │ ▶ │ Review │
+└──────────┘ └──────────────┘ └───────────┘
+     │                
+     ▼                
+┌──────────────┐
+│ Improvement │
+└──────────────┘
+     │                
+┌───────────┐ ┌───────────────┐
+│ Crystall. │ │ Next Iter... │
+└───────────┘ └───────────────┘
+```

@@ -76,6 +76,7 @@
   к базе, чтобы драйвер не выводил предупреждения.
 - Для PostCSS в React‑фронтенде используется плагин `@tailwindcss/postcss`.
 - Во фронтенд добавлен Prettier и градиентный фон из шаблона React Vite Tailwind.
+- Подготовлена инструкция `docs/dashboard_tailadmin.md` по применению стилей TailAdmin для страницы Dashboard.
 - В интерфейс интегрирован дизайн TailAdmin: появились страницы "Проекты", "Отчёты" и "Профиль", сохранён компонент NotificationBar.
 - Стили обновлены из архива `free-react-tailwind-admin-dashboard-main.zip`, дизайн ближе к демо TailAdmin.
 - Улучшены страницы входа, регистрации и профиля, логика вынесена в контекст AuthContext.

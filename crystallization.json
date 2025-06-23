@@ -1,8 +1,9 @@
 {
-  "core_version": 1,
+  "core_version": 2,
   "core_principles": [
     "Итеративное улучшение",
-    "Рефлексия на основе KPI",
+    "KPI-достижение алмазного состояния (100%)",
+    "Рефлексия по стандарту Diamond",
     "Соблюдение современных практик"
   ],
   "tasks": [
@@ -21,9 +22,13 @@
     }
   ],
   "kpi_definitions": [
-    "Code Quality",
-    "Performance",
-    "Test Coverage",
-    "Compliance with Modern Practices"
+    { "key": "code_quality", "title": "Code Quality", "threshold": 0.8 },
+    { "key": "performance", "title": "Performance", "threshold": 0.8 },
+    { "key": "test_coverage", "title": "Test Coverage", "threshold": 0.8 },
+    {
+      "key": "modern_practices",
+      "title": "Compliance with Modern Practices",
+      "threshold": 0.8
+    }
   ]
 }

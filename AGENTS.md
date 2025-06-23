@@ -103,3 +103,5 @@ docker compose config
 - Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.
 - Добавлена CLI `crystallizationManager.ts` для оценки зрелости задач, команды описаны в README.
 - Сценарий `crystal:loop` запускает лупы кристаллизации для всего репозитория и повторяется, пока средний уровень не превысит 99%.
+- Для обновления бейджа кристаллизации используйте `npm run crystal:update-badge`.
+- При работе с IDE синхронизируйте файл `crystallization.json` командой `npm run crystal:sync`.

@@ -3,12 +3,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "crystal:add": "ts-node crystallizationManager.ts add-task",
-    "crystal:kpi": "ts-node crystallizationManager.ts update-kpi",
-    "crystal:level": "ts-node crystallizationManager.ts level",
-    "crystal:core": "ts-node crystallizationManager.ts update-core",
-    "crystal:avg": "ts-node crystallizationManager.ts average",
-    "crystal:loop": "ts-node scripts/run_crystal_loops.ts"
+    "crystal:add": "ts-node --esm crystallizationManager.ts add-task",
+    "crystal:kpi": "ts-node --esm crystallizationManager.ts update-kpi",
+    "crystal:attrs": "ts-node --esm crystallizationManager.ts update-attrs",
+    "crystal:level": "ts-node --esm crystallizationManager.ts level",
+    "crystal:core": "ts-node --esm crystallizationManager.ts update-core",
+    "crystal:avg": "ts-node --esm crystallizationManager.ts average",
+    "crystal:init": "ts-node --esm crystallizationManager.ts init",
+    "crystal:update-badge": "node scripts/update_badge.js",
+    "crystal:sync": "node scripts/sync_crystallization.js",
+    "crystal:list-funcs": "ts-node --esm crystallizationManager.ts list-funcs",
+    "crystal:list-diamonds": "ts-node --esm crystallizationManager.ts list-diamonds",
+    "crystal:list-tasks": "ts-node --esm crystallizationManager.ts list-tasks",
+    "crystal:stats": "ts-node --esm crystallizationManager.ts stats",
+    "crystal:loop": "ts-node --esm scripts/run_crystal_loops.ts"
   },
   "dependencies": {
     "ts-node": "^10.9.1",

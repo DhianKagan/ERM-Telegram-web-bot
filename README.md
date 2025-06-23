@@ -212,6 +212,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Для Express 5 добавлен fallback `app.get('/{*splat}')`, обновление страниц не приводит к `404`.
 - Для fallback маршрута настроен rate limit, предотвращающий массовые запросы.
 - Запрос `/api/tasks/:id` тоже ограничен (100 в 15 минут), что защищает API.
+- Маршруты `/groups`, `/users`, `/roles` и `/logs` работают только через `/api`.
+- Статус задач меняется по адресу `/api/tasks/:id/status`.
 - Путь `/api/auth/login` принимает не более 5 запросов в минуту и защищён от брутфорса.
 - Ограничены обращения к `/api/groups`, `/api/users`, `/api/roles`, `/api/logs` и
   `/api/tasks/:id/status` (100 запросов за 15 минут).

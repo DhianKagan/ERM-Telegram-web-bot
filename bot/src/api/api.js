@@ -150,6 +150,7 @@ const validate = validations => [
     res.json({ status: 'ok' })
   }))
 
+
   app.get('/api/groups', groupsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
@@ -181,7 +182,9 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
+
   app.get('/api/roles', rolesRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+
     res.json(await listRoles())
   }))
   /**
@@ -192,7 +195,9 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
+
   app.post('/api/roles', rolesRateLimiter, verifyToken,
+
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const role = await createRole(req.body.name)
@@ -207,11 +212,13 @@ const validate = validations => [
    *     security:
    *       - bearerAuth: []
    */
+
   app.get('/api/logs', logsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listLogs())
   }))
 
   app.post('/api/tasks/:id/status', taskStatusRateLimiter, verifyToken,
+
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
       await updateTaskStatus(req.params.id, req.body.status)

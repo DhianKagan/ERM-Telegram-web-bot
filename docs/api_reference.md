@@ -11,18 +11,18 @@
 | GET | /tasks | Список всех задач |
 | POST | /tasks | Создание задачи |
 | PUT | /tasks/:id | Обновление задачи |
-| POST | /tasks/:id/status | Изменение статуса |
+| POST | /api/tasks/:id/status | Изменение статуса |
 | GET | /api/tasks | Расширенный список задач |
 | GET | /api/tasks/:id | Получить задачу |
 | PATCH | /api/tasks/:id | Редактирование задачи |
 | PATCH | /api/tasks/:id/time | Добавить время |
 | POST | /api/tasks/bulk | Массовое обновление |
 | GET | /api/tasks/report/summary | KPI отчёт |
-| GET | /groups | Список групп |
-| POST | /groups | Создание группы |
-| GET | /users | Список пользователей |
-| POST | /users | Создание пользователя |
-| GET | /roles | Список ролей |
-| POST | /roles | Создание роли |
-| GET | /logs | Последние логи |
+| GET | /api/groups | Список групп |
+| POST | /api/groups | Создание группы |
+| GET | /api/users | Список пользователей |
+| POST | /api/users | Создание пользователя |
+| GET | /api/roles | Список ролей |
+| POST | /api/roles | Создание роли |
+| GET | /api/logs | Последние логи |
 

@@ -5,6 +5,7 @@
 
 ## [Новый]
 - Добавлен сценарий `crystal:loop` для запуска лупов кристаллизации всего репозитория.
+- NotificationBar получил иконку и кнопку закрытия, TasksChart теперь стилизован цветами TailAdmin и учитывает выбранную тему.
 - При ошибке `ERR_UNKNOWN_FILE_EXTENSION` рекомендуется выполнить `npm run crystal:auto-update`.
 - Tailwind config синхронизирован с шаблоном TailAdmin 1.3, подключены шрифты Inter, Poppins и Roboto.
 - Реализованы выпадающие меню профиля, вкладки, пагинация и skeleton‑лоадеры для полной адаптации под TailAdmin.

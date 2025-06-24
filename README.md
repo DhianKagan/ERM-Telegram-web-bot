@@ -13,6 +13,7 @@
 Среди маршрутов API теперь есть `GET /api/tasks/:id` для получения одной задачи.
 Карта запросов между API и базой описана в `docs/db_request_map.md`.
 Документация по Tailwind-стилям Dashboard находится в `docs/dashboard_tailadmin.md`.
+Отчёт Lighthouse за 24.06.2025 размещён в файле `docs/lighthouse_20250624.md`.
 
 
 ## Быстрый старт

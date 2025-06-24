@@ -118,3 +118,4 @@ docker compose config
   `npx eslint bot/src` и `npm run lint --prefix bot/web`.
 - В случае ошибки авторизации мини‑приложение удаляет токен из `localStorage`,
   чтобы исключить повторные 401 при загрузке страниц.
+- Храним отчёты Lighthouse в каталоге `docs`, свежий пример: `lighthouse_20250624.md`.

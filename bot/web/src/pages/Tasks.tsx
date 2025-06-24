@@ -36,23 +36,23 @@ export default function Tasks() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="text-xl font-semibold">Задачи</h2>
-      <form onSubmit={add} className="space-x-2">
+      <form onSubmit={add} className="flex gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
-          className="rounded border px-2 py-1"
+          className="h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           placeholder="Описание"
         />
-        <button type="submit" className="rounded bg-blue-500 px-3 py-1 text-white">
+        <button type="submit" className="btn btn-blue">
           Создать
         </button>
       </form>
-      <ul className="space-y-1">
+      <ul className="space-y-2">
         {tasks.map((t) => (
-          <li key={t._id} className="rounded border p-2">
+          <li key={t._id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             {t.task_description}
           </li>
         ))}

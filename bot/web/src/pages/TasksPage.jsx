@@ -42,20 +42,24 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <KPIOverview count={kpi.count} time={kpi.time} />
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {['all','new','in-progress','done'].map(s => (
-            <button key={s} onClick={()=>setStatus(s)} className={`rounded px-3 py-1 text-sm ${status===s?'bg-blue-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600'}`}>
+            <button
+              key={s}
+              onClick={() => setStatus(s)}
+              className={`rounded-md px-3 py-1 text-sm ${status===s ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+            >
               {s==='all'?'Все':s} ({counts[s]})
             </button>
           ))}
         </div>
-        <button onClick={()=>setOpen(true)} className="btn-blue">+ Добавить</button>
+        <button onClick={()=>setOpen(true)} className="btn btn-blue">+ Добавить</button>
       </div>
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead>
+      <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             <th></th>
             <th className="px-4 py-2 text-left">Название</th>
@@ -64,14 +68,28 @@ export default function TasksPage() {
             <th></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
           {tasks.map(t => (
-            <tr key={t._id} className="border-b">
-              <td><input type="checkbox" checked={selected.includes(t._id)} onChange={e=>setSelected(e.target.checked? [...selected,t._id] : selected.filter(id=>id!==t._id))} /></td>
+            <tr key={t._id}>
+              <td className="px-4 py-2 text-center">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(t._id)}
+                  onChange={(e) =>
+                    setSelected(
+                      e.target.checked
+                        ? [...selected, t._id]
+                        : selected.filter((id) => id !== t._id)
+                    )
+                  }
+                />
+              </td>
               <td className="px-4 py-2">{t.title}</td>
-              <td className="px-4 py-2">{t.status}</td>
-              <td className="px-4 py-2">{t.time_spent}</td>
-              <td><button onClick={()=>add30(t._id)} className="text-xs text-blue-500">+30 мин</button></td>
+              <td className="px-4 py-2 text-center">{t.status}</td>
+              <td className="px-4 py-2 text-center">{t.time_spent}</td>
+              <td className="px-4 py-2 text-right">
+                <button onClick={() => add30(t._id)} className="text-xs text-brand-500 hover:underline">+30 мин</button>
+              </td>
             </tr>
           ))}
         </tbody>

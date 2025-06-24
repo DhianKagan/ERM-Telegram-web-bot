@@ -3,6 +3,7 @@
 import React from "react";
 import { useSidebar } from "../context/SidebarContext";
 import { useTheme } from "../context/ThemeContext";
+import DropdownMenu from "../components/DropdownMenu";
 import {
   Bars3Icon,
   BellIcon,
@@ -14,9 +15,9 @@ export default function Header() {
   const { toggle } = useSidebar();
   const { theme, toggle: toggleTheme } = useTheme();
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 md:ml-52">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 dark:border-strokedark dark:bg-boxdark lg:ml-60">
       <div className="flex items-center gap-2">
-        <button onClick={toggle} className="md:hidden">
+        <button onClick={toggle} className="block lg:hidden">
           <Bars3Icon className="h-6 w-6" />
         </button>
         <h1 className="font-bold">agrmcs</h1>
@@ -34,6 +35,18 @@ export default function Header() {
         <button className="p-2 hover:text-brand-500">
           <BellIcon className="h-5 w-5" />
         </button>
+        <DropdownMenu
+          items={[
+            { label: 'Профиль', href: '/profile' },
+            {
+              label: 'Выход',
+              onClick: () => {
+                localStorage.removeItem('token')
+                location.href = '/login'
+              },
+            },
+          ]}
+        />
       </div>
     </header>
   );

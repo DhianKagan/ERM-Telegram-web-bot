@@ -61,6 +61,7 @@
 - Скрипт `crystal:auto-update` проверяет `https://api.github.com/repos/AgroxOD/crystallization-development/commits` и при появлении нового коммита обновляет `crystallizationManager.ts`.
 - Расширена валидация API и добавлены разделы "Логи" и "Роли" во фронтенде.
 - Для раздела "Роли" реализована форма создания роли, страница "Логи" выводит последние события из MongoDB.
+- Интерфейс страницы `Роли` приведён к стилю TailAdmin.
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - При ошибке `Cannot find module '@eslint/js'` перед запуском линтера выполняйте `npm --prefix bot install`.
 - Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания. После установки выполняйте `npm audit fix --prefix bot` или скрипт `scripts/install_bot_deps.sh`.

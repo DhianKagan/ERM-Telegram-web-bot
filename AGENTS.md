@@ -98,10 +98,9 @@ docker compose config
 - В нём зависимости бэкенда устанавливаются через `npm ci --prefix bot`.
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
-- При обнаружении уязвимостей применяйте `npm --prefix bot audit fix --force` и
-  снова проверяйте `npm --prefix bot outdated`.
+- После установки зависимостей запускайте `npm audit fix --prefix bot` для автоматического устранения найденных уязвимостей и снова проверяйте `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
-- Зависимости сервера устанавливайте командой `npm ci --prefix bot`. Если `package-lock.json` отсутствует, сначала выполните `npm --prefix bot install`.
+- Зависимости сервера устанавливайте командой `npm ci --prefix bot || npm --prefix bot install`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
 - Соединение с базой выполняет `bot/src/db/connection.js`, модели используют его.
 - Устаревшие опции `useNewUrlParser` и `useUnifiedTopology` удалены, чтобы

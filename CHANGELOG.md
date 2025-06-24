@@ -18,6 +18,7 @@
 - Создан шаблон Pull Request и файл CODEOWNERS.
 - Добавлен шаблон issue `task.yml` для постановки задач.
 - В README добавлена секция с лучшими практиками CI/CD.
+- Уточнена инструкция сборки: после `npm ci --prefix bot` следует запускать `npm audit fix --prefix bot`.
 - Исправлена ошибка линтера в компоненте Kanban: удалён неиспользуемый параметр.
 - Добавлен скрипт `crystal:auto-update` для получения свежего кристализатора из
   репозитория `AgroxOD/crystallization-development` через GitHub API.

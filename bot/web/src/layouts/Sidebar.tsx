@@ -29,9 +29,9 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className={`fixed z-20 h-full w-60 border-r border-gray-200 bg-white p-4 transition-transform dark:border-gray-800 dark:bg-gray-900 ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+      className={`fixed top-0 left-0 z-30 h-full w-60 border-r border-stroke bg-white p-4 transition-all dark:border-strokedark dark:bg-boxdark ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
     >
-      <button onClick={toggle} className="mb-4 md:hidden">
+      <button onClick={toggle} className="mb-4 lg:hidden">
         <XMarkIcon className="h-5 w-5" />
       </button>
       <nav className="mt-4 space-y-2">

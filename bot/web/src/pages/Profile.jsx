@@ -1,15 +1,37 @@
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { AuthContext } from '../context/AuthContext'
+import Tabs from '../components/Tabs'
 
 export default function Profile() {
   const { user } = useContext(AuthContext)
+  const [tab, setTab] = useState('details')
   if (!user) return <div>Загрузка...</div>
   return (
-    <div className="p-8 max-w-xl mx-auto bg-white rounded shadow">
-      <h2 className="text-2xl mb-4">Личный кабинет</h2>
-      <p><b>Имя:</b> {user.name}</p>
-      <p><b>Email:</b> {user.email}</p>
-      <p><b>Роль:</b> {user.role}</p>
+    <div className="mx-auto max-w-xl rounded bg-white p-8 shadow dark:bg-boxdark">
+      <h2 className="mb-4 text-2xl">Личный кабинет</h2>
+      <Tabs
+        options={[
+          { key: 'details', label: 'Детали' },
+          { key: 'history', label: 'История' },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === 'details' ? (
+        <div className="space-y-2">
+          <p>
+            <b>Имя:</b> {user.name}
+          </p>
+          <p>
+            <b>Email:</b> {user.email}
+          </p>
+          <p>
+            <b>Роль:</b> {user.role}
+          </p>
+        </div>
+      ) : (
+        <div className="text-sm text-body">История действий пока пуста.</div>
+      )}
     </div>
   )
 }

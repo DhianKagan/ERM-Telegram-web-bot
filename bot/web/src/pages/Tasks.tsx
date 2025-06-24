@@ -1,6 +1,10 @@
 // Страница списка задач
 import React from "react";
 import NotificationBar from "../components/NotificationBar";
+import Spinner from "../components/Spinner";
+import SkeletonCard from "../components/SkeletonCard";
+import Pagination from "../components/Pagination";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 interface Task {
   _id: string;
@@ -11,15 +15,23 @@ export default function Tasks() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [text, setText] = React.useState("")
   const [msg, setMsg] = React.useState("")
+  const [loading, setLoading] = React.useState(true)
+  const [posting, setPosting] = React.useState(false)
+  const [page, setPage] = React.useState(1)
+  const perPage = 10
 
   React.useEffect(() => {
     fetch("/tasks", { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "" } })
       .then((r) => (r.ok ? r.json() : []))
-      .then(setTasks)
+      .then((data) => {
+        setTasks(data)
+        setLoading(false)
+      })
   }, [])
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault()
+    setPosting(true)
     const res = await fetch("/tasks", {
       method: "POST",
       headers: {
@@ -33,10 +45,14 @@ export default function Tasks() {
       setMsg("Задача создана")
       setTasks(await res.json().then((t) => [...tasks, t]))
     }
+    setPosting(false)
   }
+
+  const totalPages = Math.ceil(tasks.length / perPage)
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Задачи' }]} />
       <h2 className="text-xl font-semibold">Задачи</h2>
       <form onSubmit={add} className="flex gap-2">
         <input
@@ -46,17 +62,24 @@ export default function Tasks() {
           className="h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           placeholder="Описание"
         />
-        <button type="submit" className="btn btn-blue">
-          Создать
+        <button type="submit" className="btn btn-blue flex items-center justify-center">
+          {posting ? <Spinner /> : 'Создать'}
         </button>
       </form>
-      <ul className="space-y-2">
-        {tasks.map((t) => (
-          <li key={t._id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            {t.task_description}
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <SkeletonCard />
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {tasks.slice((page - 1) * 10, page * 10).map((t) => (
+              <li key={t._id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                {t.task_description}
+              </li>
+            ))}
+          </ul>
+          {totalPages > 1 && <Pagination total={totalPages} page={page} onChange={setPage} />}
+        </>
+      )}
       {msg && <NotificationBar message={msg} />}
     </div>
   )

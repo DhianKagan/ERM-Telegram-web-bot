@@ -4,16 +4,22 @@ import { ClipboardDocumentListIcon, ArrowPathIcon, ExclamationTriangleIcon, Cale
 import KpiCard from '../components/KpiCard'
 import TasksChart from '../components/TasksChart'
 import RecentTasks from '../components/RecentTasks'
+import SkeletonCard from '../components/SkeletonCard'
+import TableSkeleton from '../components/TableSkeleton'
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState({ total: 0, inWork: 0, overdue: 0, today: 0 })
+  const [loading, setLoading] = useState(true)
   useEffect(() => {
     fetch('/api/tasks/report/summary', {
       headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' }
     })
       .then(r => (r.ok ? r.json() : summary))
-      .then(setSummary)
-      .catch(() => {})
+      .then(data => {
+        setSummary(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
   const cards = [
@@ -27,13 +33,21 @@ export default function DashboardPage() {
     <div className="space-y-6 p-4">
       <h2 className="text-2xl font-semibold">Dashboard</h2>
       <div className="grid gap-4 sm:grid-cols-4">
-        {cards.map(c => (
-          <KpiCard key={c.title} title={c.title} value={c.value} icon={c.icon} />
-        ))}
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : cards.map(c => (
+              <KpiCard key={c.title} title={c.title} value={c.value} icon={c.icon} />
+            ))}
       </div>
-      <TasksChart />
-      <h3 className="text-xl font-semibold">Последние задачи</h3>
-      <RecentTasks />
+      {loading ? (
+        <TableSkeleton rows={5} />
+      ) : (
+        <>
+          <TasksChart />
+          <h3 className="text-xl font-semibold">Последние задачи</h3>
+          <RecentTasks />
+        </>
+      )}
     </div>
   )
 }

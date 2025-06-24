@@ -19,6 +19,14 @@
       ],
       "final_score": 0.94,
       "notes": "Реализовано в соответствии с best practices"
+    },
+    {
+      "id": "AGMCS-002",
+      "title": "Учесть npm ci и npm audit fix при сборке",
+      "status": "backlog",
+      "iteration": 0,
+      "kpi_history": [],
+      "notes": "Добавить инструкцию об использовании npm ci и npm audit fix"
     }
   ],
   "kpi_definitions": [

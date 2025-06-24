@@ -95,6 +95,7 @@
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.
 - При появлении предупреждений GitHub обновляем зависимости командой
   `npm --prefix bot audit fix --force` и проверяем `npm --prefix bot outdated`.
+- При установке зависимостей используем `npm ci --prefix bot || npm --prefix bot install`, затем выполняем `npm audit fix --prefix bot`.
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
@@ -136,5 +137,6 @@
 - Периодически выполнять `npm audit` и `npm outdated` для модуля `bot`.
 - Обновлять пакеты после успешного прохождения тестов.
 - Использовать скрипт `scripts/audit_dependencies.sh` для автоматизации проверки.
+- При обнаружении уязвимостей запускать `npm audit fix --prefix bot`.
 - При возникновении ошибок сети при обращении к `nextjs.org` убедитесь в наличии интернет‑доступа или настройте прокси.
 - Если `npm` выводит предупреждение `Unknown env config "http-proxy"`, его можно игнорировать либо удалить переменные `http_proxy` и `https_proxy` из окружения.

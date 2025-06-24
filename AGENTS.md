@@ -123,3 +123,5 @@ docker compose config
 - Страница `/tasks` получила оформление TailAdmin, таблица и форма теперь используют общие классы и цвета.
 - Формы проектов и пользователей обновлены по тому же стилю, в `index.css` добавлены утилиты `.btn`, `.btn-blue`, `.btn-gray` и `.btn-green`.
 - Исправлены ссылки на workflow Docker и Release в README.
+- Подготовлено подробное руководство по TailAdmin: docs/extended_tailadmin_guide.md.
+

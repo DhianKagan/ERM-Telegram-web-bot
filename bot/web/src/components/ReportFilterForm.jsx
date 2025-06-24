@@ -9,10 +9,20 @@ export default function ReportFilterForm({ onChange }) {
     onChange && onChange({ from, to })
   }
   return (
-    <form onSubmit={submit} className="space-x-2">
-      <input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded border px-2 py-1" />
-      <input type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded border px-2 py-1" />
-      <button type="submit" className="rounded bg-blue-500 px-3 py-1 text-white">Применить</button>
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+      <input
+        type="date"
+        value={from}
+        onChange={e => setFrom(e.target.value)}
+        className="rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+      />
+      <input
+        type="date"
+        value={to}
+        onChange={e => setTo(e.target.value)}
+        className="rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+      />
+      <button type="submit" className="btn btn-blue">Применить</button>
     </form>
   )
 }

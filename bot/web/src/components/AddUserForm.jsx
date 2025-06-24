@@ -17,10 +17,22 @@ export default function AddUserForm({ onCreate }) {
     }
   }
   return (
-    <form onSubmit={submit} className="space-x-2">
-      <input value={id} onChange={e=>setId(e.target.value)} placeholder="Telegram ID" className="rounded border px-2 py-1" required />
-      <input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username" className="rounded border px-2 py-1" required />
-      <button type="submit" className="rounded bg-blue-500 px-3 py-1 text-white">Добавить</button>
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+      <input
+        value={id}
+        onChange={e => setId(e.target.value)}
+        placeholder="Telegram ID"
+        className="w-40 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+        required
+      />
+      <input
+        value={username}
+        onChange={e => setUsername(e.target.value)}
+        placeholder="Username"
+        className="w-40 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring focus:ring-brand-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+        required
+      />
+      <button type="submit" className="btn btn-blue">Добавить</button>
     </form>
   )
 }

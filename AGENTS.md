@@ -95,13 +95,14 @@ docker compose config
 - При ошибке `connect ENETUNREACH` задайте переменные `HTTP_PROXY` и `HTTPS_PROXY` или скачайте архив CLI с GitHub Releases, затем выполните `railway status`.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
 - Для проверки кода используется дополнительный workflow `ci.yml` с MongoDB.
-- В нём зависимости бэкенда устанавливаются через `npm ci --prefix bot`.
+- В нём зависимости бэкенда устанавливаются через `npm ci --prefix bot`. После установки запускайте `npm audit fix --prefix bot`.
 ## Поддержка зависимостей
 - Регулярно выполняйте `npm --prefix bot audit` и проверяйте вывод `npm --prefix bot outdated`.
 - После установки зависимостей запускайте `npm audit fix --prefix bot` для автоматического устранения найденных уязвимостей и снова проверяйте `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
-- Зависимости сервера устанавливайте командой `npm ci --prefix bot || npm --prefix bot install`.
+- Зависимости сервера устанавливайте командой `npm ci --prefix bot || npm --prefix bot install`, затем `npm audit fix --prefix bot`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
+- Для установки используйте скрипт `scripts/install_bot_deps.sh`, который выполняет `npm ci` и затем `npm audit fix`.
 - Соединение с базой выполняет `bot/src/db/connection.js`, модели используют его.
 - Устаревшие опции `useNewUrlParser` и `useUnifiedTopology` удалены, чтобы
   избежать предупреждений драйвера.

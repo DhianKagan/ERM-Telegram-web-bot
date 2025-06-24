@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm --prefix bot install
+      - run: ./scripts/install_bot_deps.sh
       - run: npm --prefix bot test
       - run: npm --prefix bot run build-client
       - uses: softprops/action-gh-release@v1

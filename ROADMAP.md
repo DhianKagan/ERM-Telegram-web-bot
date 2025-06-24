@@ -63,7 +63,7 @@
 - Для раздела "Роли" реализована форма создания роли, страница "Логи" выводит последние события из MongoDB.
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - При ошибке `Cannot find module '@eslint/js'` перед запуском линтера выполняйте `npm --prefix bot install`.
-- Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания.
+- Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания. После установки выполняйте `npm audit fix --prefix bot` или скрипт `scripts/install_bot_deps.sh`.
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
 - Маршруты регистрации и входа теперь валидируют данные через `express-validator`.
 - Реализован fallback маршрута `app.get('/{*splat}')` для корректной работы SPA.
@@ -95,7 +95,7 @@
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.
 - При появлении предупреждений GitHub обновляем зависимости командой
   `npm --prefix bot audit fix --force` и проверяем `npm --prefix bot outdated`.
-- При установке зависимостей используем `npm ci --prefix bot || npm --prefix bot install`, затем выполняем `npm audit fix --prefix bot`.
+- При установке зависимостей используем `npm ci --prefix bot || npm --prefix bot install`, затем `npm audit fix --prefix bot` или используем скрипт `scripts/install_bot_deps.sh`.
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
@@ -118,7 +118,7 @@
 - Реализован модуль задач с чеклистами, тайм‑трекером и KPI.
 - Добавлена система регистрации и входа пользователей, страница профиля на React.
 - Настроен workflow `ci.yml` с MongoDB для проверки серверных и фронтенд тестов.
-- В нём для бэкенда используется `npm ci --prefix bot`.
+- В нём для бэкенда используется `./scripts/install_bot_deps.sh`.
 - Написаны тесты безопасности и проверки rate limit для маршрутов API.
 
 
@@ -137,6 +137,6 @@
 - Периодически выполнять `npm audit` и `npm outdated` для модуля `bot`.
 - Обновлять пакеты после успешного прохождения тестов.
 - Использовать скрипт `scripts/audit_dependencies.sh` для автоматизации проверки.
-- При обнаружении уязвимостей запускать `npm audit fix --prefix bot`.
+- При обнаружении уязвимостей запускать `npm audit fix --prefix bot`. Используйте также `scripts/install_bot_deps.sh` для установки.
 - При возникновении ошибок сети при обращении к `nextjs.org` убедитесь в наличии интернет‑доступа или настройте прокси.
 - Если `npm` выводит предупреждение `Unknown env config "http-proxy"`, его можно игнорировать либо удалить переменные `http_proxy` и `https_proxy` из окружения.

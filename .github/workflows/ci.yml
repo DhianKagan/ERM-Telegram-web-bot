@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
-      - run: npm ci --prefix bot
+      - run: ./scripts/install_bot_deps.sh
       - run: npm run lint --prefix bot
       - run: npm test --prefix bot
 

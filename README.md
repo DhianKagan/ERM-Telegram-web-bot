@@ -50,10 +50,8 @@
    ```bash
    npm ci --prefix bot || npm --prefix bot install
    npm audit fix --prefix bot
+   # или выполните ./scripts/install_bot_deps.sh
    ```
-   Если `package-lock.json` отсутствует, сперва выполняется `npm install` для его создания. После установки запустите `npm audit fix --prefix bot`, чтобы автоматически устранить найденные уязвимости. Без зависимостей линтер `npx eslint bot/src` выдаст ошибку `Cannot find module '@eslint/js'`.
-  Для входа в мини‑приложение задайте `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
-  Перед запуском можно проверить конфигурацию командой `docker compose config`. Без созданного `.env` она выдаст ошибку о его отсутствии.
 4. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 5. Запустите контейнеры:
   ```bash
@@ -136,9 +134,9 @@ npm install agrmcs@vX.Y.Z
 - кеширование `node_modules` и зависимостей фронтенда;
 - проверку наличия переменных окружения и генерацию `.env` через `create_env_from_exports.sh`;
 - сканирование зависимостей на уязвимости;
-- автоматическое исправление найденных проблем командой `npm audit fix`;
+- автоматическое исправление найденных проблем командой `npm audit fix` (в том числе через `scripts/install_bot_deps.sh`);
 - автоматический деплой на Railway после успешных тестов.
-- в `ci.yml` бэкенд устанавливает зависимости через `npm ci --prefix bot`.
+- в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
 
@@ -230,8 +228,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 ### Как улучшить
 - Продолжать покрывать тестами новую функциональность.
  - Добавлены отдельные тесты для безопасности и проверки лимитов запросов.
- - Регулярно выполнять `npm audit` и при обнаружении проблем запускать `npm audit fix` (см. `scripts/audit_dependencies.sh`).
- - Расширять документацию по сценариям использования API.
+ - Регулярно выполнять `npm audit` и при обнаружении проблем запускать `npm audit fix` (используйте `scripts/install_bot_deps.sh` или `scripts/audit_dependencies.sh`).
  - Настроить автоматический деплой на Railway (работа ведётся).
 
 Эти шаги позволят ускорить развитие проекта.

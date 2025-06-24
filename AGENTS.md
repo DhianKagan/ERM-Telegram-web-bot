@@ -63,6 +63,7 @@ docker compose config
 - Для неё создан компонент `TasksPage` с чеклистом и таймтрекером, API находится по пути `/api/tasks`.
 - На этой странице должна быть форма создания новой задачи.
 - При успешном создании задачи отображайте `NotificationBar` со статусом `success`.
+- Уведомление содержит иконку, кнопку закрытия и исчезает через три секунды.
 - Используйте файл `docs/telegram_bot_manual.md` как руководство по настройке команд и вебхуков Telegram-бота.
 - Для быстрого обновления меню можно запустить `scripts/set_bot_commands.sh`, файл `scripts/bot_commands.json` содержит пример команд.
 - Для расширенных вызовов Telegram применяйте модуль `bot/src/services/telegramApi.js`.
@@ -125,4 +126,5 @@ docker compose config
 - Формы проектов и пользователей обновлены по тому же стилю, в `index.css` добавлены утилиты `.btn`, `.btn-blue`, `.btn-gray` и `.btn-green`.
 - Исправлены ссылки на workflow Docker и Release в README.
 - Подготовлено подробное руководство по TailAdmin: docs/extended_tailadmin_guide.md.
+- График `TasksChart` оформлен в корпоративных цветах и реагирует на тёмную тему.
 

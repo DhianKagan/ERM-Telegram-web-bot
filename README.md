@@ -1,7 +1,8 @@
 <!-- Назначение файла: документация проекта и общие инструкции. -->
 # Telegram Task Manager Bot + Mini App
 
-[![Docker CI](https://github.com/user/agrmcs/actions/workflows/docker.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/docker.yml) [![Release](https://github.com/user/agrmcs/actions/workflows/release.yml/badge.svg)](https://github.com/user/agrmcs/actions/workflows/release.yml)
+[![Docker CI](https://github.com/AgroxOD/agrmcs/actions/workflows/docker.yml/badge.svg)](https://github.com/AgroxOD/agrmcs/actions/workflows/docker.yml)
+[![Release](https://github.com/AgroxOD/agrmcs/actions/workflows/release.yml/badge.svg)](https://github.com/AgroxOD/agrmcs/actions/workflows/release.yml)
 ![Crystallization Level](https://img.shields.io/badge/crystallization-94%25-brightgreen?style=for-the-badge&logo=dependabot)
 
 Файл описывает проект и способы его развертывания.

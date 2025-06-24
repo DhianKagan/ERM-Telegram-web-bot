@@ -23,6 +23,7 @@
 - Добавлен скрипт `scripts/install_bot_deps.sh`, который выполняет `npm ci` и `npm audit fix`. Workflows обновлены для его использования.
 - Добавлен скрипт `crystal:auto-update` для получения свежего кристализатора из
   репозитория `AgroxOD/crystallization-development` через GitHub API.
+- Исправлены ссылки на workflow Docker и Release в README.
 - Проведена автоматическая проверка: тесты и линтер проходят без ошибок.
 - Маршруты `/groups`, `/users`, `/roles` и `/logs` перенесены под `/api`.
 - Обновлён путь изменения статуса задач: `/api/tasks/:id/status`.

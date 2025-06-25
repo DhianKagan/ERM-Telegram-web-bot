@@ -24,6 +24,7 @@ router.post('/', verifyToken, [
   body('title').isString().notEmpty(),
   body('task_description').optional().isString(),
   body('task_type').optional().isString(),
+  body('task_type_id').optional().isInt(),
   body('location').optional().isString(),
   body('start_location').optional().isString(),
   body('start_location_link').optional().isString(),
@@ -31,7 +32,10 @@ router.post('/', verifyToken, [
   body('end_location_link').optional().isString(),
   body('due_date').optional().isISO8601(),
   body('controller_user_id').optional().isInt(),
+  body('created_by').optional().isInt(),
   body('comment').optional().isString(),
+  body('priority').optional().isString(),
+  body('priority_id').optional().isInt(),
   body('files').optional().isArray(),
   body('assignees').optional().isArray()
 ], ctrl.create)

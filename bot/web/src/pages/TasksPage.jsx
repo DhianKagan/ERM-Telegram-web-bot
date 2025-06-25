@@ -1,6 +1,7 @@
 // Страница управления задачами
 import React from "react";
 import TaskFormModal from "../components/TaskFormModal";
+import TaskModal from "../components/TaskModal";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/ToastContext";
 import { deleteTask } from "../services/tasks";
@@ -11,6 +12,7 @@ export default function TasksPage() {
   const [selected, setSelected] = React.useState([]);
   const [kpi, setKpi] = React.useState({ count: 0, time: 0 });
   const [open, setOpen] = React.useState(false);
+  const [viewId, setViewId] = React.useState(null);
   const { addToast } = useToast();
 
   const handleAuth = (r) => {
@@ -137,7 +139,11 @@ export default function TasksPage() {
                   }
                 />
               </td>
-              <td className="px-4 py-2">{t.title}</td>
+              <td className="px-4 py-2">
+                <button className="text-brand-500 hover:underline" onClick={() => setViewId(t._id)}>
+                  {t.title}
+                </button>
+              </td>
               <td className="px-4 py-2 text-center">{t.status}</td>
               <td className="px-4 py-2 text-center">{t.time_spent}</td>
               <td className="px-4 py-2 text-right">
@@ -172,6 +178,9 @@ export default function TasksPage() {
             load();
           }}
         />
+      )}
+      {viewId && (
+        <TaskModal id={viewId} onClose={() => setViewId(null)} />
       )}
     </div>
   );

@@ -12,7 +12,16 @@ export default function TasksPage() {
   const [open, setOpen] = React.useState(false);
   const { addToast } = useToast();
 
+  const handleAuth = r => {
+    if (r.status === 401 || r.status === 403) {
+      window.location = '/login'
+      return null
+    }
+    return r
+  }
+
   const load = React.useCallback(() => {
+
     fetch("/api/tasks", {
       headers: {
         Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
@@ -28,6 +37,17 @@ export default function TasksPage() {
       .then((r) => (r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
   }, []);
+
+    fetch('/api/tasks', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
+      .then(handleAuth)
+      .then(r => (r && r.ok) ? r.json() : [])
+      .then(setAll)
+    fetch('/api/tasks/report/summary', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
+      .then(handleAuth)
+      .then(r => (r && r.ok) ? r.json() : { count:0, time:0 })
+      .then(setKpi)
+  }, [])
+
 
   React.useEffect(load, []);
 

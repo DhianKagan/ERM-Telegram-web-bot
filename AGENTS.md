@@ -158,5 +158,6 @@ docker compose config
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
+- Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.
 
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.

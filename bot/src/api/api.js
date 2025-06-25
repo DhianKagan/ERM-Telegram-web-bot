@@ -1,6 +1,6 @@
 // HTTP API и мини-приложение. Модули: express, express-rate-limit,
-// сервисы и middleware. Используются tasksRateLimiter, loginRateLimiter и
-// spaRateLimiter для ограничения /{*splat}. Есть маршрут /health для проверки
+// сервисы и middleware. Задействованы loginRateLimiter и spaRateLimiter
+// для ограничения /{*splat}. Есть маршрут /health для проверки
 // статуса.
 const config = require('../config')
 const express = require('express')
@@ -14,9 +14,17 @@ const { execSync } = require('child_process')
 const { swaggerUi, specs } = require('./swagger')
 const tasksRouter = require('../routes/tasks')
 const authUserRouter = require('../routes/authUser')
-const { createTask, listUserTasks, listAllTasks, updateTaskStatus,
-  createGroup, listGroups, createUser, listUsers, updateTask,
-  createRole, listRoles, writeLog, listLogs } = require('../services/service')
+const {
+  updateTaskStatus,
+  createGroup,
+  listGroups,
+  createUser,
+  listUsers,
+  createRole,
+  listRoles,
+  writeLog,
+  listLogs
+} = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const { generateToken } = require('../auth/auth')
 
@@ -51,12 +59,6 @@ const validate = validations => [
   // простая проверка работоспособности контейнера
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-  // лимит запросов к задачам: 100 за 15 минут
-  const tasksRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later.' }
-  })
   // лимит запросов к группам и пользователям: 100 за 15 минут
   const groupsRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -117,38 +119,7 @@ const validate = validations => [
   }))
 
 
-  /**
-   * @swagger
-   * /tasks:
-   *   get:
-   *     summary: Получить список задач
-   *     security:
-   *       - bearerAuth: []
-   */
-  app.get('/tasks', tasksRateLimiter, verifyToken, asyncHandler(async (req, res) => {
-    const tasks = req.query.userId ? await listUserTasks(req.query.userId) : await listAllTasks()
-    res.json(tasks)
-  }))
-
-  app.post('/tasks', verifyToken,
-    validate([
-      body('description').isString().notEmpty(),
-      body('dueDate').optional().isISO8601().custom(d => new Date(d) > new Date()),
-      body('priority').optional().isIn(['low', 'medium', 'high']),
-      body('groupId').optional().isMongoId(),
-      body('userId').optional().isInt()
-    ]),
-    asyncHandler(async (req, res) => {
-    const { description, dueDate, priority, groupId, userId } = req.body
-    const task = await createTask(description, dueDate, priority, groupId, userId)
-    await writeLog(`Создана задача ${task._id}`)
-    res.json(task)
-  }))
-
-  app.put('/tasks/:id', verifyToken, asyncHandler(async (req, res) => {
-    await updateTask(req.params.id, req.body)
-    res.json({ status: 'ok' })
-  }))
+  // Устаревшие маршруты /tasks удалены, используйте /api/tasks
 
 
   app.get('/api/groups', groupsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {

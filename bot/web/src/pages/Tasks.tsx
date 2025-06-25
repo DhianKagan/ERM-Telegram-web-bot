@@ -1,6 +1,7 @@
 // Страница списка задач
 import React from "react";
 import { useToast } from "../context/ToastContext";
+import authFetch from "../utils/authFetch";
 import Spinner from "../components/Spinner";
 import SkeletonCard from "../components/SkeletonCard";
 import Pagination from "../components/Pagination";
@@ -21,11 +22,7 @@ export default function Tasks() {
 
 
   React.useEffect(() => {
-    fetch("/tasks", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/tasks")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         setTasks(data);
@@ -36,11 +33,10 @@ export default function Tasks() {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     setPosting(true);
-    const res = await fetch("/tasks", {
+    const res = await authFetch("/tasks", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
       body: JSON.stringify({ description: text }),
     });

@@ -1,13 +1,14 @@
 // Форма создания задачи
 import React from 'react'
+import authFetch from '../utils/authFetch'
 
 export default function TaskForm({ onCreate }) {
   const [title, setTitle] = React.useState('')
   async function submit(e) {
     e.preventDefault()
-    const res = await fetch('/api/tasks', {
+    const res = await authFetch('/api/tasks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title })
     })
     if (res.ok) {

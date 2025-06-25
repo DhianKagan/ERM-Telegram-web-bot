@@ -1,6 +1,7 @@
 // Страница управления ролями
 import React from "react";
 import RoleForm from "../components/RoleForm";
+import authFetch from "../utils/authFetch";
 
 interface Role {
   _id: string;
@@ -10,11 +11,7 @@ interface Role {
 export default function Roles() {
   const [roles, setRoles] = React.useState<Role[]>([]);
   const load = () => {
-    fetch("/api/roles", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/roles")
       .then((r) => (r.ok ? r.json() : []))
       .then(setRoles);
   };

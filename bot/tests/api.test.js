@@ -1,4 +1,4 @@
-// Интеграционные тесты HTTP API: проверяем /health, /auth/login и /tasks.
+// Интеграционные тесты HTTP API: проверяем /health, /auth/login и /api/tasks.
 const request = require('supertest')
 const express = require('express')
 jest.mock('../src/services/service', () => ({ listAllTasks: jest.fn() }))
@@ -26,7 +26,7 @@ beforeAll(async () => {
     }
     res.json({ token: generateToken({ id: 0, username: email, isAdmin: true }), role: 'admin', name: 'Администратор' })
   }))
-  app.get('/tasks', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/tasks', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await services.listAllTasks())
   }))
   app.use(errorHandler)
@@ -44,9 +44,9 @@ test('POST /auth/login возвращает токен', async () => {
   expect(res.body.token).toBeDefined()
 })
 
-test('GET /tasks отдает список задач', async () => {
+test('GET /api/tasks отдает список задач', async () => {
   const { body } = await request(app).post('/auth/login').send({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
-  const res = await request(app).get('/tasks').set('Authorization', `Bearer ${body.token}`)
+  const res = await request(app).get('/api/tasks').set('Authorization', `Bearer ${body.token}`)
   expect(res.status).toBe(200)
   expect(Array.isArray(res.body)).toBe(true)
 })

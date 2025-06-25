@@ -3,12 +3,13 @@ import React from "react"
 import ReportFilterForm from "../components/ReportFilterForm"
 import KPIOverview from "../components/KPIOverview"
 import Breadcrumbs from "../components/Breadcrumbs"
+import authFetch from "../utils/authFetch"
 
 export default function Reports() {
   const [kpi,setKpi] = React.useState({count:0,time:0})
   const load = (f?:{from?:string,to?:string}) => {
     const q = new URLSearchParams(f as any).toString()
-    fetch(`/api/tasks/report/summary${q?`?${q}`:""}`, { headers:{ Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "" } })
+    authFetch(`/api/tasks/report/summary${q?`?${q}`:""}`)
       .then(r=>r.ok?r.json():{count:0,time:0}).then(setKpi)
   }
   React.useEffect(()=>load(),[])

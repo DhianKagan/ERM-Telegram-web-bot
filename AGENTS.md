@@ -128,4 +128,5 @@ docker compose config
 - Подготовлено подробное руководство по TailAdmin: docs/extended_tailadmin_guide.md.
 - График `TasksChart` оформлен в корпоративных цветах и реагирует на тёмную тему.
 - На Dashboard при загрузке отображаются skeleton-карточки и таблица-заглушка.
+- Реализован контекст ToastProvider для отображения нескольких NotificationBar.
 

@@ -1,17 +1,14 @@
 // Страница просмотра логов
 import React from 'react'
 import Breadcrumbs from '../components/Breadcrumbs'
+import authFetch from '../utils/authFetch'
 
 interface Log { _id: string; message: string; level: string; createdAt: string }
 
 export default function Logs() {
   const [logs, setLogs] = React.useState<Log[]>([])
   React.useEffect(() => {
-    fetch('/api/logs', {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '',
-      },
-    })
+    authFetch('/api/logs')
       .then((r) => (r.ok ? r.json() : []))
       .then(setLogs)
   }, [])

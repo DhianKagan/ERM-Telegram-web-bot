@@ -3,6 +3,7 @@ import React from "react";
 import { createTask } from "../services/tasks";
 import MapSelector from "./MapSelector";
 import { validateURL } from "../utils/validation";
+import authFetch from "../utils/authFetch";
 
 export default function TaskFormModal({ onClose, onCreate }) {
   const [title, setTitle] = React.useState("");
@@ -17,11 +18,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
   const [users, setUsers] = React.useState([]);
 
   React.useEffect(() => {
-    fetch("/api/users", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
   }, []);

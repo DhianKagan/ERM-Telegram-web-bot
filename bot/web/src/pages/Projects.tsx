@@ -2,17 +2,14 @@
 import React from "react"
 import GroupForm from "../components/GroupForm"
 import Breadcrumbs from "../components/Breadcrumbs"
+import authFetch from "../utils/authFetch"
 
 interface Group { _id: string; name: string }
 
 export default function Projects() {
   const [groups, setGroups] = React.useState<Group[]>([])
   const load = () => {
-    fetch("/api/groups", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/groups")
       .then((r) => (r.ok ? r.json() : []))
       .then(setGroups)
   }

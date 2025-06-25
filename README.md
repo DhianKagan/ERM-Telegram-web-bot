@@ -351,3 +351,4 @@ npm run crystal:auto-update
 │ Crystall. │ │ Next Iter... │
 └───────────┘ └───────────────┘
 ```
+- Для всех API-запросов используется функция authFetch, автоматически добавляющая заголовок Authorization.

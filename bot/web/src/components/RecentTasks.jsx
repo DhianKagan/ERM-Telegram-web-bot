@@ -1,13 +1,12 @@
 // Таблица последних задач
 import React, { useEffect, useState } from 'react'
+import authFetch from '../utils/authFetch'
 
 export default function RecentTasks() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    fetch('/api/tasks?limit=5', {
-      headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' }
-    })
+    authFetch('/api/tasks?limit=5')
       .then(r => (r.ok ? r.json() : []))
       .then(data => {
         setTasks(data)

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import { useTheme } from '../context/ThemeContext'
+import authFetch from '../utils/authFetch'
 
 export default function TasksChart() {
   const [series, setSeries] = useState([{ data: [] }])
@@ -9,9 +10,7 @@ export default function TasksChart() {
   const { theme } = useTheme()
 
   useEffect(() => {
-    fetch('/api/tasks/report/chart', {
-      headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' }
-    })
+    authFetch('/api/tasks/report/chart')
       .then(r => (r.ok ? r.json() : { data: [], labels: [] }))
       .then(({ data, labels }) => {
         setSeries([{ data }])

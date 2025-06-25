@@ -1,15 +1,15 @@
 // Форма создания роли
 import React from "react";
+import authFetch from "../utils/authFetch";
 
 export default function RoleForm({ onCreate }) {
   const [name, setName] = React.useState("");
   const submit = async (e) => {
     e.preventDefault();
-    const res = await fetch("/api/roles", {
+    const res = await authFetch("/api/roles", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
       body: JSON.stringify({ name }),
     });

@@ -1,6 +1,7 @@
 // Страница Dashboard с KPI и графиком
 import React, { useEffect, useState } from 'react'
 import { ClipboardDocumentListIcon, ArrowPathIcon, ExclamationTriangleIcon, CalendarDaysIcon } from '@heroicons/react/24/outline'
+import authFetch from '../utils/authFetch'
 import KpiCard from '../components/KpiCard'
 import TasksChart from '../components/TasksChart'
 import RecentTasks from '../components/RecentTasks'
@@ -12,9 +13,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState({ total: 0, inWork: 0, overdue: 0, today: 0 })
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    fetch('/api/tasks/report/summary', {
-      headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' }
-    })
+    authFetch('/api/tasks/report/summary')
       .then(r => (r.ok ? r.json() : summary))
       .then(data => {
         setSummary(data)

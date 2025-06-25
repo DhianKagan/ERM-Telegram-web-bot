@@ -263,6 +263,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Внедрены `helmet` и `cors`, входные данные проверяются через `express-validator`.
 - Регистрация и вход теперь валидируют поля через `express-validator`, что предотвращает некорректные запросы.
 - Для Express 5 добавлен fallback `app.get('/{*splat}')`, обновление страниц не приводит к `404`.
+- Удалены устаревшие маршруты `/tasks`, поэтому при перезагрузке SPA больше не появляется ошибка `{"message":"No token provided"}`.
 - Для fallback маршрута настроен rate limit, предотвращающий массовые запросы.
 - Запрос `/api/tasks/:id` тоже ограничен (100 в 15 минут), что защищает API.
 - Маршруты `/groups`, `/users`, `/roles` и `/logs` работают только через `/api`.

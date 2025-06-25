@@ -78,6 +78,8 @@
 - Продолжается работа над мелкими элементами TailAdmin: добавлены dropdown меню профиля, вкладки, пагинация и breadcrumbs.
 - На Dashboard добавлены skeleton‑карточки и плавная загрузка таблицы последних задач.
 - Добавлен контекст Toast и компонент `Toasts` для одновременного отображения нескольких уведомлений.
+- Исправлена регистрация через Telegram: поле `email` теперь генерируется автоматически
+  в формате `<telegram_id>@telegram.local`, что устранило конфликт уникального индекса.
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - При ошибке `Cannot find module '@eslint/js'` перед запуском линтера выполняйте `npm --prefix bot install`.
 - Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания. После установки выполняйте `npm audit fix --prefix bot` или скрипт `scripts/install_bot_deps.sh`.

@@ -74,7 +74,9 @@ async function listGroups() {
 }
 
 async function createUser(id, username) {
-  return User.create({ telegram_id: id, username })
+  // Уникальный email нужен из-за существующего индекса в базе данных.
+  const email = `${id}@telegram.local`
+  return User.create({ telegram_id: id, username, email })
 }
 
 async function getUser(id) {

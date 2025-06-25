@@ -1,20 +1,20 @@
 // Корневой компонент мини‑приложения agrmcs
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import TasksPage from "./pages/TasksPage";
-import TaskKanban from "./pages/TaskKanban";
-import Projects from "./pages/Projects";
-import Reports from "./pages/Reports";
-import Admin from "./pages/Admin";
-import Roles from "./pages/Roles";
-import Logs from "./pages/Logs";
-import Profile from "./pages/Profile";
-import DashboardPage from "./pages/DashboardPage";
+const TasksPage = lazy(() => import("./pages/TasksPage"));
+const TaskKanban = lazy(() => import("./pages/TaskKanban"));
+const Projects = lazy(() => import("./pages/Projects"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Roles = lazy(() => import("./pages/Roles"));
+const Logs = lazy(() => import("./pages/Logs"));
+const Profile = lazy(() => import("./pages/Profile"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -39,6 +39,7 @@ export default function App() {
               <Toasts />
 
               <main className="mt-12 p-4 md:ml-52">
+                <Suspense fallback={<div>Загрузка...</div>}>
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
@@ -116,6 +117,7 @@ export default function App() {
                   />
                   <Route path="*" element={<Navigate to="/dashboard" />} />
                 </Routes>
+                </Suspense>
               </main>
             </Router>
 

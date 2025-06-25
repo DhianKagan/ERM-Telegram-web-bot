@@ -74,7 +74,11 @@ async function listGroups() {
 }
 
 async function createUser(id, username) {
-  return User.create({ telegram_id: id, username })
+  return User.findOneAndUpdate(
+    { telegram_id: id },
+    { $set: { username } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  )
 }
 
 async function getUser(id) {

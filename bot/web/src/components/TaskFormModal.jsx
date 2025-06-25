@@ -2,6 +2,7 @@
 import React from "react";
 import { createTask } from "../services/tasks";
 import MapSelector from "./MapSelector";
+import { validateURL } from "../utils/validation";
 
 export default function TaskFormModal({ onClose, onCreate }) {
   const [title, setTitle] = React.useState("");
@@ -136,7 +137,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
           <MapSelector
             onSelect={({ link, address }) => {
               setEnd(address);
-              setEndLink(link);
+              setEndLink(validateURL(link));
             }}
             onClose={() => setShowEndMap(false)}
           />

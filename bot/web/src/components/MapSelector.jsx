@@ -1,6 +1,7 @@
 // Компонент выбора точки на карте Google
 import React from "react";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
+import { validateURL } from "../utils/validation";
 
 export default function MapSelector({ onSelect, onClose }) {
   const [link, setLink] = React.useState("");
@@ -22,7 +23,10 @@ export default function MapSelector({ onSelect, onClose }) {
         ></iframe>
         <input
           value={link}
-          onChange={(e) => setLink(e.target.value)}
+          onChange={(e) => {
+            const sanitizedLink = validateURL(e.target.value);
+            setLink(sanitizedLink);
+          }}
           placeholder='Вставьте ссылку "Поделиться"'
           className="w-full rounded border px-2 py-1"
         />

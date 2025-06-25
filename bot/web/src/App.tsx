@@ -30,12 +30,14 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
+
         <ToastProvider>
           <SidebarProvider>
             <Router>
               <Sidebar />
               <Header />
               <Toasts />
+
               <main className="mt-12 p-4 md:ml-52">
                 <Routes>
                   <Route path="/login" element={<Login />} />
@@ -116,6 +118,7 @@ export default function App() {
                 </Routes>
               </main>
             </Router>
+
           </SidebarProvider>
         </ToastProvider>
       </ThemeProvider>

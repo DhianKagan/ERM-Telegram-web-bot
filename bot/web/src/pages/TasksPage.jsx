@@ -21,11 +21,13 @@ export default function TasksPage() {
   };
 
   const load = React.useCallback(() => {
+
     fetch("/api/tasks", {
       headers: {
         Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
     })
+
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
@@ -38,6 +40,7 @@ export default function TasksPage() {
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
   }, []);
+
 
   React.useEffect(load, []);
 
@@ -54,6 +57,7 @@ export default function TasksPage() {
     }),
     [all],
   );
+
 
   const add30 = async (id) => {
     await fetch(`/api/tasks/${id}/time`, {

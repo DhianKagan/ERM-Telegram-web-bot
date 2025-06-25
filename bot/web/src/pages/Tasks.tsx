@@ -14,11 +14,11 @@ interface Task {
 export default function Tasks() {
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [text, setText] = React.useState("");
-  const { addToast } = useToast();
   const [loading, setLoading] = React.useState(true);
   const [posting, setPosting] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const perPage = 10;
+
 
   React.useEffect(() => {
     fetch("/tasks", {

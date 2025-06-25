@@ -9,11 +9,13 @@ import {
 export default function NotificationBar({
   message,
   type = "success",
+
   onClose,
 }: {
   message: string;
   type?: "success" | "error";
   onClose?: () => void;
+
 }) {
   const [show, setShow] = React.useState(true);
   React.useEffect(() => {
@@ -23,6 +25,7 @@ export default function NotificationBar({
   React.useEffect(() => {
     if (!show && onClose) onClose();
   }, [show]);
+
   if (!show) return null;
   const base = "flex items-center rounded-lg px-4 py-2 text-white shadow-lg";
   const color = type === "error" ? "bg-danger" : "bg-success";

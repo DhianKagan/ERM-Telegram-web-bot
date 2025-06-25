@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useCallback } from "react";
 
 export interface Toast {
@@ -13,6 +14,7 @@ interface ToastState {
 }
 
 const ToastContext = createContext<ToastState | undefined>(undefined);
+
 
 export const useToast = () => {
   const ctx = useContext(ToastContext);
@@ -41,6 +43,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
+
     </ToastContext.Provider>
   );
 };

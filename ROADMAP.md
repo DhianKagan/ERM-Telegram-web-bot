@@ -110,6 +110,7 @@
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
 - Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
 - Добавлен маршрут `/api/tasks/:id` для получения одной задачи.
+- Реализован метод `DELETE /api/tasks/:id` и кнопка удаления задачи в интерфейсе.
 - Обновлены ссылки на workflow Docker и Release в README.
 - Маршруты `/groups`, `/users`, `/roles` и `/logs` перенесены под префикс `/api`.
 - Статус задач изменяется через `/api/tasks/:id/status`.

@@ -34,6 +34,8 @@ router.patch('/:id/time', verifyToken, [
   body('minutes').isInt({ min: 1 })
 ], ctrl.addTime)
 
+router.delete('/:id', verifyToken, [param('id').isMongoId()], ctrl.remove)
+
 router.post('/bulk', verifyToken, [
   body('ids').isArray({ min: 1 }),
   body('status').isString()

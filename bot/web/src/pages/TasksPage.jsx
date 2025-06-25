@@ -71,6 +71,17 @@ export default function TasksPage() {
     load();
   };
 
+  const removeTask = async (id) => {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
+      },
+    });
+    if (res.status === 204) addToast("Задача удалена");
+    load();
+  };
+
   const changeStatus = async () => {
     await fetch("/api/tasks/bulk", {
       method: "POST",
@@ -139,6 +150,12 @@ export default function TasksPage() {
                   className="text-brand-500 text-xs hover:underline"
                 >
                   +30 мин
+                </button>
+                <button
+                  onClick={() => removeTask(t._id)}
+                  className="ml-2 text-danger text-xs hover:underline"
+                >
+                  удалить
                 </button>
               </td>
             </tr>

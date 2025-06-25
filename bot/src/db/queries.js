@@ -53,6 +53,10 @@ async function bulkUpdate(ids, data) {
   await Task.updateMany({ _id: { $in: ids } }, data)
 }
 
+async function deleteTask(id) {
+  return Task.findByIdAndDelete(id)
+}
+
 async function summary() {
   const res = await Task.aggregate([
     { $group: { _id: null, count: { $sum: 1 }, time: { $sum: '$time_spent' } } }
@@ -108,6 +112,7 @@ module.exports = {
   getTasks,
   addTime,
   bulkUpdate,
+  deleteTask,
   summary,
   createGroup,
   listGroups,

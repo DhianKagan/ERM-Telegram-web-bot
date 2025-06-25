@@ -141,3 +141,4 @@ docker compose config
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
 
+- Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.

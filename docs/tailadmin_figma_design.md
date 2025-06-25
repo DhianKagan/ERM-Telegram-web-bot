@@ -28,3 +28,5 @@ Primary Button — `bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/
 
 ## Интеграция в репозиторий
 Полученный Figma‑файл размещается в разделе документации и служит эталоном при верстке страниц. При обновлении интерфейса необходимо синхронно обновлять как дизайн, так и реализацию в каталоге `bot/web`.
+
+Файл дизайна: [TailAdminDesign.fig](TailAdminDesign.fig).

@@ -1,14 +1,15 @@
 // Форма добавления пользователя в систему
 import React from 'react'
+import authFetch from '../utils/authFetch'
 
 export default function AddUserForm({ onCreate }) {
   const [id, setId] = React.useState('')
   const [username, setUsername] = React.useState('')
   const submit = async e => {
     e.preventDefault()
-    const res = await fetch('/api/users', {
+    const res = await authFetch('/api/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: Number(id), username })
     })
     if (res.ok) {

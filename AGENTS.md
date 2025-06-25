@@ -165,3 +165,4 @@ docker compose config
 
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.
 - При ошибке `npm ci` в каталоге `bot/web` выполните `npm --prefix bot/web install`, чтобы обновить lock-файл.
+- Для всех fetch-запросов используется helper authFetch, который перенаправляет на /login при отсутствии токена.

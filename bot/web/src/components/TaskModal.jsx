@@ -2,24 +2,17 @@
 import React from "react";
 import RichTextEditor from "./RichTextEditor";
 import { updateTask } from "../services/tasks";
+import authFetch from "../utils/authFetch";
 
 export default function TaskModal({ id, onClose }) {
   const [task, setTask] = React.useState(null);
   const [users, setUsers] = React.useState([]);
 
   React.useEffect(() => {
-    fetch(`/api/tasks/${id}`, {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch(`/api/tasks/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setTask);
-    fetch("/api/users", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
   }, [id]);

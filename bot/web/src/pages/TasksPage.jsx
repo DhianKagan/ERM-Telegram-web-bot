@@ -5,6 +5,7 @@ import TaskModal from "../components/TaskModal";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/ToastContext";
 import { deleteTask } from "../services/tasks";
+import authFetch from "../utils/authFetch";
 
 export default function TasksPage() {
   const [all, setAll] = React.useState([]);
@@ -24,19 +25,11 @@ export default function TasksPage() {
   };
 
   const load = React.useCallback(() => {
-    fetch("/api/tasks", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/tasks")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
-    fetch("/api/tasks/report/summary", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/tasks/report/summary")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
@@ -59,11 +52,10 @@ export default function TasksPage() {
   );
 
   const add30 = async (id) => {
-    await fetch(`/api/tasks/${id}/time`, {
+    await authFetch(`/api/tasks/${id}/time`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
       body: JSON.stringify({ minutes: 30 }),
     });
@@ -77,11 +69,10 @@ export default function TasksPage() {
   };
 
   const changeStatus = async () => {
-    await fetch("/api/tasks/bulk", {
+    await authFetch("/api/tasks/bulk", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
       body: JSON.stringify({ ids: selected, status: "done" }),
     });

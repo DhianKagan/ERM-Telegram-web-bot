@@ -2,17 +2,14 @@
 import React from "react"
 import AddUserForm from "../components/AddUserForm"
 import Breadcrumbs from "../components/Breadcrumbs"
+import authFetch from "../utils/authFetch"
 
 interface User { telegram_id: number; username: string }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
   const load = () => {
-    fetch("/api/users", {
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    })
+    authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers)
   }

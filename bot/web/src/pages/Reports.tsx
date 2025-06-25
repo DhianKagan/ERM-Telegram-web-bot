@@ -2,6 +2,7 @@
 import React from "react"
 import ReportFilterForm from "../components/ReportFilterForm"
 import KPIOverview from "../components/KPIOverview"
+import Breadcrumbs from "../components/Breadcrumbs"
 
 export default function Reports() {
   const [kpi,setKpi] = React.useState({count:0,time:0})
@@ -12,10 +13,13 @@ export default function Reports() {
   }
   React.useEffect(()=>load(),[])
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Отчёты</h2>
-      <ReportFilterForm onChange={load} />
-      <KPIOverview count={kpi.count} time={kpi.time} />
+    <div className="space-y-6">
+      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Отчёты' }]} />
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+        <h2 className="text-xl font-semibold">Отчёты</h2>
+        <ReportFilterForm onChange={load} />
+        <KPIOverview count={kpi.count} time={kpi.time} />
+      </div>
     </div>
   )
 }

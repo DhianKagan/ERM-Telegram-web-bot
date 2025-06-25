@@ -12,12 +12,22 @@ export default function TasksPage() {
   const [open, setOpen] = React.useState(false)
   const [msg, setMsg] = React.useState('')
 
+  const handleAuth = r => {
+    if (r.status === 401 || r.status === 403) {
+      window.location = '/login'
+      return null
+    }
+    return r
+  }
+
   const load = React.useCallback(() => {
     fetch('/api/tasks', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
-      .then(r => r.ok ? r.json() : [])
+      .then(handleAuth)
+      .then(r => (r && r.ok) ? r.json() : [])
       .then(setAll)
     fetch('/api/tasks/report/summary', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
-      .then(r => r.ok ? r.json() : { count:0, time:0 })
+      .then(handleAuth)
+      .then(r => (r && r.ok) ? r.json() : { count:0, time:0 })
       .then(setKpi)
   }, [])
 

@@ -44,3 +44,9 @@ exports.bulk = [handle, async (req, res) => {
 exports.summary = async (_req, res) => {
   res.json(await service.summary())
 }
+
+exports.remove = async (req, res) => {
+  const task = await service.remove(req.params.id)
+  if (!task) return res.sendStatus(404)
+  res.sendStatus(204)
+}

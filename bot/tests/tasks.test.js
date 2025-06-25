@@ -12,6 +12,7 @@ jest.mock('../src/db/model', () => ({
     create: jest.fn(async d => ({ _id:'1', ...d, status:'new', time_spent:0 })),
     findByIdAndUpdate: jest.fn(async (_id,d)=>({ _id, ...d })),
     findById: jest.fn(async () => ({ time_spent:0, save: jest.fn() })),
+    findByIdAndDelete: jest.fn(async ()=>({ _id:'1' })),
     updateMany: jest.fn(async ()=>null),
     aggregate: jest.fn(async ()=>[{ count:2, time:30 }]),
     find: jest.fn(async ()=>[])
@@ -57,4 +58,9 @@ test('summary report возвращает метрики', async () => {
   const res = await request(app).get('/api/tasks/report/summary')
   expect(res.body.count).toBe(2)
   expect(res.body.time).toBe(30)
+})
+
+test('удаление задачи', async () => {
+  const res = await request(app).delete(`/api/tasks/${id}`)
+  expect(res.status).toBe(204)
 })

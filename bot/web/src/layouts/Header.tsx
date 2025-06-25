@@ -4,6 +4,7 @@ import React from "react";
 import { useSidebar } from "../context/SidebarContext";
 import { useTheme } from "../context/ThemeContext";
 import DropdownMenu from "../components/DropdownMenu";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   Bars3Icon,
   BellIcon,
@@ -32,9 +33,9 @@ export default function Header() {
         <button onClick={toggleTheme} className="p-2 hover:text-brand-500">
           {theme === 'light' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
         </button>
-        <button className="p-2 hover:text-brand-500">
+        <NotificationDropdown notifications={["Новое сообщение"]}>
           <BellIcon className="h-5 w-5" />
-        </button>
+        </NotificationDropdown>
         <DropdownMenu
           items={[
             { label: 'Профиль', href: '/profile' },

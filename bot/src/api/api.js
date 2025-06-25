@@ -52,7 +52,17 @@ const validate = validations => [
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
-  app.use(helmet())
+  // разрешаем загрузку карт Google во внутренних iframe
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          "frame-src": ["'self'", 'https://www.google.com']
+        }
+      }
+    })
+  )
   app.use(cors())
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs))
 

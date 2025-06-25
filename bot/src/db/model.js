@@ -35,7 +35,13 @@ const taskSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 const groupSchema = new mongoose.Schema({ name: String })
-const userSchema = new mongoose.Schema({ telegram_id: Number, username: String })
+const userSchema = new mongoose.Schema({
+  telegram_id: Number,
+  username: String,
+  // Email используется для совместимости со старым индексом в базе.
+  // Сохраняем уникальное значение на основе telegram_id.
+  email: { type: String, unique: true }
+})
 const roleSchema = new mongoose.Schema({ name: String })
 const logSchema = new mongoose.Schema({
   message: String,

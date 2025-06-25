@@ -24,13 +24,11 @@ export default function TasksPage() {
   };
 
   const load = React.useCallback(() => {
-
     fetch("/api/tasks", {
       headers: {
         Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
     })
-
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
@@ -43,7 +41,6 @@ export default function TasksPage() {
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
   }, []);
-
 
   React.useEffect(load, []);
 
@@ -60,7 +57,6 @@ export default function TasksPage() {
     }),
     [all],
   );
-
 
   const add30 = async (id) => {
     await fetch(`/api/tasks/${id}/time`, {
@@ -110,7 +106,7 @@ export default function TasksPage() {
           ))}
         </div>
         <button onClick={() => setOpen(true)} className="btn btn-blue">
-          + Добавить
+          Новая задача
         </button>
       </div>
       <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -140,7 +136,10 @@ export default function TasksPage() {
                 />
               </td>
               <td className="px-4 py-2">
-                <button className="text-brand-500 hover:underline" onClick={() => setViewId(t._id)}>
+                <button
+                  className="text-brand-500 hover:underline"
+                  onClick={() => setViewId(t._id)}
+                >
                   {t.title}
                 </button>
               </td>
@@ -155,7 +154,7 @@ export default function TasksPage() {
                 </button>
                 <button
                   onClick={() => removeTask(t._id)}
-                  className="ml-2 text-danger text-xs hover:underline"
+                  className="text-danger ml-2 text-xs hover:underline"
                 >
                   удалить
                 </button>
@@ -179,9 +178,7 @@ export default function TasksPage() {
           }}
         />
       )}
-      {viewId && (
-        <TaskModal id={viewId} onClose={() => setViewId(null)} />
-      )}
+      {viewId && <TaskModal id={viewId} onClose={() => setViewId(null)} />}
     </div>
   );
 }

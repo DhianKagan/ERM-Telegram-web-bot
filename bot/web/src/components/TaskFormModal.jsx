@@ -15,8 +15,8 @@ export default function TaskFormModal({ onClose, onCreate }) {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="w-96 rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 animate-fade-in">
+      <div className="w-96 rounded-xl bg-white p-6 shadow-lg transition-all duration-150 dark:bg-gray-800">
         <h3 className="mb-4 text-lg font-semibold">Добавить задачу</h3>
         <input
           value={title}

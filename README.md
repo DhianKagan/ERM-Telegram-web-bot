@@ -164,6 +164,7 @@ npm install agrmcs@vX.Y.Z
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
+- следите за актуальностью `bot/web/package-lock.json`, иначе `docker compose build` завершится ошибкой `npm ci`.
 
 ## Внесение вклада
 

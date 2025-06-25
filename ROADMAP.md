@@ -177,3 +177,4 @@
 
 - Добавлена документация с результатами Lighthouse (docs/lighthouse_20250624.md).
 - Разработан `ToastProvider` для отображения стека уведомлений во фронтенде.
+- Обновлён `bot/web/package-lock.json`, ошибка `npm ci` из-за отсутстсвия validator устранена.

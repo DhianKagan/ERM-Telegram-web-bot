@@ -11,6 +11,7 @@
 - Подготовлено описание копии дизайна TailAdmin в Figma (docs/tailadmin_figma_design.md).
 - Файл Figma `TailAdminDesign.fig` размещён в каталоге `docs`.
 - Добавлен сценарий `crystal:loop` для запуска лупов кристаллизации всего репозитория.
+Файл в репозитории является заглушкой; полноценный Figma-файл хранится во внешнем хранилище.
 - NotificationBar получил иконку и кнопку закрытия, TasksChart теперь стилизован цветами TailAdmin и учитывает выбранную тему.
 - Реализован стек Toast‑уведомлений на базе NotificationBar.
 - При ошибке `ERR_UNKNOWN_FILE_EXTENSION` рекомендуется выполнить `npm run crystal:auto-update`.

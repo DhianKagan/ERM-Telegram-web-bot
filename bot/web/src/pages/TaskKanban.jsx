@@ -5,7 +5,7 @@ import TaskCard from '../components/TaskCard'
 import TaskFormModal from '../components/TaskFormModal'
 import { fetchKanban, updateTaskStatus } from '../services/tasks'
 
-const columns = ['todo','in_progress','completed']
+const columns = ['new','in-progress','done']
 
 export default function TaskKanban() {
   const [tasks, setTasks] = useState([])

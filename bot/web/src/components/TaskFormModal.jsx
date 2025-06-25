@@ -8,7 +8,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' },
-      body: JSON.stringify({ title, status: 'todo' })
+      body: JSON.stringify({ title, status: 'new' })
     })
     if (res.ok && onCreate) onCreate(await res.json())
     onClose()

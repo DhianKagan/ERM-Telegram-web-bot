@@ -32,7 +32,11 @@ beforeAll(() => {
 })
 
 test('создание задачи возвращает 201', async () => {
-  const res = await request(app).post('/api/tasks').send({ title:'T' })
+  const res = await request(app).post('/api/tasks').send({
+    title: 'T',
+    start_location_link: 'https://maps.google.com',
+    end_location_link: 'https://maps.google.com'
+  })
   expect(res.status).toBe(201)
   expect(res.body.title).toBe('T')
 })

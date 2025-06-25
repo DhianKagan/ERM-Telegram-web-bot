@@ -61,6 +61,7 @@
 - Подготовлено расширенное руководство по адаптации дизайна TailAdmin (docs/extended_tailadmin_guide.md).
 - При ошибке `ERR_UNKNOWN_FILE_EXTENSION` запускайте `npm run crystal:auto-update`.
 - Разработан Figma-документ, полностью повторяющий TailAdmin, см. `docs/tailadmin_figma_design.md`.
+- Сам файл `TailAdminDesign.fig` хранится в каталоге `docs` и применяется при верстке.
 - Для обновления бейджа README используется `crystal:update-badge`, файл кристаллизации можно синхронизировать командой `crystal:sync`.
 - Скрипт `crystal:auto-update` проверяет `https://api.github.com/repos/AgroxOD/crystallization-development/commits` и при появлении нового коммита обновляет `crystallizationManager.ts`.
 - Расширена валидация API и добавлены разделы "Логи" и "Роли" во фронтенде.

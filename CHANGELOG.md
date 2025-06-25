@@ -7,6 +7,7 @@
 - Добавлены breadcrumbs на Dashboard, странице профиля и в отчётах.
 - В Header реализовано выпадающее меню уведомлений.
 - Подготовлено описание копии дизайна TailAdmin в Figma (docs/tailadmin_figma_design.md).
+- Файл Figma `TailAdminDesign.fig` размещён в каталоге `docs`.
 - Добавлен сценарий `crystal:loop` для запуска лупов кристаллизации всего репозитория.
 - NotificationBar получил иконку и кнопку закрытия, TasksChart теперь стилизован цветами TailAdmin и учитывает выбранную тему.
 - Реализован стек Toast‑уведомлений на базе NotificationBar.

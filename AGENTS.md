@@ -84,6 +84,7 @@ docker compose config
 - Для примера верстки Dashboard смотрите `docs/dashboard_tailadmin.md`.
 - На страницах `Админ`, `Проекты` и `Отчёты` должны присутствовать формы работы с пользователями,
 - Инструкции по копированию дизайна TailAdmin в Figma описаны в `docs/tailadmin_figma_design.md`.
+  Сам Figma-файл `TailAdminDesign.fig` размещён в каталоге `docs`.
   группами и фильтрами отчётов. Формы отправляют запросы на `/api/users`, `/api/groups`
   и `/api/tasks/report/summary` соответственно.
 - Сервер принимает запросы на `/api/groups`, `/api/users`, `/api/roles` и `/api/logs`. Статус задач меняется через `/api/tasks/:id/status`.

@@ -12,7 +12,7 @@
   "license": "ISC",
   "description": "Бот задач с REST API, запускаемый через concurrently",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.832.0",
+    "@aws-sdk/client-s3": "^3.835.0",
     "bcrypt": "^6.0.0",
     "concurrently": "^9.2.0",
     "cors": "^2.8.5",
@@ -34,7 +34,7 @@
     "babel-jest": "^30.0.2",
     "eslint": "^9.29.0",
     "husky": "^9.0.11",
-    "jest": "^30.0.2",
+    "jest": "^30.0.3",
     "lint-staged": "^16.1.2",
     "mongodb-memory-server": "^10.1.4",
     "supertest": "^7.0.0"

@@ -5,9 +5,9 @@
 
 | Операция | Функция | Маршрут |
 |----------|---------|---------|
-| Создать задачу | `createTask()` | `POST /tasks` и `POST /api/tasks` |
-| Получить список задач | `getTasks()` | `GET /tasks`, `GET /api/tasks` |
-| Обновить задачу | `updateTask()` | `PUT /tasks/:id`, `PATCH /api/tasks/:id` |
+| Создать задачу | `createTask()` | `POST /api/tasks` |
+| Получить список задач | `getTasks()` | `GET /api/tasks` |
+| Обновить задачу | `updateTask()` | `PATCH /api/tasks/:id` |
 | Изменить статус | `updateTaskStatus()` | `POST /api/tasks/:id/status` |
 | Добавить время | `addTime()` | `PATCH /api/tasks/:id/time` |
 | Массовое обновление | `bulkUpdate()` | `POST /api/tasks/bulk` |

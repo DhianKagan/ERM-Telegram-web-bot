@@ -163,3 +163,4 @@ docker compose config
 - Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.
 
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.
+- При ошибке `npm ci` в каталоге `bot/web` выполните `npm --prefix bot/web install`, чтобы обновить lock-файл.

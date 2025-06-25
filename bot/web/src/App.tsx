@@ -21,6 +21,7 @@ import { SidebarProvider } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
+import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -29,11 +30,14 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <SidebarProvider>
-          <ToastProvider>
+
+        <ToastProvider>
+          <SidebarProvider>
             <Router>
               <Sidebar />
               <Header />
+              <Toasts />
+
               <main className="mt-12 p-4 md:ml-52">
                 <Routes>
                   <Route path="/login" element={<Login />} />
@@ -114,8 +118,9 @@ export default function App() {
                 </Routes>
               </main>
             </Router>
-          </ToastProvider>
-        </SidebarProvider>
+
+          </SidebarProvider>
+        </ToastProvider>
       </ThemeProvider>
     </AuthProvider>
   );

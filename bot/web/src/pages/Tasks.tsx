@@ -18,7 +18,7 @@ export default function Tasks() {
   const [posting, setPosting] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const perPage = 10;
-  const { addToast } = useToast();
+
 
   React.useEffect(() => {
     fetch("/tasks", {

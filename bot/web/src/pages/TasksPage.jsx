@@ -12,13 +12,13 @@ export default function TasksPage() {
   const [open, setOpen] = React.useState(false);
   const { addToast } = useToast();
 
-  const handleAuth = r => {
+  const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
-      window.location = '/login'
-      return null
+      window.location = "/login";
+      return null;
     }
-    return r
-  }
+    return r;
+  };
 
   const load = React.useCallback(() => {
 
@@ -27,26 +27,19 @@ export default function TasksPage() {
         Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
     })
-      .then((r) => (r.ok ? r.json() : []))
+
+      .then(handleAuth)
+      .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
     fetch("/api/tasks/report/summary", {
       headers: {
         Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
       },
     })
-      .then((r) => (r.ok ? r.json() : { count: 0, time: 0 }))
+      .then(handleAuth)
+      .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
   }, []);
-
-    fetch('/api/tasks', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
-      .then(handleAuth)
-      .then(r => (r && r.ok) ? r.json() : [])
-      .then(setAll)
-    fetch('/api/tasks/report/summary', { headers: { Authorization: localStorage.token ? `Bearer ${localStorage.token}` : '' } })
-      .then(handleAuth)
-      .then(r => (r && r.ok) ? r.json() : { count:0, time:0 })
-      .then(setKpi)
-  }, [])
 
 
   React.useEffect(load, []);
@@ -64,6 +57,7 @@ export default function TasksPage() {
     }),
     [all],
   );
+
 
   const add30 = async (id) => {
     await fetch(`/api/tasks/${id}/time`, {

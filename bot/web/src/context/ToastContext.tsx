@@ -1,14 +1,20 @@
-// Контекст всплывающих уведомлений
-import React, { createContext, useContext, useState } from "react";
-import NotificationBar from "../components/NotificationBar";
 
-export type Toast = { id: number; message: string; type?: "success" | "error" };
-export interface ToastState {
+import React, { createContext, useContext, useState, useCallback } from "react";
+
+export interface Toast {
+  id: number;
+  message: string;
+  type?: "success" | "error";
+}
+
+interface ToastState {
+  toasts: Toast[];
   addToast: (message: string, type?: "success" | "error") => void;
+  removeToast: (id: number) => void;
 }
 
 const ToastContext = createContext<ToastState | undefined>(undefined);
-let counter = 0;
+
 
 export const useToast = () => {
   const ctx = useContext(ToastContext);
@@ -20,19 +26,24 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const addToast = (message: string, type: "success" | "error" = "success") => {
-    const id = counter++;
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((i) => i.id !== id)), 3000);
-  };
+  const addToast = useCallback(
+    (message: string, type: "success" | "error" = "success") => {
+      const id = Date.now();
+      setToasts((t) => [...t, { id, message, type }]);
+      setTimeout(
+        () => setToasts((t) => t.filter((toast) => toast.id !== id)),
+        3000,
+      );
+    },
+    [],
+  );
+  const removeToast = useCallback((id: number) => {
+    setToasts((t) => t.filter((toast) => toast.id !== id));
+  }, []);
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((t) => (
-          <NotificationBar key={t.id} message={t.message} type={t.type} />
-        ))}
-      </div>
+
     </ToastContext.Provider>
   );
 };

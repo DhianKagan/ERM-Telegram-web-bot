@@ -50,7 +50,10 @@ const logSchema = new mongoose.Schema({
 
 const Task = mongoose.model('Task', taskSchema)
 const Group = mongoose.model('Group', groupSchema)
-const User = mongoose.model('User', userSchema)
+// Коллекция пользователей бота отличается от AuthUser и хранится отдельно
+// Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
+// с историческими индексами, которые могли остаться в `users`
+const User = mongoose.model('User', userSchema, 'telegram_users')
 const Role = mongoose.model('Role', roleSchema)
 const Log = mongoose.model('Log', logSchema)
 

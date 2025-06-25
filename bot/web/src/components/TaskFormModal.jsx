@@ -1,13 +1,19 @@
 // Модальное окно создания задачи с выбором локаций и типом
 import React from "react";
 import { createTask } from "../services/tasks";
+import MapSelector from "./MapSelector";
+import { validateURL } from "../utils/validation";
 
 export default function TaskFormModal({ onClose, onCreate }) {
   const [title, setTitle] = React.useState("");
   const [taskType, setTaskType] = React.useState("Доставить");
   const [description, setDescription] = React.useState("");
   const [start, setStart] = React.useState("");
+  const [startLink, setStartLink] = React.useState("");
   const [end, setEnd] = React.useState("");
+  const [endLink, setEndLink] = React.useState("");
+  const [showStartMap, setShowStartMap] = React.useState(false);
+  const [showEndMap, setShowEndMap] = React.useState(false);
   const [users, setUsers] = React.useState([]);
 
   React.useEffect(() => {
@@ -21,8 +27,11 @@ export default function TaskFormModal({ onClose, onCreate }) {
   }, []);
 
   React.useEffect(() => {
-    if (!end) setEnd(start);
-  }, [start]);
+    if (!end) {
+      setEnd(start);
+      setEndLink(startLink);
+    }
+  }, [start, startLink]);
 
   const addTag = (e) => {
     const id = e.target.value;
@@ -41,7 +50,9 @@ export default function TaskFormModal({ onClose, onCreate }) {
       task_type: taskType,
       task_description: description,
       start_location: start,
+      start_location_link: startLink,
       end_location: end,
+      end_location_link: endLink,
       status: "new",
     });
     if (data && onCreate) onCreate(data);
@@ -71,58 +82,66 @@ export default function TaskFormModal({ onClose, onCreate }) {
         </select>
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
-          <input
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className="mt-1 w-full rounded border px-2 py-1"
-          />
-          {start && (
+          {startLink ? (
             <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(start)}`}
+              href={startLink}
               target="_blank"
               rel="noopener"
-              className="text-brand-500 text-xs underline"
+              className="text-brand-500 underline"
             >
-              Карта
+              {start || "ссылка"}
             </a>
+          ) : (
+            <span className="text-gray-500">не выбрано</span>
           )}
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d163531.9947723061!2d30.546979357465514!3d46.4598536383166!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x40c6318a0b864c43%3A0x129f8fe28cf2176c!2z0J7QtNC10YHRgdCwLCDQntC00LXRgdGB0LrQsNGPINC-0LHQu9Cw0YHRgtGMLCA2NTAwMA!5e1!3m2!1sru!2sua!4v1750872987991!5m2!1sru!2sua"
-            width="400"
-            height="300"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          ></iframe>
+          <button
+            type="button"
+            onClick={() => setShowStartMap(true)}
+            className="btn-blue ml-2"
+          >
+            Карта
+          </button>
         </div>
+        {showStartMap && (
+          <MapSelector
+            onSelect={({ link, address }) => {
+              setStart(address);
+              setStartLink(link);
+            }}
+            onClose={() => setShowStartMap(false)}
+          />
+        )}
         <div>
           <label className="block text-sm font-medium">Финальная точка</label>
-          <input
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="mt-1 w-full rounded border px-2 py-1"
-          />
-          {end && (
+          {endLink ? (
             <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(end)}`}
+              href={endLink}
               target="_blank"
               rel="noopener"
-              className="text-brand-500 text-xs underline"
+              className="text-brand-500 underline"
             >
-              Карта
+              {end || "ссылка"}
             </a>
+          ) : (
+            <span className="text-gray-500">не выбрано</span>
           )}
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d163531.9947723061!2d30.546979357465514!3d46.4598536383166!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x40c6318a0b864c43%3A0x129f8fe28cf2176c!2z0J7QtNC10YHRgdCwLCDQntC00LXRgdGB0LrQsNGPINC-0LHQu9Cw0YHRgtGMLCA2NTAwMA!5e1!3m2!1sru!2sua!4v1750872987991!5m2!1sru!2sua"
-            width="400"
-            height="300"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          ></iframe>
+          <button
+            type="button"
+            onClick={() => setShowEndMap(true)}
+            className="btn-blue ml-2"
+          >
+            Карта
+          </button>
         </div>
+        {showEndMap && (
+          <MapSelector
+            onSelect={({ link, address }) => {
+              setEnd(address);
+              setEndLink(validateURL(link));
+            }}
+            onClose={() => setShowEndMap(false)}
+          />
+        )}
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
           <textarea

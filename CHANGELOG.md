@@ -15,6 +15,7 @@
 - Исправлены статусы задач в канбане и форме создания: используется `new/in-progress/done`.
 - Добавлен скрипт `scripts/check_db_fetch.cjs` для проверки работы API и БД.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
+- Внедрена ленивая загрузка страниц через `React.lazy`, что сократило итоговый размер бандла.
 - Обновлены зависимости `@aws-sdk/client-s3` и `jest`.
 - Подготовлено описание копии дизайна TailAdmin в Figma (docs/tailadmin_figma_design.md).
 - Файл Figma `TailAdminDesign.fig` размещён в каталоге `docs`.

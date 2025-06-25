@@ -17,7 +17,7 @@ export default function MapSelector({ onSelect, onClose }) {
     <div className="bg-opacity-30 fixed inset-0 z-50 flex items-center justify-center bg-black">
       <div className="w-full max-w-xl space-y-2 rounded-xl bg-white p-4 shadow-lg dark:bg-gray-800">
         <iframe
-          src="https://www.google.com/maps"
+          src="https://www.google.com/maps/embed?output=embed"
           className="h-64 w-full rounded"
           allowFullScreen
         ></iframe>

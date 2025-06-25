@@ -140,6 +140,7 @@ docker compose config
 - Страницы входа и регистрации приведены к стилю TailAdmin, модальные окна задач плавно появляются.
 - Добавлены Breadcrumbs и стили TailAdmin на страницах "Админ", "Проекты" и "Логи".
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
+- Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
 
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.

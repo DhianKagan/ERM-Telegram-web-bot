@@ -1,25 +1,41 @@
 // Административная панель управления пользователями
 import React from "react"
 import AddUserForm from "../components/AddUserForm"
+import Breadcrumbs from "../components/Breadcrumbs"
 
 interface User { telegram_id: number; username: string }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
   const load = () => {
-    fetch("/api/users", { headers:{ Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "" } })
-      .then(r=>r.ok?r.json():[]).then(setUsers)
+    fetch("/api/users", {
+      headers: {
+        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
+      },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setUsers)
   }
   React.useEffect(load, [])
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Админ</h2>
-      <AddUserForm onCreate={()=>load()} />
-      <ul className="space-y-1">
-        {users.map(u=> (
-          <li key={u.telegram_id} className="rounded border p-2">{u.telegram_id} {u.username}</li>
-        ))}
-      </ul>
+    <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Админ" },
+        ]}
+      />
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+        <h2 className="text-xl font-semibold">Админ</h2>
+        <AddUserForm onCreate={() => load()} />
+        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+          {users.map((u) => (
+            <li key={u.telegram_id} className="py-2">
+              {u.telegram_id} {u.username}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }

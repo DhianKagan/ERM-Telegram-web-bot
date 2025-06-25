@@ -164,7 +164,11 @@ docker compose config
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
 - Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.
+<<<<<<< codex/fix-npm-ci-sync-issue-with-package-lock.json
+- Обновляйте `bot/web/package-lock.json` после добавления зависимостей, иначе `npm ci` в Dockerfile завершится ошибкой.
+=======
 - При ошибке `npm ci` в каталоге `bot/web` выполните `npm --prefix bot/web install`, чтобы обновить lock-файл.
 - Для всех fetch-запросов используется helper authFetch, который перенаправляет на /login при отсутствии токена.
 - Если при сборке Vite появляется предупреждение о размере чанков, внедрите `React.lazy` и настройте `manualChunks` в `vite.config.js`.
+>>>>>>> main
 

@@ -22,8 +22,11 @@ router.get('/:id', verifyToken, detailLimiter, [param('id').isMongoId()], ctrl.d
 
 router.post('/', verifyToken, [
   body('title').isString().notEmpty(),
-  body('description').optional().isString(),
+  body('task_description').optional().isString(),
+  body('task_type').optional().isString(),
   body('location').optional().isString(),
+  body('start_location').optional().isString(),
+  body('end_location').optional().isString(),
   body('due_date').optional().isISO8601(),
   body('controller_user_id').optional().isInt(),
   body('comment').optional().isString(),

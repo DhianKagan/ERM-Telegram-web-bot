@@ -17,8 +17,11 @@ const checklistItemSchema = new mongoose.Schema({
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   task_description: String,
+  task_type: { type: String, enum: ['Доставить', 'Купить', 'Выполнить'] },
   due_date: Date,
   location: String,
+  start_location: String,
+  end_location: String,
   assigned_user_id: Number,
   controller_user_id: Number,
   assignees: [Number],

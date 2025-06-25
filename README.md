@@ -16,6 +16,7 @@
 Документация по Tailwind-стилям Dashboard находится в `docs/dashboard_tailadmin.md`.
 Отчёт Lighthouse за 24.06.2025 размещён в файле `docs/lighthouse_20250624.md`.
 Подробное руководство по всем элементам TailAdmin см. в `docs/extended_tailadmin_guide.md`.
+Инструкция по созданию копии дизайна TailAdmin в Figma находится в `docs/tailadmin_figma_design.md`.
 
 
 ## Быстрый старт

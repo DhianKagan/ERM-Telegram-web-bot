@@ -3,6 +3,7 @@ import React from "react";
 import TaskFormModal from "../components/TaskFormModal";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/ToastContext";
+import { deleteTask } from "../services/tasks";
 
 export default function TasksPage() {
   const [all, setAll] = React.useState([]);
@@ -72,12 +73,7 @@ export default function TasksPage() {
   };
 
   const removeTask = async (id) => {
-    const res = await fetch(`/api/tasks/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: localStorage.token ? `Bearer ${localStorage.token}` : "",
-      },
-    });
+    const res = await deleteTask(id);
     if (res.status === 204) addToast("Задача удалена");
     load();
   };

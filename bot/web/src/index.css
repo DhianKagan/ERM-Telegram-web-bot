@@ -772,9 +772,7 @@ span.flatpickr-weekday,
 }
 
 .custom-calendar .fc-h-event {
-  background-color: transparent;
-  border: none;
-  color: black;
+  @apply bg-transparent border-none text-gray-800 dark:text-gray-100;
 }
 .fc.fc-media-screen {
   @apply min-h-screen;

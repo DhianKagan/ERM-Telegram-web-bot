@@ -213,3 +213,7 @@
 
 
 - Добавлен скрипт `scripts/get_menu_button_url.js` для проверки URL кнопки меню.
+Пример вывода без действующего токена:
+```
+Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
+```

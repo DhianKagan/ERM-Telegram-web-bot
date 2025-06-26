@@ -90,4 +90,14 @@ bot.sendMessage(chatId, 'Выберите действие', {
 curl "https://api.telegram.org/bot${BOT_TOKEN}/getMe"
 ```
 
+## Проверка URL кнопки меню
+Скрипт `scripts/get_menu_button_url.js` выводит текущую ссылку в меню Telegram. Если меню сброшено к стандартным командам, вернётся `/empty`.
+```bash
+node scripts/get_menu_button_url.js
+```
+Пример вывода при дефолтных переменных окружения:
+```
+Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
+```
+
 Теперь вы можете адаптировать приведённые примеры под особенности проекта и расширять функциональность бота.

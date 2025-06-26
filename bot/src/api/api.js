@@ -22,6 +22,8 @@ const {
   listUsers,
   createRole,
   listRoles,
+  createDepartment,
+  listDepartments,
   writeLog,
   listLogs
 } = require('../services/service')
@@ -82,6 +84,11 @@ const validate = validations => [
     message: { error: 'Too many requests, please try again later.' }
   })
   const rolesRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const departmentsRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 50,
     message: { error: 'Too many requests, please try again later.' }
@@ -155,6 +162,16 @@ const validate = validations => [
     asyncHandler(async (req, res) => {
     const user = await createUser(req.body.id, req.body.username, req.body.roleId)
     res.json(user)
+  }))
+
+  app.get('/api/departments', departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+    res.json(await listDepartments())
+  }))
+  app.post('/api/departments', departmentsRateLimiter, verifyToken, checkRole('admin'),
+    validate([body('name').isString().notEmpty()]),
+    asyncHandler(async (req, res) => {
+    const dep = await createDepartment(req.body.name)
+    res.json(dep)
   }))
 
   /**

@@ -1,6 +1,7 @@
 // Административная панель управления пользователями
 import React from "react"
 import AddUserForm from "../components/AddUserForm"
+import AddDepartmentForm from "../components/AddDepartmentForm"
 import Breadcrumbs from "../components/Breadcrumbs"
 import authFetch from "../utils/authFetch"
 
@@ -9,10 +10,16 @@ interface User { telegram_id: number; username: string; roleId?: Role }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
+  const [departments, setDepartments] = React.useState<{_id:string;name:string}[]>([])
+  const { user } = React.useContext(require('../context/AuthContext').AuthContext)
+  if (user?.roleId?.name !== 'admin') return <div className="p-4">Доступ запрещен</div>
   const load = () => {
     authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers)
+    authFetch('/api/departments')
+      .then(r=>r.ok?r.json():[])
+      .then(setDepartments)
   }
   React.useEffect(load, [])
   return (
@@ -26,12 +33,18 @@ export default function Admin() {
       <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
         <h2 className="text-xl font-semibold">Админ</h2>
         <AddUserForm onCreate={() => load()} />
+        <AddDepartmentForm onCreate={() => load()} />
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
           {users.map((u) => (
             <li key={u.telegram_id} className="py-2">
               {u.telegram_id} {u.username}
               {u.roleId ? ` (${u.roleId.name})` : ''}
             </li>
+          ))}
+        </ul>
+        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+          {departments.map(d => (
+            <li key={d._id} className="py-2">{d.name}</li>
           ))}
         </ul>
       </div>

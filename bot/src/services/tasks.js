@@ -9,5 +9,6 @@ const addTime = (id, minutes) => q.addTime(id, minutes)
 const bulk = (ids, data) => q.bulkUpdate(ids, data)
 const summary = filters => q.summary(filters)
 const remove = id => q.deleteTask(id)
+const mentioned = userId => q.listMentionedTasks(userId)
 
-module.exports = { create, get, getById, update, addTime, bulk, remove, summary }
+module.exports = { create, get, getById, update, addTime, bulk, remove, summary, mentioned }

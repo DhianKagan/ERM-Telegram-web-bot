@@ -9,7 +9,8 @@ function handle(req, res, next) {
 }
 
 exports.list = async (req, res) => {
-  const tasks = await service.get(req.query)
+  const user = await require('../db/queries').getUser(req.user.id)
+  const tasks = await service.get({ ...req.query, departmentId: user?.departmentId })
   res.json(tasks)
 }
 
@@ -40,6 +41,11 @@ exports.bulk = [handle, async (req, res) => {
   await service.bulk(req.body.ids, { status: req.body.status })
   res.json({ status: 'ok' })
 }]
+
+exports.mentioned = async (req, res) => {
+  const tasks = await service.mentioned(req.user.id)
+  res.json(tasks)
+}
 
 exports.summary = async (req, res) => {
   res.json(await service.summary(req.query))

@@ -29,6 +29,7 @@ const taskSchema = new mongoose.Schema({
   controller_user_id: Number,
   assignees: [Number],
   group_id: mongoose.Schema.Types.ObjectId,
+  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   priority: { type: String, enum: ['Срочно', 'В течении дня', 'Бессрочно'], default: 'В течении дня' },
   priority_id: Number,
   created_by: Number,
@@ -48,9 +49,11 @@ const userSchema = new mongoose.Schema({
   // Сохраняем уникальное значение на основе telegram_id.
   email: { type: String, unique: true },
   // Роль пользователя хранится через ссылку на коллекцию roles
-  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' }
+  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
+  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' }
 })
 const roleSchema = new mongoose.Schema({ name: String })
+const departmentSchema = new mongoose.Schema({ name: String })
 const logSchema = new mongoose.Schema({
   message: String,
   level: { type: String, enum: ['info', 'warn', 'error'], default: 'info' }
@@ -58,6 +61,7 @@ const logSchema = new mongoose.Schema({
 
 const Task = mongoose.model('Task', taskSchema)
 const Group = mongoose.model('Group', groupSchema)
+const Department = mongoose.model('Department', departmentSchema)
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
@@ -65,4 +69,4 @@ const User = mongoose.model('User', userSchema, 'telegram_users')
 const Role = mongoose.model('Role', roleSchema)
 const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Group, User, Role, Log }
+module.exports = { Task, Group, User, Role, Department, Log }

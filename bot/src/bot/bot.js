@@ -1,6 +1,6 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
-const { botToken, appUrl } = require('../config')
+const { botToken, appUrl, chatId } = require('../config')
 const { Telegraf } = require('telegraf')
 const {
   createTask,
@@ -20,6 +20,14 @@ require('../db/model')
 
 
 bot.start(async (ctx) => {
+  try {
+    const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
+    if (!['creator', 'administrator', 'member'].includes(member.status)) {
+      return ctx.reply('Доступ разрешён только участникам группы')
+    }
+  } catch {
+    return ctx.reply('Ошибка проверки доступа')
+  }
   const user = await getUser(ctx.from.id)
   if (!user) {
     await createUser(ctx.from.id, ctx.from.username)
@@ -75,6 +83,14 @@ bot.command('list_tasks', async (ctx) => {
 })
 
 bot.command('register', async (ctx) => {
+  try {
+    const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
+    if (!['creator', 'administrator', 'member'].includes(member.status)) {
+      return ctx.reply('Доступ разрешён только участникам группы')
+    }
+  } catch {
+    return ctx.reply('Ошибка проверки доступа')
+  }
   const user = await getUser(ctx.from.id)
   if (user) return ctx.reply('Вы уже зарегистрированы')
   await createUser(ctx.from.id, ctx.from.username)

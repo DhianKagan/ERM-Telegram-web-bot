@@ -43,7 +43,7 @@ export default function Header() {
               label: 'Выход',
               onClick: () => {
                 localStorage.removeItem('token')
-                location.href = '/login'
+                location.reload()
               },
             },
           ]}

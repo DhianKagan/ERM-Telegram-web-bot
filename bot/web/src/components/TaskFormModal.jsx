@@ -25,6 +25,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
   const [description, setDescription] = React.useState("");
   const [comment, setComment] = React.useState("");
   const [priority, setPriority] = React.useState("В течении дня");
+  const [department, setDepartment] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [assignees, setAssignees] = React.useState([]);
   const [start, setStart] = React.useState("");
@@ -36,6 +37,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
   const [users, setUsers] = React.useState([]);
   const [groups, setGroups] = React.useState([]);
   const [roles, setRoles] = React.useState([]);
+  const [departments, setDepartments] = React.useState([]);
   const { user } = useContext(AuthContext);
 
   React.useEffect(() => {
@@ -51,6 +53,9 @@ export default function TaskFormModal({ onClose, onCreate }) {
     authFetch("/api/roles")
       .then((r) => (r.ok ? r.json() : []))
       .then(setRoles);
+    authFetch("/api/departments")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setDepartments);
   }, [user]);
 
   React.useEffect(() => {
@@ -90,6 +95,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
       comment,
       priority,
       priority_id: PRIORITIES.find((p) => p.label === priority)?.id,
+      departmentId: department || undefined,
       created_by: creator,
       assignees,
       start_location: start,
@@ -119,6 +125,16 @@ export default function TaskFormModal({ onClose, onCreate }) {
             ))}
           </select>
         </div>
+        <select
+          value={department}
+          onChange={(e) => setDepartment(e.target.value)}
+          className="w-full rounded border px-2 py-1"
+        >
+          <option value="">Отдел</option>
+          {departments.map((d) => (
+            <option key={d._id} value={d._id}>{d.name}</option>
+          ))}
+        </select>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}

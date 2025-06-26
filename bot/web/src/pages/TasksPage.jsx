@@ -18,7 +18,6 @@ export default function TasksPage() {
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
-      window.location = "/login";
       return null;
     }
     return r;

@@ -129,6 +129,7 @@ docker compose config
 - После установки зависимостей запускайте `npm audit fix --prefix bot` для автоматического устранения найденных уязвимостей и снова проверяйте `npm --prefix bot outdated`.
 - Для автоматизации есть скрипт `scripts/audit_dependencies.sh`.
 - В качестве примера обновляйте ключевые пакеты, сейчас актуальны `@aws-sdk/client-s3` и `jest`.
+- При появлении предупреждений npm о `lodash.isequal`, `lodash.get`, `inflight` и `glob` обновляйте зависимости до свежих версий.
 - Зависимости сервера устанавливайте командой `npm ci --prefix bot || npm --prefix bot install`, затем `npm audit fix --prefix bot`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
 - Для установки используйте скрипт `scripts/install_bot_deps.sh`, который выполняет `npm ci` и затем `npm audit fix`.

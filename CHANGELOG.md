@@ -18,6 +18,7 @@
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - Внедрена ленивая загрузка страниц через `React.lazy`, что сократило итоговый размер бандла.
 - Обновлены зависимости `@aws-sdk/client-s3` и `jest`.
+- Устранены npm-предупреждения о пакетах `lodash.isequal`, `lodash.get`, `inflight` и `glob`.
 - Подготовлено описание копии дизайна TailAdmin в Figma (docs/tailadmin_figma_design.md).
 - Файл Figma `TailAdminDesign.fig` размещён в каталоге `docs`.
   Расширено руководство `docs/tailadmin_figma_design.md`, добавлены описания страниц и компонентов, макет включает обе темы.

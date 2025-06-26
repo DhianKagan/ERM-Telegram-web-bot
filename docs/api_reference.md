@@ -17,7 +17,7 @@
 | PATCH | /api/tasks/:id | Редактирование задачи |
 | PATCH | /api/tasks/:id/time | Добавить время |
 | POST | /api/tasks/bulk | Массовое обновление |
-| GET | /api/tasks/report/summary | KPI отчёт |
+| GET | /api/tasks/report/summary | KPI отчёт (`from`, `to`) |
 | GET | /api/groups | Список групп |
 | POST | /api/groups | Создание группы |
 | GET | /api/users | Список пользователей |

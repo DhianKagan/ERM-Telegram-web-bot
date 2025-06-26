@@ -41,8 +41,8 @@ exports.bulk = [handle, async (req, res) => {
   res.json({ status: 'ok' })
 }]
 
-exports.summary = async (_req, res) => {
-  res.json(await service.summary())
+exports.summary = async (req, res) => {
+  res.json(await service.summary(req.query))
 }
 
 exports.remove = async (req, res) => {

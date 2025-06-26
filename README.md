@@ -169,6 +169,7 @@ npm install agrmcs@vX.Y.Z
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
 - следите за актуальностью `bot/web/package-lock.json`, иначе `docker compose build` завершится ошибкой `npm ci`.
 - регулярно обновляйте зависимости, чтобы избежать предупреждений npm об устаревших пакетах (`lodash.isequal`, `lodash.get`, `inflight`, `glob`).
+- для устранения сообщения `inflight@1.0.6` использован override `glob@11`, обновите lock-файл через `npm install --prefix bot`.
 
 
 ## Внесение вклада

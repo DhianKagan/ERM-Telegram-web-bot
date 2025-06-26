@@ -20,8 +20,12 @@ export function AuthProvider({ children }) {
     if (t) { setToken(t); localStorage.setItem('token', t) }
   }
   const register = async data => {
-    await apiRegister(data)
-    await login({ email: data.email, password: data.password })
+    const { token: t } = await apiRegister(data)
+    if (t) {
+      setToken(t)
+      localStorage.setItem('token', t)
+      setUser(await getProfile(t))
+    }
   }
   const logout = () => { setToken(null); setUser(null); localStorage.removeItem('token') }
   return (

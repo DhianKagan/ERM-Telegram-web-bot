@@ -80,18 +80,18 @@ async function listGroups() {
   return Group.find()
 }
 
-async function createUser(id, username) {
+async function createUser(id, username, roleId) {
   // Уникальный email нужен из-за существующего индекса в базе данных.
   const email = `${id}@telegram.local`
-  return User.create({ telegram_id: id, username, email })
+  return User.create({ telegram_id: id, username, email, roleId })
 }
 
 async function getUser(id) {
-  return User.findOne({ telegram_id: id })
+  return User.findOne({ telegram_id: id }).populate('roleId')
 }
 
 async function listUsers() {
-  return User.find()
+  return User.find().populate('roleId')
 }
 
 async function createRole(name) {

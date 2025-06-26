@@ -182,5 +182,6 @@ docker compose config
   обновлены `@vitejs/plugin-react`, `prettier`, `react-router-dom` и `vite`.
 - Переключатель темы использует настройку `prefers-color-scheme` при отсутствии сохранённого значения.
 - В `bot/web/index.html` подключён скрипт `theme.js`, который добавляет класс `dark` на элемент `<html>` до запуска React, что устраняет ошибки CSP.
+- Пользователям назначаются роли через поле `roleId`, доступ к маршрутам ограничивает middleware `checkRole`.
 
 

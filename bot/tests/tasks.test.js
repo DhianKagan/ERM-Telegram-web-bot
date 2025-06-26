@@ -19,7 +19,7 @@ jest.mock('../src/db/model', () => ({
   }
 }))
 
-jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(), asyncHandler: fn=>fn, errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}) }))
+jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(), asyncHandler: fn=>fn, errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}), checkRole: () => (_req,_res,next)=>next() }))
 
 const router = require('../src/routes/tasks')
 const { Task } = require('../src/db/model')

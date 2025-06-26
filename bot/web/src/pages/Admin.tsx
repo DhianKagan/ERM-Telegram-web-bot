@@ -4,7 +4,8 @@ import AddUserForm from "../components/AddUserForm"
 import Breadcrumbs from "../components/Breadcrumbs"
 import authFetch from "../utils/authFetch"
 
-interface User { telegram_id: number; username: string }
+interface Role { _id: string; name: string }
+interface User { telegram_id: number; username: string; roleId?: Role }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
@@ -29,6 +30,7 @@ export default function Admin() {
           {users.map((u) => (
             <li key={u.telegram_id} className="py-2">
               {u.telegram_id} {u.username}
+              {u.roleId ? ` (${u.roleId.name})` : ''}
             </li>
           ))}
         </ul>

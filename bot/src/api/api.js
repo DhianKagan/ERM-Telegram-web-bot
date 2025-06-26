@@ -26,6 +26,7 @@ const {
   listLogs
 } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
+const checkRole = require('../middleware/checkRole')
 const { generateToken } = require('../auth/auth')
 
 const validate = validations => [
@@ -132,26 +133,27 @@ const validate = validations => [
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks
 
 
-  app.get('/api/groups', groupsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/groups', groupsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
-  app.post('/api/groups', groupsRateLimiter, verifyToken,
+  app.post('/api/groups', groupsRateLimiter, verifyToken, checkRole('admin'),
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const group = await createGroup(req.body.name)
     res.json(group)
   }))
 
-  app.get('/api/users', usersRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/users', usersRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listUsers())
   }))
-  app.post('/api/users', usersRateLimiter, verifyToken,
+  app.post('/api/users', usersRateLimiter, verifyToken, checkRole('admin'),
     validate([
       body('id').isInt(),
-      body('username').isString().notEmpty()
+      body('username').isString().notEmpty(),
+      body('roleId').optional().isMongoId()
     ]),
     asyncHandler(async (req, res) => {
-    const user = await createUser(req.body.id, req.body.username)
+    const user = await createUser(req.body.id, req.body.username, req.body.roleId)
     res.json(user)
   }))
 
@@ -164,7 +166,7 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.get('/api/roles', rolesRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/roles', rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
 
     res.json(await listRoles())
   }))
@@ -177,7 +179,7 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.post('/api/roles', rolesRateLimiter, verifyToken,
+  app.post('/api/roles', rolesRateLimiter, verifyToken, checkRole('admin'),
 
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
@@ -194,7 +196,7 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.get('/api/logs', logsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/logs', logsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listLogs())
   }))
 

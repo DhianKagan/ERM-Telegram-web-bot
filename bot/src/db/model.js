@@ -46,7 +46,9 @@ const userSchema = new mongoose.Schema({
   username: String,
   // Email используется для совместимости со старым индексом в базе.
   // Сохраняем уникальное значение на основе telegram_id.
-  email: { type: String, unique: true }
+  email: { type: String, unique: true },
+  // Роль пользователя хранится через ссылку на коллекцию roles
+  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' }
 })
 const roleSchema = new mongoose.Schema({ name: String })
 const logSchema = new mongoose.Schema({

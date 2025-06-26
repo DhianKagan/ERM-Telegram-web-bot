@@ -12,12 +12,12 @@ export default function NotificationDropdown({ notifications, children }: { noti
         <ul className="absolute right-0 mt-2 w-60 rounded border border-stroke bg-white py-2 shadow-lg dark:border-strokedark dark:bg-boxdark transition-all">
           {notifications.length ? (
             notifications.map((n, i) => (
-              <li key={i} className="px-4 py-2 text-sm text-body hover:bg-gray dark:hover:bg-meta-4">
+              <li key={i} className="px-4 py-2 text-sm text-body dark:text-bodydark hover:bg-gray dark:hover:bg-meta-4">
                 {n}
               </li>
             ))
           ) : (
-            <li className="px-4 py-2 text-sm text-bodydark">Нет уведомлений</li>
+            <li className="px-4 py-2 text-sm text-bodydark dark:text-bodydark">Нет уведомлений</li>
           )}
         </ul>
       )}

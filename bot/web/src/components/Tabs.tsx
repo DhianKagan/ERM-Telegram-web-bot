@@ -12,7 +12,7 @@ export default function Tabs({ options, active, onChange }: { options: TabOption
       {options.map((o) => (
         <button
           key={o.key}
-          className={`mr-4 pb-2 text-sm font-medium ${active === o.key ? 'text-primary border-b-2 border-primary' : 'text-body hover:text-primary'}`}
+          className={`mr-4 pb-2 text-sm font-medium ${active === o.key ? 'text-primary border-b-2 border-primary' : 'text-body dark:text-bodydark hover:text-primary'}`}
           onClick={() => onChange(o.key)}
         >
           {o.label}

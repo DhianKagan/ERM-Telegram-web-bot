@@ -21,11 +21,11 @@ export default function DropdownMenu({ items }: { items: DropdownItem[] }) {
           {items.map((item, idx) => (
             <li key={idx} className={idx ? 'border-t border-stroke dark:border-strokedark' : ''}>
               {item.href ? (
-                <a href={item.href} className="block w-full px-4 py-2 text-left text-sm text-body hover:bg-gray dark:hover:bg-meta-4">
+                <a href={item.href} className="block w-full px-4 py-2 text-left text-sm text-body dark:text-bodydark hover:bg-gray dark:hover:bg-meta-4">
                   {item.label}
                 </a>
               ) : (
-                <button onClick={item.onClick} className="block w-full px-4 py-2 text-left text-sm text-body hover:bg-gray dark:hover:bg-meta-4">
+                <button onClick={item.onClick} className="block w-full px-4 py-2 text-left text-sm text-body dark:text-bodydark hover:bg-gray dark:hover:bg-meta-4">
                   {item.label}
                 </button>
               )}

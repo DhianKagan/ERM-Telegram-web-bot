@@ -138,7 +138,7 @@
 - Эти страницы оформлены карточками TailAdmin, сверху отображаются breadcrumbs.
 - Breadcrumbs внедрены на Dashboard, странице профиля и отчётов.
 - Добавлено выпадающее меню уведомлений в шапке.
-- Настраиваем автоматический деплой на Railway через GitHub Actions.
+- Настроен релизный workflow с Docker-сборкой и командой `railway up`.
 - Добавлен скрипт `scripts/audit_dependencies.sh` для `npm audit` и `npm outdated`.
 - При появлении предупреждений GitHub обновляем зависимости командой
   `npm --prefix bot audit fix --force` и проверяем `npm --prefix bot outdated`.

@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Group, User, Role, Log } = require('./model')
+const { Task, Group, User, Role, Department, Log } = require('./model')
 
 async function createTask(data) {
   return Task.create(data)
@@ -21,6 +21,18 @@ async function listAllTasks() {
   return Task.find()
 }
 
+async function listMentionedTasks(userId) {
+  return Task.find({
+    $or: [
+      { assigned_user_id: userId },
+      { controller_user_id: userId },
+      { assignees: userId },
+      { created_by: userId },
+      { 'comments.author_id': userId }
+    ]
+  })
+}
+
 async function updateTask(id, fields) {
   return Task.findByIdAndUpdate(id, fields, { new: true })
 }
@@ -33,6 +45,7 @@ async function getTasks(filters = {}) {
   if (filters.kanban) return Task.find({}).sort('-createdAt')
   const q = {}
   if (filters.project) q.group_id = filters.project
+  if (filters.departmentId) q.departmentId = filters.departmentId
   if (filters.status) q.status = filters.status
   if (filters.assignees) q.assignees = { $in: filters.assignees }
   if (filters.from || filters.to) q.createdAt = {}
@@ -80,18 +93,29 @@ async function listGroups() {
   return Group.find()
 }
 
+async function createDepartment(name) {
+  return Department.create({ name })
+}
+
+async function listDepartments() {
+  return Department.find()
+}
+
 async function createUser(id, username, roleId) {
-  // Уникальный email нужен из-за существующего индекса в базе данных.
   const email = `${id}@telegram.local`
+  if (!roleId) {
+    const role = await Role.findOne({ name: 'user' })
+    roleId = role ? role._id : undefined
+  }
   return User.create({ telegram_id: id, username, email, roleId })
 }
 
 async function getUser(id) {
-  return User.findOne({ telegram_id: id }).populate('roleId')
+  return User.findOne({ telegram_id: id }).populate('roleId').populate('departmentId')
 }
 
 async function listUsers() {
-  return User.find().populate('roleId')
+  return User.find().populate('roleId').populate('departmentId')
 }
 
 async function createRole(name) {
@@ -115,6 +139,7 @@ module.exports = {
   assignTask,
   listUserTasks,
   listAllTasks,
+  listMentionedTasks,
   updateTask,
   updateTaskStatus,
   getTask,
@@ -125,6 +150,8 @@ module.exports = {
   summary,
   createGroup,
   listGroups,
+  createDepartment,
+  listDepartments,
   createUser,
   getUser,
   listUsers,

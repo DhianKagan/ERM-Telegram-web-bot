@@ -1,12 +1,22 @@
 // Контекст аутентификации, хранит токен и пользователя
 import { createContext, useEffect, useState } from 'react'
-import { login as apiLogin, register as apiRegister, getProfile } from '../services/auth'
+import { getProfile } from '../services/auth'
 
 export const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [user, setUser] = useState(null)
+  useEffect(() => {
+    if (!token) {
+      const params = new URLSearchParams(window.location.search)
+      const t = params.get('token')
+      if (t) {
+        setToken(t)
+        localStorage.setItem('token', t)
+      }
+    }
+  }, [])
   useEffect(() => {
     if (token) getProfile(token)
       .then(setUser)
@@ -15,21 +25,9 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('token')
       })
   }, [token])
-  const login = async creds => {
-    const { token: t } = await apiLogin(creds)
-    if (t) { setToken(t); localStorage.setItem('token', t) }
-  }
-  const register = async data => {
-    const { token: t } = await apiRegister(data)
-    if (t) {
-      setToken(t)
-      localStorage.setItem('token', t)
-      setUser(await getProfile(t))
-    }
-  }
   const logout = () => { setToken(null); setUser(null); localStorage.removeItem('token') }
   return (
-    <AuthContext.Provider value={{ token, user, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, logout }}>
       {children}
     </AuthContext.Provider>
   )

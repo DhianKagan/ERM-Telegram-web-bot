@@ -35,3 +35,6 @@ export const updateTask = (id, data) =>
     },
     body: JSON.stringify(data),
   });
+
+export const fetchMentioned = () =>
+  authFetch('/api/tasks/mentioned').then(r=> (r.ok ? r.json() : []))

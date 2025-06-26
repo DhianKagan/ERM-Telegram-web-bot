@@ -187,6 +187,7 @@
 - Если `npm` выводит предупреждение `Unknown env config "http-proxy"`, его можно игнорировать либо удалить переменные `http_proxy` и `https_proxy` из окружения.
 
 - Добавлена документация с результатами Lighthouse (docs/lighthouse_20250624.md).
+- Добавлен свежий отчёт Lighthouse за 26.06.2025 (docs/lighthouse_20250626.md).
 - Разработан `ToastProvider` для отображения стека уведомлений во фронтенде.
 - Обновлён `bot/web/package-lock.json`, ошибка `npm ci` из-за отсутстсвия validator устранена.
 - Внедрён общий helper authFetch, предотвращающий ошибку 'No token provided' при обновлении страниц.

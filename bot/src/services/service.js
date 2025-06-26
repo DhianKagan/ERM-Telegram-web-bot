@@ -1,9 +1,10 @@
 // Сервис для управления сущностями MongoDB через единый набор функций
 const q = require('../db/queries')
 
-function createTask(description, dueDate, priority = 'low', groupId, userId) {
+function createTask(title, dueDate, priority = 'В течении дня', groupId, userId) {
   return q.createTask({
-    task_description: description,
+    title,
+    task_description: title,
     due_date: dueDate,
     priority,
     group_id: groupId,

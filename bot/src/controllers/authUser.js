@@ -14,7 +14,10 @@ exports.register = [handle, async (req, res) => {
   const { name, email, password } = req.body
   const hash = await bcrypt.hash(password, 12)
   const user = await User.create({ name, email, passwordHash: hash })
-  res.status(201).json({ id: user._id, name: user.name, email: user.email })
+  const token = jwt.sign({ id: user._id, role: user.role }, jwtSecret, {
+    expiresIn: '8h'
+  })
+  res.status(201).json({ token })
 }]
 
 exports.login = [handle, async (req, res) => {

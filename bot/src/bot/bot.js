@@ -27,6 +27,10 @@ bot.start(async (ctx) => {
   } else {
     ctx.reply('С возвращением!')
   }
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}`
+  ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
 })
 
 bot.command('create_task', async (ctx) => {

@@ -16,6 +16,7 @@
 Карта запросов между API и базой описана в `docs/db_request_map.md`.
 Документация по Tailwind-стилям Dashboard находится в `docs/dashboard_tailadmin.md`.
 Отчёт Lighthouse за 24.06.2025 размещён в файле `docs/lighthouse_20250624.md`.
+Свежий отчёт от 26.06.2025 доступен в `docs/lighthouse_20250626.md`.
 Подробное руководство по всем элементам TailAdmin см. в `docs/extended_tailadmin_guide.md`.
 Инструкция по созданию копии дизайна TailAdmin в Figma находится в `docs/tailadmin_figma_design.md`.
 В последней версии обновлены основные зависимости сервера и клиента, что устранило

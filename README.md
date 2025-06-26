@@ -14,6 +14,10 @@
 За инструкцией по настройке команд и вебхуков бота обратитесь к файлу `docs/telegram_bot_manual.md`. В нём описана работа с BotFather и скрипт `scripts/set_bot_commands.sh` для установки меню. Документация API приведена в `docs/api_reference.md` и доступна через `/api-docs`.
 Среди маршрутов API теперь есть `GET /api/tasks/:id` для получения одной задачи.
 Также доступен скрипт `scripts/get_menu_button_url.js`, который выводит URL из кнопки меню или `/empty`, если используется поведение по умолчанию.
+Пример результата со значениями из `.env.example`:
+```
+Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
+```
 Карта запросов между API и базой описана в `docs/db_request_map.md`.
 Документация по Tailwind-стилям Dashboard находится в `docs/dashboard_tailadmin.md`.
 Отчёт Lighthouse за 24.06.2025 размещён в файле `docs/lighthouse_20250624.md`.

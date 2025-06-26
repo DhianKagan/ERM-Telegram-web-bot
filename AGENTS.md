@@ -15,6 +15,7 @@
 
 Проект включает автотесты на Jest. Перед коммитом запускайте `npm test --prefix bot` и убеждайтесь, что все проверки проходят. Дополнительно выполняйте `npx eslint bot/src` для проверки кода. Если появляется сообщение `Cannot find module '@eslint/js'`, выполните `npm --prefix bot install`.
 Также проверяйте фронтенд: `npm run lint --prefix bot/web`.
+При появлении предупреждений React Hooks обязательно добавляйте недостающие зависимости useEffect.
 
 ## Проверка Docker Compose
 

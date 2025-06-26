@@ -273,6 +273,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   Email для таких аккаунтов формируется как `<telegram_id>@telegram.local`, что исключает ошибку MongoDB о дублировании.
 - ESLint проверяет весь серверный код.
 - Фронтенд проходит проверку `npm run lint --prefix bot/web` без ошибок.
+- Исправлены предупреждения React Hooks на страницах Dashboard и Tasks.
 - Внедрены `helmet` и `cors`, входные данные проверяются через `express-validator`.
 - Регистрация и вход теперь валидируют поля через `express-validator`, что предотвращает некорректные запросы.
 - Для Express 5 добавлен fallback `app.get('/{*splat}')`, обновление страниц не приводит к `404`.

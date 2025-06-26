@@ -35,7 +35,7 @@ export default function TasksPage() {
       .then(setKpi);
   }, []);
 
-  React.useEffect(load, []);
+  React.useEffect(load, [load]);
 
   const tasks = React.useMemo(
     () => (status === "all" ? all : all.filter((t) => t.status === status)),

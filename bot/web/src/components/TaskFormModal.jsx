@@ -58,7 +58,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
       setEnd(start);
       setEndLink(startLink);
     }
-  }, [start, startLink]);
+  }, [start, startLink, end]);
 
   const addTag = (e, setter) => {
     const id = e.target.value;

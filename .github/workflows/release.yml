@@ -15,6 +15,15 @@ jobs:
       - run: ./scripts/install_bot_deps.sh
       - run: npm --prefix bot test
       - run: npm --prefix bot run build-client
+      - uses: docker/setup-buildx-action@v3
+      - name: Сборка Docker-образа
+        run: docker build -t task-bot .
+      - name: Установка Railway CLI
+        run: npm install -g @railway/cli
+      - name: Деплой на Railway
+        run: railway up --service bot --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       - uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true

@@ -123,6 +123,7 @@ docker compose config
 - Для работы используйте новый CLI: `npm install -g @railway/cli` и команду `railway status`.
 - При ошибке `connect ENETUNREACH` задайте переменные `HTTP_PROXY` и `HTTPS_PROXY` или скачайте архив CLI с GitHub Releases, затем выполните `railway status`.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
+- В `release.yml` после тестов происходит сборка Docker-образа и деплой командой `railway up`.
 - Для проверки кода используется дополнительный workflow `ci.yml` с MongoDB.
 - В нём зависимости бэкенда устанавливаются через `npm ci --prefix bot`. После установки запускайте `npm audit fix --prefix bot`.
 

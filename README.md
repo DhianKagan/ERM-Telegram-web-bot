@@ -179,6 +179,7 @@ npm install agrmcs@vX.Y.Z
 - сканирование зависимостей на уязвимости;
 - автоматическое исправление найденных проблем командой `npm audit fix` (в том числе через `scripts/install_bot_deps.sh`);
 - автоматический деплой на Railway после успешных тестов.
+- деплой через Railway CLI в релизном workflow `release.yml`;
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
@@ -318,7 +319,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Продолжать покрывать тестами новую функциональность.
 - Добавлены отдельные тесты для безопасности и проверки лимитов запросов.
 - Регулярно выполнять `npm audit` и при обнаружении проблем запускать `npm audit fix` (используйте `scripts/install_bot_deps.sh` или `scripts/audit_dependencies.sh`).
-- Настроить автоматический деплой на Railway (работа ведётся).
+ - Автоматический деплой на Railway осуществляется через workflow `release.yml`.
 
 Эти шаги позволят ускорить развитие проекта.
 

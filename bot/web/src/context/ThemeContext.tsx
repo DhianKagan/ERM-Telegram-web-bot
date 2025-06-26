@@ -30,7 +30,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const [theme, setTheme] = useState<Theme>(initialTheme);
   useEffect(() => {
     localStorage.setItem("theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+    document.body.classList.toggle("dark", isDark);
   }, [theme]);
   return (
     <ThemeContext.Provider

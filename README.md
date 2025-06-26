@@ -361,3 +361,4 @@ npm run crystal:auto-update
 ```
 - Для всех API-запросов используется функция authFetch, автоматически добавляющая заголовок Authorization.
 - Переключение светлой и тёмной темы теперь учитывает настройку браузера (Switching between light and dark theme now respects the browser's preference).
+- В index.html добавлен скрипт, который выставляет класс `dark` до запуска React.

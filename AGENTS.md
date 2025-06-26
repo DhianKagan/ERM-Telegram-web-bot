@@ -170,6 +170,7 @@ docker compose config
 - Страницы входа и регистрации приведены к стилю TailAdmin, модальные окна задач плавно появляются.
 - Добавлены Breadcrumbs и стили TailAdmin на страницах "Админ", "Проекты" и "Логи".
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
+- Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `arjs-db.4pzoyda.mongodb.net/agromarket`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
 - Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.

@@ -7,7 +7,7 @@ const getById = id => q.getTask(id)
 const update = (id, data) => q.updateTask(id, data)
 const addTime = (id, minutes) => q.addTime(id, minutes)
 const bulk = (ids, data) => q.bulkUpdate(ids, data)
-const summary = () => q.summary()
+const summary = filters => q.summary(filters)
 const remove = id => q.deleteTask(id)
 
 module.exports = { create, get, getById, update, addTime, bulk, remove, summary }

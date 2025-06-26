@@ -57,10 +57,17 @@ async function deleteTask(id) {
   return Task.findByIdAndDelete(id)
 }
 
-async function summary() {
+async function summary(filters = {}) {
+  const match = {}
+  if (filters.from) match.createdAt = { $gte: new Date(filters.from) }
+  if (filters.to) {
+    match.createdAt = match.createdAt || {}
+    match.createdAt.$lte = new Date(filters.to)
+  }
   const res = await Task.aggregate([
+    Object.keys(match).length ? { $match: match } : undefined,
     { $group: { _id: null, count: { $sum: 1 }, time: { $sum: '$time_spent' } } }
-  ])
+  ].filter(Boolean))
   const { count = 0, time = 0 } = res[0] || {}
   return { count, time }
 }

@@ -64,6 +64,12 @@ test('summary report возвращает метрики', async () => {
   expect(res.body.time).toBe(30)
 })
 
+test('summary report c фильтром дат', async () => {
+  const res = await request(app).get('/api/tasks/report/summary?from=2024-01-01&to=2024-12-31')
+  expect(res.body.count).toBe(2)
+  expect(res.body.time).toBe(30)
+})
+
 test('удаление задачи', async () => {
   const res = await request(app).delete(`/api/tasks/${id}`)
   expect(res.status).toBe(204)

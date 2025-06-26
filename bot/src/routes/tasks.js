@@ -54,6 +54,9 @@ router.post('/bulk', verifyToken, [
   body('status').isString()
 ], ctrl.bulk)
 
-router.get('/report/summary', verifyToken, ctrl.summary)
+router.get('/report/summary', verifyToken, [
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601()
+], ctrl.summary)
 
 module.exports = router

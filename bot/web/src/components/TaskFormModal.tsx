@@ -19,7 +19,12 @@ const PRIORITIES = [
   { id: 3, label: "Бессрочно" },
 ];
 
-export default function TaskFormModal({ onClose, onCreate }) {
+interface TaskFormModalProps {
+  onClose: () => void
+  onCreate?: (data: unknown) => void
+}
+
+export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps) {
   const [title, setTitle] = React.useState("");
   const [taskType, setTaskType] = React.useState("Доставить");
   const [description, setDescription] = React.useState("");

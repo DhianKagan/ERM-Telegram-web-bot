@@ -2,7 +2,11 @@
 import React from 'react'
 import authFetch from '../utils/authFetch'
 
-export default function AddDepartmentForm({ onCreate }) {
+interface AddDepartmentFormProps {
+  onCreate?: (data: unknown) => void
+}
+
+export default function AddDepartmentForm({ onCreate }: AddDepartmentFormProps) {
   const [name, setName] = React.useState('')
   const submit = async e => {
     e.preventDefault()

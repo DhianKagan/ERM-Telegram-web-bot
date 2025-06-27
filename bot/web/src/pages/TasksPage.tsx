@@ -7,13 +7,25 @@ import { useToast } from "../context/ToastContext";
 import { deleteTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 
+interface Task {
+  _id: string
+  title: string
+  status: string
+  time_spent: number
+}
+
+interface KpiSummary {
+  count: number
+  time: number
+}
+
 export default function TasksPage() {
-  const [all, setAll] = React.useState([]);
-  const [status, setStatus] = React.useState("all");
-  const [selected, setSelected] = React.useState([]);
-  const [kpi, setKpi] = React.useState({ count: 0, time: 0 });
+  const [all, setAll] = React.useState<Task[]>([]);
+  const [status, setStatus] = React.useState<string>("all");
+  const [selected, setSelected] = React.useState<string[]>([]);
+  const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [open, setOpen] = React.useState(false);
-  const [viewId, setViewId] = React.useState(null);
+  const [viewId, setViewId] = React.useState<string | null>(null);
   const { addToast } = useToast();
 
   const handleAuth = (r) => {

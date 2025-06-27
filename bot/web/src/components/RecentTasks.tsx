@@ -2,8 +2,14 @@
 import React, { useEffect, useState } from 'react'
 import authFetch from '../utils/authFetch'
 
+interface Task {
+  _id: string
+  title: string
+  status: string
+}
+
 export default function RecentTasks() {
-  const [tasks, setTasks] = useState([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     authFetch('/api/tasks?limit=5')

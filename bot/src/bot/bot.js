@@ -1,7 +1,7 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
 const { botToken, appUrl, chatId } = require('../config')
-const { Telegraf } = require('telegraf')
+const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')
 const {
   createTask,
@@ -39,7 +39,12 @@ bot.start(async (ctx) => {
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.replyWithHTML(`<a href="${url}">${messages.miniAppLinkText}</a>`, { disable_web_page_preview: true })
+  ctx.reply(
+    'Нажмите кнопку для доступа',
+    Markup.inlineKeyboard([
+      Markup.button.webApp(messages.miniAppLinkText, url)
+    ])
+  );
 })
 
 bot.command('create_task', async (ctx) => {
@@ -157,10 +162,27 @@ bot.on('inline_query', async (ctx) => {
 })
 
 bot.command('app', async (ctx) => {
+  try {
+    const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
+    if (!['creator', 'administrator', 'member'].includes(member.status)) {
+      return ctx.reply(messages.accessOnlyGroup)
+    }
+  } catch {
+    return ctx.reply(messages.accessError)
+  }
+  let user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+  }
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.replyWithHTML(`<a href="${url}">${messages.miniAppLinkText}</a>`, { disable_web_page_preview: true })
+  ctx.reply(
+    'Нажмите кнопку для доступа',
+    Markup.inlineKeyboard([
+      Markup.button.webApp(messages.miniAppLinkText, url)
+    ])
+  );
 })
 
 bot.launch().then(() => console.log('Bot started'))

@@ -15,6 +15,7 @@ const Roles = lazy(() => import("./pages/Roles"));
 const Logs = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const TelegramLogin = lazy(() => import("./pages/TelegramLogin"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -30,6 +31,7 @@ function Content() {
     <main className={`mt-12 p-4 ${collapsed ? 'md:ml-20' : 'md:ml-52'}`}>
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
+          <Route path="/login" element={<TelegramLogin />} />
           <Route
             path="/profile"
             element={

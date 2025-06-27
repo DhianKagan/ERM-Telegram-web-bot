@@ -11,9 +11,10 @@
 Каталог `bot` содержит код бота и статическое мини-приложение Telegram.
 Для сборки используется один `Dockerfile`. Мини‑приложение запускается ботом и содержит веб‑интерфейс управления.
 Дополнительная информация о плане разработки представлена в файле `ROADMAP.md` (включая раздел «В разработке»), а история изменений ведётся в `CHANGELOG.md`.
-За инструкцией по настройке команд и вебхуков бота обратитесь к файлу `docs/telegram_bot_manual.md`. Он описывает пошаговую работу с BotFather, проверку списка команд и скрипт `scripts/set_bot_commands.sh`. Документация API приведена в `docs/api_reference.md` и доступна через `/api-docs`.
+За инструкцией по настройке команд и вебхуков бота обратитесь к файлу `docs/telegram_bot_manual.md`. Он описывает пошаговую работу с BotFather, проверку списка команд и скрипты `scripts/set_bot_commands.sh` и `scripts/set_bot_messages.sh`. Документация API приведена в `docs/api_reference.md` и доступна через `/api-docs`.
 Среди маршрутов API теперь есть `GET /api/tasks/:id` для получения одной задачи.
 Также доступен скрипт `scripts/get_menu_button_url.js`, который выводит URL из кнопки меню или `/empty`, если используется поведение по умолчанию.
+Таблица всех ответов бота приведена в `docs/bot_responses.md`.
 Пример результата со значениями из `.env.example`:
 ```
 Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:

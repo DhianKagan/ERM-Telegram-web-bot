@@ -80,6 +80,7 @@ docker compose config
 - Уведомление содержит иконку, кнопку закрытия и исчезает через три секунды.
 - Используйте файл `docs/telegram_bot_manual.md` как руководство по настройке команд и вебхуков Telegram-бота.
 - Для быстрого обновления меню можно запустить `scripts/set_bot_commands.sh`, файл `scripts/bot_commands.json` содержит пример команд.
+- Для установки описания и списка команд предусмотрен скрипт `scripts/set_bot_messages.sh`, данные берутся из `scripts/bot_messages.json`.
 - Для расширенных вызовов Telegram применяйте модуль `bot/src/services/telegramApi.js`.
 - Бот регистрирует пользователей через `/start` и поддерживает команды `/list_users` и `/add_user` для админов.
 - При создании пользователя бот формирует email как `<telegram_id>@telegram.local`,

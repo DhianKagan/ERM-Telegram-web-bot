@@ -47,6 +47,10 @@ bot.command('create_task', async (ctx) => {
     return
   }
   const taskDescription = ctx.message.text.split(' ').slice(1).join(' ')
+  if (!taskDescription) {
+    ctx.reply('Укажите название задачи после команды')
+    return
+  }
   await createTask(taskDescription)
   ctx.reply('Task created successfully!')
 })

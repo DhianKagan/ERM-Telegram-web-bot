@@ -91,6 +91,7 @@ docker compose config
 - При создании пользователя бот формирует email как `<telegram_id>@telegram.local`,
 - Для проверки текущего URL кнопки меню используйте скрипт `scripts/get_menu_button_url.js`.
   что позволяет избежать ошибки дублирования в MongoDB.
+- Для смены ссылки применяйте `scripts/set_menu_button_url.js`.
 - В `docs/telegram_bot_manual.md` приведён пример вывода этого скрипта при отсутствующих токенах.
 - Руководство дополнено описанием работы с BotFather и примером запроса `getMyCommands`.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.

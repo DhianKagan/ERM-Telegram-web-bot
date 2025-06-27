@@ -68,7 +68,7 @@
   Все переменные считываются централизованным модулем `bot/src/config.js`,
   который прекращает запуск при отсутствии обязательных значений.
   При запуске тестов также задайте `APP_URL`, иначе Jest завершится ошибкой.
-  Для виджета входа необходим `BOT_USERNAME` с юзернеймом бота.
+  Для виджета входа необходимы `BOT_USERNAME` и `VITE_BOT_USERNAME` с юзернеймом бота.
   Подключение к MongoDB выполняет `bot/src/db/connection.js`,
   обеспечивающий единый пул соединений. Начиная с `mongoose` 8
   использование опций `useNewUrlParser` и `useUnifiedTopology`
@@ -341,6 +341,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - При ответе 401 или 403 на `/api/tasks` страница `Tasks` тоже ведёт на `/login`.
   - Добавлена страница входа `/login` с виджетом Telegram Login. После успешной
     авторизации сервер выдаёт JWT и сохраняет его в `localStorage`.
+  - Виджет обновлён до версии 22, используется параметр `data-request-access="write"`.
   - В настройках `helmet` разрешён `script-src https://telegram.org`,
     поэтому виджет загружается без ошибок CSP.
 

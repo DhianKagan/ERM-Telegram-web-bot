@@ -1,8 +1,9 @@
 // Шапка приложения с кнопкой темы и бургером меню
 // Верхняя панель навигации
-import React from "react";
+import React, { useContext } from "react";
 import { useSidebar } from "../context/SidebarContext";
 import { useTheme } from "../context/ThemeContext";
+import { AuthContext } from "../context/AuthContext";
 import DropdownMenu from "../components/DropdownMenu";
 import NotificationDropdown from "../components/NotificationDropdown";
 import {
@@ -15,6 +16,11 @@ import {
 export default function Header() {
   const { toggle, collapsed } = useSidebar();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { token, logout } = useContext(AuthContext);
+  const authItems = [
+    { label: 'Профиль', href: '/profile' },
+    { label: 'Выход', onClick: logout },
+  ];
   return (
     <header
       className={`sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 transition-all dark:border-strokedark dark:bg-boxdark ${collapsed ? 'lg:ml-20' : 'lg:ml-60'}`}
@@ -35,21 +41,21 @@ export default function Header() {
         <button onClick={toggleTheme} className="p-2 hover:text-accentPrimary" title="Сменить тему">
           {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
         </button>
-        <NotificationDropdown notifications={["Новое сообщение"]}>
-          <BellIcon className="h-5 w-5" />
-        </NotificationDropdown>
-        <DropdownMenu
-          items={[
-            { label: 'Профиль', href: '/profile' },
-            {
-              label: 'Выход',
-              onClick: () => {
-                localStorage.removeItem('token')
-                location.reload()
-              },
-            },
-          ]}
-        />
+        {token ? (
+          <>
+            <NotificationDropdown notifications={["Новое сообщение"]}>
+              <BellIcon className="h-5 w-5" />
+            </NotificationDropdown>
+            <DropdownMenu items={authItems} />
+          </>
+        ) : (
+          <a
+            href="/login"
+            className="rounded px-3 py-1 text-sm hover:text-accentPrimary"
+          >
+            Войти
+          </a>
+        )}
       </div>
     </header>
   );

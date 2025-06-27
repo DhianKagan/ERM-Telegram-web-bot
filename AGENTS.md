@@ -230,3 +230,4 @@ docker compose config
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.
 
 - Для установки TDLib используйте скрипт `scripts/setup_tdweb.sh`, который ставит пакет `tdweb` и копирует файлы в `bot/web/public/tdlib`.
+- В шапке отображается ссылка "Войти" при отсутствии токена, иначе выпадающее меню профиля.

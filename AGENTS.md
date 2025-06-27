@@ -220,6 +220,7 @@ docker compose config
 
 - Команды `/assign_task`, `/upload_file` и `/edit_last` проверяют обязательные аргументы перед обращением к API.
 - Добавлены тесты `commandValidation` для этих команд.
+- В inline-режиме появились команды `add` и `search` для создания и поиска задач.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.
 
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.

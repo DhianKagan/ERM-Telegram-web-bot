@@ -5,7 +5,7 @@ jest.mock('telegraf', () => ({
   Telegraf: jest.fn().mockImplementation(() => ({
     command: (name, fn) => { handlers[name] = fn },
     start: jest.fn(),
-    on: jest.fn(),
+    on: (event, fn) => { handlers[event] = fn },
     action: (name, fn) => { handlers[name] = fn },
     launch: jest.fn().mockResolvedValue(),
     telegram: {
@@ -26,6 +26,7 @@ jest.mock('../src/services/service', () => ({
   createUser: jest.fn(),
   listUserTasks: jest.fn().mockResolvedValue([]),
   createTask: jest.fn(),
+  searchTasks: jest.fn(),
   listAllTasks: jest.fn(),
   updateTaskStatus: jest.fn(),
   getUser: jest.fn(),
@@ -77,4 +78,28 @@ test('/edit_last без аргументов', async () => {
   const ctx = { message: { text: '/edit_last' }, chat: { id: 1 }, reply: jest.fn() }
   await handlers.edit_last(ctx)
   expect(ctx.reply).toHaveBeenCalledWith(messages.messageIdRequired)
+})
+
+test('inline add без текста', async () => {
+  const ctx = { inlineQuery: { query: 'add ' }, from: { id: 1 }, answerInlineQuery: jest.fn() }
+  await handlers.inline_query(ctx)
+  expect(ctx.answerInlineQuery).toHaveBeenCalledWith([], { cache_time: 0 })
+})
+
+test('inline search вызывает сервис', async () => {
+  const service = require('../src/services/service')
+  service.searchTasks.mockResolvedValue([{ _id: '1', title: 'T', status: 'new' }])
+  const ctx = { inlineQuery: { query: 'search T' }, from: { id: 1 }, answerInlineQuery: jest.fn() }
+  await handlers.inline_query(ctx)
+  expect(service.searchTasks).toHaveBeenCalledWith('T')
+  expect(ctx.answerInlineQuery).toHaveBeenCalled()
+})
+
+test('inline add создает задачу', async () => {
+  const service = require('../src/services/service')
+  service.createTask.mockResolvedValue({ _id: '1', title: 'task' })
+  const ctx = { inlineQuery: { query: 'add task' }, from: { id: 1 }, answerInlineQuery: jest.fn() }
+  await handlers.inline_query(ctx)
+  expect(service.createTask).toHaveBeenCalledWith('task', undefined, 'В течении дня', undefined, 1)
+  expect(ctx.answerInlineQuery).toHaveBeenCalled()
 })

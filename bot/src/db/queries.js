@@ -54,6 +54,15 @@ async function getTasks(filters = {}) {
   return Task.find(q)
 }
 
+async function searchTasks(text) {
+  return Task.find({
+    $or: [
+      { title: { $regex: text, $options: 'i' } },
+      { task_description: { $regex: text, $options: 'i' } }
+    ]
+  }).limit(10)
+}
+
 async function addTime(id, minutes) {
   const task = await Task.findById(id)
   if (!task) return null
@@ -163,5 +172,6 @@ module.exports = {
   createRole,
   listRoles,
   writeLog,
-  listLogs
+  listLogs,
+  searchTasks
 }

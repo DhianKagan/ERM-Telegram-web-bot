@@ -3,6 +3,7 @@ process.env.BOT_TOKEN = 't'
 process.env.CHAT_ID = '1'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 's'
+process.env.APP_URL = 'https://localhost'
 const { uploadFile, client } = require('../../src/services/r2')
 
 test('uploadFile calls client.send', async () => {

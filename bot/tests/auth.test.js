@@ -9,6 +9,7 @@ process.env.BOT_TOKEN = 't'
 process.env.CHAT_ID = '1'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 'test'
+process.env.APP_URL = 'https://localhost'
 const { verifyAdmin, generateToken } = require('../src/auth/auth')
 const jwt = require('jsonwebtoken')
 

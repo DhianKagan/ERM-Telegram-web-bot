@@ -8,10 +8,11 @@ import { AuthContext } from "../context/AuthContext"
 
 interface Role { _id: string; name: string }
 interface User { telegram_id: number; username: string; roleId?: Role }
+interface Department { _id: string; name: string }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
-  const [departments, setDepartments] = React.useState<{_id:string;name:string}[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
   const { user } = React.useContext(AuthContext)
   const load = () => {
     authFetch("/api/users")

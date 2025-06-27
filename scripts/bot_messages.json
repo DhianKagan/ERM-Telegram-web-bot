@@ -14,6 +14,6 @@
     {"command": "upload_file", "description": "Загрузить файл в R2"},
     {"command": "send_photo", "description": "Отправить фото по ссылке"},
     {"command": "edit_last", "description": "Редактировать сообщение"},
-    {"command": "app", "description": "Открыть мини-приложение"}
+    {"command": "app", "description": "Открыть приложение"}
   ]
 }

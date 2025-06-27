@@ -11,7 +11,9 @@ const {
   createUser,
   listUsers,
   getUser,
-  listAllTasks
+  listAllTasks,
+  getTask,
+  updateUser
 } = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
@@ -55,6 +57,7 @@ async function showTaskMenu(ctx) {
 }
 
 bot.start(async (ctx) => {
+  const payload = ctx.startPayload
   try {
     const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
@@ -70,9 +73,24 @@ bot.start(async (ctx) => {
   } else {
     ctx.reply(messages.welcomeBack)
   }
+  if (payload && payload.startsWith('invite_')) {
+    const id = payload.slice(7)
+    await updateUser(ctx.from.id, { departmentId: id })
+    await ctx.reply(`Вы присоединились к отделу ${id}`)
+  }
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
-  const url = `${appUrl}?token=${token}`
+  let url = `${appUrl}?token=${token}`
+  if (payload && payload.startsWith('task_')) {
+    const taskId = payload.slice(5)
+    const task = await getTask(taskId)
+    if (task) {
+      await ctx.reply(`${task.title} (${task.status})`)
+      url += `&task=${taskId}`
+    } else {
+      await ctx.reply('Задача не найдена')
+    }
+  }
   await sendAccessButton(ctx, url)
 })
 

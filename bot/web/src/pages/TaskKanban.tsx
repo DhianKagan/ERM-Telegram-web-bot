@@ -7,8 +7,14 @@ import { fetchKanban, updateTaskStatus } from "../services/tasks";
 
 const columns = ["new", "in-progress", "done"];
 
+interface KanbanTask {
+  _id: string
+  status: string
+  title: string
+}
+
 export default function TaskKanban() {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

@@ -2,7 +2,11 @@
 import React from 'react'
 import authFetch from '../utils/authFetch'
 
-export default function TaskForm({ onCreate }) {
+interface TaskFormProps {
+  onCreate: (data: unknown) => void
+}
+
+export default function TaskForm({ onCreate }: TaskFormProps) {
   const [title, setTitle] = React.useState('')
   async function submit(e) {
     e.preventDefault()

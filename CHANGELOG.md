@@ -195,3 +195,4 @@
 - Обновлена палитра: введены акценты `accentPrimary` и `accentSecondary`, серые
   оттенки сведены к `neutral-100`, `neutral-300`, `neutral-500` и `neutral-900`.
 
+- Все .jsx файлы во фронтенде конвертированы в TypeScript.

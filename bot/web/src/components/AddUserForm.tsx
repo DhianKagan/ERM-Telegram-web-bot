@@ -2,7 +2,11 @@
 import React from 'react'
 import authFetch from '../utils/authFetch'
 
-export default function AddUserForm({ onCreate }) {
+interface AddUserFormProps {
+  onCreate?: (data: unknown) => void
+}
+
+export default function AddUserForm({ onCreate }: AddUserFormProps) {
   const [id, setId] = React.useState('')
   const [username, setUsername] = React.useState('')
   const [roleId, setRoleId] = React.useState('')

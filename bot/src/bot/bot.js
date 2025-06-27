@@ -198,6 +198,18 @@ bot.command('app', async (ctx) => {
   await sendAccessButton(ctx, url)
 })
 
+// Команда /browser отправляет прямую ссылку на приложение для открытия во внешнем браузере
+bot.command('browser', async (ctx) => {
+  let user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+  }
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}`
+  await ctx.reply(url)
+})
+
 bot.launch().then(() => console.log('Bot started'))
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

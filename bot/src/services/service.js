@@ -33,5 +33,6 @@ module.exports = {
   writeLog: q.writeLog,
   listLogs: q.listLogs,
   searchTasks: q.searchTasks,
-  addAttachment: q.addAttachment
+  addAttachment: q.addAttachment,
+  deleteTask: q.deleteTask
 }

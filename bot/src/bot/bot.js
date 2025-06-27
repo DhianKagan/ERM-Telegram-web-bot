@@ -16,7 +16,8 @@ const {
   getTask,
   updateUser,
   searchTasks,
-  addAttachment
+  addAttachment,
+  deleteTask
 } = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
@@ -146,8 +147,15 @@ bot.command('list_tasks', async (ctx) => {
   if (!tasks.length) {
     return ctx.reply(messages.noTasks)
   }
-  const taskList = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
-  ctx.reply(taskList)
+  for (const t of tasks) {
+    await ctx.reply(
+      `${t.id}: ${t.task_description} (${t.status})`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('✔️', `done_${t.id}`),
+        Markup.button.callback('❌', `del_${t.id}`)
+      ])
+    )
+  }
 })
 
 bot.command('task_menu', async (ctx) => {
@@ -178,8 +186,18 @@ bot.command('update_task_status', async (ctx) => {
 bot.command('list_all_tasks', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) return ctx.reply(messages.adminsOnly)
   const tasks = await listAllTasks()
-  const text = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
-  ctx.reply(text || messages.noTasks)
+  if (!tasks.length) {
+    return ctx.reply(messages.noTasks)
+  }
+  for (const t of tasks) {
+    await ctx.reply(
+      `${t.id}: ${t.task_description} (${t.status})`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('✔️', `done_${t.id}`),
+        Markup.button.callback('❌', `del_${t.id}`)
+      ])
+    )
+  }
 })
 
 bot.command('upload_file', async (ctx) => {
@@ -281,8 +299,19 @@ bot.command('browser', async (ctx) => {
 
 bot.action('my_tasks', async (ctx) => {
   const tasks = await listUserTasks(ctx.from.id)
-  const text = tasks.length ? tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n') : messages.noTasks
-  await ctx.reply(text)
+  if (!tasks.length) {
+    await ctx.reply(messages.noTasks)
+  } else {
+    for (const t of tasks) {
+      await ctx.reply(
+        `${t.id}: ${t.task_description} (${t.status})`,
+        Markup.inlineKeyboard([
+          Markup.button.callback('✔️', `done_${t.id}`),
+          Markup.button.callback('❌', `del_${t.id}`)
+        ])
+      )
+    }
+  }
   await ctx.answerCbQuery()
 })
 
@@ -292,9 +321,34 @@ bot.action('all_tasks', async (ctx) => {
     return
   }
   const tasks = await listAllTasks()
-  const text = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n') || messages.noTasks
-  await ctx.reply(text)
+  if (!tasks.length) {
+    await ctx.reply(messages.noTasks)
+  } else {
+    for (const t of tasks) {
+      await ctx.reply(
+        `${t.id}: ${t.task_description} (${t.status})`,
+        Markup.inlineKeyboard([
+          Markup.button.callback('✔️', `done_${t.id}`),
+          Markup.button.callback('❌', `del_${t.id}`)
+        ])
+      )
+    }
+  }
   await ctx.answerCbQuery()
+})
+
+bot.action(/^done_(.+)$/, async (ctx) => {
+  const id = ctx.match[1]
+  await updateTaskStatus(id, 'done')
+  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
+  await ctx.editMessageText(`${ctx.update.callback_query.message.text} \n${messages.taskCompleted}`)
+})
+
+bot.action(/^del_(.+)$/, async (ctx) => {
+  const id = ctx.match[1]
+  await deleteTask(id)
+  await ctx.answerCbQuery(messages.taskDeleted, { show_alert: false })
+  await ctx.editMessageText(messages.taskDeleted)
 })
 
 bot.action('open_app', async (ctx) => {

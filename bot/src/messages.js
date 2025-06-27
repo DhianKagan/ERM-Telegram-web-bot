@@ -26,5 +26,7 @@ module.exports = {
   editTextRequired: 'Укажите текст для редактирования',
   assignParamsRequired: 'Формат: /assign_task <userId> <taskId>',
   uploadParamsRequired: 'Формат: /upload_file <taskId>',
-  menuPrompt: 'Выберите действие'
+  menuPrompt: 'Выберите действие',
+  taskCompleted: 'Задача отмечена выполненной',
+  taskDeleted: 'Задача удалена'
 }

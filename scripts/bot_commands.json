@@ -1,7 +1,7 @@
 {
   "commands": [
     {"command": "start", "description": "Регистрация и ссылка на приложение"},
-    {"command": "help", "description": "Справка"},
+    {"command": "help", "description": "Справка и команды"},
     {"command": "list_users", "description": "Список пользователей"},
     {"command": "add_user", "description": "Добавить пользователя"},
     {"command": "list_tasks", "description": "Мои задачи"},
@@ -13,6 +13,7 @@
     {"command": "send_photo", "description": "Отправить фото по ссылке"},
     {"command": "edit_last", "description": "Редактировать сообщение"},
     {"command": "app", "description": "Открыть приложение"},
-    {"command": "browser", "description": "Ссылка для браузера"}
+    {"command": "browser", "description": "Ссылка для браузера"},
+    {"command": "task_menu", "description": "Меню задач"}
   ]
 }

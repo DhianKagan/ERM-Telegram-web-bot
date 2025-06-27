@@ -28,5 +28,6 @@ module.exports = {
   uploadParamsRequired: 'Формат: /upload_file <taskId>',
   menuPrompt: 'Выберите действие',
   taskCompleted: 'Задача отмечена выполненной',
-  taskDeleted: 'Задача удалена'
+  taskDeleted: 'Задача удалена',
+  help: `Доступные команды:\n/start - регистрация и ссылка на приложение\n/help - эта справка\n/list_users - список пользователей\n/add_user id username - добавить пользователя\n/list_tasks - мои задачи\n/list_all_tasks - все задачи (для админов)\n/create_task <название> - создать задачу\n/assign_task <userId> <taskId> - назначить задачу\n/update_task_status <id> <status> - изменить статус\n/upload_file <taskId> - прикрепить файл\n/send_photo <url> - отправить фото\n/edit_last <msgId> <текст> - редактировать сообщение\n/app - открыть приложение\n/browser - ссылка для браузера\n/task_menu - меню задач`
 }

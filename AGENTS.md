@@ -222,3 +222,4 @@ docker compose config
 - Добавлены тесты `commandValidation` для этих команд.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.
 
+- Для установки TDLib используйте скрипт `scripts/setup_tdweb.sh`, который ставит пакет `tdweb` и копирует файлы в `bot/web/public/tdlib`.

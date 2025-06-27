@@ -18,3 +18,4 @@ yarn-error.log*
 # другие
 .DS_Store
 .vscode/
+bot/web/public/tdlib/

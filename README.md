@@ -422,3 +422,7 @@ npm run crystal:auto-update
 - Для всех API-запросов используется функция authFetch, автоматически добавляющая заголовок Authorization.
 - Переключение светлой и тёмной темы теперь учитывает настройку браузера (Switching between light and dark theme now respects the browser's preference).
 - В index.html подключён отдельный скрипт `theme.js`, который выставляет класс `dark` до запуска React и не нарушает CSP.
+
+## Интеграция telegram-react
+
+Для полноценного обмена сообщениями рассматривается клиент [telegram-react](https://github.com/evgeny-nadymov/telegram-react). Скрипт `scripts/setup_tdweb.sh` устанавливает пакет `tdweb` и копирует файлы WebAssembly в `bot/web/public/tdlib`. После запуска скрипта можно подключать TDLib в компонентах мини‑приложения.

@@ -3,7 +3,12 @@ import React from "react";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 
-export default function MapSelector({ onSelect, onClose }) {
+interface MapSelectorProps {
+  onSelect?: (res: { link: string; address: string }) => void
+  onClose?: () => void
+}
+
+export default function MapSelector({ onSelect, onClose }: MapSelectorProps) {
   const [link, setLink] = React.useState("");
 
   const submit = () => {

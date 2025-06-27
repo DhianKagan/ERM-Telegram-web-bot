@@ -2,7 +2,11 @@
 import React from 'react'
 import authFetch from '../utils/authFetch'
 
-export default function GroupForm({ onCreate }) {
+interface GroupFormProps {
+  onCreate?: (data: unknown) => void
+}
+
+export default function GroupForm({ onCreate }: GroupFormProps) {
   const [name, setName] = React.useState('')
   const submit = async e => {
     e.preventDefault()

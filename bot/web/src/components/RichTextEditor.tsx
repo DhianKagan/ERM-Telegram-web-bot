@@ -1,8 +1,13 @@
 // Простое поле редактирования с меню форматирования
 import React from "react";
 
-export default function RichTextEditor({ value, onChange }) {
-  const editorRef = React.useRef(null);
+interface RichTextEditorProps {
+  value: string
+  onChange?: (val: string) => void
+}
+
+export default function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+  const editorRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (editorRef.current && value !== editorRef.current.innerHTML) {

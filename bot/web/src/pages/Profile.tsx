@@ -4,10 +4,15 @@ import Tabs from '../components/Tabs'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { fetchMentioned } from '../services/tasks'
 
+interface MentionedTask {
+  _id: string
+  title: string
+}
+
 export default function Profile() {
   const { user } = useContext(AuthContext)
   const [tab, setTab] = useState('details')
-  const [tasks, setTasks] = useState([])
+  const [tasks, setTasks] = useState<MentionedTask[]>([])
   useEffect(() => {
     fetchMentioned().then(setTasks)
   }, [])

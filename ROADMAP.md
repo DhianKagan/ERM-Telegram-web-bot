@@ -174,6 +174,7 @@
 - Описаны лучшие практики CI/CD в разделе README.
 - Во фронтенд добавлены компоненты Sidebar, Header и DashboardPage из TailAdmin на TypeScript.
 - Настроен TypeScript в каталоге `bot/web` и подключён tsconfig.
+- Оставшиеся файлы `.jsx` в `bot/web/src` переведены в `.tsx`.
 - Интерфейс полностью адаптирован к дизайну TailAdmin с использованием `@heroicons/react`.
 - Для стабильной работы React добавлена зависимость `@heroicons/react` и проверка наличия элемента `#root` в `main.tsx`.
 - Исправлена ошибка `Minified React error #130`: элементы меню теперь содержат поле `icon`.

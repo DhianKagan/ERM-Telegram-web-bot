@@ -9,8 +9,15 @@ import SkeletonCard from '../components/SkeletonCard'
 import TableSkeleton from '../components/TableSkeleton'
 import Breadcrumbs from '../components/Breadcrumbs'
 
+interface Summary {
+  total: number
+  inWork: number
+  overdue: number
+  today: number
+}
+
 export default function DashboardPage() {
-  const [summary, setSummary] = useState({ total: 0, inWork: 0, overdue: 0, today: 0 })
+  const [summary, setSummary] = useState<Summary>({ total: 0, inWork: 0, overdue: 0, today: 0 })
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     authFetch('/api/tasks/report/summary')

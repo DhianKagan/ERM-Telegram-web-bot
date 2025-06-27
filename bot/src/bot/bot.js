@@ -82,6 +82,9 @@ bot.command('add_user', async (ctx) => {
 
 bot.command('list_tasks', async (ctx) => {
   const tasks = await listUserTasks(ctx.from.id)
+  if (!tasks.length) {
+    return ctx.reply('Нет задач')
+  }
   const taskList = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
   ctx.reply(taskList)
 })

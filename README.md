@@ -374,6 +374,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   - Виджет обновлён до версии 22, используется параметр `data-request-access="write"`.
   - В настройках `helmet` разрешены директивы `script-src https://telegram.org 'unsafe-eval'`
     и `media-src data:`, поэтому виджет загружается без ошибок CSP.
+  - После создания задачи в мини‑приложении вызывается `window.Telegram.WebApp.sendData('task_created:<id>')`.
+    Бот получает событие `web_app_data` и отправляет подтверждение пользователю.
 
 ### Минусы
 

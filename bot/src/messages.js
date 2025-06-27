@@ -9,6 +9,7 @@ module.exports = {
   unauthorizedCreateTask: 'Unauthorized: Only admins can create tasks.',
   taskNameRequired: 'Укажите название задачи после команды',
   taskCreated: 'Task created successfully!',
+  taskCreatedInApp: 'Задача создана через приложение',
   unauthorizedAssignTask: 'Unauthorized: Only admins can assign tasks.',
   taskAssigned: 'Task assigned successfully!',
   adminsOnly: 'Только для админов',

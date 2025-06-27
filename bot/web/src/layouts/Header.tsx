@@ -13,10 +13,12 @@ import {
 } from "@heroicons/react/24/outline";
 
 export default function Header() {
-  const { toggle } = useSidebar();
+  const { toggle, collapsed } = useSidebar();
   const { theme, toggle: toggleTheme } = useTheme();
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 dark:border-strokedark dark:bg-boxdark lg:ml-60">
+    <header
+      className={`sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 transition-all dark:border-strokedark dark:bg-boxdark ${collapsed ? 'lg:ml-20' : 'lg:ml-60'}`}
+    >
       <div className="flex items-center gap-2">
         <button onClick={toggle} className="block lg:hidden">
           <Bars3Icon className="h-6 w-6" />

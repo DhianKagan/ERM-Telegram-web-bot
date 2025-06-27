@@ -99,6 +99,10 @@ bot.start(async (ctx) => {
   await sendAccessButton(ctx, url)
 })
 
+bot.command('help', (ctx) => {
+  ctx.reply(messages.help)
+})
+
 bot.command('create_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
     ctx.reply(messages.unauthorizedCreateTask);

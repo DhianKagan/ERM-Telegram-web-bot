@@ -254,3 +254,4 @@
 Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
 ```
 - Скрипт `scripts/setup_tdweb.sh` устанавливает TDWeb и копирует файлы в `bot/web/public/tdlib` для интеграции с telegram-react.
+- Поддержаны глубокие ссылки `/start`: `task_<id>` открывает задачу, а `invite_<departmentId>` добавляет пользователя в отдел.

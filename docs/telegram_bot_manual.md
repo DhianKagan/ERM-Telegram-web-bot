@@ -143,3 +143,13 @@ Bad Request: message text is empty
 ```
 
 Функция `onTelegramAuth` отправляет данные на `/api/auth/telegram` и сохраняет JWT. Параметр `data-request-access="write"` позволяет боту отправлять сообщения от имени пользователя.
+
+## Глубокие ссылки
+
+Бот распознаёт payload в ссылке `/start`.
+Примеры форматов:
+
+- `https://t.me/YourBot?start=task_<id>` — открывает задачу в приложении.
+- `https://t.me/YourBot?start=invite_<departmentId>` — присоединяет пользователя к отделу.
+
+После перехода по ссылке бот обработает payload и отправит кнопку для входа в мини‑приложение.

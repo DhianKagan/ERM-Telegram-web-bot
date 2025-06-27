@@ -24,5 +24,6 @@ module.exports = {
   messageIdRequired: 'Укажите id сообщения',
   editTextRequired: 'Укажите текст для редактирования',
   assignParamsRequired: 'Формат: /assign_task <userId> <taskId>',
-  uploadParamsRequired: 'Формат: /upload_file <имя> <данные>'
+  uploadParamsRequired: 'Формат: /upload_file <имя> <данные>',
+  menuPrompt: 'Выберите действие'
 }

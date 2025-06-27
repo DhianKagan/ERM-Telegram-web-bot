@@ -42,6 +42,17 @@ async function sendAccessButton(ctx, url) {
   }
 }
 
+// Показывает меню действий с использованием inline-клавиатуры
+async function showTaskMenu(ctx) {
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const rows = []
+  if (isAdmin) {
+    rows.push([Markup.button.callback('Все задачи', 'all_tasks')])
+  }
+  rows.push([Markup.button.callback('Мои задачи', 'my_tasks')])
+  rows.push([Markup.button.callback(messages.miniAppLinkText, 'open_app')])
+  await ctx.reply(messages.menuPrompt, Markup.inlineKeyboard(rows))
+}
 
 bot.start(async (ctx) => {
   try {
@@ -115,6 +126,10 @@ bot.command('list_tasks', async (ctx) => {
   }
   const taskList = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
   ctx.reply(taskList)
+})
+
+bot.command('task_menu', async (ctx) => {
+  await showTaskMenu(ctx)
 })
 
 bot.command('register', async (ctx) => {
@@ -208,6 +223,36 @@ bot.command('browser', async (ctx) => {
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
   await ctx.reply(url)
+})
+
+bot.action('my_tasks', async (ctx) => {
+  const tasks = await listUserTasks(ctx.from.id)
+  const text = tasks.length ? tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n') : messages.noTasks
+  await ctx.reply(text)
+  await ctx.answerCbQuery()
+})
+
+bot.action('all_tasks', async (ctx) => {
+  if (!await verifyAdmin(ctx.from.id)) {
+    await ctx.answerCbQuery(messages.adminsOnly, { show_alert: true })
+    return
+  }
+  const tasks = await listAllTasks()
+  const text = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n') || messages.noTasks
+  await ctx.reply(text)
+  await ctx.answerCbQuery()
+})
+
+bot.action('open_app', async (ctx) => {
+  let user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+  }
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}`
+  await sendAccessButton(ctx, url)
+  await ctx.answerCbQuery()
 })
 
 bot.launch().then(() => console.log('Bot started'))

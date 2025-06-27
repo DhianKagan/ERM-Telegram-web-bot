@@ -367,6 +367,15 @@ bot.action('open_app', async (ctx) => {
   await ctx.answerCbQuery()
 })
 
+bot.on('message', async (ctx) => {
+  if (!ctx.message.web_app_data) return
+  const data = ctx.message.web_app_data.data
+  if (data.startsWith('task_created:')) {
+    const id = data.slice('task_created:'.length)
+    await ctx.reply(`${messages.taskCreatedInApp} ${id}`)
+  }
+})
+
 bot.launch().then(() => console.log('Bot started'))
 startScheduler()
 process.once('SIGINT', () => bot.stop('SIGINT'))

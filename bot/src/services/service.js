@@ -8,7 +8,8 @@ function createTask(title, dueDate, priority = 'В течении дня', group
     due_date: dueDate,
     priority,
     group_id: groupId,
-    assigned_user_id: userId
+    assigned_user_id: userId,
+    created_by: userId
   })
 }
 
@@ -29,5 +30,6 @@ module.exports = {
   createRole: q.createRole,
   listRoles: q.listRoles,
   writeLog: q.writeLog,
-  listLogs: q.listLogs
+  listLogs: q.listLogs,
+  searchTasks: q.searchTasks
 }

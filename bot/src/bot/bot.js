@@ -13,7 +13,8 @@ const {
   getUser,
   listAllTasks,
   getTask,
-  updateUser
+  updateUser,
+  searchTasks
 } = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
@@ -202,14 +203,40 @@ bot.command('edit_last', async (ctx) => {
 })
 
 bot.on('inline_query', async (ctx) => {
-  const q = ctx.inlineQuery.query
-  const results = [{
-    type: 'article',
-    id: '1',
-    title: 'Эхо',
-    input_message_content: { message_text: q }
-  }]
-  await ctx.answerInlineQuery(results, { cache_time: 0 })
+  const parts = ctx.inlineQuery.query.trim().split(/\s+/)
+  const cmd = parts.shift()
+  const arg = parts.join(' ')
+  if (cmd === 'add') {
+    if (!arg) return ctx.answerInlineQuery([], { cache_time: 0 })
+    const task = await createTask(arg, undefined, 'В течении дня', undefined, ctx.from.id)
+    return ctx.answerInlineQuery([
+      {
+        type: 'article',
+        id: String(task._id),
+        title: 'Задача создана',
+        input_message_content: { message_text: `Создана задача: ${task.title}` }
+      }
+    ], { cache_time: 0 })
+  }
+  if (cmd === 'search') {
+    if (!arg) return ctx.answerInlineQuery([], { cache_time: 0 })
+    const tasks = await searchTasks(arg)
+    const results = tasks.map(t => ({
+      type: 'article',
+      id: String(t._id),
+      title: t.title,
+      input_message_content: { message_text: `${t.title} (${t.status})` }
+    }))
+    return ctx.answerInlineQuery(results, { cache_time: 0 })
+  }
+  await ctx.answerInlineQuery([
+    {
+      type: 'article',
+      id: '1',
+      title: 'Эхо',
+      input_message_content: { message_text: ctx.inlineQuery.query }
+    }
+  ], { cache_time: 0 })
 })
 
 bot.command('app', async (ctx) => {

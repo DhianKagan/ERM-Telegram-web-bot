@@ -21,6 +21,7 @@ const {
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
 const { verifyAdmin, generateToken } = require('../auth/auth')
+const startScheduler = require('../services/scheduler')
 const bot = new Telegraf(botToken)
 require('../db/model')
 
@@ -309,5 +310,6 @@ bot.action('open_app', async (ctx) => {
 })
 
 bot.launch().then(() => console.log('Bot started'))
+startScheduler()
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

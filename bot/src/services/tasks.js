@@ -1,7 +1,10 @@
 // Сервисные функции задач используют общие запросы к MongoDB
 const q = require('../db/queries')
 
-const create = data => q.createTask(data)
+const create = data => {
+  if (data.due_date && !data.remind_at) data.remind_at = data.due_date
+  return q.createTask(data)
+}
 const get = filters => q.getTasks(filters)
 const getById = id => q.getTask(id)
 const update = (id, data) => q.updateTask(id, data)

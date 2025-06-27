@@ -6,6 +6,7 @@ function createTask(title, dueDate, priority = 'В течении дня', group
     title,
     task_description: title,
     due_date: dueDate,
+    remind_at: dueDate,
     priority,
     group_id: groupId,
     assigned_user_id: userId,

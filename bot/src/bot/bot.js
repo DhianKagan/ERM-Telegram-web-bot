@@ -19,6 +19,29 @@ const { verifyAdmin, generateToken } = require('../auth/auth')
 const bot = new Telegraf(botToken)
 require('../db/model')
 
+// Функция отправки кнопки Web App с резервом на случай ошибки типа BUTTON_TYPE_INVALID
+async function sendAccessButton(ctx, url) {
+  try {
+    await ctx.reply(
+      'Нажмите кнопку для доступа',
+      Markup.inlineKeyboard([
+        Markup.button.webApp(messages.miniAppLinkText, url)
+      ])
+    )
+  } catch (err) {
+    if (err.description && err.description.includes('BUTTON_TYPE_INVALID')) {
+      await ctx.reply(
+        'Нажмите кнопку для доступа',
+        Markup.inlineKeyboard([
+          Markup.button.url(messages.miniAppLinkText, url)
+        ])
+      )
+    } else {
+      throw err
+    }
+  }
+}
+
 
 bot.start(async (ctx) => {
   try {
@@ -39,12 +62,7 @@ bot.start(async (ctx) => {
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.reply(
-    'Нажмите кнопку для доступа',
-    Markup.inlineKeyboard([
-      Markup.button.webApp(messages.miniAppLinkText, url)
-    ])
-  );
+  await sendAccessButton(ctx, url)
 })
 
 bot.command('create_task', async (ctx) => {
@@ -177,12 +195,7 @@ bot.command('app', async (ctx) => {
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.reply(
-    'Нажмите кнопку для доступа',
-    Markup.inlineKeyboard([
-      Markup.button.webApp(messages.miniAppLinkText, url)
-    ])
-  );
+  await sendAccessButton(ctx, url)
 })
 
 bot.launch().then(() => console.log('Bot started'))

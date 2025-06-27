@@ -118,6 +118,14 @@ node scripts/get_menu_button_url.js
 Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
 ```
 
+## Обновление кнопки меню
+Скрипт `scripts/set_menu_button_url.js` отправляет запрос `setChatMenuButton` с типом `web_app`.
+URL берётся из переменной `APP_URL` файла `.env`.
+```bash
+node scripts/set_menu_button_url.js
+```
+Если задан `CHAT_ID`, кнопка обновится только в указанном чате.
+
 ## Типовые ошибки API
 Ниже приведён пример сообщения, которое возвращает Bot API:
 ```

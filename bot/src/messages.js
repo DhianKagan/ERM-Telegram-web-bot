@@ -1,0 +1,25 @@
+// Список текстовых ответов бота на команды Telegram
+// Экспортируется объект messages для использования в bot.js
+module.exports = {
+  accessOnlyGroup: 'Доступ разрешён только участникам группы',
+  accessError: 'Ошибка проверки доступа',
+  registered: 'Вы зарегистрированы в системе.',
+  welcomeBack: 'С возвращением!',
+  miniAppLinkText: 'Открыть мини-приложение',
+  unauthorizedCreateTask: 'Unauthorized: Only admins can create tasks.',
+  taskNameRequired: 'Укажите название задачи после команды',
+  taskCreated: 'Task created successfully!',
+  unauthorizedAssignTask: 'Unauthorized: Only admins can assign tasks.',
+  taskAssigned: 'Task assigned successfully!',
+  adminsOnly: 'Только для админов',
+  invalidAddUserFormat: 'Формат: /add_user id username',
+  userAdded: 'Пользователь добавлен',
+  noUsers: 'Нет пользователей',
+  noTasks: 'Нет задач',
+  alreadyRegistered: 'Вы уже зарегистрированы',
+  registrationSuccess: 'Регистрация успешна',
+  statusUpdated: 'Task status updated successfully!',
+  fileUploaded: 'Файл загружен в R2',
+  linkRequired: 'Укажите ссылку на фото',
+  messageIdRequired: 'Укажите id сообщения'
+}

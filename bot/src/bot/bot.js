@@ -2,6 +2,7 @@
 // загрузку файлов в R2 и JWT-аутентификацию.
 const { botToken, appUrl, chatId } = require('../config')
 const { Telegraf } = require('telegraf')
+const messages = require('../messages')
 const {
   createTask,
   assignTask,
@@ -23,67 +24,67 @@ bot.start(async (ctx) => {
   try {
     const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
-      return ctx.reply('Доступ разрешён только участникам группы')
+      return ctx.reply(messages.accessOnlyGroup)
     }
   } catch {
-    return ctx.reply('Ошибка проверки доступа')
+    return ctx.reply(messages.accessError)
   }
   const user = await getUser(ctx.from.id)
   if (!user) {
     await createUser(ctx.from.id, ctx.from.username)
-    ctx.reply('Вы зарегистрированы в системе.')
+    ctx.reply(messages.registered)
   } else {
-    ctx.reply('С возвращением!')
+    ctx.reply(messages.welcomeBack)
   }
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
+  ctx.replyWithHTML(`<a href="${url}">${messages.miniAppLinkText}</a>`, { disable_web_page_preview: true })
 })
 
 bot.command('create_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
-    ctx.reply('Unauthorized: Only admins can create tasks.');
+    ctx.reply(messages.unauthorizedCreateTask);
     return
   }
   const taskDescription = ctx.message.text.split(' ').slice(1).join(' ')
   if (!taskDescription) {
-    ctx.reply('Укажите название задачи после команды')
+    ctx.reply(messages.taskNameRequired)
     return
   }
   await createTask(taskDescription)
-  ctx.reply('Task created successfully!')
+  ctx.reply(messages.taskCreated)
 })
 
 bot.command('assign_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
-    ctx.reply('Unauthorized: Only admins can assign tasks.');
+    ctx.reply(messages.unauthorizedAssignTask);
     return
   }
   const [userId, taskId] = ctx.message.text.split(' ').slice(1)
   await assignTask(userId, taskId)
-  ctx.reply('Task assigned successfully!')
+  ctx.reply(messages.taskAssigned)
 })
 
 bot.command('list_users', async (ctx) => {
-  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply(messages.adminsOnly)
   const users = await listUsers()
-  const msg = users.map(u => `${u.telegram_id} ${u.username}`).join('\n') || 'Нет пользователей'
+  const msg = users.map(u => `${u.telegram_id} ${u.username}`).join('\n') || messages.noUsers
   ctx.reply(msg)
 })
 
 bot.command('add_user', async (ctx) => {
-  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply(messages.adminsOnly)
   const [id, username] = ctx.message.text.split(' ').slice(1)
-  if (!id || !username) return ctx.reply('Формат: /add_user id username')
+  if (!id || !username) return ctx.reply(messages.invalidAddUserFormat)
   await createUser(Number(id), username)
-  ctx.reply('Пользователь добавлен')
+  ctx.reply(messages.userAdded)
 })
 
 bot.command('list_tasks', async (ctx) => {
   const tasks = await listUserTasks(ctx.from.id)
   if (!tasks.length) {
-    return ctx.reply('Нет задач')
+    return ctx.reply(messages.noTasks)
   }
   const taskList = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
   ctx.reply(taskList)
@@ -93,45 +94,45 @@ bot.command('register', async (ctx) => {
   try {
     const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
-      return ctx.reply('Доступ разрешён только участникам группы')
+      return ctx.reply(messages.accessOnlyGroup)
     }
   } catch {
-    return ctx.reply('Ошибка проверки доступа')
+    return ctx.reply(messages.accessError)
   }
   const user = await getUser(ctx.from.id)
-  if (user) return ctx.reply('Вы уже зарегистрированы')
+  if (user) return ctx.reply(messages.alreadyRegistered)
   await createUser(ctx.from.id, ctx.from.username)
-  ctx.reply('Регистрация успешна')
+  ctx.reply(messages.registrationSuccess)
 })
 
 bot.command('update_task_status', async (ctx) => {
   const [taskId, status] = ctx.message.text.split(' ').slice(1)
   await updateTaskStatus(taskId, status)
-  ctx.reply('Task status updated successfully!')
+  ctx.reply(messages.statusUpdated)
 })
 
 bot.command('list_all_tasks', async (ctx) => {
-  if (!await verifyAdmin(ctx.from.id)) return ctx.reply('Только для админов')
+  if (!await verifyAdmin(ctx.from.id)) return ctx.reply(messages.adminsOnly)
   const tasks = await listAllTasks()
   const text = tasks.map(t => `${t.id}: ${t.task_description} (${t.status})`).join('\n')
-  ctx.reply(text || 'Нет задач')
+  ctx.reply(text || messages.noTasks)
 })
 
 bot.command('upload_file', async (ctx) => {
   const [name, ...data] = ctx.message.text.split(' ').slice(1)
   await uploadFile(Buffer.from(data.join(' ')), name)
-  ctx.reply('Файл загружен в R2')
+  ctx.reply(messages.fileUploaded)
 })
 
 bot.command('send_photo', async (ctx) => {
   const url = ctx.message.text.split(' ')[1]
-  if (!url) return ctx.reply('Укажите ссылку на фото')
+  if (!url) return ctx.reply(messages.linkRequired)
   await call('sendPhoto', { chat_id: ctx.chat.id, photo: url })
 })
 
 bot.command('edit_last', async (ctx) => {
   const [id, ...text] = ctx.message.text.split(' ').slice(1)
-  if (!id) return ctx.reply('Укажите id сообщения')
+  if (!id) return ctx.reply(messages.messageIdRequired)
   await call('editMessageText', { chat_id: ctx.chat.id, message_id: Number(id), text: text.join(' ') })
 })
 
@@ -150,7 +151,7 @@ bot.command('app', async (ctx) => {
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  ctx.replyWithHTML(`<a href="${url}">Открыть мини-приложение</a>`, { disable_web_page_preview: true })
+  ctx.replyWithHTML(`<a href="${url}">${messages.miniAppLinkText}</a>`, { disable_web_page_preview: true })
 })
 
 bot.launch().then(() => console.log('Bot started'))

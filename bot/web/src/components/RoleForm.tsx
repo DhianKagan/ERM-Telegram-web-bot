@@ -2,7 +2,11 @@
 import React from "react";
 import authFetch from "../utils/authFetch";
 
-export default function RoleForm({ onCreate }) {
+interface RoleFormProps {
+  onCreate?: (data: unknown) => void
+}
+
+export default function RoleForm({ onCreate }: RoleFormProps) {
   const [name, setName] = React.useState("");
   const submit = async (e) => {
     e.preventDefault();

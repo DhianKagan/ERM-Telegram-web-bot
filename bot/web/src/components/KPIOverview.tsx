@@ -1,7 +1,12 @@
 // Блок KPI с общими метриками по задачам
 import React from 'react'
 
-export default function KPIOverview({ count, time }) {
+interface KPIOverviewProps {
+  count: number
+  time: number
+}
+
+export default function KPIOverview({ count, time }: KPIOverviewProps) {
   return (
     <div className="flex space-x-4">
       <div className="rounded border p-2">Всего задач: {count}</div>

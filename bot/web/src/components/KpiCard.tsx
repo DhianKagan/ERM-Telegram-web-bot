@@ -1,7 +1,14 @@
 // Карточка KPI: отображает название, значение и дельту
 import React from 'react'
 
-export default function KpiCard({ title, value, delta, icon: Icon }) {
+interface KpiCardProps {
+  title: string
+  value: number
+  delta?: number
+  icon?: React.ComponentType<{ className?: string }>
+}
+
+export default function KpiCard({ title, value, delta, icon: Icon }: KpiCardProps) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
       <div>

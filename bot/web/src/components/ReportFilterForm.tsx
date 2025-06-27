@@ -1,7 +1,11 @@
 // Форма фильтрации отчётов по диапазону дат
 import React from 'react'
 
-export default function ReportFilterForm({ onChange }) {
+interface ReportFilterFormProps {
+  onChange?: (period: { from: string; to: string }) => void
+}
+
+export default function ReportFilterForm({ onChange }: ReportFilterFormProps) {
   const [from, setFrom] = React.useState('')
   const [to, setTo] = React.useState('')
   const submit = e => {

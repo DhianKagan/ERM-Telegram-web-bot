@@ -23,6 +23,8 @@
 - Исправлены статусы задач в канбане и форме создания: используется `new/in-progress/done`.
 - Добавлены тесты `kanbanStatus.test.js` и `authRole.test.js`.
 - Добавлен скрипт `scripts/check_db_fetch.cjs` для проверки работы API и БД.
+- ESLint фронтенда использует `@typescript-eslint/parser` и плагин,
+  маска файлов теперь `**/*.{js,jsx,ts,tsx}`.
 - В примере `.env.example` переменная `MONGO_DATABASE_URL` указывает на кластер
   `arjs-db.4pzoyda.mongodb.net/agromarket`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.

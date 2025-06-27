@@ -186,6 +186,8 @@ npm install agrmcs@vX.Y.Z
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
+- линтер использует `@typescript-eslint/parser` и одноимённый плагин,
+  что позволяет проверять файлы `**/*.{js,jsx,ts,tsx}`.
 - следите за актуальностью `bot/web/package-lock.json`, иначе `docker compose build` завершится ошибкой `npm ci`.
 - регулярно обновляйте зависимости, чтобы избежать предупреждений npm об устаревших пакетах (`lodash.isequal`, `lodash.get`, `inflight`, `glob`).
 - для устранения сообщения `inflight@1.0.6` использован override `glob@11`, обновите lock-файл через `npm install --prefix bot`.
@@ -296,6 +298,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   Email для таких аккаунтов формируется как `<telegram_id>@telegram.local`, что исключает ошибку MongoDB о дублировании.
 - ESLint проверяет весь серверный код.
 - Фронтенд проходит проверку `npm run lint --prefix bot/web` без ошибок.
+- Подключён `@typescript-eslint/eslint-plugin`, линтер поддерживает TypeScript.
 - Цветовая схема унифицирована: основные акценты `accentPrimary` (#465fff) и
   `accentSecondary` (#7a5af8), нейтральные оттенки `neutral-100/300/500/900`.
 - Исправлены предупреждения React Hooks на страницах Dashboard и Tasks.

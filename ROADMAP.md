@@ -106,6 +106,8 @@
   в формате `<telegram_id>@telegram.local`, что устранило конфликт уникального индекса.
 - Базовая конфигурация ESLint размещена в `eslint.config.js`, команды `npx eslint bot/src` проверяют серверный код.
 - При ошибке `Cannot find module '@eslint/js'` перед запуском линтера выполняйте `npm --prefix bot install`.
+- Для фронтенда подключён `@typescript-eslint/eslint-plugin` и парсер,
+  маска файлов линтера охватывает `**/*.{js,jsx,ts,tsx}`.
 - Для воспроизводимой установки используйте `npm ci --prefix bot`. При отсутствии `package-lock.json` запустите `npm --prefix bot install` для его создания. После установки выполняйте `npm audit fix --prefix bot` или скрипт `scripts/install_bot_deps.sh`.
 - В API добавлены `helmet`, `cors` и проверка полей через `express-validator`.
 - Маршруты регистрации и входа теперь валидируют данные через `express-validator`.

@@ -62,7 +62,8 @@ const validate = validations => [
         useDefaults: true,
         directives: {
           "frame-src": ["'self'", 'https://www.google.com'],
-          "script-src": ["'self'", 'https://telegram.org']
+          "script-src": ["'self'", "'unsafe-eval'", 'https://telegram.org'],
+          "media-src": ["'self'", 'data:']
         }
       }
     })

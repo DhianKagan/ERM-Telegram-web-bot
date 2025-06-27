@@ -342,8 +342,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   - Добавлена страница входа `/login` с виджетом Telegram Login. После успешной
     авторизации сервер выдаёт JWT и сохраняет его в `localStorage`.
   - Виджет обновлён до версии 22, используется параметр `data-request-access="write"`.
-  - В настройках `helmet` разрешён `script-src https://telegram.org`,
-    поэтому виджет загружается без ошибок CSP.
+  - В настройках `helmet` разрешены директивы `script-src https://telegram.org 'unsafe-eval'`
+    и `media-src data:`, поэтому виджет загружается без ошибок CSP.
 
 ### Минусы
 

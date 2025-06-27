@@ -20,10 +20,11 @@ module.exports = {
   registrationSuccess: 'Регистрация успешна',
   statusUpdated: 'Task status updated successfully!',
   fileUploaded: 'Файл загружен в R2',
+  fileRequired: 'Прикрепите документ или фото',
   linkRequired: 'Укажите ссылку на фото',
   messageIdRequired: 'Укажите id сообщения',
   editTextRequired: 'Укажите текст для редактирования',
   assignParamsRequired: 'Формат: /assign_task <userId> <taskId>',
-  uploadParamsRequired: 'Формат: /upload_file <имя> <данные>',
+  uploadParamsRequired: 'Формат: /upload_file <taskId>',
   menuPrompt: 'Выберите действие'
 }

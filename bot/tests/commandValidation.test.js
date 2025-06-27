@@ -68,10 +68,16 @@ test('/assign_task без аргументов', async () => {
   expect(ctx.reply).toHaveBeenCalledWith(messages.assignParamsRequired)
 })
 
-test('/upload_file без аргументов', async () => {
-  const ctx = { message: { text: '/upload_file' }, from: { id: 1 }, reply: jest.fn() }
+test('/upload_file без id', async () => {
+  const ctx = { message: { caption: '/upload_file', document: { file_id: '1', file_unique_id:'u', file_name:'f.txt' } }, from: { id: 1 }, reply: jest.fn() }
   await handlers.upload_file(ctx)
   expect(ctx.reply).toHaveBeenCalledWith(messages.uploadParamsRequired)
+})
+
+test('/upload_file без файла', async () => {
+  const ctx = { message: { caption: '/upload_file 1' }, from: { id: 1 }, reply: jest.fn() }
+  await handlers.upload_file(ctx)
+  expect(ctx.reply).toHaveBeenCalledWith(messages.fileRequired)
 })
 
 test('/edit_last без аргументов', async () => {

@@ -133,6 +133,20 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             onChange={(v) => setTask({ ...task, comment: v })}
           />
         </div>
+        {task.attachments?.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium">📎 Вложения</label>
+            <ul className="list-disc pl-4">
+              {task.attachments.map((a) => (
+                <li key={a.url}>
+                  <a href={a.url} target="_blank" rel="noopener" className="text-accentPrimary underline">
+                    {a.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium">
             📝 Прикрепить файл

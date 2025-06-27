@@ -35,6 +35,7 @@ docker compose config
 - Все переменные окружения используются через модуль `bot/src/config.js`.
 - В этом модуле проверяйте, что `MONGO_DATABASE_URL` начинается с
   `mongodb://` или `mongodb+srv://`, иначе приложение не подключится к базе.
+- `APP_URL` должен быть HTTPS, иначе Telegram отвергнет Web App ссылку.
 
 ## Деплой
 

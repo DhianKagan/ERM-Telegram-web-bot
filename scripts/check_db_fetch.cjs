@@ -2,7 +2,7 @@
 // Скрипт проверки доступности API и MongoDB через fetch
 require('dotenv').config()
 
-const url = process.env.APP_URL || 'http://localhost:3000'
+const url = process.env.APP_URL || 'https://localhost:3000'
 const email = process.env.ADMIN_EMAIL
 const password = process.env.ADMIN_PASSWORD
 

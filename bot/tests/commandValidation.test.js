@@ -54,7 +54,7 @@ beforeAll(() => {
   process.env.CHAT_ID = '1'
   process.env.JWT_SECRET = 's'
   process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
-  process.env.APP_URL = 'http://localhost'
+  process.env.APP_URL = 'https://localhost'
   require('../src/bot/bot')
 })
 

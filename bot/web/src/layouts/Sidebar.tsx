@@ -10,6 +10,8 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   XMarkIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
 
 const items = [
@@ -25,15 +27,28 @@ const items = [
 ];
 
 export default function Sidebar() {
-  const { open, toggle } = useSidebar();
+  const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
   const { pathname } = useLocation();
   return (
     <aside
-      className={`fixed top-0 left-0 z-30 h-full w-60 border-r border-stroke bg-white p-4 transition-all dark:border-strokedark dark:bg-boxdark ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all dark:border-strokedark dark:bg-boxdark ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
     >
-      <button onClick={toggle} className="mb-4 lg:hidden">
-        <XMarkIcon className="h-5 w-5" />
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={toggle} className="lg:hidden">
+          <XMarkIcon className="h-5 w-5" />
+        </button>
+        <button
+          onClick={toggleCollapsed}
+          className="hidden lg:block p-1 hover:text-accentPrimary"
+          title="Свернуть меню"
+        >
+          {collapsed ? (
+            <ChevronDoubleRightIcon className="h-5 w-5" />
+          ) : (
+            <ChevronDoubleLeftIcon className="h-5 w-5" />
+          )}
+        </button>
+      </div>
       <nav className="mt-4 space-y-2">
         {items.map((i) => (
           <Link
@@ -42,7 +57,7 @@ export default function Sidebar() {
             className={`flex items-center gap-2 rounded-lg px-2 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 ${pathname === i.to ? "bg-gray-100 dark:bg-gray-800 font-semibold" : ""}`}
           >
             <i.icon className="h-5 w-5" />
-            {i.label}
+            {!collapsed && <span>{i.label}</span>}
           </Link>
         ))}
       </nav>

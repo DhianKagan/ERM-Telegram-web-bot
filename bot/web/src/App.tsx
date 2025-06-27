@@ -17,12 +17,97 @@ const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
-import { SidebarProvider } from "./context/SidebarContext";
+import { SidebarProvider, useSidebar } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+function Content() {
+  const { collapsed } = useSidebar();
+  return (
+    <main className={`mt-12 p-4 ${collapsed ? 'md:ml-20' : 'md:ml-52'}`}>
+      <Suspense fallback={<div>Загрузка...</div>}>
+        <Routes>
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <TasksPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks/kanban"
+            element={
+              <ProtectedRoute>
+                <TaskKanban />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute>
+                <Roles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logs"
+            element={
+              <ProtectedRoute>
+                <Logs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </Suspense>
+    </main>
+  );
+}
 
 export default function App() {
   return (
@@ -36,85 +121,7 @@ export default function App() {
               <Header />
               <Toasts />
 
-              <main className="mt-12 p-4 md:ml-52">
-                <Suspense fallback={<div>Загрузка...</div>}>
-                <Routes>
-                  <Route
-                    path="/profile"
-                    element={
-                      <ProtectedRoute>
-                        <Profile />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tasks"
-                    element={
-                      <ProtectedRoute>
-                        <TasksPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tasks/kanban"
-                    element={
-                      <ProtectedRoute>
-                        <TaskKanban />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/projects"
-                    element={
-                      <ProtectedRoute>
-                        <Projects />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/reports"
-                    element={
-                      <ProtectedRoute>
-                        <Reports />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/roles"
-                    element={
-                      <ProtectedRoute>
-                        <Roles />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/logs"
-                    element={
-                      <ProtectedRoute>
-                        <Logs />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin"
-                    element={
-                      <ProtectedRoute>
-                        <Admin />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="*" element={<Navigate to="/dashboard" />} />
-                </Routes>
-                </Suspense>
-              </main>
+              <Content />
             </Router>
 
           </SidebarProvider>

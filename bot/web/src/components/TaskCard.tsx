@@ -1,7 +1,16 @@
 // Карточка задачи в канбане
 import React from 'react'
 
-export default function TaskCard({ task }) {
+interface Task {
+  title: string
+  dueDate?: string
+}
+
+interface TaskCardProps {
+  task: Task
+}
+
+export default function TaskCard({ task }: TaskCardProps) {
   return (
     <div className="mb-2 rounded bg-white p-3 shadow">
       <h4 className="font-semibold">{task.title}</h4>

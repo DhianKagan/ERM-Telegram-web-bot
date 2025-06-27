@@ -4,9 +4,14 @@ import ReactApexChart from 'react-apexcharts'
 import { useTheme } from '../context/ThemeContext'
 import authFetch from '../utils/authFetch'
 
+interface ChartState {
+  series: { data: number[] }[]
+  categories: string[]
+}
+
 export default function TasksChart() {
-  const [series, setSeries] = useState([{ data: [] }])
-  const [categories, setCategories] = useState([])
+  const [series, setSeries] = useState<ChartState['series']>([{ data: [] }])
+  const [categories, setCategories] = useState<ChartState['categories']>([])
   const { theme } = useTheme()
 
   useEffect(() => {

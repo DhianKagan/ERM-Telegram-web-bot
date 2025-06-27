@@ -7,13 +7,25 @@ import { useToast } from "../context/ToastContext";
 import { deleteTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 
+interface Task {
+  _id: string
+  title: string
+  status: string
+  time_spent: number
+}
+
+interface KpiSummary {
+  count: number
+  time: number
+}
+
 export default function TasksPage() {
-  const [all, setAll] = React.useState([]);
-  const [status, setStatus] = React.useState("all");
-  const [selected, setSelected] = React.useState([]);
-  const [kpi, setKpi] = React.useState({ count: 0, time: 0 });
+  const [all, setAll] = React.useState<Task[]>([]);
+  const [status, setStatus] = React.useState<string>("all");
+  const [selected, setSelected] = React.useState<string[]>([]);
+  const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [open, setOpen] = React.useState(false);
-  const [viewId, setViewId] = React.useState(null);
+  const [viewId, setViewId] = React.useState<string | null>(null);
   const { addToast } = useToast();
 
   const handleAuth = (r) => {
@@ -89,7 +101,7 @@ export default function TasksPage() {
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-md px-3 py-1 text-sm ${status === s ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}
+              className={`rounded-md px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}
             >
               {s === "all" ? "Все" : s} ({counts[s]})
             </button>
@@ -127,7 +139,7 @@ export default function TasksPage() {
               </td>
               <td className="px-4 py-2">
                 <button
-                  className="text-brand-500 hover:underline"
+                  className="text-accentPrimary hover:underline"
                   onClick={() => setViewId(t._id)}
                 >
                   {t.title}
@@ -138,7 +150,7 @@ export default function TasksPage() {
               <td className="px-4 py-2 text-right">
                 <button
                   onClick={() => add30(t._id)}
-                  className="text-brand-500 text-xs hover:underline"
+                  className="text-accentPrimary text-xs hover:underline"
                 >
                   +30 мин
                 </button>

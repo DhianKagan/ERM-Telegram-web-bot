@@ -4,15 +4,16 @@ import AddUserForm from "../components/AddUserForm"
 import AddDepartmentForm from "../components/AddDepartmentForm"
 import Breadcrumbs from "../components/Breadcrumbs"
 import authFetch from "../utils/authFetch"
+import { AuthContext } from "../context/AuthContext"
 
 interface Role { _id: string; name: string }
 interface User { telegram_id: number; username: string; roleId?: Role }
+interface Department { _id: string; name: string }
 
 export default function Admin() {
   const [users, setUsers] = React.useState<User[]>([])
-  const [departments, setDepartments] = React.useState<{_id:string;name:string}[]>([])
-  const { user } = React.useContext(require('../context/AuthContext').AuthContext)
-  if (user?.roleId?.name !== 'admin') return <div className="p-4">Доступ запрещен</div>
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const { user } = React.useContext(AuthContext)
   const load = () => {
     authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
@@ -21,7 +22,10 @@ export default function Admin() {
       .then(r=>r.ok?r.json():[])
       .then(setDepartments)
   }
-  React.useEffect(load, [])
+  React.useEffect(() => {
+    if (user?.roleId?.name === 'admin') load()
+  }, [user])
+  if (user?.roleId?.name !== 'admin') return <div className="p-4">Доступ запрещен</div>
   return (
     <div className="space-y-6">
       <Breadcrumbs

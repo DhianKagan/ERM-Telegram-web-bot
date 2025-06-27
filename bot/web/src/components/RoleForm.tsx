@@ -2,7 +2,11 @@
 import React from "react";
 import authFetch from "../utils/authFetch";
 
-export default function RoleForm({ onCreate }) {
+interface RoleFormProps {
+  onCreate?: (data: unknown) => void
+}
+
+export default function RoleForm({ onCreate }: RoleFormProps) {
   const [name, setName] = React.useState("");
   const submit = async (e) => {
     e.preventDefault();
@@ -24,12 +28,12 @@ export default function RoleForm({ onCreate }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Название роли"
-        className="focus:border-brand-500 focus:ring-brand-200 flex-grow rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+        className="focus:border-accentPrimary focus:ring-brand-200 flex-grow rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
         required
       />
       <button
         type="submit"
-        className="bg-brand-500 hover:bg-brand-600 rounded-md px-4 py-2 text-sm font-medium text-white"
+        className="bg-accentPrimary hover:bg-accentSecondary rounded-md px-4 py-2 text-sm font-medium text-white"
       >
         Создать
       </button>

@@ -4,7 +4,12 @@ import RichTextEditor from "./RichTextEditor";
 import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 
-export default function TaskModal({ id, onClose }) {
+interface TaskModalProps {
+  id: string
+  onClose: () => void
+}
+
+export default function TaskModal({ id, onClose }: TaskModalProps) {
   const [task, setTask] = React.useState(null);
   const [users, setUsers] = React.useState([]);
 
@@ -42,7 +47,7 @@ export default function TaskModal({ id, onClose }) {
               href={`https://maps.google.com/?q=${encodeURIComponent(task.location)}`}
               target="_blank"
               rel="noopener"
-              className="text-brand-500 text-xs underline"
+              className="text-accentPrimary text-xs underline"
             >
               Открыть на карте
             </a>

@@ -64,7 +64,7 @@ export default function Tasks() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
-          className="focus:border-brand-500 h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className="focus:border-accentPrimary h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           placeholder="Описание"
         />
         <button

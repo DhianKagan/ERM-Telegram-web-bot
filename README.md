@@ -299,6 +299,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - ESLint проверяет весь серверный код.
 - Фронтенд проходит проверку `npm run lint --prefix bot/web` без ошибок.
 - Подключён `@typescript-eslint/eslint-plugin`, линтер поддерживает TypeScript.
+- Компонент `Admin` переписан на TypeScript, контекст авторизации импортируется
+  через `import { AuthContext } from '../context/AuthContext'`.
 - Цветовая схема унифицирована: основные акценты `accentPrimary` (#465fff) и
   `accentSecondary` (#7a5af8), нейтральные оттенки `neutral-100/300/500/900`.
 - Исправлены предупреждения React Hooks на страницах Dashboard и Tasks.

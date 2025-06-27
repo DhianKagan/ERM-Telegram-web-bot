@@ -1,5 +1,6 @@
 import { useContext, type ReactNode } from 'react'
 import { AuthContext } from '../context/AuthContext'
+import { Navigate } from 'react-router-dom'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -7,5 +8,5 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { token } = useContext(AuthContext)
-  return token ? children : <div className="p-4">Откройте приложение через Telegram</div>
+  return token ? children : <Navigate to="/login" />
 }

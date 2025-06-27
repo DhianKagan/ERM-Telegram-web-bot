@@ -21,5 +21,8 @@ module.exports = {
   statusUpdated: 'Task status updated successfully!',
   fileUploaded: 'Файл загружен в R2',
   linkRequired: 'Укажите ссылку на фото',
-  messageIdRequired: 'Укажите id сообщения'
+  messageIdRequired: 'Укажите id сообщения',
+  editTextRequired: 'Укажите текст для редактирования',
+  assignParamsRequired: 'Формат: /assign_task <userId> <taskId>',
+  uploadParamsRequired: 'Формат: /upload_file <имя> <данные>'
 }

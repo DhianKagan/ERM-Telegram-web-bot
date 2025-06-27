@@ -24,7 +24,7 @@ export default function NotificationBar({
   }, []);
   React.useEffect(() => {
     if (!show && onClose) onClose();
-  }, [show]);
+  }, [show, onClose]);
 
   if (!show) return null;
   const base = "flex items-center rounded-lg px-4 py-2 text-white shadow-lg";

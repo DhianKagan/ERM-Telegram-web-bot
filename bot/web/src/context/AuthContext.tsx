@@ -11,7 +11,6 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   token: null,
   user: null,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   logout: () => {}
 })
 
@@ -31,7 +30,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.setItem('token', t)
       }
     }
-  }, [])
+  }, [token])
   useEffect(() => {
     if (token) getProfile(token)
       .then(setUser)

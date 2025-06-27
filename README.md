@@ -321,6 +321,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   `/api/tasks/:id/status` (100 запросов за 15 минут).
 - Автотесты и линтер выполняются без ошибок.
 - Добавлены тесты kanbanStatus.test.js и authRole.test.js для проверки статуса и ролей.
+- Добавлены тесты commandValidation.test.js, проверяющие отсутствие аргументов в
+  `/edit_last`, `/assign_task` и `/upload_file`.
 - Регулярно обновляются ключевые зависимости, например `@aws-sdk/client-s3` и `jest`.
 - При ошибке запроса профиля токен автоматически удаляется из `localStorage`,
   что предотвращает бесконечные 401 и перенаправляет пользователя на форму входа.

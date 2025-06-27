@@ -62,6 +62,10 @@ bot.command('assign_task', async (ctx) => {
     return
   }
   const [userId, taskId] = ctx.message.text.split(' ').slice(1)
+  if (!userId || !taskId) {
+    ctx.reply(messages.assignParamsRequired)
+    return
+  }
   await assignTask(userId, taskId)
   ctx.reply(messages.taskAssigned)
 })
@@ -120,6 +124,10 @@ bot.command('list_all_tasks', async (ctx) => {
 
 bot.command('upload_file', async (ctx) => {
   const [name, ...data] = ctx.message.text.split(' ').slice(1)
+  if (!name || !data.length) {
+    ctx.reply(messages.uploadParamsRequired)
+    return
+  }
   await uploadFile(Buffer.from(data.join(' ')), name)
   ctx.reply(messages.fileUploaded)
 })
@@ -133,6 +141,7 @@ bot.command('send_photo', async (ctx) => {
 bot.command('edit_last', async (ctx) => {
   const [id, ...text] = ctx.message.text.split(' ').slice(1)
   if (!id) return ctx.reply(messages.messageIdRequired)
+  if (!text.length) return ctx.reply(messages.editTextRequired)
   await call('editMessageText', { chat_id: ctx.chat.id, message_id: Number(id), text: text.join(' ') })
 })
 

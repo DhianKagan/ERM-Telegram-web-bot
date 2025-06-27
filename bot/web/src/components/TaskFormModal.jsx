@@ -139,7 +139,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Название"
-          className="focus:border-brand-500 focus:ring-brand-200 w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+          className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
         />
         <select
           value={taskType}
@@ -191,7 +191,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
               href={startLink}
               target="_blank"
               rel="noopener"
-              className="text-brand-500 underline"
+              className="text-accentPrimary underline"
             >
               {start || "ссылка"}
             </a>
@@ -222,7 +222,7 @@ export default function TaskFormModal({ onClose, onCreate }) {
               href={endLink}
               target="_blank"
               rel="noopener"
-              className="text-brand-500 underline"
+              className="text-accentPrimary underline"
             >
               {end || "ссылка"}
             </a>

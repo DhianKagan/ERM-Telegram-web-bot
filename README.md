@@ -296,6 +296,8 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
   Email для таких аккаунтов формируется как `<telegram_id>@telegram.local`, что исключает ошибку MongoDB о дублировании.
 - ESLint проверяет весь серверный код.
 - Фронтенд проходит проверку `npm run lint --prefix bot/web` без ошибок.
+- Цветовая схема унифицирована: основные акценты `accentPrimary` (#465fff) и
+  `accentSecondary` (#7a5af8), нейтральные оттенки `neutral-100/300/500/900`.
 - Исправлены предупреждения React Hooks на страницах Dashboard и Tasks.
 - Внедрены `helmet` и `cors`, входные данные проверяются через `express-validator`.
 - Регистрация и вход теперь валидируют поля через `express-validator`, что предотвращает некорректные запросы.

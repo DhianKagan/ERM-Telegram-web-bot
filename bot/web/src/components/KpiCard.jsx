@@ -6,7 +6,7 @@ export default function KpiCard({ title, value, delta, icon: Icon }) {
     <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
       <div>
         <p className="text-sm text-gray-500">{title}</p>
-        <p className="mt-1 text-2xl font-bold text-brand-500">{value}</p>
+        <p className="mt-1 text-2xl font-bold text-accentPrimary">{value}</p>
         {delta !== undefined && (
           <p className={`text-sm ${delta >= 0 ? 'text-green-500' : 'text-red-500'}`}>{delta >= 0 ? '+' : ''}{delta}</p>
         )}

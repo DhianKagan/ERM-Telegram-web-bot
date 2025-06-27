@@ -32,7 +32,7 @@ export default function Header() {
           </span>
           <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-800" placeholder="Поиск" />
         </div>
-        <button onClick={toggleTheme} className="p-2 hover:text-brand-500" title="Сменить тему">
+        <button onClick={toggleTheme} className="p-2 hover:text-accentPrimary" title="Сменить тему">
           {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
         </button>
         <NotificationDropdown notifications={["Новое сообщение"]}>

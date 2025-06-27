@@ -39,7 +39,7 @@ export default function Sidebar() {
         </button>
         <button
           onClick={toggleCollapsed}
-          className="hidden lg:block p-1 hover:text-brand-500"
+          className="hidden lg:block p-1 hover:text-accentPrimary"
           title="Свернуть меню"
         >
           {collapsed ? (

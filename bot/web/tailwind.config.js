@@ -42,6 +42,14 @@ export default {
         bodydark2: '#8A99AF',
         primary: '#3C50E0',
         secondary: '#80CAEE',
+        accentPrimary: '#465fff',
+        accentSecondary: '#7a5af8',
+        neutral: {
+          100: '#f2f4f7',
+          300: '#d0d5dd',
+          500: '#667085',
+          900: '#101828',
+        },
         stroke: '#E2E8F0',
         gray: {
           ...colors.gray,

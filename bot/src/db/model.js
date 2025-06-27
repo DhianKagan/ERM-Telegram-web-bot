@@ -20,6 +20,7 @@ const taskSchema = new mongoose.Schema({
   task_type: { type: String, enum: ['Доставить', 'Купить', 'Выполнить'] },
   task_type_id: Number,
   due_date: Date,
+  remind_at: Date,
   location: String,
   start_location: String,
   start_location_link: String,

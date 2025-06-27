@@ -224,6 +224,8 @@ docker compose config
 - В inline-режиме появились команды `add` и `search` для создания и поиска задач.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.
 
+- Планировщик `scheduler.js` раз в минуту проверяет задачи с полем `remind_at` и отправляет уведомление.
+
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.
 
 - Для установки TDLib используйте скрипт `scripts/setup_tdweb.sh`, который ставит пакет `tdweb` и копирует файлы в `bot/web/public/tdlib`.

@@ -6,6 +6,7 @@ jest.mock('telegraf', () => ({
     command: (name, fn) => { handlers[name] = fn },
     start: jest.fn(),
     on: jest.fn(),
+    action: (name, fn) => { handlers[name] = fn },
     launch: jest.fn().mockResolvedValue(),
     telegram: {
       getChatMember: jest.fn().mockResolvedValue({ status: 'member' }),

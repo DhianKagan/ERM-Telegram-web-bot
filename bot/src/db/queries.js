@@ -75,6 +75,10 @@ async function bulkUpdate(ids, data) {
   await Task.updateMany({ _id: { $in: ids } }, data)
 }
 
+async function addAttachment(taskId, attachment) {
+  return Task.findByIdAndUpdate(taskId, { $push: { attachments: attachment } }, { new: true })
+}
+
 async function deleteTask(id) {
   return Task.findByIdAndDelete(id)
 }
@@ -173,5 +177,6 @@ module.exports = {
   listRoles,
   writeLog,
   listLogs,
-  searchTasks
+  searchTasks,
+  addAttachment
 }

@@ -233,6 +233,20 @@ npm install agrmcs@vX.Y.Z
 
 Скрипт использует переменные из `.env` и требует установленный `aws` CLI.
 
+## Загрузка вложений
+
+Отправьте документ или фото с подписью `/upload_file <id>`.
+Бот скачает файл через `getFile`, загрузит в R2 и добавит ссылку в задачу.
+
+Send a document or photo with caption `/upload_file <id>`.
+The bot downloads the file via `getFile`, uploads it to R2 and saves the link.
+
+Example:
+
+```text
+/upload_file 64feabcd1234
+```
+
 ### Ошибка 404 на `/dashboard`
 
 Если в логах появляется ответ `404` на `GET /dashboard/`, значит статический интерфейс не сгенерирован. Выполните сборку фронтенда:
@@ -340,6 +354,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 - Добавлены тесты kanbanStatus.test.js и authRole.test.js для проверки статуса и ролей.
 - Добавлены тесты commandValidation.test.js, проверяющие отсутствие аргументов в
   `/edit_last`, `/assign_task` и `/upload_file`.
+- Команда `/upload_file <taskId>` принимает документ или фото и сохраняет ссылку в задаче.
 - Регулярно обновляются ключевые зависимости, например `@aws-sdk/client-s3` и `jest`.
 - При ошибке запроса профиля токен автоматически удаляется из `localStorage`,
   что предотвращает бесконечные 401 и перенаправляет пользователя на форму входа.

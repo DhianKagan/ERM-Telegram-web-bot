@@ -31,5 +31,6 @@ module.exports = {
   listRoles: q.listRoles,
   writeLog: q.writeLog,
   listLogs: q.listLogs,
-  searchTasks: q.searchTasks
+  searchTasks: q.searchTasks,
+  addAttachment: q.addAttachment
 }

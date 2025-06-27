@@ -12,6 +12,7 @@ interface Task {
   title: string
   status: string
   time_spent: number
+  attachments?: { name: string; url: string }[]
 }
 
 interface KpiSummary {
@@ -118,6 +119,7 @@ export default function TasksPage() {
             <th className="px-4 py-2 text-left">Название</th>
             <th className="px-4 py-2">Статус</th>
             <th className="px-4 py-2">Время</th>
+            <th className="px-4 py-2">Файлы</th>
             <th></th>
           </tr>
         </thead>
@@ -147,6 +149,13 @@ export default function TasksPage() {
               </td>
               <td className="px-4 py-2 text-center">{t.status}</td>
               <td className="px-4 py-2 text-center">{t.time_spent}</td>
+              <td className="px-4 py-2">
+                {t.attachments?.map((a) => (
+                  <a key={a.url} href={a.url} target="_blank" rel="noopener" className="text-accentPrimary mr-2 underline">
+                    {a.name}
+                  </a>
+                ))}
+              </td>
               <td className="px-4 py-2 text-right">
                 <button
                   onClick={() => add30(t._id)}

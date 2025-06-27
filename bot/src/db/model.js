@@ -38,6 +38,7 @@ const taskSchema = new mongoose.Schema({
   checklist: [checklistItemSchema],
   comment: String,
   files: [String],
+  attachments: [{ name: String, url: String }],
   time_spent: { type: Number, default: 0 }
 }, { timestamps: true })
 

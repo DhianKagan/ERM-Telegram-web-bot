@@ -219,6 +219,7 @@ docker compose config
 - Остальные компоненты фронтенда также переведены на `.tsx`, файлов `.jsx` не осталось.
 
 - Команды `/assign_task`, `/upload_file` и `/edit_last` проверяют обязательные аргументы перед обращением к API.
+- `/upload_file` принимает документ или фото и сохраняет ссылку в задаче.
 - Добавлены тесты `commandValidation` для этих команд.
 - В inline-режиме появились команды `add` и `search` для создания и поиска задач.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.

@@ -1,6 +1,7 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
-const { botToken, appUrl, chatId } = require('../config')
+/* global fetch */
+const { botToken, appUrl, chatId, r2 } = require('../config')
 const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')
 const {
@@ -14,7 +15,8 @@ const {
   listAllTasks,
   getTask,
   updateUser,
-  searchTasks
+  searchTasks,
+  addAttachment
 } = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
@@ -180,12 +182,18 @@ bot.command('list_all_tasks', async (ctx) => {
 })
 
 bot.command('upload_file', async (ctx) => {
-  const [name, ...data] = ctx.message.text.split(' ').slice(1)
-  if (!name || !data.length) {
-    ctx.reply(messages.uploadParamsRequired)
-    return
-  }
-  await uploadFile(Buffer.from(data.join(' ')), name)
+  const text = ctx.message.caption || ctx.message.text
+  const [, taskId] = text.split(' ')
+  if (!taskId) return ctx.reply(messages.uploadParamsRequired)
+  const file = ctx.message.document || (ctx.message.photo && ctx.message.photo.pop())
+  if (!file) return ctx.reply(messages.fileRequired)
+  const { file_path } = await call('getFile', { file_id: file.file_id })
+  const res = await fetch(`https://api.telegram.org/file/bot${botToken}/${file_path}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  const key = `${taskId}/${file.file_unique_id}_${file.file_name || 'photo.jpg'}`
+  await uploadFile(buffer, key)
+  const url = `${r2.endpoint}/${r2.bucket}/${key}`
+  await addAttachment(taskId, { name: file.file_name || 'photo.jpg', url })
   ctx.reply(messages.fileUploaded)
 })
 

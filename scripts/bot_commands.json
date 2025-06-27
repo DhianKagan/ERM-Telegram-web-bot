@@ -1,10 +1,18 @@
 {
   "commands": [
-    {"command": "start", "description": "Запуск"},
+    {"command": "start", "description": "Регистрация и ссылка на приложение"},
     {"command": "help", "description": "Справка"},
     {"command": "list_users", "description": "Список пользователей"},
     {"command": "add_user", "description": "Добавить пользователя"},
     {"command": "list_tasks", "description": "Мои задачи"},
-    {"command": "create_task", "description": "Новая задача"}
+    {"command": "create_task", "description": "Новая задача"},
+    {"command": "assign_task", "description": "Назначить задачу"},
+    {"command": "update_task_status", "description": "Сменить статус"},
+    {"command": "list_all_tasks", "description": "Все задачи"},
+    {"command": "upload_file", "description": "Загрузить файл в R2"},
+    {"command": "send_photo", "description": "Отправить фото по ссылке"},
+    {"command": "edit_last", "description": "Редактировать сообщение"},
+    {"command": "app", "description": "Открыть приложение"},
+    {"command": "browser", "description": "Ссылка для браузера"}
   ]
 }

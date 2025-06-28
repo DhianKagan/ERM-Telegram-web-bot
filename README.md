@@ -79,6 +79,8 @@
   При их отсутствии в логах появится сообщение `VITE_BOT_USERNAME не задан`,
   а кнопка авторизации выдаст ошибку `Username invalid`.
   Для ссылки на обсуждение задач добавьте `VITE_CHAT_ID` с ID группы Telegram.
+  Для продакшена обязательно измените переменные `ADMIN_EMAIL` и `ADMIN_PASSWORD`
+  на собственные значения: по умолчанию указаны `admin@example.com` и `123456`.
   Подключение к MongoDB выполняет `bot/src/db/connection.js`,
   обеспечивающий единый пул соединений. Начиная с `mongoose` 8
   использование опций `useNewUrlParser` и `useUnifiedTopology`

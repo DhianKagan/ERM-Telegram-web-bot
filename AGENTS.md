@@ -254,3 +254,4 @@ docker compose config
 - Модуль `gateway.js` отправляет SMS через HTTPS, в `authController` доступна опция замены SMS на Telegram.
 - При наличии переменной `BOT_API_URL` запросы к Bot API направляются на этот адрес, что позволяет использовать локальный сервер и загружать файлы объёмом до 2 ГБ.
 - Перед сборкой Docker проверяйте lock-файл `bot/web/package-lock.json`, иначе `npm ci` завершится ошибкой.
+- В коде config.js проверяются стандартные `ADMIN_EMAIL` и `ADMIN_PASSWORD`; в продакшене их следует заменить.

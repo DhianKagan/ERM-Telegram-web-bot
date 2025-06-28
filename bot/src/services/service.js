@@ -17,6 +17,7 @@ function createTask(title, dueDate, priority = 'В течении дня', group
 module.exports = {
   createTask,
   assignTask: q.assignTask,
+  assignGroup: q.assignGroup,
   listUserTasks: q.listUserTasks,
   listAllTasks: q.listAllTasks,
   getTask: q.getTask,

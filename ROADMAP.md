@@ -108,6 +108,7 @@
 - Подготовлено расширенное руководство по адаптации дизайна TailAdmin (docs/extended_tailadmin_guide.md).
 - При ошибке `ERR_UNKNOWN_FILE_EXTENSION` запускайте `npm run crystal:auto-update`.
 - Команды `/assign_task`, `/upload_file` и `/edit_last` теперь проверяют наличие обязательных аргументов.
+- `/assign_task` при одном аргументе использует кнопки `KeyboardButton.requestUser` и `KeyboardButton.requestChat` для выбора исполнителя или группы.
 - Добавлены тесты `commandValidation` для проверки этих команд без аргументов.
 - Загрузка файлов через `/upload_file` прикрепляет их к задаче и сохраняет ссылку в R2.
 - Регистрация через `/api/auth/register` сразу выдаёт JWT,

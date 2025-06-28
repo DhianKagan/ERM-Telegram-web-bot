@@ -161,13 +161,6 @@ docker compose config
 - Устаревшие опции `useNewUrlParser` и `useUnifiedTopology` удалены, чтобы
   избежать предупреждений драйвера.
 - Для получения одной задачи добавлен маршрут `GET /api/tasks/:id`.
-- Добавлена CLI `crystallizationManager.ts` для оценки зрелости задач, команды описаны в README.
-- Сценарий `crystal:loop` запускает лупы кристаллизации для всего репозитория и повторяется, пока средний уровень не превысит 99%.
-- При ошибке `ERR_UNKNOWN_FILE_EXTENSION` выполните `npm run crystal:auto-update`.
-- Для обновления бейджа кристаллизации используйте `npm run crystal:update-badge`.
-- При работе с IDE синхронизируйте файл `crystallization.json` командой `npm run crystal:sync`.
-- Команда `crystal:auto-update` опрашивает `https://api.github.com/repos/AgroxOD/crystallization-development/commits`
-  и при обнаружении нового коммита обновляет `crystallizationManager.ts`.
 - Перед коммитом проверяйте код командами `npm test --prefix bot`,
   `npx eslint bot/src` и `npm run lint --prefix bot/web`.
 - В случае ошибки авторизации мини‑приложение удаляет токен из `localStorage`,
@@ -253,13 +246,11 @@ docker compose config
   сохраняет идентификатор в поле `telegram_topic_id`; ссылка на тему отображается
   в интерфейсе задачи.
 - В начало документации и README добавлены комментарии с назначением файлов, чтобы упростить навигацию.
-- В `tsconfig.json` путь `include` указывает на `crystallizationManager.ts`.
 - Для корректной работы CLI добавлены опции `moduleResolution: node` и `types: ['node']`.
 - `.env.example` дополнен комментариями и содержит все переменные из `bot/src/config.js`.
 - В комментариях к каждой переменной указано её назначение и источник значения.
 - В README указан контроль схем `APP_URL` и `MONGO_DATABASE_URL`.
 - На страницах задач и в админ‑панели ссылки `tg://user?id=<telegram_id>` позволяют открыть чат с исполнителем.
 - Модуль `gateway.js` отправляет SMS через HTTPS, в `authController` доступна опция замены SMS на Telegram.
-- Пользователи проходят верификацию через `verifyUser`, дата сохраняется в `verified_at` и показывается в админ‑панели.
 - При наличии переменной `BOT_API_URL` запросы к Bot API направляются на этот адрес, что позволяет использовать локальный сервер и загружать файлы объёмом до 2 ГБ.
 - Перед сборкой Docker проверяйте lock-файл `bot/web/package-lock.json`, иначе `npm ci` завершится ошибкой.

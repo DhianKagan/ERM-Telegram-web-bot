@@ -114,12 +114,10 @@
 - Скрипт миграций теперь удаляет старый индекс `email_1`,
   регистрация через `/register` использует upsert.
 - Запросы к задачам централизованы в сервисе `bot/web/src/services/tasks.js`.
-- Реализован сценарий `crystal:loop` для автоматической кристаллизации всего кода.
 - Улучшено руководство `docs/telegram_bot_manual.md`: добавлены пошаговые инструкции по BotFather и получение текущего меню через API.
 - В это же руководство включён раздел «Типовые ошибки API» с примером `Bad Request: message text is empty` и демонстрацией ответа бота после валидации.
 - Цикл выполняется, пока средний уровень не превысит 99%.
 - Подготовлено расширенное руководство по адаптации дизайна TailAdmin (docs/extended_tailadmin_guide.md).
-- При ошибке `ERR_UNKNOWN_FILE_EXTENSION` запускайте `npm run crystal:auto-update`.
 - Команды `/assign_task`, `/upload_file` и `/edit_last` теперь проверяют наличие обязательных аргументов.
 - `/assign_task` при одном аргументе использует кнопки `KeyboardButton.requestUser` и `KeyboardButton.requestChat` для выбора исполнителя или группы.
 - Добавлены тесты `commandValidation` для проверки этих команд без аргументов.
@@ -139,8 +137,6 @@
   модулях, включая `lodash.isequal` и `glob`.
 - Планировщик `scheduler.js` раз в минуту проверяет поле `remind_at` у задач и присылает уведомление.
 - Напоминания рассылаются каждому исполнителю из `assigned_user_id` и `assignees`, если в профиле установлен флаг «получать напоминания». При отсутствии таких пользователей сообщение отправляется в чат отдела.
-- Для обновления бейджа README используется `crystal:update-badge`, файл кристаллизации можно синхронизировать командой `crystal:sync`.
-- Скрипт `crystal:auto-update` проверяет `https://api.github.com/repos/AgroxOD/crystallization-development/commits` и при появлении нового коммита обновляет `crystallizationManager.ts`.
 - Расширена валидация API и добавлены разделы "Логи" и "Роли" во фронтенде.
 - Для раздела "Роли" реализована форма создания роли, страница "Логи" выводит последние события из MongoDB.
 - Интерфейс страницы `Роли` приведён к стилю TailAdmin.
@@ -202,7 +198,6 @@
 - При установке зависимостей используем `npm ci --prefix bot || npm --prefix bot install`, затем `npm audit fix --prefix bot` или используем скрипт `scripts/install_bot_deps.sh`.
 - Расширяем документацию по сценарию использования API.
 - Настроен workflow `release.yml` для автоматических GitHub Releases.
-- Внедрена система "кристаллизации" задач и CLI `crystallizationManager.ts`.
 - Добавлен маршрут `/api/tasks/:id` для получения одной задачи.
 - Реализован метод `DELETE /api/tasks/:id` и кнопка удаления задачи в интерфейсе.
 - Обновлены ссылки на workflow Docker и Release в README.
@@ -284,7 +279,6 @@
 - При включённом Attachment Menu URL обновляется командой `npm run menu:update`, страница выбора задач доступна по `/menu`.
 - Поддержаны глубокие ссылки `/start`: `task_<id>` открывает задачу, а `invite_<departmentId>` добавляет пользователя в отдел.
 - В начало ключевых файлов добавлены строки с назначением: `docs/dashboard_tailadmin.md`, `docs/lighthouse_20250624.md`, `docs/lighthouse_20250626.md`, `bot/web/README.md`.
-- В `tsconfig.json` обновлён путь `include` на `crystallizationManager.ts`.
 - В этот файл также добавлены опции `moduleResolution: node` и `types: ['node']`, что позволило успешно компилировать CLI.
 - Мини-приложение теперь работает только в светлой теме, стили собираются с
   `autoprefixer` для кросс-браузерности.

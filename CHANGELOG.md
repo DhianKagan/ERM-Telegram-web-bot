@@ -38,6 +38,7 @@
 - Теперь `bot/src/config.js` ищет `.env` в корне и проверяет `APP_URL` на HTTPS,
   что устранило ошибку Bad Request при открытии приложения.
 - В README раздела «Установка» теперь напоминает запуск `scripts/create_env_from_exports.sh`.
+- Исправлена сборка Docker: `npm ci` в каталоге `bot/web` больше не падает из-за версии `yaml`.
 - Добавлено пояснение о проверке схем `APP_URL` и `MONGO_DATABASE_URL` в `bot/src/config.js`.
 - Файл `.env.example` обновлён: присутствуют все переменные из конфигурации.
 - Виджет Telegram Login обновлён до версии 22 и запрашивает доступ `write`.

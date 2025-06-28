@@ -195,6 +195,7 @@ docker compose config
 - Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.
 - Полная копия дизайна TailAdmin создана в Figma, инструкция и файл расположены в docs/tailadmin_figma_design.md и docs/TailAdminDesign.fig.
 - Обновляйте `bot/web/package-lock.json` после добавления зависимостей, иначе `npm ci` в Dockerfile завершится ошибкой.
+- При сообщении `Invalid: lock file's yaml` выполните `npm --prefix bot/web install` и закоммитьте обновлённый lock-файл.
 - Для всех fetch-запросов используется helper authFetch, который перенаправляет на /login при отсутствии токена.
 - Если при сборке Vite появляется предупреждение о размере чанков, внедрите `React.lazy` и настройте `manualChunks` в `vite.config.js`.
 - При появлении сообщений `Unexpected ")"` от esbuild проверьте стили. Удалите нестандартные директивы вроде `@custom-variant dark`.

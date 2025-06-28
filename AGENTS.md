@@ -258,3 +258,4 @@ docker compose config
 - В README указан контроль схем `APP_URL` и `MONGO_DATABASE_URL`.
 - На страницах задач и в админ‑панели ссылки `tg://user?id=<telegram_id>` позволяют открыть чат с исполнителем.
 - Модуль `gateway.js` отправляет SMS через HTTPS, в `authController` доступна опция замены SMS на Telegram.
+- Пользователи проходят верификацию через `verifyUser`, дата сохраняется в `verified_at` и показывается в админ‑панели.

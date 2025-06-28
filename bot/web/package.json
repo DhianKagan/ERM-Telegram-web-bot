@@ -21,7 +21,6 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
     "tdweb": "^1.8.0",
-    "telegram-react": "^0.1.0",
     "validator": "^13.15.15"
   },
   "devDependencies": {

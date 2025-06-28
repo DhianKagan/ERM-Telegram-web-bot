@@ -61,7 +61,11 @@ const validate = validations => [
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          "frame-src": ["'self'", 'https://www.google.com'],
+          "frame-src": [
+            "'self'",
+            'https://www.google.com',
+            'https://oauth.telegram.org'
+          ],
           "script-src": ["'self'", "'unsafe-eval'", 'https://telegram.org'],
           "media-src": ["'self'", 'data:']
         }

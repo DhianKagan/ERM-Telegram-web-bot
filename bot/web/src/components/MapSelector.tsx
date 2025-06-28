@@ -10,11 +10,16 @@ interface MapSelectorProps {
 
 export default function MapSelector({ onSelect, onClose }: MapSelectorProps) {
   const [link, setLink] = React.useState("");
+  const [error, setError] = React.useState("");
 
   const submit = () => {
-    if (!link) return;
-    const address = parseGoogleAddress(link);
-    if (onSelect) onSelect({ link, address });
+    const sanitized = validateURL(link);
+    if (!sanitized) {
+      setError("Некорректная ссылка");
+      return;
+    }
+    const address = parseGoogleAddress(sanitized);
+    if (onSelect) onSelect({ link: sanitized, address });
     if (onClose) onClose();
   };
 
@@ -26,15 +31,17 @@ export default function MapSelector({ onSelect, onClose }: MapSelectorProps) {
           className="h-64 w-full rounded"
           allowFullScreen
         ></iframe>
+        <p className="text-sm text-gray-600">
+          После выбора места нажмите в Google Maps «Поделиться» и скопируйте
+          ссылку
+        </p>
         <input
           value={link}
-          onChange={(e) => {
-            const sanitizedLink = validateURL(e.target.value);
-            setLink(sanitizedLink);
-          }}
+          onChange={(e) => setLink(e.target.value)}
           placeholder='Вставьте ссылку "Поделиться"'
           className="w-full rounded border px-2 py-1"
         />
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end space-x-2">
           <button className="btn-gray" onClick={onClose}>
             Отмена

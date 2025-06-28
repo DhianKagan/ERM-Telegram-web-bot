@@ -30,5 +30,9 @@ module.exports = {
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',
   adminEmail: process.env.ADMIN_EMAIL,
-  adminPassword: process.env.ADMIN_PASSWORD
+  adminPassword: process.env.ADMIN_PASSWORD,
+  gateway: {
+    key: process.env.GATEWAY_API_KEY,
+    sender: process.env.GATEWAY_SENDER
+  }
 }

@@ -245,3 +245,4 @@ docker compose config
 - В `tsconfig.json` путь `include` указывает на `crystallizationManager.ts`.
 - `.env.example` дополнен комментариями и содержит все переменные из `bot/src/config.js`.
 - В README указан контроль схем `APP_URL` и `MONGO_DATABASE_URL`.
+- На страницах задач и в админ‑панели ссылки `tg://user?id=<telegram_id>` позволяют открыть чат с исполнителем.

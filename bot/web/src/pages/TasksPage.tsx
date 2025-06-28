@@ -12,7 +12,14 @@ interface Task {
   title: string
   status: string
   time_spent: number
+  assigned_user_id?: number
+  assignees?: number[]
   attachments?: { name: string; url: string }[]
+}
+
+interface User {
+  telegram_id: number
+  username: string
 }
 
 interface KpiSummary {
@@ -22,6 +29,7 @@ interface KpiSummary {
 
 export default function TasksPage() {
   const [all, setAll] = React.useState<Task[]>([]);
+  const [users, setUsers] = React.useState<User[]>([]);
   const [status, setStatus] = React.useState<string>("all");
   const [selected, setSelected] = React.useState<string[]>([]);
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
@@ -41,6 +49,9 @@ export default function TasksPage() {
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
+    authFetch("/api/users")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setUsers);
     authFetch("/api/tasks/report/summary")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
@@ -62,6 +73,14 @@ export default function TasksPage() {
     }),
     [all],
   );
+
+  const userMap = React.useMemo(() => {
+    const map: Record<number, User> = {};
+    users.forEach((u) => {
+      map[u.telegram_id] = u;
+    });
+    return map;
+  }, [users]);
 
   const add30 = async (id) => {
     await authFetch(`/api/tasks/${id}/time`, {
@@ -118,6 +137,7 @@ export default function TasksPage() {
             <th></th>
             <th className="px-4 py-2 text-left">Название</th>
             <th className="px-4 py-2">Статус</th>
+            <th className="px-4 py-2">Исполнители</th>
             <th className="px-4 py-2">Время</th>
             <th className="px-4 py-2">Файлы</th>
             <th></th>
@@ -148,6 +168,18 @@ export default function TasksPage() {
                 </button>
               </td>
               <td className="px-4 py-2 text-center">{t.status}</td>
+              <td className="px-4 py-2">
+                {(t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []))
+                  .map((id) => (
+                    <a
+                      key={id}
+                      href={`tg://user?id=${id}`}
+                      className="text-accentPrimary mr-1 underline"
+                    >
+                      {userMap[id]?.username || id}
+                    </a>
+                  ))}
+              </td>
               <td className="px-4 py-2 text-center">{t.time_spent}</td>
               <td className="px-4 py-2">
                 {t.attachments?.map((a) => (

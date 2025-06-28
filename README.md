@@ -81,6 +81,8 @@
   При их отсутствии в логах появится сообщение `VITE_BOT_USERNAME не задан`,
   а кнопка авторизации выдаст ошибку `Username invalid`.
   Для ссылки на обсуждение задач добавьте `VITE_CHAT_ID` с ID группы Telegram.
+  Для работы клиента `telegram-react` укажите `VITE_TELEGRAM_API_ID` и
+  `VITE_TELEGRAM_API_HASH`.
   Подключение к MongoDB выполняет `bot/src/db/connection.js`,
   обеспечивающий единый пул соединений. Начиная с `mongoose` 8
   использование опций `useNewUrlParser` и `useUnifiedTopology`
@@ -499,4 +501,4 @@ npm run crystal:auto-update
 
 ## Интеграция telegram-react
 
-Для полноценного обмена сообщениями рассматривается клиент [telegram-react](https://github.com/evgeny-nadymov/telegram-react). Скрипт `scripts/setup_tdweb.sh` устанавливает пакет `tdweb` и копирует файлы WebAssembly в `bot/web/public/tdlib`. После запуска скрипта можно подключать TDLib в компонентах мини‑приложения.
+Для полноценного обмена сообщениями рассматривается клиент [telegram-react](https://github.com/evgeny-nadymov/telegram-react). Скрипт `scripts/setup_tdweb.sh` устанавливает пакет `tdweb` и копирует файлы WebAssembly в `bot/web/public/tdlib`. После запуска скрипта можно подключать TDLib в компонентах мини‑приложения. Появилась страница `/chats`, выводящая компонент `ChatView` с telegram-react.

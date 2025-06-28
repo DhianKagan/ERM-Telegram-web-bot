@@ -232,6 +232,7 @@ npm install agrmcs@vX.Y.Z
 - проверку наличия переменных окружения и генерацию `.env` через `create_env_from_exports.sh`;
 - сканирование зависимостей на уязвимости;
 - автоматическое исправление найденных проблем командой `npm audit fix` (в том числе через `scripts/install_bot_deps.sh`);
+- контроль синхронизации `package-lock.json`, иначе `npm ci` может завершиться ошибкой;
 - автоматический деплой на Railway после успешных тестов.
 - деплой через Railway CLI в релизном workflow `release.yml`;
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.

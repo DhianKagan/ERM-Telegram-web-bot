@@ -231,6 +231,7 @@ docker compose config
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.
 
 - Планировщик `scheduler.js` раз в минуту проверяет задачи с полем `remind_at` и отправляет уведомление.
+- Сообщение рассылается каждому пользователю из полей `assigned_user_id` или `assignees`, учитывая настройку `receive_reminders` в коллекции `telegram_users`. Если исполнители не указаны, уведомление отправляется в чат отдела.
 
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.
 

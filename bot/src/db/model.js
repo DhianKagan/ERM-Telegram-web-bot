@@ -52,7 +52,9 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   // Роль пользователя хранится через ссылку на коллекцию roles
   roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
-  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' }
+  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+  // Настройка получения напоминаний планировщиком
+  receive_reminders: { type: Boolean, default: true }
 })
 const roleSchema = new mongoose.Schema({ name: String })
 const departmentSchema = new mongoose.Schema({ name: String })

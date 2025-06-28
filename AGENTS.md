@@ -239,6 +239,7 @@ docker compose config
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.
 
 - Для установки TDLib используйте скрипт `scripts/setup_tdweb.sh`, который ставит пакет `tdweb` и копирует файлы в `bot/web/public/tdlib`.
+- Страница `/chats` отображает чаты через TDLib. После установки скриптом `setup_tdweb.sh` убедитесь, что директория `bot/web/public/tdlib` содержит файлы.
 - В шапке отображается ссылка "Войти" при отсутствии токена, иначе выпадающее меню профиля.
 - После создания задачи Web App отправляет `sendData('task_created:<id>')`, бот
   реагирует на `web_app_data` и подтверждает создание.

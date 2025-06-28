@@ -17,6 +17,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const TelegramLogin = lazy(() => import("./pages/TelegramLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
+const ChatView = lazy(() => import("./pages/ChatView"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -34,6 +35,14 @@ function Content() {
         <Routes>
           <Route path="/login" element={<TelegramLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
+          <Route
+            path="/chats"
+            element={
+              <ProtectedRoute>
+                <ChatView />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={

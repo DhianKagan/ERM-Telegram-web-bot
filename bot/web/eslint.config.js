@@ -6,7 +6,7 @@ import tsParser from '@typescript-eslint/parser'
 import tsPlugin from '@typescript-eslint/eslint-plugin'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'public/tdlib'] },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {

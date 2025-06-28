@@ -256,3 +256,4 @@
   `npm --prefix bot/web install`.
 - Файл `.env.example` дополнен комментариями с описанием каждой переменной.
 - Исправлен lock-файл `bot/web/package-lock.json`: неполный файл вызывал ошибку `npm ci` в Docker.
+- Lock-файл `bot/web/package-lock.json` перегенерирован после обнаружения повреждения.

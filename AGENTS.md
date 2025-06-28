@@ -38,6 +38,7 @@ docker compose config
   `mongodb://` или `mongodb+srv://`, иначе приложение не подключится к базе.
 - `APP_URL` должен быть HTTPS, иначе Telegram отвергнет Web App ссылку.
 - Для запуска тестов также задавайте `APP_URL`, иначе Jest завершится ошибкой.
+- При указании `WEBHOOK_URL` бот запускается в режиме webhook и регистрирует URL через `setWebhook`.
 
 ## Деплой
 

@@ -7,7 +7,11 @@ import authFetch from "../utils/authFetch"
 import { AuthContext } from "../context/AuthContext"
 
 interface Role { _id: string; name: string }
-interface User { telegram_id: number; username: string; roleId?: Role }
+interface User {
+  telegram_id: number
+  username: string
+  roleId?: Role
+}
 interface Department { _id: string; name: string }
 
 export default function Admin() {
@@ -41,8 +45,13 @@ export default function Admin() {
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
           {users.map((u) => (
             <li key={u.telegram_id} className="py-2">
-              {u.telegram_id} {u.username}
-              {u.roleId ? ` (${u.roleId.name})` : ''}
+              <a
+                href={`tg://user?id=${u.telegram_id}`}
+                className="text-accentPrimary hover:underline"
+              >
+                {u.username}
+              </a>
+              {u.roleId ? ` (${u.roleId.name})` : ""}
             </li>
           ))}
         </ul>

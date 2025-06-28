@@ -9,9 +9,14 @@ interface TaskModalProps {
   onClose: () => void
 }
 
+interface User {
+  telegram_id: number
+  username: string
+}
+
 export default function TaskModal({ id, onClose }: TaskModalProps) {
-  const [task, setTask] = React.useState(null);
-  const [users, setUsers] = React.useState([]);
+  const [task, setTask] = React.useState<any>(null);
+  const [users, setUsers] = React.useState<User[]>([]);
 
   React.useEffect(() => {
     authFetch(`/api/tasks/${id}`)
@@ -107,6 +112,15 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
               </option>
             ))}
           </select>
+          {task.assigned_user_id && (
+            <a
+              href={`tg://user?id=${task.assigned_user_id}`}
+              className="text-accentPrimary text-sm underline"
+            >
+              {users.find((u) => u.telegram_id === task.assigned_user_id)?.username ||
+                task.assigned_user_id}
+            </a>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium">🧾 Контролёр</label>
@@ -125,6 +139,15 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
               </option>
             ))}
           </select>
+          {task.controller_user_id && (
+            <a
+              href={`tg://user?id=${task.controller_user_id}`}
+              className="text-accentPrimary text-sm underline"
+            >
+              {users.find((u) => u.telegram_id === task.controller_user_id)?.username ||
+                task.controller_user_id}
+            </a>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium">📝 Комментарий</label>

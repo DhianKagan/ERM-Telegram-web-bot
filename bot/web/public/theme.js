@@ -1,7 +1,4 @@
-// Скрипт инициализации темы. Проверяет localStorage и
-// системную настройку, добавляя класс `dark` к <html> при необходимости.
-const savedTheme = localStorage.getItem('theme');
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-  document.documentElement.classList.add('dark');
-}
+// Скрипт инициализации темы. Всегда используется светлая схема,
+// тёмная тема отключена для стабильности отображения во всех браузерах.
+localStorage.setItem('theme', 'light');
+document.documentElement.classList.remove('dark');

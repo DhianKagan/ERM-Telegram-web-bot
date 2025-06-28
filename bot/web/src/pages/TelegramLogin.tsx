@@ -19,7 +19,11 @@ export default function TelegramLogin() {
     const script = document.createElement('script')
     script.src = 'https://telegram.org/js/telegram-widget.js?22'
     script.async = true
-    script.setAttribute('data-telegram-login', import.meta.env.VITE_BOT_USERNAME || 'YOUR_BOT_USERNAME')
+    const botUser = import.meta.env.VITE_BOT_USERNAME
+    if (!botUser || botUser === 'YOUR_BOT_USERNAME') {
+      console.error('VITE_BOT_USERNAME не задан')
+    }
+    script.setAttribute('data-telegram-login', botUser || 'YOUR_BOT_USERNAME')
     script.setAttribute('data-size', 'large')
     script.setAttribute('data-request-access', 'write')
     script.setAttribute('data-onauth', 'onTelegramAuth(user)')

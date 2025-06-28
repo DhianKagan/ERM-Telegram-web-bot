@@ -1,7 +1,7 @@
-// Контекст темы и переключатель светлой/тёмной схемы
-import React, { createContext, useContext, useEffect, useState } from "react";
+// Контекст темы без переключателя, поддерживается только светлая схема
+import React, { createContext, useContext } from "react";
 
-type Theme = "light" | "dark";
+type Theme = "light";
 
 interface ThemeState {
   theme: Theme;
@@ -19,26 +19,17 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const initialTheme = () => {
-    if (typeof window === "undefined") return "light";
-    const saved = localStorage.getItem("theme") as Theme | null;
-    if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  };
-  const [theme, setTheme] = useState<Theme>(initialTheme);
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    const isDark = theme === "dark";
-    document.documentElement.classList.toggle("dark", isDark);
-    document.body.classList.toggle("dark", isDark);
-  }, [theme]);
+  const theme: Theme = "light";
+  if (typeof document !== "undefined") {
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+  }
   return (
     <ThemeContext.Provider
       value={{
         theme,
-        toggle: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+        toggle: () => {},
       }}
     >
       {children}

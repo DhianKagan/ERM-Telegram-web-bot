@@ -278,3 +278,7 @@
 - Поддержаны глубокие ссылки `/start`: `task_<id>` открывает задачу, а `invite_<departmentId>` добавляет пользователя в отдел.
 - В начало ключевых файлов добавлены строки с назначением: `docs/dashboard_tailadmin.md`, `docs/lighthouse_20250624.md`, `docs/lighthouse_20250626.md`, `bot/web/README.md`.
 - В `tsconfig.json` обновлён путь `include` на `crystallizationManager.ts`.
+- Мини-приложение теперь работает только в светлой теме, стили собираются с
+  `autoprefixer` для кросс-браузерности.
+- При деплое проверяйте `VITE_BOT_USERNAME`, иначе Telegram Login выдаст
+  ошибку `Username invalid`.

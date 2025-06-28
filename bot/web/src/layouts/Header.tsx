@@ -2,20 +2,13 @@
 // Верхняя панель навигации
 import React, { useContext } from "react";
 import { useSidebar } from "../context/SidebarContext";
-import { useTheme } from "../context/ThemeContext";
 import { AuthContext } from "../context/AuthContext";
 import DropdownMenu from "../components/DropdownMenu";
 import NotificationDropdown from "../components/NotificationDropdown";
-import {
-  Bars3Icon,
-  BellIcon,
-  SunIcon,
-  MoonIcon,
-} from "@heroicons/react/24/outline";
+import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 
 export default function Header() {
   const { toggle, collapsed } = useSidebar();
-  const { theme, toggle: toggleTheme } = useTheme();
   const { token, logout } = useContext(AuthContext);
   const authItems = [
     { label: 'Профиль', href: '/profile' },
@@ -38,9 +31,6 @@ export default function Header() {
           </span>
           <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-800" placeholder="Поиск" />
         </div>
-        <button onClick={toggleTheme} className="p-2 hover:text-accentPrimary" title="Сменить тему">
-          {theme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
-        </button>
         {token ? (
           <>
             <NotificationDropdown notifications={["Новое сообщение"]}>

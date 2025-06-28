@@ -22,6 +22,7 @@ module.exports = {
   statusUpdated: 'Task status updated successfully!',
   fileUploaded: 'Файл загружен в R2',
   fileRequired: 'Прикрепите документ или фото',
+  voiceRequired: 'Прикрепите голосовое сообщение',
   linkRequired: 'Укажите ссылку на фото',
   messageIdRequired: 'Укажите id сообщения',
   editTextRequired: 'Укажите текст для редактирования',
@@ -32,5 +33,5 @@ module.exports = {
   menuPrompt: 'Выберите действие',
   taskCompleted: 'Задача отмечена выполненной',
   taskDeleted: 'Задача удалена',
-  help: `Доступные команды:\n/start - регистрация и ссылка на приложение\n/help - эта справка\n/list_users - список пользователей\n/add_user id username - добавить пользователя\n/list_tasks - мои задачи\n/list_all_tasks - все задачи (для админов)\n/create_task <название> - создать задачу\n/assign_task <userId> <taskId> - назначить задачу\n/update_task_status <id> <status> - изменить статус\n/upload_file <taskId> - прикрепить файл\n/send_photo <url> - отправить фото\n/edit_last <msgId> <текст> - редактировать сообщение\n/app - открыть приложение\n/browser - ссылка для браузера\n/task_menu - меню задач`
+  help: `Доступные команды:\n/start - регистрация и ссылка на приложение\n/help - эта справка\n/list_users - список пользователей\n/add_user id username - добавить пользователя\n/list_tasks - мои задачи\n/list_all_tasks - все задачи (для админов)\n/create_task <название> - создать задачу\n/assign_task <userId> <taskId> - назначить задачу\n/update_task_status <id> <status> - изменить статус\n/upload_file <taskId> - прикрепить файл\n/upload_voice <taskId> - прикрепить голосовое сообщение\n/send_photo <url> - отправить фото\n/edit_last <msgId> <текст> - редактировать сообщение\n/app - открыть приложение\n/browser - ссылка для браузера\n/task_menu - меню задач`
 }

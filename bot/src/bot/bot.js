@@ -254,6 +254,23 @@ bot.command('upload_file', async (ctx) => {
   ctx.reply(messages.fileUploaded)
 })
 
+bot.command('upload_voice', async (ctx) => {
+  const text = ctx.message.caption || ctx.message.text
+  const [, taskId] = text.split(' ')
+  if (!taskId) return ctx.reply(messages.uploadParamsRequired)
+  const file = ctx.message.voice || ctx.message.audio
+  if (!file) return ctx.reply(messages.voiceRequired)
+  const { file_path } = await call('getFile', { file_id: file.file_id })
+  const res = await fetch(`https://api.telegram.org/file/bot${botToken}/${file_path}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  const name = file.file_name || (ctx.message.voice ? 'voice.ogg' : 'audio.mp3')
+  const key = `${taskId}/${file.file_unique_id}_${name}`
+  await uploadFile(buffer, key)
+  const url = `${r2.endpoint}/${r2.bucket}/${key}`
+  await addAttachment(taskId, { name, url })
+  ctx.reply(messages.fileUploaded)
+})
+
 bot.command('send_photo', async (ctx) => {
   const url = ctx.message.text.split(' ')[1]
   if (!url) return ctx.reply(messages.linkRequired)

@@ -13,6 +13,10 @@ async function assignTask(userId, taskId) {
   return Task.findByIdAndUpdate(taskId, { assigned_user_id: userId })
 }
 
+async function assignGroup(groupId, taskId) {
+  return Task.findByIdAndUpdate(taskId, { group_id: groupId })
+}
+
 async function listUserTasks(userId) {
   return Task.find({ assigned_user_id: userId })
 }
@@ -154,6 +158,7 @@ async function listLogs() {
 module.exports = {
   createTask,
   assignTask,
+  assignGroup,
   listUserTasks,
   listAllTasks,
   listMentionedTasks,

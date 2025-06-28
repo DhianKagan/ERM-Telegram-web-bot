@@ -7,6 +7,7 @@ const messages = require('../messages')
 const {
   createTask,
   assignTask,
+  assignGroup,
   listUserTasks,
   updateTaskStatus,
   createUser,
@@ -25,6 +26,9 @@ const { verifyAdmin, generateToken } = require('../auth/auth')
 const startScheduler = require('../services/scheduler')
 const bot = new Telegraf(botToken)
 require('../db/model')
+
+// Хранилище незавершённых команд /assign_task
+const pendingAssignments = new Map()
 
 // Функция отправки кнопки Web App с резервом на случай ошибки типа BUTTON_TYPE_INVALID
 async function sendAccessButton(ctx, url) {
@@ -119,16 +123,39 @@ bot.command('create_task', async (ctx) => {
 
 bot.command('assign_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
-    ctx.reply(messages.unauthorizedAssignTask);
+    ctx.reply(messages.unauthorizedAssignTask)
     return
   }
-  const [userId, taskId] = ctx.message.text.split(' ').slice(1)
-  if (!userId || !taskId) {
+  const parts = ctx.message.text.split(' ').slice(1)
+  if (!parts.length) {
     ctx.reply(messages.assignParamsRequired)
     return
   }
-  await assignTask(userId, taskId)
-  ctx.reply(messages.taskAssigned)
+  if (parts.length === 2 && parts[0] !== 'group') {
+    await assignTask(parts[0], parts[1])
+    ctx.reply(messages.taskAssigned)
+    return
+  }
+  let type = 'user'
+  let taskId
+  if (parts[0] === 'group') {
+    type = 'group'
+    taskId = parts[1]
+  } else {
+    taskId = parts[0]
+  }
+  if (!taskId) {
+    ctx.reply(messages.assignParamsRequired)
+    return
+  }
+  pendingAssignments.set(ctx.from.id, { taskId, type })
+  const keyboard = type === 'user'
+    ? Markup.keyboard([[Markup.button.userRequest('Исполнитель', 1)]])
+    : Markup.keyboard([[Markup.button.groupRequest('Группа', 1)]])
+  await ctx.reply(
+    type === 'user' ? messages.chooseAssignee : messages.chooseGroup,
+    keyboard.oneTime().resize()
+  )
 })
 
 bot.command('list_users', async (ctx) => {
@@ -368,8 +395,24 @@ bot.action('open_app', async (ctx) => {
 })
 
 bot.on('message', async (ctx) => {
-  if (!ctx.message.web_app_data) return
-  const data = ctx.message.web_app_data.data
+  const { user_shared, chat_shared, web_app_data } = ctx.message
+  if (user_shared || chat_shared) {
+    const pending = pendingAssignments.get(ctx.from.id)
+    if (pending) {
+      if (user_shared && pending.type === 'user') {
+        await assignTask(user_shared.user_id, pending.taskId)
+        await ctx.reply(messages.taskAssigned)
+        pendingAssignments.delete(ctx.from.id)
+      }
+      if (chat_shared && pending.type === 'group') {
+        await assignGroup(chat_shared.chat_id, pending.taskId)
+        await ctx.reply(messages.taskAssigned)
+        pendingAssignments.delete(ctx.from.id)
+      }
+    }
+  }
+  if (!web_app_data) return
+  const data = web_app_data.data
   if (data.startsWith('task_created:')) {
     const id = data.slice('task_created:'.length)
     await ctx.reply(`${messages.taskCreatedInApp} ${id}`)

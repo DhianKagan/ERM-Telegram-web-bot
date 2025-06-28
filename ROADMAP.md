@@ -290,3 +290,4 @@
 - При деплое проверяйте `VITE_BOT_USERNAME`, иначе Telegram Login выдаст ошибку `Username invalid`.
  - Проверяйте целостность `bot/web/package-lock.json`, иначе `npm ci` не выполнится в Docker.
  - При повреждении lock-файла пересоздайте его командой `npm --prefix bot/web install` перед сборкой.
+- Переменные VITE_TELEGRAM_API_ID и VITE_TELEGRAM_API_HASH зарезервированы для будущей интеграции с TDLib.

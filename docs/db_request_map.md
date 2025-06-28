@@ -27,6 +27,7 @@
 - `/update_task_status <taskId> <status>` — `updateTaskStatus()`
 - `/list_all_tasks` — `listAllTasks()`
 - `/upload_file <taskId>` — `addAttachment()`
+- `/upload_voice <taskId>` — `addAttachment()`
 - `/send_photo <url>` — `call('sendPhoto')`
 - `/edit_last <id> <текст>` — `call('editMessageText')`
 - `/app` — выдаёт ссылку на мини‑приложение

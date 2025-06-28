@@ -35,7 +35,8 @@ jest.mock('../src/services/service', () => ({
   createRole: jest.fn(),
   listRoles: jest.fn(),
   writeLog: jest.fn(),
-  listLogs: jest.fn()
+  listLogs: jest.fn(),
+  addAttachment: jest.fn()
 }))
 
 jest.mock('../src/services/r2', () => ({
@@ -78,6 +79,26 @@ test('/upload_file без файла', async () => {
   const ctx = { message: { caption: '/upload_file 1' }, from: { id: 1 }, reply: jest.fn() }
   await handlers.upload_file(ctx)
   expect(ctx.reply).toHaveBeenCalledWith(messages.fileRequired)
+})
+
+test('/upload_voice без файла', async () => {
+  const ctx = { message: { caption: '/upload_voice 1' }, from: { id: 1 }, reply: jest.fn() }
+  await handlers.upload_voice(ctx)
+  expect(ctx.reply).toHaveBeenCalledWith(messages.voiceRequired)
+})
+
+test('/upload_voice сохраняет voice', async () => {
+  const telegramApi = require('../src/services/telegramApi')
+  telegramApi.call.mockResolvedValue({ file_path: 'v.ogg' })
+  global.fetch = jest.fn().mockResolvedValue({ arrayBuffer: async () => new ArrayBuffer(1) })
+  const r2 = require('../src/services/r2')
+  const service = require('../src/services/service')
+  const ctx = { message: { caption: '/upload_voice 1', voice: { file_id: '1', file_unique_id: 'u' } }, from: { id: 1 }, reply: jest.fn() }
+  await handlers.upload_voice(ctx)
+  expect(telegramApi.call).toHaveBeenCalledWith('getFile', { file_id: '1' })
+  expect(r2.uploadFile).toHaveBeenCalled()
+  expect(service.addAttachment).toHaveBeenCalled()
+  expect(ctx.reply).toHaveBeenCalledWith(messages.fileUploaded)
 })
 
 test('/edit_last без аргументов', async () => {

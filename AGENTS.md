@@ -234,6 +234,7 @@ docker compose config
 - Команды `/assign_task`, `/upload_file` и `/edit_last` проверяют обязательные аргументы перед обращением к API.
 - `/assign_task` при указании только id задачи отправляет кнопку `KeyboardButton.requestUser`, админ выбирает исполнителя из контактов. Для выбора группы используется `KeyboardButton.requestChat`.
 - `/upload_file` принимает документ или фото и сохраняет ссылку в задаче.
+- `/upload_voice` принимает голосовое сообщение и также сохраняет ссылку в задаче.
 - Добавлены тесты `commandValidation` для этих команд.
 - В inline-режиме появились команды `add` и `search` для создания и поиска задач.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.

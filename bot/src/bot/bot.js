@@ -15,6 +15,7 @@ const {
   getUser,
   listAllTasks,
   getTask,
+  updateTask,
   updateUser,
   searchTasks,
   addAttachment,
@@ -117,7 +118,13 @@ bot.command('create_task', async (ctx) => {
     ctx.reply(messages.taskNameRequired)
     return
   }
-  await createTask(taskDescription)
+  const task = await createTask(taskDescription)
+  try {
+    const topic = await call('createForumTopic', { chat_id: chatId, name: task.title })
+    await updateTask(task._id, { telegram_topic_id: topic.message_thread_id })
+  } catch (e) {
+    console.error('createForumTopic', e)
+  }
   ctx.reply(messages.taskCreated)
 })
 

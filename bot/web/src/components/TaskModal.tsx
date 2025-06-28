@@ -17,6 +17,7 @@ interface User {
 export default function TaskModal({ id, onClose }: TaskModalProps) {
   const [task, setTask] = React.useState<any>(null);
   const [users, setUsers] = React.useState<User[]>([]);
+  const chatId = import.meta.env.VITE_CHAT_ID;
 
   React.useEffect(() => {
     authFetch(`/api/tasks/${id}`)
@@ -34,10 +35,18 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
 
   if (!task) return null;
 
+  const topicUrl = chatId && task.telegram_topic_id ?
+    `https://t.me/c/${String(chatId).replace('-100', '')}/${task.telegram_topic_id}` : null;
+
   return (
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
       <div className="max-h-screen w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
         <h3 className="text-lg font-semibold">🔧 Задача №{task._id}</h3>
+        {topicUrl && (
+          <a href={topicUrl} target="_blank" rel="noopener" className="text-accentPrimary text-sm underline">
+            Обсудить в Telegram
+          </a>
+        )}
         <div>
           <label className="block text-sm font-medium">
             📍 Адрес / Локация

@@ -17,6 +17,7 @@ if (!/^https:\/\//.test(appUrlEnv)) {
 }
 module.exports = {
   botToken: process.env.BOT_TOKEN,
+  botApiUrl: process.env.BOT_API_URL,
   chatId: process.env.CHAT_ID,
   jwtSecret: process.env.JWT_SECRET,
   mongoUrl: mongoUrlEnv,

@@ -1,7 +1,7 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
 /* global fetch */
-const { botToken, appUrl, chatId, r2, port } = require('../config')
+const { botToken, botApiUrl, appUrl, chatId, r2, port } = require('../config')
 const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')
 const {
@@ -252,7 +252,7 @@ bot.command('upload_file', async (ctx) => {
   const file = ctx.message.document || (ctx.message.photo && ctx.message.photo.pop())
   if (!file) return ctx.reply(messages.fileRequired)
   const { file_path } = await call('getFile', { file_id: file.file_id })
-  const res = await fetch(`https://api.telegram.org/file/bot${botToken}/${file_path}`)
+  const res = await fetch(`${botApiUrl || 'https://api.telegram.org'}/file/bot${botToken}/${file_path}`)
   const buffer = Buffer.from(await res.arrayBuffer())
   const key = `${taskId}/${file.file_unique_id}_${file.file_name || 'photo.jpg'}`
   await uploadFile(buffer, key)
@@ -268,7 +268,7 @@ bot.command('upload_voice', async (ctx) => {
   const file = ctx.message.voice || ctx.message.audio
   if (!file) return ctx.reply(messages.voiceRequired)
   const { file_path } = await call('getFile', { file_id: file.file_id })
-  const res = await fetch(`https://api.telegram.org/file/bot${botToken}/${file_path}`)
+  const res = await fetch(`${botApiUrl || 'https://api.telegram.org'}/file/bot${botToken}/${file_path}`)
   const buffer = Buffer.from(await res.arrayBuffer())
   const name = file.file_name || (ctx.message.voice ? 'voice.ogg' : 'audio.mp3')
   const key = `${taskId}/${file.file_unique_id}_${name}`

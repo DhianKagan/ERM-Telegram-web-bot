@@ -126,6 +126,15 @@ node scripts/set_menu_button_url.js
 ```
 Если задан `CHAT_ID`, кнопка обновится только в указанном чате.
 
+## Включение Attachment Menu
+1. В диалоге с [@BotFather](https://t.me/BotFather) выберите нужного бота.
+2. Откройте раздел *Attachment Menu* и включите `Enable Attachment Menu`.
+3. Страница выбора задачи расположена по пути `/menu` мини‑приложения.
+4. Обновите ссылку кнопки командой:
+```bash
+npm run menu:update
+```
+
 ## Типовые ошибки API
 Ниже приведён пример сообщения, которое возвращает Bot API:
 ```

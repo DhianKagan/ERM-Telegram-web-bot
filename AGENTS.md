@@ -93,6 +93,7 @@ docker compose config
 - Для проверки текущего URL кнопки меню используйте скрипт `scripts/get_menu_button_url.js`.
   что позволяет избежать ошибки дублирования в MongoDB.
 - Для смены ссылки применяйте `scripts/set_menu_button_url.js`.
+- Attachment Menu обновляется скриптом `scripts/set_attachment_menu_url.js`, страница выбора задач расположена по пути `/menu`.
 - В `docs/telegram_bot_manual.md` приведён пример вывода этого скрипта при отсутствующих токенах.
 - Руководство дополнено описанием работы с BotFather и примером запроса `getMyCommands`.
 - Для компонентов страницы `tasks` используйте путь `../../_components/Section/*`.

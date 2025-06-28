@@ -16,6 +16,7 @@ const Logs = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const TelegramLogin = lazy(() => import("./pages/TelegramLogin"));
+const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -32,6 +33,7 @@ function Content() {
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
           <Route path="/login" element={<TelegramLogin />} />
+          <Route path="/menu" element={<AttachmentMenu />} />
           <Route
             path="/profile"
             element={

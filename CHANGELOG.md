@@ -38,6 +38,7 @@
 - Добавлен скрипт `scripts/get_menu_button_url.js` для получения URL кнопки меню.
 - В документации показан пример его вывода при стандартных переменных окружения.
 - Появился скрипт `scripts/set_menu_button_url.js` для установки URL кнопки меню.
+- Для Attachment Menu создана страница `/menu` и скрипт `scripts/set_attachment_menu_url.js`.
 - Команды `/assign_task`, `/upload_file` и `/edit_last` проверяют наличие обязательных параметров и сообщают об ошибке, если аргументы не переданы.
 - `/assign_task` позволяет выбрать пользователя через `KeyboardButton.requestUser` или группу через `KeyboardButton.requestChat`.
 - Добавлены тесты commandValidation.test.js, которые эмулируют вызовы этих команд без параметров.

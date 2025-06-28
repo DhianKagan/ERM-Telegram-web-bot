@@ -18,7 +18,8 @@
     "crystal:stats": "ts-node --esm crystallizationManager.ts stats",
     "crystal:loop": "ts-node --esm scripts/run_crystal_loops.ts",
     "crystal:auto-update": "node --loader ts-node/esm scripts/auto_update_crystallizer.ts",
-    "test": "npm test --prefix bot"
+    "test": "npm test --prefix bot",
+    "menu:update": "node scripts/set_attachment_menu_url.js"
   },
   "dependencies": {
     "ts-node": "^10.9.1",

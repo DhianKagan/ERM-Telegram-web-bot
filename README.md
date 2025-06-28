@@ -16,6 +16,7 @@
 Среди маршрутов API теперь есть `GET /api/tasks/:id` для получения одной задачи.
 Также доступен скрипт `scripts/get_menu_button_url.js`, который выводит URL из кнопки меню или `/empty`, если используется поведение по умолчанию.
 Для установки новой ссылки используется `scripts/set_menu_button_url.js`.
+Для Attachment Menu создан скрипт `scripts/set_attachment_menu_url.js`, он указывает на страницу `/menu`.
 Таблица всех ответов бота приведена в `docs/bot_responses.md`.
 Пример результата со значениями из `.env.example`:
 ```

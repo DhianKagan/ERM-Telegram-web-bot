@@ -454,6 +454,7 @@ npm run crystal:auto-update
 - Для всех API-запросов используется функция authFetch, автоматически добавляющая заголовок Authorization.
 - Переключение светлой и тёмной темы теперь учитывает настройку браузера (Switching between light and dark theme now respects the browser's preference).
 - В index.html подключён отдельный скрипт `theme.js`, который выставляет класс `dark` до запуска React и не нарушает CSP.
+- В `tsconfig.json` обновлён путь `include` на `crystallizationManager.ts` для корректной компиляции CLI.
 
 ## Интеграция telegram-react
 

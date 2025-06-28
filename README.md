@@ -280,6 +280,7 @@ npm install agrmcs@vX.Y.Z
 - автоматический деплой на Railway после успешных тестов.
 - деплой через Railway CLI в релизном workflow `release.yml`;
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
+- базовый workflow устанавливает зависимости и запускает тесты по push и pull_request на `main`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
 - перед запуском линтера убедитесь, что зависимости фронтенда установлены:

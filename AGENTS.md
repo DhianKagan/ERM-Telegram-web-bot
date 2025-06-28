@@ -142,7 +142,7 @@ docker compose config
 - При ошибке `connect ENETUNREACH` задайте переменные `HTTP_PROXY` и `HTTPS_PROXY` или скачайте архив CLI с GitHub Releases, затем выполните `railway status`.
 - Перед релизом создавайте тег `vX.Y.Z` и проверяйте успешное выполнение workflow `release.yml`.
 - В `release.yml` после тестов происходит сборка Docker-образа и деплой командой `railway up`.
-- Для проверки кода используется дополнительный workflow `ci.yml` с MongoDB.
+- Для проверки кода используется базовый workflow `ci.yml`, который устанавливает зависимости и запускает тесты при push в main.
 - В нём зависимости бэкенда устанавливаются через `npm ci --prefix bot`. После установки запускайте `npm audit fix --prefix bot`.
 
 ## Поддержка зависимостей

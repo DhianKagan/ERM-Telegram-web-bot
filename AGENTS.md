@@ -238,3 +238,4 @@ docker compose config
 - После создания задачи Web App отправляет `sendData('task_created:<id>')`, бот
   реагирует на `web_app_data` и подтверждает создание.
 - В начало документации и README добавлены комментарии с назначением файлов, чтобы упростить навигацию.
+- В `tsconfig.json` путь `include` указывает на `crystallizationManager.ts`.

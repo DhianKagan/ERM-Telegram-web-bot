@@ -239,3 +239,5 @@ docker compose config
   реагирует на `web_app_data` и подтверждает создание.
 - В начало документации и README добавлены комментарии с назначением файлов, чтобы упростить навигацию.
 - В `tsconfig.json` путь `include` указывает на `crystallizationManager.ts`.
+- `.env.example` дополнен комментариями и содержит все переменные из `bot/src/config.js`.
+- В README указан контроль схем `APP_URL` и `MONGO_DATABASE_URL`.

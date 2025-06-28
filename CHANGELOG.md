@@ -18,8 +18,7 @@
 - Мини‑приложение отправляет `sendData('task_created:<id>')`, бот
   обрабатывает `web_app_data` и подтверждает создание задачи.
 - Списки задач в командах `/list_tasks` и `/list_all_tasks` оснащены inline-кнопками для отметки выполнения и удаления.
-- В `tsconfig.json` уточнён путь `include`, теперь он указывает на `crystallizationManager.ts`.
-
+- Из репозитория удалён архив free-react-tailwind-admin-dashboard-main.zip; ссылка на источник добавлена в README.
 - Пользователи бота теперь хранятся в коллекции `telegram_users`, что
   устранило ошибку `E11000` при регистрации через команду `/register`.
 - Добавлена проверка `MONGO_DATABASE_URL` в `bot/src/config.js`,
@@ -149,7 +148,7 @@
 - Dashboard теперь отображает метрики задач и график активности за неделю.
 - В интерфейс добавлены компоненты из React TailAdmin demo: KPI-блоки и NotificationBar на странице Tasks.
 - Страница Tasks переработана: форма добавления и таблица задач получили классы TailAdmin.
-- Стили фронтенда обновлены из архива `free-react-tailwind-admin-dashboard-main.zip`, дизайн стал ближе к оригинальному TailAdmin.
+- Архив free-react-tailwind-admin-dashboard-main.zip удалён, стили синхронизированы с проектом TailAdmin React.
 - Уточнено: при блокировке `nextjs.org` сборка фронтенда требует настроить прокси или другую среду с интернет‑доступом.
 - Добавлен скрипт `audit_dependencies.sh` для проверки зависимостей.
 - Обновлены `ROADMAP.md`, `README.md` и `AGENTS.md`.

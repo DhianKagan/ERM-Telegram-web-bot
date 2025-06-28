@@ -110,7 +110,7 @@ docker compose config
 - После переноса фронтенда на React проверяйте работоспособность `/dashboard`.
 - Компоненты Sidebar, Header и DashboardPage берём из шаблона TailAdmin и поддерживаем в каталоге `bot/web`.
 - При доработке интерфейса ориентируйтесь на демо https://react-demo.tailadmin.com.
-- Для актуализации стилей используйте архив `free-react-tailwind-admin-dashboard-main.zip` в корне.
+- Стили берутся из репозитория TailAdmin/free-react-tailwind-admin-dashboard, архив удалён из проекта.
 - На странице `/dashboard` показывайте актуальные метрики задач, график активности и таблицу последних задач.
 - Для примера верстки Dashboard смотрите `docs/dashboard_tailadmin.md`.
 - На страницах `Админ`, `Проекты` и `Отчёты` должны присутствовать формы работы с пользователями,

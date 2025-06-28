@@ -10,6 +10,7 @@ interface Role { _id: string; name: string }
 interface User {
   telegram_id: number
   username: string
+  verified_at?: string
   roleId?: Role
 }
 interface Department { _id: string; name: string }
@@ -52,6 +53,7 @@ export default function Admin() {
                 {u.username}
               </a>
               {u.roleId ? ` (${u.roleId.name})` : ""}
+              {u.verified_at ? ' ✅' : ' ❌'}
             </li>
           ))}
         </ul>

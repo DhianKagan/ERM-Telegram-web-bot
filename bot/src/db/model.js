@@ -65,7 +65,9 @@ const userSchema = new mongoose.Schema({
   roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   // Настройка получения напоминаний планировщиком
-  receive_reminders: { type: Boolean, default: true }
+  receive_reminders: { type: Boolean, default: true },
+  // Дата прохождения верификации через Bot API
+  verified_at: Date
 })
 const roleSchema = new mongoose.Schema({ name: String })
 const departmentSchema = new mongoose.Schema({ name: String })

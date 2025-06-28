@@ -243,6 +243,7 @@ npm install agrmcs@vX.Y.Z
 - следите за актуальностью `bot/web/package-lock.json`, иначе `docker compose build` завершится ошибкой `npm ci`.
 - регулярно обновляйте зависимости, чтобы избежать предупреждений npm об устаревших пакетах (`lodash.isequal`, `lodash.get`, `inflight`, `glob`).
 - для устранения сообщения `inflight@1.0.6` использован override `glob@11`, обновите lock-файл через `npm install --prefix bot`.
+- подобным образом добавлены override для `rimraf@6` и `uuid@9` в `bot/web/package.json`, что устранило предупреждения о `rimraf@2.6.3` и `uuid@3.4.0`.
 
 
 ## Внесение вклада

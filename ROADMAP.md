@@ -289,5 +289,5 @@
 - В `tsconfig.json` обновлён путь `include` на `crystallizationManager.ts`.
 - Мини-приложение теперь работает только в светлой теме, стили собираются с
   `autoprefixer` для кросс-браузерности.
-- При деплое проверяйте `VITE_BOT_USERNAME`, иначе Telegram Login выдаст
-  ошибку `Username invalid`.
+- При деплое проверяйте `VITE_BOT_USERNAME`, иначе Telegram Login выдаст ошибку `Username invalid`.
+- Проверяйте целостность `bot/web/package-lock.json`, иначе `npm ci` не выполнится в Docker.

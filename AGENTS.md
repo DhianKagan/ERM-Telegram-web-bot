@@ -246,7 +246,6 @@ docker compose config
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.
 
 - Для установки TDLib используйте скрипт `scripts/setup_tdweb.sh`, который ставит пакет `tdweb` и копирует файлы в `bot/web/public/tdlib`.
-- Для клиента telegram-react задавайте переменные `VITE_TELEGRAM_API_ID` и `VITE_TELEGRAM_API_HASH` в `.env`.
 - В шапке отображается ссылка "Войти" при отсутствии токена, иначе выпадающее меню профиля.
 - После создания задачи Web App отправляет `sendData('task_created:<id>')`, бот
   реагирует на `web_app_data` и подтверждает создание.

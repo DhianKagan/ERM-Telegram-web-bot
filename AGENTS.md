@@ -256,3 +256,4 @@ docker compose config
 - Перед сборкой Docker проверяйте lock-файл `bot/web/package-lock.json`, иначе `npm ci` завершится ошибкой.
 - В коде config.js проверяются стандартные `ADMIN_EMAIL` и `ADMIN_PASSWORD`; в продакшене их следует заменить.
 - README дополнен оглавлением и кратким списком возможностей. Добавлен пример API-запроса.
+- Переменные VITE_TELEGRAM_API_ID и VITE_TELEGRAM_API_HASH не используются, но приведены в примере для будущих обновлений.

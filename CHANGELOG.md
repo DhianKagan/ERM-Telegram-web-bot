@@ -227,7 +227,7 @@
 - Страницы `Админ`, `Проекты` и `Логи` оформлены карточками TailAdmin и используют breadcrumbs.
 - Форма создания задачи открывает мини‑карту через ссылку `maps/embed` и кнопку «Карта». Скопированные ссылки «Поделиться» сокращаются и сохраняются в полях `start_location_link` и `end_location_link`.
 - В модальном окне карты отображается подсказка о кнопке «Поделиться», ссылка проверяется при подтверждении и показывает ошибку, если формат неверный.
-- API получает настройку `helmet` с директивой `frame-src https://www.google.com`; в сочетании с `maps/embed` это убирает ошибку CSP.
+ - API получает настройку `helmet` с директивой `frame-src https://www.google.com https://oauth.telegram.org`; это устраняет ошибку CSP при загрузке карт и Telegram OAuth.
 - Обновлены версии `@aws-sdk/client-s3`, `@vitejs/plugin-react`, `prettier`,
   `react-router-dom` и `vite`, что устранило предупреждения npm об устаревших
   пакетах `lodash.isequal`, `lodash.get`, `inflight` и `glob`.

@@ -254,6 +254,7 @@ docker compose config
   в интерфейсе задачи.
 - В начало документации и README добавлены комментарии с назначением файлов, чтобы упростить навигацию.
 - В `tsconfig.json` путь `include` указывает на `crystallizationManager.ts`.
+- Для корректной работы CLI добавлены опции `moduleResolution: node` и `types: ['node']`.
 - `.env.example` дополнен комментариями и содержит все переменные из `bot/src/config.js`.
 - В комментариях к каждой переменной указано её назначение и источник значения.
 - В README указан контроль схем `APP_URL` и `MONGO_DATABASE_URL`.

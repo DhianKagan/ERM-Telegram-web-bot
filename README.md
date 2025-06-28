@@ -498,6 +498,7 @@ npm run crystal:auto-update
 - Переключение светлой и тёмной темы теперь учитывает настройку браузера (Switching between light and dark theme now respects the browser's preference).
 - В index.html подключён отдельный скрипт `theme.js`, который выставляет класс `dark` до запуска React и не нарушает CSP.
 - В `tsconfig.json` обновлён путь `include` на `crystallizationManager.ts` для корректной компиляции CLI.
+- Добавлены настройки `moduleResolution: node` и `types: ['node']`, что устранило ошибки TypeScript при сборке CLI.
  - Перед сборкой Docker проверьте актуальность `bot/web/package-lock.json`, иначе `npm ci` завершится ошибкой.
  - Если файл повреждён или отсутствует, удалите его и выполните `npm --prefix bot/web install` для создания нового lock-файла.
 

@@ -27,6 +27,7 @@
 - Добавлена команда `/help` с кратким описанием всех команд.
 - Мини‑приложение отправляет `sendData('task_created:<id>')`, бот
   обрабатывает `web_app_data` и подтверждает создание задачи.
+- В `tsconfig.json` добавлены `moduleResolution: node` и `types: ['node']`, что устранило ошибки компиляции `crystallizationManager.ts`.
 - Команда `/create_task` создаёт топик через `createForumTopic` и сохраняет `telegram_topic_id`, ссылка отображается в интерфейсе.
 - Списки задач в командах `/list_tasks` и `/list_all_tasks` оснащены inline-кнопками для отметки выполнения и удаления.
 - Из репозитория удалён архив free-react-tailwind-admin-dashboard-main.zip; ссылка на источник добавлена в README.

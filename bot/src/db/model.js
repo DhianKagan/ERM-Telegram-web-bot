@@ -40,6 +40,7 @@ const taskSchema = new mongoose.Schema({
   comment: String,
   files: [String],
   attachments: [{ name: String, url: String }],
+  telegram_topic_id: Number,
   time_spent: { type: Number, default: 0 }
 }, { timestamps: true })
 

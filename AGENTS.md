@@ -189,8 +189,8 @@ docker compose config
 - Добавлены Breadcrumbs и стили TailAdmin на страницах "Админ", "Проекты" и "Логи".
 - Sidebar на десктопе можно свернуть кнопкой в узкий режим.
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
-- Для быстрого ping к MongoDB добавлен скрипт `scripts/check_mongo.cjs`.
-- Перед упаковкой в Docker обязательно запускайте `node scripts/check_mongo.cjs`.
+ - Для быстрого ping к MongoDB добавлен скрипт `scripts/check_mongo.cjs`.
+ - Перед упаковкой в Docker обязательно запускайте `node scripts/check_mongo.cjs`. Скрипт работает без установленного `dotenv` и сам считывает `.env`.
 - Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `arjs-db.4pzoyda.mongodb.net/agromarket`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.

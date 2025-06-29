@@ -14,7 +14,7 @@
 - Коды подтверждения хранят временную метку и удаляются спустя 5 минут, просроченные попытки отклоняются.
 - Переменная `BOT_API_URL` позволяет использовать локальный сервер Telegram Bot API для загрузки файлов до 2 ГБ.
 - В `docker.yml` файл `.env` теперь создаётся из `.env.example` с подстановкой секретов и запускается перед тестами.
-- В workflow Docker перед сборкой выполняется `node scripts/check_mongo.cjs`, что гарантирует доступность MongoDB.
+ - В workflow Docker перед сборкой выполняется `node scripts/check_mongo.cjs`, что гарантирует доступность MongoDB. Скрипт больше не зависит от `dotenv` и самостоятельно читает `.env`.
 - Поддержаны глубокие ссылки `/start`: `task_<id>` сразу открывает задачу, `invite_<departmentId>` добавляет пользователя в отдел.
 - Ссылки на участников задач ведут на `tg://user?id=<telegram_id>` и позволяют открыть чат одним кликом.
 - В начало ключевых файлов добавлены строки с назначением: `docs/dashboard_tailadmin.md`, `docs/lighthouse_20250624.md`, `docs/lighthouse_20250626.md`, `bot/web/README.md`.
@@ -78,7 +78,7 @@
 - Исправлены статусы задач в канбане и форме создания: используется `new/in-progress/done`.
 - Добавлены тесты `kanbanStatus.test.js` и `authRole.test.js`.
 - Добавлен скрипт `scripts/check_db_fetch.cjs` для проверки работы API и БД.
-- Добавлен скрипт `scripts/check_mongo.cjs` для проверки подключения к MongoDB.
+ - Добавлен скрипт `scripts/check_mongo.cjs` для проверки подключения к MongoDB. Теперь он может работать без `dotenv`.
 - Обновлён список команд в `scripts/bot_commands.json`, меню Telegram
   обновляется скриптом `scripts/set_bot_commands.sh`.
 - ESLint фронтенда использует `@typescript-eslint/parser` и плагин,

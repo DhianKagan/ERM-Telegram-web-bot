@@ -2,6 +2,7 @@
 const express = require('express')
 const request = require('supertest')
 const checkRole = require('../src/middleware/checkRole')
+const { stopScheduler } = require('../src/services/scheduler')
 
 function appWithRole(role) {
   const app = express()
@@ -18,3 +19,5 @@ test('пользователь получает 403', async () => {
   const res = await request(appWithRole('user')).get('/admin')
   expect(res.status).toBe(403)
 })
+
+afterAll(() => stopScheduler())

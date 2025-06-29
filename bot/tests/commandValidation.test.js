@@ -50,6 +50,8 @@ jest.mock('../src/services/telegramApi', () => ({
   call: jest.fn()
 }))
 
+const { stopScheduler } = require('../src/services/scheduler')
+
 const messages = require('../src/messages')
 
 beforeAll(() => {
@@ -61,7 +63,7 @@ beforeAll(() => {
   require('../src/bot/bot')
 })
 
-afterAll(() => jest.resetModules())
+afterAll(() => { jest.resetModules(); stopScheduler() })
 
 test('/assign_task без аргументов', async () => {
   const ctx = { message: { text: '/assign_task' }, from: { id: 1 }, reply: jest.fn() }

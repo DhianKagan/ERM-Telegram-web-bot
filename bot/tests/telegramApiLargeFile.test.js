@@ -8,6 +8,7 @@ process.env.BOT_API_URL = 'http://localhost:8081'
 
 const telegramApi = require('../src/services/telegramApi')
 const { uploadFile, client } = require('../src/services/r2')
+const { stopScheduler } = require('../src/services/scheduler')
 
 test('telegramApi использует BOT_API_URL', async () => {
   global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ ok: true, result: 1 }) })
@@ -24,3 +25,5 @@ test('uploadFile принимает большой буфер', async () => {
   await uploadFile(buf, 'big.bin')
   expect(spy).toHaveBeenCalled()
 })
+
+afterAll(() => stopScheduler())

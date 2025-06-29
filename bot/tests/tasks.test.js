@@ -6,6 +6,7 @@ process.env.JWT_SECRET='s'
 process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
 const request = require('supertest')
 const express = require('express')
+const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/db/model', () => ({
   Task: {
@@ -74,3 +75,5 @@ test('удаление задачи', async () => {
   const res = await request(app).delete(`/api/tasks/${id}`)
   expect(res.status).toBe(204)
 })
+
+afterAll(() => stopScheduler())

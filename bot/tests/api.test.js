@@ -3,6 +3,7 @@ const request = require('supertest')
 const express = require('express')
 jest.mock('../src/services/service', () => ({ listAllTasks: jest.fn() }))
 const services = require('../src/services/service')
+const { stopScheduler } = require('../src/services/scheduler')
 jest.unmock('jsonwebtoken')
 
 let app
@@ -33,7 +34,7 @@ beforeAll(async () => {
   app.use(errorHandler)
 })
 
-afterAll(() => jest.clearAllMocks())
+afterAll(() => { jest.clearAllMocks(); stopScheduler() })
 
 test('GET /health', async () => {
   const res = await request(app).get('/health')

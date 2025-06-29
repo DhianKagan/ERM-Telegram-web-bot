@@ -1,6 +1,7 @@
 const express = require('express')
 const request = require('supertest')
 const helmet = require('helmet')
+const { stopScheduler } = require('../src/services/scheduler')
 
 test('helmet добавляет security headers', async () => {
   const app = express()
@@ -9,3 +10,5 @@ test('helmet добавляет security headers', async () => {
   const res = await request(app).get('/')
   expect(res.headers['x-dns-prefetch-control']).toBe('off')
 })
+
+afterAll(() => stopScheduler())

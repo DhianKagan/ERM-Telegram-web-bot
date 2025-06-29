@@ -6,8 +6,11 @@ process.env.CHAT_ID = '1'
 process.env.JWT_SECRET = 's'
 process.env.APP_URL = 'https://localhost'
 const { Task } = require('../src/db/model')
+const { stopScheduler } = require('../src/services/scheduler')
 
 test('schema has task_description', () => {
   const desc = Task.schema.paths.task_description
   expect(desc).toBeDefined()
 })
+
+afterAll(() => stopScheduler())

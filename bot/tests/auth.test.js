@@ -12,6 +12,7 @@ process.env.JWT_SECRET = 'test'
 process.env.APP_URL = 'https://localhost'
 const { verifyAdmin, generateToken } = require('../src/auth/auth')
 const jwt = require('jsonwebtoken')
+const { stopScheduler } = require('../src/services/scheduler')
 
 test('verifyAdmin true for admin id', async () => {
   const ok = await verifyAdmin(1)
@@ -28,3 +29,5 @@ test('generateToken returns valid jwt', () => {
 const data = jwt.decode(token)
   expect(data.id).toBe(5)
 })
+
+afterAll(() => stopScheduler())

@@ -7,6 +7,7 @@ process.env.JWT_SECRET = 's'
 
 const express = require('express')
 const request = require('supertest')
+const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/services/service', () => ({
   updateTaskStatus: jest.fn(),
@@ -48,3 +49,5 @@ test('статус задачи меняется на in-progress', async () => 
   expect(res.body.status).toBe('ok')
   expect(updateTaskStatus).toHaveBeenCalledWith(id, 'in-progress')
 })
+
+afterAll(() => stopScheduler())

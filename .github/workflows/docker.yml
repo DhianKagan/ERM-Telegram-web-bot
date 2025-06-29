@@ -12,15 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Установка зависимостей
-        run: ./scripts/install_bot_deps.sh
-
-      - name: Запуск линтера
-        run: npx eslint bot/src
-
-      - name: Тесты
-        run: npm --prefix bot test
-
       - name: Создание .env
         run: |
           cat <<EOF > .env
@@ -35,6 +26,15 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
           EOF
+
+      - name: Установка зависимостей
+        run: ./scripts/install_bot_deps.sh
+
+      - name: Запуск линтера
+        run: npx eslint bot/src
+
+      - name: Тесты
+        run: npm --prefix bot test
 
       - name: Проверка docker-compose.yml
         run: docker compose config

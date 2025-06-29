@@ -37,6 +37,9 @@ if (!url) {
   console.error('Не задан MONGO_DATABASE_URL')
   process.exit(1)
 }
+if (!/mongodb(?:\+srv)?:\/\/.+:.+@/.test(url)) {
+  console.warn('Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой')
+}
 
 async function main() {
   try {
@@ -46,6 +49,9 @@ async function main() {
     process.exit(0)
   } catch (e) {
     console.error('Ошибка подключения к MongoDB:', e.message)
+    if (/bad auth/i.test(e.message)) {
+      console.error('Проверьте логин и пароль в MONGO_DATABASE_URL')
+    }
     process.exit(1)
   }
 }

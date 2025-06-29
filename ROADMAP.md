@@ -64,7 +64,7 @@
 - Добавлен базовый workflow `ci.yml` для npm install и npm test.
 - Файл `.dockerignore` теперь исключает `.env` и `.env.*` из контекста Docker.
 - В `docker.yml` файл `.env` теперь создаётся из `.env.example` с подстановкой секретов перед тестами.
-- Перед сборкой Docker в workflow выполняется `node scripts/check_mongo.cjs` для быстрой проверки подключения к MongoDB. Скрипт работает даже без установленного `dotenv`.
+- Перед сборкой Docker в workflow выполняется `node scripts/check_mongo.cjs` для быстрой проверки подключения к MongoDB. Скрипт работает даже без установленного `dotenv` и ищет `mongoose` в `bot/node_modules`.
 - Восстановлен скрипт `npm test` в `bot/package.json` вместе с зависимостями Jest.
 
 - `/start` и `/app` отправляют кнопку «Открыть приложение». Ссылка
@@ -277,7 +277,7 @@
 - Переключение светлой и тёмной темы теперь учитывает системную настройку браузера.
 - В index.html подключён скрипт `theme.js`, который добавляет класс `dark` перед инициализацией React, устраняя мерцание и обходя ограничения CSP.
 - Проверено подключение к кластеру `arjs-db.4pzoyda.mongodb.net` с базой `agromarket`; для проверки используется скрипт `scripts/check_db_fetch.cjs`.
-- Добавлен скрипт `scripts/check_mongo.cjs` для быстрого ping к MongoDB. При отсутствии `dotenv` он считывает `.env` самостоятельно.
+- Добавлен скрипт `scripts/check_mongo.cjs` для быстрого ping к MongoDB. При отсутствии `dotenv` он считывает `.env` самостоятельно и ищет `mongoose` в `bot/node_modules`.
 - Для обновления меню команд используется `scripts/set_bot_commands.sh`,
   конфигурация хранится в `scripts/bot_commands.json`.
 - Добавлена возможность сворачивать Sidebar на десктопе до узкой панели.

@@ -94,6 +94,8 @@
     В поле `MONGO_DATABASE_URL` укажите кластер
    `mongodb+srv://<user>:<pass>@arjs-db.4pzoyda.mongodb.net/agromarket`
    для работы с базой **agromarket**.
+   Пример строки от плагина Railway:
+   `mongodb://mongo:<pass>@shinkansen.proxy.rlwy.net:<port>`
    Строка подключения должна начинаться с `mongodb://` или `mongodb+srv://`,
   иначе приложение завершит запуск с ошибкой.
   `.env` не хранится в репозитории и перечислен в `.gitignore`.
@@ -243,6 +245,8 @@ curl -X GET http://localhost:3000/api/tasks/123
 6. Нажмите Deploy и дождитесь запуска контейнера.
 7. Добавьте плагин MongoDB через меню Plugins и скопируйте URL в `MONGO_DATABASE_URL`.
 8. Если Railway выдаёт `502` на `/bot`, проверьте DNS кластера MongoDB и правильность `MONGO_DATABASE_URL`.
+9. Запустите `node scripts/check_mongo.cjs` для проверки подключения.
+   При ошибке `ENETUNREACH` настройте прокси или фаервол.
 
 ## Интерфейс
 

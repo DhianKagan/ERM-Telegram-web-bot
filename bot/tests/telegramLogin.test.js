@@ -15,6 +15,7 @@ process.env.APP_URL = 'https://localhost'
 const ctrl = require('../src/controllers/authUser')
 const { getUser, createUser } = require('../src/db/queries')
 const { generateToken } = require('../src/auth/auth')
+const { stopScheduler } = require('../src/services/scheduler')
 
 function signedData() {
   const data = { id: 1, username: 'u', auth_date: Math.floor(Date.now() / 1000) }
@@ -38,3 +39,5 @@ test('telegramLogin rejects invalid hash', async () => {
   await ctrl.telegramLogin(req, res)
   expect(res.status).toHaveBeenCalledWith(401)
 })
+
+afterAll(() => stopScheduler())

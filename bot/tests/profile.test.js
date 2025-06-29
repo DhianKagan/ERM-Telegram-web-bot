@@ -1,6 +1,7 @@
 // Тест профиля через токен Telegram
 const express = require('express')
 const request = require('supertest')
+const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' }))
@@ -27,3 +28,5 @@ test('получаем профиль', async () => {
   await ctrl.profile(req, resMock)
   expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test' })
 })
+
+afterAll(() => stopScheduler())

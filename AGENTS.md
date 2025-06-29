@@ -234,7 +234,7 @@ docker compose config
 - В inline-режиме появились команды `add` и `search` для создания и поиска задач.
 - В `docs/telegram_bot_manual.md` появился раздел «Типовые ошибки API» с примером `Bad Request: message text is empty`.
 
-- Планировщик `scheduler.js` раз в минуту проверяет задачи с полем `remind_at` и отправляет уведомление.
+- Планировщик `scheduler.js` раз в минуту проверяет задачи с полем `remind_at` и отправляет уведомление. Запускается он только вне режима test, остановить можно функцией `stopScheduler()`.
 - Сообщение рассылается каждому пользователю из полей `assigned_user_id` или `assignees`, учитывая настройку `receive_reminders` в коллекции `telegram_users`. Если исполнители не указаны, уведомление отправляется в чат отдела.
 
 - Поддержаны deep links `/start=task_<id>` и `/start=invite_<departmentId>`.

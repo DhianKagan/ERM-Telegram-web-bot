@@ -25,7 +25,7 @@ const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
 const { verifyUser } = require('../services/verify')
 const { verifyAdmin, generateToken } = require('../auth/auth')
-const startScheduler = require('../services/scheduler')
+const { startScheduler } = require('../services/scheduler')
 const bot = new Telegraf(botToken)
 require('../db/model')
 
@@ -459,6 +459,6 @@ if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
 } else {
   bot.launch().then(() => console.log('Bot started'))
 }
-startScheduler()
+if (process.env.NODE_ENV !== 'test') startScheduler()
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

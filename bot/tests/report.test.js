@@ -2,6 +2,7 @@
 process.env.NODE_ENV='test'
 const express = require('express')
 const request = require('supertest')
+const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/db/queries', () => ({
   summary: jest.fn(async () => ({ count: 2, time: 30 }))
@@ -21,3 +22,5 @@ test('фильтр по дате передаётся в summary', async () => {
   expect(res.body.count).toBe(2)
   expect(q.summary).toHaveBeenCalledWith({ from: '2024-01-01', to: '2024-12-31' })
 })
+
+afterAll(() => stopScheduler())

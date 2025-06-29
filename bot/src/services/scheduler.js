@@ -5,9 +5,11 @@ const { Task, User } = require('../db/model')
 const { call } = require('./telegramApi')
 const { chatId } = require('../config')
 
-function start() {
+let task
+
+function startScheduler() {
   const expr = process.env.SCHEDULE_CRON || '*/1 * * * *'
-  cron.schedule(expr, async () => {
+  task = cron.schedule(expr, async () => {
     const tasks = await Task.find({ remind_at: { $lte: new Date() }, status: { $ne: 'done' } })
     for (const t of tasks) {
       const ids = new Set()
@@ -30,4 +32,11 @@ function start() {
   })
 }
 
-module.exports = start
+function stopScheduler() {
+  if (task) {
+    task.stop()
+    task = undefined
+  }
+}
+
+module.exports = { startScheduler, stopScheduler }

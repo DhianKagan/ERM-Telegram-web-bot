@@ -1,3 +1,4 @@
+// Конфигурация Vite для мини-приложения. Плагин react и настройка каталога сборки.
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -5,6 +6,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    outDir: '../public',
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {

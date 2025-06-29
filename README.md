@@ -183,6 +183,8 @@ Compose соберёт образ бота и запустит MongoDB.
 `scripts/check_mongo.cjs` проверяет доступность MongoDB. Скрипт автоматически
 читает `.env` даже без модуля `dotenv` и при отсутствии глобальной зависимости
 `mongoose` использует пакет из `bot/node_modules`.
+При сообщении «bad auth: Authentication failed» проверьте корректность
+логина и пароля в переменной `MONGO_DATABASE_URL`.
 Меню команд Telegram можно обновить через
 `scripts/set_bot_commands.sh`, список хранится в `scripts/bot_commands.json`.
 

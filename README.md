@@ -177,7 +177,7 @@ Compose соберёт образ бота и запустит MongoDB.
 При необходимости проверьте подключение к базе скриптом
 `scripts/check_db_fetch.cjs`. Он отправит запрос авторизации и создание
 тестовой задачи, удаляя её после успешного ответа.
-`scripts/check_mongo.cjs` выполняет простую проверку подключения к MongoDB.
+`scripts/check_mongo.cjs` выполняет простую проверку подключения к MongoDB. Запускайте его перед `docker compose build`.
 Меню команд Telegram можно обновить через
 `scripts/set_bot_commands.sh`, список хранится в `scripts/bot_commands.json`.
 
@@ -279,6 +279,7 @@ npm install agrmcs@vX.Y.Z
 
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.
 Шаг создания `.env` копирует `.env.example` и подставляет секреты перед запуском тестов, чтобы переменные окружения были доступны.
+Перед сборкой workflow запускает `node scripts/check_mongo.cjs` для быстрого ping к MongoDB.
 
 ## Лучшие практики CI/CD
 
@@ -301,6 +302,7 @@ npm install agrmcs@vX.Y.Z
 - линтер использует `@typescript-eslint/parser` и одноимённый плагин,
   что позволяет проверять файлы `**/*.{js,jsx,ts,tsx}`.
 - следите за актуальностью `bot/web/package-lock.json`, иначе `docker compose build` завершится ошибкой `npm ci`.
+- перед `docker compose build` выполняйте `node scripts/check_mongo.cjs` для проверки доступа к MongoDB.
 - регулярно обновляйте зависимости, чтобы избежать предупреждений npm об устаревших пакетах (`lodash.isequal`, `lodash.get`, `inflight`, `glob`).
 - для устранения сообщения `inflight@1.0.6` использован override `glob@11`, обновите lock-файл через `npm install --prefix bot`.
 - подобным образом добавлены override для `rimraf@6` и `uuid@9` в `bot/web/package.json`, что устранило предупреждения о `rimraf@2.6.3` и `uuid@3.4.0`.

@@ -38,6 +38,9 @@ jobs:
       - name: Тесты
         run: npm --prefix bot test
 
+      - name: Проверка MongoDB
+        run: node scripts/check_mongo.cjs
+
       - name: Проверка docker-compose.yml
         run: docker compose config
       - name: Сборка образов

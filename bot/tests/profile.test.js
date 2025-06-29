@@ -1,4 +1,12 @@
 // Тест профиля через токен Telegram
+process.env.JWT_SECRET = 'test'
+process.env.BOT_TOKEN = 't'
+process.env.CHAT_ID = '1'
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
+process.env.APP_URL = 'https://localhost'
+process.env.ADMIN_EMAIL = 'admin@test.com'
+process.env.ADMIN_PASSWORD = 'pass'
+
 const express = require('express')
 const request = require('supertest')
 const { stopScheduler } = require('../src/services/scheduler')
@@ -6,12 +14,6 @@ const { stopScheduler } = require('../src/services/scheduler')
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' }))
 }))
-
-process.env.JWT_SECRET = 'test'
-process.env.BOT_TOKEN = 't'
-process.env.CHAT_ID = '1'
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
-process.env.APP_URL = 'https://localhost'
 
 const ctrl = require('../src/controllers/authUser')
 

@@ -1,4 +1,12 @@
 // Интеграционные тесты HTTP API: проверяем /health, /auth/login и /api/tasks.
+process.env.BOT_TOKEN = 't'
+process.env.CHAT_ID = '1'
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
+process.env.JWT_SECRET = 'secret'
+process.env.APP_URL = 'https://localhost'
+process.env.ADMIN_EMAIL = 'admin@test.com'
+process.env.ADMIN_PASSWORD = 'pass'
+
 const request = require('supertest')
 const express = require('express')
 jest.mock('../src/services/service', () => ({ listAllTasks: jest.fn() }))
@@ -8,13 +16,6 @@ jest.unmock('jsonwebtoken')
 
 let app
 beforeAll(async () => {
-  process.env.BOT_TOKEN = 't'
-  process.env.CHAT_ID = '1'
-  process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
-  process.env.JWT_SECRET = 'secret'
-  process.env.APP_URL = 'https://localhost'
-  process.env.ADMIN_EMAIL = 'admin@test.com'
-  process.env.ADMIN_PASSWORD = 'pass'
   services.listAllTasks.mockResolvedValue([{ id: 1 }])
   const { verifyToken, asyncHandler, errorHandler } = require('../src/api/middleware')
   const { generateToken } = require('../src/auth/auth')

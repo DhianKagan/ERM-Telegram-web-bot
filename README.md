@@ -241,7 +241,8 @@ curl -X GET http://localhost:3000/api/tasks/123
    railway status
    ```
 6. Нажмите Deploy и дождитесь запуска контейнера.
-7. Если Railway выдаёт `502` на `/bot`, проверьте доступность DNS кластера MongoDB и правильность `MONGO_DATABASE_URL`. Бот выполнит три попытки переподключения.
+7. Добавьте плагин MongoDB через меню Plugins и скопируйте URL в `MONGO_DATABASE_URL`.
+8. Если Railway выдаёт `502` на `/bot`, проверьте DNS кластера MongoDB и правильность `MONGO_DATABASE_URL`.
 
 ## Интерфейс
 

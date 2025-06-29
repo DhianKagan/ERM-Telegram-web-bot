@@ -14,10 +14,12 @@ jobs:
 
       - name: Создание .env
         run: |
-          cat <<EOF > .env
+          cp .env.example .env
+          cat <<EOF >> .env
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           CHAT_ID=${{ secrets.CHAT_ID }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
+          APP_URL=https://example.com
           MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
           R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}

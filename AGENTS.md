@@ -192,8 +192,9 @@ docker compose config
 - Добавлены Breadcrumbs и стили TailAdmin на страницах "Админ", "Проекты" и "Логи".
 - Sidebar на десктопе можно свернуть кнопкой в узкий режим.
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
- - Для быстрого ping к MongoDB добавлен скрипт `scripts/check_mongo.cjs`.
- - Перед упаковкой в Docker обязательно запускайте `node scripts/check_mongo.cjs`. Скрипт работает без установленного `dotenv`, сам считывает `.env` и ищет `mongoose` в `bot/node_modules`.
+- Для быстрого ping к MongoDB добавлен скрипт `scripts/check_mongo.cjs`.
+- Перед упаковкой в Docker обязательно запускайте `node scripts/check_mongo.cjs`. Скрипт работает без установленного `dotenv`, сам считывает `.env` и ищет `mongoose` в `bot/node_modules`.
+- При сообщении "bad auth: Authentication failed" проверьте логин и пароль в `MONGO_DATABASE_URL`.
 - Комментарии `/* global fetch */` удалены из исходников, чтобы ESLint не сообщал ошибку `no-redeclare`.
 
 - Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `arjs-db.4pzoyda.mongodb.net/agromarket`.

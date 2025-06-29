@@ -65,6 +65,7 @@
 - Файл `.dockerignore` теперь исключает `.env` и `.env.*` из контекста Docker.
 - В `docker.yml` файл `.env` теперь создаётся из `.env.example` с подстановкой секретов перед тестами.
 - Перед сборкой Docker в workflow выполняется `node scripts/check_mongo.cjs` для быстрой проверки подключения к MongoDB. Скрипт работает даже без установленного `dotenv` и ищет `mongoose` в `bot/node_modules`.
+- При появлении ошибки "bad auth" в этом скрипте следует перепроверить логин и пароль в `MONGO_DATABASE_URL`.
 - Восстановлен скрипт `npm test` в `bot/package.json` вместе с зависимостями Jest.
 
 - `/start` и `/app` отправляют кнопку «Открыть приложение». Ссылка

@@ -3,6 +3,7 @@
 const cron = require('node-cron')
 const { Task, User } = require('../db/model')
 const { call } = require('./telegramApi')
+const { enqueue } = require('./messageQueue')
 const { chatId } = require('../config')
 
 let task
@@ -19,12 +20,12 @@ function startScheduler() {
       for (const id of ids) {
         const user = await User.findOne({ telegram_id: id })
         if (user && user.receive_reminders !== false) {
-          await call('sendMessage', { chat_id: user.telegram_id, text: `Напоминание: ${t.title}` })
+          await enqueue(() => call('sendMessage', { chat_id: user.telegram_id, text: `Напоминание: ${t.title}` }))
           notified = true
         }
       }
       if (!notified) {
-        await call('sendMessage', { chat_id: chatId, text: `Напоминание: ${t.title}` })
+        await enqueue(() => call('sendMessage', { chat_id: chatId, text: `Напоминание: ${t.title}` }))
       }
       t.remind_at = undefined
       await t.save()

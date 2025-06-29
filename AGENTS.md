@@ -49,6 +49,7 @@ docker compose config
 
 Перед развёртыванием убедитесь, что статический фронтенд собран командой
 `npm --prefix bot run build-client` или через `Procfile`.
+- Vite сохраняет сборку напрямую в каталог `bot/public` (параметр `build.outDir: '../public'`).
 
 - Фронтенд теперь расположен в каталоге `bot/web`, Dockerfile и скрипты используют его вместо устаревшего `bot/client`.
 - Основной образ собирается через `bot/Dockerfile`; корневой `Dockerfile` служит для единой сборки.

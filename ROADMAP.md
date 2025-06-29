@@ -42,6 +42,7 @@
 - При ошибке `connect ENETUNREACH` задавайте `HTTP_PROXY`/`HTTPS_PROXY` или скачивайте CLI с GitHub Releases.
 - Конфигурация CI/CD (например, GitHub Actions).
 - Добавить сборку фронтенда в Procfile, чтобы исключить ошибку 404 при деплое.
+- В Vite задано `build.outDir: '../public'`, поэтому результирующие файлы сразу помещаются в `bot/public`.
 - Проверять наличие каталога `bot/public` после сборки для устранения ошибки 404 на `/dashboard`.
 - При пустой директории `bot/public` API теперь запускает `npm run build-client` автоматически.
 - Docker автоматически запускает `npm run build-client`, но после изменений во фронтенде сборку следует повторить.

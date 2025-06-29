@@ -364,6 +364,7 @@ npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_
 ```
 
 Затем повторите сборку. Убедитесь, что каталог `bot/public` содержит статические файлы.
+Теперь Vite сразу помещает сборку в `bot/public`, копирование из `web/dist` не требуется.
 При пустой директории `bot/public` сервер выполнит сборку сам, но для актуализации интерфейса лучше запускать `npm --prefix bot run build-client` вручную.
 Docker автоматически запускает `npm run build-client`, но после изменений фронтенда выполните сборку заново.
 После обновления зависимостей повторяйте `npm --prefix bot/web install` и `npm --prefix bot run build-client`.

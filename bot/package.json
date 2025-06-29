@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "start": "concurrently \"node src/api/api.js\" \"node src/bot/bot.js\"",
-    "build-client": "npm --prefix web run build && rm -rf public && cp -r web/dist public"
+    "build-client": "npm --prefix web run build"
   },
   "postinstall": "npm --prefix web install && npm run build-client && husky install",
   "author": "",

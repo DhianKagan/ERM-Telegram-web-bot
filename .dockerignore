@@ -3,4 +3,7 @@
 node_modules
 Dockerfile
 docker-compose.yml
+# переменные окружения
+.env
+.env.*
 *.md

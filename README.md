@@ -335,10 +335,10 @@ npm install agrmcs@vX.Y.Z
 Отправьте voice или audio сообщение с подписью `/upload_voice <id>`.
 Бот загрузит запись в R2 и сохранит ссылку во вложениях задачи.
 
-Send a document or photo with caption `/upload_file <id>`.
-The bot downloads the file via `getFile`, uploads it to R2 and saves the link.
+Отправьте документ или фото с подписью `/upload_file <id>`.
+Бот скачает файл через `getFile`, загрузит его в R2 и сохранит ссылку.
 
-Example:
+Пример:
 
 ```text
 /upload_file 64feabcd1234

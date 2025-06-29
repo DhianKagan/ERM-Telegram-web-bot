@@ -165,6 +165,7 @@ docker compose config
 - Для устранения устаревшего `inflight` проект использует override `glob@11` в `bot/package.json`.
 - В `bot/web/package.json` предусмотрены override для `rimraf@6` и `uuid@9`, чтобы убрать устаревшие транзитивные зависимости.
 - Зависимости сервера устанавливайте командой `npm ci --prefix bot || npm --prefix bot install`, затем `npm audit fix --prefix bot`.
+- В `bot/package.json` снова прописан скрипт `test`; автотесты запускаются через `npm test --prefix bot`.
 - Все обращения к MongoDB должны идти через модуль `bot/src/db/queries.js`.
 - Для установки используйте скрипт `scripts/install_bot_deps.sh`, который выполняет `npm ci` и затем `npm audit fix`.
 - Соединение с базой выполняет `bot/src/db/connection.js`, модели используют его.

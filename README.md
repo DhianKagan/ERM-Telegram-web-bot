@@ -299,6 +299,7 @@ npm install agrmcs@vX.Y.Z
 - в `ci.yml` бэкенд устанавливает зависимости через `scripts/install_bot_deps.sh`.
 - базовый workflow устанавливает зависимости и запускает тесты по push и pull_request на `main`.
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
+- скрипт `npm test --prefix bot` снова доступен после восстановления зависимостей;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
 - перед запуском линтера убедитесь, что зависимости фронтенда установлены:
   `npm --prefix bot/web install`.

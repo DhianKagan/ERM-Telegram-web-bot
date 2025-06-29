@@ -51,6 +51,7 @@ docker compose config
 `npm --prefix bot run build-client` или через `Procfile`.
 
 - Фронтенд теперь расположен в каталоге `bot/web`, Dockerfile и скрипты используют его вместо устаревшего `bot/client`.
+- Основной образ собирается через `bot/Dockerfile`; корневой `Dockerfile` служит для единой сборки.
 - Перед сборкой установите зависимости фронтенда: `npm --prefix bot/web install`
 - Если в логах появляется `GET /dashboard/` со статусом `404`, пересоберите фронтенд `npm --prefix bot run build-client` и убедитесь в наличии fallback `app.get('/{*splat}')` в API.
 - Для fallback добавлен rate limiter, чтобы исключить перегрузку сервера.

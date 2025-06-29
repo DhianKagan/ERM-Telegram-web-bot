@@ -6,6 +6,7 @@
 [![Release](https://github.com/AgroxOD/agrmcs/actions/workflows/release.yml/badge.svg)](https://github.com/AgroxOD/agrmcs/actions/workflows/release.yml)
 Файл описывает проект и способы его развертывания.
 
+
 Каталог `bot_old` содержит прежний код бота. В каталоге `bot` хранится минимальный `package.json` с зависимостями линтера, код перенесён в `bot_old`.
 В предыдущей версии использовался `bot_old/Dockerfile`; корневой `Dockerfile` подходит для единой сборки. Новый `bot/Dockerfile` будет добавлен позднее.
 Дополнительная информация о плане разработки представлена в файле `ROADMAP.md` (включая раздел «В разработке»), а история изменений ведётся в `CHANGELOG.md`.
@@ -73,7 +74,9 @@
    ```bash
    git clone https://github.com/AgroxOD/agrmcs.git
    ```
+
   Исходники прежней версии находятся в `bot_old`. Каталог `bot` содержит только зависимости линтера.
+
 2. Создайте файл `.env` на основе примера или существующих переменных окружения.
    Копирование примера:
    ```bash

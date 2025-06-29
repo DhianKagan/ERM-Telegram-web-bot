@@ -279,6 +279,7 @@
 - В index.html подключён скрипт `theme.js`, который добавляет класс `dark` перед инициализацией React, устраняя мерцание и обходя ограничения CSP.
 - Проверено подключение к кластеру `arjs-db.4pzoyda.mongodb.net` с базой `agromarket`; для проверки используется скрипт `scripts/check_db_fetch.cjs`.
 - Добавлен скрипт `scripts/check_mongo.cjs` для быстрого ping к MongoDB. При отсутствии `dotenv` он считывает `.env` самостоятельно и ищет `mongoose` в `bot/node_modules`.
+- При смене строки подключения из Railway проверяйте его запуском `node scripts/check_mongo.cjs`; при ошибке `ENETUNREACH` настройте прокси.
 - Для обновления меню команд используется `scripts/set_bot_commands.sh`,
   конфигурация хранится в `scripts/bot_commands.json`.
 - Добавлена возможность сворачивать Sidebar на десктопе до узкой панели.

@@ -47,7 +47,8 @@ const validate = validations => [
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..')
   const pub = path.join(root, 'public')
-  if (fs.readdirSync(pub).length <= 1) {
+  const indexFile = path.join(pub, 'index.html')
+  if (!fs.existsSync(indexFile) || fs.statSync(indexFile).size === 0) {
     console.log('Сборка интерфейса...')
     execSync('npm run build-client', { cwd: root, stdio: 'inherit' })
   }

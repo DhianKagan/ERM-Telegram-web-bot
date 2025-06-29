@@ -1,6 +1,5 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
-/* global fetch */
 const { botToken, botApiUrl, appUrl, chatId, r2, port } = require('../config')
 const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')

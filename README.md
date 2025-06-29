@@ -201,6 +201,7 @@ docker run --name tg-bot-api -p 8081:8081 \
 docker build -t task-manager .
 docker run --env-file .env -p ${HOST_PORT:-3000}:${PORT:-3000} task-manager
 ```
+Файл `.dockerignore` исключает `.env` и `.env.*`, чтобы переменные не попадали в контекст Docker.
 
 ### Пример запроса к API
 

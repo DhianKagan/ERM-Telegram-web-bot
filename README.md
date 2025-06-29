@@ -271,6 +271,7 @@ npm install agrmcs@vX.Y.Z
 ## CI с Docker
 
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.
+Шаг создания `.env` копирует `.env.example` и подставляет секреты перед запуском тестов, чтобы переменные окружения были доступны.
 
 ## Лучшие практики CI/CD
 

@@ -25,11 +25,7 @@ let mongoose
 try {
   mongoose = require('mongoose')
 } catch (e) {
-  try {
-    mongoose = require('../bot/node_modules/mongoose')
-  } catch {
-    mongoose = require('../bot_old/node_modules/mongoose')
-  }
+  mongoose = require('../bot/node_modules/mongoose')
 }
 
 const url = (process.env.MONGO_DATABASE_URL || process.env.MONGODB_URI || process.env.DATABASE_URL || '').trim()

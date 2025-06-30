@@ -196,6 +196,7 @@ docker compose config
 - Для проверки API и БД создан скрипт `scripts/check_db_fetch.cjs`.
 - Для быстрого ping к MongoDB добавлен скрипт `scripts/check_mongo.cjs`.
 - Перед упаковкой в Docker обязательно запускайте `node scripts/check_mongo.cjs`. Скрипт работает без установленного `dotenv`, сам считывает `.env` и ищет `mongoose` в `bot/node_modules`.
+- Скрипт выводит домен и имя базы без логина и пароля, чтобы убедиться в корректности подключения.
 - При сообщении "bad auth: Authentication failed" скрипт подскажет проверить логин и пароль в `MONGO_DATABASE_URL` и предупредит, если строка подключения не содержит учётных данных.
 - При смене строки подключения из Railway запускайте `node scripts/check_mongo.cjs`; при ошибке `ENETUNREACH` проверьте настройки прокси или фаервола.
 - Комментарии `/* global fetch */` удалены из исходников, чтобы ESLint не сообщал ошибку `no-redeclare`.

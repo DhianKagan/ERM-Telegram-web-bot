@@ -12,6 +12,7 @@ RUN cd bot && npm run build-client && npm prune --omit=dev && cd ..
 
 FROM node:20-slim
 WORKDIR /app
+ENV NODE_ENV=production
 COPY --from=build /app/bot ./bot
 EXPOSE 3000
 CMD ["npm", "--prefix", "bot", "start"]

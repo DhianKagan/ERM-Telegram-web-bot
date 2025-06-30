@@ -292,6 +292,7 @@ npm install agrmcs@vX.Y.Z
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.
 Шаг создания `.env` копирует `.env.example` и подставляет секреты перед запуском тестов, чтобы переменные окружения были доступны.
 Перед сборкой workflow запускает `node scripts/check_mongo.cjs` для быстрого ping к MongoDB.
+Финальный слой Dockerfile устанавливает `NODE_ENV=production`, что уменьшает размер образа и ускоряет запуск.
 
 ## Лучшие практики CI/CD
 
@@ -310,6 +311,7 @@ npm install agrmcs@vX.Y.Z
 - регулярный запуск `npm test --prefix bot` и `npx eslint bot/src`;
 - скрипт `npm test --prefix bot` снова доступен после восстановления зависимостей;
 - проверку фронтенда командой `npm run lint --prefix bot/web`.
+- устанавливайте `NODE_ENV=production` в финальном слое Dockerfile, чтобы не тянуть dev-зависимости.
 - перед запуском линтера убедитесь, что зависимости фронтенда установлены:
   `npm --prefix bot/web install`.
 - линтер использует `@typescript-eslint/parser` и одноимённый плагин,

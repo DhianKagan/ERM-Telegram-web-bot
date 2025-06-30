@@ -16,7 +16,7 @@ export default function Header() {
   ];
   return (
     <header
-      className={`sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 transition-all dark:border-strokedark dark:bg-boxdark ${collapsed ? 'lg:ml-20' : 'lg:ml-60'}`}
+      className={`sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 transition-all ${collapsed ? 'lg:ml-20' : 'lg:ml-60'}`}
     >
       <div className="flex items-center gap-2">
         <button onClick={toggle} className="block lg:hidden">
@@ -29,7 +29,7 @@ export default function Header() {
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
           </span>
-          <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-800" placeholder="Поиск" />
+          <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none" placeholder="Поиск" />
         </div>
         {token ? (
           <>

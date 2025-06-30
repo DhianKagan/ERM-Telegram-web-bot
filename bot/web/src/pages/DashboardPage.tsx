@@ -39,7 +39,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 p-4">
       <Breadcrumbs items={[{ label: 'Dashboard' }]} />
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Dashboard</h2>
         <div className="grid gap-4 sm:grid-cols-4">
           {loading

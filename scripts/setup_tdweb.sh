@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Назначение: установка TDWeb (TDLib в WebAssembly) для интеграции с telegram-react.
+# Назначение: установка TDWeb (TDLib в WebAssembly) для страницы `/chats`.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 if ! grep -q "tdweb" "$DIR/bot/web/package.json"; then

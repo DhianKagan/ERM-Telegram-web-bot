@@ -326,3 +326,5 @@
 - Railway предоставляет плагин MongoDB с готовой строкой подключения.
 - В README приведён пример домена `mongodb-production-2083.up.railway.app:27017`.
 - Dockerfile использует рабочую директорию `/app/bot`, что уменьшает количество шагов и сокращает логи.
+- Добавлены скрипты `check_mongo_port.cjs`, `simple_connect.cjs` и `retry_estimate.cjs` для диагностики подключения.
+- В модуле `db/connection.js` реализована переподключаемость к резервной базе через `MONGO_BACKUP_URL`.

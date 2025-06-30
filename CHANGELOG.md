@@ -299,3 +299,5 @@
 - В файлах `bot/src/api/api.js` и `bot/src/bot/bot.js` вызов `require('dotenv').config()` загружает `.env`.
 - В README уточнена команда `npm ci --prefix bot || npm --prefix bot install`, которая автоматически собирает веб‑модуль,
   при необходимости рекомендуется повторить `npm --prefix bot/web install`.
+- Добавлена резервная строка подключения `MONGO_BACKUP_URL` и перехват события отключения в `db/connection.js`.
+- Созданы утилиты `check_mongo_port.cjs`, `simple_connect.cjs` и `retry_estimate.cjs`.

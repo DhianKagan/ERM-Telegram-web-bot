@@ -71,6 +71,8 @@
 - При ошибке "bad auth" скрипт предлагает проверить логин и пароль в `MONGO_DATABASE_URL` и напоминает добавить их в строку подключения.
 - В README появился подраздел «Ошибка `bad auth: Authentication failed`» с пояснением причин и ссылкой на `scripts/check_mongo.cjs`.
 - В README добавлена инструкция по установке `dotenv` и проверка переменных окружения.
+- Добавлен шаг запуска `node scripts/check_mongo.cjs` после установки зависимостей,
+  чтобы убедиться в корректности `MONGO_DATABASE_URL`.
 - Главные файлы сервера вызывают `require('dotenv').config()`.
 - Восстановлен скрипт `npm test` в `bot/package.json` вместе с зависимостями Jest.
 - В финальном слое Dockerfile устанавливается `NODE_ENV=production` для оптимизации образов.

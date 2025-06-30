@@ -59,3 +59,5 @@ jobs:
         run: docker compose config
       - name: Сборка образов
         run: docker compose build
+      - name: Удаление .env
+        run: rm .env

@@ -217,6 +217,11 @@ const validate = validations => [
   // новые REST маршруты для расширенной работы с задачами
   app.use('/api/tasks', tasksRouter)
 
+  // явно обрабатываем корневой адрес, чтобы исключить 403
+  app.get('/', spaRateLimiter, (_req, res) => {
+    res.sendFile(path.join(pub, 'index.html'))
+  })
+
   // SPA fallback: Express 5 требует имя wildcard-параметра
   // поэтому используем "/{*splat}" вместо устаревшего "*"
   app.get('/{*splat}', spaRateLimiter, (_req, res) => {

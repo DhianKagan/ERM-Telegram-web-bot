@@ -65,6 +65,7 @@ docker compose config
 - Перед сборкой установите зависимости фронтенда: `npm --prefix bot/web install`
 - Если в логах появляется `GET /dashboard/` со статусом `404`, пересоберите фронтенд `npm --prefix bot run build-client` и убедитесь в наличии fallback `app.get('/{*splat}')` в API.
 - Для fallback добавлен rate limiter, чтобы исключить перегрузку сервера.
+- В API присутствует маршрут `/`, который отдаёт `index.html` и предотвращает ошибку `403` при обращении к корню сайта.
 - Сборочный слой корневого Dockerfile использует `WORKDIR /app/bot`, что уменьшает повторения в выводе Railway.
 - Маршрут `/api/tasks/:id` тоже ограничен rate limiter (100 запросов за 15 минут).
 - Аналогичный лимит введён для `/api/groups`, `/api/users`, `/api/roles`, `/api/logs`

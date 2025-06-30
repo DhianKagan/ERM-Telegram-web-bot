@@ -96,6 +96,7 @@
    для работы с базой **agromarket**.
    Пример строки от плагина Railway:
    `mongodb://mongo:<pass>@shinkansen.proxy.rlwy.net:<port>`
+   или `mongodb://mongo:<pass>@mongodb-production-2083.up.railway.app:27017`
    Строка подключения должна начинаться с `mongodb://` или `mongodb+srv://`,
   иначе приложение завершит запуск с ошибкой.
   `.env` не хранится в репозитории и перечислен в `.gitignore`.

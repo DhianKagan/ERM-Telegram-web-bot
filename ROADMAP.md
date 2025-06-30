@@ -308,3 +308,4 @@
 - При старте API проверяется `bot/public/index.html`. Если файла нет или он пустой,
   запускается сборка фронтенда `npm run build-client`.
 - Railway предоставляет плагин MongoDB с готовой строкой подключения.
+- В README приведён пример домена `mongodb-production-2083.up.railway.app:27017`.

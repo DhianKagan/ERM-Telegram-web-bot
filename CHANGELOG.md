@@ -280,3 +280,4 @@
   фронтенда.
 - В `bot/package.json` восстановлен скрипт `test` и зависимости Jest,
   благодаря чему команда `npm test --prefix bot` снова выполняет все проверки.
+- README дополнен примером домена mongodb-production-2083.up.railway.app.

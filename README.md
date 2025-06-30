@@ -143,6 +143,7 @@
 | `BOT_TOKEN` | Токен Telegram-бота |
 | `CHAT_ID` | ID чата для уведомлений |
 | `MONGO_DATABASE_URL` | Строка подключения MongoDB |
+| `MONGO_BACKUP_URL` | Резервная строка подключения |
 | `APP_URL` | HTTPS-адрес мини‑приложения |
 | `BOT_API_URL` | URL локального сервера Bot API |
 | `WEBHOOK_URL` | Вебхук для режима webhook |
@@ -159,8 +160,10 @@
 5. Проверьте подключение к MongoDB:
    ```bash
    node scripts/check_mongo.cjs
+   node scripts/check_mongo_port.cjs
    ```
    При сообщении «bad auth: Authentication failed» убедитесь, что логин и пароль в `MONGO_DATABASE_URL` заданы верно.
+   При наличии `MONGO_BACKUP_URL` соединение переключится на резервную базу при обрыве.
 6. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
 7. Запустите контейнеры:
 
@@ -202,6 +205,9 @@ Compose соберёт образ бота и запустит MongoDB.
 `scripts/check_mongo.cjs` проверяет доступность MongoDB. Скрипт автоматически
 читает `.env` даже без модуля `dotenv` и при отсутствии глобальной зависимости
 `mongoose` использует пакет из `bot/node_modules`.
+Для быстрой проверки порта доступен `scripts/check_mongo_port.cjs`, а самый
+краткий пример подключения показан в `scripts/simple_connect.cjs`.
+Скрипт `scripts/retry_estimate.cjs` поможет оценить время, затрачиваемое на повторные подключения.
 Перед подключением он выводит домен и имя базы без логина и пароля,
 чтобы быстро проверить корректность URL.
 Если скрипт выводит предупреждение о "bad auth: Authentication failed",

@@ -64,6 +64,7 @@
 - В `docker.yml` файл `.env` теперь создаётся из `.env.example` с подстановкой секретов перед тестами.
 - Перед сборкой Docker в workflow выполняется `node scripts/check_mongo.cjs` для быстрой проверки подключения к MongoDB. Скрипт работает даже без установленного `dotenv` и ищет `mongoose` в `bot/node_modules`.
 - При ошибке "bad auth" скрипт предлагает проверить логин и пароль в `MONGO_DATABASE_URL` и напоминает добавить их в строку подключения.
+- В README появился подраздел «Ошибка `bad auth: Authentication failed`» с пояснением причин и ссылкой на `scripts/check_mongo.cjs`.
 - Восстановлен скрипт `npm test` в `bot/package.json` вместе с зависимостями Jest.
 - В финальном слое Dockerfile устанавливается `NODE_ENV=production` для оптимизации образов.
 

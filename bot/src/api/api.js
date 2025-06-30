@@ -2,6 +2,7 @@
 // сервисы и middleware. Используется spaRateLimiter
 // для ограничения /{*splat}. Есть маршрут /health для проверки
 // статуса.
+require('dotenv').config()
 const config = require('../config')
 const express = require('express')
 const rateLimit = require('express-rate-limit')

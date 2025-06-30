@@ -282,3 +282,5 @@
 - В `bot/package.json` восстановлен скрипт `test` и зависимости Jest,
   благодаря чему команда `npm test --prefix bot` снова выполняет все проверки.
 - README дополнен примером домена mongodb-production-2083.up.railway.app.
+- Добавлена установка `dotenv` и примеры его использования в `README.md`.
+- В файлах `bot/src/api/api.js` и `bot/src/bot/bot.js` вызов `require('dotenv').config()` загружает `.env`.

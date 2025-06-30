@@ -38,6 +38,11 @@ jobs:
             exit 1
           fi
 
+      - name: Проверка переменных MONGO_DATABASE_URL и APP_URL
+        run: |
+          grep -E '^MONGO_DATABASE_URL|^APP_URL' .env \
+            | sed -E 's#(mongodb(\+srv)?://[^:]+):[^@]+@#\1:***@#'
+
       - name: Установка зависимостей
         run: ./scripts/install_bot_deps.sh
 

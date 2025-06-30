@@ -161,6 +161,10 @@ Bad Request: message text is empty
   data-onauth="onTelegramAuth(user)"></script>
 ```
 
+Чтобы виджет отобразился, заранее разрешите домен из `APP_URL` в настройках
+BotFather, раздел **Web Apps**. Иначе кнопка авторизации будет скрыта, а в
+консоли появится ошибка `Username invalid`.
+
 Функция `onTelegramAuth` отправляет данные на `/api/auth/telegram` и сохраняет JWT. Параметр `data-request-access="write"` позволяет боту отправлять сообщения от имени пользователя.
 
 ## Глубокие ссылки

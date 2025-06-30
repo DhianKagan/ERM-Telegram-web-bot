@@ -147,9 +147,11 @@
 4. Установите зависимости серверной части:
    ```bash
    npm ci --prefix bot || npm --prefix bot install
+   # автоматически установит и соберёт web-модуль
    npm audit fix --prefix bot
    # или выполните ./scripts/install_bot_deps.sh
    ```
+   При необходимости повторите `npm --prefix bot/web install`.
 5. Проверьте подключение к MongoDB:
    ```bash
    node scripts/check_mongo.cjs
@@ -401,7 +403,7 @@ npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/n
 ./scripts/build_client.sh
 ```
 
-Если команда завершается ошибкой `vite: not found`, сначала установите зависимости:
+Если команда завершается ошибкой `vite: not found`, это значит, что не установлены зависимости фронтенда. Сначала установите их:
 
 ```bash
 npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log

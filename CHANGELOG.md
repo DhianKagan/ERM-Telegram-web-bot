@@ -294,3 +294,5 @@
 - README дополнен примером домена mongodb-production-2083.up.railway.app.
 - Добавлена установка `dotenv` и примеры его использования в `README.md`.
 - В файлах `bot/src/api/api.js` и `bot/src/bot/bot.js` вызов `require('dotenv').config()` загружает `.env`.
+- В README уточнена команда `npm ci --prefix bot || npm --prefix bot install`, которая автоматически собирает веб‑модуль,
+  при необходимости рекомендуется повторить `npm --prefix bot/web install`.

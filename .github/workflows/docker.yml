@@ -27,6 +27,22 @@ jobs:
           R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
           EOF
 
+      - name: Вывод MONGO_DATABASE_URL без пароля
+        run: |
+          url=$(grep '^MONGO_DATABASE_URL=' .env | cut -d '=' -f2-)
+          if [[ $url =~ ^mongodb(\+srv)?:\/\/[^:]+:[^@]+@ ]]; then
+            sanitized=$(echo "$url" | sed -E 's/^(mongodb(\+srv)?:\/\/[^:]+):[^@]*(@.*)/\1\3/')
+            echo "Отфильтрованный URL: $sanitized"
+          else
+            echo "Неверный формат MONGO_DATABASE_URL" >&2
+            exit 1
+          fi
+
+      - name: Проверка переменных MONGO_DATABASE_URL и APP_URL
+        run: |
+          grep -E '^MONGO_DATABASE_URL|^APP_URL' .env \
+            | sed -E 's#(mongodb(\+srv)?://[^:]+):[^@]+@#\1:***@#'
+
       - name: Установка зависимостей
         run: ./scripts/install_bot_deps.sh
 
@@ -43,3 +59,5 @@ jobs:
         run: docker compose config
       - name: Сборка образов
         run: docker compose build
+      - name: Удаление .env
+        run: rm .env

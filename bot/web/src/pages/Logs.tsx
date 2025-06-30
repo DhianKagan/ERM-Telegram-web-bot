@@ -15,9 +15,9 @@ export default function Logs() {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Логи' }]} />
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Логи</h2>
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-200">
           {logs.map((l) => (
             <li key={l._id} className="py-2">
               [{new Date(l.createdAt).toLocaleString()}] {l.level}: {l.message}

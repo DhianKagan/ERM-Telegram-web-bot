@@ -11,6 +11,7 @@ RUN npm --prefix web run build && npm prune --omit=dev
 
 FROM node:20-slim
 WORKDIR /app
+ENV NODE_ENV=production
 COPY --from=build /app .
 EXPOSE 3000
 CMD ["npm", "start"]

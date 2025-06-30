@@ -39,11 +39,11 @@ export default function Admin() {
           { label: "Админ" },
         ]}
       />
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Админ</h2>
         <AddUserForm onCreate={() => load()} />
         <AddDepartmentForm onCreate={() => load()} />
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-200">
           {users.map((u) => (
             <li key={u.telegram_id} className="py-2">
               <a
@@ -57,7 +57,7 @@ export default function Admin() {
             </li>
           ))}
         </ul>
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-200">
           {departments.map(d => (
             <li key={d._id} className="py-2">{d.name}</li>
           ))}

@@ -10,7 +10,7 @@ interface KpiCardProps {
 
 export default function KpiCard({ title, value, delta, icon: Icon }: KpiCardProps) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4">
       <div>
         <p className="text-sm text-gray-500">{title}</p>
         <p className="mt-1 text-2xl font-bold text-accentPrimary">{value}</p>

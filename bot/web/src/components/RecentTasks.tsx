@@ -28,15 +28,15 @@ export default function RecentTasks() {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-4 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div key={i} className="h-4 w-full animate-pulse rounded bg-gray-200" />
         ))}
       </div>
     )
   }
 
   return (
-    <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-      <thead className="bg-gray-50 dark:bg-gray-800">
+    <table className="min-w-full divide-y divide-gray-200 text-sm">
+      <thead className="bg-gray-50">
         <tr>
           <th className="px-4 py-2 text-left">Название</th>
           <th className="px-4 py-2">Статус</th>
@@ -44,7 +44,7 @@ export default function RecentTasks() {
       </thead>
       <tbody>
         {tasks.map(t => (
-          <tr key={t._id} className="border-b dark:border-gray-700">
+          <tr key={t._id} className="border-b">
             <td className="px-4 py-2">{t.title}</td>
             <td className="px-4 py-2 text-center">{t.status}</td>
           </tr>

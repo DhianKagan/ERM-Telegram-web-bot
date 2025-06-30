@@ -65,7 +65,7 @@ export default function Tasks() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
-          className="focus:border-accentPrimary h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className="focus:border-accentPrimary h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none"
           placeholder="Описание"
         />
         <button
@@ -83,7 +83,7 @@ export default function Tasks() {
             {tasks.slice((page - 1) * 10, page * 10).map((t) => (
               <li
                 key={t._id}
-                className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
               >
                 {t.task_description}
               </li>

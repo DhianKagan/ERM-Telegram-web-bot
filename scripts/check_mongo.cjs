@@ -41,6 +41,16 @@ if (!/mongodb(?:\+srv)?:\/\/.+:.+@/.test(url)) {
   console.warn('Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой')
 }
 
+// Выводим домен и имя базы без логина и пароля
+try {
+  const { hostname, port, pathname } = new URL(url)
+  const domain = port ? `${hostname}:${port}` : hostname
+  const dbName = pathname.replace(/^\//, '') || '(по умолчанию)'
+  console.log(`Подключение к ${domain}/${dbName}`)
+} catch (e) {
+  console.warn('Не удалось разобрать строку подключения:', e.message)
+}
+
 async function main() {
   try {
     await mongoose.connect(url)

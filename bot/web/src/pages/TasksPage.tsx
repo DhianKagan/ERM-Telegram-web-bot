@@ -121,7 +121,7 @@ export default function TasksPage() {
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-md px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}
+              className={`rounded-md px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600"}`}
             >
               {s === "all" ? "Все" : s} ({counts[s]})
             </button>
@@ -131,8 +131,8 @@ export default function TasksPage() {
           Новая задача
         </button>
       </div>
-      <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <thead className="bg-gray-50 dark:bg-gray-800">
+      <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm">
+        <thead className="bg-gray-50">
           <tr>
             <th></th>
             <th className="px-4 py-2 text-left">Название</th>
@@ -143,7 +143,7 @@ export default function TasksPage() {
             <th></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="divide-y divide-gray-200">
           {tasks.map((t) => (
             <tr key={t._id}>
               <td className="px-4 py-2 text-center">

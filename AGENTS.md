@@ -46,6 +46,7 @@ docker compose config
   `mongodb://` или `mongodb+srv://`, иначе приложение не подключится к базе.
 - При ошибке `502` на `/bot` не удаётся подключиться к MongoDB. Проверьте доступность DNS кластера и корректность `MONGO_DATABASE_URL`. Бот выполнит три попытки переподключения.
 - В Railway можно добавить плагин MongoDB; URL вставьте в `MONGO_DATABASE_URL`.
+- В качестве примера используется домен `mongodb-production-2083.up.railway.app:27017`.
 - `APP_URL` должен быть HTTPS, иначе Telegram отвергнет Web App ссылку.
 - Для запуска тестов также задавайте `APP_URL`, иначе Jest завершится ошибкой.
 - При указании `WEBHOOK_URL` бот запускается в режиме webhook и регистрирует URL через `setWebhook`.

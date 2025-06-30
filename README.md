@@ -30,7 +30,7 @@
    docker compose up -d
    ```
 
-Файл `.env.example` содержит все переменные окружения. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`.
+Файл `.env.example` содержит все переменные окружения. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан стандартный порт Railway `43551`.
 
 ## Тесты
 

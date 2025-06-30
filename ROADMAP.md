@@ -303,7 +303,7 @@
  - Проверяйте целостность `bot/web/package-lock.json`, иначе `npm ci` не выполнится в Docker.
  - При повреждении lock-файла пересоздайте его командой `npm --prefix bot/web install` перед сборкой.
 - Переменные VITE_TELEGRAM_API_ID и VITE_TELEGRAM_API_HASH зарезервированы для будущей интеграции с TDLib.
-- Страница `/chats` подключает TDLib через файлы из `bot/web/public/tdlib`. Скрипт `scripts/setup_tdweb.sh` устанавливает их автоматически.
+- Страница `/chats` подключает TDWeb (TDLib в WebAssembly) через файлы из `bot/web/public/tdlib`. Скрипт `scripts/setup_tdweb.sh` устанавливает их автоматически.
 - При старте API проверяется `bot/public/index.html`. Если файла нет или он пустой,
   запускается сборка фронтенда `npm run build-client`.
 - Railway предоставляет плагин MongoDB с готовой строкой подключения.

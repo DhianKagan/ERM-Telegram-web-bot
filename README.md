@@ -117,7 +117,7 @@
   а кнопка авторизации выдаст ошибку `Username invalid`.
   Для ссылки на обсуждение задач добавьте `VITE_CHAT_ID` с ID группы Telegram.
   Переменные `VITE_TELEGRAM_API_ID` и `VITE_TELEGRAM_API_HASH` зарезервированы для будущей интеграции с TDLib и в текущей версии не требуются.
-  Для просмотра чатов используется страница `/chats`. Перед запуском выполните `scripts/setup_tdweb.sh`, чтобы скопировать файлы TDLib в `bot/web/public/tdlib`.
+  Для просмотра чатов используется страница `/chats`. Перед запуском выполните `scripts/setup_tdweb.sh`, который установит TDWeb (TDLib в WebAssembly) и скопирует файлы в `bot/web/public/tdlib`.
   Подключение к MongoDB выполняет `bot/src/db/connection.js`,
   обеспечивающий единый пул соединений. Начиная с `mongoose` 8
   использование опций `useNewUrlParser` и `useUnifiedTopology`

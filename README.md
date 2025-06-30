@@ -299,6 +299,7 @@ npm install agrmcs@vX.Y.Z
 Файл `.github/workflows/docker.yml` проверяет `docker-compose.yml` и собирает образы с помощью `docker compose` при каждом pull request.
 Шаг создания `.env` копирует `.env.example` и подставляет секреты перед запуском тестов, чтобы переменные окружения были доступны.
 После этого отдельный шаг выводит `MONGO_DATABASE_URL` без пароля и прекращает workflow при некорректном формате.
+Следом выполняется `grep -E '^MONGO_DATABASE_URL|^APP_URL' .env`, что подтверждает корректную подстановку значений.
 Перед сборкой workflow запускает `node scripts/check_mongo.cjs` для быстрого ping к MongoDB.
 Финальный слой Dockerfile устанавливает `NODE_ENV=production`, что уменьшает размер образа и ускоряет запуск.
 

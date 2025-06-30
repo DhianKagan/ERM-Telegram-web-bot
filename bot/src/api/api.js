@@ -1,5 +1,5 @@
 // HTTP API и мини-приложение. Модули: express, express-rate-limit,
-// сервисы и middleware. Задействованы loginRateLimiter и spaRateLimiter
+// сервисы и middleware. Используется spaRateLimiter
 // для ограничения /{*splat}. Есть маршрут /health для проверки
 // статуса.
 const config = require('../config')
@@ -29,7 +29,6 @@ const {
 } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const checkRole = require('../middleware/checkRole')
-const { generateToken } = require('../auth/auth')
 
 const validate = validations => [
   ...validations,
@@ -47,7 +46,8 @@ const validate = validations => [
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..')
   const pub = path.join(root, 'public')
-  if (fs.readdirSync(pub).length <= 1) {
+  const indexFile = path.join(pub, 'index.html')
+  if (!fs.existsSync(indexFile) || fs.statSync(indexFile).size === 0) {
     console.log('Сборка интерфейса...')
     execSync('npm run build-client', { cwd: root, stdio: 'inherit' })
   }
@@ -61,7 +61,13 @@ const validate = validations => [
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          "frame-src": ["'self'", 'https://www.google.com']
+          "frame-src": [
+            "'self'",
+            'https://www.google.com',
+            'https://oauth.telegram.org'
+          ],
+          "script-src": ["'self'", "'unsafe-eval'", 'https://telegram.org'],
+          "media-src": ["'self'", 'data:']
         }
       }
     })
@@ -103,12 +109,6 @@ const validate = validations => [
     max: 50,
     message: { error: 'Too many requests, please try again later.' }
   })
-  // лимит попыток входа: 10 за 15 минут
-  const loginRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { error: 'Too many login attempts, please try later.' }
-  })
   // ограничение обращений к SPA: 50 в минуту
   const spaRateLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -119,22 +119,7 @@ const validate = validations => [
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  app.post('/auth/login', loginRateLimiter,
-    validate([
-      body('email').isString().notEmpty(),
-      body('password').notEmpty()
-    ]),
-    asyncHandler(async (req, res) => {
-    const { email, password } = req.body
-    if (!config.adminEmail || !config.adminPassword) {
-      return res.status(500).json({ error: 'Credentials not set' })
-    }
-    if (email !== config.adminEmail || password !== config.adminPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' })
-    }
-    const token = generateToken({ id: 0, username: email, isAdmin: true })
-    res.json({ token, role: 'admin', name: 'Администратор' })
-  }))
+  // вход через Telegram Login объединён с проверкой роли администратора
 
 
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks

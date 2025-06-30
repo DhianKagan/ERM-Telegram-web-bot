@@ -1,7 +1,14 @@
 process.env.NODE_ENV='test'
+process.env.BOT_TOKEN = 't'
+process.env.CHAT_ID = '1'
+process.env.JWT_SECRET = 's'
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
+process.env.APP_URL = 'https://localhost'
+
 const express = require('express')
 const request = require('supertest')
 const router = require('../src/routes/tasks')
+const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/db/model', () => ({
   Task: { find: jest.fn(async()=>[]), findById: jest.fn(), findByIdAndUpdate: jest.fn(), create: jest.fn(), updateMany: jest.fn(), aggregate: jest.fn() }
@@ -16,3 +23,5 @@ test('лимитер detailLimiter возвращает 429', async () => {
   const res = await request(app).get('/api/tasks/1')
   expect(res.status).toBe(429)
 })
+
+afterAll(() => stopScheduler())

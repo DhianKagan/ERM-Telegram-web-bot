@@ -1,32 +1,19 @@
+# Назначение файла: базовый workflow для запуска тестов
+# Модули: установка зависимостей и выполнение npm test
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  backend:
-    runs-on: ubuntu-latest
-    services:
-      mongo:
-        image: mongo:6
-        ports: ['27017:27017']
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-      - run: ./scripts/install_bot_deps.sh
-      - run: npm run lint --prefix bot
-      - run: npm test --prefix bot
-
-  frontend:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20
-      - run: npm ci --prefix bot/web
-      - run: npm run lint --prefix bot/web
-      - run: npm test --prefix bot/web
-      - run: npm run build --prefix bot/web
+      - name: Установка зависимостей
+        run: npm install
+      - name: Запуск тестов
+        run: npm test

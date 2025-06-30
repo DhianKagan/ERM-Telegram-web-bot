@@ -1,7 +1,14 @@
 // Тесты middleware checkRole: проверка доступа по ролям
+process.env.BOT_TOKEN = 't'
+process.env.CHAT_ID = '1'
+process.env.JWT_SECRET = 's'
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
+process.env.APP_URL = 'https://localhost'
+
 const express = require('express')
 const request = require('supertest')
 const checkRole = require('../src/middleware/checkRole')
+const { stopScheduler } = require('../src/services/scheduler')
 
 function appWithRole(role) {
   const app = express()
@@ -18,3 +25,5 @@ test('пользователь получает 403', async () => {
   const res = await request(appWithRole('user')).get('/admin')
   expect(res.status).toBe(403)
 })
+
+afterAll(() => stopScheduler())

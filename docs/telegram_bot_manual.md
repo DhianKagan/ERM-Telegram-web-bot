@@ -81,6 +81,7 @@ bot.sendMessage(chatId, 'Выберите действие', {
 
 ## Дополнительные функции
 - [Inline-режим](https://core.telegram.org/bots/api#inline-mode) позволяет обрабатывать запросы без открытия диалога с ботом.
+- В нём доступны команды `add <текст>` для быстрого создания задачи и `search <ключ>` для поиска.
 - `sendPhoto` отправляет изображения, пример команды `/send_photo <url>`.
 - `editMessageText` позволяет редактировать сообщения, используйте `/edit_last <id> <текст>` — оба аргумента обязательны.
 - Для произвольных методов можно вызвать `call('method', params)` из `telegramApi.js`.
@@ -95,7 +96,8 @@ bot.sendMessage(chatId, 'Выберите действие', {
 - `/list_tasks` — мои задачи
 - `/list_all_tasks` — все задачи (только для админа)
 - `/update_task_status` — сменить статус задачи
-- `/upload_file` — отправить текстовый файл в R2 — указать имя и данные
+- `/upload_file <taskId>` — прикрепить документ или фото к задаче и загрузить в R2
+- `/upload_voice <taskId>` — прикрепить голосовое сообщение к задаче и сохранить в R2
 - `/send_photo` — отправить фото по URL
 - `/edit_last` — редактировать сообщение
 - При первом `/start` бот отправляет ссылку на мини‑приложение, поэтому
@@ -117,6 +119,23 @@ node scripts/get_menu_button_url.js
 Ошибка: request to https://api.telegram.org/botyour_bot_token/getChatMenuButton failed, reason:
 ```
 
+## Обновление кнопки меню
+Скрипт `scripts/set_menu_button_url.js` отправляет запрос `setChatMenuButton` с типом `web_app`.
+URL берётся из переменной `APP_URL` файла `.env`.
+```bash
+node scripts/set_menu_button_url.js
+```
+Если задан `CHAT_ID`, кнопка обновится только в указанном чате.
+
+## Включение Attachment Menu
+1. В диалоге с [@BotFather](https://t.me/BotFather) выберите нужного бота.
+2. Откройте раздел *Attachment Menu* и включите `Enable Attachment Menu`.
+3. Страница выбора задачи расположена по пути `/menu` мини‑приложения.
+4. Обновите ссылку кнопки командой:
+```bash
+npm run menu:update
+```
+
 ## Типовые ошибки API
 Ниже приведён пример сообщения, которое возвращает Bot API:
 ```
@@ -129,3 +148,38 @@ Bad Request: message text is empty
 ```
 
 Теперь вы можете адаптировать приведённые примеры под особенности проекта и расширять функциональность бота.
+
+## Вход через Telegram Login
+
+Для авторизации в мини‑приложении используется виджет Telegram Login. В index.html вставляется скрипт:
+
+```html
+<script async src="https://telegram.org/js/telegram-widget.js?22"
+  data-telegram-login="BOT_USERNAME"
+  data-size="large"
+  data-request-access="write"
+  data-onauth="onTelegramAuth(user)"></script>
+```
+
+Функция `onTelegramAuth` отправляет данные на `/api/auth/telegram` и сохраняет JWT. Параметр `data-request-access="write"` позволяет боту отправлять сообщения от имени пользователя.
+
+## Глубокие ссылки
+
+Бот распознаёт payload в ссылке `/start`.
+Примеры форматов:
+
+- `https://t.me/YourBot?start=task_<id>` — открывает задачу в приложении.
+- `https://t.me/YourBot?start=invite_<departmentId>` — присоединяет пользователя к отделу.
+
+После перехода по ссылке бот обработает payload и отправит кнопку для входа в мини‑приложение.
+
+## Обмен данными Web App ↔ бот
+
+После успешного создания задачи в мини‑приложении вызывается
+`window.Telegram.WebApp.sendData('task_created:<id>')`.
+Бот ловит событие `web_app_data`, распознаёт префикс `task_created` и отправляет
+пользователю подтверждение или обновляет список задач.
+
+## Напоминания о сроках
+
+При создании задачи с указанием даты сохраняется поле `remind_at`. Планировщик `scheduler.js` каждые минуты проверяет такие записи и отправляет сообщение в чат, когда время наступает. Период проверки задаётся переменной `SCHEDULE_CRON` в `.env`.

@@ -3,23 +3,17 @@
 require('dotenv').config()
 
 const url = process.env.APP_URL || 'https://localhost:3000'
-const email = process.env.ADMIN_EMAIL
-const password = process.env.ADMIN_PASSWORD
+const jwt = require('jsonwebtoken')
+const secret = process.env.JWT_SECRET
 
-if (!email || !password) {
-  console.error('Не заданы ADMIN_EMAIL и ADMIN_PASSWORD')
+if (!secret) {
+  console.error('Не задан JWT_SECRET')
   process.exit(1)
 }
 
 async function main() {
   try {
-    const authRes = await fetch(`${url}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    })
-    if (!authRes.ok) throw new Error('Авторизация не удалась')
-    const { token } = await authRes.json()
+    const token = jwt.sign({ id: 0, username: 'check', isAdmin: true }, secret, { expiresIn: '1h' })
 
     const res = await fetch(`${url}/api/tasks`, {
       method: 'POST',

@@ -18,3 +18,5 @@ yarn-error.log*
 # другие
 .DS_Store
 .vscode/
+bot/web/public/tdlib/
+free-react-tailwind-admin-dashboard-main.zip

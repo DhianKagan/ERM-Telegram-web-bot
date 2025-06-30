@@ -17,6 +17,7 @@ if (!/^https:\/\//.test(appUrlEnv)) {
 }
 module.exports = {
   botToken: process.env.BOT_TOKEN,
+  botApiUrl: process.env.BOT_API_URL,
   chatId: process.env.CHAT_ID,
   jwtSecret: process.env.JWT_SECRET,
   mongoUrl: mongoUrlEnv,
@@ -29,6 +30,8 @@ module.exports = {
   appUrl: appUrlEnv,
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',
-  adminEmail: process.env.ADMIN_EMAIL,
-  adminPassword: process.env.ADMIN_PASSWORD
+  gateway: {
+    key: process.env.GATEWAY_API_KEY,
+    sender: process.env.GATEWAY_SENDER
+  }
 }

@@ -12,6 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Создание .env
+        run: |
+          cp .env.example .env
+          cat <<EOF >> .env
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          CHAT_ID=${{ secrets.CHAT_ID }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          APP_URL=https://example.com
+          MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
+          R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
+          EOF
+
       - name: Установка зависимостей
         run: ./scripts/install_bot_deps.sh
 
@@ -21,20 +36,8 @@ jobs:
       - name: Тесты
         run: npm --prefix bot test
 
-      - name: Создание .env
-        run: |
-          cat <<EOF > .env
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          CHAT_ID=${{ secrets.CHAT_ID }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
-          R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
-          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
-          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-          EOF
+      - name: Проверка MongoDB
+        run: node scripts/check_mongo.cjs
 
       - name: Проверка docker-compose.yml
         run: docker compose config

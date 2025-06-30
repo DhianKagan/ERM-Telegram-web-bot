@@ -98,7 +98,7 @@
 - ESLint фронтенда использует `@typescript-eslint/parser` и плагин,
   маска файлов теперь `**/*.{js,jsx,ts,tsx}`.
 - В примере `.env.example` переменная `MONGO_DATABASE_URL` указывает на кластер
-  `arjs-db.4pzoyda.mongodb.net/agromarket`.
+  `shinkansen.proxy.rlwy.net:43551`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - Компонент `Admin` написан на TypeScript и импортирует контекст авторизации как
   ES‑модуль.

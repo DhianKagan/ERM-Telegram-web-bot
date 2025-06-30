@@ -205,7 +205,7 @@ docker compose config
 - При смене строки подключения из Railway запускайте `node scripts/check_mongo.cjs`; при ошибке `ENETUNREACH` проверьте настройки прокси или фаервола.
 - Комментарии `/* global fetch */` удалены из исходников, чтобы ESLint не сообщал ошибку `no-redeclare`.
 
-- Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `arjs-db.4pzoyda.mongodb.net/agromarket`.
+- Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `shinkansen.proxy.rlwy.net`.
 - Запросы к задачам вынесены в модуль `bot/web/src/services/tasks.js`.
 - В канбане и форме создания теперь используются статусы `new`, `in-progress` и `done`.
 - Скрипт `migrate.js` удаляет устаревший индекс `email_1`, регистрация бота не падает при повторном `/register`.

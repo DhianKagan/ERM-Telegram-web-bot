@@ -4,7 +4,7 @@ require('dotenv').config()
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN:', process.env.BOT_TOKEN)
 }
-const { botToken, botApiUrl, appUrl, chatId, r2, port } = require('../config')
+const { botToken, botApiUrl, appUrl, chatId, r2, botPort } = require('../config')
 const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')
 const {
@@ -457,7 +457,7 @@ const webhookUrl = process.env.WEBHOOK_URL
 if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
   const { pathname } = new URL(webhookUrl)
   bot.telegram.setWebhook(webhookUrl)
-  bot.startWebhook(pathname, null, port)
+  bot.startWebhook(pathname, null, botPort)
   console.log('Bot started in webhook mode')
 } else {
   bot.launch().then(() => console.log('Bot started'))

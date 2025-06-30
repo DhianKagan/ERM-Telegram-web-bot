@@ -7,7 +7,7 @@
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | /health | Проверка работоспособности сервера |
-| POST | /auth/login | Получение JWT токена администратора |
+| POST | /api/auth/telegram | Вход через Telegram Login |
 | GET | /api/tasks | Список всех задач |
 | POST | /api/tasks | Создание задачи |
 | PUT | /api/tasks/:id | Обновление задачи |

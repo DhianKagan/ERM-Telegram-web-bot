@@ -15,15 +15,6 @@ const appUrlEnv = (process.env.APP_URL || '').trim()
 if (!/^https:\/\//.test(appUrlEnv)) {
   throw new Error('APP_URL должен начинаться с https://, иначе Web App не будет работать')
 }
-const adminEmailEnv = process.env.ADMIN_EMAIL
-const adminPasswordEnv = process.env.ADMIN_PASSWORD
-if (
-  process.env.NODE_ENV === 'production' &&
-  adminEmailEnv === 'admin@example.com' &&
-  adminPasswordEnv === '123456'
-) {
-  throw new Error('ADMIN_EMAIL и ADMIN_PASSWORD должны быть изменены по умолчанию в продакшене')
-}
 module.exports = {
   botToken: process.env.BOT_TOKEN,
   botApiUrl: process.env.BOT_API_URL,
@@ -39,8 +30,6 @@ module.exports = {
   appUrl: appUrlEnv,
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',
-  adminEmail: process.env.ADMIN_EMAIL,
-  adminPassword: process.env.ADMIN_PASSWORD,
   gateway: {
     key: process.env.GATEWAY_API_KEY,
     sender: process.env.GATEWAY_SENDER

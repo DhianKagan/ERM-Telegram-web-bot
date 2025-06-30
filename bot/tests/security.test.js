@@ -3,8 +3,6 @@ process.env.CHAT_ID = '1'
 process.env.JWT_SECRET = 's'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.APP_URL = 'https://localhost'
-process.env.ADMIN_EMAIL = 'admin@test.com'
-process.env.ADMIN_PASSWORD = 'pass'
 
 const express = require('express')
 const request = require('supertest')

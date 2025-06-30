@@ -97,10 +97,10 @@
     Сам файл `.env.example` содержит комментарии с описанием каждой переменной:
     где взять значение и для чего она нужна.
     В поле `MONGO_DATABASE_URL` укажите кластер
-   `mongodb+srv://<user>:<pass>@arjs-db.4pzoyda.mongodb.net/agromarket`
-   для работы с базой **agromarket**.
-   Пример строки от плагина Railway:
-   `mongodb://mongo:<pass>@shinkansen.proxy.rlwy.net:<port>`
+   `mongodb://mongo:<pass>@shinkansen.proxy.rlwy.net:43551`
+   для подключения к базе **agromarket**.
+   Строку можно получить из плагина Railway,
+   например `mongodb://mongo:<pass>@shinkansen.proxy.rlwy.net:43551`
    или `mongodb://mongo:<pass>@mongodb-production-2083.up.railway.app:27017`
    Строка подключения должна начинаться с `mongodb://` или `mongodb+srv://`,
   иначе приложение завершит запуск с ошибкой.

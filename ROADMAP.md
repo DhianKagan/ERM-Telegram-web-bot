@@ -315,6 +315,7 @@
   `autoprefixer` для кросс-браузерности.
 - Настройка `darkMode` отключена, классы `dark:` удалены из компонентов и CSS.
 - При деплое проверяйте `VITE_BOT_USERNAME`, иначе Telegram Login выдаст ошибку `Username invalid`.
+- Также убедитесь, что домен из `APP_URL` разрешён в BotFather (Web Apps), иначе виджет не загрузится.
  - Проверяйте целостность `bot/web/package-lock.json`, иначе `npm ci` не выполнится в Docker.
  - При повреждении lock-файла пересоздайте его командой `npm --prefix bot/web install` перед сборкой.
 - Переменные VITE_TELEGRAM_API_ID и VITE_TELEGRAM_API_HASH зарезервированы для будущей интеграции с TDLib.

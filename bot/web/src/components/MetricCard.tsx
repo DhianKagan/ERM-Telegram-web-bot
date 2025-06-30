@@ -10,9 +10,9 @@ interface Props {
 
 export default function MetricCard({ title, value, icon: Icon }: Props) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5">
       <div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+        <p className="text-sm text-gray-500">{title}</p>
         <p className="mt-2 text-2xl font-bold text-accentPrimary">{value}</p>
       </div>
       <Icon className="h-8 w-8 text-gray-400" />

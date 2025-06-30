@@ -115,7 +115,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
 
   return (
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
-      <div className="w-96 space-y-4 rounded-xl bg-white p-6 shadow-lg transition-all duration-150 dark:bg-gray-800">
+      <div className="w-96 space-y-4 rounded-xl bg-white p-6 shadow-lg transition-all duration-150">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Новая задача</h3>
           <select
@@ -144,7 +144,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Название"
-          className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+          className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800 placeholder-gray-500 focus:ring focus:outline-none"
         />
         <select
           value={taskType}

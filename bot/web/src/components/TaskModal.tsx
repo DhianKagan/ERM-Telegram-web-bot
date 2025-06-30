@@ -40,7 +40,7 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
 
   return (
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
-      <div className="max-h-screen w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
+      <div className="max-h-screen w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
         <h3 className="text-lg font-semibold">🔧 Задача №{task._id}</h3>
         {topicUrl && (
           <a href={topicUrl} target="_blank" rel="noopener" className="text-accentPrimary text-sm underline">

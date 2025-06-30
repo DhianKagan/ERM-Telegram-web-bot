@@ -8,7 +8,7 @@ export default function Pagination({ total, page, onChange }: { total: number; p
       <button
         onClick={() => onChange(page - 1)}
         disabled={page === 1}
-        className="px-3 py-1 rounded border border-stroke text-body hover:bg-gray disabled:opacity-50 disabled:pointer-events-none dark:border-strokedark dark:text-bodydark dark:hover:bg-meta-4"
+        className="px-3 py-1 rounded border border-stroke text-body hover:bg-gray disabled:opacity-50 disabled:pointer-events-none"
       >
         ←
       </button>
@@ -16,7 +16,7 @@ export default function Pagination({ total, page, onChange }: { total: number; p
         <button
           key={p}
           onClick={() => onChange(p)}
-          className={`px-3 py-1 rounded border border-stroke text-body hover:bg-gray dark:border-strokedark dark:text-bodydark dark:hover:bg-meta-4 ${p === page ? 'bg-gray dark:bg-meta-4 font-medium' : ''}`}
+          className={`px-3 py-1 rounded border border-stroke text-body hover:bg-gray ${p === page ? 'bg-gray font-medium' : ''}`}
         >
           {p}
         </button>
@@ -24,7 +24,7 @@ export default function Pagination({ total, page, onChange }: { total: number; p
       <button
         onClick={() => onChange(page + 1)}
         disabled={page === total}
-        className="px-3 py-1 rounded border border-stroke text-body hover:bg-gray disabled:opacity-50 disabled:pointer-events-none dark:border-strokedark dark:text-bodydark dark:hover:bg-meta-4"
+        className="px-3 py-1 rounded border border-stroke text-body hover:bg-gray disabled:opacity-50 disabled:pointer-events-none"
       >
         →
       </button>

@@ -22,10 +22,10 @@ export default function Projects() {
           { label: "Проекты" },
         ]}
       />
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Проекты</h2>
         <GroupForm onCreate={load} />
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-200">
           {groups.map((g) => (
             <li key={g._id} className="py-2">
               {g.name}

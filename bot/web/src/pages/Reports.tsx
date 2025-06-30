@@ -16,7 +16,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Отчёты' }]} />
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-boxdark">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Отчёты</h2>
         <ReportFilterForm onChange={load} />
         <KPIOverview count={kpi.count} time={kpi.time} />

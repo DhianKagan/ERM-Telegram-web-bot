@@ -33,7 +33,7 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all dark:border-strokedark dark:bg-boxdark ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
     >
       <div className="flex items-center justify-between">
         <button onClick={toggle} className="lg:hidden">
@@ -56,7 +56,7 @@ export default function Sidebar() {
           <Link
             key={i.to}
             to={i.to}
-            className={`flex items-center gap-2 rounded-lg px-2 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 ${pathname === i.to ? "bg-gray-100 dark:bg-gray-800 font-semibold" : ""}`}
+            className={`flex items-center gap-2 rounded-lg px-2 py-2 text-gray-700 hover:bg-gray-100 ${pathname === i.to ? "bg-gray-100 font-semibold" : ""}`}
           >
             <i.icon className="h-5 w-5" />
             {!collapsed && <span>{i.label}</span>}

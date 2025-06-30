@@ -121,6 +121,9 @@
   Для виджета входа необходимы `BOT_USERNAME` и `VITE_BOT_USERNAME` с юзернеймом бота.
   При их отсутствии в логах появится сообщение `VITE_BOT_USERNAME не задан`,
   а кнопка авторизации выдаст ошибку `Username invalid`.
+  Если виджет вовсе не появляется, проверьте, что домен `APP_URL` добавлен в
+  настройках BotFather и переменные `BOT_USERNAME` и `VITE_BOT_USERNAME` указаны
+  верно.
   Для ссылки на обсуждение задач добавьте `VITE_CHAT_ID` с ID группы Telegram.
   Переменные `VITE_TELEGRAM_API_ID` и `VITE_TELEGRAM_API_HASH` зарезервированы для будущей интеграции с TDLib и в текущей версии не требуются.
   Для просмотра чатов используется страница `/chats`. Перед запуском выполните `scripts/setup_tdweb.sh`, который установит TDWeb (TDLib в WebAssembly) и скопирует файлы в `bot/web/public/tdlib`.

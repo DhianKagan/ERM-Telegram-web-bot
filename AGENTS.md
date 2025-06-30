@@ -205,6 +205,7 @@ docker compose config
 - Скрипт выводит домен и имя базы без логина и пароля, чтобы убедиться в корректности подключения.
 - При сообщении "bad auth: Authentication failed" скрипт подскажет проверить логин и пароль в `MONGO_DATABASE_URL` и предупредит, если строка подключения не содержит учётных данных.
 - При смене строки подключения из Railway запускайте `node scripts/check_mongo.cjs`; при ошибке `ENETUNREACH` проверьте настройки прокси или фаервола.
+- Перед запуском `check_mongo.cjs` выполните `./scripts/install_bot_deps.sh`, иначе скрипт не найдёт `dotenv` или `mongoose`.
 - Комментарии `/* global fetch */` удалены из исходников, чтобы ESLint не сообщал ошибку `no-redeclare`.
 
 - Пример подключения к MongoDB расположен в `.env.example` и указывает на кластер `shinkansen.proxy.rlwy.net`.

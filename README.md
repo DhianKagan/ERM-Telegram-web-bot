@@ -150,8 +150,13 @@
    npm audit fix --prefix bot
    # или выполните ./scripts/install_bot_deps.sh
    ```
-5. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
-6. Запустите контейнеры:
+5. Проверьте подключение к MongoDB:
+   ```bash
+   node scripts/check_mongo.cjs
+   ```
+   При сообщении «bad auth: Authentication failed» убедитесь, что логин и пароль в `MONGO_DATABASE_URL` заданы верно.
+6. В переменную `CHAT_ID` запишите ID чата для уведомлений. Его можно узнать через бота `@userinfobot`.
+7. Запустите контейнеры:
 
 ```bash
 docker compose up --build

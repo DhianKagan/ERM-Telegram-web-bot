@@ -14,6 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Установка зависимостей
-        run: npm install
+        run: npm ci --prefix bot || npm --prefix bot install
+      - name: Исправление уязвимостей
+        run: npm audit fix --prefix bot
       - name: Запуск тестов
-        run: npm test
+        run: npm test --prefix bot

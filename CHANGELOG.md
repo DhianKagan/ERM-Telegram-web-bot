@@ -9,3 +9,4 @@
 - README, ROADMAP и AGENTS упрощены и содержат только важные инструкции.
 - Все тесты выполняются через Jest и ESLint.
 - Исправлен порт MongoDB в `.env.example` (теперь 43551).
+- В документацию добавлено требование MongoDB-хоста для GitHub Actions или запуск Railway CLI.

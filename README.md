@@ -41,6 +41,12 @@ npx eslint bot/src
 npm run lint --prefix bot/web
 ```
 
+## CI/CD и GitHub Actions
+
+При использовании GitHub Actions необходим отдельный хост MongoDB. Вы можете
+предоставить свой облачный кластер или запустить деплой через Railway CLI
+командой `railway up`, что создаст доступную базу перед тестами.
+
 ## Дополнительные материалы
 
 Подробные инструкции по настройке бота смотрите в `docs/telegram_bot_manual.md`.

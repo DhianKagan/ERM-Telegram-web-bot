@@ -21,7 +21,7 @@
    ```bash
    ./scripts/create_env_from_exports.sh
    ```
-3. Установите зависимости и соберите клиент:
+3. Установите зависимости:
    ```bash
    npm ci --prefix bot || npm --prefix bot install
    ```
@@ -31,7 +31,9 @@
    ```
    Этот запуск поднимет и локальный MongoDB на порту 27017 с логином `admin` и паролем `admin`.
 
+
 Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан адрес локальной базы `mongodb://admin:admin@localhost:27017/agrmcs?authSource=admin`. Для Railway подставьте собственный URL с реальными учётными данными.
+
 
 ### Проверка соединения с MongoDB
 

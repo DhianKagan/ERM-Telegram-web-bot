@@ -25,3 +25,4 @@ npm run lint --prefix bot/web
 
 При любом изменении обновляйте файлы `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 Каталог `bot` содержит актуальный код сервера и веб‑интерфейса. Порт MongoDB в `.env.example` обновлён на `43551`.
+README включает раздел о GitHub Actions и необходимости отдельного MongoDB-хоста или Railway CLI.

@@ -48,13 +48,29 @@ try {
 }
 
 async function main() {
-  try {
-    await mongoose.connect(url)
+  async function tryConnect(u) {
+    await mongoose.connect(u)
     await mongoose.connection.db.admin().ping()
+  }
+
+  try {
+    await tryConnect(url)
     console.log('MongoDB подключена')
     process.exit(0)
   } catch (e) {
     console.error('Ошибка подключения к MongoDB:', e.message)
+    if (/bad auth/i.test(e.message) && !/authSource/.test(url)) {
+      const alt = url.includes('?') ? `${url}&authSource=admin` : `${url}?authSource=admin`
+      console.log('Повторная попытка с authSource=admin')
+      try {
+        await mongoose.disconnect()
+        await tryConnect(alt)
+        console.log('Подключение успешно с authSource=admin')
+        process.exit(0)
+      } catch (e2) {
+        console.error('Снова ошибка:', e2.message)
+      }
+    }
     if (/bad auth/i.test(e.message)) {
       console.error('Проверьте логин и пароль в MONGO_DATABASE_URL')
     }

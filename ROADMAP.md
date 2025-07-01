@@ -11,3 +11,5 @@
 7. Документация по GitHub Actions с отдельным MongoDB-хостом или Railway CLI.
 8. Инструкция по проверке подключения к MongoDB скриптом `scripts/check_mongo.cjs`.
 9. Скрипт `setup_and_test.sh` для автоматической установки зависимостей и проверки проекта.
+10. Использование `setup_and_test.sh` в CI для единообразных проверок.
+11. Улучшение `check_mongo.cjs` для работы с `authSource=admin`.

@@ -21,7 +21,7 @@
    ```bash
    ./scripts/create_env_from_exports.sh
    ```
-3. Установите зависимости и соберите клиент:
+3. Установите зависимости:
    ```bash
    npm ci --prefix bot || npm --prefix bot install
    ```
@@ -30,6 +30,16 @@
    docker compose up -d
    ```
    Этот запуск поднимет и локальный MongoDB на порту 27017, достаточно оставить URL по умолчанию.
+
+### Подготовка TDWeb
+
+Перед сборкой клиента нужно установить библиотеку TDWeb (TDLib для WebAssembly) и скопировать её файлы в публичную папку. Выполните:
+
+```bash
+./scripts/setup_tdweb.sh
+```
+
+После этого можно запускать команду `npm --prefix bot run build-client`.
 
 Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан адрес локальной базы `mongodb://localhost:27017/agrmcs`. Для Railway подставьте собственный URL.
 

@@ -29,6 +29,9 @@
    ```bash
    docker compose up -d
    ```
+   Контейнер `mongo_db` поднимет локальную MongoDB на порту `27017`. В `.env`
+   замените `MONGO_DATABASE_URL` на `mongodb://mongo:password@localhost:27017`
+   для разработки и тестов.
 
 Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан стандартный порт Railway `43551`.
 
@@ -55,8 +58,9 @@ node scripts/check_mongo.cjs
 
 Автоматические тесты на GitHub запускают этот же скрипт
 `scripts/setup_and_test.sh`. Проверьте, что секрет `MONGO_DATABASE_URL`
-указывает на доступную базу либо запустите `railway up` перед выполнением
-workflow.
+указывает на доступную базу. Для локального CI можно запустить `docker compose
+up -d mongo_db` и заменить адрес базы на `localhost`. Для деплоя в Railway
+используйте отдельную базу или команду `railway up` перед workflow.
 
 
 ## Дополнительные материалы

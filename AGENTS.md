@@ -29,3 +29,6 @@ CI в GitHub Actions тоже вызывает `scripts/setup_and_test.sh`, по
 README включает раздел о GitHub Actions и необходимости отдельного MongoDB-хоста или Railway CLI.
 Добавлена рекомендация запускать `scripts/check_mongo.cjs` для проверки доступности базы.
 Скрипт пытается переподключиться с `authSource=admin`, если получена ошибка аутентификации.
+Для разработки и CI поднимайте локальный MongoDB через `docker compose up -d`
+и меняйте `MONGO_DATABASE_URL` на `localhost`. Для продакшена используйте базу
+Railway.

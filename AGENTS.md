@@ -18,7 +18,7 @@ npx eslint bot/src
 npm run lint --prefix bot/web
 ```
 
-Если нет файла `.env`, создайте его командой `./scripts/create_env_from_exports.sh`.
+Если нет файла `.env`, создайте его командой `./scripts/create_env_from_exports.sh` на основе `.env.example`. Локальный `.env` не добавляйте в репозиторий.
 Также запускайте `docker compose config` при наличии `docker-compose.yml`.
 
 ## Документация

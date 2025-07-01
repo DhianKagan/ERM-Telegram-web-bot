@@ -10,13 +10,12 @@
 
 ## Тесты
 
-Перед коммитом обязательно выполняйте:
+Перед коммитом запускайте скрипт:
 
 ```bash
-npm test --prefix bot
-npx eslint bot/src
-npm run lint --prefix bot/web
+./scripts/setup_and_test.sh
 ```
+Он создаёт `.env`, устанавливает зависимости и выполняет тесты и линтеры.
 
 Если нет файла `.env`, создайте его командой `./scripts/create_env_from_exports.sh` на основе `.env.example`. Локальный `.env` не добавляйте в репозиторий.
 Также запускайте `docker compose config` при наличии `docker-compose.yml`.
@@ -26,3 +25,4 @@ npm run lint --prefix bot/web
 При любом изменении обновляйте файлы `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 Каталог `bot` содержит актуальный код сервера и веб‑интерфейса. Порт MongoDB в `.env.example` обновлён на `43551`.
 README включает раздел о GitHub Actions и необходимости отдельного MongoDB-хоста или Railway CLI.
+Добавлена рекомендация запускать `scripts/check_mongo.cjs` для проверки доступности базы.

@@ -32,14 +32,24 @@
 
 Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан стандартный порт Railway `43551`.
 
+### Проверка соединения с MongoDB
+
+Перед запуском сервера убедитесь, что переменная `MONGO_DATABASE_URL` указывает на доступный хост. Для диагностики выполните скрипт:
+
+```bash
+node scripts/check_mongo.cjs
+```
+
+Если выводит ошибку `ENETUNREACH` или `connection closed`, проверьте правильность адреса и откройте порт на стороне провайдера.
+
 ## Тесты
 
-Перед коммитом проверяйте проект:
+Перед коммитом достаточно запустить скрипт:
 ```bash
-npm test --prefix bot
-npx eslint bot/src
-npm run lint --prefix bot/web
+./scripts/setup_and_test.sh
 ```
+Он установит зависимости, при необходимости создаст `.env` и выполнит те же
+команды `npm test`, `eslint` и `docker compose config`.
 
 ## CI/CD и GitHub Actions
 

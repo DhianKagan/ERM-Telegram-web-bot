@@ -17,7 +17,7 @@
    ```bash
    git clone https://github.com/AgroxOD/agrmcs.git
    ```
-2. Создайте `.env` на основе примера:
+2. Сформируйте локальный `.env` из `.env.example`:
    ```bash
    ./scripts/create_env_from_exports.sh
    ```
@@ -30,7 +30,7 @@
    docker compose up -d
    ```
 
-Файл `.env.example` содержит все переменные окружения. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан стандартный порт Railway `43551`.
+Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан стандартный порт Railway `43551`.
 
 ## Тесты
 

@@ -9,6 +9,7 @@ services:
       - .env
     environment:
       - BOT_API_URL=${BOT_API_URL}
+      - MONGO_DATABASE_URL=mongodb://mongo_db:27017/agrmcs
     restart: always
     depends_on:
       - mongo_db

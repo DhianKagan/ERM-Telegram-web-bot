@@ -5,7 +5,8 @@
   "scripts": {
     "test": "jest",
     "start": "concurrently \"node src/api/api.js\" \"node src/bot/bot.js\"",
-    "build-client": "npm --prefix web run build"
+    "build-client": "npm --prefix web run build",
+    "check:mongo": "node ../../scripts/check_mongo.cjs"
   },
   "postinstall": "npm --prefix web install && npm run build-client && husky install",
   "author": "",

@@ -27,5 +27,5 @@ CI в GitHub Actions тоже вызывает `scripts/setup_and_test.sh`, по
 При любом изменении обновляйте файлы `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 Каталог `bot` содержит актуальный код сервера и веб‑интерфейса. `.env.example` теперь использует строку подключения `mongodb://admin:admin@localhost:27017/agrmcs?authSource=admin`.
 README включает раздел о GitHub Actions и необходимости отдельного MongoDB-хоста или Railway CLI.
-Добавлена рекомендация запускать `scripts/check_mongo.cjs` для проверки доступности базы.
+Добавлена рекомендация запускать `npm --prefix bot run check:mongo` для проверки доступности базы.
 Скрипт пытается переподключиться с `authSource=admin`, если получена ошибка аутентификации.

@@ -33,3 +33,4 @@ README включает раздел о GitHub Actions и необходимос
 README дополнен описанием `BOT_API_URL` и примером локального telegram-bot-api.
 Добавлен краткий абзац о роли `BOT_API_URL` в README.
 README также показывает пример запуска `./scripts/setup_tdweb.sh` перед сборкой.
+В раздел «Быстрый старт» добавлена команда `docker compose down` и её краткое назначение.

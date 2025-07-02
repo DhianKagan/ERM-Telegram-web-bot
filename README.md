@@ -21,6 +21,7 @@
    ```bash
    ./scripts/create_env_from_exports.sh
    ```
+   Скрипт поддерживает специальные символы в значениях переменных.
 3. Установите зависимости:
    ```bash
    npm ci --prefix bot || npm --prefix bot install

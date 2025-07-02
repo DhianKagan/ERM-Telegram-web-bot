@@ -31,6 +31,13 @@
    ```
    Этот запуск поднимет и локальный MongoDB на порту 27017 с логином `admin` и паролем `admin`.
 
+5. При желании запустите локальный сервер telegram-bot-api и пропишите его адрес:
+   ```bash
+   docker run -p 8081:8081 ghcr.io/telegram-bot-api/server:latest
+   ```
+   В файле `.env` задайте `BOT_API_URL=http://localhost:8081`. Без этой переменной
+   бот использует официальный API Telegram.
+
 
 Файл `.env.example` содержит все переменные окружения и служит шаблоном. Локальный `.env` не хранится в репозитории. `APP_URL` должен быть HTTPS, а `MONGO_DATABASE_URL` начинаться с `mongodb://` или `mongodb+srv://`. В примере указан адрес локальной базы `mongodb://admin:admin@localhost:27017/agrmcs?authSource=admin`. Для Railway подставьте собственный URL с реальными учётными данными.
 
@@ -66,3 +73,5 @@ workflow.
 
 Подробные инструкции по настройке бота смотрите в `docs/telegram_bot_manual.md`.
 Изменения по версиям описаны в `CHANGELOG.md`, планы развития — в `ROADMAP.md`.
+Для локальной отладки можно указать `BOT_API_URL` и запустить контейнер telegram-bot-api,
+как показано в разделе «Быстрый старт».

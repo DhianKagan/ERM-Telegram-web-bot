@@ -19,4 +19,6 @@
 - В `check_mongo.cjs` реализована повторная попытка подключения с `authSource=admin` при ошибке аутентификации.
 - Docker Compose теперь поднимает MongoDB с логином `admin` и паролем `admin`;
   `.env.example` обновлён соответствующим URL.
+- В README пояснена переменная `BOT_API_URL` и приведён пример запуска
+  локального telegram-bot-api.
 

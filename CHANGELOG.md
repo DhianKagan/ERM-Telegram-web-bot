@@ -26,7 +26,7 @@
 - Скрипт `create_env_from_exports.sh` теперь экранирует значения переменных, что позволяет использовать специальные символы.
 - Добавлен краткий абзац о назначении `BOT_API_URL` и локальном сервере telegram-bot-api.
   - В `docker-compose.yml` для MongoDB прописан `healthcheck`, чтобы бот запускался только после готовности базы.
-  - В `healthcheck` добавлены логин и пароль `admin`/`admin`.
+  - В `healthcheck` теперь используется `mongosh` с логином и паролем `admin`/`admin`.
 - Удалены устаревшие отчёты Lighthouse, сокращён файл `extended_tailadmin_guide.md`.
 - Workflow `docker.yml` запускает локальный контейнер MongoDB для проверки
   соединения скриптом `check_mongo.cjs`.

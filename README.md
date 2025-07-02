@@ -31,7 +31,7 @@
    docker compose up -d
    ```
    Этот запуск поднимет и локальный MongoDB на порту 27017 с логином `admin` и паролем `admin`.
-    Сервис БД содержит `healthcheck`, который выполняет `mongo -u admin -p admin --authenticationDatabase admin --eval 'db.adminCommand("ping")'`, поэтому бот начнёт работу только после готовности MongoDB.
+    Сервис БД содержит `healthcheck`, который выполняет `mongosh --eval 'db.adminCommand("ping")' -u admin -p admin --authenticationDatabase admin`, поэтому бот начнёт работу только после готовности MongoDB.
 
 5. При желании запустите локальный сервер telegram-bot-api и пропишите его адрес:
    ```bash

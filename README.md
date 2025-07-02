@@ -65,9 +65,22 @@ npm --prefix bot run check:mongo
 
 Автоматические тесты на GitHub запускают этот же скрипт
 `scripts/setup_and_test.sh`. Проверьте, что секрет `MONGO_DATABASE_URL`
-указывает на доступную базу либо запустите `railway up` перед выполнением
-workflow.
+указывает на доступную базу либо запустите `railway up` перед выполнением workflow.
 
+## Подготовка TDWeb перед сборкой клиента
+
+TDWeb нужна для страницы мини‑приложения `/chats`. Скрипт устанавливает пакет и
+копирует файлы WebAssembly:
+
+```bash
+./scripts/setup_tdweb.sh
+```
+
+После этого запустите сборку клиента:
+
+```bash
+npm --prefix bot run build-client
+```
 
 ## Дополнительные материалы
 

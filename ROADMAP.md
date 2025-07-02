@@ -17,4 +17,6 @@
 12. Использование `setup_and_test.sh` в CI для единообразных проверок.
 13. Улучшение `check_mongo.cjs` для работы с `authSource=admin`.
 14. Документация о переменной `BOT_API_URL` и запуске локального telegram-bot-api.
+15. Инструкция по подготовке TDWeb и запуску `scripts/setup_tdweb.sh` перед
+    сборкой клиента.
 

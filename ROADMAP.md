@@ -19,6 +19,8 @@
 14. Документация о переменной `BOT_API_URL` и запуске локального telegram-bot-api.
 15. Инструкция по подготовке TDWeb и запуску `scripts/setup_tdweb.sh` перед
     сборкой клиента.
+16. Скрипт `create_env_from_exports.sh` выводит переменные с экранированием для поддержки спецсимволов.
+
 16. Краткий абзац о роли `BOT_API_URL` в README для пояснения локального API.
 17. Добавить `healthcheck` для MongoDB в `docker-compose.yml`, чтобы бот ждал готовности базы.
 18. Удалить устаревшие отчёты Lighthouse и кратко переписать `extended_tailadmin_guide.md`.

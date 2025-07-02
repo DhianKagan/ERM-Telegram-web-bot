@@ -31,3 +31,6 @@
 - Workflow `docker.yml` запускает локальный контейнер MongoDB для проверки
   соединения скриптом `check_mongo.cjs`.
 - В `healthcheck` теперь используется `mongosh` вместо `mongo` для совместимости с новой версией образа MongoDB.
+- Добавлен скрипт `create_admin_user.js` для создания администратора по Telegram ID.
+- Исправлена функция `verifyAdmin`, ошибки теперь приводят к возврату `false`.
+- Добавлен тест `verifyToken.test.js`, проверяющий отказ без JWT.

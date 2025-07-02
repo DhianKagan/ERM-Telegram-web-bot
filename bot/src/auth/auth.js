@@ -6,8 +6,13 @@ const bot = new Telegraf(botToken)
 const secretKey = jwtSecret
 
 async function verifyAdmin (userId) {
-  const admins = await bot.telegram.getChatAdministrators(chatId)
-  return admins.some(a => a.user.id === userId)
+  try {
+    const admins = await bot.telegram.getChatAdministrators(chatId)
+    return admins.some(a => a.user.id === userId)
+  } catch (e) {
+    console.error('verifyAdmin', e.message)
+    return false
+  }
 }
 
 function generateToken (user) {

@@ -38,4 +38,5 @@ README также показывает пример запуска `./scripts/se
 Workflow `docker.yml` поднимает локальный контейнер MongoDB для проверки скриптом `check_mongo.cjs`.
 Удалены устаревшие отчёты Lighthouse, файл `extended_tailadmin_guide.md` сокращён.
 Добавлен скрипт `create_admin_user.js` для создания администратора по Telegram ID.
+Скрипт `create_admin_user.js` теперь использует CommonJS и выводит сообщение при ошибке подключения к MongoDB.
 

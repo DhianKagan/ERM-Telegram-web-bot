@@ -24,4 +24,6 @@
 - Добавлен раздел о подготовке TDWeb перед сборкой клиента и пример запуска
   `scripts/setup_tdweb.sh`.
 - Добавлен краткий абзац о назначении `BOT_API_URL` и локальном сервере telegram-bot-api.
+- В `docker-compose.yml` для MongoDB прописан `healthcheck`, чтобы бот запускался только после готовности базы.
+- Удалены устаревшие отчёты Lighthouse, сокращён файл `extended_tailadmin_guide.md`.
 

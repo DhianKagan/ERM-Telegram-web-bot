@@ -33,3 +33,5 @@ README включает раздел о GitHub Actions и необходимос
 README дополнен описанием `BOT_API_URL` и примером локального telegram-bot-api.
 Добавлен краткий абзац о роли `BOT_API_URL` в README.
 README также показывает пример запуска `./scripts/setup_tdweb.sh` перед сборкой.
+Docker Compose содержит `healthcheck` для MongoDB, поэтому бот стартует после готовности базы.
+Удалены устаревшие отчёты Lighthouse, файл `extended_tailadmin_guide.md` сокращён.

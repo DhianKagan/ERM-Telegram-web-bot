@@ -30,3 +30,4 @@
 - Удалены устаревшие отчёты Lighthouse, сокращён файл `extended_tailadmin_guide.md`.
 - Workflow `docker.yml` запускает локальный контейнер MongoDB для проверки
   соединения скриптом `check_mongo.cjs`.
+- В `healthcheck` теперь используется `mongosh` вместо `mongo` для совместимости с новой версией образа MongoDB.

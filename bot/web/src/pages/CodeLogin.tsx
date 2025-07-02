@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 export default function CodeLogin() {
   const [telegramId, setTelegramId] = useState('')
+  const [username, setUsername] = useState('')
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
 
@@ -13,6 +14,19 @@ export default function CodeLogin() {
       body: JSON.stringify({ telegramId: Number(telegramId) })
     })
     setSent(true)
+  }
+
+  async function loginByName() {
+    const res = await fetch('/api/auth/login_username', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    })
+    if (res.ok) {
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      window.location.href = '/'
+    }
   }
 
   async function verify() {
@@ -34,14 +48,28 @@ export default function CodeLogin() {
         className="border p-2"
         placeholder="Telegram ID"
         value={telegramId}
-        onChange={e => setTelegramId(e.target.value)}
+        onChange={(e) => setTelegramId(e.target.value)}
       />
+      <input
+        className="border p-2"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <a
+        className="text-blue-500 underline"
+        href="https://telegram.me/userinfobot"
+        target="_blank"
+        rel="noopener"
+      >
+        Узнать свой ID через @userinfobot
+      </a>
       {sent && (
         <input
           className="border p-2"
           placeholder="Код"
           value={code}
-          onChange={e => setCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value)}
         />
       )}
       {!sent ? (
@@ -50,9 +78,12 @@ export default function CodeLogin() {
         </button>
       ) : (
         <button onClick={verify} className="bg-blue-500 text-white p-2">
-          Войти
+          Войти по коду
         </button>
       )}
+      <button onClick={loginByName} className="bg-green-500 text-white p-2">
+        Войти по username
+      </button>
     </div>
   )
 }

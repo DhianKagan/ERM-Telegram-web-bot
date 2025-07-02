@@ -115,7 +115,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
 
   return (
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
-      <div className="w-96 space-y-4 rounded-xl bg-white p-6 shadow-lg transition-all duration-150">
+      <div className="w-96 max-h-[90vh] overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg transition-all duration-150">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Новая задача</h3>
           <select

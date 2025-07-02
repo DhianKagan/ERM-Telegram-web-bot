@@ -131,6 +131,10 @@ async function getUser(id) {
   return User.findOne({ telegram_id: id }).populate('roleId').populate('departmentId')
 }
 
+async function getUserByUsername(username) {
+  return User.findOne({ username }).populate('roleId').populate('departmentId')
+}
+
 async function listUsers() {
   return User.find().populate('roleId').populate('departmentId')
 }
@@ -176,6 +180,7 @@ module.exports = {
   listDepartments,
   createUser,
   getUser,
+  getUserByUsername,
   listUsers,
   updateUser,
   createRole,

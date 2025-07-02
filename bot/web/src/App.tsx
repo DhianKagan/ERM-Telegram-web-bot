@@ -22,7 +22,7 @@ import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -122,21 +122,27 @@ function Content() {
   );
 }
 
+function Layout() {
+  const { token } = React.useContext(AuthContext);
+  return (
+    <>
+      {token && <Sidebar />}
+      {token && <Header />}
+      <Toasts />
+      <Content />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-
         <ToastProvider>
           <SidebarProvider>
             <Router>
-              <Sidebar />
-              <Header />
-              <Toasts />
-
-              <Content />
+              <Layout />
             </Router>
-
           </SidebarProvider>
         </ToastProvider>
       </ThemeProvider>

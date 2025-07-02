@@ -1,7 +1,7 @@
 // Контроллер отправки и проверки кодов подтверждения. Модули: otp, auth, queries
 const otp = require('../services/otp')
 const { generateToken, verifyAdmin } = require('../auth/auth')
-const { getUser, createUser } = require('../db/queries')
+const { getUser, createUser, getUserByUsername } = require('../db/queries')
 
 exports.sendCode = async (req, res) => {
   const { phone, telegramId } = req.body
@@ -24,3 +24,12 @@ exports.verifyCode = async (req, res) => {
 }
 
 exports.codes = otp.codes
+
+exports.loginByUsername = async (req, res) => {
+  const { username } = req.body
+  const user = await getUserByUsername(username)
+  if (!user) return res.status(404).json({ error: 'not found' })
+  const isAdmin = await verifyAdmin(user.telegram_id)
+  const token = generateToken({ id: user.telegram_id, username: user.username, isAdmin })
+  res.json({ token })
+}

@@ -29,5 +29,9 @@ router.post('/verify_code', validate([
   body('code').isLength({ min: 4 })
 ]), asyncHandler(authCtrl.verifyCode))
 
+router.post('/login_username', validate([
+  body('username').isString().notEmpty()
+]), asyncHandler(authCtrl.loginByUsername))
+
 router.get('/profile', verifyToken, ctrl.profile)
 module.exports = router

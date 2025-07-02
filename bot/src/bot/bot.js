@@ -26,7 +26,7 @@ const {
 } = require('../services/service')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
-const { verifyUser } = require('../services/verify')
+const { sendCode } = require('../services/otp')
 const { verifyAdmin, generateToken } = require('../auth/auth')
 const { startScheduler } = require('../services/scheduler')
 const bot = new Telegraf(botToken)
@@ -83,13 +83,8 @@ bot.start(async (ctx) => {
   const user = await getUser(ctx.from.id)
   if (!user) {
     await createUser(ctx.from.id, ctx.from.username)
-    try {
-      await verifyUser(ctx.from.id)
-      await updateUser(ctx.from.id, { verified_at: new Date() })
-    } catch (e) {
-      console.error('verifyUser', e)
-    }
-    ctx.reply(messages.registered)
+    await sendCode({ telegramId: ctx.from.id })
+    ctx.reply(messages.codeSent)
   } else {
     ctx.reply(messages.welcomeBack)
   }

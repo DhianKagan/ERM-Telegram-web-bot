@@ -17,12 +17,6 @@ const validate = validations => [
 
 
 
-router.post('/telegram', validate([
-  body('id').isInt(),
-  body('hash').notEmpty(),
-  body('auth_date').isInt(),
-  body('username').optional().isString()
-]), asyncHandler(ctrl.telegramLogin))
 
 router.post('/send_code', validate([
   body('phone').optional().isMobilePhone('any'),

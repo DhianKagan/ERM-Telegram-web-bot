@@ -75,8 +75,10 @@ npm --prefix bot run check:mongo
 ## CI/CD и GitHub Actions
 
 Автоматические тесты на GitHub запускают этот же скрипт
-`scripts/setup_and_test.sh`. Проверьте, что секрет `MONGO_DATABASE_URL`
-указывает на доступную базу либо запустите `railway up` перед выполнением workflow.
+`scripts/setup_and_test.sh`. В workflow `docker.yml` дополнительно поднимается
+локальный контейнер MongoDB, чтобы скрипт `check_mongo.cjs` смог проверить
+соединение. Убедитесь, что секрет `MONGO_DATABASE_URL` указывает на доступную
+базу или заранее выполните `railway up`.
 
 ## Подготовка TDWeb перед сборкой клиента
 

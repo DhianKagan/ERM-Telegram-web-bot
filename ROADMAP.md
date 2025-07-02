@@ -24,4 +24,6 @@
 16. Краткий абзац о роли `BOT_API_URL` в README для пояснения локального API.
 17. Добавить `healthcheck` для MongoDB в `docker-compose.yml`, чтобы бот ждал готовности базы.
 18. Удалить устаревшие отчёты Lighthouse и кратко переписать `extended_tailadmin_guide.md`.
+19. В workflow `docker.yml` запускать локальный контейнер MongoDB для проверки
+    соединения перед сборкой образов.
 

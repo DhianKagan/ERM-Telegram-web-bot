@@ -97,10 +97,16 @@ npm --prefix bot run build-client
 
 ### Создание администратора
 
-Для выдачи прав администратора по Telegram ID выполните:
+Перед запуском скрипта установите зависимости:
 
 ```bash
-node scripts/create_admin_user.js <id> [username]
+npm ci --prefix bot
+```
+
+Затем выдайте права администратора по Telegram ID:
+
+```bash
+NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 ```
 
 Скрипт создаст пользователя с ролью `admin` либо обновит существующего.

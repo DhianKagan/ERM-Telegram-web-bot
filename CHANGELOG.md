@@ -35,3 +35,4 @@
 - Исправлена функция `verifyAdmin`, ошибки теперь приводят к возврату `false`.
 - Добавлен тест `verifyToken.test.js`, проверяющий отказ без JWT.
 - Скрипт `create_admin_user.js` переписан на CommonJS с обработкой ошибок подключения и поиском `mongoose` в каталоге `bot` при необходимости.
+- README теперь указывает запуск `npm ci --prefix bot` перед выполнением `create_admin_user.js` и демонстрирует пример `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.

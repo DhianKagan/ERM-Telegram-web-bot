@@ -27,4 +27,5 @@
 19. Удалить устаревшие отчёты Lighthouse и кратко переписать `extended_tailadmin_guide.md`.
 20. В workflow `docker.yml` запускать локальный контейнер MongoDB для проверки
     соединения перед сборкой образов.
+21. Создать скрипт `create_admin_user.js` для выдачи прав администратора по Telegram ID.
 

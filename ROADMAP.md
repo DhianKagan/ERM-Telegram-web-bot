@@ -23,7 +23,5 @@
 
 16. Краткий абзац о роли `BOT_API_URL` в README для пояснения локального API.
 17. Добавить `healthcheck` для MongoDB в `docker-compose.yml`, чтобы бот ждал готовности базы.
-
-17. В README появится пункт о завершении работы `docker compose down`.
-
+18. Удалить устаревшие отчёты Lighthouse и кратко переписать `extended_tailadmin_guide.md`.
 

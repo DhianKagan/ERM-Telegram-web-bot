@@ -7,6 +7,10 @@ jest.mock('telegraf', () => ({
 jest.mock('jsonwebtoken')
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }))
 jest.mock('../src/services/gateway', () => ({ sendSms: jest.fn() }))
+jest.mock('../src/db/queries', () => ({
+  getUser: jest.fn(async () => null),
+  createUser: jest.fn(async () => ({ username: 'u' }))
+}))
 jest.useFakeTimers().setSystemTime(0)
 process.env.BOT_TOKEN = 't'
 process.env.CHAT_ID = '1'
@@ -40,24 +44,34 @@ const data = jwt.decode(token)
 })
 
 test('sendCode сохраняет код с таймстампом', async () => {
-  const req = { body: { phone: '123' } }
+  const req = { body: { telegramId: 5 } }
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
   await authCtrl.sendCode(req, res)
-  const entry = authCtrl.codes.get('123')
+  const entry = authCtrl.codes.get('5')
   expect(typeof entry.ts).toBe('number')
   expect(entry.code).toHaveLength(6)
 })
 
 test('verifyCode отклоняет просроченный код', () => {
-  const req = { body: { phone: '111' } }
+  const req = { body: { telegramId: 111 } }
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
   authCtrl.sendCode(req, res)
   const code = authCtrl.codes.get('111').code
   jest.setSystemTime(6 * 60 * 1000)
   const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis() }
-  authCtrl.verifyCode({ body: { phone: '111', code } }, res2)
+  authCtrl.verifyCode({ body: { telegramId: 111, code } }, res2)
   expect(res2.status).toHaveBeenCalledWith(400)
   expect(authCtrl.codes.has('111')).toBe(false)
+})
+
+test('verifyCode возвращает токен', async () => {
+  const req = { body: { telegramId: 7 } }
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
+  await authCtrl.sendCode(req, res)
+  const code = authCtrl.codes.get('7').code
+  const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis() }
+  await authCtrl.verifyCode({ body: { telegramId: 7, code, username: 'u' } }, res2)
+  expect(res2.json).toHaveBeenCalledWith({ token: expect.any(String) })
 })
 
 test('clean удаляет старые записи при новом вызове', async () => {

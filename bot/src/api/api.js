@@ -120,7 +120,7 @@ const validate = validations => [
   })
   app.use(express.static(path.join(__dirname, '../../public')))
 
-  // вход через Telegram Login объединён с проверкой роли администратора
+  // авторизация реализована через код подтверждения из Telegram
 
 
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks

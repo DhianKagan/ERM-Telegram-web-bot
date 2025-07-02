@@ -7,7 +7,8 @@
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | /health | Проверка работоспособности сервера |
-| POST | /api/auth/telegram | Вход через Telegram Login |
+| POST | /api/auth/send_code | Отправить код подтверждения |
+| POST | /api/auth/verify_code | Проверить код и получить JWT |
 | GET | /api/tasks | Список всех задач |
 | POST | /api/tasks | Создание задачи |
 | PUT | /api/tasks/:id | Обновление задачи |

@@ -31,4 +31,5 @@ README включает раздел о GitHub Actions и необходимос
 Скрипт пытается переподключиться с `authSource=admin`, если получена ошибка аутентификации.
 Добавлен раздел о подготовке TDWeb и запуске `scripts/setup_tdweb.sh` перед сборкой клиента.
 README дополнен описанием `BOT_API_URL` и примером локального telegram-bot-api.
+Добавлен краткий абзац о роли `BOT_API_URL` в README.
 README также показывает пример запуска `./scripts/setup_tdweb.sh` перед сборкой.

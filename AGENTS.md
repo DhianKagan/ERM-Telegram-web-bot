@@ -39,4 +39,6 @@ Workflow `docker.yml` поднимает локальный контейнер M
 Удалены устаревшие отчёты Lighthouse, файл `extended_tailadmin_guide.md` сокращён.
 Добавлен скрипт `create_admin_user.js` для создания администратора по Telegram ID.
 Скрипт `create_admin_user.js` теперь использует CommonJS и выводит сообщение при ошибке подключения к MongoDB.
+README подчёркивает запуск `npm ci --prefix bot` перед использованием скрипта и демонстрирует пример:
+`NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
 

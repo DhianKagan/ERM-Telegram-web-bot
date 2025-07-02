@@ -29,4 +29,5 @@
     соединения перед сборкой образов.
 21. Создать скрипт `create_admin_user.js` для выдачи прав администратора по Telegram ID.
 22. Переписать `create_admin_user.js` на CommonJS, добавить поиск `mongoose` в каталоге `bot` и обработку ошибок подключения.
+23. README уточняет необходимость запуска `npm ci --prefix bot` перед выполнением `create_admin_user.js` и приводит пример команды `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
 

@@ -149,19 +149,9 @@ Bad Request: message text is empty
 
 Теперь вы можете адаптировать приведённые примеры под особенности проекта и расширять функциональность бота.
 
-## Вход через Telegram Login
+## Вход через код подтверждения
 
-Для авторизации в мини‑приложении используется виджет Telegram Login. В index.html вставляется скрипт:
-
-```html
-<script async src="https://telegram.org/js/telegram-widget.js?22"
-  data-telegram-login="BOT_USERNAME"
-  data-size="large"
-  data-request-access="write"
-  data-onauth="onTelegramAuth(user)"></script>
-```
-
-Функция `onTelegramAuth` отправляет данные на `/api/auth/telegram` и сохраняет JWT. Параметр `data-request-access="write"` позволяет боту отправлять сообщения от имени пользователя.
+При первом запуске мини‑приложения бот отправляет пользователю шестизначный код. Введите этот код на странице входа, чтобы получить JWT и войти в систему.
 
 ## Глубокие ссылки
 

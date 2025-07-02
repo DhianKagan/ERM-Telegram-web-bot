@@ -41,4 +41,5 @@ Workflow `docker.yml` поднимает локальный контейнер M
 Скрипт `create_admin_user.js` теперь использует CommonJS и выводит сообщение при ошибке подключения к MongoDB.
 README подчёркивает запуск `npm ci --prefix bot` перед использованием скрипта и демонстрирует пример:
 `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
+Добавлена верификация через одноразовый код и страница `CodeLogin` в мини‑приложении.
 

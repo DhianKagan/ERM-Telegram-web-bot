@@ -5,6 +5,7 @@ module.exports = {
   accessError: 'Ошибка проверки доступа',
   registered: 'Вы зарегистрированы в системе.',
   welcomeBack: 'С возвращением!',
+  codeSent: 'Код подтверждения отправлен в Telegram',
   miniAppLinkText: 'Открыть приложение',
   unauthorizedCreateTask: 'Unauthorized: Only admins can create tasks.',
   taskNameRequired: 'Укажите название задачи после команды',

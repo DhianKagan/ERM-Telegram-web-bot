@@ -38,3 +38,5 @@
 - README теперь указывает запуск `npm ci --prefix bot` перед выполнением `create_admin_user.js` и демонстрирует пример `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
 - Удалена авторизация через Telegram Login, вместо неё используется код подтверждения.
 - Метод `verifyUser` исключён, добавлен сервис `otp` и страница `CodeLogin`.
+- Документация уточняет, что мини‑приложение доступно только участникам группы `CHAT_ID`.
+

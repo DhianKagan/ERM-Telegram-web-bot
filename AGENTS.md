@@ -42,4 +42,6 @@ Workflow `docker.yml` поднимает локальный контейнер M
 README подчёркивает запуск `npm ci --prefix bot` перед использованием скрипта и демонстрирует пример:
 `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
 Добавлена верификация через одноразовый код и страница `CodeLogin` в мини‑приложении.
+Ссылка на мини‑приложение выдаётся только участникам группы `CHAT_ID` после проверки `getChatMember`.
+
 

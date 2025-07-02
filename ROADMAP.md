@@ -31,4 +31,5 @@
 22. Переписать `create_admin_user.js` на CommonJS, добавить поиск `mongoose` в каталоге `bot` и обработку ошибок подключения.
 23. README уточняет необходимость запуска `npm ci --prefix bot` перед выполнением `create_admin_user.js` и приводит пример команды `NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]`.
 24. Верификация через Telegram Login заменена кодом подтверждения и страницей CodeLogin.
+25. Документация дополнена описанием проверки участника чата перед выдачей ссылки на мини‑приложение.
 

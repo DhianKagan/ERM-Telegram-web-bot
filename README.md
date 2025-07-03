@@ -40,8 +40,8 @@
    Этот запуск поднимет и локальный MongoDB на порту 27017 с логином `admin` и паролем `admin`.
     Сервис БД содержит `healthcheck`, который выполняет `mongosh -u admin -p admin --authenticationDatabase admin --eval 'db.adminCommand("ping")'`, поэтому бот начнёт работу только после готовности MongoDB. Контейнер MongoDB перезапускается Docker Compose при сбое.
   Все сервисы запускаются через `pm2` версии 6.0.8. Конфигурация
-  `ecosystem.config.cjs` задаёт параметры `max_restarts` и `min_uptime`,
-  поэтому процессы перезапускаются автоматически при сбоях.
+  `ecosystem.config.cjs` задаёт параметры `max_restarts`, `min_uptime` и `restart_delay`,
+  поэтому процессы перезапускаются автоматически при сбоях и дают время на восстановление ресурсов.
 
 5. При желании запустите локальный сервер telegram-bot-api и пропишите его адрес:
    ```bash
@@ -91,20 +91,6 @@ npm --prefix bot run check:mongo
 соединение. Убедитесь, что секрет `MONGO_DATABASE_URL` указывает на доступную
 базу или заранее выполните `railway up`.
 
-## Подготовка TDWeb перед сборкой клиента
-
-TDWeb нужна для страницы мини‑приложения `/chats`. Скрипт устанавливает пакет и
-копирует файлы WebAssembly:
-
-```bash
-./scripts/setup_tdweb.sh
-```
-
-После этого запустите сборку клиента:
-
-```bash
-npm --prefix bot run build-client
-```
 
 ### Создание администратора
 

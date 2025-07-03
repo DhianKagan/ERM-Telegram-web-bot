@@ -68,3 +68,4 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
   запуске на Railway.
 
 - Формы задач описываются в `bot/shared/taskFields.cjs` и используются во всех частях приложения через компонент `TaskForm`.
+- В компоненте `TaskForm` скорректирован путь к модулю `taskFields.cjs`.

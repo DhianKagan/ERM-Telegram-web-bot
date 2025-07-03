@@ -480,12 +480,22 @@ async function startBot () {
       console.log(`Бот запущен в режиме webhook на порту ${botPort}`)
     } catch (err) {
       console.error('Ошибка установки webhook, переключаемся на polling:', err)
-      await bot.launch()
-      console.log(`Бот запущен на порту ${botPort}`)
+      try {
+        await bot.launch()
+        console.log(`Бот запущен на порту ${botPort}`)
+      } catch (launchErr) {
+        console.error('Не удалось запустить бота:', launchErr)
+        process.exit(1)
+      }
     }
   } else {
-    await bot.launch()
-    console.log(`Бот запущен на порту ${botPort}`)
+    try {
+      await bot.launch()
+      console.log(`Бот запущен на порту ${botPort}`)
+    } catch (err) {
+      console.error('Не удалось запустить бота:', err)
+      process.exit(1)
+    }
   }
   console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
 }

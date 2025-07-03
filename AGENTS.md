@@ -63,4 +63,5 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 - Добавлен скрипт `check_bot_token.sh` для проверки `BOT_TOKEN` перед деплоем.
 - Файлы `bot_commands.json` и `bot_messages.json` содержат единый список команд.
 - Мануал `telegram_bot_manual.md` использует скрипт `set_attachment_menu_url.js` для обновления меню.
+- В `startBot` добавлен перехват ошибки `bot.launch` с выводом сообщения и завершением процесса.
 

@@ -6,7 +6,7 @@ import { validateURL } from "../utils/validation";
 import authFetch from "../utils/authFetch";
 import RichTextEditor from "./RichTextEditor";
 import { AuthContext } from "../context/AuthContext";
-import fields from "../../shared/taskFields.cjs";
+import fields from "../../../shared/taskFields.cjs";
 
 const TYPES = fields.find((f) => f.name === "task_type")?.options || [];
 const PRIORITIES = fields.find((f) => f.name === "priority")?.options || [];

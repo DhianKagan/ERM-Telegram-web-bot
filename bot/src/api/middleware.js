@@ -14,8 +14,12 @@ const asyncHandler = fn => async (req, res, next) => {
 // Обработчик ошибок API
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, _req, res, _next) {
-  console.error(err);
-  res.status(500).json({ error: err.message });
+  if (err.type === 'request.aborted') {
+    res.status(400).json({ error: 'request aborted' })
+    return
+  }
+  console.error(err)
+  res.status(500).json({ error: err.message })
 }
 
 const { jwtSecret } = require('../config');

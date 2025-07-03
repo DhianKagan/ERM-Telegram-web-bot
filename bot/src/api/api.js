@@ -231,5 +231,5 @@ const validate = validations => [
   app.use(errorHandler)
 
   const port = config.port
-  app.listen(port, () => console.log(`API on port ${port}`))
+  app.listen(port, () => console.log(`API запущен на порту ${port}`))
 })()

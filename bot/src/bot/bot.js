@@ -453,9 +453,9 @@ if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
   const { pathname } = new URL(webhookUrl)
   bot.telegram.setWebhook(webhookUrl)
   bot.startWebhook(pathname, null, botPort)
-  console.log('Bot started in webhook mode')
+  console.log('Бот запущен в режиме webhook')
 } else {
-  bot.launch().then(() => console.log('Bot started'))
+  bot.launch().then(() => console.log('Бот запущен'))
 }
 if (process.env.NODE_ENV !== 'test') startScheduler()
 process.once('SIGINT', () => bot.stop('SIGINT'))

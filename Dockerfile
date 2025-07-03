@@ -1,5 +1,5 @@
 # Назначение файла: контейнер телеграм-бота с мини-приложением
-# Модули: bot, запускается npm-скриптом с concurrently
+# Модули: bot, запуск через pm2
 FROM node:20 AS build
 WORKDIR /app/bot
 
@@ -17,4 +17,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/bot ./bot
 EXPOSE 3000
-CMD ["npm", "--prefix", "bot", "start"]
+CMD ["npx", "pm2-runtime", "/app/bot/ecosystem.config.cjs"]

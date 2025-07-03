@@ -14,6 +14,7 @@ process.on('uncaughtException', err => {
   process.exit(1)
 })
 const { Telegraf, Markup } = require('telegraf')
+const path = require('path')
 const messages = require('../messages')
 const {
   createTask,
@@ -260,10 +261,11 @@ bot.command('upload_file', async (ctx) => {
   const { file_path } = await call('getFile', { file_id: file.file_id })
   const res = await fetch(`${botApiUrl || 'https://api.telegram.org'}/file/bot${botToken}/${file_path}`)
   const buffer = Buffer.from(await res.arrayBuffer())
-  const key = `${taskId}/${file.file_unique_id}_${file.file_name || 'photo.jpg'}`
+  const safeName = file.file_name ? path.basename(file.file_name) : 'photo.jpg'
+  const key = `${taskId}/${file.file_unique_id}_${safeName}`
   await uploadFile(buffer, key)
   const url = `${r2.endpoint}/${r2.bucket}/${key}`
-  await addAttachment(taskId, { name: file.file_name || 'photo.jpg', url })
+  await addAttachment(taskId, { name: safeName, url })
   ctx.reply(messages.fileUploaded)
 })
 
@@ -276,7 +278,7 @@ bot.command('upload_voice', async (ctx) => {
   const { file_path } = await call('getFile', { file_id: file.file_id })
   const res = await fetch(`${botApiUrl || 'https://api.telegram.org'}/file/bot${botToken}/${file_path}`)
   const buffer = Buffer.from(await res.arrayBuffer())
-  const name = file.file_name || (ctx.message.voice ? 'voice.ogg' : 'audio.mp3')
+  const name = file.file_name ? path.basename(file.file_name) : (ctx.message.voice ? 'voice.ogg' : 'audio.mp3')
   const key = `${taskId}/${file.file_unique_id}_${name}`
   await uploadFile(buffer, key)
   const url = `${r2.endpoint}/${r2.bucket}/${key}`
@@ -461,9 +463,13 @@ if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
   const { pathname } = new URL(webhookUrl)
   bot.telegram.setWebhook(webhookUrl)
   bot.startWebhook(pathname, null, botPort)
-  console.log('Бот запущен в режиме webhook')
+  console.log(`Бот запущен в режиме webhook на порту ${botPort}`)
+  console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
 } else {
-  bot.launch().then(() => console.log('Бот запущен'))
+  bot.launch().then(() => {
+    console.log(`Бот запущен на порту ${botPort}`)
+    console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
+  })
 }
 if (process.env.NODE_ENV !== 'test') startScheduler()
 process.once('SIGINT', () => bot.stop('SIGINT'))

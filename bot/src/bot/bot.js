@@ -4,7 +4,7 @@ require('dotenv').config()
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN:', process.env.BOT_TOKEN)
 }
-const { botToken, botApiUrl, appUrl, chatId, r2, botPort } = require('../config')
+const { botToken, botApiUrl, appUrl, chatId, r2 } = require('../config')
 
 process.on('unhandledRejection', err => {
   console.error('Unhandled rejection in bot:', err)
@@ -470,33 +470,13 @@ bot.on('message', async (ctx) => {
   }
 })
 
-const webhookUrl = process.env.WEBHOOK_URL
 async function startBot () {
-  if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
-    const { pathname } = new URL(webhookUrl)
-    try {
-      await bot.telegram.setWebhook(webhookUrl)
-      await bot.startWebhook(pathname, null, botPort)
-      console.log(`Бот запущен в режиме webhook на порту ${botPort}`)
-    } catch (err) {
-      console.error('Ошибка установки webhook, переключаемся на polling:', err)
-      try {
-        await bot.launch()
-        console.log(`Бот запущен на порту ${botPort}`)
-        await call('sendMessage', { chat_id: chatId, text: `Webhook error: ${err.message}` })
-      } catch (launchErr) {
-        console.error('Не удалось запустить бота:', launchErr)
-        process.exit(1)
-      }
-    }
-  } else {
-    try {
-      await bot.launch()
-      console.log(`Бот запущен на порту ${botPort}`)
-    } catch (err) {
-      console.error('Не удалось запустить бота:', err)
-      process.exit(1)
-    }
+  try {
+    await bot.launch()
+    console.log('Бот запущен')
+  } catch (err) {
+    console.error('Не удалось запустить бота:', err)
+    process.exit(1)
   }
   console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
 }

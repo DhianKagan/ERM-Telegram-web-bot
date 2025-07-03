@@ -7,6 +7,9 @@ jest.mock('telegraf', () => ({
 jest.mock('jsonwebtoken')
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }))
 jest.mock('../src/services/gateway', () => ({ sendSms: jest.fn() }))
+jest.mock('../src/services/userInfoService', () => ({
+  getMemberStatus: jest.fn(async () => 'member')
+}))
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => null),
   createUser: jest.fn(async () => ({ username: 'u' }))

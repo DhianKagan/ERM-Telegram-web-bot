@@ -29,5 +29,11 @@ test('с валидным токеном 200', async () => {
   expect(res.status).toBe(200)
 })
 
+test('токен с другим алгоритмом отклоняется', async () => {
+  const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET, { algorithm: 'HS512' })
+  const res = await request(app).get('/secure').set('Authorization', `Bearer ${token}`)
+  expect(res.status).toBe(401)
+})
+
 afterAll(() => stopScheduler())
 

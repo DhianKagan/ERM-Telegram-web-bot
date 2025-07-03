@@ -55,4 +55,6 @@
 - Исправлен запуск `pm2-runtime` в Dockerfile и Procfile.
 - Добавлен тест `errorHandler.test.js`.
 - Удалена зависимость TDWeb и страница `/chats` с соответствующим пунктом меню.
+- Удалён неиспользуемый `reportController` и тест `report.test.js`.
+- Проверка JWT теперь принимает только алгоритм `HS256`.
 

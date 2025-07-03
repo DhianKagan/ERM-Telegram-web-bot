@@ -3,6 +3,8 @@
 const mongoose = require('mongoose')
 const { mongoUrl } = require('../config')
 const backupUrl = process.env.MONGO_BACKUP_URL
+const attempts = Number(process.env.RETRY_ATTEMPTS || 3)
+const delayMs = Number(process.env.RETRY_DELAY_MS || 5000)
 
 // Для версии mongoose 8 опции useNewUrlParser и useUnifiedTopology
 // больше не требуются, оставляем только размер пула
@@ -24,8 +26,22 @@ mongoose.connection.on('error', e => {
   console.error('Ошибка MongoDB:', e.message)
 })
 
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
 module.exports = async function connect() {
   if (mongoose.connection.readyState === 1) return mongoose.connection
-  if (!connecting) connecting = mongoose.connect(mongoUrl, opts)
-  return connecting
+  if (connecting) return connecting
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      connecting = mongoose.connect(mongoUrl, opts)
+      await connecting
+      return mongoose.connection
+    } catch (e) {
+      console.error(`Попытка ${attempt} не удалась:`, e.message)
+      if (attempt === attempts) throw e
+      await sleep(delayMs)
+    } finally {
+      connecting = null
+    }
+  }
 }

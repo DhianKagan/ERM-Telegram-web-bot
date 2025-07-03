@@ -54,4 +54,5 @@
 44. Синхронизировать файлы `bot_commands.json` и `bot_messages.json` и
     описать скрипт `set_attachment_menu_url.js` в документации.
 45. Завершать процесс при ошибке `bot.launch`, обернув вызов в `try/catch`.
+46. Автоматически запускать `set_bot_commands.sh` из Procfile при деплое на Railway.
 

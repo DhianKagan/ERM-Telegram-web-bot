@@ -24,6 +24,8 @@
   и позволяют pm2 перезапускать сервисы
 - Dockerfile и Procfile запускают `pm2-runtime` через `npx --prefix bot`
   без предупреждений об установке пакета
+- При деплое на Railway Procfile выполняет `scripts/set_bot_commands.sh`,
+  синхронизируя команды меню бота
 
 ## Быстрый старт
 

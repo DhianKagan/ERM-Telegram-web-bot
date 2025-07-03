@@ -32,6 +32,8 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
 BOT_TOKEN=123 scripts/set_bot_commands.sh
 ```
 Скрипт отправит содержимое JSON в метод `setMyCommands` и обновит меню бота.
+При деплое на Railway этот скрипт выполняется автоматически через Procfile,
+поэтому меню синхронизируется без ручных действий.
 
 ### Быстрая настройка через BotFather
 Если нет доступа к терминалу, воспользуйтесь диалогом с BotFather:

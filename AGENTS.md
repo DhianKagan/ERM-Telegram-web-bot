@@ -65,4 +65,6 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 - Файлы `bot_commands.json` и `bot_messages.json` содержат единый список команд.
 - Мануал `telegram_bot_manual.md` использует скрипт `set_attachment_menu_url.js` для обновления меню.
 - В `startBot` добавлен перехват ошибки `bot.launch` с выводом сообщения и завершением процесса.
+- Procfile выполняет `scripts/set_bot_commands.sh` для синхронизации меню при
+  запуске на Railway.
 

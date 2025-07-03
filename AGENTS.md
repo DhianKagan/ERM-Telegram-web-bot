@@ -54,4 +54,6 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 - Функция telegramLogin удалена как устаревшая.
 - Dockerfile и Procfile запускают pm2-runtime через npx --prefix bot.
 - Добавлен тест errorHandler.test.js.
+- Контроллер `reportController` и тест `report.test.js` удалены как неиспользуемые.
+- Проверка JWT допускает только алгоритм HS256.
 

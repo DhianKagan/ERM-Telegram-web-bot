@@ -16,7 +16,10 @@ async function verifyAdmin (userId) {
 }
 
 function generateToken (user) {
-  return jwt.sign({ id: user.id, username: user.username, isAdmin: user.isAdmin }, secretKey, { expiresIn: '1h' })
+  return jwt.sign({ id: user.id, username: user.username, isAdmin: user.isAdmin }, secretKey, {
+    expiresIn: '1h',
+    algorithm: 'HS256'
+  })
 }
 
 module.exports = { verifyAdmin, generateToken }

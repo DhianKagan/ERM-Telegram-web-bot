@@ -61,7 +61,7 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 - Команда `/whoami` выводит ID пользователя и его статус в группе через сервис `userInfoService`.
 - Бот работает только в режиме polling, переменная `WEBHOOK_URL` удалена.
 - Добавлен скрипт `check_bot_token.sh` для проверки `BOT_TOKEN` перед деплоем.
-- Файлы `bot_commands.json` и `bot_messages.json` содержат единый список команд.
+- Файлы `bot_commands.json` и `bot_messages.json` содержат единственную команду `/start`.
 - Мануал `telegram_bot_manual.md` использует скрипт `set_attachment_menu_url.js` для обновления меню.
 - В `startBot` добавлен перехват ошибки `bot.launch` с выводом сообщения и завершением процесса.
 - Procfile выполняет `scripts/set_bot_commands.sh` для синхронизации меню при

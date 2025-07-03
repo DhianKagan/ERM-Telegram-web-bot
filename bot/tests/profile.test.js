@@ -10,7 +10,8 @@ const request = require('supertest')
 const { stopScheduler } = require('../src/services/scheduler')
 
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' }))
+  getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
+  updateUser: jest.fn(async (_id, d) => ({ telegram_id: 1, username: 'test', ...d }))
 }))
 
 const ctrl = require('../src/controllers/authUser')
@@ -19,6 +20,7 @@ const ctrl = require('../src/controllers/authUser')
 let app
 beforeAll(() => {
   app = express()
+  app.use(express.json())
   app.get('/api/auth/profile', ctrl.profile)
 })
 
@@ -27,6 +29,13 @@ test('получаем профиль', async () => {
   const resMock = { json: jest.fn(), sendStatus: jest.fn() }
   await ctrl.profile(req, resMock)
   expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test' })
+})
+
+test('обновляем профиль', async () => {
+  const req = { user: { id: 1 }, body: { name: 'N' } }
+  const resMock = { json: jest.fn(), sendStatus: jest.fn() }
+  await ctrl.updateProfile(req, resMock)
+  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test', name: 'N' })
 })
 
 afterAll(() => stopScheduler())

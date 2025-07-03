@@ -83,7 +83,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
     } else {
       const user = users.find((u) => String(u.telegram_id) === id);
       if (user)
-        tag = `<a href="tg://user?id=${user.telegram_id}">${user.username}</a>`;
+        tag = `<a href="tg://user?id=${user.telegram_id}">${user.name || user.username}</a>`;
     }
     if (tag) {
       setter((d) => `${d} ${tag} `);
@@ -167,7 +167,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
             <option value="">автор</option>
             {users.map((u) => (
               <option key={u.telegram_id} value={u.telegram_id}>
-                {u.username}
+                {u.name || u.username}
               </option>
             ))}
           </select>
@@ -184,7 +184,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
           >
             {users.map((u) => (
               <option key={u.telegram_id} value={u.telegram_id}>
-                {u.username}
+                {u.name || u.username}
               </option>
             ))}
           </select>
@@ -259,7 +259,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
             <optgroup label="Пользователи">
               {users.map((u) => (
                 <option key={u.telegram_id} value={u.telegram_id}>
-                  {u.username}
+                  {u.name || u.username}
                 </option>
               ))}
             </optgroup>
@@ -283,7 +283,7 @@ export default function TaskFormModal({ onClose, onCreate }: TaskFormModalProps)
             <optgroup label="Пользователи">
               {users.map((u) => (
                 <option key={u.telegram_id} value={u.telegram_id}>
-                  {u.username}
+                  {u.name || u.username}
                 </option>
               ))}
             </optgroup>

@@ -47,24 +47,34 @@ const pendingAssignments = new Map()
 
 // Функция отправки кнопки Web App с резервом на случай ошибки типа BUTTON_TYPE_INVALID
 async function sendAccessButton(ctx, url) {
-  try {
-    await ctx.reply(
-      'Нажмите кнопку для доступа',
-      Markup.inlineKeyboard([
-        Markup.button.webApp(messages.miniAppLinkText, url)
-      ])
-    )
-  } catch (err) {
-    if (err.description && err.description.includes('BUTTON_TYPE_INVALID')) {
-      await ctx.reply(
+  const send = async chatId => {
+    try {
+      await bot.telegram.sendMessage(
+        chatId,
         'Нажмите кнопку для доступа',
         Markup.inlineKeyboard([
-          Markup.button.url(messages.miniAppLinkText, url)
+          Markup.button.webApp(messages.miniAppLinkText, url)
         ])
       )
-    } else {
-      throw err
+    } catch (err) {
+      if (err.description && err.description.includes('BUTTON_TYPE_INVALID')) {
+        await bot.telegram.sendMessage(
+          chatId,
+          'Нажмите кнопку для доступа',
+          Markup.inlineKeyboard([
+            Markup.button.url(messages.miniAppLinkText, url)
+          ])
+        )
+      } else {
+        throw err
+      }
     }
+  }
+  if (ctx.chat.type === 'private') {
+    await send(ctx.chat.id)
+  } else {
+    await ctx.reply(messages.privateToken)
+    await send(ctx.from.id)
   }
 }
 
@@ -78,6 +88,17 @@ async function showTaskMenu(ctx) {
   rows.push([Markup.button.callback('Мои задачи', 'my_tasks')])
   rows.push([Markup.button.callback(messages.miniAppLinkText, 'open_app')])
   await ctx.reply(messages.menuPrompt, Markup.inlineKeyboard(rows))
+}
+
+// Главное меню с кнопками команд
+async function showMainMenu(ctx) {
+  await ctx.reply(
+    messages.menuPrompt,
+    Markup.keyboard([
+      ['/help', '/whoami', '/register'],
+      ['/task_menu', '/app', '/browser']
+    ]).resize()
+  )
 }
 
 bot.start(async (ctx) => {
@@ -117,6 +138,7 @@ bot.start(async (ctx) => {
     }
   }
   await sendAccessButton(ctx, url)
+  await showMainMenu(ctx)
 })
 
 bot.command('help', (ctx) => {
@@ -376,7 +398,7 @@ bot.command('browser', async (ctx) => {
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?token=${token}`
-  await ctx.reply(url)
+  await sendAccessButton(ctx, url)
 })
 
 bot.action('my_tasks', async (ctx) => {

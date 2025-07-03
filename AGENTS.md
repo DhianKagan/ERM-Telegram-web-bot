@@ -29,11 +29,9 @@ CI в GitHub Actions тоже вызывает `scripts/setup_and_test.sh`, по
 README включает раздел о GitHub Actions и необходимости отдельного MongoDB-хоста или Railway CLI.
 Добавлена рекомендация запускать `npm --prefix bot run check:mongo` для проверки доступности базы.
 Скрипт пытается переподключиться с `authSource=admin`, если получена ошибка аутентификации.
-Добавлен раздел о подготовке TDWeb и запуске `scripts/setup_tdweb.sh` перед сборкой клиента.
 README дополнен описанием `BOT_API_URL` и примером локального telegram-bot-api.
 Добавлен краткий абзац о роли `BOT_API_URL` в README.
-README также показывает пример запуска `./scripts/setup_tdweb.sh` перед сборкой.
- Docker Compose содержит `healthcheck` для MongoDB с передачей логина и пароля `admin`/`admin`.
+Docker Compose содержит `healthcheck` для MongoDB с передачей логина и пароля `admin`/`admin`.
  В нём теперь используется команда `mongosh`, что совместимо с новыми версиями образа.
 Workflow `docker.yml` поднимает локальный контейнер MongoDB для проверки скриптом `check_mongo.cjs`.
 Удалены устаревшие отчёты Lighthouse, файл `extended_tailadmin_guide.md` сокращён.

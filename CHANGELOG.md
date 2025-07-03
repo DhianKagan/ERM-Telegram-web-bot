@@ -53,4 +53,6 @@
 - Добавлены глобальные обработчики ошибок для перезапуска сервисов.
 - Файл ecosystem.config.cjs задаёт max_restarts и min_uptime.
 - Добавлен тест scheduler.test.js.
+- Исправлен запуск `pm2-runtime` в Dockerfile и Procfile.
+- Добавлен тест `errorHandler.test.js`.
 

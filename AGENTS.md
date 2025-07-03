@@ -54,4 +54,6 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 
 - Добавлен scheduler.test.js и улучшены параметры перезапуска pm2.
 - Функция telegramLogin удалена как устаревшая.
+- Dockerfile и Procfile запускают pm2-runtime через npx --prefix bot.
+- Добавлен тест errorHandler.test.js.
 

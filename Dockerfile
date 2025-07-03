@@ -13,8 +13,8 @@ COPY bot .
 RUN npm run build-client && npm prune --omit=dev
 
 FROM node:20-slim
-WORKDIR /app
+WORKDIR /app/bot
 ENV NODE_ENV=production
-COPY --from=build /app/bot ./bot
+COPY --from=build /app/bot .
 EXPOSE 3000
-CMD ["npx", "pm2-runtime", "/app/bot/ecosystem.config.cjs"]
+CMD ["npx", "pm2-runtime", "ecosystem.config.cjs"]

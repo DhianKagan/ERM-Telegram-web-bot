@@ -133,9 +133,9 @@ node scripts/set_menu_button_url.js
 1. В диалоге с [@BotFather](https://t.me/BotFather) выберите нужного бота.
 2. Откройте раздел *Attachment Menu* и включите `Enable Attachment Menu`.
 3. Страница выбора задачи расположена по пути `/menu` мини‑приложения.
-4. Обновите ссылку кнопки командой:
+4. Обновите ссылку кнопкой скриптом:
 ```bash
-npm run menu:update
+node scripts/set_attachment_menu_url.js
 ```
 
 ## Типовые ошибки API

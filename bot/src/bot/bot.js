@@ -471,18 +471,26 @@ bot.on('message', async (ctx) => {
 })
 
 const webhookUrl = process.env.WEBHOOK_URL
-if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
-  const { pathname } = new URL(webhookUrl)
-  bot.telegram.setWebhook(webhookUrl)
-  bot.startWebhook(pathname, null, botPort)
-  console.log(`Бот запущен в режиме webhook на порту ${botPort}`)
-  console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
-} else {
-  bot.launch().then(() => {
+async function startBot () {
+  if (webhookUrl && typeof bot.telegram.setWebhook === 'function') {
+    const { pathname } = new URL(webhookUrl)
+    try {
+      await bot.telegram.setWebhook(webhookUrl)
+      await bot.startWebhook(pathname, null, botPort)
+      console.log(`Бот запущен в режиме webhook на порту ${botPort}`)
+    } catch (err) {
+      console.error('Ошибка установки webhook, переключаемся на polling:', err)
+      await bot.launch()
+      console.log(`Бот запущен на порту ${botPort}`)
+    }
+  } else {
+    await bot.launch()
     console.log(`Бот запущен на порту ${botPort}`)
-    console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
-  })
+  }
+  console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
 }
-if (process.env.NODE_ENV !== 'test') startScheduler()
+startBot().then(() => {
+  if (process.env.NODE_ENV !== 'test') startScheduler()
+})
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

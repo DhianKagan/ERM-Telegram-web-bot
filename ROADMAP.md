@@ -52,4 +52,5 @@
 43. Создать скрипт `check_bot_token.sh` и рекомендовать его запуск перед деплоем.
 44. Синхронизировать файлы `bot_commands.json` и `bot_messages.json` и
     описать скрипт `set_attachment_menu_url.js` в документации.
+45. Завершать процесс при ошибке `bot.launch`, обернув вызов в `try/catch`.
 

@@ -13,6 +13,14 @@ const path = require('path')
 const fs = require('fs')
 const { execSync } = require('child_process')
 const { swaggerUi, specs } = require('./swagger')
+
+process.on('unhandledRejection', err => {
+  console.error('Unhandled rejection in API:', err)
+})
+process.on('uncaughtException', err => {
+  console.error('Uncaught exception in API:', err)
+  process.exit(1)
+})
 const tasksRouter = require('../routes/tasks')
 const authUserRouter = require('../routes/authUser')
 const {

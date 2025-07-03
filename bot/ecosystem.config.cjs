@@ -7,6 +7,8 @@ module.exports = {
       cwd: __dirname,
       instances: 1,
       autorestart: true,
+      max_restarts: 10,
+      min_uptime: 5000,
     },
     {
       name: 'bot',
@@ -14,6 +16,8 @@ module.exports = {
       cwd: __dirname,
       instances: 1,
       autorestart: true,
+      max_restarts: 10,
+      min_uptime: 5000,
     }
   ]
 }

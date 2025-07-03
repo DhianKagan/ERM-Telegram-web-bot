@@ -86,6 +86,14 @@ npm --prefix bot run check:mongo
 
 При корректном токене будет выведено `ok: true`. В противном случае появится текст ошибки от Telegram API.
 
+### Обновление Attachment Menu
+
+Для смены ссылки используйте скрипт:
+
+```bash
+node scripts/set_attachment_menu_url.js
+```
+
 ## Тесты
 
 Перед коммитом достаточно запустить скрипт:

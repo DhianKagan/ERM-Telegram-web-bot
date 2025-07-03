@@ -16,6 +16,7 @@ process.on('uncaughtException', err => {
 const { Telegraf, Markup } = require('telegraf')
 const path = require('path')
 const messages = require('../messages')
+const taskFields = require('../../shared/taskFields.cjs')
 const {
   createTask,
   assignTask,
@@ -174,6 +175,11 @@ bot.command('create_task', async (ctx) => {
     console.error('createForumTopic', e)
   }
   ctx.reply(messages.taskCreated)
+})
+
+bot.command('task_form', (ctx) => {
+  const text = taskFields.map(f => `• ${f.label}`).join('\n')
+  ctx.reply(`${messages.taskForm}\n${text}`)
 })
 
 bot.command('assign_task', async (ctx) => {

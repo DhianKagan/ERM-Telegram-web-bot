@@ -67,3 +67,4 @@ README подчёркивает запуск `npm ci --prefix bot` перед и
 - Procfile выполняет `scripts/set_bot_commands.sh` для синхронизации меню при
   запуске на Railway.
 
+- Формы задач описываются в `bot/shared/taskFields.cjs` и используются в разных частях приложения.

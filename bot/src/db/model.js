@@ -3,18 +3,8 @@ const mongoose = require('mongoose')
 const connect = require('./connection')
 
 if (process.env.NODE_ENV !== 'test') {
-  connect().catch(async (e) => {
-    console.error('Ошибка подключения к MongoDB:', e.message)
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      await new Promise(r => setTimeout(r, 5000))
-      try {
-        await connect()
-        console.log('MongoDB подключена после повторной попытки')
-        return
-      } catch (err) {
-        console.error(`Повторная попытка ${attempt} не удалась:`, err.message)
-      }
-    }
+  connect().catch(e => {
+    console.error('Не удалось подключиться к MongoDB:', e.message)
     process.exit(1)
   })
 }

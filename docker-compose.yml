@@ -18,6 +18,7 @@ services:
   mongo_db:
     container_name: task-bot-mongo
     image: mongo
+    restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=admin

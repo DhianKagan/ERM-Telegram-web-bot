@@ -33,6 +33,7 @@ const {
   addAttachment,
   deleteTask
 } = require('../services/service')
+const { getMemberStatus, getTelegramId } = require('../services/userInfoService')
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
 const { sendCode } = require('../services/otp')
@@ -120,6 +121,17 @@ bot.start(async (ctx) => {
 
 bot.command('help', (ctx) => {
   ctx.reply(messages.help)
+})
+
+bot.command('whoami', async (ctx) => {
+  const id = getTelegramId(ctx)
+  let status
+  try {
+    status = await getMemberStatus(id)
+  } catch {
+    return ctx.reply(messages.accessError)
+  }
+  ctx.reply(`${messages.idLabel}: ${id}\n${messages.statusLabel}: ${status}`)
 })
 
 bot.command('create_task', async (ctx) => {

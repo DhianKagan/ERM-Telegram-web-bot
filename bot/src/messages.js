@@ -7,6 +7,8 @@ module.exports = {
   welcomeBack: 'С возвращением!',
   codeSent: 'Код подтверждения отправлен в Telegram',
   miniAppLinkText: 'Открыть приложение',
+  idLabel: 'Ваш ID',
+  statusLabel: 'Статус в группе',
   unauthorizedCreateTask: 'Unauthorized: Only admins can create tasks.',
   taskNameRequired: 'Укажите название задачи после команды',
   taskCreated: 'Task created successfully!',

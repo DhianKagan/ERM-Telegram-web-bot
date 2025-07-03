@@ -50,15 +50,8 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
    curl "https://api.telegram.org/bot${BOT_TOKEN}/getMyCommands"
    ```
 
-## Работа с вебхуками
-Наш проект по умолчанию использует метод `getUpdates`, но поддерживает вебхуки для большей надёжности:
-1. Укажите публичный URL в переменной `WEBHOOK_URL`.
-2. Выполните настройку вебхука:
-```bash
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -d "url=${WEBHOOK_URL}"
-```
-3. Для проверки используйте `getWebhookInfo`.
+## Работа без вебхуков
+Бот использует только метод `getUpdates` (polling), поэтому настройка вебхука не требуется.
 
 ## Отправка сообщений
 Примеры запросов к Telegram Bot API:

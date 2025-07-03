@@ -29,7 +29,6 @@ module.exports = {
   },
   appUrl: appUrlEnv,
   port: process.env.PORT || 3000,
-  botPort: process.env.BOT_PORT || 3001,
   locale: process.env.LOCALE || 'ru',
   gateway: {
     key: process.env.GATEWAY_API_KEY,

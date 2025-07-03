@@ -239,5 +239,8 @@ const validate = validations => [
   app.use(errorHandler)
 
   const port = config.port
-  app.listen(port, () => console.log(`API запущен на порту ${port}`))
+  app.listen(port, () => {
+    console.log(`API запущен на порту ${port}`)
+    console.log(`Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`)
+  })
 })()

@@ -3,7 +3,6 @@ import { useState } from 'react'
 
 export default function CodeLogin() {
   const [telegramId, setTelegramId] = useState('')
-  const [username, setUsername] = useState('')
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
 
@@ -14,19 +13,6 @@ export default function CodeLogin() {
       body: JSON.stringify({ telegramId: Number(telegramId) })
     })
     setSent(true)
-  }
-
-  async function loginByName() {
-    const res = await fetch('/api/auth/login_username', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
-    })
-    if (res.ok) {
-      const data = await res.json()
-      localStorage.setItem('token', data.token)
-      window.location.href = '/'
-    }
   }
 
   async function verify() {
@@ -49,12 +35,6 @@ export default function CodeLogin() {
         placeholder="Telegram ID"
         value={telegramId}
         onChange={(e) => setTelegramId(e.target.value)}
-      />
-      <input
-        className="border p-2"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
       />
       <a
         className="text-blue-500 underline"
@@ -81,9 +61,6 @@ export default function CodeLogin() {
           Войти по коду
         </button>
       )}
-      <button onClick={loginByName} className="bg-green-500 text-white p-2">
-        Войти по username
-      </button>
     </div>
   )
 }

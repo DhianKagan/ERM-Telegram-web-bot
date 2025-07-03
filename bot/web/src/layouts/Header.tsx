@@ -31,20 +31,13 @@ export default function Header() {
           </span>
           <input className="h-9 rounded-lg border border-gray-300 bg-gray-50 pl-8 pr-2 text-sm focus:border-brand-300 focus:outline-none" placeholder="Поиск" />
         </div>
-        {token ? (
+        {token && (
           <>
             <NotificationDropdown notifications={["Новое сообщение"]}>
               <BellIcon className="h-5 w-5" />
             </NotificationDropdown>
             <DropdownMenu items={authItems} />
           </>
-        ) : (
-          <a
-            href="/login"
-            className="rounded px-3 py-1 text-sm hover:text-accentPrimary"
-          >
-            Войти
-          </a>
         )}
       </div>
     </header>

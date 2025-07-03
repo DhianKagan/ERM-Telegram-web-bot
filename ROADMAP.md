@@ -44,4 +44,5 @@
 
 34. Удалить устаревший метод telegramLogin и связанные проверки.
 35. Добавить глобальные обработчики ошибок и настроить pm2 (max_restarts, min_uptime).
+36. Исправить запуск pm2-runtime через npx --prefix bot и добавить тест errorHandler.
 

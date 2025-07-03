@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import TaskCard from "../components/TaskCard";
-import TaskFormModal from "../components/TaskFormModal";
+import TaskForm from "../components/TaskForm";
 import { fetchKanban, updateTaskStatus } from "../services/tasks";
 
 const columns = ["new", "in-progress", "done"];
@@ -69,7 +69,7 @@ export default function TaskKanban() {
         ))}
       </DragDropContext>
       {open && (
-        <TaskFormModal
+        <TaskForm
           onClose={() => setOpen(false)}
           onCreate={() => {
             fetchKanban().then(setTasks);

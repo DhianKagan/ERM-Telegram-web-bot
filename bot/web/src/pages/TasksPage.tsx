@@ -1,6 +1,6 @@
 // Страница управления задачами
 import React from "react";
-import TaskFormModal from "../components/TaskFormModal";
+import TaskForm from "../components/TaskForm";
 import TaskModal from "../components/TaskModal";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/ToastContext";
@@ -214,7 +214,7 @@ export default function TasksPage() {
         </button>
       )}
       {open && (
-        <TaskFormModal
+        <TaskForm
           onClose={() => setOpen(false)}
           onCreate={() => {
             setOpen(false);

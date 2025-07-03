@@ -483,6 +483,7 @@ async function startBot () {
       try {
         await bot.launch()
         console.log(`Бот запущен на порту ${botPort}`)
+        await call('sendMessage', { chat_id: chatId, text: `Webhook error: ${err.message}` })
       } catch (launchErr) {
         console.error('Не удалось запустить бота:', launchErr)
         process.exit(1)

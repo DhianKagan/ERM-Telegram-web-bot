@@ -18,6 +18,13 @@ router.get('/', verifyToken, [
   query('to').optional().isISO8601()
 ], ctrl.list)
 
+router.get('/mentioned', verifyToken, ctrl.mentioned)
+
+router.get('/report/summary', verifyToken, [
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601()
+], ctrl.summary)
+
 router.get('/:id', verifyToken, detailLimiter, [param('id').isMongoId()], ctrl.detail)
 
 router.post('/', verifyToken, [
@@ -54,12 +61,5 @@ router.post('/bulk', verifyToken, [
   body('ids').isArray({ min: 1 }),
   body('status').isString()
 ], ctrl.bulk)
-
-router.get('/mentioned', verifyToken, ctrl.mentioned)
-
-router.get('/report/summary', verifyToken, [
-  query('from').optional().isISO8601(),
-  query('to').optional().isISO8601()
-], ctrl.summary)
 
 module.exports = router

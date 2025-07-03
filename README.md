@@ -125,3 +125,4 @@ NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 Подробные инструкции по настройке бота смотрите в `docs/telegram_bot_manual.md`.
 Изменения по версиям описаны в `CHANGELOG.md`, планы развития — в `ROADMAP.md`.
 Для локальной отладки задайте `BOT_API_URL` в `.env` и запустите контейнер telegram-bot-api, как показано в разделе «Быстрый старт».
+Маршрут `/tasks/mentioned` в файле `routes/tasks.js` расположен перед параметрическим путём `/:id`, что устраняет ошибку `Cast to ObjectId failed`.

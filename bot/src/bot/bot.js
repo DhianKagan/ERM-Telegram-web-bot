@@ -5,6 +5,14 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN:', process.env.BOT_TOKEN)
 }
 const { botToken, botApiUrl, appUrl, chatId, r2, botPort } = require('../config')
+
+process.on('unhandledRejection', err => {
+  console.error('Unhandled rejection in bot:', err)
+})
+process.on('uncaughtException', err => {
+  console.error('Uncaught exception in bot:', err)
+  process.exit(1)
+})
 const { Telegraf, Markup } = require('telegraf')
 const messages = require('../messages')
 const {

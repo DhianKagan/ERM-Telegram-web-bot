@@ -50,7 +50,7 @@ export default function Admin() {
                 href={`tg://user?id=${u.telegram_id}`}
                 className="text-accentPrimary hover:underline"
               >
-                {u.username}
+                {u.name || u.username}
               </a>
               {u.roleId ? ` (${u.roleId.name})` : ""}
               {u.verified_at ? ' ✅' : ' ❌'}

@@ -20,6 +20,8 @@ interface Task {
 interface User {
   telegram_id: number
   username: string
+  name?: string
+  phone?: string
 }
 
 interface KpiSummary {
@@ -176,7 +178,7 @@ export default function TasksPage() {
                       href={`tg://user?id=${id}`}
                       className="text-accentPrimary mr-1 underline"
                     >
-                      {userMap[id]?.username || id}
+                      {userMap[id]?.name || userMap[id]?.username || id}
                     </a>
                   ))}
               </td>

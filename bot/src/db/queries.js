@@ -118,13 +118,13 @@ async function listDepartments() {
   return Department.find()
 }
 
-async function createUser(id, username, roleId) {
+async function createUser(id, username, roleId, extra = {}) {
   const email = `${id}@telegram.local`
   if (!roleId) {
     const role = await Role.findOne({ name: 'user' })
     roleId = role ? role._id : undefined
   }
-  return User.create({ telegram_id: id, username, email, roleId })
+  return User.create({ telegram_id: id, username, email, roleId, ...extra })
 }
 
 async function getUser(id) {

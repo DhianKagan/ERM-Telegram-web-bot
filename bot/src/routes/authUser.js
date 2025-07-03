@@ -30,4 +30,13 @@ router.post('/verify_code', validate([
 ]), asyncHandler(authCtrl.verifyCode))
 
 router.get('/profile', verifyToken, ctrl.profile)
+router.patch(
+  '/profile',
+  verifyToken,
+  validate([
+    body('name').optional().isString().notEmpty(),
+    body('phone').optional().isMobilePhone('any')
+  ]),
+  asyncHandler(ctrl.updateProfile)
+)
 module.exports = router

@@ -117,7 +117,7 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             <option value="">назначить</option>
             {users.map((u) => (
               <option key={u.telegram_id} value={u.telegram_id}>
-                {u.username}
+                {u.name || u.username}
               </option>
             ))}
           </select>
@@ -126,7 +126,8 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
               href={`tg://user?id=${task.assigned_user_id}`}
               className="text-accentPrimary text-sm underline"
             >
-              {users.find((u) => u.telegram_id === task.assigned_user_id)?.username ||
+              {users.find((u) => u.telegram_id === task.assigned_user_id)?.name ||
+                users.find((u) => u.telegram_id === task.assigned_user_id)?.username ||
                 task.assigned_user_id}
             </a>
           )}
@@ -144,7 +145,7 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             <option value="">назначить</option>
             {users.map((u) => (
               <option key={u.telegram_id} value={u.telegram_id}>
-                {u.username}
+                {u.name || u.username}
               </option>
             ))}
           </select>
@@ -153,7 +154,8 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
               href={`tg://user?id=${task.controller_user_id}`}
               className="text-accentPrimary text-sm underline"
             >
-              {users.find((u) => u.telegram_id === task.controller_user_id)?.username ||
+              {users.find((u) => u.telegram_id === task.controller_user_id)?.name ||
+                users.find((u) => u.telegram_id === task.controller_user_id)?.username ||
                 task.controller_user_id}
             </a>
           )}

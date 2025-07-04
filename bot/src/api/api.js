@@ -227,6 +227,7 @@ const validate = validations => [
     res.json(await listLogs())
   }))
 
+
   app.get('/api/defaults/:name', defaultsRateLimiter, verifyToken, asyncHandler(async (req, res) => {
     res.json(await getDefaultValues(req.params.name))
   }))
@@ -235,6 +236,7 @@ const validate = validations => [
     validate([
       body('values').isArray().custom(arr => arr.every(v => ['string', 'number', 'boolean'].includes(typeof v)))
     ]),
+
     asyncHandler(async (req, res) => {
       await setDefaultValues(req.params.name, req.body.values)
       res.json({ status: 'ok' })
@@ -257,6 +259,7 @@ const validate = validations => [
   }))
 
   app.delete('/api/transports/:id', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+
     await deleteTransport(req.params.id)
     res.json({ status: 'ok' })
   }))

@@ -13,7 +13,7 @@ export default function DropdownMenu({ items }: { items: DropdownItem[] }) {
   const close = () => setOpen(false)
   return (
     <div className="relative" onBlur={close} tabIndex={0}>
-      <button onClick={toggle} className="h-8 w-8 rounded-full focus:outline-none">
+      <button onClick={toggle} className="h-8 w-8 rounded-full focus:outline-none" aria-label="Меню профиля">
         <img src="/img/avatar.png" alt="avatar" className="h-full w-full rounded-full" />
       </button>
       {open && (

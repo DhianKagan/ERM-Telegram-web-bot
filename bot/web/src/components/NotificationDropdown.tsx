@@ -5,7 +5,7 @@ export default function NotificationDropdown({ notifications, children }: { noti
   const [open, setOpen] = React.useState(false)
   return (
     <div className="relative" onBlur={() => setOpen(false)} tabIndex={0}>
-      <button onClick={() => setOpen(!open)} className="p-2 hover:text-accentPrimary">
+      <button onClick={() => setOpen(!open)} className="p-2 hover:text-accentPrimary" aria-label="Уведомления">
         {children}
       </button>
       {open && (

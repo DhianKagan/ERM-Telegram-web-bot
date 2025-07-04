@@ -1,5 +1,6 @@
 // Модели MongoDB. Подключение выполняет модуль connection.js
 const mongoose = require('mongoose')
+const slugify = require('slugify')
 const connect = require('./connection')
 
 if (process.env.NODE_ENV !== 'test') {
@@ -16,6 +17,7 @@ const checklistItemSchema = new mongoose.Schema({
 
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
+  slug: String,
   task_description: String,
   task_type: { type: String, enum: ['Доставить', 'Купить', 'Выполнить'] },
   task_type_id: Number,
@@ -43,6 +45,13 @@ const taskSchema = new mongoose.Schema({
   telegram_topic_id: Number,
   time_spent: { type: Number, default: 0 }
 }, { timestamps: true })
+
+taskSchema.pre('save', function(next) {
+  if (this.isModified('title')) {
+    this.slug = slugify(this.title, { lower: true, strict: true })
+  }
+  next()
+})
 
 const groupSchema = new mongoose.Schema({ name: String })
 const userSchema = new mongoose.Schema({

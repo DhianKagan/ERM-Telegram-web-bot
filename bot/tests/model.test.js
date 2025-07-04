@@ -13,4 +13,9 @@ test('schema has task_description', () => {
   expect(desc).toBeDefined()
 })
 
+test('schema has slug field', () => {
+  const slug = Task.schema.paths.slug
+  expect(slug).toBeDefined()
+})
+
 afterAll(() => stopScheduler())

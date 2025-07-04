@@ -24,3 +24,5 @@
 - Появилась универсальная модель `UniversalTask`
 - В расширенной модели появились поля с enum и default: `transport_type`,
   `payment_method`, `priority`, `status`
+- Добавлена универсальная заявка с разделами логистики, закупок и работ;
+  CRUD-маршруты доступны по `/api/universal_tasks`

@@ -19,3 +19,5 @@
 - Создана модель `UniversalTask` и расширен набор запросов
 - Модель `UniversalTask` дополнена полями `transport_type`, `payment_method`,
   `priority`, `status` со значениями по умолчанию
+- Появились CRUD-маршруты `/api/universal_tasks` для работы с универсальными
+  заявками

@@ -34,7 +34,13 @@ const {
   createDepartment,
   listDepartments,
   writeLog,
-  listLogs
+  listLogs,
+  getDefaultValues,
+  setDefaultValues,
+  listTransports,
+  createTransport,
+  updateTransport,
+  deleteTransport
 } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const checkRole = require('../middleware/checkRole')
@@ -109,6 +115,16 @@ const validate = validations => [
     message: { error: 'Too many requests, please try again later.' }
   })
   const logsRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const defaultsRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const transportsRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
     message: { error: 'Too many requests, please try again later.' }
@@ -209,6 +225,40 @@ const validate = validations => [
 
   app.get('/api/logs', logsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listLogs())
+  }))
+
+  app.get('/api/defaults/:name', defaultsRateLimiter, verifyToken, asyncHandler(async (req, res) => {
+    res.json(await getDefaultValues(req.params.name))
+  }))
+
+  app.put('/api/defaults/:name', defaultsRateLimiter, verifyToken, checkRole('admin'),
+    validate([
+      body('values').isArray().custom(arr => arr.every(v => ['string', 'number', 'boolean'].includes(typeof v)))
+    ]),
+    asyncHandler(async (req, res) => {
+      await setDefaultValues(req.params.name, req.body.values)
+      res.json({ status: 'ok' })
+    }))
+
+  app.get('/api/transports', transportsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listTransports())
+  }))
+
+  app.post('/api/transports', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    res.json(await createTransport(req.body))
+  }))
+
+  app.patch('/api/transports/:id', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    const allowedFields = ['name', 'specs', 'numbers']
+    const sanitized = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => allowedFields.includes(k))
+    )
+    res.json(await updateTransport(req.params.id, sanitized))
+  }))
+
+  app.delete('/api/transports/:id', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    await deleteTransport(req.params.id)
+    res.json({ status: 'ok' })
   }))
 
   app.post('/api/tasks/:id/status', taskStatusRateLimiter, verifyToken,

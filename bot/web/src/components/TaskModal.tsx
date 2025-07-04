@@ -3,10 +3,7 @@ import React from "react";
 import RichTextEditor from "./RichTextEditor";
 import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import fields from "../../../shared/taskFields.cjs";
-
-const TRANSPORTS = fields.find((f) => f.name === "transport_type")?.options || [];
-const PAYMENTS = fields.find((f) => f.name === "payment_method")?.options || [];
+import { fetchDefaults } from "../services/dicts";
 
 interface TaskModalProps {
   id: string
@@ -21,6 +18,8 @@ interface User {
 export default function TaskModal({ id, onClose }: TaskModalProps) {
   const [task, setTask] = React.useState<any>(null);
   const [users, setUsers] = React.useState<User[]>([]);
+  const [transports, setTransports] = React.useState<string[]>([]);
+  const [payments, setPayments] = React.useState<string[]>([]);
   const chatId = import.meta.env.VITE_CHAT_ID;
 
   React.useEffect(() => {
@@ -30,6 +29,14 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
     authFetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
+    fetchDefaults("transport_type").then((v) => {
+      setTransports(v);
+      if (!task?.transport_type && v.length) setTask((t) => ({ ...t, transport_type: v[0] }));
+    });
+    fetchDefaults("payment_method").then((v) => {
+      setPayments(v);
+      if (!task?.payment_method && v.length) setTask((t) => ({ ...t, payment_method: v[0] }));
+    });
   }, [id]);
 
   const save = async () => {
@@ -96,7 +103,7 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             onChange={(e) => setTask({ ...task, transport_type: e.target.value })}
             className="mt-1 w-full rounded border px-2 py-1"
           >
-            {TRANSPORTS.map((t) => (
+            {transports.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
@@ -110,7 +117,7 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             onChange={(e) => setTask({ ...task, payment_method: e.target.value })}
             className="mt-1 w-full rounded border px-2 py-1"
           >
-            {PAYMENTS.map((p) => (
+            {payments.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

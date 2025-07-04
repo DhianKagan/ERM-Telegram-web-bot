@@ -3,6 +3,10 @@ import React from "react";
 import RichTextEditor from "./RichTextEditor";
 import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
+import fields from "../../../shared/taskFields.cjs";
+
+const TRANSPORTS = fields.find((f) => f.name === "transport_type")?.options || [];
+const PAYMENTS = fields.find((f) => f.name === "payment_method")?.options || [];
 
 interface TaskModalProps {
   id: string
@@ -84,6 +88,34 @@ export default function TaskModal({ id, onClose }: TaskModalProps) {
             onChange={(e) => setTask({ ...task, due_date: e.target.value })}
             className="mt-1 w-full rounded border px-2 py-1"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Тип транспорта</label>
+          <select
+            value={task.transport_type || ""}
+            onChange={(e) => setTask({ ...task, transport_type: e.target.value })}
+            className="mt-1 w-full rounded border px-2 py-1"
+          >
+            {TRANSPORTS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Способ оплаты</label>
+          <select
+            value={task.payment_method || ""}
+            onChange={(e) => setTask({ ...task, payment_method: e.target.value })}
+            className="mt-1 w-full rounded border px-2 py-1"
+          >
+            {PAYMENTS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>

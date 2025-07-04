@@ -142,6 +142,14 @@ async function listDepartments() {
   return Department.find()
 }
 
+async function updateDepartment(id, name) {
+  return Department.findByIdAndUpdate(id, { name }, { new: true })
+}
+
+async function deleteDepartment(id) {
+  return Department.findByIdAndDelete(id)
+}
+
 async function createUser(id, username, roleId, extra = {}) {
   const email = `${id}@telegram.local`
   if (!roleId) {
@@ -248,6 +256,8 @@ module.exports = {
   listUniversalTasks,
   updateUniversalTask,
   deleteUniversalTask,
+  updateDepartment,
+  deleteDepartment,
   getDefaultValues,
   setDefaultValues,
   listTransports,

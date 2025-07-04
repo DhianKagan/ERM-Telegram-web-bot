@@ -29,4 +29,5 @@
 - Для редактирования значений enum есть коллекции `DefaultValue` и `Transport`,
   эндпойнты `/api/defaults/:name` и `/api/transports`
 - Для них действует rate limit и проверка входных данных
+- Отделы редактируются через `/api/departments` и страницу `/defaults`
 

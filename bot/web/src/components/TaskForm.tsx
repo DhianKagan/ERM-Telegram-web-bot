@@ -7,12 +7,8 @@ import authFetch from "../utils/authFetch";
 import RichTextEditor from "./RichTextEditor";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
+import { fetchDefaults } from "../services/dicts";
 
-const TYPES = fields.find((f) => f.name === "task_type")?.options || [];
-const PRIORITIES = fields.find((f) => f.name === "priority")?.options || [];
-const TRANSPORTS = fields.find((f) => f.name === "transport_type")?.options || [];
-const PAYMENTS = fields.find((f) => f.name === "payment_method")?.options || [];
-const STATUSES = fields.find((f) => f.name === "status")?.options || [];
 const DEFAULT_TYPE = fields.find((f) => f.name === "task_type")?.default || "";
 const DEFAULT_PRIORITY = fields.find((f) => f.name === "priority")?.default || "";
 const DEFAULT_TRANSPORT = fields.find((f) => f.name === "transport_type")?.default || "";
@@ -33,6 +29,11 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
+  const [types, setTypes] = React.useState<string[]>([]);
+  const [priorities, setPriorities] = React.useState<string[]>([]);
+  const [transports, setTransports] = React.useState<string[]>([]);
+  const [payments, setPayments] = React.useState<string[]>([]);
+  const [statuses, setStatuses] = React.useState<string[]>([]);
   const [department, setDepartment] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [assignees, setAssignees] = React.useState([]);
@@ -47,6 +48,29 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
   const [roles, setRoles] = React.useState([]);
   const [departments, setDepartments] = React.useState([]);
   const { user } = useContext(AuthContext);
+
+  React.useEffect(() => {
+    fetchDefaults("task_type").then((v) => {
+      setTypes(v);
+      if (!taskType && v.length) setTaskType(v[0]);
+    });
+    fetchDefaults("priority").then((v) => {
+      setPriorities(v);
+      if (!priority && v.length) setPriority(v[0]);
+    });
+    fetchDefaults("transport_type").then((v) => {
+      setTransports(v);
+      if (!transportType && v.length) setTransportType(v[0]);
+    });
+    fetchDefaults("payment_method").then((v) => {
+      setPayments(v);
+      if (!paymentMethod && v.length) setPaymentMethod(v[0]);
+    });
+    fetchDefaults("status").then((v) => {
+      setStatuses(v);
+      if (!status && v.length) setStatus(v[0]);
+    });
+  }, []);
 
   React.useEffect(() => {
     authFetch("/api/users")
@@ -126,7 +150,7 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
             onChange={(e) => setPriority(e.target.value)}
             className="rounded border px-2 py-1"
           >
-          {PRIORITIES.map((p) => (
+          {priorities.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -154,7 +178,7 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
           onChange={(e) => setTaskType(e.target.value)}
           className="w-full rounded border px-2 py-1"
         >
-          {TYPES.map((t) => (
+          {types.map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
@@ -228,7 +252,7 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
           onChange={(e) => setTransportType(e.target.value)}
           className="w-full rounded border px-2 py-1"
         >
-          {TRANSPORTS.map((t) => (
+          {transports.map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
@@ -270,7 +294,7 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
           onChange={(e) => setPaymentMethod(e.target.value)}
           className="w-full rounded border px-2 py-1"
         >
-          {PAYMENTS.map((p) => (
+          {payments.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -329,7 +353,7 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
           onChange={(e) => setStatus(e.target.value)}
           className="w-full rounded border px-2 py-1"
         >
-          {STATUSES.map((s) => (
+          {statuses.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>

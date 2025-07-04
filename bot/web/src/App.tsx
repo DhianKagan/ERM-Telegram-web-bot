@@ -11,6 +11,7 @@ const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Admin = lazy(() => import("./pages/Admin"));
+const Defaults = lazy(() => import("./pages/Defaults"));
 const Roles = lazy(() => import("./pages/Roles"));
 const Logs = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -103,6 +104,14 @@ function Content() {
             element={
               <ProtectedRoute>
                 <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/defaults"
+            element={
+              <ProtectedRoute>
+                <Defaults />
               </ProtectedRoute>
             }
           />

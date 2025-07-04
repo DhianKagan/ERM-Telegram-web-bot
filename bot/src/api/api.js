@@ -34,7 +34,13 @@ const {
   createDepartment,
   listDepartments,
   writeLog,
-  listLogs
+  listLogs,
+  getDefaultValues,
+  setDefaultValues,
+  listTransports,
+  createTransport,
+  updateTransport,
+  deleteTransport
 } = require('../services/service')
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware')
 const checkRole = require('../middleware/checkRole')
@@ -209,6 +215,34 @@ const validate = validations => [
 
   app.get('/api/logs', logsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listLogs())
+  }))
+
+  app.get('/api/defaults/:name', verifyToken, asyncHandler(async (req, res) => {
+    res.json(await getDefaultValues(req.params.name))
+  }))
+
+  app.put('/api/defaults/:name', verifyToken, checkRole('admin'),
+    validate([body('values').isArray()]),
+    asyncHandler(async (req, res) => {
+      await setDefaultValues(req.params.name, req.body.values)
+      res.json({ status: 'ok' })
+    }))
+
+  app.get('/api/transports', verifyToken, asyncHandler(async (_req, res) => {
+    res.json(await listTransports())
+  }))
+
+  app.post('/api/transports', verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    res.json(await createTransport(req.body))
+  }))
+
+  app.patch('/api/transports/:id', verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    res.json(await updateTransport(req.params.id, req.body))
+  }))
+
+  app.delete('/api/transports/:id', verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    await deleteTransport(req.params.id)
+    res.json({ status: 'ok' })
   }))
 
   app.post('/api/tasks/:id/status', taskStatusRateLimiter, verifyToken,

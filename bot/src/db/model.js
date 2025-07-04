@@ -47,7 +47,7 @@ const procurementSchema = new mongoose.Schema({
   total_cost: Number,
   payment_method: {
     type: String,
-    enum: ['Наличные', 'Карта', 'Безнал'],
+    enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
     default: 'Карта'
   }
 }, { _id: false })
@@ -72,6 +72,7 @@ const taskSchema = new mongoose.Schema({
   task_type: {
     type: String,
     enum: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить']
+
   },
   task_type_id: Number,
   due_date: Date,
@@ -96,12 +97,14 @@ const taskSchema = new mongoose.Schema({
   files: [String],
   attachments: [{ name: String, url: String }],
   transport_type: { type: String, enum: ['Пешком', 'Авто', 'Дрон'], default: 'Авто' },
+
   // Способ оплаты допускает отсутствие оплаты
   payment_method: {
     type: String,
     enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
     default: 'Карта'
   },
+
   telegram_topic_id: Number,
   time_spent: { type: Number, default: 0 },
   custom_fields: mongoose.Schema.Types.Mixed

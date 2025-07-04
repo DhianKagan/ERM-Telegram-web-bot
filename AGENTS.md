@@ -19,3 +19,4 @@
 - Переменная `BOT_API_URL` позволяет использовать локальный telegram-bot-api
 - Docker Compose содержит healthcheck для MongoDB
 - Добавлена пагинация списка задач в API
+- В задачи добавлено поле `slug`

@@ -74,6 +74,22 @@ bot.sendMessage(chatId, 'Выберите действие', {
 ```
 Подробнее об опциях клавиатур смотрите в разделе [ReplyKeyboardMarkup](https://core.telegram.org/bots/api#replykeyboardmarkup).
 
+## Создание меню команд без `/`
+Чтобы показать пользователю блок кнопок, используйте `Markup.keyboard` и обработчики `bot.hears`. Ниже приведён пример из файла `bot/src/bot/bot.js`:
+```javascript
+Markup.keyboard([
+  ["Справка", "Кто я", "Регистрация"],
+  ["Меню задач", "Приложение", "Браузер"]
+]).resize()
+```
+Текстовые сообщения обрабатываются так:
+```javascript
+bot.hears("Меню задач", async (ctx) => {
+  await showTaskMenu(ctx)
+})
+```
+Для callback-кнопок используйте `Markup.inlineKeyboard`.
+
 ## Дополнительные функции
 - [Inline-режим](https://core.telegram.org/bots/api#inline-mode) позволяет обрабатывать запросы без открытия диалога с ботом.
 - В нём доступны команды `add <текст>` для быстрого создания задачи и `search <ключ>` для поиска.

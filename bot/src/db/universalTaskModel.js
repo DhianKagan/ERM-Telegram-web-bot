@@ -21,7 +21,12 @@ const logisticsSchema = new mongoose.Schema({
   end_location: String,
   start_date: Date,
   end_date: Date,
-  transport: String
+  transport: String,
+  transport_type: {
+    type: String,
+    enum: ['Пешком', 'Авто', 'Дрон'],
+    default: 'Авто'
+  }
 }, { _id: false })
 
 const itemSchema = new mongoose.Schema({
@@ -33,7 +38,12 @@ const itemSchema = new mongoose.Schema({
 const procurementSchema = new mongoose.Schema({
   items: [itemSchema],
   vendor: String,
-  total_cost: Number
+  total_cost: Number,
+  payment_method: {
+    type: String,
+    enum: ['Наличные', 'Карта', 'Безнал'],
+    default: 'Карта'
+  }
 }, { _id: false })
 
 const workSchema = new mongoose.Schema({
@@ -49,6 +59,16 @@ const universalTaskSchema = new mongoose.Schema({
   logistics_details: logisticsSchema,
   procurement_details: procurementSchema,
   work_details: workSchema,
+  priority: {
+    type: String,
+    enum: ['Срочно', 'В течении дня', 'Бессрочно'],
+    default: 'В течении дня'
+  },
+  status: {
+    type: String,
+    enum: ['new', 'in-progress', 'done'],
+    default: 'new'
+  },
   custom_fields: mongoose.Schema.Types.Mixed
 }, { timestamps: true })
 

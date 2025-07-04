@@ -14,6 +14,8 @@
 - Поле `slug` формируется автоматически из названия задачи
 - Улучшенная доступность и SEO: `robots.txt`, `aria-label` и meta description
 - Универсальная модель заявок `UniversalTask`
+- В неё добавлены поля c enum: `transport_type`, `payment_method`, `priority`,
+  `status`
 
 ## Быстрый старт
 1. Клонируйте репозиторий и создайте `.env` на основе `.env.example`:

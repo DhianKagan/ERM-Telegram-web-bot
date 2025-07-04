@@ -96,8 +96,8 @@ async function showMainMenu(ctx) {
   await ctx.reply(
     messages.menuPrompt,
     Markup.keyboard([
-      ['/help', '/whoami', '/register'],
-      ['/task_menu', '/app', '/browser']
+      ["Справка", "Кто я", "Регистрация"],
+      ["Меню задач", "Приложение", "Браузер"]
     ]).resize()
   )
 }
@@ -397,6 +397,68 @@ bot.command('app', async (ctx) => {
 
 // Команда /browser отправляет прямую ссылку на приложение для открытия во внешнем браузере
 bot.command('browser', async (ctx) => {
+  let user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+  }
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}`
+  await sendAccessButton(ctx, url)
+})
+// Обработка нажатий текстовых кнопок
+bot.hears("Справка", (ctx) => ctx.reply(messages.help))
+
+bot.hears("Кто я", async (ctx) => {
+  const id = getTelegramId(ctx)
+  let status
+  try {
+    status = await getMemberStatus(id)
+  } catch {
+    return ctx.reply(messages.accessError)
+  }
+  ctx.reply(`${messages.idLabel}: ${id}\n${messages.statusLabel}: ${status}`)
+})
+
+bot.hears("Регистрация", async (ctx) => {
+  try {
+    const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
+    if (!['creator', 'administrator', 'member'].includes(member.status)) {
+      return ctx.reply(messages.accessOnlyGroup)
+    }
+  } catch {
+    return ctx.reply(messages.accessError)
+  }
+  const user = await getUser(ctx.from.id)
+  if (user) return ctx.reply(messages.alreadyRegistered)
+  await createUser(ctx.from.id, ctx.from.username)
+  ctx.reply(messages.registrationSuccess)
+})
+
+bot.hears("Меню задач", async (ctx) => {
+  await showTaskMenu(ctx)
+})
+
+bot.hears("Приложение", async (ctx) => {
+  try {
+    const member = await bot.telegram.getChatMember(chatId, ctx.from.id)
+    if (!['creator', 'administrator', 'member'].includes(member.status)) {
+      return ctx.reply(messages.accessOnlyGroup)
+    }
+  } catch {
+    return ctx.reply(messages.accessError)
+  }
+  let user = await getUser(ctx.from.id)
+  if (!user) {
+    await createUser(ctx.from.id, ctx.from.username)
+  }
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}`
+  await sendAccessButton(ctx, url)
+})
+
+bot.hears("Браузер", async (ctx) => {
   let user = await getUser(ctx.from.id)
   if (!user) {
     await createUser(ctx.from.id, ctx.from.username)

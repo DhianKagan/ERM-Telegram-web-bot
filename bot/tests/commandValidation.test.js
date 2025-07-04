@@ -9,6 +9,7 @@ process.env.APP_URL = 'https://localhost'
 jest.mock('telegraf', () => ({
   Telegraf: jest.fn().mockImplementation(() => ({
     command: (name, fn) => { handlers[name] = fn },
+    hears: (name, fn) => { handlers[name] = fn },
     start: jest.fn(),
     on: (event, fn) => { handlers[event] = fn },
     action: (name, fn) => { handlers[name] = fn },

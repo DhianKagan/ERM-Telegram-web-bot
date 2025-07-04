@@ -16,7 +16,8 @@ jest.mock('telegraf', () => ({
     launch: jest.fn().mockResolvedValue(),
     telegram: {
       getChatMember: jest.fn().mockResolvedValue({ status: 'member' }),
-      getChatAdministrators: jest.fn().mockResolvedValue([{ user: { id: 1 } }])
+      getChatAdministrators: jest.fn().mockResolvedValue([{ user: { id: 1 } }]),
+      deleteWebhook: jest.fn().mockResolvedValue()
     }
   }))
 }))

@@ -562,7 +562,8 @@ bot.on('message', async (ctx) => {
 
 async function startBot () {
   try {
-    await bot.launch()
+    await bot.telegram.deleteWebhook()
+    await bot.launch({ dropPendingUpdates: true })
     console.log('Бот запущен')
   } catch (err) {
     console.error('Не удалось запустить бота:', err)

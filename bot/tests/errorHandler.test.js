@@ -9,6 +9,7 @@ const express = require('express')
 const request = require('supertest')
 const { errorHandler } = require('../src/api/middleware')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 let app
 beforeAll(() => {
@@ -21,7 +22,7 @@ beforeAll(() => {
   app.use(errorHandler)
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })
 
 test('errorHandler возвращает 400 для request.aborted', async () => {
   const res = await request(app).get('/aborted')

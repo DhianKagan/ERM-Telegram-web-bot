@@ -4,10 +4,12 @@ process.env.BOT_TOKEN = 't'
 process.env.CHAT_ID = '1'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 's'
+process.env.APP_URL = 'https://localhost'
 
 const express = require('express')
 const request = require('supertest')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 jest.mock('../src/services/service', () => ({
   updateTaskStatus: jest.fn(),
@@ -50,4 +52,4 @@ test('статус задачи меняется на in-progress', async () => 
   expect(updateTaskStatus).toHaveBeenCalledWith(id, 'in-progress')
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

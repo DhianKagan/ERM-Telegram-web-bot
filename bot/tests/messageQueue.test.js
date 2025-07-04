@@ -2,8 +2,9 @@ process.env.BOT_TOKEN = 't'
 process.env.CHAT_ID = '1'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 's'
+process.env.APP_URL = 'https://localhost'
 
-const { enqueue, queue } = require('../src/services/messageQueue')
+const { enqueue, queue, stopQueue } = require('../src/services/messageQueue')
 
 test('очередь замедляет отправку при большом числе задач', async () => {
   const start = Date.now()
@@ -16,4 +17,6 @@ test('очередь замедляет отправку при большом �
   expect(duration).toBeGreaterThanOrEqual(900)
   expect(queue.length).toBe(0)
 })
+
+afterAll(() => stopQueue())
 

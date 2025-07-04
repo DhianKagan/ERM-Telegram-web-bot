@@ -9,6 +9,7 @@ const express = require('express')
 const request = require('supertest')
 const router = require('../src/routes/tasks')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 jest.mock('../src/db/model', () => ({
   Task: { find: jest.fn(async()=>[]), findById: jest.fn(), findByIdAndUpdate: jest.fn(), create: jest.fn(), updateMany: jest.fn(), aggregate: jest.fn() }
@@ -24,4 +25,4 @@ test('лимитер detailLimiter возвращает 429', async () => {
   expect(res.status).toBe(429)
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

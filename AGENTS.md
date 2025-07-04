@@ -22,3 +22,5 @@
 - Добавлена пагинация списка задач в API
 - В задачи добавлено поле `slug`
 - Появилась универсальная модель `UniversalTask`
+- В расширенной модели появились поля с enum и default: `transport_type`,
+  `payment_method`, `priority`, `status`

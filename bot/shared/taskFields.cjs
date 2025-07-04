@@ -19,7 +19,28 @@ module.exports = [
   { name: 'creator', label: 'Задачу создал', type: 'select' },
   { name: 'assignees', label: 'Исполнители', type: 'multiselect' },
   { name: 'start_location', label: 'Старт точка', type: 'location' },
+  {
+    name: 'transport_type',
+    label: 'Тип транспорта',
+    type: 'select',
+    options: ['Пешком', 'Авто', 'Дрон'],
+    default: 'Авто'
+  },
   { name: 'end_location', label: 'Финальная точка', type: 'location' },
+  {
+    name: 'payment_method',
+    label: 'Способ оплаты',
+    type: 'select',
+    options: ['Наличные', 'Карта', 'Безнал'],
+    default: 'Карта'
+  },
+  {
+    name: 'status',
+    label: 'Статус',
+    type: 'select',
+    options: ['new', 'in-progress', 'done'],
+    default: 'new'
+  },
   { name: 'description', label: '🔨 Задача', type: 'richtext' },
   { name: 'comment', label: 'Комментарий', type: 'richtext' }
 ]

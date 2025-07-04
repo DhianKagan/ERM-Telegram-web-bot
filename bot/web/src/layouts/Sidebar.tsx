@@ -34,13 +34,14 @@ export default function Sidebar() {
       className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
     >
       <div className="flex items-center justify-between">
-        <button onClick={toggle} className="lg:hidden">
+        <button onClick={toggle} className="lg:hidden" aria-label="Закрыть меню">
           <XMarkIcon className="h-5 w-5" />
         </button>
         <button
           onClick={toggleCollapsed}
           className="hidden lg:block p-1 hover:text-accentPrimary"
           title="Свернуть меню"
+          aria-label="Свернуть меню"
         >
           {collapsed ? (
             <ChevronDoubleRightIcon className="h-5 w-5" />

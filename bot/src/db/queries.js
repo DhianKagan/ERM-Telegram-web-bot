@@ -142,6 +142,17 @@ async function listDepartments() {
   return Department.find()
 }
 
+async function updateDepartment(id, name) {
+  if (typeof name !== 'string') {
+    throw new Error('Invalid input: name must be a string')
+  }
+  return Department.findByIdAndUpdate(id, { name: { $eq: name } }, { new: true })
+}
+
+async function deleteDepartment(id) {
+  return Department.findByIdAndDelete(id)
+}
+
 async function createUser(id, username, roleId, extra = {}) {
   const email = `${id}@telegram.local`
   if (!roleId) {
@@ -248,6 +259,8 @@ module.exports = {
   listUniversalTasks,
   updateUniversalTask,
   deleteUniversalTask,
+  updateDepartment,
+  deleteDepartment,
   getDefaultValues,
   setDefaultValues,
   listTransports,

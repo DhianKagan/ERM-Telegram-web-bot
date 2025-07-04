@@ -33,6 +33,8 @@ const {
   listRoles,
   createDepartment,
   listDepartments,
+  updateDepartment,
+  deleteDepartment,
   writeLog,
   listLogs,
   getDefaultValues,
@@ -182,6 +184,18 @@ const validate = validations => [
     asyncHandler(async (req, res) => {
     const dep = await createDepartment(req.body.name)
     res.json(dep)
+  }))
+
+  app.patch('/api/departments/:id', departmentsRateLimiter, verifyToken, checkRole('admin'),
+    validate([body('name').isString().notEmpty()]),
+    asyncHandler(async (req, res) => {
+    const dep = await updateDepartment(req.params.id, req.body.name)
+    res.json(dep)
+  }))
+
+  app.delete('/api/departments/:id', departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+    await deleteDepartment(req.params.id)
+    res.json({ status: 'ok' })
   }))
 
   /**

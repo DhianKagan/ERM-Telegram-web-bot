@@ -23,3 +23,5 @@
   заявками
 - Форма задач и контроллеры поддерживают поля `transport_type`,
   `payment_method` и выбор статуса
+- Добавлены коллекции `DefaultValue` и `Transport` для справочников
+- API `/api/defaults/:name` и `/api/transports` позволяет редактировать значения

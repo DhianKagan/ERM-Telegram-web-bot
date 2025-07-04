@@ -21,12 +21,9 @@
 - Docker Compose содержит healthcheck для MongoDB
 - Добавлена пагинация списка задач в API
 - В задачи добавлено поле `slug`
-- Появилась универсальная модель `UniversalTask`
-- В расширенной модели появились поля с enum и default: `transport_type`,
-  `payment_method`, `priority`, `status`
-- Добавлена универсальная заявка с разделами логистики, закупок и работ;
-  CRUD-маршруты доступны по `/api/universal_tasks`
-- В веб-интерфейсе появилась страница управления универсальными заявками
+- Модель задачи расширена секциями логистики, закупок и работ
+- Поддерживаются enum-поля `transport_type`, `payment_method`, `priority`, `status`
+- CRUD-маршруты `/api/tasks` возвращают и создают такие задачи
 - Для редактирования значений enum есть коллекции `DefaultValue` и `Transport`,
   эндпойнты `/api/defaults/:name` и `/api/transports`
 - Для них действует rate limit и проверка входных данных

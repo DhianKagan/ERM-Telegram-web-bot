@@ -1,6 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
 const { Task, Group, User, Role, Department, Log } = require('./model')
-const UniversalTask = require('./universalTaskModel')
 const { DefaultValue, Transport } = require('./dictionaryModel')
 
 async function createTask(data) {
@@ -91,25 +90,6 @@ async function deleteTask(id) {
   return Task.findByIdAndDelete(id)
 }
 
-async function createUniversalTask(data) {
-  return UniversalTask.create(data)
-}
-
-async function getUniversalTask(id) {
-  return UniversalTask.findById(id)
-}
-
-async function listUniversalTasks() {
-  return UniversalTask.find()
-}
-
-async function updateUniversalTask(id, fields) {
-  return UniversalTask.findByIdAndUpdate(id, fields, { new: true })
-}
-
-async function deleteUniversalTask(id) {
-  return UniversalTask.findByIdAndDelete(id)
-}
 
 async function summary(filters = {}) {
   const match = {}
@@ -256,11 +236,6 @@ module.exports = {
   listLogs,
   searchTasks,
   addAttachment,
-  createUniversalTask,
-  getUniversalTask,
-  listUniversalTasks,
-  updateUniversalTask,
-  deleteUniversalTask,
   updateDepartment,
   deleteDepartment,
   getDefaultValues,

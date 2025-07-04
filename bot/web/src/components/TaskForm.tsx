@@ -10,8 +10,14 @@ import fields from "../../../shared/taskFields.cjs";
 
 const TYPES = fields.find((f) => f.name === "task_type")?.options || [];
 const PRIORITIES = fields.find((f) => f.name === "priority")?.options || [];
+const TRANSPORTS = fields.find((f) => f.name === "transport_type")?.options || [];
+const PAYMENTS = fields.find((f) => f.name === "payment_method")?.options || [];
+const STATUSES = fields.find((f) => f.name === "status")?.options || [];
 const DEFAULT_TYPE = fields.find((f) => f.name === "task_type")?.default || "";
 const DEFAULT_PRIORITY = fields.find((f) => f.name === "priority")?.default || "";
+const DEFAULT_TRANSPORT = fields.find((f) => f.name === "transport_type")?.default || "";
+const DEFAULT_PAYMENT = fields.find((f) => f.name === "payment_method")?.default || "";
+const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
 
 interface TaskFormProps {
   onClose: () => void
@@ -24,6 +30,9 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
   const [description, setDescription] = React.useState("");
   const [comment, setComment] = React.useState("");
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
+  const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
+  const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
+  const [status, setStatus] = React.useState(DEFAULT_STATUS);
   const [department, setDepartment] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [assignees, setAssignees] = React.useState([]);
@@ -92,6 +101,9 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
       task_description: description,
       comment,
       priority,
+      transport_type: transportType,
+      payment_method: paymentMethod,
+      status,
       departmentId: department || undefined,
       created_by: creator,
       assignees,
@@ -99,7 +111,6 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
       start_location_link: startLink,
       end_location: end,
       end_location_link: endLink,
-      status: "new",
     });
     if (data && onCreate) onCreate(data);
     onClose();
@@ -212,6 +223,17 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
             onClose={() => setShowStartMap(false)}
           />
         )}
+        <select
+          value={transportType}
+          onChange={(e) => setTransportType(e.target.value)}
+          className="w-full rounded border px-2 py-1"
+        >
+          {TRANSPORTS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
         <div>
           <label className="block text-sm font-medium">Финальная точка</label>
           {endLink ? (
@@ -243,6 +265,17 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
             onClose={() => setShowEndMap(false)}
           />
         )}
+        <select
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+          className="w-full rounded border px-2 py-1"
+        >
+          {PAYMENTS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
           <RichTextEditor value={description} onChange={setDescription} />
@@ -291,6 +324,17 @@ export default function TaskForm({ onClose, onCreate }: TaskFormProps) {
             </optgroup>
           </select>
         </div>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="w-full rounded border px-2 py-1"
+        >
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
         <div className="flex justify-end space-x-2">
           <button className="btn-gray rounded-full" onClick={onClose}>
             Отмена

@@ -46,6 +46,9 @@ router.post('/', verifyToken, [
   body('comment').optional().isString(),
   body('priority').optional().isString(),
   body('priority_id').optional().isInt(),
+  body('transport_type').optional().isString(),
+  body('payment_method').optional().isString(),
+  body('status').optional().isString(),
   body('files').optional().isArray(),
   body('assignees').optional().isArray()
 ], ctrl.create)

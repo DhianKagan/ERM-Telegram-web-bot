@@ -14,7 +14,8 @@
 - Поле `slug` формируется автоматически из названия задачи
 - Улучшенная доступность и SEO: `robots.txt`, `aria-label` и meta description
 - Модель задач включает разделы логистики, закупок и работ
-- Поддерживаются enum `transport_type`, `payment_method`, `priority`, `status`
+- Поддерживаются enum `task_type`, `transport_type`, `payment_method`, `priority`, `status`
+- В тип задач добавлены варианты "Построить" и "Починить", способ оплаты теперь поддерживает "Без оплаты"
 - ID формата `ERM_000001` создаётся автоматически и используется в названии
 - Веб-интерфейс учитывает `transport_type`, `payment_method` и `status`
 - Добавлены справочники значений. Запросы `/api/defaults/:name` и `/api/transports`

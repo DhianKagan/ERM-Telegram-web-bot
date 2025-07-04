@@ -68,7 +68,11 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   slug: String,
   task_description: String,
-  task_type: { type: String, enum: ['Доставить', 'Купить', 'Выполнить'] },
+  // Тип задачи пополнился вариантами строительства и ремонта
+  task_type: {
+    type: String,
+    enum: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить']
+  },
   task_type_id: Number,
   due_date: Date,
   remind_at: Date,
@@ -92,7 +96,12 @@ const taskSchema = new mongoose.Schema({
   files: [String],
   attachments: [{ name: String, url: String }],
   transport_type: { type: String, enum: ['Пешком', 'Авто', 'Дрон'], default: 'Авто' },
-  payment_method: { type: String, enum: ['Наличные', 'Карта', 'Безнал'], default: 'Карта' },
+  // Способ оплаты допускает отсутствие оплаты
+  payment_method: {
+    type: String,
+    enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
+    default: 'Карта'
+  },
   telegram_topic_id: Number,
   time_spent: { type: Number, default: 0 },
   custom_fields: mongoose.Schema.Types.Mixed

@@ -5,7 +5,7 @@ module.exports = [
     name: 'task_type',
     label: 'Тип',
     type: 'select',
-    options: ['Доставить', 'Купить', 'Выполнить'],
+    options: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить'],
     default: 'Доставить'
   },
   {
@@ -31,7 +31,7 @@ module.exports = [
     name: 'payment_method',
     label: 'Способ оплаты',
     type: 'select',
-    options: ['Наличные', 'Карта', 'Безнал'],
+    options: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
     default: 'Карта'
   },
   {

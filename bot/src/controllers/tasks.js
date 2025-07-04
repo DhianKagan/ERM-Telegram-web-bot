@@ -10,7 +10,12 @@ function handle(req, res, next) {
 
 exports.list = async (req, res) => {
   const user = await require('../db/queries').getUser(req.user.id)
-  const tasks = await service.get({ ...req.query, departmentId: user?.departmentId })
+  const { page, limit, ...filters } = req.query
+  const tasks = await service.get(
+    { ...filters, departmentId: user?.departmentId },
+    page ? Number(page) : undefined,
+    limit ? Number(limit) : undefined
+  )
   res.json(tasks)
 }
 

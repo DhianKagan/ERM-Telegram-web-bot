@@ -28,3 +28,5 @@
   CRUD-маршруты доступны по `/api/universal_tasks`
 - Для редактирования значений enum есть коллекции `DefaultValue` и `Transport`,
   эндпойнты `/api/defaults/:name` и `/api/transports`
+- Для них действует rate limit и проверка входных данных
+

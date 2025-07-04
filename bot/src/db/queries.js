@@ -186,9 +186,12 @@ async function getDefaultValues(name) {
 }
 
 async function setDefaultValues(name, values) {
+
+  const sanitized = values.map(v => (typeof v === 'string' ? v : String(v)))
   return DefaultValue.findOneAndUpdate(
     { name },
-    { values },
+    { $set: { values: sanitized } },
+
     { upsert: true, new: true }
   )
 }
@@ -202,7 +205,9 @@ async function createTransport(data) {
 }
 
 async function updateTransport(id, data) {
-  return Transport.findByIdAndUpdate(id, data, { new: true })
+
+  return Transport.findByIdAndUpdate(id, { $set: data }, { new: true })
+
 }
 
 async function deleteTransport(id) {

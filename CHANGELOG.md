@@ -25,3 +25,5 @@
   `payment_method` и выбор статуса
 - Добавлены коллекции `DefaultValue` и `Transport` для справочников
 - API `/api/defaults/:name` и `/api/transports` позволяет редактировать значения
+- Для этих маршрутов добавлен rate limit и проверка входных данных
+

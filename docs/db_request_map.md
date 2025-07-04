@@ -16,10 +16,10 @@
 | Группы | `createGroup()`, `listGroups()` | `POST /api/groups`, `GET /api/groups` |
 | Роли | `createRole()`, `listRoles()` | `POST /api/roles`, `GET /api/roles` |
 | Логи | `writeLog()`, `listLogs()` | `POST /api/tasks/:id/status`, `GET /api/logs` |
-| Создать универсальную задачу | `createUniversalTask()` | `POST /api/universal_tasks` |
-| Список универсальных задач | `listUniversalTasks()` | `GET /api/universal_tasks` |
-| Обновить универсальную задачу | `updateUniversalTask()` | `PATCH /api/universal_tasks/:id` |
-| Удалить универсальную задачу | `deleteUniversalTask()` | `DELETE /api/universal_tasks/:id` |
+| Создать задачу | `createTask()` | `POST /api/tasks` |
+| Список задач | `getTasks()` | `GET /api/tasks` |
+| Обновить задачу | `updateTask()` | `PATCH /api/tasks/:id` |
+| Удалить задачу | `deleteTask()` | `DELETE /api/tasks/:id` |
 
 Команды бота вызывают те же функции через `services/service.js`:
 

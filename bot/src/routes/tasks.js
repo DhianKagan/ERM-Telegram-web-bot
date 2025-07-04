@@ -30,7 +30,7 @@ router.get('/report/summary', verifyToken, [
 router.get('/:id', verifyToken, detailLimiter, [param('id').isMongoId()], ctrl.detail)
 
 router.post('/', verifyToken, [
-  body('title').isString().notEmpty(),
+  body('title').optional().isString(),
   body('task_description').optional().isString(),
   body('task_type').optional().isString(),
   body('task_type_id').optional().isInt(),
@@ -49,6 +49,11 @@ router.post('/', verifyToken, [
   body('transport_type').optional().isString(),
   body('payment_method').optional().isString(),
   body('status').optional().isString(),
+  body('applicant').optional().isObject(),
+  body('logistics_details').optional().isObject(),
+  body('procurement_details').optional().isObject(),
+  body('work_details').optional().isObject(),
+  body('custom_fields').optional(),
   body('files').optional().isArray(),
   body('assignees').optional().isArray()
 ], ctrl.create)

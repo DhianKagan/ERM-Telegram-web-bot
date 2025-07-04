@@ -3,10 +3,6 @@ const q = require('../db/queries')
 
 const create = data => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date
-  if (!data.transport_type) data.transport_type = 'Авто'
-  if (!data.payment_method) data.payment_method = 'Карта'
-  if (!data.priority) data.priority = 'В течении дня'
-  if (!data.status) data.status = 'new'
   return q.createTask(data)
 }
 const get = (filters, page, limit) => q.getTasks(filters, page, limit)

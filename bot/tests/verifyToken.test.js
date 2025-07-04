@@ -11,6 +11,7 @@ jest.unmock('jsonwebtoken')
 const jwt = require('jsonwebtoken')
 const { verifyToken } = require('../src/api/middleware')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 let app
 beforeAll(() => {
@@ -35,5 +36,5 @@ test('токен с другим алгоритмом отклоняется', a
   expect(res.status).toBe(401)
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })
 

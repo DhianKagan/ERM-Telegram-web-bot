@@ -7,6 +7,7 @@ process.env.JWT_SECRET = 's'
 process.env.APP_URL = 'https://localhost'
 const { Task } = require('../src/db/model')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 test('schema has task_description', () => {
   const desc = Task.schema.paths.task_description
@@ -18,4 +19,4 @@ test('schema has slug field', () => {
   expect(slug).toBeDefined()
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

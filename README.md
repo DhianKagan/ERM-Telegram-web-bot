@@ -35,6 +35,7 @@ npm --prefix bot run check:mongo
 ```bash
 ./scripts/setup_and_test.sh
 ```
+Скрипт выполняет Jest с флагом `--detectOpenHandles`, чтобы выявлять незавершённые асинхронные операции.
 
 ## CI/CD
 GitHub Actions используют тот же скрипт; workflow `docker.yml` поднимает MongoDB для проверки.

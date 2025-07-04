@@ -10,9 +10,10 @@ function calcTotal(tasks) {
 }
 
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 test('calcTotal считает количество задач', () => {
   expect(calcTotal([{id:1},{id:2}])).toBe(2)
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

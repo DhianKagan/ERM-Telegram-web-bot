@@ -10,6 +10,7 @@ const express = require('express')
 jest.mock('../src/services/service', () => ({ listAllTasks: jest.fn() }))
 const services = require('../src/services/service')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 jest.unmock('jsonwebtoken')
 
 let app
@@ -28,7 +29,7 @@ beforeAll(async () => {
   app.locals.token = token
 })
 
-afterAll(() => { jest.clearAllMocks(); stopScheduler() })
+afterAll(() => { jest.clearAllMocks(); stopScheduler(); stopQueue() })
 
 test('GET /health', async () => {
   const res = await request(app).get('/health')

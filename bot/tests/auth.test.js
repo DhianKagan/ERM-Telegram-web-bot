@@ -23,6 +23,7 @@ process.env.APP_URL = 'https://localhost'
 const { verifyAdmin, generateToken } = require('../src/auth/auth')
 const jwt = require('jsonwebtoken')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 const authCtrl = require('../src/controllers/authController')
 
 afterEach(() => {
@@ -87,4 +88,4 @@ test('clean удаляет старые записи при новом вызо�
   expect(authCtrl.codes.size).toBe(1)
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

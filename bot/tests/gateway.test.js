@@ -10,6 +10,7 @@ process.env.GATEWAY_SENDER = 'sender'
 const https = require('https')
 const { EventEmitter } = require('events')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 jest.spyOn(https, 'request').mockImplementation((_o, cb) => {
   const res = new EventEmitter()
   res.statusCode = 200
@@ -25,4 +26,4 @@ test('sendSms triggers https.request', async () => {
   expect(https.request).toHaveBeenCalled()
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

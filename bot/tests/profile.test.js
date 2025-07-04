@@ -8,6 +8,7 @@ process.env.APP_URL = 'https://localhost'
 const express = require('express')
 const request = require('supertest')
 const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
@@ -38,4 +39,4 @@ test('обновляем профиль', async () => {
   expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test', name: 'N' })
 })
 
-afterAll(() => stopScheduler())
+afterAll(() => { stopScheduler(); stopQueue() })

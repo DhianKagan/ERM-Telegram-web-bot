@@ -1,6 +1,7 @@
 // Очередь вызовов Telegram API. Ограничивает количество запросов.
 const queue = []
 let tokens = 30
+let timer
 
 function process() {
   while (tokens > 0 && queue.length) {
@@ -10,10 +11,22 @@ function process() {
   }
 }
 
-setInterval(() => {
-  tokens = 30
-  process()
-}, 1000)
+function start() {
+  if (!timer) {
+    timer = setInterval(() => {
+      tokens = 30
+      process()
+    }, 1000)
+  }
+}
+start()
+
+function stopQueue() {
+  if (timer) {
+    clearInterval(timer)
+    timer = undefined
+  }
+}
 
 function enqueue(fn) {
   return new Promise((resolve, reject) => {
@@ -22,5 +35,5 @@ function enqueue(fn) {
   })
 }
 
-module.exports = { enqueue, queue }
+module.exports = { enqueue, queue, stopQueue }
 

@@ -1,5 +1,6 @@
 // Централизованные функции работы с MongoDB для всего проекта
 const { Task, Group, User, Role, Department, Log } = require('./model')
+const UniversalTask = require('./universalTaskModel')
 
 async function createTask(data) {
   return Task.create(data)
@@ -87,6 +88,26 @@ async function addAttachment(taskId, attachment) {
 
 async function deleteTask(id) {
   return Task.findByIdAndDelete(id)
+}
+
+async function createUniversalTask(data) {
+  return UniversalTask.create(data)
+}
+
+async function getUniversalTask(id) {
+  return UniversalTask.findById(id)
+}
+
+async function listUniversalTasks() {
+  return UniversalTask.find()
+}
+
+async function updateUniversalTask(id, fields) {
+  return UniversalTask.findByIdAndUpdate(id, fields, { new: true })
+}
+
+async function deleteUniversalTask(id) {
+  return UniversalTask.findByIdAndDelete(id)
 }
 
 async function summary(filters = {}) {
@@ -186,5 +207,10 @@ module.exports = {
   writeLog,
   listLogs,
   searchTasks,
-  addAttachment
+  addAttachment,
+  createUniversalTask,
+  getUniversalTask,
+  listUniversalTasks,
+  updateUniversalTask,
+  deleteUniversalTask
 }

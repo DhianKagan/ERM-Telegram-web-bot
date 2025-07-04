@@ -45,7 +45,7 @@ async function updateTaskStatus(id, status) {
   return updateTask(id, { status })
 }
 
-async function getTasks(filters = {}) {
+async function getTasks(filters = {}, page, limit) {
   if (filters.kanban) return Task.find({}).sort('-createdAt')
   const q = {}
   if (filters.project) q.group_id = filters.project
@@ -55,7 +55,9 @@ async function getTasks(filters = {}) {
   if (filters.from || filters.to) q.createdAt = {}
   if (filters.from) q.createdAt.$gte = filters.from
   if (filters.to) q.createdAt.$lte = filters.to
-  return Task.find(q)
+  let query = Task.find(q)
+  if (page && limit) query = query.skip((page - 1) * limit).limit(limit)
+  return query
 }
 
 async function searchTasks(text) {

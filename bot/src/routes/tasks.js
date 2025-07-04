@@ -15,7 +15,9 @@ router.get('/', verifyToken, [
   query('status').optional().isString(),
   query('assignees').optional().isArray(),
   query('from').optional().isISO8601(),
-  query('to').optional().isISO8601()
+  query('to').optional().isISO8601(),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1 })
 ], ctrl.list)
 
 router.get('/mentioned', verifyToken, ctrl.mentioned)

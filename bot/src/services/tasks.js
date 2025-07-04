@@ -5,7 +5,7 @@ const create = data => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date
   return q.createTask(data)
 }
-const get = filters => q.getTasks(filters)
+const get = (filters, page, limit) => q.getTasks(filters, page, limit)
 const getById = id => q.getTask(id)
 const update = (id, data) => q.updateTask(id, data)
 const addTime = (id, minutes) => q.addTime(id, minutes)

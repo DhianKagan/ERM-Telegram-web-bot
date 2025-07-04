@@ -18,6 +18,7 @@ const items = [
   { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
   { to: "/tasks/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
+  { to: "/universal_tasks", label: "Универсальные", icon: ClipboardDocumentListIcon },
   { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/roles", label: "Роли", icon: Cog6ToothIcon },

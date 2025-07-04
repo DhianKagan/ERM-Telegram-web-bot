@@ -18,6 +18,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
+const UniversalTasks = lazy(() => import("./pages/UniversalTasks"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
@@ -96,6 +97,14 @@ function Content() {
             element={
               <ProtectedRoute>
                 <Logs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/universal_tasks"
+            element={
+              <ProtectedRoute>
+                <UniversalTasks />
               </ProtectedRoute>
             }
           />

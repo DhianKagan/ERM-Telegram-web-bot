@@ -45,7 +45,9 @@ test('создание задачи возвращает 201', async () => {
   const res = await request(app).post('/api/v1/tasks').send({
     title: 'T',
     start_location_link: 'https://maps.google.com',
-    end_location_link: 'https://maps.google.com'
+    end_location_link: 'https://maps.google.com',
+    startCoordinates: { lat: 1, lng: 2 },
+    finishCoordinates: { lat: 3, lng: 4 }
   })
   expect(res.status).toBe(201)
   expect(res.body.title).toBe('ERM_000001 T')

@@ -1,13 +1,13 @@
 // Общая форма создания и редактирования задач
 import React, { useContext } from "react";
 import RichTextEditor from "./RichTextEditor";
+import MapSelector from "./MapSelector";
+import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
 import { fetchDefaults } from "../services/dicts";
 import { createTask, updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import { validateURL } from "../utils/validation";
-import parseGoogleAddress from "../utils/parseGoogleAddress";
 
 interface Props {
   onClose: () => void;
@@ -48,20 +48,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
+  const [showStartMap,setShowStartMap]=React.useState(false);
+  const [showEndMap,setShowEndMap]=React.useState(false);
 
-  const convertStart=()=>{
-    const sanitized=validateURL(startLink);
-    if(!sanitized) return;
-    setStart(parseGoogleAddress(sanitized));
-    setStartLink(sanitized);
-  };
-
-  const convertEnd=()=>{
-    const sanitized=validateURL(endLink);
-    if(!sanitized) return;
-    setEnd(parseGoogleAddress(sanitized));
-    setEndLink(sanitized);
-  };
 
   React.useEffect(()=>{
     fetchDefaults('task_type').then(v=>{setTypes(v);if(!taskType&&v.length)setTaskType(v[0]);});
@@ -176,12 +165,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
           </select>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Исполнител(и)ь</label>
-          <select multiple value={assignees} onChange={e=>setAssignees(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full rounded border px-2 py-1">
-            {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
-          </select>
-        </div>
+        <MultiUserSelect
+          label="Исполнител(и)ь"
+          users={users}
+          value={assignees}
+          onChange={setAssignees}
+        />
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
           {startLink ? (
@@ -198,7 +187,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               placeholder="Ссылка из Google Maps"
               className="flex-1 rounded border px-2 py-1"
             />
-            <button type="button" onClick={convertStart} className="btn-blue rounded-full">
+            <button
+              type="button"
+              onClick={() => setShowStartMap(true)}
+              className="btn-blue rounded-2xl px-3"
+            >
               Карта
             </button>
           </div>
@@ -225,7 +218,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               placeholder="Ссылка из Google Maps"
               className="flex-1 rounded border px-2 py-1"
             />
-            <button type="button" onClick={convertEnd} className="btn-blue rounded-full">
+            <button
+              type="button"
+              onClick={() => setShowEndMap(true)}
+              className="btn-blue rounded-2xl px-3"
+            >
               Карта
             </button>
           </div>
@@ -272,17 +269,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Срок выполнения</label>
           <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" />
         </div>
-        <div>
-          <label className="block text-sm font-medium">Контролёр</label>
-          <select
-            multiple
-            value={controllers}
-            onChange={e=>setControllers(Array.from(e.target.selectedOptions).map(o=>o.value))}
-            className="w-full rounded border px-2 py-1"
-          >
-            {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
-          </select>
-        </div>
+        <MultiUserSelect
+          label="Контролёр"
+          users={users}
+          value={controllers}
+          onChange={setControllers}
+        />
         {attachments.length>0&&(
           <div>
             <label className="block text-sm font-medium">Вложения</label>
@@ -300,6 +292,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
         </div>
       </div>
+      {showStartMap && (
+        <MapSelector
+          onSelect={({ link, address }) => {
+            setStart(address);
+            setStartLink(link);
+          }}
+          onClose={() => setShowStartMap(false)}
+        />
+      )}
+      {showEndMap && (
+        <MapSelector
+          onSelect={({ link, address }) => {
+            setEnd(address);
+            setEndLink(link);
+          }}
+          onClose={() => setShowEndMap(false)}
+        />
+      )}
     </div>
   );
 }

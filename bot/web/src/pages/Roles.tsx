@@ -11,7 +11,7 @@ interface Role {
 export default function Roles() {
   const [roles, setRoles] = React.useState<Role[]>([]);
   const load = () => {
-    authFetch("/api/roles")
+    authFetch("/api/v1/roles")
       .then((r) => (r.ok ? r.json() : []))
       .then(setRoles);
   };

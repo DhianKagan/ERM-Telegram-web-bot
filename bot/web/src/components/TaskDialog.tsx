@@ -79,10 +79,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   },[id,isEdit]);
 
   React.useEffect(()=>{
-    authFetch('/api/users').then(r=>r.ok?r.json():[]).then(list=>{setUsers(list);if(user) setCreator(user.telegram_id);});
-    authFetch('/api/groups').then(r=>r.ok?r.json():[]).then(setGroups);
-    authFetch('/api/roles').then(r=>r.ok?r.json():[]).then(setRoles);
-    authFetch('/api/departments').then(r=>r.ok?r.json():[]).then(setDepartments);
+    authFetch('/api/v1/users')
+      .then(r=>r.ok?r.json():[])
+      .then(list=>{setUsers(list);if(user) setCreator(user.telegram_id);});
+    authFetch('/api/v1/groups')
+      .then(r=>r.ok?r.json():[])
+      .then(setGroups);
+    authFetch('/api/v1/roles')
+      .then(r=>r.ok?r.json():[])
+      .then(setRoles);
+    authFetch('/api/v1/departments')
+      .then(r=>r.ok?r.json():[])
+      .then(setDepartments);
   },[user]);
 
   React.useEffect(()=>{

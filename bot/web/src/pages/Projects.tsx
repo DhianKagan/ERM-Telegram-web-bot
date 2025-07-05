@@ -9,7 +9,7 @@ interface Group { _id: string; name: string }
 export default function Projects() {
   const [groups, setGroups] = React.useState<Group[]>([])
   const load = () => {
-    authFetch("/api/groups")
+    authFetch("/api/v1/groups")
       .then((r) => (r.ok ? r.json() : []))
       .then(setGroups)
   }

@@ -42,4 +42,6 @@
 - Мини-приложение использует React Quill и TelegramUI
 - Запуск в браузере по флагу `?browser=1` без telegram-apps-sdk
 - Кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`
+- Если объект `Telegram.WebApp` не определён, клиент автоматически переходит в режим браузера
+
 

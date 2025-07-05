@@ -108,7 +108,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{isEdit?`Задача №${id}`:'Новая задача'}</h3>
+          <h3 className="text-lg font-semibold">{isEdit ? title : 'Новая задача'}</h3>
           <select value={priority} onChange={e=>setPriority(e.target.value)} className="rounded border px-2 py-1">
             {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
           </select>

@@ -116,7 +116,11 @@ taskSchema.pre('save', async function(next) {
     const num = String(count + 1).padStart(6, '0')
     this.request_id = `ERM_${num}`
   }
-  this.title = this.request_id
+  if (this.isNew && this.title) {
+    this.title = `${this.request_id} ${this.title}`
+  } else if (!this.title) {
+    this.title = this.request_id
+  }
   this.slug = slugify(this.title, { lower: true, strict: true })
   next()
 })

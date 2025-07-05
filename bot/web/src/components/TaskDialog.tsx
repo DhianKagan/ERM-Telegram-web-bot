@@ -98,8 +98,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       .then(setDepartments);
   },[user]);
 
-  React.useEffect(()=>{
-    if(!end){setEnd(start);setEndLink(startLink);} },[start,startLink,end]);
 
   React.useEffect(()=>{
     if(!isEdit||!id) return;
@@ -126,7 +124,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     });
   },[id,isEdit]);
 
-  const addTag=(e,setter)=>{const val=e.target.value;if(!val)return;let tag="";if(val.startsWith('group:')){const g=groups.find(r=>`group:${r._id}`===val);if(g)tag=`<span data-group="${g._id}">${g.name}</span>`;}else if(val.startsWith('role:')){const r=roles.find(ro=>`role:${ro._id}`===val);if(r)tag=`<span data-role="${r._id}">${r.name}</span>`;}else{const u=users.find(u=>String(u.telegram_id)===val);if(u)tag=`<a href="tg://user?id=${u.telegram_id}">${u.name||u.username}</a>`;}if(tag){setter(d=>`${d} ${tag} `);e.target.value="";}};
 
   const handleStartLink=(v:string)=>{
     setStartLink(v);
@@ -155,8 +152,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   return(
-    <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
+    <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-start justify-start bg-black">
+      <div className="max-h-[90vh] w-full overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
         </div>
@@ -206,9 +203,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Старт точка</label>
           {startLink ? (
             <div className="flex items-center space-x-2">
-              <a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
-                {start || 'ссылка'}
-              </a>
+              <div className="flex flex-col">
+                <a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+                  {start || 'ссылка'}
+                </a>
+                {startCoordinates && (
+                  <span className="text-xs text-gray-600">{startCoordinates.lat},{startCoordinates.lng}</span>
+                )}
+              </div>
               <button type="button" onClick={() => handleStartLink('')} className="text-red-600">✖</button>
             </div>
           ) : (
@@ -239,9 +241,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Финальная точка</label>
           {endLink ? (
             <div className="flex items-center space-x-2">
-              <a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
-                {end || 'ссылка'}
-              </a>
+              <div className="flex flex-col">
+                <a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+                  {end || 'ссылка'}
+                </a>
+                {finishCoordinates && (
+                  <span className="text-xs text-gray-600">{finishCoordinates.lat},{finishCoordinates.lng}</span>
+                )}
+              </div>
               <button type="button" onClick={() => handleEndLink('')} className="text-red-600">✖</button>
             </div>
           ) : (
@@ -271,34 +278,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
           <RichTextEditor value={description} onChange={setDescription} />
-          <select onChange={e=>addTag(e,setDescription)} className="mt-2 w-full rounded border px-2 py-1">
-            <option value="">@ упомянуть</option>
-            <optgroup label="Пользователи">
-              {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
-            </optgroup>
-            <optgroup label="Группы">
-              {groups.map(g=>(<option key={g._id} value={`group:${g._id}`}>{g.name}</option>))}
-            </optgroup>
-            <optgroup label="Роли">
-              {roles.map(r=>(<option key={r._id} value={`role:${r._id}`}>{r.name}</option>))}
-            </optgroup>
-          </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Комментарий</label>
           <RichTextEditor value={comment} onChange={setComment} />
-          <select onChange={e=>addTag(e,setComment)} className="mt-2 w-full rounded border px-2 py-1">
-            <option value="">@ упомянуть</option>
-            <optgroup label="Пользователи">
-              {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
-            </optgroup>
-            <optgroup label="Группы">
-              {groups.map(g=>(<option key={g._id} value={`group:${g._id}`}>{g.name}</option>))}
-            </optgroup>
-            <optgroup label="Роли">
-              {roles.map(r=>(<option key={r._id} value={`role:${r._id}`}>{r.name}</option>))}
-            </optgroup>
-          </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Срок выполнения</label>

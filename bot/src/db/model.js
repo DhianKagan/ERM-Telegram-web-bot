@@ -84,6 +84,7 @@ const taskSchema = new mongoose.Schema({
   end_location_link: String,
   assigned_user_id: Number,
   controller_user_id: Number,
+  controllers: [Number],
   assignees: [Number],
   group_id: mongoose.Schema.Types.ObjectId,
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },

@@ -38,6 +38,7 @@ const { getMemberStatus, getTelegramId } = require('../services/userInfoService'
 const { uploadFile } = require('../services/r2')
 const { call } = require('../services/telegramApi')
 const { sendCode } = require('../services/otp')
+const { expandMapsUrl, extractCoords } = require('../services/maps')
 const { verifyAdmin, generateToken } = require('../auth/auth')
 const { startScheduler } = require('../services/scheduler')
 const bot = new Telegraf(botToken)
@@ -468,6 +469,23 @@ bot.hears("Браузер", async (ctx) => {
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
   const url = `${appUrl}?browser=1&token=${token}`
   await sendAccessButton(ctx, url, false)
+})
+
+// Ответ на короткую ссылку Google Maps
+bot.hears(/https?:\/\/maps\.app\.goo\.gl\/[\S]+/i, async (ctx) => {
+  const match = ctx.message.text.match(/https?:\/\/maps\.app\.goo\.gl\/[\S]+/i)
+  if (!match) return
+  try {
+    const full = await expandMapsUrl(match[0])
+    const coords = extractCoords(full)
+    let msg = `${messages.fullMapLink}: ${full}`
+    if (coords) {
+      msg += `\n${messages.mapCoords}: ${coords.lat},${coords.lng}`
+    }
+    await ctx.reply(msg)
+  } catch {
+    await ctx.reply(messages.mapLinkError)
+  }
 })
 
 bot.action('my_tasks', async (ctx) => {

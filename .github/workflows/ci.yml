@@ -15,3 +15,5 @@ jobs:
       - uses: actions/checkout@v3
       - name: Подготовка и тесты
         run: ./scripts/setup_and_test.sh
+      - name: Аудит зависимостей
+        run: ./scripts/audit_deps.sh

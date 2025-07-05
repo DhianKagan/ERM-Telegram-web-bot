@@ -12,7 +12,14 @@ const { stopQueue } = require('../src/services/messageQueue')
 
 jest.mock('../src/db/model', () => ({
   Task: {
-    create: jest.fn(async d => ({ _id:'1', ...d, status:'new', time_spent:0 })),
+    create: jest.fn(async d => ({
+      _id: '1',
+      request_id: 'ERM_000001',
+      ...d,
+      title: `ERM_000001 ${d.title}`,
+      status: 'new',
+      time_spent: 0
+    })),
     findByIdAndUpdate: jest.fn(async (_id,d)=>({ _id, ...d })),
     findById: jest.fn(async () => ({ time_spent:0, save: jest.fn() })),
     findByIdAndDelete: jest.fn(async ()=>({ _id:'1' })),
@@ -41,7 +48,7 @@ test('создание задачи возвращает 201', async () => {
     end_location_link: 'https://maps.google.com'
   })
   expect(res.status).toBe(201)
-  expect(res.body.title).toBe('T')
+  expect(res.body.title).toBe('ERM_000001 T')
 })
 
 const id = '507f191e810c19729de860ea'

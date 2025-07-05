@@ -7,7 +7,7 @@ export default function CodeLogin() {
   const [sent, setSent] = useState(false)
 
   async function send() {
-    await fetch('/api/auth/send_code', {
+    await fetch('/api/v1/auth/send_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ telegramId: Number(telegramId) })
@@ -16,7 +16,7 @@ export default function CodeLogin() {
   }
 
   async function verify() {
-    const res = await fetch('/api/auth/verify_code', {
+    const res = await fetch('/api/v1/auth/verify_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ telegramId: Number(telegramId), code })

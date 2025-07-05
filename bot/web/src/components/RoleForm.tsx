@@ -10,7 +10,7 @@ export default function RoleForm({ onCreate }: RoleFormProps) {
   const [name, setName] = React.useState("");
   const submit = async (e) => {
     e.preventDefault();
-    const res = await authFetch("/api/roles", {
+    const res = await authFetch("/api/v1/roles", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

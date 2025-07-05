@@ -28,7 +28,7 @@ const { body, validationResult } = require('express-validator')
 
 const app = express()
 app.use(express.json())
-app.post('/api/tasks/:id/status',
+app.post('/api/v1/tasks/:id/status',
   [body('status').isIn(['pending', 'in-progress', 'completed'])],
   (req, res, next) => {
     const errors = validationResult(req)
@@ -46,7 +46,7 @@ const id = '507f191e810c19729de860ea'
 
 test('статус задачи меняется на in-progress', async () => {
   const res = await request(app)
-    .post(`/api/tasks/${id}/status`)
+    .post(`/api/v1/tasks/${id}/status`)
     .send({ status: 'in-progress' })
   expect(res.body.status).toBe('ok')
   expect(updateTaskStatus).toHaveBeenCalledWith(id, 'in-progress')

@@ -10,7 +10,7 @@ export default function GroupForm({ onCreate }: GroupFormProps) {
   const [name, setName] = React.useState('')
   const submit = async e => {
     e.preventDefault()
-    const res = await authFetch('/api/groups', {
+    const res = await authFetch('/api/v1/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })

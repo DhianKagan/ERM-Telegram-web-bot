@@ -11,6 +11,8 @@ interface Task {
   title: string
   status: string
   time_spent: number
+  request_id: string
+  createdAt: string
   assigned_user_id?: number
   assignees?: number[]
   attachments?: { name: string; url: string }[]
@@ -46,14 +48,14 @@ export default function TasksPage() {
   };
 
   const load = React.useCallback(() => {
-    authFetch("/api/tasks")
+    authFetch("/api/v1/tasks")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
-    authFetch("/api/users")
+    authFetch("/api/v1/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
-    authFetch("/api/tasks/report/summary")
+    authFetch("/api/v1/tasks/report/summary")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
@@ -84,7 +86,7 @@ export default function TasksPage() {
   }, [users]);
 
   const add30 = async (id) => {
-    await authFetch(`/api/tasks/${id}/time`, {
+    await authFetch(`/api/v1/tasks/${id}/time`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -101,7 +103,7 @@ export default function TasksPage() {
   };
 
   const changeStatus = async () => {
-    await authFetch("/api/tasks/bulk", {
+    await authFetch("/api/v1/tasks/bulk", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -165,7 +167,7 @@ export default function TasksPage() {
                   className="text-accentPrimary hover:underline"
                   onClick={() => setViewId(t._id)}
                 >
-                  {t.title}
+                  {`${t.request_id} ${t.createdAt.slice(0,10)} ${t.title.replace(/^ERM_\d+\s*/, '')}`}
                 </button>
               </td>
               <td className="px-4 py-2 text-center">{t.status}</td>

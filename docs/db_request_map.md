@@ -5,21 +5,21 @@
 
 | Операция | Функция | Маршрут |
 |----------|---------|---------|
-| Создать задачу | `createTask()` | `POST /api/tasks` |
-| Получить список задач | `getTasks()` | `GET /api/tasks` |
-| Обновить задачу | `updateTask()` | `PATCH /api/tasks/:id` |
-| Изменить статус | `updateTaskStatus()` | `POST /api/tasks/:id/status` |
-| Добавить время | `addTime()` | `PATCH /api/tasks/:id/time` |
-| Массовое обновление | `bulkUpdate()` | `POST /api/tasks/bulk` |
-| Сводка по задачам | `summary()` | `GET /api/tasks/report/summary` |
-| Пользователи | `createUser()`, `listUsers()` | `POST /api/users`, `GET /api/users` |
-| Группы | `createGroup()`, `listGroups()` | `POST /api/groups`, `GET /api/groups` |
-| Роли | `createRole()`, `listRoles()` | `POST /api/roles`, `GET /api/roles` |
-| Логи | `writeLog()`, `listLogs()` | `POST /api/tasks/:id/status`, `GET /api/logs` |
-| Создать задачу | `createTask()` | `POST /api/tasks` |
-| Список задач | `getTasks()` | `GET /api/tasks` |
-| Обновить задачу | `updateTask()` | `PATCH /api/tasks/:id` |
-| Удалить задачу | `deleteTask()` | `DELETE /api/tasks/:id` |
+| Создать задачу | `createTask()` | `POST /api/v1/tasks` |
+| Получить список задач | `getTasks()` | `GET /api/v1/tasks` |
+| Обновить задачу | `updateTask()` | `PATCH /api/v1/tasks/:id` |
+| Изменить статус | `updateTaskStatus()` | `POST /api/v1/tasks/:id/status` |
+| Добавить время | `addTime()` | `PATCH /api/v1/tasks/:id/time` |
+| Массовое обновление | `bulkUpdate()` | `POST /api/v1/tasks/bulk` |
+| Сводка по задачам | `summary()` | `GET /api/v1/tasks/report/summary` |
+| Пользователи | `createUser()`, `listUsers()` | `POST /api/v1/users`, `GET /api/v1/users` |
+| Группы | `createGroup()`, `listGroups()` | `POST /api/v1/groups`, `GET /api/v1/groups` |
+| Роли | `createRole()`, `listRoles()` | `POST /api/v1/roles`, `GET /api/v1/roles` |
+| Логи | `writeLog()`, `listLogs()` | `POST /api/v1/tasks/:id/status`, `GET /api/v1/logs` |
+| Создать задачу | `createTask()` | `POST /api/v1/tasks` |
+| Список задач | `getTasks()` | `GET /api/v1/tasks` |
+| Обновить задачу | `updateTask()` | `PATCH /api/v1/tasks/:id` |
+| Удалить задачу | `deleteTask()` | `DELETE /api/v1/tasks/:id` |
 
 Команды бота вызывают те же функции через `services/service.js`:
 

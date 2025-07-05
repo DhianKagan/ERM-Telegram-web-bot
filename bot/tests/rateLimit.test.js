@@ -19,9 +19,9 @@ jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(
 
 test('лимитер detailLimiter возвращает 429', async () => {
   const app = express()
-  app.use('/api/tasks', router)
-  for (let i=0; i<100; i++) await request(app).get('/api/tasks/1')
-  const res = await request(app).get('/api/tasks/1')
+  app.use('/api/v1/tasks', router)
+  for (let i=0; i<100; i++) await request(app).get('/api/v1/tasks/1')
+  const res = await request(app).get('/api/v1/tasks/1')
   expect(res.status).toBe(429)
 })
 

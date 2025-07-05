@@ -7,22 +7,22 @@
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | /health | Проверка работоспособности сервера |
-| POST | /api/auth/send_code | Отправить код подтверждения |
-| POST | /api/auth/verify_code | Проверить код и получить JWT |
-| GET | /api/tasks | Список всех задач |
-| POST | /api/tasks | Создание задачи |
-| PUT | /api/tasks/:id | Обновление задачи |
-| POST | /api/tasks/:id/status | Изменение статуса |
-| GET | /api/tasks | Расширенный список задач |
-| GET | /api/tasks/:id | Получить задачу |
-| PATCH | /api/tasks/:id | Редактирование задачи |
-| PATCH | /api/tasks/:id/time | Добавить время |
-| POST | /api/tasks/bulk | Массовое обновление |
-| GET | /api/tasks/report/summary | KPI отчёт (`from`, `to`) |
-| GET | /api/groups | Список групп |
-| POST | /api/groups | Создание группы |
-| GET | /api/users | Список пользователей |
-| POST | /api/users | Создание пользователя |
+| POST | /api/v1/auth/send_code | Отправить код подтверждения |
+| POST | /api/v1/auth/verify_code | Проверить код и получить JWT |
+| GET | /api/v1/tasks | Список всех задач |
+| POST | /api/v1/tasks | Создание задачи |
+| PUT | /api/v1/tasks/:id | Обновление задачи |
+| POST | /api/v1/tasks/:id/status | Изменение статуса |
+| GET | /api/v1/tasks | Расширенный список задач |
+| GET | /api/v1/tasks/:id | Получить задачу |
+| PATCH | /api/v1/tasks/:id | Редактирование задачи |
+| PATCH | /api/v1/tasks/:id/time | Добавить время |
+| POST | /api/v1/tasks/bulk | Массовое обновление |
+| GET | /api/v1/tasks/report/summary | KPI отчёт (`from`, `to`) |
+| GET | /api/v1/groups | Список групп |
+| POST | /api/v1/groups | Создание группы |
+| GET | /api/v1/users | Список пользователей |
+| POST | /api/v1/users | Создание пользователя |
 | GET | /api/roles | Список ролей |
 | POST | /api/roles | Создание роли |
 | GET | /api/logs | Последние логи |

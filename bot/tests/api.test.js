@@ -22,7 +22,7 @@ beforeAll(async () => {
   app.use(express.json())
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
   const token = generateToken({ id: 1, username: 'test', isAdmin: true })
-  app.get('/api/tasks', verifyToken, asyncHandler(async (_req, res) => {
+  app.get('/api/v1/tasks', verifyToken, asyncHandler(async (_req, res) => {
     res.json(await services.listAllTasks())
   }))
   app.use(errorHandler)
@@ -36,9 +36,9 @@ test('GET /health', async () => {
   expect(res.body.status).toBe('ok')
 })
 
-test('GET /api/tasks отдает список задач', async () => {
+test('GET /api/v1/tasks отдает список задач', async () => {
   const token = app.locals.token
-  const res = await request(app).get('/api/tasks').set('Authorization', `Bearer ${token}`)
+  const res = await request(app).get('/api/v1/tasks').set('Authorization', `Bearer ${token}`)
   expect(res.status).toBe(200)
   expect(Array.isArray(res.body)).toBe(true)
 })

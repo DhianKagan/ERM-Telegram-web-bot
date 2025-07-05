@@ -20,10 +20,10 @@ export default function Admin() {
   const [departments, setDepartments] = React.useState<Department[]>([])
   const { user } = React.useContext(AuthContext)
   const load = () => {
-    authFetch("/api/users")
+    authFetch("/api/v1/users")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers)
-    authFetch('/api/departments')
+    authFetch('/api/v1/departments')
       .then(r=>r.ok?r.json():[])
       .then(setDepartments)
   }

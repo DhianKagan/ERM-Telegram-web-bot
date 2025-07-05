@@ -8,7 +8,7 @@ interface Log { _id: string; message: string; level: string; createdAt: string }
 export default function Logs() {
   const [logs, setLogs] = React.useState<Log[]>([])
   React.useEffect(() => {
-    authFetch('/api/logs')
+    authFetch('/api/v1/logs')
       .then((r) => (r.ok ? r.json() : []))
       .then(setLogs)
   }, [])

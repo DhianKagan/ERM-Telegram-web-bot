@@ -6,6 +6,7 @@
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Добавлен скрипт `audit_deps.sh` и шаг CI для проверки зависимостей
 - Клиент переведён на React 18 ради совместимости с TelegramUI
+- Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается
 - Завершение таймеров в `messageQueue` устранено
 - Код бота и клиента объединён в каталоге `bot`
 - Добавлены скрипты `setup_and_test.sh`, `create_env_from_exports.sh`, `create_admin_user.js` и `check_bot_token.sh`

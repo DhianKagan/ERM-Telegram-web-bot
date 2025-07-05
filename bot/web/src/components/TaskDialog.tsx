@@ -8,6 +8,9 @@ import fields from "../../../shared/taskFields.cjs";
 import { fetchDefaults } from "../services/dicts";
 import { createTask, updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
+import parseGoogleAddress from "../utils/parseGoogleAddress";
+import { validateURL } from "../utils/validation";
+import extractCoords from "../utils/extractCoords";
 
 interface Props {
   onClose: () => void;
@@ -35,8 +38,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [assignees, setAssignees] = React.useState<string[]>([]);
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
+  const [startCoordinates, setStartCoordinates] = React.useState<{lat:number,lng:number}|null>(null);
   const [end, setEnd] = React.useState("");
   const [endLink, setEndLink] = React.useState("");
+  const [finishCoordinates, setFinishCoordinates] = React.useState<{lat:number,lng:number}|null>(null);
   const [types,setTypes]=React.useState<string[]>([]);
   const [priorities,setPriorities]=React.useState<string[]>([]);
   const [transports,setTransports]=React.useState<string[]>([]);
@@ -123,8 +128,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const addTag=(e,setter)=>{const val=e.target.value;if(!val)return;let tag="";if(val.startsWith('group:')){const g=groups.find(r=>`group:${r._id}`===val);if(g)tag=`<span data-group="${g._id}">${g.name}</span>`;}else if(val.startsWith('role:')){const r=roles.find(ro=>`role:${ro._id}`===val);if(r)tag=`<span data-role="${r._id}">${r.name}</span>`;}else{const u=users.find(u=>String(u.telegram_id)===val);if(u)tag=`<a href="tg://user?id=${u.telegram_id}">${u.name||u.username}</a>`;}if(tag){setter(d=>`${d} ${tag} `);e.target.value="";}};
 
+  const handleStartLink=(v:string)=>{
+    setStartLink(v);
+    const url=validateURL(v);
+    if(url){
+      setStart(parseGoogleAddress(url));
+      setStartCoordinates(extractCoords(url));
+    } else {setStart('');setStartCoordinates(null);}
+  };
+
+  const handleEndLink=(v:string)=>{
+    setEndLink(v);
+    const url=validateURL(v);
+    if(url){
+      setEnd(parseGoogleAddress(url));
+      setFinishCoordinates(extractCoords(url));
+    } else {setEnd('');setFinishCoordinates(null);}
+  };
+
   const submit=async()=>{
-    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
+    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,startCoordinates,finishCoordinates,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);
@@ -182,27 +205,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
           {startLink ? (
-            <a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
-              {start || 'ссылка'}
-            </a>
+            <div className="flex items-center space-x-2">
+              <a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+                {start || 'ссылка'}
+              </a>
+              <button type="button" onClick={() => handleStartLink('')} className="text-red-600">✖</button>
+            </div>
           ) : (
-            <span className="text-gray-500">не выбрано</span>
+            <div className="mt-1 flex space-x-2">
+              <input
+                value={startLink}
+                onChange={e => handleStartLink(e.target.value)}
+                placeholder="Ссылка из Google Maps"
+                className="flex-1 rounded border px-2 py-1"
+              />
+              <button
+                type="button"
+                onClick={() => setShowStartMap(true)}
+                className="btn-blue rounded-2xl px-3"
+              >
+                Карта
+              </button>
+            </div>
           )}
-          <div className="mt-1 flex space-x-2">
-            <input
-              value={startLink}
-              onChange={e => setStartLink(e.target.value)}
-              placeholder="Ссылка из Google Maps"
-              className="flex-1 rounded border px-2 py-1"
-            />
-            <button
-              type="button"
-              onClick={() => setShowStartMap(true)}
-              className="btn-blue rounded-2xl px-3"
-            >
-              Карта
-            </button>
-          </div>
         </div>
         <div>
           <label className="block text-sm font-medium">Тип транспорта</label>
@@ -213,27 +238,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div>
           <label className="block text-sm font-medium">Финальная точка</label>
           {endLink ? (
-            <a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
-              {end || 'ссылка'}
-            </a>
+            <div className="flex items-center space-x-2">
+              <a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+                {end || 'ссылка'}
+              </a>
+              <button type="button" onClick={() => handleEndLink('')} className="text-red-600">✖</button>
+            </div>
           ) : (
-            <span className="text-gray-500">не выбрано</span>
+            <div className="mt-1 flex space-x-2">
+              <input
+                value={endLink}
+                onChange={e => handleEndLink(e.target.value)}
+                placeholder="Ссылка из Google Maps"
+                className="flex-1 rounded border px-2 py-1"
+              />
+              <button
+                type="button"
+                onClick={() => setShowEndMap(true)}
+                className="btn-blue rounded-2xl px-3"
+              >
+                Карта
+              </button>
+            </div>
           )}
-          <div className="mt-1 flex space-x-2">
-            <input
-              value={endLink}
-              onChange={e => setEndLink(e.target.value)}
-              placeholder="Ссылка из Google Maps"
-              className="flex-1 rounded border px-2 py-1"
-            />
-            <button
-              type="button"
-              onClick={() => setShowEndMap(true)}
-              className="btn-blue rounded-2xl px-3"
-            >
-              Карта
-            </button>
-          </div>
         </div>
         <div>
           <label className="block text-sm font-medium">Способ оплаты</label>
@@ -302,18 +329,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       </div>
       {showStartMap && (
         <MapSelector
-          onSelect={({ link, address }) => {
+          onSelect={({ link, address, coords }) => {
             setStart(address);
             setStartLink(link);
+            setStartCoordinates(coords);
           }}
           onClose={() => setShowStartMap(false)}
         />
       )}
       {showEndMap && (
         <MapSelector
-          onSelect={({ link, address }) => {
+          onSelect={({ link, address, coords }) => {
             setEnd(address);
             setEndLink(link);
+            setFinishCoordinates(coords);
           }}
           onClose={() => setShowEndMap(false)}
         />

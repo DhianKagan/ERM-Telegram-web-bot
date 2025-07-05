@@ -2,9 +2,10 @@
 import React from "react";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
+import extractCoords from "../utils/extractCoords";
 
 interface MapSelectorProps {
-  onSelect?: (res: { link: string; address: string }) => void
+  onSelect?: (res: { link: string; address: string; coords: { lat: number; lng: number } | null }) => void
   onClose?: () => void
 }
 
@@ -19,7 +20,8 @@ export default function MapSelector({ onSelect, onClose }: MapSelectorProps) {
       return;
     }
     const address = parseGoogleAddress(sanitized);
-    if (onSelect) onSelect({ link: sanitized, address });
+    const coords = extractCoords(sanitized);
+    if (onSelect) onSelect({ link: sanitized, address, coords });
     if (onClose) onClose();
   };
 

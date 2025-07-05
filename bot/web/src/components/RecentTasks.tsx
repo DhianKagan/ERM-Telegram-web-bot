@@ -6,13 +6,15 @@ interface Task {
   _id: string
   title: string
   status: string
+  request_id: string
+  createdAt: string
 }
 
 export default function RecentTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    authFetch('/api/tasks?limit=5')
+    authFetch('/api/v1/tasks?limit=5')
       .then(r => (r.ok ? r.json() : []))
       .then(data => {
         setTasks(data)
@@ -43,12 +45,16 @@ export default function RecentTasks() {
         </tr>
       </thead>
       <tbody>
-        {tasks.map(t => (
-          <tr key={t._id} className="border-b">
-            <td className="px-4 py-2">{t.title}</td>
-            <td className="px-4 py-2 text-center">{t.status}</td>
-          </tr>
-        ))}
+        {tasks.map(t => {
+          const name = t.title.replace(/^ERM_\d+\s*/, '');
+          const date = t.createdAt?.slice(0,10);
+          return (
+            <tr key={t._id} className="border-b">
+              <td className="px-4 py-2">{`${t.request_id} ${date} ${name}`}</td>
+              <td className="px-4 py-2 text-center">{t.status}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   )

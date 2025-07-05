@@ -18,6 +18,8 @@ interface Props {
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useContext(AuthContext);
+  const [requestId,setRequestId]=React.useState('');
+  const [created,setCreated]=React.useState('');
   const [title, setTitle] = React.useState("");
   const [taskType, setTaskType] = React.useState(fields.find(f=>f.name==='task_type')?.default||"");
   const [description, setDescription] = React.useState("");
@@ -59,6 +61,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   },[]);
 
   React.useEffect(()=>{
+    if(isEdit&&id){
+      authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
+        if(!t) return;
+        setRequestId(t.request_id);
+        setCreated(new Date(t.createdAt).toISOString().slice(0,10));
+      });
+    }else{
+      setCreated(new Date().toISOString().slice(0,10));
+      authFetch('/api/v1/tasks/report/summary')
+        .then(r=>r.ok?r.json():{count:0})
+        .then(s=>{
+          const num=String((s.count||0)+1).padStart(6,'0');
+          setRequestId(`ERM_${num}`);
+        });
+    }
+  },[id,isEdit]);
+
+  React.useEffect(()=>{
     authFetch('/api/users').then(r=>r.ok?r.json():[]).then(list=>{setUsers(list);if(user) setCreator(user.telegram_id);});
     authFetch('/api/groups').then(r=>r.ok?r.json():[]).then(setGroups);
     authFetch('/api/roles').then(r=>r.ok?r.json():[]).then(setRoles);
@@ -70,7 +90,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   React.useEffect(()=>{
     if(!isEdit||!id) return;
-    authFetch(`/api/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
+    authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
       if(!t) return;
       setTitle(t.title||"");
       setTaskType(t.task_type||taskType);
@@ -108,19 +128,31 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{isEdit ? title : 'Новая задача'}</h3>
-          <select value={priority} onChange={e=>setPriority(e.target.value)} className="rounded border px-2 py-1">
-            {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
+          <h3 className="text-lg font-semibold">{requestId} {created}</h3>
+          <div>
+            <label className="mr-2 text-sm">Приоритет</label>
+            <select value={priority} onChange={e=>setPriority(e.target.value)} className="rounded border px-2 py-1">
+              {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Отдел</label>
+          <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1">
+            <option value="">Отдел</option>
+            {departments.map(d=>(<option key={d._id} value={d._id}>{d.name}</option>))}
           </select>
         </div>
-        <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1">
-          <option value="">Отдел</option>
-          {departments.map(d=>(<option key={d._id} value={d._id}>{d.name}</option>))}
-        </select>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
-        <select value={taskType} onChange={e=>setTaskType(e.target.value)} className="w-full rounded border px-2 py-1">
-          {types.map(t=>(<option key={t} value={t}>{t}</option>))}
-        </select>
+        <div>
+          <label className="block text-sm font-medium">Название задачи</label>
+          <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Тип задачи</label>
+          <select value={taskType} onChange={e=>setTaskType(e.target.value)} className="w-full rounded border px-2 py-1">
+            {types.map(t=>(<option key={t} value={t}>{t}</option>))}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium">Задачу создал</label>
           <select value={creator} onChange={e=>setCreator(e.target.value)} className="w-full rounded border px-2 py-1">
@@ -140,18 +172,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <button type="button" onClick={()=>setShowStartMap(true)} className="btn-blue ml-2 rounded-full">Карта</button>
         </div>
         {showStartMap&&(<MapSelector onSelect={({link,address})=>{setStart(address);setStartLink(link);}} onClose={()=>setShowStartMap(false)} />)}
-        <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1">
-          {transports.map(t=>(<option key={t} value={t}>{t}</option>))}
-        </select>
+        <div>
+          <label className="block text-sm font-medium">Тип транспорта</label>
+          <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1">
+            {transports.map(t=>(<option key={t} value={t}>{t}</option>))}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium">Финальная точка</label>
           {endLink?(<a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">{end||'ссылка'}</a>):(<span className="text-gray-500">не выбрано</span>)}
           <button type="button" onClick={()=>setShowEndMap(true)} className="btn-blue ml-2 rounded-full">Карта</button>
         </div>
         {showEndMap&&(<MapSelector onSelect={({link,address})=>{setEnd(address);setEndLink(validateURL(link));}} onClose={()=>setShowEndMap(false)} />)}
-        <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1">
-          {payments.map(p=>(<option key={p} value={p}>{p}</option>))}
-        </select>
+        <div>
+          <label className="block text-sm font-medium">Способ оплаты</label>
+          <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1">
+            {payments.map(p=>(<option key={p} value={p}>{p}</option>))}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
           <RichTextEditor value={description} onChange={setDescription} />

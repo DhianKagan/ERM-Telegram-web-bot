@@ -2,10 +2,10 @@
 import authFetch from "../utils/authFetch";
 
 export const fetchKanban = () =>
-  authFetch("/api/tasks?kanban=true").then((r) => (r.ok ? r.json() : []));
+  authFetch("/api/v1/tasks?kanban=true").then((r) => (r.ok ? r.json() : []));
 
 export const updateTaskStatus = (id, status) =>
-  authFetch(`/api/tasks/${id}`, {
+  authFetch(`/api/v1/tasks/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -14,7 +14,7 @@ export const updateTaskStatus = (id, status) =>
   });
 
 export const createTask = (data) =>
-  authFetch("/api/tasks", {
+  authFetch("/api/v1/tasks", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -31,12 +31,12 @@ export const createTask = (data) =>
   });
 
 export const deleteTask = (id) =>
-  authFetch(`/api/tasks/${id}`, {
+  authFetch(`/api/v1/tasks/${id}`, {
     method: "DELETE",
   });
 
 export const updateTask = (id, data) =>
-  authFetch(`/api/tasks/${id}`, {
+  authFetch(`/api/v1/tasks/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -45,4 +45,4 @@ export const updateTask = (id, data) =>
   });
 
 export const fetchMentioned = () =>
-  authFetch('/api/tasks/mentioned').then(r=> (r.ok ? r.json() : []))
+  authFetch('/api/v1/tasks/mentioned').then(r=> (r.ok ? r.json() : []))

@@ -13,13 +13,13 @@ export default function AddUserForm({ onCreate }: AddUserFormProps) {
   const [roles, setRoles] = React.useState([])
 
   React.useEffect(() => {
-    authFetch('/api/roles')
+    authFetch('/api/v1/roles')
       .then(r => (r.ok ? r.json() : []))
       .then(setRoles)
   }, [])
   const submit = async e => {
     e.preventDefault()
-    const res = await authFetch('/api/users', {
+    const res = await authFetch('/api/v1/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: Number(id), username, roleId })

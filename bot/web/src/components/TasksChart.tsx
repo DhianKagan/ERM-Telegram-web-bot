@@ -15,7 +15,7 @@ export default function TasksChart() {
   const { theme } = useTheme()
 
   useEffect(() => {
-    authFetch('/api/tasks/report/chart')
+    authFetch('/api/v1/tasks/report/chart')
       .then(r => (r.ok ? r.json() : { data: [], labels: [] }))
       .then(({ data, labels }) => {
         setSeries([{ data }])

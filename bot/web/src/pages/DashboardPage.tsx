@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary>({ total: 0, inWork: 0, overdue: 0, today: 0 })
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    authFetch('/api/tasks/report/summary')
+    authFetch('/api/v1/tasks/report/summary')
       .then(r => (r.ok ? r.json() : { total: 0, inWork: 0, overdue: 0, today: 0 }))
       .then(data => {
         setSummary(data)

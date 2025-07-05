@@ -9,7 +9,7 @@ export default function Reports() {
   const [kpi,setKpi] = React.useState({count:0,time:0})
   const load = (f?:{from?:string,to?:string}) => {
     const q = new URLSearchParams(f as any).toString()
-    authFetch(`/api/tasks/report/summary${q?`?${q}`:""}`)
+    authFetch(`/api/v1/tasks/report/summary${q?`?${q}`:""}`)
       .then(r=>r.ok?r.json():{count:0,time:0}).then(setKpi)
   }
   React.useEffect(()=>load(),[])

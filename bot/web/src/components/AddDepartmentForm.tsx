@@ -10,7 +10,7 @@ export default function AddDepartmentForm({ onCreate }: AddDepartmentFormProps) 
   const [name, setName] = React.useState('')
   const submit = async e => {
     e.preventDefault()
-    const res = await authFetch('/api/departments', {
+    const res = await authFetch('/api/v1/departments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })

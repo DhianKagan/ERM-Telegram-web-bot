@@ -38,11 +38,11 @@ let app
 beforeAll(() => {
   app = express()
   app.use(express.json())
-  app.use('/api/tasks', router)
+  app.use('/api/v1/tasks', router)
 })
 
 test('создание задачи возвращает 201', async () => {
-  const res = await request(app).post('/api/tasks').send({
+  const res = await request(app).post('/api/v1/tasks').send({
     title: 'T',
     start_location_link: 'https://maps.google.com',
     end_location_link: 'https://maps.google.com'
@@ -54,34 +54,34 @@ test('создание задачи возвращает 201', async () => {
 const id = '507f191e810c19729de860ea'
 
 test('обновление задачи', async () => {
-  const res = await request(app).patch(`/api/tasks/${id}`).send({ status:'done' })
+  const res = await request(app).patch(`/api/v1/tasks/${id}`).send({ status:'done' })
   expect(res.body.status).toBe('done')
 })
 
 test('добавление времени', async () => {
-  await request(app).patch(`/api/tasks/${id}/time`).send({ minutes:15 })
+  await request(app).patch(`/api/v1/tasks/${id}/time`).send({ minutes:15 })
   expect(Task.findById).toHaveBeenCalled()
 })
 
 test('bulk update статуса', async () => {
-  await request(app).post('/api/tasks/bulk').send({ ids:[id,id], status:'done' })
+  await request(app).post('/api/v1/tasks/bulk').send({ ids:[id,id], status:'done' })
   expect(Task.updateMany).toHaveBeenCalled()
 })
 
 test('summary report возвращает метрики', async () => {
-  const res = await request(app).get('/api/tasks/report/summary')
+  const res = await request(app).get('/api/v1/tasks/report/summary')
   expect(res.body.count).toBe(2)
   expect(res.body.time).toBe(30)
 })
 
 test('summary report c фильтром дат', async () => {
-  const res = await request(app).get('/api/tasks/report/summary?from=2024-01-01&to=2024-12-31')
+  const res = await request(app).get('/api/v1/tasks/report/summary?from=2024-01-01&to=2024-12-31')
   expect(res.body.count).toBe(2)
   expect(res.body.time).toBe(30)
 })
 
 test('удаление задачи', async () => {
-  const res = await request(app).delete(`/api/tasks/${id}`)
+  const res = await request(app).delete(`/api/v1/tasks/${id}`)
   expect(res.status).toBe(204)
 })
 

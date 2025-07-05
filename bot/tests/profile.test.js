@@ -22,7 +22,7 @@ let app
 beforeAll(() => {
   app = express()
   app.use(express.json())
-  app.get('/api/auth/profile', ctrl.profile)
+  app.get('/api/v1/auth/profile', ctrl.profile)
 })
 
 test('получаем профиль', async () => {

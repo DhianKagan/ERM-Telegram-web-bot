@@ -90,6 +90,7 @@ const validate = validations => [
     })
   )
   app.use(cors())
+  const prefix = '/api/v1'
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs))
 
   // простая проверка работоспособности контейнера
@@ -152,20 +153,20 @@ const validate = validations => [
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks
 
 
-  app.get('/api/groups', groupsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/groups`, groupsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listGroups())
   }))
-  app.post('/api/groups', groupsRateLimiter, verifyToken, checkRole('admin'),
+  app.post(`${prefix}/groups`, groupsRateLimiter, verifyToken, checkRole('admin'),
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const group = await createGroup(req.body.name)
     res.json(group)
   }))
 
-  app.get('/api/users', usersRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/users`, usersRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listUsers())
   }))
-  app.post('/api/users', usersRateLimiter, verifyToken, checkRole('admin'),
+  app.post(`${prefix}/users`, usersRateLimiter, verifyToken, checkRole('admin'),
     validate([
       body('id').isInt(),
       body('username').isString().notEmpty(),
@@ -176,24 +177,24 @@ const validate = validations => [
     res.json(user)
   }))
 
-  app.get('/api/departments', departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/departments`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listDepartments())
   }))
-  app.post('/api/departments', departmentsRateLimiter, verifyToken, checkRole('admin'),
+  app.post(`${prefix}/departments`, departmentsRateLimiter, verifyToken, checkRole('admin'),
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const dep = await createDepartment(req.body.name)
     res.json(dep)
   }))
 
-  app.patch('/api/departments/:id', departmentsRateLimiter, verifyToken, checkRole('admin'),
+  app.patch(`${prefix}/departments/:id`, departmentsRateLimiter, verifyToken, checkRole('admin'),
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
     const dep = await updateDepartment(req.params.id, req.body.name)
     res.json(dep)
   }))
 
-  app.delete('/api/departments/:id', departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+  app.delete(`${prefix}/departments/:id`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
     await deleteDepartment(req.params.id)
     res.json({ status: 'ok' })
   }))
@@ -207,7 +208,7 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.get('/api/roles', rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
 
     res.json(await listRoles())
   }))
@@ -220,7 +221,7 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.post('/api/roles', rolesRateLimiter, verifyToken, checkRole('admin'),
+  app.post(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'),
 
     validate([body('name').isString().notEmpty()]),
     asyncHandler(async (req, res) => {
@@ -237,16 +238,16 @@ const validate = validations => [
    *       - bearerAuth: []
    */
 
-  app.get('/api/logs', logsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/logs`, logsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listLogs())
   }))
 
 
-  app.get('/api/defaults/:name', defaultsRateLimiter, verifyToken, asyncHandler(async (req, res) => {
+  app.get(`${prefix}/defaults/:name`, defaultsRateLimiter, verifyToken, asyncHandler(async (req, res) => {
     res.json(await getDefaultValues(req.params.name))
   }))
 
-  app.put('/api/defaults/:name', defaultsRateLimiter, verifyToken, checkRole('admin'),
+  app.put(`${prefix}/defaults/:name`, defaultsRateLimiter, verifyToken, checkRole('admin'),
     validate([
       body('values').isArray().custom(arr => arr.every(v => ['string', 'number', 'boolean'].includes(typeof v)))
     ]),
@@ -256,15 +257,15 @@ const validate = validations => [
       res.json({ status: 'ok' })
     }))
 
-  app.get('/api/transports', transportsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
+  app.get(`${prefix}/transports`, transportsRateLimiter, verifyToken, asyncHandler(async (_req, res) => {
     res.json(await listTransports())
   }))
 
-  app.post('/api/transports', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+  app.post(`${prefix}/transports`, transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
     res.json(await createTransport(req.body))
   }))
 
-  app.patch('/api/transports/:id', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+  app.patch(`${prefix}/transports/:id`, transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
     const allowedFields = ['name', 'specs', 'numbers']
     const sanitized = Object.fromEntries(
       Object.entries(req.body).filter(([k]) => allowedFields.includes(k))
@@ -272,13 +273,13 @@ const validate = validations => [
     res.json(await updateTransport(req.params.id, sanitized))
   }))
 
-  app.delete('/api/transports/:id', transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
+  app.delete(`${prefix}/transports/:id`, transportsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
 
     await deleteTransport(req.params.id)
     res.json({ status: 'ok' })
   }))
 
-  app.post('/api/tasks/:id/status', taskStatusRateLimiter, verifyToken,
+  app.post(`${prefix}/tasks/:id/status`, taskStatusRateLimiter, verifyToken,
 
     validate([body('status').isIn(['pending', 'in-progress', 'completed'])]),
     asyncHandler(async (req, res) => {
@@ -288,9 +289,9 @@ const validate = validations => [
     }))
 
   // авторизация пользователей и личный кабинет
-  app.use('/api/auth', authUserRouter)
+  app.use(`${prefix}/auth`, authUserRouter)
   // новые REST маршруты для расширенной работы с задачами
-  app.use('/api/tasks', tasksRouter)
+  app.use(`${prefix}/tasks`, tasksRouter)
 
   // явно обрабатываем корневой адрес, чтобы исключить 403
   app.get('/', spaRateLimiter, (_req, res) => {

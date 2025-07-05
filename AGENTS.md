@@ -14,7 +14,7 @@
 - При изменениях обновляйте README.md, CHANGELOG.md, ROADMAP.md и AGENTS.md
 - Каталог `bot` содержит сервер и веб‑интерфейс
 - Веб-клиент использует meta description и файл `robots.txt` для SEO
-- `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/agrmcs?authSource=admin`
+- `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`
 - Для GitHub Actions требуется собственный MongoDB-хост или Railway CLI
 - Рекомендуется проверять базу командой `npm --prefix bot run check:mongo`
 - Переменная `BOT_API_URL` позволяет использовать локальный telegram-bot-api

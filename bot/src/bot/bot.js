@@ -46,19 +46,20 @@ require('../db/model')
 // Хранилище незавершённых команд /assign_task
 const pendingAssignments = new Map()
 
-// Функция отправки кнопки Web App с резервом на случай ошибки типа BUTTON_TYPE_INVALID
-async function sendAccessButton(ctx, url) {
+// Функция отправки кнопки. По умолчанию используется тип Web App.
+// Для открытия во внешнем браузере установите asWebApp = false
+async function sendAccessButton(ctx, url, asWebApp = true) {
   const send = async chatId => {
     try {
       await bot.telegram.sendMessage(
         chatId,
         'Нажмите кнопку для доступа',
         Markup.inlineKeyboard([
-          Markup.button.webApp(messages.miniAppLinkText, url)
+          asWebApp ? Markup.button.webApp(messages.miniAppLinkText, url) : Markup.button.url(messages.miniAppLinkText, url)
         ])
       )
     } catch (err) {
-      if (err.description && err.description.includes('BUTTON_TYPE_INVALID')) {
+      if (asWebApp && err.description && err.description.includes('BUTTON_TYPE_INVALID')) {
         await bot.telegram.sendMessage(
           chatId,
           'Нажмите кнопку для доступа',
@@ -403,8 +404,8 @@ bot.command('browser', async (ctx) => {
   }
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
-  const url = `${appUrl}?token=${token}`
-  await sendAccessButton(ctx, url)
+  const url = `${appUrl}?browser=1&token=${token}`
+  await sendAccessButton(ctx, url, false)
 })
 // Обработка нажатий текстовых кнопок
 bot.hears("Справка", (ctx) => ctx.reply(messages.help))
@@ -465,8 +466,8 @@ bot.hears("Браузер", async (ctx) => {
   }
   const isAdmin = await verifyAdmin(ctx.from.id)
   const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
-  const url = `${appUrl}?token=${token}`
-  await sendAccessButton(ctx, url)
+  const url = `${appUrl}?browser=1&token=${token}`
+  await sendAccessButton(ctx, url, false)
 })
 
 bot.action('my_tasks', async (ctx) => {

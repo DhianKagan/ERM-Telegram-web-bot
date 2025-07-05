@@ -1,3 +1,4 @@
+// Точка входа: выбирает режим приложения (браузер или Telegram)
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
@@ -7,7 +8,10 @@ if (!root) {
   throw new Error("Element #root not found");
 }
 
-const isBrowser = new URLSearchParams(window.location.search).get("browser") === "1";
+const params = new URLSearchParams(window.location.search);
+const forcedBrowser = params.get("browser") === "1";
+const hasTelegram = typeof window.Telegram?.WebApp !== "undefined";
+const isBrowser = forcedBrowser || !hasTelegram;
 
 function render(Component: React.ComponentType) {
   ReactDOM.createRoot(root).render(

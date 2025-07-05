@@ -1,6 +1,5 @@
 // Общая форма создания и редактирования задач
 import React, { useContext } from "react";
-import MapSelector from "./MapSelector";
 import RichTextEditor from "./RichTextEditor";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
@@ -8,6 +7,7 @@ import { fetchDefaults } from "../services/dicts";
 import { createTask, updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import { validateURL } from "../utils/validation";
+import parseGoogleAddress from "../utils/parseGoogleAddress";
 
 interface Props {
   onClose: () => void;
@@ -29,8 +29,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [paymentMethod, setPaymentMethod] = React.useState(fields.find(f=>f.name==='payment_method')?.default||"");
   const [status, setStatus] = React.useState(fields.find(f=>f.name==='status')?.default||"");
   const [dueDate, setDueDate] = React.useState("");
-  const [assignee, setAssignee] = React.useState("");
-  const [controller, setController] = React.useState("");
+  const [controllers, setControllers] = React.useState<string[]>([]);
   const [department, setDepartment] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [assignees, setAssignees] = React.useState<string[]>([]);
@@ -38,8 +37,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [startLink, setStartLink] = React.useState("");
   const [end, setEnd] = React.useState("");
   const [endLink, setEndLink] = React.useState("");
-  const [showStartMap, setShowStartMap] = React.useState(false);
-  const [showEndMap, setShowEndMap] = React.useState(false);
   const [types,setTypes]=React.useState<string[]>([]);
   const [priorities,setPriorities]=React.useState<string[]>([]);
   const [transports,setTransports]=React.useState<string[]>([]);
@@ -51,6 +48,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
+
+  const convertStart=()=>{
+    const sanitized=validateURL(startLink);
+    if(!sanitized) return;
+    setStart(parseGoogleAddress(sanitized));
+    setStartLink(sanitized);
+  };
+
+  const convertEnd=()=>{
+    const sanitized=validateURL(endLink);
+    if(!sanitized) return;
+    setEnd(parseGoogleAddress(sanitized));
+    setEndLink(sanitized);
+  };
 
   React.useEffect(()=>{
     fetchDefaults('task_type').then(v=>{setTypes(v);if(!taskType&&v.length)setTaskType(v[0]);});
@@ -108,8 +119,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setEnd(t.end_location||"");
       setEndLink(t.end_location_link||"");
       setDueDate(t.due_date?new Date(t.due_date).toISOString().slice(0,16):"");
-      setAssignee(String(t.assigned_user_id||""));
-      setController(String(t.controller_user_id||""));
+      setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
     });
   },[id,isEdit]);
@@ -117,7 +127,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const addTag=(e,setter)=>{const val=e.target.value;if(!val)return;let tag="";if(val.startsWith('group:')){const g=groups.find(r=>`group:${r._id}`===val);if(g)tag=`<span data-group="${g._id}">${g.name}</span>`;}else if(val.startsWith('role:')){const r=roles.find(ro=>`role:${ro._id}`===val);if(r)tag=`<span data-role="${r._id}">${r.name}</span>`;}else{const u=users.find(u=>String(u.telegram_id)===val);if(u)tag=`<a href="tg://user?id=${u.telegram_id}">${u.name||u.username}</a>`;}if(tag){setter(d=>`${d} ${tag} `);e.target.value="";}};
 
   const submit=async()=>{
-    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,due_date:dueDate||undefined,assigned_user_id:assignee||undefined,controller_user_id:controller||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
+    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);
@@ -128,13 +138,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-center justify-center bg-black">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{requestId} {created}</h3>
-          <div>
-            <label className="mr-2 text-sm">Приоритет</label>
-            <select value={priority} onChange={e=>setPriority(e.target.value)} className="rounded border px-2 py-1">
-              {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
-            </select>
-          </div>
+          <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Статус</label>
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1">
+            {statuses.map(s=>(<option key={s} value={s}>{s}</option>))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Приоритет</label>
+          <select value={priority} onChange={e=>setPriority(e.target.value)} className="w-full rounded border px-2 py-1">
+            {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Отдел</label>
@@ -168,10 +184,25 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
-          {startLink?(<a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">{start||'ссылка'}</a>):(<span className="text-gray-500">не выбрано</span>)}
-          <button type="button" onClick={()=>setShowStartMap(true)} className="btn-blue ml-2 rounded-full">Карта</button>
+          {startLink ? (
+            <a href={startLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+              {start || 'ссылка'}
+            </a>
+          ) : (
+            <span className="text-gray-500">не выбрано</span>
+          )}
+          <div className="mt-1 flex space-x-2">
+            <input
+              value={startLink}
+              onChange={e => setStartLink(e.target.value)}
+              placeholder="Ссылка из Google Maps"
+              className="flex-1 rounded border px-2 py-1"
+            />
+            <button type="button" onClick={convertStart} className="btn-blue rounded-full">
+              Карта
+            </button>
+          </div>
         </div>
-        {showStartMap&&(<MapSelector onSelect={({link,address})=>{setStart(address);setStartLink(link);}} onClose={()=>setShowStartMap(false)} />)}
         <div>
           <label className="block text-sm font-medium">Тип транспорта</label>
           <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1">
@@ -180,10 +211,25 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
         <div>
           <label className="block text-sm font-medium">Финальная точка</label>
-          {endLink?(<a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">{end||'ссылка'}</a>):(<span className="text-gray-500">не выбрано</span>)}
-          <button type="button" onClick={()=>setShowEndMap(true)} className="btn-blue ml-2 rounded-full">Карта</button>
+          {endLink ? (
+            <a href={endLink} target="_blank" rel="noopener" className="text-accentPrimary underline">
+              {end || 'ссылка'}
+            </a>
+          ) : (
+            <span className="text-gray-500">не выбрано</span>
+          )}
+          <div className="mt-1 flex space-x-2">
+            <input
+              value={endLink}
+              onChange={e => setEndLink(e.target.value)}
+              placeholder="Ссылка из Google Maps"
+              className="flex-1 rounded border px-2 py-1"
+            />
+            <button type="button" onClick={convertEnd} className="btn-blue rounded-full">
+              Карта
+            </button>
+          </div>
         </div>
-        {showEndMap&&(<MapSelector onSelect={({link,address})=>{setEnd(address);setEndLink(validateURL(link));}} onClose={()=>setShowEndMap(false)} />)}
         <div>
           <label className="block text-sm font-medium">Способ оплаты</label>
           <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1">
@@ -227,22 +273,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Статус</label>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1">
-            {statuses.map(s=>(<option key={s} value={s}>{s}</option>))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Ответственный</label>
-          <select value={assignee} onChange={e=>setAssignee(e.target.value)} className="w-full rounded border px-2 py-1">
-            <option value="">назначить</option>
-            {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
-          </select>
-        </div>
-        <div>
           <label className="block text-sm font-medium">Контролёр</label>
-          <select value={controller} onChange={e=>setController(e.target.value)} className="w-full rounded border px-2 py-1">
-            <option value="">назначить</option>
+          <select
+            multiple
+            value={controllers}
+            onChange={e=>setControllers(Array.from(e.target.selectedOptions).map(o=>o.value))}
+            className="w-full rounded border px-2 py-1"
+          >
             {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
           </select>
         </div>

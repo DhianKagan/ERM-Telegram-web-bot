@@ -31,6 +31,7 @@ async function listMentionedTasks(userId) {
     $or: [
       { assigned_user_id: userId },
       { controller_user_id: userId },
+      { controllers: userId },
       { assignees: userId },
       { created_by: userId },
       { 'comments.author_id': userId }

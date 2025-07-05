@@ -1,7 +1,6 @@
 // Страница управления задачами
 import React from "react";
-import TaskForm from "../components/TaskForm";
-import TaskModal from "../components/TaskModal";
+import TaskDialog from "../components/TaskDialog";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/ToastContext";
 import { deleteTask } from "../services/tasks";
@@ -214,16 +213,18 @@ export default function TasksPage() {
         </button>
       )}
       {open && (
-        <TaskForm
+        <TaskDialog
           onClose={() => setOpen(false)}
-          onCreate={() => {
+          onSave={() => {
             setOpen(false);
             addToast("Задача создана");
             load();
           }}
         />
       )}
-      {viewId && <TaskModal id={viewId} onClose={() => setViewId(null)} />}
+      {viewId && (
+        <TaskDialog id={viewId} onClose={() => setViewId(null)} onSave={load} />
+      )}
     </div>
   );
 }

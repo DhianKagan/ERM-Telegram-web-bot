@@ -73,6 +73,7 @@
 - Документ `docs/graphhopper_railway.md` описывает запуск сервиса маршрутов GraphHopper на Railway
 - В `graphhopper_railway.md` объяснено, что в Start Command передаются только параметры
 - Документ `docs/railway_full_setup.md` содержит пошаговое развёртывание всего проекта на Railway
+- Каталог `graphhopper-docker` содержит Dockerfile для сборки GraphHopper
 - README включает пример JSON с координатами
 - В мануале уточнено разворачивание коротких ссылок Google Maps
 

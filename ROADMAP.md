@@ -69,5 +69,6 @@
 60. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway
 61. В инструкции `graphhopper_railway.md` указано, что в Start Command передаются только параметры
 62. Документ `docs/graphhopper_custom_docker.md` описывает сборку собственного образа GraphHopper
+63. Каталог `graphhopper-docker` содержит Dockerfile для самостоятельной сборки
 
 

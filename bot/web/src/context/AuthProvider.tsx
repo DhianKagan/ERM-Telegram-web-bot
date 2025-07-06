@@ -1,20 +1,7 @@
 // Контекст аутентификации, хранит токен и пользователя
-import { createContext, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getProfile } from '../services/auth'
-
-interface AuthContextType {
-  token: string | null
-  user: Record<string, unknown> | null
-  logout: () => void
-  setUser: (u: Record<string, unknown> | null) => void
-}
-
-export const AuthContext = createContext<AuthContextType>({
-  token: null,
-  user: null,
-  logout: () => {},
-  setUser: () => {}
-})
+import { AuthContext } from './AuthContext'
 
 interface AuthProviderProps {
   children: ReactNode
@@ -48,3 +35,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   )
 }
+

@@ -1,5 +1,5 @@
 import React from "react";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/useToast";
 import NotificationBar from "./NotificationBar";
 
 export default function Toasts() {

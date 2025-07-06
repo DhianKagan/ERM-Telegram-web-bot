@@ -1,7 +1,7 @@
 // Боковое меню с навигацией по разделам
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useSidebar } from "../context/SidebarContext";
+import { useSidebar } from "../context/useSidebar";
 import {
   HomeIcon,
   ClipboardDocumentListIcon,

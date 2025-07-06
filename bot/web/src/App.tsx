@@ -31,9 +31,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 
 function Content() {
-  const { collapsed } = useSidebar();
+  const { collapsed, open } = useSidebar();
   return (
-    <main className={`mt-12 p-4 ${collapsed ? 'md:ml-20' : 'md:ml-52'}`}>
+    <main className={`mt-14 p-4 transition-all ${open ? (collapsed ? 'md:ml-20' : 'md:ml-60') : 'md:ml-0'}`}>
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
           <Route path="/login" element={<CodeLogin />} />

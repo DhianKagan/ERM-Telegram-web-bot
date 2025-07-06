@@ -1,5 +1,6 @@
 // Общая форма создания и редактирования задач
 import React, { useContext } from "react";
+import { useSidebar } from "../context/useSidebar";
 import RichTextEditor from "./RichTextEditor";
 import MapSelector from "./MapSelector";
 import MultiUserSelect from "./MultiUserSelect";
@@ -22,6 +23,7 @@ interface Props {
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useContext(AuthContext);
+  const { open, collapsed } = useSidebar();
   const [requestId,setRequestId]=React.useState('');
   const [created,setCreated]=React.useState('');
   const [title, setTitle] = React.useState("");
@@ -156,7 +158,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   return(
-    <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-start justify-start bg-black">
+    <div
+      className={`bg-opacity-30 animate-fade-in fixed right-0 top-14 bottom-0 flex items-start justify-center overflow-y-auto bg-black ${open ? (collapsed ? 'lg:left-20' : 'lg:left-60') : 'lg:left-0'}`}
+    >
       <div className="max-h-[90vh] w-full max-w-screen-md overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>

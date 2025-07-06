@@ -65,5 +65,6 @@
 - В логах разработки выводите лишь первые символы `BOT_TOKEN`
 - В SECURITY.md указан email security@agro-market.ua, а CODEOWNERS содержит владельца @AgroxOD
 - Ответы бота собраны в `docs/bot_responses.md` и полностью на русском
+- Скрипт `scripts/db/seed.js` создаёт задачу с приоритетом «Срочно»
 
 

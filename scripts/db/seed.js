@@ -6,8 +6,9 @@ import 'dotenv/config'
 const group = await Group.create({ name: 'Default' })
 const user = await User.create({ telegram_id: 1, username: 'admin' })
 await Task.create({
+  title: 'Тестовая задача',
   task_description: 'Пример',
-  priority: 'high',
+  priority: 'Срочно',
   group_id: group._id,
   assigned_user_id: user.telegram_id
 })

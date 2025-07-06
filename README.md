@@ -87,6 +87,7 @@
    В консоль выводятся только первые символы `BOT_TOKEN` для отладки.
 4. Для расчёта маршрута задайте `ROUTING_URL` с адресом GraphHopper или Valhalla.
    Подробности запуска GraphHopper на Railway описаны в `docs/graphhopper_railway.md`.
+   Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.
 
 Для проверки подключения к MongoDB выполните:
 ```bash

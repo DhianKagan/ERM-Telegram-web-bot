@@ -57,26 +57,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   React.useEffect(() => {
     fetchDefaults('task_type').then(v => {
-      setTypes(v);
-      if (!taskType && v.length) setTaskType(v[0]);
-    });
+      setTypes(v)
+      if (!taskType && v.length) setTaskType(v[0])
+    })
     fetchDefaults('priority').then(v => {
-      setPriorities(v);
-      if (!priority && v.length) setPriority(v[0]);
-    });
+      setPriorities(v)
+      if (!priority && v.length) setPriority(v[0])
+    })
     fetchDefaults('transport_type').then(v => {
-      setTransports(v);
-      if (!transportType && v.length) setTransportType(v[0]);
-    });
+      setTransports(v)
+      if (!transportType && v.length) setTransportType(v[0])
+    })
     fetchDefaults('payment_method').then(v => {
-      setPayments(v);
-      if (!paymentMethod && v.length) setPaymentMethod(v[0]);
-    });
+      setPayments(v)
+      if (!paymentMethod && v.length) setPaymentMethod(v[0])
+    })
     fetchDefaults('status').then(v => {
-      setStatuses(v);
-      if (!status && v.length) setStatus(v[0]);
-    });
-  }, [taskType, priority, transportType, paymentMethod, status]);
+      setStatuses(v)
+      if (!status && v.length) setStatus(v[0])
+    })
+  }, [])
   React.useEffect(()=>{
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{

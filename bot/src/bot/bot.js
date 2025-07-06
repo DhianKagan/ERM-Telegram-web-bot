@@ -351,7 +351,7 @@ bot.on('inline_query', async (ctx) => {
   const arg = parts.join(' ')
   if (cmd === 'add') {
     if (!arg) return ctx.answerInlineQuery([], { cache_time: 0 })
-    const task = await createTask(arg, undefined, 'В течении дня', undefined, ctx.from.id)
+    const task = await createTask(arg, undefined, 'В течение дня', undefined, ctx.from.id)
     return ctx.answerInlineQuery([
       {
         type: 'article',

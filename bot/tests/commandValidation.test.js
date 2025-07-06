@@ -137,6 +137,6 @@ test('inline add создает задачу', async () => {
   service.createTask.mockResolvedValue({ _id: '1', title: 'task' })
   const ctx = { inlineQuery: { query: 'add task' }, from: { id: 1 }, answerInlineQuery: jest.fn() }
   await handlers.inline_query(ctx)
-  expect(service.createTask).toHaveBeenCalledWith('task', undefined, 'В течении дня', undefined, 1)
+  expect(service.createTask).toHaveBeenCalledWith('task', undefined, 'В течение дня', undefined, 1)
   expect(ctx.answerInlineQuery).toHaveBeenCalled()
 })

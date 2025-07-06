@@ -10,3 +10,6 @@ export interface ThemeState {
 
 export const ThemeContext = createContext<ThemeState | undefined>(undefined)
 
+// Экспорт провайдера из соседнего файла
+export { ThemeProvider } from './ThemeContext.tsx'
+

@@ -1,6 +1,6 @@
 // Страница управления задачами
 import React from "react";
-import TaskDialog from "../components/TaskDialog";
+import { useSearchParams } from "react-router-dom";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/useToast";
 import { deleteTask } from "../services/tasks";
@@ -36,8 +36,7 @@ export default function TasksPage() {
   const [status, setStatus] = React.useState<string>("all");
   const [selected, setSelected] = React.useState<string[]>([]);
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
-  const [open, setOpen] = React.useState(false);
-  const [viewId, setViewId] = React.useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
 
   const handleAuth = (r) => {
@@ -130,7 +129,13 @@ export default function TasksPage() {
             </button>
           ))}
         </div>
-        <button onClick={() => setOpen(true)} className="btn btn-blue">
+        <button
+          onClick={() => {
+            params.set('newTask', '1')
+            setParams(params)
+          }}
+          className="btn btn-blue"
+        >
           Новая задача
         </button>
       </div>
@@ -165,7 +170,10 @@ export default function TasksPage() {
               <td className="px-4 py-2">
                 <button
                   className="text-accentPrimary hover:underline"
-                  onClick={() => setViewId(t._id)}
+                  onClick={() => {
+                    params.set('task', t._id)
+                    setParams(params)
+                  }}
                 >
                   {`${t.request_id} ${t.createdAt.slice(0,10)} ${t.title.replace(/^ERM_\d+\s*/, '')}`}
                 </button>
@@ -214,19 +222,7 @@ export default function TasksPage() {
           Сменить статус
         </button>
       )}
-      {open && (
-        <TaskDialog
-          onClose={() => setOpen(false)}
-          onSave={() => {
-            setOpen(false);
-            addToast("Задача создана");
-            load();
-          }}
-        />
-      )}
-      {viewId && (
-        <TaskDialog id={viewId} onClose={() => setViewId(null)} onSave={load} />
-      )}
+
     </div>
   );
 }

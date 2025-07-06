@@ -6,7 +6,7 @@ import { SidebarContext, type SidebarState } from "./SidebarContext";
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   return (
     <SidebarContext.Provider

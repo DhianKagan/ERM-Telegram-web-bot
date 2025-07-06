@@ -10,3 +10,6 @@ export interface SidebarState {
 
 export const SidebarContext = createContext<SidebarState | undefined>(undefined)
 
+// Экспорт провайдера из соседнего файла
+export { SidebarProvider } from './SidebarContext.tsx'
+

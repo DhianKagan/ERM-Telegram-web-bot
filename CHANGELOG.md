@@ -5,7 +5,7 @@
 ## [Новый]
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
-- Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker`
+- Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден
 - Добавлен скрипт `audit_deps.sh` и шаг CI для проверки зависимостей
 - На форме входа можно отправить данные клавишей Enter
 - Поле "Название" перемещено в начало формы задачи

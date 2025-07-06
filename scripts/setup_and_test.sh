@@ -19,6 +19,10 @@ npx eslint bot/src
 npm run lint --prefix bot/web
 
 # Проверяем конфигурацию docker compose при наличии команды docker
-if command -v docker >/dev/null && [ -f docker-compose.yml ]; then
-  docker compose config >/dev/null
+if command -v docker >/dev/null; then
+  if [ -f docker-compose.yml ]; then
+    docker compose config >/dev/null
+  fi
+else
+  echo "Предупреждение: Docker не найден, пропускаем проверку docker compose." >&2
 fi

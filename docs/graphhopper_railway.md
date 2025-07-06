@@ -4,9 +4,10 @@
 
 1. Создайте новый проект и добавьте сервис типа «Deploy from Docker».
 2. Укажите образ `israelhikingmap/graphhopper` из Docker Hub.
-3. В поле `Start Command` задайте:
+3. В поле `Start Command` укажите только параметры запуска (образ уже содержит
+   необходимую точку входа):
    ```bash
-   graphhopper --url https://download.geofabrik.de/europe/andorra-latest.osm.pbf --host 0.0.0.0
+   --url https://download.geofabrik.de/europe/andorra-latest.osm.pbf --host 0.0.0.0
    ```
 4. Через переменную `JAVA_OPTS` установите объём памяти, например `-Xms1g -Xmx2g`.
 5. Первый запуск скачает карту и подготовит граф. Дождитесь сообщения `Server - Started`.

@@ -48,8 +48,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [payments,setPayments]=React.useState<string[]>([]);
   const [statuses,setStatuses]=React.useState<string[]>([]);
   const [users,setUsers]=React.useState<any[]>([]);
-  const [roles,setRoles]=React.useState<any[]>([]);
-  const [groups,setGroups]=React.useState<any[]>([]);
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
@@ -87,12 +85,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     authFetch('/api/v1/users')
       .then(r=>r.ok?r.json():[])
       .then(list=>{setUsers(list);if(user) setCreator(user.telegram_id);});
-    authFetch('/api/v1/groups')
-      .then(r=>r.ok?r.json():[])
-      .then(setGroups);
-    authFetch('/api/v1/roles')
-      .then(r=>r.ok?r.json():[])
-      .then(setRoles);
+    // данные ролей и групп могут потребоваться позднее
     authFetch('/api/v1/departments')
       .then(r=>r.ok?r.json():[])
       .then(setDepartments);

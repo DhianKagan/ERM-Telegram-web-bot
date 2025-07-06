@@ -39,4 +39,5 @@
 33. Интеграция React Quill и TelegramUI через @telegram-apps/sdk-react
 34. Запуск мини-приложения в браузере по флагу `?browser=1`; кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`
 35. Клиент автоматически выбирает режим работы при отсутствии `Telegram.WebApp`
+36. Удалить неиспользуемые состояния `roles` и `groups` в `TaskDialog`
 

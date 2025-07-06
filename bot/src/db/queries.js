@@ -128,7 +128,7 @@ async function updateDepartment(id, name) {
   if (typeof name !== 'string') {
     throw new Error('Invalid input: name must be a string')
   }
-  return Department.findByIdAndUpdate(id, { name: { $eq: name } }, { new: true })
+  return Department.findByIdAndUpdate(id, { $set: { name } }, { new: true })
 
 }
 

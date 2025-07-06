@@ -10,6 +10,7 @@
 - Кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`
 - Клиент автоматически выбирает режим браузера при отсутствии `Telegram.WebApp`
 - Завершение таймеров в `messageQueue` устранено
+- Исправлен запрос обновления отдела: используется `$set`
 - Код бота и клиента объединён в каталоге `bot`
 - Добавлены скрипты `setup_and_test.sh`, `create_env_from_exports.sh`, `create_admin_user.js` и `check_bot_token.sh`
 - MongoDB запускается с учётными данными `admin`/`admin` и healthcheck на `mongosh`

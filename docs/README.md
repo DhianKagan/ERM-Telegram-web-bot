@@ -8,3 +8,4 @@
 - `dashboard_tailadmin.md` и `extended_tailadmin_guide.md` — краткие справочники по стилям TailAdmin.
 - `db_request_map.md` — карта взаимодействий сервера с MongoDB.
 - `graphhopper_railway.md` — запуск сервиса GraphHopper на Railway.
+- `railway_full_setup.md` — развёртывание всего проекта на Railway.

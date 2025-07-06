@@ -66,5 +66,6 @@
 57. Инструкция по запуску GraphHopper на Railway в docs/graphhopper_railway.md
 58. README содержит пример JSON с координатами
 59. В мануале к боту описано разворачивание коротких ссылок Google Maps
+60. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway
 
 

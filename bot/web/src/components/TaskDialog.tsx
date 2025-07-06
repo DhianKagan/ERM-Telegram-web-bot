@@ -55,13 +55,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
 
-  React.useEffect(()=>{
-    fetchDefaults('task_type').then(v=>{setTypes(v);if(!taskType&&v.length)setTaskType(v[0]);});
-    fetchDefaults('priority').then(v=>{setPriorities(v);if(!priority&&v.length)setPriority(v[0]);});
-    fetchDefaults('transport_type').then(v=>{setTransports(v);if(!transportType&&v.length)setTransportType(v[0]);});
-    fetchDefaults('payment_method').then(v=>{setPayments(v);if(!paymentMethod&&v.length)setPaymentMethod(v[0]);});
-    fetchDefaults('status').then(v=>{setStatuses(v);if(!status&&v.length)setStatus(v[0]);});
-  },[]); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    fetchDefaults('task_type').then(v => {
+      setTypes(v);
+      if (!taskType && v.length) setTaskType(v[0]);
+    });
+    fetchDefaults('priority').then(v => {
+      setPriorities(v);
+      if (!priority && v.length) setPriority(v[0]);
+    });
+    fetchDefaults('transport_type').then(v => {
+      setTransports(v);
+      if (!transportType && v.length) setTransportType(v[0]);
+    });
+    fetchDefaults('payment_method').then(v => {
+      setPayments(v);
+      if (!paymentMethod && v.length) setPaymentMethod(v[0]);
+    });
+    fetchDefaults('status').then(v => {
+      setStatuses(v);
+      if (!status && v.length) setStatus(v[0]);
+    });
+  }, [taskType, priority, transportType, paymentMethod, status]);
   React.useEffect(()=>{
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
@@ -91,7 +106,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   },[user]);
 
 
-  React.useEffect(()=>{
+  React.useEffect(() => {
     if(!isEdit||!id) return;
     authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
       if(!t) return;
@@ -115,7 +130,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
     });
-  },[id,isEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
 
 
   const handleStartLink=async(v:string)=>{

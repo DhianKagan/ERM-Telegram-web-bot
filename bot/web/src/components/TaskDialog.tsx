@@ -165,6 +165,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
       </div>
       <div>
+        <label className="block text-sm font-medium">Название задачи</label>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
+      </div>
+      <div>
         <label className="block text-sm font-medium">Дата начала</label>
         <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" />
       </div>
@@ -190,10 +194,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <option value="">Отдел</option>
             {departments.map(d=>(<option key={d._id} value={d._id}>{d.name}</option>))}
           </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Название задачи</label>
-          <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
         </div>
         <div>
           <label className="block text-sm font-medium">Тип задачи</label>

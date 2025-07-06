@@ -6,6 +6,8 @@
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Добавлен скрипт `audit_deps.sh` и шаг CI для проверки зависимостей
+- На форме входа можно отправить данные клавишей Enter
+- Поле "Название" перемещено в начало формы задачи
 - Клиент переведён на React 18 ради совместимости с TelegramUI
 - Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается
 - Кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`

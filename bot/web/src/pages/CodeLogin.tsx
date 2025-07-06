@@ -1,12 +1,13 @@
 // Страница входа через код подтверждения
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 export default function CodeLogin() {
   const [telegramId, setTelegramId] = useState('')
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
 
-  async function send() {
+  async function send(e?: React.FormEvent) {
+    e?.preventDefault()
     await fetch('/api/v1/auth/send_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -15,7 +16,8 @@ export default function CodeLogin() {
     setSent(true)
   }
 
-  async function verify() {
+  async function verify(e?: React.FormEvent) {
+    e?.preventDefault()
     const res = await fetch('/api/v1/auth/verify_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -29,7 +31,7 @@ export default function CodeLogin() {
   }
 
   return (
-    <div className="p-4 flex flex-col gap-2">
+    <form className="p-4 flex flex-col gap-2" onSubmit={sent ? verify : send}>
       <input
         className="border p-2"
         placeholder="Telegram ID"
@@ -52,15 +54,9 @@ export default function CodeLogin() {
           onChange={(e) => setCode(e.target.value)}
         />
       )}
-      {!sent ? (
-        <button onClick={send} className="bg-blue-500 text-white p-2">
-          Отправить код
-        </button>
-      ) : (
-        <button onClick={verify} className="bg-blue-500 text-white p-2">
-          Войти по коду
-        </button>
-      )}
-    </div>
+      <button type="submit" className="bg-blue-500 text-white p-2">
+        {sent ? 'Войти по коду' : 'Отправить код'}
+      </button>
+    </form>
   )
 }

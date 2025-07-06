@@ -2,7 +2,6 @@
 import React, { useContext } from "react";
 import { useSidebar } from "../context/useSidebar";
 import RichTextEditor from "./RichTextEditor";
-import MapSelector from "./MapSelector";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
@@ -54,8 +53,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
-  const [showStartMap,setShowStartMap]=React.useState(false);
-  const [showEndMap,setShowEndMap]=React.useState(false);
 
   React.useEffect(()=>{
     fetchDefaults('task_type').then(v=>{setTypes(v);if(!taskType&&v.length)setTaskType(v[0]);});
@@ -229,13 +226,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 placeholder="Ссылка из Google Maps"
                 className="flex-1 rounded border px-2 py-1"
               />
-              <button
-                type="button"
-                onClick={() => setShowStartMap(true)}
+              <a
+                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                target="_blank"
+                rel="noopener"
                 className="btn-blue rounded-2xl px-3"
               >
                 Карта
-              </button>
+              </a>
             </div>
           )}
         </div>
@@ -267,13 +265,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 placeholder="Ссылка из Google Maps"
                 className="flex-1 rounded border px-2 py-1"
               />
-              <button
-                type="button"
-                onClick={() => setShowEndMap(true)}
+              <a
+                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                target="_blank"
+                rel="noopener"
                 className="btn-blue rounded-2xl px-3"
               >
                 Карта
-              </button>
+              </a>
             </div>
           )}
         </div>
@@ -318,26 +317,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
         </div>
       </div>
-      {showStartMap && (
-        <MapSelector
-          onSelect={({ link, address, coords }) => {
-            setStart(address);
-            setStartLink(link);
-            setStartCoordinates(coords);
-          }}
-          onClose={() => setShowStartMap(false)}
-        />
-      )}
-      {showEndMap && (
-        <MapSelector
-          onSelect={({ link, address, coords }) => {
-            setEnd(address);
-            setEndLink(link);
-            setFinishCoordinates(coords);
-          }}
-          onClose={() => setShowEndMap(false)}
-        />
-      )}
     </div>
   );
 }

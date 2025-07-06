@@ -76,7 +76,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setStatuses(v)
       if (!status && v.length) setStatus(v[0])
     })
-  }, [])
+  }, [taskType, priority, transportType, paymentMethod, status])
   React.useEffect(()=>{
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
@@ -130,7 +130,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
     });
-  }, [id, isEdit]);
+  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
 
 
   const handleStartLink=async(v:string)=>{

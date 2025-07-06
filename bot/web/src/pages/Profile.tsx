@@ -1,3 +1,4 @@
+// Назначение: страница профиля пользователя, модули: React, React Router
 import { useContext, useEffect, useState } from 'react'
 import { AuthContext } from '../context/AuthContext'
 import Tabs from '../components/Tabs'

@@ -1,3 +1,4 @@
+// Назначение: показ всплывающих уведомлений, модули: React, Context
 import React from "react";
 import { useToast } from "../context/useToast";
 import NotificationBar from "./NotificationBar";

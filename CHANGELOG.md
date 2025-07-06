@@ -3,6 +3,7 @@
 # История изменений
 
 ## [Новый]
+- Добавлен каталог `graphhopper-docker` с Dockerfile и README для сборки GraphHopper
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден

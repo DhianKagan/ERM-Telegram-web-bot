@@ -20,13 +20,14 @@
 ## 3. Добавление GraphHopper
 1. Создайте ещё один сервис с типом **Deploy from Docker**.
 2. Укажите образ `israelhikingmap/graphhopper`.
-3. В поле `Start Command` задайте:
+3. Вместо готового образа можно собрать свой из каталога `graphhopper-docker` этого репозитория.
+4. В поле `Start Command` задайте:
    ```bash
    graphhopper --url https://download.geofabrik.de/europe/andorra-latest.osm.pbf --host 0.0.0.0
    ```
-4. Добавьте переменную `JAVA_OPTS` например `-Xms1g -Xmx2g`.
-5. После загрузки карты сервис станет доступен по `https://<имя_сервиса>.up.railway.app`.
-6. Укажите этот URL в переменной `ROUTING_URL` основного приложения.
+5. Добавьте переменную `JAVA_OPTS` например `-Xms1g -Xmx2g`.
+6. После загрузки карты сервис станет доступен по `https://<имя_сервиса>.up.railway.app`.
+7. Укажите этот URL в переменной `ROUTING_URL` основного приложения.
 
 ## 4. Запуск и проверка
 1. Нажмите **Deploy** для обоих сервисов.

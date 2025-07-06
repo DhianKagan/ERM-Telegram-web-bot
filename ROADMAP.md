@@ -4,7 +4,7 @@
 
 1. Подготовка окружения: `.env` из `.env.example`, запуск Docker Compose
 2. Развитие бота и мини‑приложения в каталоге `bot`
-3. Автоматические тесты через `./scripts/setup_and_test.sh` локально и в CI; при наличии Docker проверяется `docker compose config`
+3. Автоматические тесты через `./scripts/setup_and_test.sh` локально и в CI; при наличии Docker проверяется `docker compose config`, иначе выводится предупреждение
 4. Аудит зависимостей командой `./scripts/audit_deps.sh`
 5. Проверка MongoDB скриптом `check_mongo.cjs`, использование healthcheck в Docker
 6. Поддержка pm2 6.0.8 и повторных подключений к базе

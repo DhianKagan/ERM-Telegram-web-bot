@@ -95,7 +95,7 @@ npm --prefix bot run check:mongo
 ./scripts/setup_and_test.sh
 ```
 Скрипт выполняет Jest с флагом `--detectOpenHandles`, чтобы выявлять незавершённые асинхронные операции.
-При наличии установленного Docker и файла `docker-compose.yml` происходит проверка конфигурации через `docker compose config`.
+При наличии установленного Docker и файла `docker-compose.yml` происходит проверка конфигурации через `docker compose config`. Если Docker отсутствует, скрипт выводит предупреждение.
 
 ## CI/CD
 GitHub Actions используют тот же скрипт; workflow `docker.yml` поднимает MongoDB для проверки.

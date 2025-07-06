@@ -73,7 +73,7 @@ const validate = validations => [
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
-  // разрешаем загрузку карт Google во внутренних iframe
+  // политика безопасности фреймов без карт Google
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -81,7 +81,6 @@ const validate = validations => [
         directives: {
           "frame-src": [
             "'self'",
-            'https://www.google.com',
             'https://oauth.telegram.org'
           ],
           "script-src": ["'self'", "'unsafe-eval'", 'https://telegram.org'],

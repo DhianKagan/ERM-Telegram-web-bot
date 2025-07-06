@@ -1,4 +1,4 @@
-
+// Провайдер уведомлений, управляет списком тостов
 import React, { useState, useCallback } from "react";
 import { ToastContext, type Toast, type ToastState } from "./ToastContext";
 

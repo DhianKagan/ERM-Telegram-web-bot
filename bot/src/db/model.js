@@ -75,6 +75,7 @@ const taskSchema = new mongoose.Schema({
 
   },
   task_type_id: Number,
+  start_date: Date,
   due_date: Date,
   remind_at: Date,
   location: String,

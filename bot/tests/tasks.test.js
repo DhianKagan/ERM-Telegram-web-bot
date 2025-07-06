@@ -47,10 +47,12 @@ test('создание задачи возвращает 201', async () => {
     start_location_link: 'https://maps.google.com',
     end_location_link: 'https://maps.google.com',
     startCoordinates: { lat: 1, lng: 2 },
-    finishCoordinates: { lat: 3, lng: 4 }
+    finishCoordinates: { lat: 3, lng: 4 },
+    start_date: '2025-01-01T10:00'
   })
   expect(res.status).toBe(201)
   expect(res.body.title).toBe('ERM_000001 T')
+  expect(Task.create).toHaveBeenCalledWith(expect.objectContaining({ start_date: '2025-01-01T10:00' }))
 })
 
 const id = '507f191e810c19729de860ea'

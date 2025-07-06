@@ -41,6 +41,7 @@ router.post('/', verifyToken, [
   body('end_location').optional().isString(),
   body('end_location_link').optional().isString(),
   body('finishCoordinates').optional().isObject(),
+  body('start_date').optional().isISO8601(),
   body('due_date').optional().isISO8601(),
   body('remind_at').optional().isISO8601(),
   body('controllers').optional().isArray(),

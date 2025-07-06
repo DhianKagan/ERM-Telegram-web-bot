@@ -33,6 +33,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [transportType, setTransportType] = React.useState(fields.find(f=>f.name==='transport_type')?.default||"");
   const [paymentMethod, setPaymentMethod] = React.useState(fields.find(f=>f.name==='payment_method')?.default||"");
   const [status, setStatus] = React.useState(fields.find(f=>f.name==='status')?.default||"");
+  const [startDate, setStartDate] = React.useState("");
   const [dueDate, setDueDate] = React.useState("");
   const [controllers, setControllers] = React.useState<string[]>([]);
   const [department, setDepartment] = React.useState("");
@@ -109,6 +110,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setStartLink(t.start_location_link||"");
       setEnd(t.end_location||"");
       setEndLink(t.end_location_link||"");
+      setStartDate(t.start_date?new Date(t.start_date).toISOString().slice(0,16):"");
       setDueDate(t.due_date?new Date(t.due_date).toISOString().slice(0,16):"");
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
@@ -147,7 +149,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const submit=async()=>{
-    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,startCoordinates,finishCoordinates,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
+    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,startCoordinates,finishCoordinates,start_date:startDate||undefined,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);
@@ -159,11 +161,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       className={`bg-opacity-30 animate-fade-in fixed right-0 top-14 bottom-0 flex items-start justify-center overflow-y-auto bg-black ${open ? (collapsed ? 'lg:left-20' : 'lg:left-60') : 'lg:left-0'}`}
     >
       <div className="max-h-[90vh] w-full max-w-screen-md overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Статус</label>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Дата начала</label>
+        <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Срок выполнения</label>
+        <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Статус</label>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1">
             {statuses.map(s=>(<option key={s} value={s}>{s}</option>))}
           </select>
@@ -289,10 +299,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div>
           <label className="block text-sm font-medium">Комментарий</label>
           <RichTextEditor value={comment} onChange={setComment} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Срок выполнения</label>
-          <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" />
         </div>
         <MultiUserSelect
           label="Контролёр"

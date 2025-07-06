@@ -1,18 +1,22 @@
-// Страница управления задачами
+// Назначение файла: список задач и функции сортировки
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/useToast";
-import { deleteTask } from "../services/tasks";
+import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
+import { fetchDefaults } from "../services/dicts";
+import parseJwt from "../utils/parseJwt";
 
 interface Task {
   _id: string
   title: string
   status: string
-  time_spent: number
   request_id: string
   createdAt: string
+  start_date?: string
+  due_date?: string
+  priority?: string
   assigned_user_id?: number
   assignees?: number[]
   attachments?: { name: string; url: string }[]
@@ -34,7 +38,11 @@ export default function TasksPage() {
   const [all, setAll] = React.useState<Task[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [status, setStatus] = React.useState<string>("all");
+  const [statuses, setStatuses] = React.useState<string[]>([]);
+  const [priorities, setPriorities] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<string[]>([]);
+  const [sortBy, setSortBy] = React.useState<string>('createdAt');
+  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
@@ -58,14 +66,29 @@ export default function TasksPage() {
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
+    fetchDefaults('status').then(setStatuses);
+    fetchDefaults('priority').then(setPriorities);
   }, []);
 
   React.useEffect(load, [load]);
 
-  const tasks = React.useMemo(
-    () => (status === "all" ? all : all.filter((t) => t.status === status)),
+  const filtered = React.useMemo(
+    () => (status === 'all' ? all : all.filter((t) => t.status === status)),
     [all, status],
   );
+  const tasks = React.useMemo(() => {
+    const list = [...filtered];
+    list.sort((a, b) => {
+      const v1 = a[sortBy];
+      const v2 = b[sortBy];
+      if (v1 === undefined) return 1;
+      if (v2 === undefined) return -1;
+      if (v1 > v2) return sortDir === 'asc' ? 1 : -1;
+      if (v1 < v2) return sortDir === 'asc' ? -1 : 1;
+      return 0;
+    });
+    return list;
+  }, [filtered, sortBy, sortDir]);
   const counts = React.useMemo(
     () => ({
       all: all.length,
@@ -84,22 +107,52 @@ export default function TasksPage() {
     return map;
   }, [users]);
 
-  const add30 = async (id) => {
-    await authFetch(`/api/v1/tasks/${id}/time`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ minutes: 30 }),
-    });
-    load();
-  };
+  const isAdmin = React.useMemo(() => {
+    const token = localStorage.getItem('token');
+    const data = token ? parseJwt(token) : null;
+    return Boolean(data?.isAdmin);
+  }, []);
 
-  const removeTask = async (id) => {
-    const res = await deleteTask(id);
-    if (res.status === 204) addToast("Задача удалена");
-    load();
-  };
+  const renderStatus = (t: Task) =>
+    isAdmin ? (
+      <select
+        value={t.status}
+        onChange={async (e) => {
+          await updateTask(t._id, { status: e.target.value });
+          load();
+        }}
+        className="rounded border px-1"
+      >
+        {statuses.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    ) : (
+      t.status
+    );
+
+  const renderPriority = (t: Task) =>
+    isAdmin ? (
+      <select
+        value={t.priority}
+        onChange={async (e) => {
+          await updateTask(t._id, { priority: e.target.value });
+          load();
+        }}
+        className="rounded border px-1"
+      >
+        {priorities.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+    ) : (
+      t.priority
+    );
+
 
   const changeStatus = async () => {
     await authFetch("/api/v1/tasks/bulk", {
@@ -112,6 +165,15 @@ export default function TasksPage() {
     setSelected([]);
     addToast("Статус обновлён");
     load();
+  };
+
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
   };
 
   return (
@@ -143,12 +205,12 @@ export default function TasksPage() {
         <thead className="bg-gray-50">
           <tr>
             <th></th>
-            <th className="px-4 py-2 text-left">Название</th>
-            <th className="px-4 py-2">Статус</th>
-            <th className="px-4 py-2">Исполнители</th>
-            <th className="px-4 py-2">Время</th>
-            <th className="px-4 py-2">Файлы</th>
-            <th></th>
+            <th className="px-4 py-2 text-left cursor-pointer" onClick={() => handleSort('title')}>Название {sortBy==='title'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('status')}>Статус {sortBy==='status'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('priority')}>Приоритет {sortBy==='priority'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('start_date')}>Дата начала {sortBy==='start_date'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('due_date')}>Дедлайн {sortBy==='due_date'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('assignees')}>Исполнители {sortBy==='assignees'? (sortDir==='asc'?'▲':'▼'):''}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -178,7 +240,10 @@ export default function TasksPage() {
                   {`${t.request_id} ${t.createdAt.slice(0,10)} ${t.title.replace(/^ERM_\d+\s*/, '')}`}
                 </button>
               </td>
-              <td className="px-4 py-2 text-center">{t.status}</td>
+              <td className="px-4 py-2 text-center">{renderStatus(t)}</td>
+              <td className="px-4 py-2 text-center">{renderPriority(t)}</td>
+              <td className="px-4 py-2 text-center">{t.start_date?.slice(0,10)}</td>
+              <td className="px-4 py-2 text-center">{t.due_date?.slice(0,10)}</td>
               <td className="px-4 py-2">
                 {(t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []))
                   .map((id) => (
@@ -190,28 +255,6 @@ export default function TasksPage() {
                       {userMap[id]?.name || userMap[id]?.username || id}
                     </a>
                   ))}
-              </td>
-              <td className="px-4 py-2 text-center">{t.time_spent}</td>
-              <td className="px-4 py-2">
-                {t.attachments?.map((a) => (
-                  <a key={a.url} href={a.url} target="_blank" rel="noopener" className="text-accentPrimary mr-2 underline">
-                    {a.name}
-                  </a>
-                ))}
-              </td>
-              <td className="px-4 py-2 text-right">
-                <button
-                  onClick={() => add30(t._id)}
-                  className="text-accentPrimary text-xs hover:underline"
-                >
-                  +30 мин
-                </button>
-                <button
-                  onClick={() => removeTask(t._id)}
-                  className="text-danger ml-2 text-xs hover:underline"
-                >
-                  удалить
-                </button>
               </td>
             </tr>
           ))}

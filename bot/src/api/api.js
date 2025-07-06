@@ -22,6 +22,7 @@ process.on('uncaughtException', err => {
   process.exit(1)
 })
 const tasksRouter = require('../routes/tasks')
+const mapsRouter = require('../routes/maps')
 const authUserRouter = require('../routes/authUser')
 const {
   updateTaskStatus,
@@ -290,6 +291,8 @@ const validate = validations => [
 
   // авторизация пользователей и личный кабинет
   app.use(`${prefix}/auth`, authUserRouter)
+  // работа с картами
+  app.use(`${prefix}/maps`, mapsRouter)
   // новые REST маршруты для расширенной работы с задачами
   app.use(`${prefix}/tasks`, tasksRouter)
 

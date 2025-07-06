@@ -2,7 +2,7 @@
 import React from "react";
 import TaskDialog from "../components/TaskDialog";
 import KPIOverview from "../components/KPIOverview";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/useToast";
 import { deleteTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 

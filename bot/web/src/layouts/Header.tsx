@@ -1,7 +1,7 @@
 // Шапка приложения с кнопкой темы и бургером меню
 // Верхняя панель навигации
 import React, { useContext } from "react";
-import { useSidebar } from "../context/SidebarContext";
+import { useSidebar } from "../context/useSidebar";
 import { AuthContext } from "../context/AuthContext";
 import DropdownMenu from "../components/DropdownMenu";
 import NotificationDropdown from "../components/NotificationDropdown";

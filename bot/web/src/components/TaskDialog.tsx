@@ -11,6 +11,7 @@ import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
+import { expandLink } from "../services/maps";
 
 interface Props {
   onClose: () => void;
@@ -116,21 +117,33 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   },[id,isEdit]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  const handleStartLink=(v:string)=>{
+  const handleStartLink=async(v:string)=>{
     setStartLink(v);
     const url=validateURL(v);
     if(url){
-      setStart(parseGoogleAddress(url));
-      setStartCoordinates(extractCoords(url));
+      let link=url;
+      if(/^https?:\/\/maps\.app\.goo\.gl\//i.test(url)){
+        const data=await expandLink(url);
+        if(data){link=data.url;}
+      }
+      setStart(parseGoogleAddress(link));
+      setStartCoordinates(extractCoords(link));
+      setStartLink(link);
     } else {setStart('');setStartCoordinates(null);}
   };
 
-  const handleEndLink=(v:string)=>{
+  const handleEndLink=async(v:string)=>{
     setEndLink(v);
     const url=validateURL(v);
     if(url){
-      setEnd(parseGoogleAddress(url));
-      setFinishCoordinates(extractCoords(url));
+      let link=url;
+      if(/^https?:\/\/maps\.app\.goo\.gl\//i.test(url)){
+        const data=await expandLink(url);
+        if(data){link=data.url;}
+      }
+      setEnd(parseGoogleAddress(link));
+      setFinishCoordinates(extractCoords(link));
+      setEndLink(link);
     } else {setEnd('');setFinishCoordinates(null);}
   };
 

@@ -130,7 +130,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
     });
-  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
+  }, [id, isEdit]);
 
 
   const handleStartLink=async(v:string)=>{

@@ -12,7 +12,7 @@
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`
 - Проверяйте зависимости командой `./scripts/audit_deps.sh`
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`
-- Если есть `docker-compose.yml`, выполняйте `docker compose config`
+- Если команда `docker` доступна и есть `docker-compose.yml`, выполняйте `docker compose config`
 
 📄 Документация
 - При изменениях обновляйте README.md, CHANGELOG.md, ROADMAP.md и AGENTS.md

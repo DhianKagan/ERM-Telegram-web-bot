@@ -18,7 +18,7 @@ npm test --prefix bot -- --detectOpenHandles
 npx eslint bot/src
 npm run lint --prefix bot/web
 
-# Проверяем конфигурацию docker compose при наличии
-if [ -f docker-compose.yml ]; then
+# Проверяем конфигурацию docker compose при наличии команды docker
+if command -v docker >/dev/null && [ -f docker-compose.yml ]; then
   docker compose config >/dev/null
 fi

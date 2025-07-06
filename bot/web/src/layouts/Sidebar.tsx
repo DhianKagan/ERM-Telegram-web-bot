@@ -32,10 +32,10 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all ${open ? 'translate-x-0' : '-translate-x-full'}`}
     >
       <div className="flex items-center justify-between">
-        <button onClick={toggle} className="lg:hidden" aria-label="Закрыть меню">
+        <button onClick={toggle} className="p-1" aria-label="Закрыть меню">
           <XMarkIcon className="h-5 w-5" />
         </button>
         <button

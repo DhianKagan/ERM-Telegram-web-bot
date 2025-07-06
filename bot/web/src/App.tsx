@@ -28,6 +28,7 @@ import { AuthContext } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TaskDialogRoute from "./components/TaskDialogRoute";
 
 function Content() {
   const { collapsed } = useSidebar();
@@ -132,6 +133,7 @@ function Layout() {
       {token && <Header />}
       <Toasts />
       <Content />
+      <TaskDialogRoute />
     </>
   );
 }

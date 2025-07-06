@@ -52,6 +52,8 @@
 - Запуск в браузере по флагу `?browser=1` без telegram-apps-sdk
 - Кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`
 - Если объект `Telegram.WebApp` не определён, клиент автоматически переходит в режим браузера
+- Формы задач открываются поверх страницы через параметры `?task` и `?newTask`
+- Сайдбар полностью скрывается при необходимости
 - Неиспользуемые состояния `roles` и `groups` удалены из TaskDialog для прохождения ESLint
 - В логах разработки выводите лишь первые символы `BOT_TOKEN`
 - В SECURITY.md указан email security@agro-market.ua, а CODEOWNERS содержит владельца @AgroxOD

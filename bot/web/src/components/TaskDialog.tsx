@@ -144,7 +144,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   return(
     <div className="bg-opacity-30 animate-fade-in fixed inset-0 flex items-start justify-start bg-black">
-      <div className="max-h-[90vh] w-full overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg">
+      <div className="max-h-[90vh] w-full max-w-screen-md overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
         </div>

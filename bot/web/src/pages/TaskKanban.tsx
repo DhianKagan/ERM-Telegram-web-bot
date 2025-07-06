@@ -1,5 +1,6 @@
 // Канбан-доска задач
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import TaskCard from "../components/TaskCard";
 import TaskDialog from "../components/TaskDialog";
@@ -15,8 +16,9 @@ interface KanbanTask {
 
 export default function TaskKanban() {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
-  const [open, setOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
 
+  const open = params.get('newTask') !== null;
   useEffect(() => {
     fetchKanban().then(setTasks);
   }, []);
@@ -32,7 +34,13 @@ export default function TaskKanban() {
 
   return (
     <div className="flex space-x-4 p-4">
-      <button onClick={() => setOpen(true)} className="btn-blue mb-4">
+      <button
+        onClick={() => {
+          params.set('newTask', '1')
+          setParams(params)
+        }}
+        className="btn-blue mb-4"
+      >
         Новая задача
       </button>
       <DragDropContext onDragEnd={onDragEnd}>
@@ -70,9 +78,14 @@ export default function TaskKanban() {
       </DragDropContext>
       {open && (
         <TaskDialog
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            params.delete('newTask')
+            setParams(params)
+          }}
           onSave={() => {
-            fetchKanban().then(setTasks);
+            params.delete('newTask')
+            setParams(params)
+            fetchKanban().then(setTasks)
           }}
         />
       )}

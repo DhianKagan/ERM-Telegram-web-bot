@@ -81,3 +81,4 @@
 - Удалены неиспользуемые состояния `roles` и `groups` в компоненте `TaskDialog`
 - Провайдер `ThemeProvider` корректно экспортируется из файла `ThemeContext.tsx`
 - Провайдеры `SidebarProvider` и `ToastProvider` экспортируются из файлов контекста
+- Исправлены зависимости `useEffect` в `TaskDialog`, предупреждения ESLint исчезли

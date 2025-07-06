@@ -13,6 +13,8 @@
 - Таблица ответов бота в `docs/bot_responses.md` полностью на русском
 - Добавлена `docs/graphhopper_railway.md` с инструкцией по запуску GraphHopper на Railway
 - В `graphhopper_railway.md` уточнено, что в Start Command нужно передавать только параметры без имени исполняемого файла
+- Добавлен `docs/graphhopper_custom_docker.md` с инструкцией по сборке собственного образа
+- README и `graphhopper_railway.md` обновлены ссылками на новый документ
 - Добавлен `docs/railway_full_setup.md` с описанием полного развёртывания на Railway
 - Клиент переведён на React 18 ради совместимости с TelegramUI
 - Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается

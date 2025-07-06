@@ -3,6 +3,7 @@
 # История изменений
 
 ## [Новый]
+- Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Добавлен скрипт `audit_deps.sh` и шаг CI для проверки зависимостей
 - Клиент переведён на React 18 ради совместимости с TelegramUI

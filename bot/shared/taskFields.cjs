@@ -13,8 +13,8 @@ module.exports = [
     name: 'priority',
     label: 'Приоритет',
     type: 'select',
-    options: ['Срочно', 'В течении дня', 'Бессрочно'],
-    default: 'В течении дня'
+    options: ['Срочно', 'В течение дня', 'Бессрочно'],
+    default: 'В течение дня'
   },
   { name: 'department', label: 'Отдел', type: 'select' },
   { name: 'creator', label: 'Задачу создал', type: 'select' },

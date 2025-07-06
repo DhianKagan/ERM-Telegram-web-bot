@@ -90,7 +90,7 @@ const taskSchema = new mongoose.Schema({
   assignees: [Number],
   group_id: mongoose.Schema.Types.ObjectId,
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-  priority: { type: String, enum: ['Срочно', 'В течении дня', 'Бессрочно'], default: 'В течении дня' },
+  priority: { type: String, enum: ['Срочно', 'В течение дня', 'Бессрочно'], default: 'В течение дня' },
   priority_id: Number,
   created_by: Number,
   comments: [{ author_id: Number, text: String, created_at: { type: Date, default: Date.now } }],

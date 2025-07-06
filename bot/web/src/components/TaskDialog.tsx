@@ -149,7 +149,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const submit=async()=>{
-    const payload={title,task_type:taskType,task_description:description,comment,priority,transport_type:transportType,payment_method:paymentMethod,status,departmentId:department||undefined,created_by:creator,assignees,controllers,start_location:start,start_location_link:startLink,end_location:end,end_location_link:endLink,startCoordinates,finishCoordinates,start_date:startDate||undefined,due_date:dueDate||undefined,files:files?Array.from(files).map(f=>f.name):undefined};
+    const payload:{[key:string]:any}={
+      title,
+      task_type:taskType,
+      task_description:description,
+      comment,
+      priority,
+      transport_type:transportType,
+      payment_method:paymentMethod,
+      status,
+      departmentId:department||undefined,
+      created_by:creator,
+      assignees,
+      controllers,
+      start_location:start,
+      start_location_link:startLink,
+      end_location:end,
+      end_location_link:endLink,
+      start_date:startDate||undefined,
+      due_date:dueDate||undefined,
+      files:files?Array.from(files).map(f=>f.name):undefined
+    };
+    if(startCoordinates) payload.startCoordinates=startCoordinates;
+    if(finishCoordinates) payload.finishCoordinates=finishCoordinates;
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);

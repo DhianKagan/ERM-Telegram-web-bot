@@ -1,8 +1,12 @@
 // Основной файл бота Telegram. Использует dotenv, telegraf, сервисы задач,
 // загрузку файлов в R2 и JWT-аутентификацию.
 require('dotenv').config()
+// В режиме разработки показываем только первые символы токена
 if (process.env.NODE_ENV !== 'production') {
-  console.log('BOT_TOKEN:', process.env.BOT_TOKEN)
+  const tokenPart = process.env.BOT_TOKEN
+    ? `${process.env.BOT_TOKEN.slice(0, 5)}...`
+    : 'не задан'
+  console.log('BOT_TOKEN часть:', tokenPart)
 }
 const { botToken, botApiUrl, appUrl, chatId, r2 } = require('../config')
 

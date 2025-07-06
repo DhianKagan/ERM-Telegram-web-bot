@@ -1,7 +1,7 @@
 // График количества задач за период
 import React, { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/useTheme'
 import authFetch from '../utils/authFetch'
 
 interface ChartState {

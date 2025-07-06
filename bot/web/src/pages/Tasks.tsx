@@ -1,6 +1,6 @@
 // Страница списка задач
 import React from "react";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
 import Spinner from "../components/Spinner";
 import SkeletonCard from "../components/SkeletonCard";

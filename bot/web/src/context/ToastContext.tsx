@@ -1,26 +1,6 @@
 
-import React, { createContext, useContext, useState, useCallback } from "react";
-
-export interface Toast {
-  id: number;
-  message: string;
-  type?: "success" | "error";
-}
-
-interface ToastState {
-  toasts: Toast[];
-  addToast: (message: string, type?: "success" | "error") => void;
-  removeToast: (id: number) => void;
-}
-
-const ToastContext = createContext<ToastState | undefined>(undefined);
-
-
-export const useToast = () => {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("ToastContext");
-  return ctx;
-};
+import React, { useState, useCallback } from "react";
+import { ToastContext, type Toast, type ToastState } from "./ToastContext";
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -47,3 +27,4 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     </ToastContext.Provider>
   );
 };
+

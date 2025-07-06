@@ -51,5 +51,6 @@
 - Если объект `Telegram.WebApp` не определён, клиент автоматически переходит в режим браузера
 - Неиспользуемые состояния `roles` и `groups` удалены из TaskDialog для прохождения ESLint
 - В логах разработки выводите лишь первые символы `BOT_TOKEN`
+- В SECURITY.md указан email security@agro-market.ua, а CODEOWNERS содержит владельца @AgroxOD
 
 

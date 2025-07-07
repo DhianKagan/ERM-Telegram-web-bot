@@ -30,7 +30,7 @@ module.exports = {
   appUrl: appUrlEnv,
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',
-  routingUrl: process.env.ROUTING_URL || 'http://localhost:8989/route',
+  routingUrl: process.env.ROUTING_URL || 'http://localhost:8000/route',
   gateway: {
     key: process.env.GATEWAY_API_KEY,
     sender: process.env.GATEWAY_SENDER

@@ -63,12 +63,9 @@
     админ может менять статус и приоритет прямо в таблице,
     доступна сортировка по всем колонкам
 56. Эндпойнт `/api/v1/route` возвращает координаты и длину маршрута
-57. Инструкция по запуску GraphHopper на Railway в docs/graphhopper_railway.md
+57. Инструкция по запуску erm-map на Railway в docs/erm_map.md
 58. README содержит пример JSON с координатами
 59. В мануале к боту описано разворачивание коротких ссылок Google Maps
 60. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway
-61. В инструкции `graphhopper_railway.md` указано, что в Start Command передаются только параметры
-62. Документ `docs/graphhopper_custom_docker.md` описывает сборку собственного образа GraphHopper
-63. Каталог `graphhopper-docker` содержит Dockerfile для самостоятельной сборки
 
 

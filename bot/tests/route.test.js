@@ -5,7 +5,7 @@ process.env.CHAT_ID='1'
 process.env.JWT_SECRET='s'
 process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
 process.env.APP_URL='https://localhost'
-process.env.ROUTING_URL='http://localhost:8989/route'
+process.env.ROUTING_URL='http://localhost:8000/route'
 
 const express=require('express')
 const request=require('supertest')
@@ -15,7 +15,7 @@ const { stopQueue } = require('../src/services/messageQueue')
 jest.mock('../src/api/middleware',()=>({ verifyToken:(_req,_res,next)=>next(), asyncHandler:fn=>fn, errorHandler:(err,_req,res,_next)=>res.status(500).json({error:err.message}) }))
 
 const { getRouteDistance } = require('../src/services/route')
-jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:100, coordinates:[{lat:1,lng:2},{lat:3,lng:4}] })) }))
+jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:100, nodes:[1,2,3] })) }))
 
 const router=require('../src/routes/route')
 
@@ -29,7 +29,7 @@ beforeAll(()=>{
 test('POST /api/v1/route возвращает данные маршрута', async()=>{
   const res=await request(app).post('/api/v1/route').send({ start:{lat:1,lng:2}, end:{lat:3,lng:4} })
   expect(res.body.distance).toBe(100)
-  expect(res.body.coordinates).toHaveLength(2)
+  expect(res.body.nodes).toHaveLength(3)
   expect(getRouteDistance).toHaveBeenCalledWith({lat:1,lng:2},{lat:3,lng:4})
 })
 

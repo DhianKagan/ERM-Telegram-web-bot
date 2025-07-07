@@ -3,7 +3,7 @@
 # История изменений
 
 ## [Новый]
-- Добавлен каталог `graphhopper-docker` с Dockerfile и README для сборки GraphHopper
+- Переработан расчёт маршрутов: используется сервис `erm-map` вместо GraphHopper
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден
@@ -12,10 +12,8 @@
 - Поле "Название" перемещено в начало формы задачи
 - Справочники задач загружаются одним запросом для предотвращения ошибки 429
 - Таблица ответов бота в `docs/bot_responses.md` полностью на русском
-- Добавлена `docs/graphhopper_railway.md` с инструкцией по запуску GraphHopper на Railway
-- В `graphhopper_railway.md` уточнено, что в Start Command нужно передавать только параметры без имени исполняемого файла
-- Добавлен `docs/graphhopper_custom_docker.md` с инструкцией по сборке собственного образа
-- README и `graphhopper_railway.md` обновлены ссылками на новый документ
+- Добавлена `docs/erm_map.md` с инструкцией по запуску сервиса erm-map
+- README обновлён ссылкой на документ `docs/erm_map.md`
 - Добавлен `docs/railway_full_setup.md` с описанием полного развёртывания на Railway
 - Клиент переведён на React 18 ради совместимости с TelegramUI
 - Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается

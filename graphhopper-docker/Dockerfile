@@ -1,31 +1,29 @@
-FROM maven:3.9.5-eclipse-temurin-21 as build
+FROM openjdk:17-jdk-slim
 
-WORKDIR /graphhopper
+# Установка необходимых инструментов
+RUN apt-get update && \
+    apt-get install -y maven wget unzip && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY graphhopper .
+# Копирование исходного кода GraphHopper
+WORKDIR /app/graphhopper
+COPY . /app/graphhopper
 
+# Сборка проекта
 RUN mvn clean install -DskipTests
 
-FROM eclipse-temurin:21.0.1_12-jre
+# Загрузка файла карты
+RUN wget -O /app/graphhopper/odessa_oblast.osm.pbf "https://pub-d2e9e03579134f2c9561f9303b2112e7.r2.dev/odessa_oblast.osm.pbf"
 
-ENV JAVA_OPTS "-Xmx1g -Xms1g"
+# Копирование конфигурационного файла
+COPY config.yml /app/graphhopper/config.yml
 
-RUN mkdir -p /data
+# Установка переменных окружения
+ENV JAVA_OPTS="-Xms1g -Xmx1g"
+ENV PORT=8989
 
-WORKDIR /graphhopper
+# Открытие порта
+EXPOSE ${PORT}
 
-COPY --from=build /graphhopper/web/target/graphhopper*.jar ./
-
-COPY graphhopper.sh graphhopper/config-example.yml ./
-
-# Разрешаем подключение извне
-RUN sed -i '/^ *bind_host/s/^ */&# /p' config-example.yml
-
-VOLUME [ "/data" ]
-
-EXPOSE 8989 8990
-
-HEALTHCHECK --interval=5s --timeout=3s CMD curl --fail http://localhost:8989/health || exit 1
-
-ENTRYPOINT [ "./graphhopper.sh", "-c", "config-example.yml" ]
-
+# Запуск сервера
+CMD ["sh", "-c", "java -Ddw.graphhopper.config=/app/graphhopper/config.yml -jar /app/graphhopper/web/target/graphhopper-web-*.jar server /app/graphhopper/config.yml"]

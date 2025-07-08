@@ -23,4 +23,4 @@ uvicorn main:app --reload
 ## Развёртывание на Railway
 1. Создайте новый сервис через **Deploy from GitHub** и укажите репозиторий `AgroxOD/erm-map`.
 2. Railway автоматически установит зависимости и запустит приложение.
-3. После старта используйте адрес `https://<имя_сервиса>.up.railway.app/route` в переменной `ROUTING_URL` основного проекта.
+3. После старта используйте адрес `https://erm-map-production.up.railway.app/route` в переменной `ROUTING_URL` основного проекта.

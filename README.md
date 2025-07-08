@@ -85,7 +85,10 @@
    ```
 3. При необходимости запустите локальный telegram-bot-api и укажите `BOT_API_URL` в `.env`.
    В консоль выводятся только первые символы `BOT_TOKEN` для отладки.
-4. Для расчёта маршрута задайте `ROUTING_URL` с адресом сервиса erm-map.
+4. Для расчёта маршрута задайте `ROUTING_URL` так:
+   ```bash
+   ROUTING_URL=https://erm-map-production.up.railway.app/route
+   ```
    Подробности развёртывания описаны в `docs/erm_map.md`.
    Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.
 

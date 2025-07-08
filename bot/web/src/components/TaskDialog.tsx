@@ -12,6 +12,7 @@ import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
+import fetchRoute from "../services/route";
 
 interface Props {
   onClose: () => void;
@@ -54,6 +55,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
+  const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
+  const [routeNodes,setRouteNodes]=React.useState<number[]>([]);
 
   React.useEffect(() => {
     fetchDefaults('task_type').then(v => {
@@ -129,6 +132,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setDueDate(t.due_date?new Date(t.due_date).toISOString().slice(0,16):"");
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
+      setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
+      setRouteNodes(t.route_nodes||[]);
     });
   }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
 
@@ -163,6 +168,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     } else {setEnd('');setFinishCoordinates(null);}
   };
 
+  React.useEffect(()=>{
+    if(startCoordinates&&finishCoordinates){
+      fetchRoute(startCoordinates,finishCoordinates).then(r=>{
+        if(r){
+          setDistanceKm(Number((r.distance/1000).toFixed(1)));
+          setRouteNodes(r.nodes||[]);
+        }
+      });
+    } else {
+      setDistanceKm(null);
+      setRouteNodes([]);
+    }
+  },[startCoordinates,finishCoordinates]);
+
   const submit=async()=>{
     const payload:{[key:string]:any}={
       title,
@@ -187,6 +206,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     };
     if(startCoordinates) payload.startCoordinates=startCoordinates;
     if(finishCoordinates) payload.finishCoordinates=finishCoordinates;
+    if(distanceKm!==null) payload.route_distance_km=distanceKm;
+    if(routeNodes.length) payload.route_nodes=routeNodes;
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);
@@ -323,6 +344,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </div>
           )}
         </div>
+        {distanceKm!==null&&(
+          <div>
+            <label className="block text-sm font-medium">Расстояние</label>
+            <p>{distanceKm} км</p>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium">Способ оплаты</label>
           <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1">

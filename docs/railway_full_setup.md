@@ -20,8 +20,8 @@
 ## 3. Добавление erm-map
 1. Создайте ещё один сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/erm-map`.
 2. Railway установит зависимости из `requirements.txt` и запустит приложение согласно `Procfile`.
-3. После запуска сервис будет доступен по `https://<имя_сервиса>.up.railway.app`.
-4. Укажите адрес `https://<имя_сервиса>.up.railway.app/route` в переменной `ROUTING_URL` основного приложения.
+3. После запуска сервис будет доступен, например, по `https://erm-map-production.up.railway.app`.
+4. Укажите адрес `https://erm-map-production.up.railway.app/route` в переменной `ROUTING_URL` основного приложения.
 
 ## 4. Запуск и проверка
 1. Нажмите **Deploy** для обоих сервисов.

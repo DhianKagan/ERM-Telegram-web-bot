@@ -63,8 +63,8 @@
     админ может менять статус и приоритет прямо в таблице,
     доступна сортировка по всем колонкам
 56. Эндпойнт `/api/v1/route` возвращает координаты и длину маршрута
-57. Инструкция по запуску erm-map на Railway в docs/erm_map.md
-58. Пример переменной `ROUTING_URL` использует сервис `https://erm-map-production.up.railway.app/route`
+57. Инструкция по запуску ORSM на Railway в docs/orsm.md
+58. Пример переменной `ROUTING_URL` использует сервис `https://orsm-production.up.railway.app/route`
 59. README содержит пример JSON с координатами
 60. В мануале к боту описано разворачивание коротких ссылок Google Maps
 61. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway

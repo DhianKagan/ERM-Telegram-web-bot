@@ -56,7 +56,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
   const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
-  const [routeNodes,setRouteNodes]=React.useState<number[]>([]);
 
   React.useEffect(() => {
     fetchDefaults('task_type').then(v => {
@@ -133,7 +132,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
-      setRouteNodes(t.route_nodes||[]);
     });
   }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
 
@@ -173,12 +171,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       fetchRoute(startCoordinates,finishCoordinates).then(r=>{
         if(r){
           setDistanceKm(Number((r.distance/1000).toFixed(1)));
-          setRouteNodes(r.nodes||[]);
         }
       });
     } else {
       setDistanceKm(null);
-      setRouteNodes([]);
     }
   },[startCoordinates,finishCoordinates]);
 
@@ -207,7 +203,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if(startCoordinates) payload.startCoordinates=startCoordinates;
     if(finishCoordinates) payload.finishCoordinates=finishCoordinates;
     if(distanceKm!==null) payload.route_distance_km=distanceKm;
-    if(routeNodes.length) payload.route_nodes=routeNodes;
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);

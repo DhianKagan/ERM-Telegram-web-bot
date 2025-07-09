@@ -3,7 +3,7 @@
 # История изменений
 
 ## [Новый]
-- Переработан расчёт маршрутов: используется сервис `erm-map` вместо GraphHopper
+- Переработан расчёт маршрутов: используется сервис `ORSM` вместо GraphHopper и erm-map
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден
@@ -12,9 +12,9 @@
 - Поле "Название" перемещено в начало формы задачи
 - Справочники задач загружаются одним запросом для предотвращения ошибки 429
 - Таблица ответов бота в `docs/bot_responses.md` полностью на русском
-- В примерах `.env` и документации `ROUTING_URL` указывает на `https://erm-map-production.up.railway.app/route`
-- Добавлена `docs/erm_map.md` с инструкцией по запуску сервиса erm-map
-- README обновлён ссылкой на документ `docs/erm_map.md`
+- В примерах `.env` и документации `ROUTING_URL` указывает на `https://orsm-production.up.railway.app/route`
+- Добавлена `docs/orsm.md` с инструкцией по запуску сервиса ORSM
+- README обновлён ссылкой на документ `docs/orsm.md`
 - Добавлен `docs/railway_full_setup.md` с описанием полного развёртывания на Railway
 - Клиент переведён на React 18 ради совместимости с TelegramUI
 - Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается

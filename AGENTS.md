@@ -70,8 +70,8 @@
 - Скрипт `scripts/db/seed.js` создаёт задачу с приоритетом «Срочно»
 - Таблица задач показывает даты, приоритет и статус,
   админ может менять эти значения прямо в списке, добавлена сортировка
-- Документ `docs/erm_map.md` описывает запуск сервиса маршрутов erm-map на Railway
-- Пример `ROUTING_URL` указывает на `https://erm-map-production.up.railway.app/route`
+- Документ `docs/orsm.md` описывает запуск сервиса маршрутов ORSM на Railway
+- Пример `ROUTING_URL` указывает на `https://orsm-production.up.railway.app/route`
 - Документ `docs/railway_full_setup.md` содержит пошаговое развёртывание всего проекта на Railway
 - README включает пример JSON с координатами
 - В мануале уточнено разворачивание коротких ссылок Google Maps

@@ -89,9 +89,9 @@
    В консоль выводятся только первые символы `BOT_TOKEN` для отладки.
 4. Для расчёта маршрута задайте `ROUTING_URL` так:
    ```bash
-   ROUTING_URL=https://erm-map-production.up.railway.app/route
+   ROUTING_URL=https://orsm-production.up.railway.app/route
    ```
-   Подробности развёртывания описаны в `docs/erm_map.md`.
+   Подробности развёртывания описаны в `docs/orsm.md`.
    Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.
 
 Для проверки подключения к MongoDB выполните:

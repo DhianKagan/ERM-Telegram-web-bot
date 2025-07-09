@@ -1,23 +1,17 @@
-// Назначение: расчёт маршрута по координатам через сервис erm-map
+// Назначение: расчёт маршрута через сервис ORSM
 // Модули: fetch, config
 const { routingUrl } = require('../config')
 
 async function getRouteDistance(start, end) {
-  const res = await fetch(routingUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      orig_lat: start.lat,
-      orig_lon: start.lng,
-      dest_lat: end.lat,
-      dest_lon: end.lng
-    })
-  })
+  const url = `${routingUrl}?start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`
+  const res = await fetch(url)
   const data = await res.json()
-  if (data.error) throw new Error(data.error)
+  if (!res.ok || data.code !== 'Ok') {
+    throw new Error(data.message || data.code || 'Route error')
+  }
   return {
-    distance: data.distance_m,
-    nodes: data.route_nodes
+    distance: data.routes?.[0]?.distance,
+    waypoints: data.waypoints
   }
 }
 

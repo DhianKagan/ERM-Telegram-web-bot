@@ -15,7 +15,7 @@ const { stopQueue } = require('../src/services/messageQueue')
 jest.mock('../src/api/middleware',()=>({ verifyToken:(_req,_res,next)=>next(), asyncHandler:fn=>fn, errorHandler:(err,_req,res,_next)=>res.status(500).json({error:err.message}) }))
 
 const { getRouteDistance } = require('../src/services/route')
-jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:100, nodes:[1,2,3] })) }))
+jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:100, waypoints:[] })) }))
 
 const router=require('../src/routes/route')
 
@@ -29,7 +29,7 @@ beforeAll(()=>{
 test('POST /api/v1/route возвращает данные маршрута', async()=>{
   const res=await request(app).post('/api/v1/route').send({ start:{lat:1,lng:2}, end:{lat:3,lng:4} })
   expect(res.body.distance).toBe(100)
-  expect(res.body.nodes).toHaveLength(3)
+  expect(Array.isArray(res.body.waypoints)).toBe(true)
   expect(getRouteDistance).toHaveBeenCalledWith({lat:1,lng:2},{lat:3,lng:4})
 })
 

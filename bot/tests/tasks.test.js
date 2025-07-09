@@ -10,6 +10,9 @@ const express = require('express')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
 
+jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:1000 })) }))
+jest.mock('../src/services/maps',()=>({ generateRouteLink: jest.fn(()=> 'g'), expandMapsUrl: jest.fn(), extractCoords: jest.fn() }))
+
 jest.mock('../src/db/model', () => ({
   Task: {
     create: jest.fn(async d => ({
@@ -52,7 +55,7 @@ test('создание задачи возвращает 201', async () => {
   })
   expect(res.status).toBe(201)
   expect(res.body.title).toBe('ERM_000001 T')
-  expect(Task.create).toHaveBeenCalledWith(expect.objectContaining({ start_date: '2025-01-01T10:00' }))
+  expect(Task.create).toHaveBeenCalledWith(expect.objectContaining({ start_date: '2025-01-01T10:00', google_route_url: 'g', route_distance_km: 1 }))
 })
 
 const id = '507f191e810c19729de860ea'

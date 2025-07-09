@@ -85,6 +85,7 @@ const taskSchema = new mongoose.Schema({
   end_location: String,
   end_location_link: String,
   finishCoordinates: { lat: Number, lng: Number },
+  google_route_url: String,
   // Расстояние маршрута в километрах
   route_distance_km: Number,
   // Список узлов маршрута для анализа

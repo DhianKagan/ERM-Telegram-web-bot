@@ -41,6 +41,7 @@ router.post('/', verifyToken, [
   body('end_location').optional().isString(),
   body('end_location_link').optional().isString(),
   body('finishCoordinates').optional().isObject(),
+  body('google_route_url').optional().isString(),
   body('route_distance_km').optional().isFloat(),
   body('route_nodes').optional().isArray(),
   body('start_date').optional().isISO8601(),

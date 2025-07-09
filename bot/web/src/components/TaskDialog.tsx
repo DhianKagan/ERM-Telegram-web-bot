@@ -13,6 +13,7 @@ import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
 import fetchRoute from "../services/route";
+import createRouteLink from "../utils/createRouteLink";
 
 interface Props {
   onClose: () => void;
@@ -56,6 +57,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
   const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
+  const [routeLink,setRouteLink]=React.useState('');
 
   React.useEffect(() => {
     fetchDefaults('task_type').then(v => {
@@ -168,6 +170,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   React.useEffect(()=>{
     if(startCoordinates&&finishCoordinates){
+      setRouteLink(createRouteLink(startCoordinates,finishCoordinates));
       fetchRoute(startCoordinates,finishCoordinates).then(r=>{
         if(r){
           setDistanceKm(Number((r.distance/1000).toFixed(1)));
@@ -175,6 +178,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       });
     } else {
       setDistanceKm(null);
+      setRouteLink('');
     }
   },[startCoordinates,finishCoordinates]);
 
@@ -203,6 +207,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if(startCoordinates) payload.startCoordinates=startCoordinates;
     if(finishCoordinates) payload.finishCoordinates=finishCoordinates;
     if(distanceKm!==null) payload.route_distance_km=distanceKm;
+    if(routeLink) payload.google_route_url=routeLink;
     let data;
     if(isEdit&&id){data=await updateTask(id,payload);}else{data=await createTask(payload);} 
     if(data&&onSave) onSave(data);
@@ -343,6 +348,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <div>
             <label className="block text-sm font-medium">Расстояние</label>
             <p>{distanceKm} км</p>
+          </div>
+        )}
+        {routeLink&&(
+          <div>
+            <label className="block text-sm font-medium">Маршрут</label>
+            <a href={routeLink} target="_blank" rel="noopener" className="text-accentPrimary underline">ссылка</a>
           </div>
         )}
         <div>

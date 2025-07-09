@@ -17,4 +17,11 @@ function extractCoords(url) {
   return null
 }
 
-module.exports = { expandMapsUrl, extractCoords }
+// Формирует ссылку маршрута Google Maps из координат
+// travelmode по умолчанию driving
+function generateRouteLink(start, end, mode = 'driving') {
+  if (!start || !end) return ''
+  return `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&travelmode=${mode}`
+}
+
+module.exports = { expandMapsUrl, extractCoords, generateRouteLink }

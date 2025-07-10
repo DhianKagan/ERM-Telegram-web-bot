@@ -4,7 +4,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import fetchRoutes from '../services/routes'
 import fetchRouteGeometry from '../services/osrm'
 import { fetchTasks } from '../services/tasks'
-import TaskRangeList from '../components/TaskRangeList'
+import RoutesTaskTable from '../components/RoutesTaskTable'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DatePicker from 'react-datepicker'
@@ -32,20 +32,18 @@ export default function RoutesPage() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [fromDate, setFromDate] = React.useState<Date | null>(null)
   const [toDate, setToDate] = React.useState<Date | null>(null)
-  const [status, setStatus] = React.useState('')
-  const [department, setDepartment] = React.useState('')
 
   const format = (d: Date | null) => d ? d.toISOString().slice(0,10) : ''
   const load = React.useCallback(() => {
     const params = {
       from: format(fromDate),
-      to: format(toDate),
-      status,
-      department
+      to: format(toDate)
     }
     fetchRoutes(params).then(setRoutes)
-    fetchTasks(params).then(setTasks)
-  }, [fromDate, toDate, status, department])
+    fetchTasks(params).then(data => {
+      setTasks(data.filter(t => t.status !== 'new' && t.status !== 'in-progress'))
+    })
+  }, [fromDate, toDate])
 
   React.useEffect(load, [load])
 
@@ -80,6 +78,9 @@ export default function RoutesPage() {
           <div className="flex flex-wrap gap-2">
             <DatePicker
               selectsRange
+              shouldCloseOnSelect={false}
+              withPortal
+              popperPlacement="bottom-start"
               startDate={fromDate}
               endDate={toDate}
               onChange={(d: [Date|null, Date|null]) => {
@@ -95,24 +96,12 @@ export default function RoutesPage() {
                 </div>
               )}
             />
-            <input
-              placeholder="Статус"
-              value={status}
-              onChange={e => setStatus(e.target.value)}
-              className="rounded border px-2 py-1"
-            />
-            <input
-              placeholder="Отдел"
-              value={department}
-              onChange={e => setDepartment(e.target.value)}
-              className="rounded border px-2 py-1"
-            />
             <button onClick={load} className="btn-blue rounded px-4">Обновить</button>
           </div>
         </div>
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Задачи</h3>
-          <TaskRangeList tasks={tasks} />
+          <RoutesTaskTable tasks={tasks} />
         </div>
       </div>
     </div>

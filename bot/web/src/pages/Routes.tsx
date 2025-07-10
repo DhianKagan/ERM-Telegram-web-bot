@@ -2,6 +2,8 @@
 import React from 'react'
 import Breadcrumbs from '../components/Breadcrumbs'
 import fetchRoutes from '../services/routes'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 interface Route {
   _id: string
@@ -27,20 +29,20 @@ export default function RoutesPage() {
   React.useEffect(load, [load])
 
   React.useEffect(() => {
-    if (window.L && routes.length) {
-      const map = window.L.map('routes-map').setView([48.3794, 31.1656], 6)
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map)
-      routes.forEach(r => {
-        if (r.startCoordinates && r.finishCoordinates) {
-          window.L.polyline([
-            [r.startCoordinates.lat, r.startCoordinates.lng],
-            [r.finishCoordinates.lat, r.finishCoordinates.lng]
-          ], { color: 'blue' }).addTo(map)
-        }
-      })
-    }
+    if (!routes.length) return
+    const map = L.map('routes-map').setView([48.3794, 31.1656], 6)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map)
+    routes.forEach(r => {
+      if (r.startCoordinates && r.finishCoordinates) {
+        L.polyline([
+          [r.startCoordinates.lat, r.startCoordinates.lng],
+          [r.finishCoordinates.lat, r.finishCoordinates.lng]
+        ], { color: 'blue' }).addTo(map)
+      }
+    })
+    return () => map.remove()
   }, [routes])
 
   return (

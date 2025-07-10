@@ -1,0 +1,43 @@
+// Тест эндпойнта /api/v1/routes/all
+process.env.NODE_ENV='test'
+process.env.BOT_TOKEN='t'
+process.env.CHAT_ID='1'
+process.env.JWT_SECRET='s'
+process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
+
+const request = require('supertest')
+const express = require('express')
+const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
+
+jest.mock('../src/db/queries', () => ({
+  listRoutes: jest.fn(async () => [{ _id: '1' }]),
+  getUser: jest.fn(async () => ({}))
+}))
+
+const { listRoutes } = require('../src/db/queries')
+jest.mock('../src/api/middleware', () => ({
+  verifyToken: (req, _res, next) => { req.user = { id: 1 }; next(); },
+  asyncHandler: fn => fn,
+  errorHandler: (err, _req, res, _next) => res.status(500).json({ error: err.message })
+}))
+const { errorHandler } = require('../src/api/middleware')
+const routesRouter = require('../src/routes/routes')
+
+let app
+beforeAll(() => {
+  app = express()
+  app.use(express.json())
+  app.use('/api/v1/routes', routesRouter)
+  app.use(errorHandler)
+})
+
+afterAll(() => { jest.clearAllMocks(); stopScheduler(); stopQueue() })
+
+test('GET /api/v1/routes/all возвращает массив', async () => {
+  const res = await request(app)
+    .get('/api/v1/routes/all')
+  expect(res.status).toBe(200)
+  expect(Array.isArray(res.body)).toBe(true)
+  expect(listRoutes).toHaveBeenCalled()
+})

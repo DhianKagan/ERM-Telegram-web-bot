@@ -27,6 +27,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthProvider";
 import { AuthContext } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
+import { TasksProvider } from "./context/TasksContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
@@ -153,9 +154,11 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <SidebarProvider>
-            <Router>
-              <Layout />
-            </Router>
+            <TasksProvider>
+              <Router>
+                <Layout />
+              </Router>
+            </TasksProvider>
           </SidebarProvider>
         </ToastProvider>
       </ThemeProvider>

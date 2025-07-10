@@ -62,6 +62,16 @@ async function getTasks(filters = {}, page, limit) {
   return query
 }
 
+async function listRoutes(filters = {}) {
+  const q = {}
+  if (filters.departmentId) q.departmentId = filters.departmentId
+  if (filters.status) q.status = filters.status
+  if (filters.from || filters.to) q.createdAt = {}
+  if (filters.from) q.createdAt.$gte = filters.from
+  if (filters.to) q.createdAt.$lte = filters.to
+  return Task.find(q).select('startCoordinates finishCoordinates route_distance_km departmentId status createdAt')
+}
+
 async function searchTasks(text) {
   return Task.find({
     $or: [
@@ -244,5 +254,6 @@ module.exports = {
   listTransports,
   createTransport,
   updateTransport,
-  deleteTransport
+  deleteTransport,
+  listRoutes
 }

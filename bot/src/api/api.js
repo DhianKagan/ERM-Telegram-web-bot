@@ -24,6 +24,7 @@ process.on('uncaughtException', err => {
 const tasksRouter = require('../routes/tasks')
 const mapsRouter = require('../routes/maps')
 const routeRouter = require('../routes/route')
+const routesRouter = require('../routes/routes')
 const authUserRouter = require('../routes/authUser')
 const {
   updateTaskStatus,
@@ -295,6 +296,8 @@ const validate = validations => [
   app.use(`${prefix}/maps`, mapsRouter)
   // маршрут
   app.use(`${prefix}/route`, routeRouter)
+  // список маршрутов
+  app.use(`${prefix}/routes`, routesRouter)
   // новые REST маршруты для расширенной работы с задачами
   app.use(`${prefix}/tasks`, tasksRouter)
 

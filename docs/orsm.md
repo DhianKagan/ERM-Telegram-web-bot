@@ -17,4 +17,5 @@ curl "http://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
 ## Развёртывание на Railway
 1. Создайте новый сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/ORSM`.
 2. Railway установит зависимости и запустит приложение автоматически.
-3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`, в переменной `ROUTING_URL` основного проекта.
+3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,
+   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.

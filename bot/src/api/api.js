@@ -82,6 +82,8 @@ const validate = validations => [
   } catch {
     // если значение routingUrl не похоже на URL, игнорируем ошибку
   }
+  // разрешаем обращение к публичному OSRM
+  connectSrc.push('https://router.project-osrm.org')
   app.use(
     helmet({
       contentSecurityPolicy: {

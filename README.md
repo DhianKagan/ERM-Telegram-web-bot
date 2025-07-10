@@ -68,7 +68,7 @@
   - Появилась страница «Маршруты» на основе OSRM-frontend
   - Путь маршрута строится через OSRM, диапазон дат выбирается календарём
   - Leaflet подключается локально, политика CSP разрешает тайлы OpenStreetMap
-  - Политика CSP разрешает подключение к сервису ORSM
+  - Политика CSP разрешает подключение к сервису ORSM и `router.project-osrm.org`
   - Параметры фильтра отправляются только при заполнении,
     `status` проверяется как строка и не допускает инъекций
 
@@ -101,6 +101,7 @@
 4. Для расчёта маршрута задайте `ROUTING_URL` так:
    ```bash
    ROUTING_URL=https://orsm-production.up.railway.app/route
+   VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
    ```
    Подробности развёртывания описаны в `docs/orsm.md`.
    Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.

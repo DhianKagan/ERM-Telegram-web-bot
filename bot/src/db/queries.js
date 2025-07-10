@@ -65,7 +65,8 @@ async function getTasks(filters = {}, page, limit) {
 async function listRoutes(filters = {}) {
   const q = {}
   if (filters.departmentId) q.departmentId = filters.departmentId
-  if (filters.status) q.status = filters.status
+  // статус маршрута задаём как строку через $eq
+  if (filters.status) q.status = { $eq: filters.status }
   if (filters.from || filters.to) q.createdAt = {}
   if (filters.from) q.createdAt.$gte = filters.from
   if (filters.to) q.createdAt.$lte = filters.to

@@ -15,13 +15,14 @@
    - `MONGO_DATABASE_URL` — значение из `DATABASE_URL` плагина MongoDB.
    - `APP_URL` — домен проекта вида `https://<имя>.up.railway.app`.
    - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага.
+   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
 3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
 
 ## 3. Добавление ORSM
 1. Создайте ещё один сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/ORSM`.
 2. Railway установит зависимости и запустит приложение автоматически.
 3. После запуска сервис будет доступен, например, по `https://orsm-production.up.railway.app`.
-4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменной `ROUTING_URL` основного приложения.
+4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
 
 ## 4. Запуск и проверка
 1. Нажмите **Deploy** для обоих сервисов.

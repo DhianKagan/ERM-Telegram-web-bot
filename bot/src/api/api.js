@@ -75,7 +75,7 @@ const validate = validations => [
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1)
   app.use(express.json())
-  // политика безопасности фреймов без карт Google
+  // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -86,7 +86,14 @@ const validate = validations => [
             'https://oauth.telegram.org'
           ],
           "script-src": ["'self'", "'unsafe-eval'", 'https://telegram.org'],
-          "media-src": ["'self'", 'data:']
+          "media-src": ["'self'", 'data:'],
+          "img-src": [
+            "'self'",
+            'data:',
+            'https://a.tile.openstreetmap.org',
+            'https://b.tile.openstreetmap.org',
+            'https://c.tile.openstreetmap.org'
+          ]
         }
       }
     })

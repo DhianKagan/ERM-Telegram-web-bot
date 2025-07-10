@@ -771,3 +771,19 @@ span.flatpickr-weekday,
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
 }
+
+.start-marker {
+  background: #16a34a;
+  border: 2px solid #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.finish-marker {
+  background: #dc2626;
+  border: 2px solid #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}

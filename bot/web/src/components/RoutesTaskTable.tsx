@@ -26,7 +26,7 @@ interface Filters {
   distance: string
 }
 
-export default function RoutesTaskTable({ tasks }: { tasks: Task[] }) {
+export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; onChange?: (t: Task[]) => void }) {
   const [sortBy, setSortBy] = React.useState<keyof Task>('due_date')
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc')
   const [filters, setFilters] = React.useState<Filters>({
@@ -91,6 +91,7 @@ export default function RoutesTaskTable({ tasks }: { tasks: Task[] }) {
     })
     return list
   }, [filtered, sortBy, sortDir])
+  React.useEffect(() => { if (onChange) onChange(sorted) }, [sorted, onChange])
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 text-sm">

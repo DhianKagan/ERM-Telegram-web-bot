@@ -3,10 +3,12 @@
 import React from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import TaskDialog from './TaskDialog'
+import useTasks from '../context/useTasks'
 
 export default function TaskDialogRoute() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { refresh } = useTasks()
   const id = params.get('task')
   const create = params.get('newTask')
   if (!id && !create) return null
@@ -16,6 +18,10 @@ export default function TaskDialogRoute() {
     navigate({ search: params.toString() }, { replace: true })
   }
   return (
-    <TaskDialog id={id || undefined} onClose={close} onSave={close} />
+    <TaskDialog
+      id={id || undefined}
+      onClose={close}
+      onSave={() => { refresh(); close() }}
+    />
   )
 }

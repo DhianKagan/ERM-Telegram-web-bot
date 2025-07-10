@@ -3,6 +3,7 @@ import React from "react";
 import { useSearchParams } from "react-router-dom";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/useToast";
+import useTasks from "../context/useTasks";
 import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import { fetchDefaults } from "../services/dicts";
@@ -46,6 +47,7 @@ export default function TasksPage() {
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
+  const { version, refresh } = useTasks();
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
@@ -70,7 +72,7 @@ export default function TasksPage() {
     fetchDefaults('priority').then(setPriorities);
   }, []);
 
-  React.useEffect(load, [load]);
+  React.useEffect(load, [load, version]);
 
   const filtered = React.useMemo(
     () => (status === 'all' ? all : all.filter((t) => t.status === status)),
@@ -191,15 +193,18 @@ export default function TasksPage() {
             </button>
           ))}
         </div>
-        <button
-          onClick={() => {
-            params.set('newTask', '1')
-            setParams(params)
-          }}
-          className="btn btn-blue"
-        >
-          Новая задача
-        </button>
+        <div className="flex gap-2">
+          <button onClick={refresh} className="btn-gray rounded px-3">Обновить</button>
+          <button
+            onClick={() => {
+              params.set('newTask', '1')
+              setParams(params)
+            }}
+            className="btn btn-blue"
+          >
+            Новая задача
+          </button>
+        </div>
       </div>
       <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm">
         <thead className="bg-gray-50">

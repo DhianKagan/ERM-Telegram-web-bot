@@ -41,3 +41,13 @@ test('GET /api/v1/routes/all возвращает массив', async () => {
   expect(Array.isArray(res.body)).toBe(true)
   expect(listRoutes).toHaveBeenCalled()
 })
+
+test('GET /api/v1/routes/all отклоняет массив в статусе', async () => {
+  const res = await request(app).get('/api/v1/routes/all?status=a&status=b')
+  expect(res.status).toBe(400)
+})
+
+test('GET /api/v1/routes/all передаёт статус строкой', async () => {
+  await request(app).get('/api/v1/routes/all?status=done')
+  expect(listRoutes).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'done' }))
+})

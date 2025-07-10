@@ -106,6 +106,14 @@
    Подробности развёртывания описаны в `docs/orsm.md`.
    Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.
 
+## Сборка Docker-образа
+Dockerfile находится в корне репозитория и копирует файлы из каталога `bot/`.
+Соберите и запустите контейнер так:
+```bash
+docker build -t telegram-task-bot .
+docker run --env-file .env -p 3000:3000 telegram-task-bot
+```
+
 Для проверки подключения к MongoDB выполните:
 ```bash
 npm --prefix bot run check:mongo

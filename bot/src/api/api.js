@@ -76,6 +76,12 @@ const validate = validations => [
   app.set('trust proxy', 1)
   app.use(express.json())
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
+  const connectSrc = ["'self'"]
+  try {
+    connectSrc.push(new URL(config.routingUrl).origin)
+  } catch {
+    // если значение routingUrl не похоже на URL, игнорируем ошибку
+  }
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -93,7 +99,8 @@ const validate = validations => [
             'https://a.tile.openstreetmap.org',
             'https://b.tile.openstreetmap.org',
             'https://c.tile.openstreetmap.org'
-          ]
+          ],
+          'connect-src': connectSrc
         }
       }
     })

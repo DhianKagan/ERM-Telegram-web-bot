@@ -3,6 +3,8 @@ import React from 'react'
 import Breadcrumbs from '../components/Breadcrumbs'
 import fetchRoutes from '../services/routes'
 import fetchRouteGeometry from '../services/osrm'
+import { fetchTasks } from '../services/tasks'
+import TaskRangeList from '../components/TaskRangeList'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DatePicker from 'react-datepicker'
@@ -18,8 +20,16 @@ interface Route {
   createdAt?: string
 }
 
+interface Task {
+  _id: string
+  title: string
+  request_id: string
+  createdAt: string
+}
+
 export default function RoutesPage() {
   const [routes, setRoutes] = React.useState<Route[]>([])
+  const [tasks, setTasks] = React.useState<Task[]>([])
   const [fromDate, setFromDate] = React.useState<Date | null>(null)
   const [toDate, setToDate] = React.useState<Date | null>(null)
   const [status, setStatus] = React.useState('')
@@ -27,12 +37,14 @@ export default function RoutesPage() {
 
   const format = (d: Date | null) => d ? d.toISOString().slice(0,10) : ''
   const load = React.useCallback(() => {
-    fetchRoutes({
+    const params = {
       from: format(fromDate),
       to: format(toDate),
       status,
       department
-    }).then(setRoutes)
+    }
+    fetchRoutes(params).then(setRoutes)
+    fetchTasks(params).then(setTasks)
   }, [fromDate, toDate, status, department])
 
   React.useEffect(load, [load])
@@ -62,25 +74,46 @@ export default function RoutesPage() {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Маршруты' }]} />
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <DatePicker
-            selectsRange
-            startDate={fromDate}
-            endDate={toDate}
-            onChange={(d: [Date|null, Date|null]) => {
-              setFromDate(d[0])
-              setToDate(d[1])
-            }}
-            dateFormat="yyyy-MM-dd"
-            placeholderText="Диапазон дат"
-            className="rounded border px-2 py-1"
-          />
-          <input placeholder="Статус" value={status} onChange={e=>setStatus(e.target.value)} className="rounded border px-2 py-1" />
-          <input placeholder="Отдел" value={department} onChange={e=>setDepartment(e.target.value)} className="rounded border px-2 py-1" />
-          <button onClick={load} className="btn-blue rounded px-4">Обновить</button>
+      <div className="grid gap-4 lg:grid-cols-4">
+        <div className="space-y-4 lg:col-span-3">
+          <div id="routes-map" className="h-96 w-full rounded border" />
+          <div className="flex flex-wrap gap-2">
+            <DatePicker
+              selectsRange
+              startDate={fromDate}
+              endDate={toDate}
+              onChange={(d: [Date|null, Date|null]) => {
+                setFromDate(d[0])
+                setToDate(d[1])
+              }}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Диапазон дат"
+              className="rounded border px-2 py-1"
+              renderCustomHeader={() => (
+                <div className="mb-2 text-center text-sm font-medium">
+                  {fromDate ? fromDate.toLocaleDateString() : '...'} — {toDate ? toDate.toLocaleDateString() : '...'}
+                </div>
+              )}
+            />
+            <input
+              placeholder="Статус"
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              className="rounded border px-2 py-1"
+            />
+            <input
+              placeholder="Отдел"
+              value={department}
+              onChange={e => setDepartment(e.target.value)}
+              className="rounded border px-2 py-1"
+            />
+            <button onClick={load} className="btn-blue rounded px-4">Обновить</button>
+          </div>
         </div>
-        <div id="routes-map" className="h-96 w-full rounded border" />
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Задачи</h3>
+          <TaskRangeList tasks={tasks} />
+        </div>
       </div>
     </div>
   )

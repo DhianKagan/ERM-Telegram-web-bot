@@ -46,3 +46,13 @@ export const updateTask = (id, data) =>
 
 export const fetchMentioned = () =>
   authFetch('/api/v1/tasks/mentioned').then(r=> (r.ok ? r.json() : []))
+
+export const fetchTasks = (params = {}) => {
+  const filtered = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v)
+  )
+  const q = new URLSearchParams(filtered).toString()
+  const url = '/api/v1/tasks' + (q ? `?${q}` : '')
+  return authFetch(url).then(r => (r.ok ? r.json() : []))
+}
+

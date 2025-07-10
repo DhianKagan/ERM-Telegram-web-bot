@@ -2,8 +2,11 @@
 import React from 'react'
 import Breadcrumbs from '../components/Breadcrumbs'
 import fetchRoutes from '../services/routes'
+import fetchRouteGeometry from '../services/osrm'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
 interface Route {
   _id: string
@@ -17,14 +20,20 @@ interface Route {
 
 export default function RoutesPage() {
   const [routes, setRoutes] = React.useState<Route[]>([])
-  const [from, setFrom] = React.useState('')
-  const [to, setTo] = React.useState('')
+  const [fromDate, setFromDate] = React.useState<Date | null>(null)
+  const [toDate, setToDate] = React.useState<Date | null>(null)
   const [status, setStatus] = React.useState('')
   const [department, setDepartment] = React.useState('')
 
+  const format = (d: Date | null) => d ? d.toISOString().slice(0,10) : ''
   const load = React.useCallback(() => {
-    fetchRoutes({ from, to, status, department }).then(setRoutes)
-  }, [from, to, status, department])
+    fetchRoutes({
+      from: format(fromDate),
+      to: format(toDate),
+      status,
+      department
+    }).then(setRoutes)
+  }, [fromDate, toDate, status, department])
 
   React.useEffect(load, [load])
 
@@ -34,14 +43,19 @@ export default function RoutesPage() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map)
-    routes.forEach(r => {
-      if (r.startCoordinates && r.finishCoordinates) {
-        L.polyline([
-          [r.startCoordinates.lat, r.startCoordinates.lng],
-          [r.finishCoordinates.lat, r.finishCoordinates.lng]
-        ], { color: 'blue' }).addTo(map)
+    const group = L.layerGroup().addTo(map)
+    ;(async () => {
+      for (const r of routes) {
+        if (r.startCoordinates && r.finishCoordinates) {
+          const coords = await fetchRouteGeometry(r.startCoordinates, r.finishCoordinates)
+          if (!coords) continue
+          const latlngs = coords.map(c => [c[1], c[0]])
+          L.polyline(latlngs, { color: 'blue' }).addTo(group)
+          L.marker(latlngs[0]).addTo(group)
+          L.marker(latlngs[latlngs.length - 1]).addTo(group)
+        }
       }
-    })
+    })()
     return () => map.remove()
   }, [routes])
 
@@ -50,8 +64,18 @@ export default function RoutesPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Маршруты' }]} />
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded border px-2 py-1" />
-          <input type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded border px-2 py-1" />
+          <DatePicker
+            selectsRange
+            startDate={fromDate}
+            endDate={toDate}
+            onChange={(d: [Date|null, Date|null]) => {
+              setFromDate(d[0])
+              setToDate(d[1])
+            }}
+            dateFormat="yyyy-MM-dd"
+            placeholderText="Диапазон дат"
+            className="rounded border px-2 py-1"
+          />
           <input placeholder="Статус" value={status} onChange={e=>setStatus(e.target.value)} className="rounded border px-2 py-1" />
           <input placeholder="Отдел" value={department} onChange={e=>setDepartment(e.target.value)} className="rounded border px-2 py-1" />
           <button onClick={load} className="btn-blue rounded px-4">Обновить</button>

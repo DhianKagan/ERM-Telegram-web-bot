@@ -40,11 +40,5 @@ module.exports = {
   deleteDepartment: q.deleteDepartment,
   searchTasks: q.searchTasks,
   addAttachment: q.addAttachment,
-  deleteTask: q.deleteTask,
-  getDefaultValues: q.getDefaultValues,
-  setDefaultValues: q.setDefaultValues,
-  listTransports: q.listTransports,
-  createTransport: q.createTransport,
-  updateTransport: q.updateTransport,
-  deleteTransport: q.deleteTransport
+  deleteTask: q.deleteTask
 }

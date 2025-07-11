@@ -6,7 +6,7 @@ import { useToast } from "../context/useToast";
 import useTasks from "../context/useTasks";
 import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import { fetchDefaults } from "../services/dicts";
+import fields from "../../../shared/taskFields.cjs";
 import parseJwt from "../utils/parseJwt";
 
 interface Task {
@@ -68,8 +68,8 @@ export default function TasksPage() {
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
-    fetchDefaults('status').then(setStatuses);
-    fetchDefaults('priority').then(setPriorities);
+    setStatuses(fields.find(f => f.name === 'status')?.options || []);
+    setPriorities(fields.find(f => f.name === 'priority')?.options || []);
   }, []);
 
   React.useEffect(load, [load, version]);

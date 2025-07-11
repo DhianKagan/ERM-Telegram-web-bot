@@ -25,7 +25,6 @@ const items = [
   { to: "/roles", label: "Роли", icon: Cog6ToothIcon },
   { to: "/logs", label: "Логи", icon: ClipboardDocumentListIcon },
   { to: "/admin", label: "Админ", icon: Cog6ToothIcon },
-  { to: "/defaults", label: "Справочники", icon: Cog6ToothIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 

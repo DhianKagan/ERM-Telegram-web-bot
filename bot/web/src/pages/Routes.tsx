@@ -3,6 +3,7 @@ import React from 'react'
 import Breadcrumbs from '../components/Breadcrumbs'
 import fetchRouteGeometry from '../services/osrm'
 import { fetchTasks } from '../services/tasks'
+import optimizeRoute from '../services/optimizer'
 import RoutesTaskTable from '../components/RoutesTaskTable'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -25,6 +26,7 @@ interface Task {
 export default function RoutesPage() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [sorted, setSorted] = React.useState<Task[]>([])
+  const [vehicles, setVehicles] = React.useState(1)
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
@@ -42,6 +44,13 @@ export default function RoutesPage() {
       setSorted(data)
     })
   }, [])
+
+  const calculate = React.useCallback(() => {
+    const ids = sorted.map(t => t._id)
+    optimizeRoute(ids, vehicles).then(r => {
+      if (r) alert(JSON.stringify(r.routes))
+    })
+  }, [sorted, vehicles])
 
   React.useEffect(load, [load])
 
@@ -82,7 +91,13 @@ export default function RoutesPage() {
       <div className="space-y-2 max-w-full">
         <h3 className="text-lg font-semibold">Задачи</h3>
         <RoutesTaskTable tasks={tasks} onChange={setSorted} />
-        <div className="text-right">
+        <div className="flex justify-end space-x-2">
+          <select value={vehicles} onChange={e=>setVehicles(Number(e.target.value))} className="rounded border px-2 py-1">
+            <option value={1}>1</option>
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+          </select>
+          <button onClick={calculate} className="btn-blue rounded px-4">Просчёт маршрута</button>
           <button onClick={load} className="btn-blue rounded px-4">Обновить</button>
         </div>
       </div>

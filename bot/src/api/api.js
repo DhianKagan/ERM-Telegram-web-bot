@@ -25,6 +25,7 @@ const tasksRouter = require('../routes/tasks')
 const mapsRouter = require('../routes/maps')
 const routeRouter = require('../routes/route')
 const routesRouter = require('../routes/routes')
+const optimizerRouter = require('../routes/optimizer')
 const authUserRouter = require('../routes/authUser')
 const {
   updateTaskStatus,
@@ -263,6 +264,8 @@ const validate = validations => [
   app.use(`${prefix}/maps`, mapsRouter)
   // маршрут
   app.use(`${prefix}/route`, routeRouter)
+  // оптимизация маршрута
+  app.use(`${prefix}/optimizer`, optimizerRouter)
   // список маршрутов
   app.use(`${prefix}/routes`, routesRouter)
   // новые REST маршруты для расширенной работы с задачами

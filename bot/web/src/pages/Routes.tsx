@@ -5,6 +5,7 @@ import fetchRouteGeometry from '../services/osrm'
 import { fetchTasks } from '../services/tasks'
 import optimizeRoute from '../services/optimizer'
 import RoutesTaskTable from '../components/RoutesTaskTable'
+import createMultiRouteLink from '../utils/createMultiRouteLink'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
@@ -27,6 +28,8 @@ export default function RoutesPage() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [sorted, setSorted] = React.useState<Task[]>([])
   const [vehicles, setVehicles] = React.useState(1)
+  const mapRef = React.useRef<L.Map | null>(null)
+  const optLayerRef = React.useRef<L.LayerGroup | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
@@ -48,15 +51,51 @@ export default function RoutesPage() {
   const calculate = React.useCallback(() => {
     const ids = sorted.map(t => t._id)
     optimizeRoute(ids, vehicles).then(r => {
-      if (r) alert(JSON.stringify(r.routes))
+      if (!r || !mapRef.current) return
+      if (optLayerRef.current) {
+        optLayerRef.current.remove()
+      }
+      const group = L.layerGroup().addTo(mapRef.current)
+      optLayerRef.current = group
+      const colors = ['red', 'green', 'orange']
+      const links: string[] = []
+      r.routes.forEach((route: string[], idx: number) => {
+        const tasksPoints = route
+          .map(id => sorted.find(t => t._id === id))
+          .filter(Boolean) as Task[]
+        const points = tasksPoints.flatMap(t =>
+          t.startCoordinates && t.finishCoordinates
+            ? [t.startCoordinates, t.finishCoordinates]
+            : []
+        )
+        if (points.length < 2) return
+        const latlngs = points.map(p => [p.lat, p.lng]) as [number, number][]
+        L.polyline(latlngs, { color: colors[idx % colors.length] }).addTo(group)
+        links.push(createMultiRouteLink(points))
+      })
+      if (links.length) {
+        const html = links
+          .map((u, i) => `<p><a href="${u}" target="_blank">Маршрут ${i + 1}</a></p>`)
+          .join('')
+        const w = window.open('', '_blank')
+        if (w) w.document.write(html)
+      }
     })
   }, [sorted, vehicles])
+
+  const reset = React.useCallback(() => {
+    if (optLayerRef.current) {
+      optLayerRef.current.remove()
+      optLayerRef.current = null
+    }
+  }, [])
 
   React.useEffect(load, [load])
 
   React.useEffect(() => {
     if (!sorted.length || hasDialog) return
     const map = L.map('routes-map').setView([48.3794, 31.1656], 6)
+    mapRef.current = map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map)
@@ -81,7 +120,11 @@ export default function RoutesPage() {
         }
       }
     })()
-    return () => map.remove()
+    return () => {
+      map.remove()
+      if (optLayerRef.current) optLayerRef.current.remove()
+      mapRef.current = null
+    }
   }, [sorted, openTask, hasDialog])
 
   return (
@@ -98,6 +141,7 @@ export default function RoutesPage() {
             <option value={3}>3</option>
           </select>
           <button onClick={calculate} className="btn-blue rounded px-4">Просчёт маршрута</button>
+          <button onClick={reset} className="btn-blue rounded px-4">Сбросить</button>
           <button onClick={load} className="btn-blue rounded px-4">Обновить</button>
         </div>
       </div>

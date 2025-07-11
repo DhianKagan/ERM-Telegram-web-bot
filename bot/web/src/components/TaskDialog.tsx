@@ -6,12 +6,19 @@ import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
 import { fetchDefaults } from "../services/dicts";
-import { createTask, updateTask } from "../services/tasks";
+import { createTask, updateTask, deleteTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
+import parseJwt from "../utils/parseJwt";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
+import {
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+  MinusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import createRouteLink from "../utils/createRouteLink";
 
@@ -25,6 +32,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useContext(AuthContext);
   const { open, collapsed } = useSidebar();
+  const isAdmin = React.useMemo(() => {
+    const token = localStorage.getItem('token');
+    const data = token ? parseJwt(token) : null;
+    return Boolean((data as any)?.isAdmin);
+  }, []);
+  const [expanded, setExpanded] = React.useState(false);
+  const [minimized, setMinimized] = React.useState(false);
   const [requestId,setRequestId]=React.useState('');
   const [created,setCreated]=React.useState('');
   const [title, setTitle] = React.useState("");
@@ -214,14 +228,35 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     onClose();
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm('Вы точно хотите удалить задачу?')) return;
+    await deleteTask(id);
+    if (onSave) onSave(null);
+    onClose();
+  };
+
   return(
     <div
-      className={`bg-opacity-30 animate-fade-in fixed right-0 top-14 bottom-0 flex items-start justify-center overflow-y-auto bg-black ${open ? (collapsed ? 'lg:left-20' : 'lg:left-60') : 'lg:left-0'}`}
+      className={`bg-opacity-30 animate-fade-in fixed right-0 top-14 bottom-0 flex items-start justify-center overflow-y-auto bg-black z-50 ${open ? (collapsed ? 'lg:left-20' : 'lg:left-60') : 'lg:left-0'}`}
     >
-      <div className="max-h-[90vh] w-full max-w-screen-md overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto">
+      <div className={`w-full ${expanded ? 'max-w-screen-xl' : 'max-w-screen-md'} ${minimized ? 'max-h-10' : 'max-h-[90vh]'} overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto`}>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
+        <div className="flex space-x-2">
+          <button onClick={() => setMinimized(!minimized)} className="p-1" title="Свернуть">
+            <MinusIcon className="h-5 w-5" />
+          </button>
+          <button onClick={() => setExpanded(!expanded)} className="p-1" title="Развернуть">
+            {expanded ? <ArrowsPointingInIcon className="h-5 w-5" /> : <ArrowsPointingOutIcon className="h-5 w-5" />}
+          </button>
+          <button onClick={onClose} className="p-1" title="Закрыть">
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
       </div>
+      {!minimized && (
+      <>
       <div>
         <label className="block text-sm font-medium">Название задачи</label>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
@@ -389,10 +424,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} />
         </div>
         <div className="flex justify-end space-x-2">
+          {isEdit && isAdmin && (
+            <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>
+          )}
           <button className="btn-gray rounded-full" onClick={onClose}>Отмена</button>
           <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
         </div>
-      </div>
+      </>
+      )}
     </div>
+  </div>
   );
 }

@@ -287,6 +287,9 @@ layer(base);
   .btn-green {
     @apply bg-success-500 text-white hover:bg-success-600;
   }
+  .btn-red {
+    @apply bg-danger text-white hover:bg-red-600;
+  }
 }
 
 .tableCheckbox:checked ~ span span {

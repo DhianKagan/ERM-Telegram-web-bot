@@ -8,11 +8,16 @@ async function optimize(taskIds, count = 1) {
   const tasks = (await Promise.all(taskIds.map(id => q.getTask(id))))
     .filter(t => t && t.startCoordinates)
   if (!tasks.length) return []
-  const vehicles = Array.from({ length: count }, () => ({
-    pos: tasks[0].startCoordinates,
-    route: []
-  }))
+  count = Math.min(count, tasks.length)
   const remaining = [...tasks]
+  const vehicles = []
+  for (let i = 0; i < count; i++) {
+    const task = remaining.shift()
+    vehicles.push({
+      pos: task.finishCoordinates || task.startCoordinates,
+      route: [task._id.toString()]
+    })
+  }
   while (remaining.length) {
     for (const v of vehicles) {
       if (!remaining.length) break

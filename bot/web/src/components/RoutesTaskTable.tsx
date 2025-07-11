@@ -9,6 +9,7 @@ interface Task {
   due_date?: string
   priority?: string
   task_type?: string
+  status?: string
   startCoordinates?: { lat: number; lng: number }
   finishCoordinates?: { lat: number; lng: number }
   route_distance_km?: number
@@ -21,6 +22,7 @@ interface Filters {
   due_date: string
   priority: string
   task_type: string
+  status: string
   start: string
   finish: string
   distance: string
@@ -34,6 +36,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
     due_date: '',
     priority: '',
     task_type: '',
+    status: '',
     start: '',
     finish: '',
     distance: ''
@@ -74,6 +77,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
         (!filters.due_date || due.includes(filters.due_date)) &&
         (!filters.priority || (t.priority || '').includes(filters.priority)) &&
         (!filters.task_type || (t.task_type || '').includes(filters.task_type)) &&
+        (!filters.status || (t.status || '').includes(filters.status)) &&
         (!filters.start || start.includes(filters.start)) &&
         (!filters.finish || finish.includes(filters.finish)) &&
         (!filters.distance || dist.includes(filters.distance))
@@ -100,6 +104,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('title')}>Название {sortBy==='title'?(sortDir==='asc'?'▲':'▼'):''}</th>
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('due_date')}>Срок {sortBy==='due_date'?(sortDir==='asc'?'▲':'▼'):''}</th>
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('priority')}>Приоритет {sortBy==='priority'?(sortDir==='asc'?'▲':'▼'):''}</th>
+            <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('status')}>Статус {sortBy==='status'?(sortDir==='asc'?'▲':'▼'):''}</th>
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('task_type')}>Тип {sortBy==='task_type'?(sortDir==='asc'?'▲':'▼'):''}</th>
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('startCoordinates')}>Старт {sortBy==='startCoordinates'?(sortDir==='asc'?'▲':'▼'):''}</th>
             <th className="px-2 py-1 cursor-pointer" onClick={() => handleSort('finishCoordinates')}>Финиш {sortBy==='finishCoordinates'?(sortDir==='asc'?'▲':'▼'):''}</th>
@@ -109,6 +114,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
             <th className="px-2 py-1"><input value={filters.title} onChange={e=>changeFilter('title',e.target.value)} className="w-full rounded border px-1"/></th>
             <th className="px-2 py-1"><input value={filters.due_date} onChange={e=>changeFilter('due_date',e.target.value)} className="w-full rounded border px-1"/></th>
             <th className="px-2 py-1"><input value={filters.priority} onChange={e=>changeFilter('priority',e.target.value)} className="w-full rounded border px-1"/></th>
+            <th className="px-2 py-1"><input value={filters.status} onChange={e=>changeFilter('status',e.target.value)} className="w-full rounded border px-1"/></th>
             <th className="px-2 py-1"><input value={filters.task_type} onChange={e=>changeFilter('task_type',e.target.value)} className="w-full rounded border px-1"/></th>
             <th className="px-2 py-1"><input value={filters.start} onChange={e=>changeFilter('start',e.target.value)} className="w-full rounded border px-1"/></th>
             <th className="px-2 py-1"><input value={filters.finish} onChange={e=>changeFilter('finish',e.target.value)} className="w-full rounded border px-1"/></th>
@@ -132,6 +138,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
                 </td>
                 <td className="px-2 py-1 text-center">{t.due_date?.slice(0,10)}</td>
                 <td className="px-2 py-1 text-center">{t.priority}</td>
+                <td className="px-2 py-1 text-center">{t.status}</td>
                 <td className="px-2 py-1 text-center">{t.task_type}</td>
                 <td className="px-2 py-1 text-center">
                   {t.startCoordinates ? `${t.startCoordinates.lat}, ${t.startCoordinates.lng}` : ''}

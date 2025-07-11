@@ -1,0 +1,30 @@
+// Тест распределения задач между транспортом
+process.env.NODE_ENV='test'
+process.env.BOT_TOKEN='t'
+process.env.CHAT_ID='1'
+process.env.JWT_SECRET='s'
+process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
+
+const sample = {
+  '1': {_id:'1', startCoordinates:{lat:0,lng:0}, finishCoordinates:{lat:0,lng:1}},
+  '2': {_id:'2', startCoordinates:{lat:0,lng:2}, finishCoordinates:{lat:0,lng:3}},
+  '3': {_id:'3', startCoordinates:{lat:0,lng:4}, finishCoordinates:{lat:0,lng:5}}
+}
+
+jest.mock('../src/db/queries', () => ({
+  getTask: jest.fn(id => Promise.resolve(sample[id]))
+}))
+
+const { optimize } = require('../src/services/optimizer')
+const { stopScheduler } = require('../src/services/scheduler')
+const { stopQueue } = require('../src/services/messageQueue')
+
+afterAll(() => { stopScheduler(); stopQueue() })
+
+test('optimize распределяет задачи между машинами', async () => {
+  const routes = await optimize(['1','2','3'], 2)
+  expect(routes.length).toBe(2)
+  expect(routes[0][0]).toBe('1')
+  expect(routes[1][0]).toBe('2')
+})
+

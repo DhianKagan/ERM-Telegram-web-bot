@@ -13,6 +13,13 @@ interface Task {
   title: string
   request_id: string
   createdAt: string
+  status?: string
+  priority?: string
+  task_type?: string
+  due_date?: string
+  startCoordinates?: { lat: number; lng: number }
+  finishCoordinates?: { lat: number; lng: number }
+  route_distance_km?: number
 }
 
 export default function RoutesPage() {
@@ -29,9 +36,8 @@ export default function RoutesPage() {
 
   const load = React.useCallback(() => {
     fetchTasks().then(data => {
-      const list = data.filter(t => t.status !== 'new' && t.status !== 'in-progress')
-      setTasks(list)
-      setSorted(list)
+      setTasks(data)
+      setSorted(data)
     })
   }, [])
 

@@ -141,6 +141,7 @@ npm --prefix bot run check:mongo
 ./scripts/audit_deps.sh
 ```
 Он запускается автоматически в CI и сообщает о конфликтующих пакетах.
+Низкоуровневые уязвимости пропускаются флагом `--audit-level high`.
 
 ## Тесты
 ```bash

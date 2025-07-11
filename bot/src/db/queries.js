@@ -1,6 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
 const { Task, Group, User, Role, Department, Log } = require('./model')
-const { DefaultValue, Transport } = require('./dictionaryModel')
 
 async function createTask(data) {
   return Task.create(data)
@@ -185,39 +184,6 @@ async function listLogs() {
   return Log.find().sort({ createdAt: -1 }).limit(100)
 }
 
-async function getDefaultValues(name) {
-  const doc = await DefaultValue.findOne({ name })
-  return doc ? doc.values : []
-}
-
-async function setDefaultValues(name, values) {
-
-  const sanitized = values.map(v => (typeof v === 'string' ? v : String(v)))
-  return DefaultValue.findOneAndUpdate(
-    { name },
-    { $set: { values: sanitized } },
-
-    { upsert: true, new: true }
-  )
-}
-
-async function listTransports() {
-  return Transport.find()
-}
-
-async function createTransport(data) {
-  return Transport.create(data)
-}
-
-async function updateTransport(id, data) {
-
-  return Transport.findByIdAndUpdate(id, { $set: data }, { new: true })
-
-}
-
-async function deleteTransport(id) {
-  return Transport.findByIdAndDelete(id)
-}
 
 module.exports = {
   createTask,
@@ -250,11 +216,5 @@ module.exports = {
   addAttachment,
   updateDepartment,
   deleteDepartment,
-  getDefaultValues,
-  setDefaultValues,
-  listTransports,
-  createTransport,
-  updateTransport,
-  deleteTransport,
   listRoutes
 }

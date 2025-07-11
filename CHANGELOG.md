@@ -4,6 +4,7 @@
 
 ## [Новый]
 - Переработан расчёт маршрутов: используется сервис `ORSM` вместо GraphHopper и erm-map
+- Удалена страница «Справочники» и API `/api/v1/defaults` и `/api/v1/transports`; значения enum берутся из `taskFields.cjs`
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден

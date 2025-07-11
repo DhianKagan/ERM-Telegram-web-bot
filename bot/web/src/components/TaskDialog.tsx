@@ -5,7 +5,6 @@ import RichTextEditor from "./RichTextEditor";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
-import { fetchDefaults } from "../services/dicts";
 import { createTask, updateTask, deleteTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import parseJwt from "../utils/parseJwt";
@@ -61,11 +60,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [end, setEnd] = React.useState("");
   const [endLink, setEndLink] = React.useState("");
   const [finishCoordinates, setFinishCoordinates] = React.useState<{lat:number,lng:number}|null>(null);
-  const [types,setTypes]=React.useState<string[]>([]);
-  const [priorities,setPriorities]=React.useState<string[]>([]);
-  const [transports,setTransports]=React.useState<string[]>([]);
-  const [payments,setPayments]=React.useState<string[]>([]);
-  const [statuses,setStatuses]=React.useState<string[]>([]);
+  const types = fields.find(f=>f.name==='task_type')?.options || [];
+  const priorities = fields.find(f=>f.name==='priority')?.options || [];
+  const transports = fields.find(f=>f.name==='transport_type')?.options || [];
+  const payments = fields.find(f=>f.name==='payment_method')?.options || [];
+  const statuses = fields.find(f=>f.name==='status')?.options || [];
   const [users,setUsers]=React.useState<any[]>([]);
   const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
@@ -73,28 +72,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
   const [routeLink,setRouteLink]=React.useState('');
 
-  React.useEffect(() => {
-    fetchDefaults('task_type').then(v => {
-      setTypes(v)
-      if (!taskType && v.length) setTaskType(v[0])
-    })
-    fetchDefaults('priority').then(v => {
-      setPriorities(v)
-      if (!priority && v.length) setPriority(v[0])
-    })
-    fetchDefaults('transport_type').then(v => {
-      setTransports(v)
-      if (!transportType && v.length) setTransportType(v[0])
-    })
-    fetchDefaults('payment_method').then(v => {
-      setPayments(v)
-      if (!paymentMethod && v.length) setPaymentMethod(v[0])
-    })
-    fetchDefaults('status').then(v => {
-      setStatuses(v)
-      if (!status && v.length) setStatus(v[0])
-    })
-  }, [])
   React.useEffect(()=>{
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
@@ -149,7 +126,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setAttachments(t.attachments||[]);
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
     });
-  }, [id, isEdit]);
+  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
 
 
   const handleStartLink=async(v:string)=>{

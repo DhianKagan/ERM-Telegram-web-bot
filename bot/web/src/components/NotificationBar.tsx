@@ -28,7 +28,7 @@ export default function NotificationBar({
 
   if (!show) return null;
   const base = "flex items-center rounded-lg px-4 py-2 text-white shadow-lg";
-  const color = type === "error" ? "bg-danger" : "bg-success";
+  const color = type === "error" ? "bg-error-500" : "bg-success";
   const Icon = type === "error" ? ExclamationCircleIcon : CheckCircleIcon;
   return (
     <div className={`${base} ${color}`}>

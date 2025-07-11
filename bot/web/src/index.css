@@ -288,7 +288,7 @@ layer(base);
     @apply bg-success-500 text-white hover:bg-success-600;
   }
   .btn-red {
-    @apply bg-danger text-white hover:bg-red-600;
+    @apply bg-error-500 text-white hover:bg-red-600;
   }
 }
 

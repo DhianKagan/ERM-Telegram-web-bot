@@ -6,7 +6,7 @@ import { fetchTasks } from '../services/tasks'
 import RoutesTaskTable from '../components/RoutesTaskTable'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 
 interface Task {
   _id: string
@@ -27,6 +27,8 @@ export default function RoutesPage() {
   const [sorted, setSorted] = React.useState<Task[]>([])
   const navigate = useNavigate()
   const location = useLocation()
+  const [params] = useSearchParams()
+  const hasDialog = params.has('task') || params.has('newTask')
 
   const openTask = React.useCallback((id: string) => {
     const params = new URLSearchParams(location.search)
@@ -44,7 +46,7 @@ export default function RoutesPage() {
   React.useEffect(load, [load])
 
   React.useEffect(() => {
-    if (!sorted.length) return
+    if (!sorted.length || hasDialog) return
     const map = L.map('routes-map').setView([48.3794, 31.1656], 6)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
@@ -71,12 +73,12 @@ export default function RoutesPage() {
       }
     })()
     return () => map.remove()
-  }, [sorted, openTask])
+  }, [sorted, openTask, hasDialog])
 
   return (
     <div className="space-y-4">
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Маршруты' }]} />
-      <div id="routes-map" className="h-96 w-full rounded border" />
+      <div id="routes-map" className={`h-96 w-full rounded border ${hasDialog ? 'hidden' : ''}`} />
       <div className="space-y-2 max-w-full">
         <h3 className="text-lg font-semibold">Задачи</h3>
         <RoutesTaskTable tasks={tasks} onChange={setSorted} />

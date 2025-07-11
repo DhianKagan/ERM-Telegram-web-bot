@@ -94,7 +94,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setStatuses(v)
       if (!status && v.length) setStatus(v[0])
     })
-  }, [taskType, priority, transportType, paymentMethod, status])
+  }, [])
   React.useEffect(()=>{
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
@@ -149,7 +149,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setAttachments(t.attachments||[]);
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
     });
-  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
+  }, [id, isEdit]);
 
 
   const handleStartLink=async(v:string)=>{

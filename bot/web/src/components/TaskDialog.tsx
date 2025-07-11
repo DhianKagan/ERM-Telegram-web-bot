@@ -36,6 +36,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     const data = token ? parseJwt(token) : null;
     return Boolean((data as any)?.isAdmin);
   }, []);
+  const [editing, setEditing] = React.useState(!isEdit);
   const [expanded, setExpanded] = React.useState(false);
   const [minimized, setMinimized] = React.useState(false);
   const [requestId,setRequestId]=React.useState('');
@@ -73,6 +74,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [routeLink,setRouteLink]=React.useState('');
 
   React.useEffect(()=>{
+    setEditing(!isEdit)
     if(isEdit&&id){
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
         if(!t) return;
@@ -126,7 +128,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setAttachments(t.attachments||[]);
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
     });
-  }, [id, isEdit, taskType, priority, transportType, paymentMethod, status]);
+  }, [id, isEdit]);
 
 
   const handleStartLink=async(v:string)=>{
@@ -221,6 +223,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
         <div className="flex space-x-2">
+          {isEdit && !editing && (
+            <button onClick={() => setEditing(true)} className="p-1" title="Редактировать">
+              ✎
+            </button>
+          )}
           <button onClick={() => setMinimized(!minimized)} className="p-1" title="Свернуть">
             <MinusIcon className="h-5 w-5" />
           </button>
@@ -236,44 +243,44 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       <>
       <div>
         <label className="block text-sm font-medium">Название задачи</label>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" />
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" disabled={!editing} />
       </div>
       <div>
         <label className="block text-sm font-medium">Дата начала</label>
-        <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" />
+        <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
       </div>
       <div>
         <label className="block text-sm font-medium">Срок выполнения</label>
-        <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" />
+        <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
       </div>
       <div>
         <label className="block text-sm font-medium">Статус</label>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {statuses.map(s=>(<option key={s} value={s}>{s}</option>))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Приоритет</label>
-          <select value={priority} onChange={e=>setPriority(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={priority} onChange={e=>setPriority(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Отдел</label>
-          <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             <option value="">Отдел</option>
             {departments.map(d=>(<option key={d._id} value={d._id}>{d.name}</option>))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Тип задачи</label>
-          <select value={taskType} onChange={e=>setTaskType(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={taskType} onChange={e=>setTaskType(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {types.map(t=>(<option key={t} value={t}>{t}</option>))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium">Задачу создал</label>
-          <select value={creator} onChange={e=>setCreator(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={creator} onChange={e=>setCreator(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             <option value="">автор</option>
             {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
           </select>
@@ -283,6 +290,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           users={users}
           value={assignees}
           onChange={setAssignees}
+          disabled={!editing}
         />
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
@@ -296,7 +304,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <span className="text-xs text-gray-600">{startCoordinates.lat},{startCoordinates.lng}</span>
                 )}
               </div>
-              <button type="button" onClick={() => handleStartLink('')} className="text-red-600">✖</button>
+              {editing && (
+                <button type="button" onClick={() => handleStartLink('')} className="text-red-600">✖</button>
+              )}
             </div>
           ) : (
             <div className="mt-1 flex space-x-2">
@@ -305,6 +315,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 onChange={e => handleStartLink(e.target.value)}
                 placeholder="Ссылка из Google Maps"
                 className="flex-1 rounded border px-2 py-1"
+                disabled={!editing}
               />
               <a
                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
@@ -319,7 +330,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
         <div>
           <label className="block text-sm font-medium">Тип транспорта</label>
-          <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {transports.map(t=>(<option key={t} value={t}>{t}</option>))}
           </select>
         </div>
@@ -335,7 +346,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <span className="text-xs text-gray-600">{finishCoordinates.lat},{finishCoordinates.lng}</span>
                 )}
               </div>
-              <button type="button" onClick={() => handleEndLink('')} className="text-red-600">✖</button>
+              {editing && (
+                <button type="button" onClick={() => handleEndLink('')} className="text-red-600">✖</button>
+              )}
             </div>
           ) : (
             <div className="mt-1 flex space-x-2">
@@ -344,6 +357,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 onChange={e => handleEndLink(e.target.value)}
                 placeholder="Ссылка из Google Maps"
                 className="flex-1 rounded border px-2 py-1"
+                disabled={!editing}
               />
               <a
                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
@@ -370,23 +384,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         )}
         <div>
           <label className="block text-sm font-medium">Способ оплаты</label>
-          <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1">
+          <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {payments.map(p=>(<option key={p} value={p}>{p}</option>))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
-          <RichTextEditor value={description} onChange={setDescription} />
+          <RichTextEditor value={description} onChange={setDescription} readOnly={!editing} />
         </div>
         <div>
           <label className="block text-sm font-medium">Комментарий</label>
-          <RichTextEditor value={comment} onChange={setComment} />
+          <RichTextEditor value={comment} onChange={setComment} readOnly={!editing} />
         </div>
         <MultiUserSelect
           label="Контролёр"
           users={users}
           value={controllers}
           onChange={setControllers}
+          disabled={!editing}
         />
         {attachments.length>0&&(
           <div>
@@ -398,14 +413,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         )}
         <div>
           <label className="block text-sm font-medium">Прикрепить файл</label>
-          <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} />
+          <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} disabled={!editing} />
         </div>
         <div className="flex justify-end space-x-2">
-          {isEdit && isAdmin && (
+          {isEdit && isAdmin && editing && (
             <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>
           )}
           <button className="btn-gray rounded-full" onClick={onClose}>Отмена</button>
-          <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
+          {editing && (
+            <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
+          )}
         </div>
       </>
       )}

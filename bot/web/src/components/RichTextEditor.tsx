@@ -6,15 +6,17 @@ import "react-quill/dist/quill.snow.css";
 interface RichTextEditorProps {
   value: string
   onChange?: (val: string) => void
+  readOnly?: boolean
 }
 
-export default function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, readOnly }: RichTextEditorProps) {
   return (
     <ReactQuill
       theme="snow"
       value={value}
       onChange={(val) => onChange && onChange(val)}
       className="bg-white"
+      readOnly={readOnly}
     />
   );
 }

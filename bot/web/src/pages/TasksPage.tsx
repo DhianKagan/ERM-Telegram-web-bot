@@ -48,6 +48,7 @@ export default function TasksPage() {
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
+  const [showExport, setShowExport] = React.useState(false);
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
@@ -178,6 +179,37 @@ export default function TasksPage() {
     }
   };
 
+  const exportKeys = React.useMemo(
+    () => Array.from(new Set(all.flatMap(t => Object.keys(t)))).sort(),
+    [all]
+  );
+
+  const toCsv = () => {
+    const rows = [exportKeys.join(',')];
+    tasks.forEach(t => {
+      rows.push(exportKeys.map(k => JSON.stringify(t[k] ?? '')).join(','));
+    });
+    return rows.join('\n');
+  };
+
+  const download = (name: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyCsv = async () => {
+    await navigator.clipboard.writeText(toCsv());
+    addToast('Скопировано');
+  };
+
+  const saveCsv = () => download('tasks.csv', toCsv());
+  const saveJson = () => download('tasks.json', JSON.stringify(tasks, null, 2));
+
   return (
     <div className="space-y-6">
       <KPIOverview count={kpi.count} time={kpi.time} />
@@ -195,6 +227,7 @@ export default function TasksPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={refresh} className="btn-gray rounded px-3">Обновить</button>
+          <button onClick={() => setShowExport(!showExport)} className="btn-gray rounded px-3">Экспорт</button>
           <button
             onClick={() => {
               params.set('newTask', '1')
@@ -269,6 +302,36 @@ export default function TasksPage() {
         <button onClick={changeStatus} className="btn-green">
           Сменить статус
         </button>
+      )}
+
+      {showExport && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button onClick={copyCsv} className="btn-gray rounded px-3">Копировать CSV</button>
+            <button onClick={saveCsv} className="btn-gray rounded px-3">Скачать CSV</button>
+            <button onClick={saveJson} className="btn-gray rounded px-3">Скачать JSON</button>
+          </div>
+          <div className="overflow-auto border rounded">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr>
+                  {exportKeys.map(k => (
+                    <th key={k} className="px-1 border-b bg-gray-50">{k}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map(t => (
+                  <tr key={t._id}>
+                    {exportKeys.map(k => (
+                      <td key={k} className="px-1 border-b">{String(t[k] ?? '')}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
     </div>

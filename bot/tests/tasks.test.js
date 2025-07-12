@@ -25,17 +25,18 @@ jest.mock('../src/db/model', () => ({
     })),
     findByIdAndUpdate: jest.fn(async (_id,d)=>({ _id, ...d })),
     findById: jest.fn(async () => ({ time_spent:0, save: jest.fn() })),
-    findByIdAndDelete: jest.fn(async ()=>({ _id:'1' })),
+    findByIdAndDelete: jest.fn(async ()=>({ _id:'1', request_id:'ERM_000001', toObject(){ return { _id:'1', request_id:'ERM_000001' } } })),
     updateMany: jest.fn(async ()=>null),
     aggregate: jest.fn(async ()=>[{ count:2, time:30 }]),
     find: jest.fn(async ()=>[])
-  }
+  },
+  Archive: { create: jest.fn(async()=>({})) }
 }))
 
 jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(), asyncHandler: fn=>fn, errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}), checkRole: () => (_req,_res,next)=>next() }))
 
 const router = require('../src/routes/tasks')
-const { Task } = require('../src/db/model')
+const { Task, Archive } = require('../src/db/model')
 
 let app
 beforeAll(() => {
@@ -90,6 +91,7 @@ test('summary report c фильтром дат', async () => {
 test('удаление задачи', async () => {
   const res = await request(app).delete(`/api/v1/tasks/${id}`)
   expect(res.status).toBe(204)
+  expect(Archive.create).toHaveBeenCalledWith(expect.objectContaining({ request_id: 'ERM_000001-DEL' }))
 })
 
 afterAll(() => { stopScheduler(); stopQueue() })

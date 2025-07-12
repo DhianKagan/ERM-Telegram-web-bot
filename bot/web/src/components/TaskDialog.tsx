@@ -245,16 +245,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <label className="block text-sm font-medium">Название задачи</label>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Название" className="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring focus:ring-brand-200" disabled={!editing} />
       </div>
-      <div>
-        <label className="block text-sm font-medium">Дата начала</label>
-        <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium">Дата начала</label>
+          <input type="datetime-local" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Срок выполнения</label>
+          <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
+        </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium">Срок выполнения</label>
-        <input type="datetime-local" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium">Статус</label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium">Статус</label>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             {statuses.map(s=>(<option key={s} value={s}>{s}</option>))}
           </select>
@@ -265,6 +268,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             {priorities.map(p=>(<option key={p} value={p}>{p}</option>))}
           </select>
         </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium">Отдел</label>
           <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
@@ -278,6 +283,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             {types.map(t=>(<option key={t} value={t}>{t}</option>))}
           </select>
         </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium">Задачу создал</label>
           <select value={creator} onChange={e=>setCreator(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
@@ -292,6 +299,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           onChange={setAssignees}
           disabled={!editing}
         />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium">Старт точка</label>
           {startLink ? (
@@ -329,12 +338,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium">Тип транспорта</label>
-          <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
-            {transports.map(t=>(<option key={t} value={t}>{t}</option>))}
-          </select>
-        </div>
-        <div>
           <label className="block text-sm font-medium">Финальная точка</label>
           {endLink ? (
             <div className="flex items-center space-x-2">
@@ -370,6 +373,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </div>
           )}
         </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium">Тип транспорта</label>
+          <select value={transportType} onChange={e=>setTransportType(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
+            {transports.map(t=>(<option key={t} value={t}>{t}</option>))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Способ оплаты</label>
+          <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
+            {payments.map(p=>(<option key={p} value={p}>{p}</option>))}
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
         {distanceKm!==null&&(
           <div>
             <label className="block text-sm font-medium">Расстояние</label>
@@ -382,20 +401,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <a href={routeLink} target="_blank" rel="noopener" className="text-accentPrimary underline">ссылка</a>
           </div>
         )}
-        <div>
-          <label className="block text-sm font-medium">Способ оплаты</label>
-          <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
-            {payments.map(p=>(<option key={p} value={p}>{p}</option>))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">🔨 Задача</label>
-          <RichTextEditor value={description} onChange={setDescription} readOnly={!editing} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Комментарий</label>
-          <RichTextEditor value={comment} onChange={setComment} readOnly={!editing} />
-        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium">🔨 Задача</label>
+        <RichTextEditor value={description} onChange={setDescription} readOnly={!editing} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Комментарий</label>
+        <RichTextEditor value={comment} onChange={setComment} readOnly={!editing} />
+      </div>
         <MultiUserSelect
           label="Контролёр"
           users={users}

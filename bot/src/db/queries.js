@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Group, User, Role, Department, Log } = require('./model')
+const { Task, Archive, Group, User, Role, Department, Log } = require('./model')
 
 async function createTask(data) {
   return Task.create(data)
@@ -98,7 +98,12 @@ async function addAttachment(taskId, attachment) {
 }
 
 async function deleteTask(id) {
-  return Task.findByIdAndDelete(id)
+  const doc = await Task.findByIdAndDelete(id)
+  if (!doc) return null
+  const data = doc.toObject()
+  data.request_id = `${data.request_id}-DEL`
+  await Archive.create(data)
+  return doc
 }
 
 

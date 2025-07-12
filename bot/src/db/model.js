@@ -161,6 +161,8 @@ const logSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 const Task = mongoose.model('Task', taskSchema)
+// Отдельная коллекция для архивных задач
+const Archive = mongoose.model('Archive', taskSchema, 'archives')
 const Group = mongoose.model('Group', groupSchema)
 const Department = mongoose.model('Department', departmentSchema)
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
@@ -170,4 +172,4 @@ const User = mongoose.model('User', userSchema, 'telegram_users')
 const Role = mongoose.model('Role', roleSchema)
 const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Group, User, Role, Department, Log }
+module.exports = { Task, Archive, Group, User, Role, Department, Log }

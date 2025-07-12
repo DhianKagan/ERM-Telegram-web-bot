@@ -24,7 +24,8 @@ afterAll(() => { stopScheduler(); stopQueue() })
 test('optimize распределяет задачи между машинами', async () => {
   const routes = await optimize(['1','2','3'], 2)
   expect(routes.length).toBe(2)
-  expect(routes[0][0]).toBe('1')
-  expect(routes[1][0]).toBe('2')
+  const all = routes.flat()
+  expect(new Set(all)).toEqual(new Set(['1','2','3']))
+  expect(routes.every(r => r.length)).toBe(true)
 })
 

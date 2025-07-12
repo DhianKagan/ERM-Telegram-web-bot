@@ -5,4 +5,8 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 
 npm ci --prefix "$DIR/bot" || npm --prefix "$DIR/bot" install
-npm audit fix --prefix "$DIR/bot" || npm audit fix --force --prefix "$DIR/bot"
+# Слабые уязвимости не блокируют установку
+npm audit fix --prefix "$DIR/bot" || npm audit fix --force --prefix "$DIR/bot" || true
+# Проверяем наличие серьёзных проблем
+npm audit --prefix "$DIR/bot" --audit-level high
+

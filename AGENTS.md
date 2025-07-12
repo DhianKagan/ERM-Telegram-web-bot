@@ -12,6 +12,8 @@
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`
 - Проверяйте зависимости командой `./scripts/audit_deps.sh`
 - Скрипт пропускает слабые уязвимости флагом `--audit-level high`
+- Скрипт `install_bot_deps.sh` завершает установку,
+  если остаются только нерешённые слабые уязвимости
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`
 - Если команда `docker` доступна и есть `docker-compose.yml`, выполняйте `docker compose config`
 

@@ -1,7 +1,6 @@
 // Оптимизация маршрутов по координатам задач
-// Модули: db/queries, utils/haversine
+// Модули: db/queries
 const q = require('../db/queries')
-const dist = require('../utils/haversine')
 
 async function optimize(taskIds, count = 1) {
   count = Math.max(1, Math.min(3, Number(count) || 1))
@@ -9,30 +8,24 @@ async function optimize(taskIds, count = 1) {
     .filter(t => t && t.startCoordinates)
   if (!tasks.length) return []
   count = Math.min(count, tasks.length)
-  const remaining = [...tasks]
-  const vehicles = []
+
+  const center = {
+    lat: tasks.reduce((s, t) => s + t.startCoordinates.lat, 0) / tasks.length,
+    lng: tasks.reduce((s, t) => s + t.startCoordinates.lng, 0) / tasks.length
+  }
+
+  const angle = t =>
+    Math.atan2(t.startCoordinates.lat - center.lat,
+      t.startCoordinates.lng - center.lng)
+
+  const sorted = tasks.sort((a, b) => angle(a) - angle(b))
+  const step = Math.ceil(sorted.length / count)
+  const routes = []
   for (let i = 0; i < count; i++) {
-    const task = remaining.shift()
-    vehicles.push({
-      pos: task.finishCoordinates || task.startCoordinates,
-      route: [task._id.toString()]
-    })
+    const slice = sorted.slice(i * step, (i + 1) * step)
+    routes.push(slice.map(t => t._id.toString()))
   }
-  while (remaining.length) {
-    for (const v of vehicles) {
-      if (!remaining.length) break
-      let best = 0
-      let bestDist = Infinity
-      for (let i = 0; i < remaining.length; i++) {
-        const d = dist(v.pos, remaining[i].startCoordinates)
-        if (d < bestDist) { bestDist = d; best = i }
-      }
-      const [task] = remaining.splice(best, 1)
-      v.route.push(task._id.toString())
-      v.pos = task.finishCoordinates || task.startCoordinates
-    }
-  }
-  return vehicles.map(v => v.route)
+  return routes
 }
 
 module.exports = { optimize }

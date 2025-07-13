@@ -39,7 +39,7 @@ module.exports = [
     name: 'status',
     label: 'Статус',
     type: 'select',
-    options: ['new', 'in-progress', 'done'],
+    options: ['new', 'in-progress', 'done', 'canceled'],
     default: 'new'
   },
   { name: 'description', label: '🔨 Задача', type: 'richtext' },

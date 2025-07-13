@@ -100,7 +100,20 @@ const taskSchema = new mongoose.Schema({
   priority_id: Number,
   created_by: Number,
   comments: [{ author_id: Number, text: String, created_at: { type: Date, default: Date.now } }],
-  status: { type: String, enum: ['new', 'in-progress', 'done'], default: 'new' },
+  status: {
+    type: String,
+    enum: ['new', 'in-progress', 'done', 'canceled'],
+    default: 'new'
+  },
+  completed_at: Date,
+  completion_result: {
+    type: String,
+    enum: ['full', 'partial', 'changed']
+  },
+  cancel_reason: {
+    type: String,
+    enum: ['technical', 'canceled', 'declined']
+  },
   checklist: [checklistItemSchema],
   comment: String,
   files: [String],

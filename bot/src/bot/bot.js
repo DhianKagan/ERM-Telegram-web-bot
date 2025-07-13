@@ -47,6 +47,7 @@ require('../db/model')
 
 // Хранилище незавершённых команд /assign_task
 const pendingAssignments = new Map()
+const pendingComments = new Map()
 
 // Функция отправки кнопки. По умолчанию используется тип Web App.
 // Для открытия во внешнем браузере установите asWebApp = false
@@ -295,6 +296,21 @@ bot.command('list_all_tasks', async (ctx) => {
   }
 })
 
+bot.command('task_info', async (ctx) => {
+  const id = ctx.message.text.split(' ')[1]
+  if (!id) return ctx.reply('Укажите id задачи')
+  const t = await getTask(id)
+  if (!t) return ctx.reply('Задача не найдена')
+  const text = `${t.title}\nСтатус: ${t.status}`
+  await ctx.reply(
+    text,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Принять', `accept_${id}`), Markup.button.callback('Выполнено', `complete_${id}`)],
+      [Markup.button.callback('Изменить', `edit_${id}`), Markup.button.callback('Отменить', `cancel_${id}`)]
+    ])
+  )
+})
+
 bot.command('upload_file', async (ctx) => {
   const text = ctx.message.caption || ctx.message.text
   const [, taskId] = text.split(' ')
@@ -536,6 +552,55 @@ bot.action(/^done_(.+)$/, async (ctx) => {
   await ctx.editMessageText(`${ctx.update.callback_query.message.text} \n${messages.taskCompleted}`)
 })
 
+bot.action(/^accept_(.+)$/, async ctx => {
+  const id = ctx.match[1]
+  await updateTaskStatus(id, 'in-progress')
+  await ctx.answerCbQuery(messages.taskAccepted, { show_alert: false })
+})
+
+bot.action(/^complete_(.+)$/, async ctx => {
+  const id = ctx.match[1]
+  await ctx.reply('Выберите вариант', Markup.inlineKeyboard([
+    [Markup.button.callback('Полностью', `complete_full_${id}`)],
+    [Markup.button.callback('Частично', `complete_partial_${id}`)],
+    [Markup.button.callback('С изменениями', `complete_changed_${id}`)]
+  ]))
+  await ctx.answerCbQuery()
+})
+
+bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
+  const option = ctx.match[1]
+  const id = ctx.match[2]
+  await updateTask(id, { status: 'done', completed_at: new Date(), completion_result: option })
+  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
+  await ctx.editMessageText(messages.taskCompleted)
+})
+
+bot.action(/^cancel_(.+)$/, async ctx => {
+  const id = ctx.match[1]
+  await ctx.reply('Причина отмены?', Markup.inlineKeyboard([
+    [Markup.button.callback('Технические', `cancel_technical_${id}`)],
+    [Markup.button.callback('Отмена', `cancel_canceled_${id}`)],
+    [Markup.button.callback('Отказ исполнителя', `cancel_declined_${id}`)]
+  ]))
+  await ctx.answerCbQuery()
+})
+
+bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
+  const reason = ctx.match[1]
+  const id = ctx.match[2]
+  await updateTask(id, { status: 'canceled', cancel_reason: reason })
+  await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
+  await ctx.editMessageText(messages.taskCanceled)
+})
+
+bot.action(/^edit_(.+)$/, async ctx => {
+  const id = ctx.match[1]
+  pendingComments.set(ctx.from.id, id)
+  await ctx.reply(messages.enterComment)
+  await ctx.answerCbQuery()
+})
+
 bot.action(/^del_(.+)$/, async (ctx) => {
   const id = ctx.match[1]
   await deleteTask(id)
@@ -571,6 +636,13 @@ bot.on('message', async (ctx) => {
         pendingAssignments.delete(ctx.from.id)
       }
     }
+  }
+  const pendingComment = pendingComments.get(ctx.from.id)
+  if (pendingComment && ctx.message.text) {
+    await updateTask(pendingComment, { comment: ctx.message.text })
+    await ctx.reply('Комментарий сохранён')
+    pendingComments.delete(ctx.from.id)
+    return
   }
   if (!web_app_data) return
   const data = web_app_data.data

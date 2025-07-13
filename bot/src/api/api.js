@@ -246,6 +246,13 @@ const validate = validations => [
     res.json(await listLogs())
   }))
 
+  app.post(`${prefix}/logs`, logsRateLimiter, verifyToken, asyncHandler(async (req, res) => {
+    if (typeof req.body.message === 'string') {
+      await writeLog(req.body.message)
+    }
+    res.json({ status: 'ok' })
+  }))
+
 
 
 

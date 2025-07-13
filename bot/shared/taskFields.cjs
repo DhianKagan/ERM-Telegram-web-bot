@@ -39,8 +39,8 @@ module.exports = [
     name: 'status',
     label: 'Статус',
     type: 'select',
-    options: ['new', 'in-progress', 'done', 'canceled'],
-    default: 'new'
+    options: ['Новая', 'В работе', 'Выполнена', 'Отменена'],
+    default: 'Новая'
   },
   { name: 'description', label: '🔨 Задача', type: 'richtext' },
   { name: 'comment', label: 'Комментарий', type: 'richtext' }

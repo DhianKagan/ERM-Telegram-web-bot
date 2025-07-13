@@ -102,8 +102,8 @@ const taskSchema = new mongoose.Schema({
   comments: [{ author_id: Number, text: String, created_at: { type: Date, default: Date.now } }],
   status: {
     type: String,
-    enum: ['new', 'in-progress', 'done', 'canceled'],
-    default: 'new'
+    enum: ['Новая', 'В работе', 'Выполнена', 'Отменена'],
+    default: 'Новая'
   },
   completed_at: Date,
   completion_result: {

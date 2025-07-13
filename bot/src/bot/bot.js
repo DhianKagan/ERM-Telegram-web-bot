@@ -574,14 +574,14 @@ bot.action('all_tasks', async (ctx) => {
 
 bot.action(/^done_(.+)$/, async (ctx) => {
   const id = ctx.match[1]
-  await updateTaskStatus(id, 'done')
+  await updateTaskStatus(id, 'Выполнена')
   await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
   await ctx.editMessageText(`${ctx.update.callback_query.message.text} \n${messages.taskCompleted}`)
 })
 
 bot.action(/^accept_(.+)$/, async ctx => {
   const id = ctx.match[1]
-  await updateTaskStatus(id, 'in-progress')
+  await updateTaskStatus(id, 'В работе')
   await ctx.answerCbQuery(messages.taskAccepted, { show_alert: false })
 })
 
@@ -598,7 +598,7 @@ bot.action(/^complete_(.+)$/, async ctx => {
 bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
   const option = ctx.match[1]
   const id = ctx.match[2]
-  await updateTask(id, { status: 'done', completed_at: new Date(), completion_result: option })
+  await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
   await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
   await ctx.editMessageText(messages.taskCompleted)
 })
@@ -616,7 +616,7 @@ bot.action(/^cancel_(.+)$/, async ctx => {
 bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
   const reason = ctx.match[1]
   const id = ctx.match[2]
-  await updateTask(id, { status: 'canceled', cancel_reason: reason })
+  await updateTask(id, { status: 'Отменена', cancel_reason: reason })
   await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
   await ctx.editMessageText(messages.taskCanceled)
 })

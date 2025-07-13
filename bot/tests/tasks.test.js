@@ -20,7 +20,7 @@ jest.mock('../src/db/model', () => ({
       request_id: 'ERM_000001',
       ...d,
       title: `ERM_000001 ${d.title}`,
-      status: 'new',
+      status: 'Новая',
       time_spent: 0
     })),
     findByIdAndUpdate: jest.fn(async (_id,d)=>({ _id, ...d })),
@@ -64,8 +64,8 @@ test('создание задачи возвращает 201', async () => {
 const id = '507f191e810c19729de860ea'
 
 test('обновление задачи', async () => {
-  const res = await request(app).patch(`/api/v1/tasks/${id}`).send({ status:'done' })
-  expect(res.body.status).toBe('done')
+  const res = await request(app).patch(`/api/v1/tasks/${id}`).send({ status:'Выполнена' })
+  expect(res.body.status).toBe('Выполнена')
 })
 
 test('добавление времени', async () => {
@@ -74,7 +74,7 @@ test('добавление времени', async () => {
 })
 
 test('bulk update статуса', async () => {
-  await request(app).post('/api/v1/tasks/bulk').send({ ids:[id,id], status:'done' })
+  await request(app).post('/api/v1/tasks/bulk').send({ ids:[id,id], status:'Выполнена' })
   expect(Task.updateMany).toHaveBeenCalled()
 })
 

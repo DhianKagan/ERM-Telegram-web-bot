@@ -6,7 +6,7 @@ import TaskCard from "../components/TaskCard";
 import TaskDialog from "../components/TaskDialog";
 import { fetchKanban, updateTaskStatus } from "../services/tasks";
 
-const columns = ["new", "in-progress", "done"];
+const columns = ["Новая", "В работе", "Выполнена"];
 
 interface KanbanTask {
   _id: string

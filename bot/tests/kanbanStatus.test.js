@@ -29,7 +29,7 @@ const { body, validationResult } = require('express-validator')
 const app = express()
 app.use(express.json())
 app.post('/api/v1/tasks/:id/status',
-  [body('status').isIn(['new', 'in-progress', 'done', 'canceled'])],
+  [body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена'])],
   (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
@@ -44,12 +44,12 @@ app.post('/api/v1/tasks/:id/status',
 
 const id = '507f191e810c19729de860ea'
 
-test('статус задачи меняется на in-progress', async () => {
+test('статус задачи меняется на В работе', async () => {
   const res = await request(app)
     .post(`/api/v1/tasks/${id}/status`)
-    .send({ status: 'in-progress' })
+    .send({ status: 'В работе' })
   expect(res.body.status).toBe('ok')
-  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'in-progress')
+  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе')
 })
 
 afterAll(() => { stopScheduler(); stopQueue() })

@@ -95,9 +95,9 @@ export default function TasksPage() {
   const counts = React.useMemo(
     () => ({
       all: all.length,
-      new: all.filter((t) => t.status === "new").length,
-      "in-progress": all.filter((t) => t.status === "in-progress").length,
-      done: all.filter((t) => t.status === "done").length,
+      "Новая": all.filter((t) => t.status === "Новая").length,
+      "В работе": all.filter((t) => t.status === "В работе").length,
+      "Выполнена": all.filter((t) => t.status === "Выполнена").length,
     }),
     [all],
   );
@@ -215,7 +215,7 @@ export default function TasksPage() {
       <KPIOverview count={kpi.count} time={kpi.time} />
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
-          {["all", "new", "in-progress", "done"].map((s) => (
+          {["all", "Новая", "В работе", "Выполнена"].map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}

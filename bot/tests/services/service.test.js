@@ -5,7 +5,7 @@ process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 's'
 jest.mock('../../src/db/model', () => ({
   Task: {
-    create: jest.fn().mockResolvedValue({ status: 'new' }),
+    create: jest.fn().mockResolvedValue({ status: 'Новая' }),
     findByIdAndUpdate: jest.fn().mockResolvedValue(),
     find: jest.fn().mockResolvedValue([{ id: 1 }])
   },
@@ -17,7 +17,7 @@ const { createTask, assignTask, listUserTasks } = require('../../src/services/se
 
 test('createTask adds new task status', async () => {
   const task = await createTask('Test')
-  expect(task.status).toBe('new')
+  expect(task.status).toBe('Новая')
 })
 
 test('assignTask sets user', async () => {

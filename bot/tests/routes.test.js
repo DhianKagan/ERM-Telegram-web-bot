@@ -48,6 +48,6 @@ test('GET /api/v1/routes/all отклоняет массив в статусе',
 })
 
 test('GET /api/v1/routes/all передаёт статус строкой', async () => {
-  await request(app).get('/api/v1/routes/all?status=done')
-  expect(listRoutes).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'done' }))
+  await request(app).get('/api/v1/routes/all?status=Выполнена')
+  expect(listRoutes).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'Выполнена' }))
 })

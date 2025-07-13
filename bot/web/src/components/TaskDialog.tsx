@@ -320,29 +320,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const acceptTask=async()=>{
     if(!id) return;
-    const data=await updateTask(id,{status:'in-progress'});
-    if(data){setStatus('in-progress');if(onSave) onSave(data);}
-    await updateTaskStatus(id,'in-progress');
+    const data=await updateTask(id,{status:'В работе'});
+    if(data){setStatus('В работе');if(onSave) onSave(data);}
+    await updateTaskStatus(id,'В работе');
     setSelectedAction('accept');
     setEditActionsOnly(false);
   };
 
   const completeTask=async(opt:string)=>{
     if(!id) return;
-    const data=await updateTask(id,{status:'done',completed_at:new Date().toISOString(),completion_result:opt});
-    if(data){setStatus('done');if(onSave) onSave(data);}
+    const data=await updateTask(id,{status:'Выполнена',completed_at:new Date().toISOString(),completion_result:opt});
+    if(data){setStatus('Выполнена');if(onSave) onSave(data);}
     setShowDoneSelect(false);
-    await updateTaskStatus(id,'done');
+    await updateTaskStatus(id,'Выполнена');
     setSelectedAction('done');
     setEditActionsOnly(false);
   };
 
   const cancelTask=async(opt:string)=>{
     if(!id) return;
-    const data=await updateTask(id,{status:'canceled',cancel_reason:opt});
-    if(data){setStatus('canceled');if(onSave) onSave(data);} 
+    const data=await updateTask(id,{status:'Отменена',cancel_reason:opt});
+    if(data){setStatus('Отменена');if(onSave) onSave(data);}
     setShowCancelSelect(false);
-    await updateTaskStatus(id,'canceled');
+    await updateTaskStatus(id,'Отменена');
     setSelectedAction('cancel');
   };
 
@@ -559,22 +559,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Прикрепить файл</label>
           <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} disabled={!editing} />
         </div>
-          {isEdit && !editing && (
-          <>
-            {showDoneSelect && (
-              <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 w-full rounded border px-2 py-1">
-                <option value="">Выберите вариант</option>
-                {doneOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            )}
-            {showCancelSelect && (
-              <select onChange={e=>e.target.value&&cancelTask(e.target.value)} className="mb-2 w-full rounded border px-2 py-1">
-                <option value="">Причина отмены</option>
-                {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            )}
-          </>
-          )}
         <div className="flex justify-end space-x-2">
           {isEdit && isAdmin && editing && (
             <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>
@@ -586,13 +570,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       </>
       </div>
       {isEdit && !editing && !editActionsOnly && (
+        <>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button
-            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
+            className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
             onClick={acceptTask}
           >Принять</button>
           <button
-            className={`rounded-lg btn-${status==='done'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
+            className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
             onClick={()=>setShowDoneSelect(v=>!v)}
           >Выполнено</button>
           <button
@@ -604,15 +589,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             onClick={()=>setShowCancelSelect(v=>!v)}
           >Отменить</button>
         </div>
+        {showDoneSelect && (
+          <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
+            <option value="">Выберите вариант</option>
+            {doneOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        )}
+        {showCancelSelect && (
+          <select onChange={e=>e.target.value&&cancelTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
+            <option value="">Причина отмены</option>
+            {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        )}
+        </>
       )}
       {isEdit && !editing && editActionsOnly && (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button
-            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
+            className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
             onClick={acceptTask}
           >Принять</button>
           <button
-            className={`rounded-lg btn-${status==='done'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
+            className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
             onClick={()=>setShowDoneSelect(v=>!v)}
           >Выполнено</button>
         </div>

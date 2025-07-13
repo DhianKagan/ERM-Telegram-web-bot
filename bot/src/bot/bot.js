@@ -264,19 +264,13 @@ bot.command('add_user', async (ctx) => {
   ctx.reply(messages.userAdded)
 })
 
-bot.command('list_tasks', async (ctx) => {
+bot.command('list_tasks', async ctx => {
   const tasks = await listUserTasks(ctx.from.id)
   if (!tasks.length) {
     return ctx.reply(messages.noTasks)
   }
   for (const t of tasks) {
-    await ctx.reply(
-      `${t.id}: ${t.task_description} (${t.status})`,
-      Markup.inlineKeyboard([
-        Markup.button.callback('✔️', `done_${t.id}`),
-        Markup.button.callback('❌', `del_${t.id}`)
-      ])
-    )
+    await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
   }
 })
 
@@ -538,25 +532,19 @@ bot.hears(/https?:\/\/maps\.app\.goo\.gl\/[\S]+/i, async (ctx) => {
   }
 })
 
-bot.action('my_tasks', async (ctx) => {
+bot.action('my_tasks', async ctx => {
   const tasks = await listUserTasks(ctx.from.id)
   if (!tasks.length) {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(
-        `${t.id}: ${t.task_description} (${t.status})`,
-        Markup.inlineKeyboard([
-          Markup.button.callback('✔️', `done_${t.id}`),
-          Markup.button.callback('❌', `del_${t.id}`)
-        ])
-      )
+      await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
     }
   }
   await ctx.answerCbQuery()
 })
 
-bot.action('all_tasks', async (ctx) => {
+bot.action('all_tasks', async ctx => {
   if (!await verifyAdmin(ctx.from.id)) {
     await ctx.answerCbQuery(messages.adminsOnly, { show_alert: true })
     return
@@ -566,23 +554,17 @@ bot.action('all_tasks', async (ctx) => {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(
-        `${t.id}: ${t.task_description} (${t.status})`,
-        Markup.inlineKeyboard([
-          Markup.button.callback('✔️', `done_${t.id}`),
-          Markup.button.callback('❌', `del_${t.id}`)
-        ])
-      )
+      await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
     }
   }
   await ctx.answerCbQuery()
 })
 
-bot.action(/^done_(.+)$/, async (ctx) => {
+bot.action(/^done_(.+)$/, async ctx => {
   const id = ctx.match[1]
   await updateTaskStatus(id, 'Выполнена')
+  await refreshTaskMessage(ctx, id)
   await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
-  await ctx.editMessageText(`${ctx.update.callback_query.message.text} \n${messages.taskCompleted}`)
 })
 
 bot.action(/^accept_(.+)$/, async ctx => {
@@ -590,6 +572,14 @@ bot.action(/^accept_(.+)$/, async ctx => {
   await updateTaskStatus(id, 'В работе')
   await refreshTaskMessage(ctx, id)
   await ctx.answerCbQuery(messages.taskAccepted, { show_alert: false })
+})
+
+bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
+  const option = ctx.match[1]
+  const id = ctx.match[2]
+  await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
+  await refreshTaskMessage(ctx, id)
+  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
 })
 
 bot.action(/^complete_(.+)$/, async ctx => {
@@ -605,12 +595,12 @@ bot.action(/^complete_(.+)$/, async ctx => {
   await ctx.answerCbQuery()
 })
 
-bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
-  const option = ctx.match[1]
+bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
+  const reason = ctx.match[1]
   const id = ctx.match[2]
-  await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
+  await updateTask(id, { status: 'Отменена', cancel_reason: reason })
   await refreshTaskMessage(ctx, id)
-  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
+  await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
 })
 
 bot.action(/^cancel_(.+)$/, async ctx => {
@@ -624,14 +614,6 @@ bot.action(/^cancel_(.+)$/, async ctx => {
     ])
   )
   await ctx.answerCbQuery()
-})
-
-bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
-  const reason = ctx.match[1]
-  const id = ctx.match[2]
-  await updateTask(id, { status: 'Отменена', cancel_reason: reason })
-  await refreshTaskMessage(ctx, id)
-  await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
 })
 
 bot.action(/^mytask_(.+)$/, async ctx => {

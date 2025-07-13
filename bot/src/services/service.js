@@ -39,6 +39,7 @@ module.exports = {
   updateDepartment: q.updateDepartment,
   deleteDepartment: q.deleteDepartment,
   searchTasks: q.searchTasks,
+  listMentionedTasks: q.listMentionedTasks,
   addAttachment: q.addAttachment,
   deleteTask: q.deleteTask
 }

@@ -186,6 +186,13 @@ bot.command('task_form', (ctx) => {
   ctx.reply(`${messages.taskForm}\n${text}`)
 })
 
+bot.command('task_form_app', async (ctx) => {
+  const isAdmin = await verifyAdmin(ctx.from.id)
+  const token = generateToken({ id: ctx.from.id, username: ctx.from.username, isAdmin })
+  const url = `${appUrl}?token=${token}&newTask=1`
+  await sendAccessButton(ctx, url)
+})
+
 bot.command('assign_task', async (ctx) => {
   if (!await verifyAdmin(ctx.from.id)) {
     ctx.reply(messages.unauthorizedAssignTask)

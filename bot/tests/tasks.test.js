@@ -33,6 +33,8 @@ jest.mock('../src/db/model', () => ({
   Archive: { create: jest.fn(async()=>({})) }
 }))
 
+jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }))
+
 jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(), asyncHandler: fn=>fn, errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}), checkRole: () => (_req,_res,next)=>next() }))
 
 const router = require('../src/routes/tasks')

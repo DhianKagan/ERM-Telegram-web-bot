@@ -5,7 +5,7 @@ import RichTextEditor from "./RichTextEditor";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
-import { createTask, updateTask, deleteTask } from "../services/tasks";
+import { createTask, updateTask, deleteTask, updateTaskStatus } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import parseJwt from "../utils/parseJwt";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
@@ -84,6 +84,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   ];
   const [showDoneSelect,setShowDoneSelect]=React.useState(false);
   const [showCancelSelect,setShowCancelSelect]=React.useState(false);
+  const [selectedAction,setSelectedAction]=React.useState('');
 
   React.useEffect(()=>{
     setEditing(!isEdit)
@@ -231,6 +232,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if(!id) return;
     const data=await updateTask(id,{status:'in-progress'});
     if(data){setStatus('in-progress');if(onSave) onSave(data);}
+    await updateTaskStatus(id,'in-progress');
+    setSelectedAction('accept');
   };
 
   const completeTask=async(opt:string)=>{
@@ -238,6 +241,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     const data=await updateTask(id,{status:'done',completed_at:new Date().toISOString(),completion_result:opt});
     if(data){setStatus('done');if(onSave) onSave(data);} 
     setShowDoneSelect(false);
+    await updateTaskStatus(id,'done');
+    setSelectedAction('done');
   };
 
   const cancelTask=async(opt:string)=>{
@@ -245,6 +250,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     const data=await updateTask(id,{status:'canceled',cancel_reason:opt});
     if(data){setStatus('canceled');if(onSave) onSave(data);} 
     setShowCancelSelect(false);
+    await updateTaskStatus(id,'canceled');
+    setSelectedAction('cancel');
   };
 
   return(
@@ -461,7 +468,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Прикрепить файл</label>
           <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} disabled={!editing} />
         </div>
-        {isEdit && !editing && (
+          {isEdit && !editing && (
           <>
             {showDoneSelect && (
               <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 w-full rounded border px-2 py-1">
@@ -475,14 +482,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             )}
-            <div className="flex justify-end space-x-2">
-              <button className="btn-blue rounded-full" onClick={acceptTask}>Принять</button>
-              <button className="btn-green rounded-full" onClick={()=>setShowDoneSelect(v=>!v)}>Выполнено</button>
-              <button className="btn-yellow rounded-full" onClick={()=>setEditing(true)}>Изменить</button>
-              <button className="btn-red rounded-full" onClick={()=>setShowCancelSelect(v=>!v)}>Отменить</button>
-            </div>
           </>
-        )}
+          )}
         <div className="flex justify-end space-x-2">
           {isEdit && isAdmin && editing && (
             <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>
@@ -494,7 +495,27 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
       </>
       )}
-    </div>
+      </div>
+      {isEdit && !editing && (
+        <div className="mt-2 flex justify-end space-x-2">
+          <button
+            className={`rounded-none btn-${selectedAction==='accept'?'green':'blue'}`}
+            onClick={acceptTask}
+          >Принять</button>
+          <button
+            className={`rounded-none btn-${selectedAction==='done'?'green':'blue'}`}
+            onClick={()=>setShowDoneSelect(v=>!v)}
+          >Выполнено</button>
+          <button
+            className="btn-blue rounded-none"
+            onClick={()=>{setEditing(true);setSelectedAction('');setShowDoneSelect(false);setShowCancelSelect(false);}}
+          >Изменить</button>
+          <button
+            className={`rounded-none btn-${selectedAction==='cancel'?'green':'blue'}`}
+            onClick={()=>setShowCancelSelect(v=>!v)}
+          >Отменить</button>
+        </div>
+      )}
   </div>
   );
 }

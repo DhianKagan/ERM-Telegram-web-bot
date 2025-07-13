@@ -86,14 +86,32 @@ async function sendAccessButton(ctx, url, asWebApp = true) {
 
 // Показывает меню действий с использованием inline-клавиатуры
 async function showTaskMenu(ctx) {
-  const isAdmin = await verifyAdmin(ctx.from.id)
-  const rows = []
-  if (isAdmin) {
-    rows.push([Markup.button.callback('Все задачи', 'all_tasks')])
-  }
-  rows.push([Markup.button.callback('Мои задачи', 'my_tasks')])
-  rows.push([Markup.button.callback(messages.miniAppLinkText, 'open_app')])
-  await ctx.reply(messages.menuPrompt, Markup.inlineKeyboard(rows))
+  await ctx.reply(
+    messages.menuPrompt,
+    Markup.inlineKeyboard([
+      Markup.button.callback('Мои задачи', 'my_tasks')
+    ])
+  )
+}
+
+function taskKeyboard(id) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Принять', `accept_${id}`),
+      Markup.button.callback('Выполнено', `complete_${id}`)
+    ],
+    [
+      Markup.button.callback('Изменить', `edit_${id}`),
+      Markup.button.callback('Отменить', `cancel_${id}`)
+    ]
+  ])
+}
+
+async function refreshTaskMessage(ctx, id) {
+  const t = await getTask(id)
+  if (!t) return
+  const text = `${t.title} (${t.status})`
+  await ctx.editMessageText(text, taskKeyboard(id))
 }
 
 // Главное меню с кнопками команд
@@ -269,13 +287,7 @@ bot.command('my_tasks', async ctx => {
   }
   if (tasks.length === 1) {
     const t = tasks[0]
-    return ctx.reply(
-      `${t.title} (${t.status})`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback('Принять', `accept_${t._id}`), Markup.button.callback('Выполнено', `complete_${t._id}`)],
-        [Markup.button.callback('Изменить', `edit_${t._id}`), Markup.button.callback('Отменить', `cancel_${t._id}`)]
-      ])
-    )
+    return ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
   }
   const rows = tasks.map(t => [Markup.button.callback(t.title, `mytask_${t._id}`)])
   await ctx.reply(messages.chooseTask, Markup.inlineKeyboard(rows))
@@ -329,13 +341,7 @@ bot.command('task_info', async (ctx) => {
   const t = await getTask(id)
   if (!t) return ctx.reply('Задача не найдена')
   const text = `${t.title}\nСтатус: ${t.status}`
-  await ctx.reply(
-    text,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('Принять', `accept_${id}`), Markup.button.callback('Выполнено', `complete_${id}`)],
-      [Markup.button.callback('Изменить', `edit_${id}`), Markup.button.callback('Отменить', `cancel_${id}`)]
-    ])
-  )
+  await ctx.reply(text, taskKeyboard(id))
 })
 
 bot.command('upload_file', async (ctx) => {
@@ -582,16 +588,20 @@ bot.action(/^done_(.+)$/, async (ctx) => {
 bot.action(/^accept_(.+)$/, async ctx => {
   const id = ctx.match[1]
   await updateTaskStatus(id, 'В работе')
+  await refreshTaskMessage(ctx, id)
   await ctx.answerCbQuery(messages.taskAccepted, { show_alert: false })
 })
 
 bot.action(/^complete_(.+)$/, async ctx => {
   const id = ctx.match[1]
-  await ctx.reply('Выберите вариант', Markup.inlineKeyboard([
-    [Markup.button.callback('Полностью', `complete_full_${id}`)],
-    [Markup.button.callback('Частично', `complete_partial_${id}`)],
-    [Markup.button.callback('С изменениями', `complete_changed_${id}`)]
-  ]))
+  await ctx.editMessageText(
+    'Выберите вариант',
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Полностью', `complete_full_${id}`)],
+      [Markup.button.callback('Частично', `complete_partial_${id}`)],
+      [Markup.button.callback('С изменениями', `complete_changed_${id}`)]
+    ])
+  )
   await ctx.answerCbQuery()
 })
 
@@ -599,17 +609,20 @@ bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
   const option = ctx.match[1]
   const id = ctx.match[2]
   await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
+  await refreshTaskMessage(ctx, id)
   await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
-  await ctx.editMessageText(messages.taskCompleted)
 })
 
 bot.action(/^cancel_(.+)$/, async ctx => {
   const id = ctx.match[1]
-  await ctx.reply('Причина отмены?', Markup.inlineKeyboard([
-    [Markup.button.callback('Технические', `cancel_technical_${id}`)],
-    [Markup.button.callback('Отмена', `cancel_canceled_${id}`)],
-    [Markup.button.callback('Отказ исполнителя', `cancel_declined_${id}`)]
-  ]))
+  await ctx.editMessageText(
+    'Причина отмены?',
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Технические', `cancel_technical_${id}`)],
+      [Markup.button.callback('Отмена', `cancel_canceled_${id}`)],
+      [Markup.button.callback('Отказ исполнителя', `cancel_declined_${id}`)]
+    ])
+  )
   await ctx.answerCbQuery()
 })
 
@@ -617,8 +630,8 @@ bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
   const reason = ctx.match[1]
   const id = ctx.match[2]
   await updateTask(id, { status: 'Отменена', cancel_reason: reason })
+  await refreshTaskMessage(ctx, id)
   await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
-  await ctx.editMessageText(messages.taskCanceled)
 })
 
 bot.action(/^mytask_(.+)$/, async ctx => {
@@ -629,13 +642,7 @@ bot.action(/^mytask_(.+)$/, async ctx => {
     return
   }
   const text = `${t.title} (${t.status})`
-  await ctx.editMessageText(
-    text,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('Принять', `accept_${id}`), Markup.button.callback('Выполнено', `complete_${id}`)],
-      [Markup.button.callback('Изменить', `edit_${id}`), Markup.button.callback('Отменить', `cancel_${id}`)]
-    ])
-  )
+  await ctx.editMessageText(text, taskKeyboard(id))
   await ctx.answerCbQuery()
 })
 

@@ -5,8 +5,8 @@ export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true").then((r) => (r.ok ? r.json() : []));
 
 export const updateTaskStatus = (id, status) =>
-  authFetch(`/api/v1/tasks/${id}`, {
-    method: "PATCH",
+  authFetch(`/api/v1/tasks/${id}/status`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },

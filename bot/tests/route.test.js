@@ -14,8 +14,21 @@ const { stopQueue } = require('../src/services/messageQueue')
 
 jest.mock('../src/api/middleware',()=>({ verifyToken:(_req,_res,next)=>next(), asyncHandler:fn=>fn, errorHandler:(err,_req,res,_next)=>res.status(500).json({error:err.message}) }))
 
-const { getRouteDistance } = require('../src/services/route')
-jest.mock('../src/services/route',()=>({ getRouteDistance: jest.fn(async()=>({ distance:100, waypoints:[] })) }))
+const srv = require('../src/services/route')
+jest.mock('../src/services/route',()=>({
+  getRouteDistance: jest.fn(async()=>({ distance:100, waypoints:[] })),
+  table: jest.fn(async()=>({})),
+  nearest: jest.fn(async()=>({})),
+  match: jest.fn(async()=>({})),
+  trip: jest.fn(async()=>({}))
+}))
+const {
+  getRouteDistance,
+  table,
+  nearest,
+  match,
+  trip
+} = require('../src/services/route')
 
 const router=require('../src/routes/route')
 
@@ -31,6 +44,26 @@ test('POST /api/v1/route возвращает данные маршрута', as
   expect(res.body.distance).toBe(100)
   expect(Array.isArray(res.body.waypoints)).toBe(true)
   expect(getRouteDistance).toHaveBeenCalledWith({lat:1,lng:2},{lat:3,lng:4})
+})
+
+test('GET /api/v1/route/table вызывает сервис table', async()=>{
+  await request(app).get('/api/v1/route/table?points=1,1;2,2')
+  expect(table).toHaveBeenCalledWith('1,1;2,2',{})
+})
+
+test('GET /api/v1/route/nearest вызывает сервис nearest', async()=>{
+  await request(app).get('/api/v1/route/nearest?point=1,1')
+  expect(nearest).toHaveBeenCalledWith('1,1',{})
+})
+
+test('GET /api/v1/route/match вызывает сервис match', async()=>{
+  await request(app).get('/api/v1/route/match?points=1,1;2,2')
+  expect(match).toHaveBeenCalledWith('1,1;2,2',{})
+})
+
+test('GET /api/v1/route/trip вызывает сервис trip', async()=>{
+  await request(app).get('/api/v1/route/trip?points=1,1;2,2')
+  expect(trip).toHaveBeenCalledWith('1,1;2,2',{})
 })
 
 afterAll(()=>{ stopScheduler(); stopQueue() })

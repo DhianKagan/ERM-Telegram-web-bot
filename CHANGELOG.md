@@ -128,6 +128,7 @@
 - README дополнен примером JSON со `startCoordinates` и `finishCoordinates`
 - В `docs/telegram_bot_manual.md` описано разворачивание коротких ссылок Google Maps
 - В задачи добавлен статус `canceled` и время выполнения `completed_at`
+- Сервис ORSM поддерживает `/table`, `/nearest`, `/match` и `/trip`
 
 ### Безопасность
 - Сообщение о загрузке `BOT_TOKEN` не раскрывает даже начало значения

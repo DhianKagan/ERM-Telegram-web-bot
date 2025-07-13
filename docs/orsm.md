@@ -13,6 +13,11 @@ docker run -d -p 5000:5000 osrm-odessa
 ```bash
 curl "http://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
 ```
+Сервис также поддерживает дополнительные пути:
+- `/table?points=p1;p2[;...]` — матрица времени и расстояний
+- `/nearest?point=p&number=n` — поиск ближайших участков
+- `/match?points=p1;p2[;...]` — привязка GPS-трека
+- `/trip?points=p1;p2[;...]` — оптимальный объезд точек
 
 ## Развёртывание на Railway
 1. Создайте новый сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/ORSM`.

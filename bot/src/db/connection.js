@@ -3,7 +3,9 @@
 const mongoose = require('mongoose')
 const { mongoUrl } = require('../config')
 const backupUrl = process.env.MONGO_BACKUP_URL
-const attempts = Number(process.env.RETRY_ATTEMPTS || 3)
+// Увеличиваем количество попыток подключения по умолчанию,
+// чтобы Railway успел запустить MongoDB
+const attempts = Number(process.env.RETRY_ATTEMPTS || 10)
 const delayMs = Number(process.env.RETRY_DELAY_MS || 5000)
 
 // Для версии mongoose 8 опции useNewUrlParser и useUnifiedTopology

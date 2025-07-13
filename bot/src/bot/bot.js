@@ -592,6 +592,14 @@ bot.action(/^accept_(.+)$/, async ctx => {
   await ctx.answerCbQuery(messages.taskAccepted, { show_alert: false })
 })
 
+bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
+  const option = ctx.match[1]
+  const id = ctx.match[2]
+  await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
+  await refreshTaskMessage(ctx, id)
+  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
+})
+
 bot.action(/^complete_(.+)$/, async ctx => {
   const id = ctx.match[1]
   await ctx.editMessageText(
@@ -605,12 +613,12 @@ bot.action(/^complete_(.+)$/, async ctx => {
   await ctx.answerCbQuery()
 })
 
-bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
-  const option = ctx.match[1]
+bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
+  const reason = ctx.match[1]
   const id = ctx.match[2]
-  await updateTask(id, { status: 'Выполнена', completed_at: new Date(), completion_result: option })
+  await updateTask(id, { status: 'Отменена', cancel_reason: reason })
   await refreshTaskMessage(ctx, id)
-  await ctx.answerCbQuery(messages.taskCompleted, { show_alert: false })
+  await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
 })
 
 bot.action(/^cancel_(.+)$/, async ctx => {
@@ -624,14 +632,6 @@ bot.action(/^cancel_(.+)$/, async ctx => {
     ])
   )
   await ctx.answerCbQuery()
-})
-
-bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
-  const reason = ctx.match[1]
-  const id = ctx.match[2]
-  await updateTask(id, { status: 'Отменена', cancel_reason: reason })
-  await refreshTaskMessage(ctx, id)
-  await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
 })
 
 bot.action(/^mytask_(.+)$/, async ctx => {

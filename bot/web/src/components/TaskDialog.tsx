@@ -567,54 +567,54 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
           )}
         </div>
+        {isEdit && !editing && !editActionsOnly && (
+          <>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
+              onClick={acceptTask}
+            >Принять</button>
+            <button
+              className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
+              onClick={()=>setShowDoneSelect(v=>!v)}
+            >Выполнено</button>
+            <button
+              className="btn-blue rounded-lg"
+              onClick={startActionsEdit}
+            >Изменить</button>
+            <button
+              className={`btn-blue rounded-lg ${selectedAction==='cancel'?'ring-2 ring-accentPrimary':''}`}
+              onClick={()=>setShowCancelSelect(v=>!v)}
+            >Отменить</button>
+          </div>
+          {showDoneSelect && (
+            <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
+              <option value="">Выберите вариант</option>
+              {doneOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+            </select>
+          )}
+          {showCancelSelect && (
+            <select onChange={e=>e.target.value&&cancelTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
+              <option value="">Причина отмены</option>
+              {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+            </select>
+          )}
+          </>
+        )}
+        {isEdit && !editing && editActionsOnly && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
+              onClick={acceptTask}
+            >Принять</button>
+            <button
+              className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
+              onClick={()=>setShowDoneSelect(v=>!v)}
+            >Выполнено</button>
+          </div>
+        )}
       </>
       </div>
-      {isEdit && !editing && !editActionsOnly && (
-        <>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
-            onClick={acceptTask}
-          >Принять</button>
-          <button
-            className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
-            onClick={()=>setShowDoneSelect(v=>!v)}
-          >Выполнено</button>
-          <button
-            className="btn-blue rounded-lg"
-            onClick={startActionsEdit}
-          >Изменить</button>
-          <button
-            className={`btn-blue rounded-lg ${selectedAction==='cancel'?'ring-2 ring-accentPrimary':''}`}
-            onClick={()=>setShowCancelSelect(v=>!v)}
-          >Отменить</button>
-        </div>
-        {showDoneSelect && (
-          <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
-            <option value="">Выберите вариант</option>
-            {doneOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
-          </select>
-        )}
-        {showCancelSelect && (
-          <select onChange={e=>e.target.value&&cancelTask(e.target.value)} className="mb-2 mt-1 w-full rounded border px-2 py-1">
-            <option value="">Причина отмены</option>
-            {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
-          </select>
-        )}
-        </>
-      )}
-      {isEdit && !editing && editActionsOnly && (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            className={`rounded-lg btn-${status==='В работе'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
-            onClick={acceptTask}
-          >Принять</button>
-          <button
-            className={`rounded-lg btn-${status==='Выполнена'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
-            onClick={()=>setShowDoneSelect(v=>!v)}
-          >Выполнено</button>
-        </div>
-      )}
   </div>
   );
 }

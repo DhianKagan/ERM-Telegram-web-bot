@@ -72,6 +72,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [files,setFiles]=React.useState<FileList|null>(null);
   const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
   const [routeLink,setRouteLink]=React.useState('');
+  const doneOptions=[
+    {value:'full',label:'Задача выполнена полностью'},
+    {value:'partial',label:'Задача выполнена частично'},
+    {value:'changed',label:'Задача выполнена с изменениями'}
+  ];
+  const cancelOptions=[
+    {value:'technical',label:'Задача не может быть выполнена по техническим причинам'},
+    {value:'canceled',label:'Задача не выполнена по причине отмены'},
+    {value:'declined',label:'Задача не выполнена по причине отказа исполнителя'}
+  ];
+  const [showDoneSelect,setShowDoneSelect]=React.useState(false);
+  const [showCancelSelect,setShowCancelSelect]=React.useState(false);
 
   React.useEffect(()=>{
     setEditing(!isEdit)
@@ -213,6 +225,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     await deleteTask(id);
     if (onSave) onSave(null);
     onClose();
+  };
+
+  const acceptTask=async()=>{
+    if(!id) return;
+    const data=await updateTask(id,{status:'in-progress'});
+    if(data){setStatus('in-progress');if(onSave) onSave(data);}
+  };
+
+  const completeTask=async(opt:string)=>{
+    if(!id) return;
+    const data=await updateTask(id,{status:'done',completed_at:new Date().toISOString(),completion_result:opt});
+    if(data){setStatus('done');if(onSave) onSave(data);} 
+    setShowDoneSelect(false);
+  };
+
+  const cancelTask=async(opt:string)=>{
+    if(!id) return;
+    const data=await updateTask(id,{status:'canceled',cancel_reason:opt});
+    if(data){setStatus('canceled');if(onSave) onSave(data);} 
+    setShowCancelSelect(false);
   };
 
   return(
@@ -429,6 +461,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Прикрепить файл</label>
           <input type="file" multiple className="mt-1 w-full" onChange={e=>setFiles(e.target.files)} disabled={!editing} />
         </div>
+        {isEdit && !editing && (
+          <>
+            {showDoneSelect && (
+              <select onChange={e=>e.target.value&&completeTask(e.target.value)} className="mb-2 w-full rounded border px-2 py-1">
+                <option value="">Выберите вариант</option>
+                {doneOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            )}
+            {showCancelSelect && (
+              <select onChange={e=>e.target.value&&cancelTask(e.target.value)} className="mb-2 w-full rounded border px-2 py-1">
+                <option value="">Причина отмены</option>
+                {cancelOptions.map(o=>(<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            )}
+            <div className="flex justify-end space-x-2">
+              <button className="btn-blue rounded-full" onClick={acceptTask}>Принять</button>
+              <button className="btn-green rounded-full" onClick={()=>setShowDoneSelect(v=>!v)}>Выполнено</button>
+              <button className="btn-yellow rounded-full" onClick={()=>setEditing(true)}>Изменить</button>
+              <button className="btn-red rounded-full" onClick={()=>setShowCancelSelect(v=>!v)}>Отменить</button>
+            </div>
+          </>
+        )}
         <div className="flex justify-end space-x-2">
           {isEdit && isAdmin && editing && (
             <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>

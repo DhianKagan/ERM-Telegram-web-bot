@@ -62,4 +62,4 @@
 | `transport_type` | `Пешком`, `Авто`, `Дрон` | `Авто` |
 | `payment_method` | `Наличные`, `Карта`, `Безнал`, `Без оплаты` | `Карта` |
 | `priority` | `Срочно`, `В течение дня`, `Бессрочно` | `В течение дня` |
-| `status` | `new`, `in-progress`, `done` | `new` |
+| `status` | `new`, `in-progress`, `done`, `canceled` | `new` |

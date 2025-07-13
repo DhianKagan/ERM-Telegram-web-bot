@@ -29,7 +29,7 @@ const { body, validationResult } = require('express-validator')
 const app = express()
 app.use(express.json())
 app.post('/api/v1/tasks/:id/status',
-  [body('status').isIn(['pending', 'in-progress', 'completed'])],
+  [body('status').isIn(['new', 'in-progress', 'done', 'canceled'])],
   (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })

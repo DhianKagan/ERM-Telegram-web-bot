@@ -3,8 +3,18 @@
 const { routingUrl } = require('../config')
 const base = routingUrl.replace(/\/route$/, '')
 
+const allowed = ['table', 'nearest', 'match', 'trip']
+
+function validateCoords(value) {
+  const coordRx = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/
+  if (!coordRx.test(value)) throw new Error('Некорректные координаты')
+  return value
+}
+
 async function call(endpoint, coords, params = {}) {
-  const url = new URL(`${base}/${endpoint}/v1/driving/${coords}`)
+  if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт')
+  const safeCoords = validateCoords(coords)
+  const url = new URL(`${base}/${endpoint}/v1/driving/${safeCoords}`)
   for (const [k, v] of Object.entries(params)) url.searchParams.append(k, v)
   const res = await fetch(url)
   const data = await res.json()

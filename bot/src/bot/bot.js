@@ -28,6 +28,7 @@ const {
   listUsers,
   getUser,
   listAllTasks,
+  listMentionedTasks,
   getTask,
   updateTask,
   updateUser,
@@ -259,6 +260,25 @@ bot.command('list_tasks', async (ctx) => {
       ])
     )
   }
+})
+
+bot.command('my_tasks', async ctx => {
+  const tasks = await listMentionedTasks(ctx.from.id)
+  if (!tasks.length) {
+    return ctx.reply(messages.noTasks)
+  }
+  if (tasks.length === 1) {
+    const t = tasks[0]
+    return ctx.reply(
+      `${t.title} (${t.status})`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('Принять', `accept_${t._id}`), Markup.button.callback('Выполнено', `complete_${t._id}`)],
+        [Markup.button.callback('Изменить', `edit_${t._id}`), Markup.button.callback('Отменить', `cancel_${t._id}`)]
+      ])
+    )
+  }
+  const rows = tasks.map(t => [Markup.button.callback(t.title, `mytask_${t._id}`)])
+  await ctx.reply(messages.chooseTask, Markup.inlineKeyboard(rows))
 })
 
 bot.command('task_menu', async (ctx) => {
@@ -599,6 +619,24 @@ bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
   await updateTask(id, { status: 'canceled', cancel_reason: reason })
   await ctx.answerCbQuery(messages.taskCanceled, { show_alert: false })
   await ctx.editMessageText(messages.taskCanceled)
+})
+
+bot.action(/^mytask_(.+)$/, async ctx => {
+  const id = ctx.match[1]
+  const t = await getTask(id)
+  if (!t) {
+    await ctx.answerCbQuery('Задача не найдена', { show_alert: true })
+    return
+  }
+  const text = `${t.title} (${t.status})`
+  await ctx.editMessageText(
+    text,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Принять', `accept_${id}`), Markup.button.callback('Выполнено', `complete_${id}`)],
+      [Markup.button.callback('Изменить', `edit_${id}`), Markup.button.callback('Отменить', `cancel_${id}`)]
+    ])
+  )
+  await ctx.answerCbQuery()
 })
 
 bot.action(/^edit_(.+)$/, async ctx => {

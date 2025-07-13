@@ -15,7 +15,7 @@ import { expandLink } from "../services/maps";
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
-  MinusIcon,
+  ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
@@ -38,7 +38,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, []);
   const [editing, setEditing] = React.useState(!isEdit);
   const [expanded, setExpanded] = React.useState(false);
-  const [minimized, setMinimized] = React.useState(false);
+  const initialRef = React.useRef<any>(null);
   const [requestId,setRequestId]=React.useState('');
   const [created,setCreated]=React.useState('');
   const [title, setTitle] = React.useState("");
@@ -102,6 +102,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           const num=String((s.count||0)+1).padStart(6,'0');
           setRequestId(`ERM_${num}`);
         });
+      initialRef.current = {
+        title:'',
+        taskType,
+        description:'',
+        comment:'',
+        priority,
+        transportType,
+        paymentMethod,
+        status,
+        department:'',
+        creator:user?String(user.telegram_id):'',
+        assignees:[],
+        start:'',
+        startLink:'',
+        end:'',
+        endLink:'',
+        startDate:'',
+        dueDate:'',
+        controllers:[],
+        attachments:[],
+        distanceKm:null
+      }
     }
   },[id,isEdit]);
 
@@ -140,6 +162,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
+      initialRef.current = {
+        title: t.title||'',
+        taskType: t.task_type||taskType,
+        description: t.task_description||'',
+        comment: t.comment||'',
+        priority: t.priority||priority,
+        transportType: t.transport_type||transportType,
+        paymentMethod: t.payment_method||paymentMethod,
+        status: t.status||status,
+        department: t.departmentId||'',
+        creator: String(t.created_by||''),
+        assignees: t.assignees||[],
+        start: t.start_location||'',
+        startLink: t.start_location_link||'',
+        end: t.end_location||'',
+        endLink: t.end_location_link||'',
+        startDate: t.start_date?new Date(t.start_date).toISOString().slice(0,16):'',
+        dueDate: t.due_date?new Date(t.due_date).toISOString().slice(0,16):'',
+        controllers: t.controllers||[],
+        attachments: t.attachments||[],
+        distanceKm: typeof t.route_distance_km==='number'?t.route_distance_km:null
+      }
     });
   }, [id, isEdit]);
 
@@ -228,6 +272,31 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     onClose();
   };
 
+  const resetForm = () => {
+    const d = initialRef.current;
+    if (!d) return;
+    setTitle(d.title);
+    setTaskType(d.taskType);
+    setDescription(d.description);
+    setComment(d.comment);
+    setPriority(d.priority);
+    setTransportType(d.transportType);
+    setPaymentMethod(d.paymentMethod);
+    setStatus(d.status);
+    setDepartment(d.department);
+    setCreator(d.creator);
+    setAssignees(d.assignees);
+    setStart(d.start);
+    setStartLink(d.startLink);
+    setEnd(d.end);
+    setEndLink(d.endLink);
+    setStartDate(d.startDate);
+    setDueDate(d.dueDate);
+    setControllers(d.controllers);
+    setAttachments(d.attachments);
+    setDistanceKm(d.distanceKm);
+  };
+
   const acceptTask=async()=>{
     if(!id) return;
     const data=await updateTask(id,{status:'in-progress'});
@@ -258,7 +327,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     <div
       className={`bg-opacity-30 animate-fade-in fixed right-0 top-14 bottom-0 flex items-start justify-center overflow-y-auto bg-black z-50 ${open ? (collapsed ? 'lg:left-20' : 'lg:left-60') : 'lg:left-0'}`}
     >
-      <div className={`w-full ${expanded ? 'max-w-screen-xl' : 'max-w-screen-md'} ${minimized ? 'max-h-10' : 'max-h-[90vh]'} overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto`}>
+      <div className={`w-full ${expanded ? 'max-w-screen-xl' : 'max-w-screen-md'} max-h-[90vh] overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-lg mx-auto`}>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Задача - {requestId} {created}</h3>
         <div className="flex space-x-2">
@@ -267,8 +336,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ✎
             </button>
           )}
-          <button onClick={() => setMinimized(!minimized)} className="p-1" title="Свернуть">
-            <MinusIcon className="h-5 w-5" />
+          <button onClick={resetForm} className="p-1" title="Сбросить">
+            <ArrowPathIcon className="h-5 w-5" />
           </button>
           <button onClick={() => setExpanded(!expanded)} className="p-1" title="Развернуть">
             {expanded ? <ArrowsPointingInIcon className="h-5 w-5" /> : <ArrowsPointingOutIcon className="h-5 w-5" />}
@@ -278,7 +347,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </button>
         </div>
       </div>
-      {!minimized && (
       <>
       <div>
         <label className="block text-sm font-medium">Название задачи</label>
@@ -488,30 +556,28 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           {isEdit && isAdmin && editing && (
             <button className="btn-red rounded-full" onClick={handleDelete}>Удалить</button>
           )}
-          <button className="btn-gray rounded-full" onClick={onClose}>Отмена</button>
           {editing && (
             <button className="btn-blue rounded-full" onClick={submit}>{isEdit?'Сохранить':'Создать'}</button>
           )}
         </div>
       </>
-      )}
       </div>
       {isEdit && !editing && (
         <div className="mt-2 flex justify-end space-x-2">
           <button
-            className={`rounded-none btn-${selectedAction==='accept'?'green':'blue'}`}
+            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'}`}
             onClick={acceptTask}
           >Принять</button>
           <button
-            className={`rounded-none btn-${selectedAction==='done'?'green':'blue'}`}
+            className={`rounded-lg btn-${status==='done'?'green':'blue'}`}
             onClick={()=>setShowDoneSelect(v=>!v)}
           >Выполнено</button>
           <button
-            className="btn-blue rounded-none"
-            onClick={()=>{setEditing(true);setSelectedAction('');setShowDoneSelect(false);setShowCancelSelect(false);}}
+            className="btn-blue rounded-lg"
+            onClick={()=>{setEditing(true);setShowDoneSelect(false);setShowCancelSelect(false);}}
           >Изменить</button>
           <button
-            className={`rounded-none btn-${selectedAction==='cancel'?'green':'blue'}`}
+            className="btn-blue rounded-lg"
             onClick={()=>setShowCancelSelect(v=>!v)}
           >Отменить</button>
         </div>

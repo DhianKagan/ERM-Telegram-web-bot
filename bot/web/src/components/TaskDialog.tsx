@@ -90,6 +90,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   ];
   const [showDoneSelect,setShowDoneSelect]=React.useState(false);
   const [showCancelSelect,setShowCancelSelect]=React.useState(false);
+  // выбранная кнопка действия
   const [selectedAction,setSelectedAction]=React.useState('');
 
   React.useEffect(()=>{
@@ -109,29 +110,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setRequestId(`ERM_${num}`);
         });
       initialRef.current = {
-        title:'',
-        taskType,
-        description:'',
-        comment:'',
-        priority,
-        transportType,
-        paymentMethod,
-        status,
-        department:'',
-        creator:user?String(user.telegram_id):'',
-        assignees:[],
-        start:'',
-        startLink:'',
-        end:'',
-        endLink:'',
-        startDate:'',
-        dueDate:'',
-        controllers:[],
-        attachments:[],
-        distanceKm:null
-      }
+        title: '',
+        taskType: DEFAULT_TASK_TYPE,
+        description: '',
+        comment: '',
+        priority: DEFAULT_PRIORITY,
+        transportType: DEFAULT_TRANSPORT,
+        paymentMethod: DEFAULT_PAYMENT,
+        status: DEFAULT_STATUS,
+        department: '',
+        creator: user ? String(user.telegram_id) : '',
+        assignees: [],
+        start: '',
+        startLink: '',
+        end: '',
+        endLink: '',
+        startDate: '',
+        dueDate: '',
+        controllers: [],
+        attachments: [],
+        distanceKm: null,
+      };
     }
-  },[id,isEdit]);
+  },[id,isEdit,user,DEFAULT_TASK_TYPE,DEFAULT_PRIORITY,DEFAULT_TRANSPORT,DEFAULT_PAYMENT,DEFAULT_STATUS]);
 
   React.useEffect(()=>{
     authFetch('/api/v1/users')
@@ -148,14 +149,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if(!isEdit||!id) return;
     authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
       if(!t) return;
+      const curTaskType=t.task_type||DEFAULT_TASK_TYPE;
+      const curPriority=t.priority||DEFAULT_PRIORITY;
+      const curTransport=t.transport_type||DEFAULT_TRANSPORT;
+      const curPayment=t.payment_method||DEFAULT_PAYMENT;
+      const curStatus=t.status||DEFAULT_STATUS;
       setTitle(t.title||"");
-      setTaskType(t.task_type||DEFAULT_TASK_TYPE);
+      setTaskType(curTaskType);
       setDescription(t.task_description||"");
       setComment(t.comment||"");
-      setPriority(t.priority||DEFAULT_PRIORITY);
-      setTransportType(t.transport_type||DEFAULT_TRANSPORT);
-      setPaymentMethod(t.payment_method||DEFAULT_PAYMENT);
-      setStatus(t.status||DEFAULT_STATUS);
+      setPriority(curPriority);
+      setTransportType(curTransport);
+      setPaymentMethod(curPayment);
+      setStatus(curStatus);
       setDepartment(t.departmentId||"");
       setCreator(String(t.created_by||""));
       setAssignees(t.assignees||[]);
@@ -170,13 +176,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
       initialRef.current = {
         title: t.title||'',
-        taskType: t.task_type||taskType,
+        taskType: curTaskType,
         description: t.task_description||'',
         comment: t.comment||'',
-        priority: t.priority||priority,
-        transportType: t.transport_type||transportType,
-        paymentMethod: t.payment_method||paymentMethod,
-        status: t.status||status,
+        priority: curPriority,
+        transportType: curTransport,
+        paymentMethod: curPayment,
+        status: curStatus,
         department: t.departmentId||'',
         creator: String(t.created_by||''),
         assignees: t.assignees||[],
@@ -188,10 +194,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         dueDate: t.due_date?new Date(t.due_date).toISOString().slice(0,16):'',
         controllers: t.controllers||[],
         attachments: t.attachments||[],
-        distanceKm: typeof t.route_distance_km==='number'?t.route_distance_km:null
-      }
+        distanceKm: typeof t.route_distance_km==='number'?t.route_distance_km:null,
+      };
     });
-  }, [id, isEdit]);
+  }, [id, isEdit, DEFAULT_TASK_TYPE, DEFAULT_PRIORITY, DEFAULT_TRANSPORT, DEFAULT_PAYMENT, DEFAULT_STATUS]);
 
 
   const handleStartLink=async(v:string)=>{
@@ -571,11 +577,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       {isEdit && !editing && (
         <div className="mt-2 flex justify-end space-x-2">
           <button
-            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'}`}
+            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
             onClick={acceptTask}
           >Принять</button>
           <button
-            className={`rounded-lg btn-${status==='done'?'green':'blue'}`}
+            className={`rounded-lg btn-${status==='done'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
             onClick={()=>setShowDoneSelect(v=>!v)}
           >Выполнено</button>
           <button
@@ -583,7 +589,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             onClick={()=>{setEditing(true);setShowDoneSelect(false);setShowCancelSelect(false);}}
           >Изменить</button>
           <button
-            className="btn-blue rounded-lg"
+            className={`btn-blue rounded-lg ${selectedAction==='cancel'?'ring-2 ring-accentPrimary':''}`}
             onClick={()=>setShowCancelSelect(v=>!v)}
           >Отменить</button>
         </div>

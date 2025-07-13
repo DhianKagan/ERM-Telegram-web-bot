@@ -258,7 +258,7 @@ const validate = validations => [
 
   app.post(`${prefix}/tasks/:id/status`, taskStatusRateLimiter, verifyToken,
 
-    validate([body('status').isIn(['new', 'in-progress', 'done', 'canceled'])]),
+    validate([body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена'])]),
     asyncHandler(async (req, res) => {
       await updateTaskStatus(req.params.id, req.body.status)
       await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`)

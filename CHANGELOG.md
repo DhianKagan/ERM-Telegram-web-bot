@@ -130,7 +130,7 @@
 - При расчёте нескольких машин задачи распределяются между всеми авто
 - README дополнен примером JSON со `startCoordinates` и `finishCoordinates`
 - В `docs/telegram_bot_manual.md` описано разворачивание коротких ссылок Google Maps
-- В задачи добавлен статус `canceled` и время выполнения `completed_at`
+- Статус задач переведён на русский, добавлено поле `completed_at`
 - Сервис ORSM поддерживает `/table`, `/nearest`, `/match` и `/trip`
 - Координаты запросов к ORSM валидируются для защиты от SSRF
 

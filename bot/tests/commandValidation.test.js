@@ -125,7 +125,7 @@ test('inline add без текста', async () => {
 
 test('inline search вызывает сервис', async () => {
   const service = require('../src/services/service')
-  service.searchTasks.mockResolvedValue([{ _id: '1', title: 'T', status: 'new' }])
+  service.searchTasks.mockResolvedValue([{ _id: '1', title: 'T', status: 'Новая' }])
   const ctx = { inlineQuery: { query: 'search T' }, from: { id: 1 }, answerInlineQuery: jest.fn() }
   await handlers.inline_query(ctx)
   expect(service.searchTasks).toHaveBeenCalledWith('T')

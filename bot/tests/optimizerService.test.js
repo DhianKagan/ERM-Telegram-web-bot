@@ -15,6 +15,12 @@ jest.mock('../src/db/queries', () => ({
   getTask: jest.fn(id => Promise.resolve(sample[id]))
 }))
 
+jest.mock('../src/services/route', () => ({
+  trip: jest.fn(async () => ({
+    trips: [{ waypoints: [{ waypoint_index: 0 }, { waypoint_index: 1 }]}]
+  }))
+}))
+
 const { optimize } = require('../src/services/optimizer')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
@@ -27,5 +33,12 @@ test('optimize распределяет задачи между машинами
   const all = routes.flat()
   expect(new Set(all)).toEqual(new Set(['1','2','3']))
   expect(routes.every(r => r.length)).toBe(true)
+})
+
+test('optimize с методом trip вызывает сервис trip', async () => {
+  const { trip } = require('../src/services/route')
+  const routes = await optimize(['1','2'], 1, 'trip')
+  expect(trip).toHaveBeenCalled()
+  expect(routes[0].length).toBe(2)
 })
 

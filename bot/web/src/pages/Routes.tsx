@@ -28,6 +28,7 @@ export default function RoutesPage() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [sorted, setSorted] = React.useState<Task[]>([])
   const [vehicles, setVehicles] = React.useState(1)
+  const [method, setMethod] = React.useState('angle')
   const [links, setLinks] = React.useState<string[]>([])
   const mapRef = React.useRef<L.Map | null>(null)
   const optLayerRef = React.useRef<L.LayerGroup | null>(null)
@@ -51,7 +52,7 @@ export default function RoutesPage() {
 
   const calculate = React.useCallback(() => {
     const ids = sorted.map(t => t._id)
-    optimizeRoute(ids, vehicles).then(r => {
+    optimizeRoute(ids, vehicles, method).then(r => {
       if (!r || !mapRef.current) return
       if (optLayerRef.current) {
         optLayerRef.current.remove()
@@ -76,7 +77,7 @@ export default function RoutesPage() {
       })
       setLinks(newLinks)
     })
-  }, [sorted, vehicles])
+  }, [sorted, vehicles, method])
 
   const reset = React.useCallback(() => {
     if (optLayerRef.current) {
@@ -131,6 +132,10 @@ export default function RoutesPage() {
           <option value={1}>1</option>
           <option value={2}>2</option>
           <option value={3}>3</option>
+        </select>
+        <select value={method} onChange={e=>setMethod(e.target.value)} className="rounded border px-2 py-1">
+          <option value="angle">angle</option>
+          <option value="trip">trip</option>
         </select>
         <button onClick={calculate} className="btn-blue rounded px-4">Просчёт маршрута</button>
         <button onClick={reset} className="btn-blue rounded px-4">Сбросить</button>

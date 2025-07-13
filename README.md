@@ -131,7 +131,13 @@
    ```
 3. При необходимости запустите локальный telegram-bot-api и укажите `BOT_API_URL` в `.env`.
    В консоль выводятся только первые символы `BOT_TOKEN` для отладки.
-4. Для расчёта маршрута задайте `ROUTING_URL` так:
+4. Если MongoDB запускается дольше приложения, увеличьте число попыток подключения:
+   ```bash
+   RETRY_ATTEMPTS=10
+   RETRY_DELAY_MS=5000
+   ```
+   Эти переменные задают количество попыток и задержку между ними.
+5. Для расчёта маршрута задайте `ROUTING_URL` так:
    ```bash
    ROUTING_URL=https://orsm-production.up.railway.app/route
    VITE_ROUTING_URL=https://orsm-production.up.railway.app/route

@@ -6,6 +6,7 @@ import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../shared/taskFields.cjs";
 import { createTask, updateTask, deleteTask, updateTaskStatus } from "../services/tasks";
+import { createLog } from "../services/logs";
 import authFetch from "../utils/authFetch";
 import parseJwt from "../utils/parseJwt";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
@@ -92,6 +93,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [showCancelSelect,setShowCancelSelect]=React.useState(false);
   // выбранная кнопка действия
   const [selectedAction,setSelectedAction]=React.useState('');
+  // режим изменения статуса
+  const [editActionsOnly,setEditActionsOnly]=React.useState(false);
 
   React.useEffect(()=>{
     setEditing(!isEdit)
@@ -309,21 +312,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setDistanceKm(d.distanceKm);
   };
 
+  const startActionsEdit = async () => {
+    if (!id) return;
+    setEditActionsOnly(true);
+    await createLog(`Изменение статуса задачи ${id}`);
+  };
+
   const acceptTask=async()=>{
     if(!id) return;
     const data=await updateTask(id,{status:'in-progress'});
     if(data){setStatus('in-progress');if(onSave) onSave(data);}
     await updateTaskStatus(id,'in-progress');
     setSelectedAction('accept');
+    setEditActionsOnly(false);
   };
 
   const completeTask=async(opt:string)=>{
     if(!id) return;
     const data=await updateTask(id,{status:'done',completed_at:new Date().toISOString(),completion_result:opt});
-    if(data){setStatus('done');if(onSave) onSave(data);} 
+    if(data){setStatus('done');if(onSave) onSave(data);}
     setShowDoneSelect(false);
     await updateTaskStatus(id,'done');
     setSelectedAction('done');
+    setEditActionsOnly(false);
   };
 
   const cancelTask=async(opt:string)=>{
@@ -574,8 +585,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
       </>
       </div>
-      {isEdit && !editing && (
-        <div className="mt-2 flex justify-end space-x-2">
+      {isEdit && !editing && !editActionsOnly && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <button
             className={`rounded-lg btn-${status==='in-progress'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
             onClick={acceptTask}
@@ -586,12 +597,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           >Выполнено</button>
           <button
             className="btn-blue rounded-lg"
-            onClick={()=>{setEditing(true);setShowDoneSelect(false);setShowCancelSelect(false);}}
+            onClick={startActionsEdit}
           >Изменить</button>
           <button
             className={`btn-blue rounded-lg ${selectedAction==='cancel'?'ring-2 ring-accentPrimary':''}`}
             onClick={()=>setShowCancelSelect(v=>!v)}
           >Отменить</button>
+        </div>
+      )}
+      {isEdit && !editing && editActionsOnly && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            className={`rounded-lg btn-${status==='in-progress'?'green':'blue'} ${selectedAction==='accept'?'ring-2 ring-accentPrimary':''}`}
+            onClick={acceptTask}
+          >Принять</button>
+          <button
+            className={`rounded-lg btn-${status==='done'?'green':'blue'} ${selectedAction==='done'?'ring-2 ring-accentPrimary':''}`}
+            onClick={()=>setShowDoneSelect(v=>!v)}
+          >Выполнено</button>
         </div>
       )}
   </div>

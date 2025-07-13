@@ -26,6 +26,7 @@
 | GET | /api/v1/roles | Список ролей |
 | POST | /api/v1/roles | Создание роли |
 | GET | /api/v1/logs | Последние логи |
+| POST | /api/v1/logs | Записать сообщение в лог |
 | GET | /api/v1/tasks | Список задач |
 | POST | /api/v1/tasks | Создание задачи |
 | GET | /api/v1/tasks/:id | Получить задачу |

@@ -27,7 +27,7 @@ test('POST /api/v1/optimizer возвращает маршрут', async()=>{
   const res=await request(app).post('/api/v1/optimizer').send({ tasks:['1'], count:1 })
   expect(res.status).toBe(200)
   expect(Array.isArray(res.body.routes)).toBe(true)
-  expect(optimize).toHaveBeenCalledWith(['1'],1)
+  expect(optimize).toHaveBeenCalledWith(['1'],1,undefined)
 })
 
 afterAll(()=>{ stopScheduler(); stopQueue() })

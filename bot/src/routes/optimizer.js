@@ -14,7 +14,8 @@ const validate = v => [...v, (req, res, next) => {
 router.post('/', verifyToken,
   validate([
     body('tasks').isArray({ min: 1 }),
-    body('count').optional().isInt({ min: 1, max: 3 })
+    body('count').optional().isInt({ min: 1, max: 3 }),
+    body('method').optional().isIn(['angle', 'trip'])
   ]),
   asyncHandler(ctrl.optimize))
 

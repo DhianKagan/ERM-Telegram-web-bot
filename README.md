@@ -86,8 +86,8 @@
   - Карта занимает верхнюю часть страницы, таблица закреплена снизу
   - При наведении на старт и финиш маршрута показывается название задачи со ссылкой
   - Leaflet подключается локально, политика CSP разрешает тайлы OpenStreetMap
-  - Политика CSP разрешает подключение к сервису ORSM и `router.project-osrm.org`
-  - Сервис ORSM поддерживает `/table`, `/nearest`, `/match` и `/trip`
+  - Политика CSP разрешает подключение к сервису OSRM и `router.project-osrm.org`
+  - Сервис OSRM поддерживает `/table`, `/nearest`, `/match` и `/trip`
   - Координаты запросов к маршрутам проверяются на корректность
   - Параметры фильтра отправляются только при заполнении,
     `status` проверяется как строка и не допускает инъекций
@@ -134,6 +134,7 @@
    ```bash
    ROUTING_URL=https://orsm-production.up.railway.app/route
    VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+   # Переменная OSRM_ALGORITHM управляет выбором `ch` или `mld` в сервисе маршрутов
    ```
    Подробности развёртывания описаны в `docs/orsm.md`.
    Полное развёртывание всего проекта на Railway описано в `docs/railway_full_setup.md`.

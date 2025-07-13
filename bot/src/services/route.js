@@ -1,4 +1,4 @@
-// Назначение: запросы к сервису ORSM
+// Назначение: запросы к сервису OSRM
 // Модули: fetch, config
 const { routingUrl } = require('../config')
 const base = routingUrl.replace(/\/route$/, '')
@@ -14,7 +14,8 @@ function validateCoords(value) {
 async function call(endpoint, coords, params = {}) {
   if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт')
   const safeCoords = validateCoords(coords)
-  const url = new URL(`${base}/${endpoint}/v1/driving/${safeCoords}`)
+  const url = new URL(`${base}/${endpoint}`)
+  url.searchParams.append(endpoint === 'nearest' ? 'point' : 'points', safeCoords)
   for (const [k, v] of Object.entries(params)) url.searchParams.append(k, v)
   const res = await fetch(url)
   const data = await res.json()

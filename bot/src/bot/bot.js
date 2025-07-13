@@ -18,6 +18,7 @@ const { Telegraf, Markup } = require('telegraf')
 const path = require('path')
 const messages = require('../messages')
 const taskFields = require('../../shared/taskFields.cjs')
+const formatTask = require('../utils/formatTask')
 const {
   createTask,
   assignTask,
@@ -110,7 +111,7 @@ function taskKeyboard(id) {
 async function refreshTaskMessage(ctx, id) {
   const t = await getTask(id)
   if (!t) return
-  const text = `${t.title} (${t.status})`
+  const text = formatTask(t)
   await ctx.editMessageText(text, taskKeyboard(id))
 }
 
@@ -155,7 +156,7 @@ bot.start(async (ctx) => {
     const taskId = payload.slice(5)
     const task = await getTask(taskId)
     if (task) {
-      await ctx.reply(`${task.title} (${task.status})`)
+      await ctx.reply(formatTask(task))
       url += `&task=${taskId}`
     } else {
       await ctx.reply('Задача не найдена')
@@ -270,7 +271,7 @@ bot.command('list_tasks', async ctx => {
     return ctx.reply(messages.noTasks)
   }
   for (const t of tasks) {
-    await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
+    await ctx.reply(formatTask(t), taskKeyboard(t._id))
   }
 })
 
@@ -281,7 +282,7 @@ bot.command('my_tasks', async ctx => {
   }
   if (tasks.length === 1) {
     const t = tasks[0]
-    return ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
+    return ctx.reply(formatTask(t), taskKeyboard(t._id))
   }
   const rows = tasks.map(t => [Markup.button.callback(t.title, `mytask_${t._id}`)])
   await ctx.reply(messages.chooseTask, Markup.inlineKeyboard(rows))
@@ -320,7 +321,7 @@ bot.command('list_all_tasks', async (ctx) => {
   }
   for (const t of tasks) {
     await ctx.reply(
-      `${t.id}: ${t.task_description} (${t.status})`,
+      formatTask(t),
       Markup.inlineKeyboard([
         Markup.button.callback('✔️', `done_${t.id}`),
         Markup.button.callback('❌', `del_${t.id}`)
@@ -334,8 +335,7 @@ bot.command('task_info', async (ctx) => {
   if (!id) return ctx.reply('Укажите id задачи')
   const t = await getTask(id)
   if (!t) return ctx.reply('Задача не найдена')
-  const text = `${t.title}\nСтатус: ${t.status}`
-  await ctx.reply(text, taskKeyboard(id))
+  await ctx.reply(formatTask(t), taskKeyboard(id))
 })
 
 bot.command('upload_file', async (ctx) => {
@@ -408,7 +408,7 @@ bot.on('inline_query', async (ctx) => {
       type: 'article',
       id: String(t._id),
       title: t.title,
-      input_message_content: { message_text: `${t.title} (${t.status})` }
+      input_message_content: { message_text: formatTask(t) }
     }))
     return ctx.answerInlineQuery(results, { cache_time: 0 })
   }
@@ -538,7 +538,7 @@ bot.action('my_tasks', async ctx => {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
+      await ctx.reply(formatTask(t), taskKeyboard(t._id))
     }
   }
   await ctx.answerCbQuery()
@@ -554,7 +554,7 @@ bot.action('all_tasks', async ctx => {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(`${t.title} (${t.status})`, taskKeyboard(t._id))
+      await ctx.reply(formatTask(t), taskKeyboard(t._id))
     }
   }
   await ctx.answerCbQuery()
@@ -623,8 +623,7 @@ bot.action(/^mytask_(.+)$/, async ctx => {
     await ctx.answerCbQuery('Задача не найдена', { show_alert: true })
     return
   }
-  const text = `${t.title} (${t.status})`
-  await ctx.editMessageText(text, taskKeyboard(id))
+  await ctx.editMessageText(formatTask(t), taskKeyboard(id))
   await ctx.answerCbQuery()
 })
 

@@ -42,13 +42,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [requestId,setRequestId]=React.useState('');
   const [created,setCreated]=React.useState('');
   const [title, setTitle] = React.useState("");
-  const [taskType, setTaskType] = React.useState(fields.find(f=>f.name==='task_type')?.default||"");
+  const DEFAULT_TASK_TYPE=fields.find(f=>f.name==='task_type')?.default||"";
+  const DEFAULT_PRIORITY=fields.find(f=>f.name==='priority')?.default||"";
+  const DEFAULT_TRANSPORT=fields.find(f=>f.name==='transport_type')?.default||"";
+  const DEFAULT_PAYMENT=fields.find(f=>f.name==='payment_method')?.default||"";
+  const DEFAULT_STATUS=fields.find(f=>f.name==='status')?.default||"";
+
+  const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
   const [description, setDescription] = React.useState("");
   const [comment, setComment] = React.useState("");
-  const [priority, setPriority] = React.useState(fields.find(f=>f.name==='priority')?.default||"");
-  const [transportType, setTransportType] = React.useState(fields.find(f=>f.name==='transport_type')?.default||"");
-  const [paymentMethod, setPaymentMethod] = React.useState(fields.find(f=>f.name==='payment_method')?.default||"");
-  const [status, setStatus] = React.useState(fields.find(f=>f.name==='status')?.default||"");
+  const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
+  const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
+  const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
+  const [status, setStatus] = React.useState(DEFAULT_STATUS);
   const [startDate, setStartDate] = React.useState("");
   const [dueDate, setDueDate] = React.useState("");
   const [controllers, setControllers] = React.useState<string[]>([]);
@@ -143,13 +149,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
       if(!t) return;
       setTitle(t.title||"");
-      setTaskType(t.task_type||taskType);
+      setTaskType(t.task_type||DEFAULT_TASK_TYPE);
       setDescription(t.task_description||"");
       setComment(t.comment||"");
-      setPriority(t.priority||priority);
-      setTransportType(t.transport_type||transportType);
-      setPaymentMethod(t.payment_method||paymentMethod);
-      setStatus(t.status||status);
+      setPriority(t.priority||DEFAULT_PRIORITY);
+      setTransportType(t.transport_type||DEFAULT_TRANSPORT);
+      setPaymentMethod(t.payment_method||DEFAULT_PAYMENT);
+      setStatus(t.status||DEFAULT_STATUS);
       setDepartment(t.departmentId||"");
       setCreator(String(t.created_by||""));
       setAssignees(t.assignees||[]);

@@ -533,7 +533,7 @@ bot.hears(/https?:\/\/maps\.app\.goo\.gl\/[\S]+/i, async (ctx) => {
 })
 
 bot.action('my_tasks', async ctx => {
-  const tasks = await listUserTasks(ctx.from.id)
+  const tasks = await listMentionedTasks(ctx.from.id)
   if (!tasks.length) {
     await ctx.reply(messages.noTasks)
   } else {

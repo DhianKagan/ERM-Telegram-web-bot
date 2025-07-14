@@ -3,6 +3,7 @@
 # История изменений
 
 ## [Новый]
+- Подключён AdminJS на пути `/admin`, устаревшая страница «Админ» удалена
 - Переработан расчёт маршрутов: используется сервис `OSRM-Odessa-Region` вместо GraphHopper erm-map
 - Удалена страница «Справочники» и API `/api/v1/defaults` и `/api/v1/transports`; значения enum берутся из `taskFields.cjs`
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS

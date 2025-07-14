@@ -1,6 +1,6 @@
 // Административная панель на основе AdminJS
 // Модули: AdminJS, @adminjs/express, @adminjs/mongoose, express, mongoose модели
-const AdminJS = require('adminjs')
+const { default: AdminJS } = require('adminjs')
 // @adminjs/express и @adminjs/mongoose доступны только как ES-модули,
 // поэтому их импорт выполняется динамически
 const { Task, Archive, Group, User, Role, Department, Log } = require('../db/model')

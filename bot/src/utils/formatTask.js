@@ -7,7 +7,13 @@ function mdEscape(str) {
 }
 
 function stripTags(html) {
-  return String(html).replace(/<[^>]*>/g, '')
+  let prev
+  let out = String(html)
+  do {
+    prev = out
+    out = out.replace(/<[^>]*>/g, '')
+  } while (out !== prev)
+  return out
 }
 
 module.exports = function formatTask(task) {

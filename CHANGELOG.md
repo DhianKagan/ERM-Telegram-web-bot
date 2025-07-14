@@ -8,6 +8,7 @@
 - Уточнён владелец репозитория и email в SECURITY.md и CODEOWNERS
 - В `setup_and_test.sh` тесты запускаются с флагом `--detectOpenHandles`
 - Скрипт `setup_and_test.sh` проверяет `docker compose config` только при наличии команды `docker` и выводит предупреждение, если Docker не найден
+- Функция `stripTags` рекурсивно удаляет HTML-теги в комментариях
 - Добавлен скрипт `audit_deps.sh` и шаг CI для проверки зависимостей
 - Низкоуровневые уязвимости игнорируются флагом `--audit-level high`
 - Эндпойнты `/table`, `/nearest`, `/match` и `/trip` используют параметры `points` и `point`

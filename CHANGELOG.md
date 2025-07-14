@@ -4,6 +4,7 @@
 
 ## [Новый]
 - Исправлен импорт AdminJS через `{ default }`, метод `registerAdapter` доступен.
+- Исправлен импорт `@adminjs/mongoose` через `* as`, исключена ошибка `does not provide an export named 'default'`.
 - Подключён AdminJS на пути `/admin`, устаревшая страница «Админ» удалена
 - Модули `@adminjs/express` и `@adminjs/mongoose` подключаются статически как ES‑модули
 - Инициализация AdminJS происходит после завершения подключения к MongoDB

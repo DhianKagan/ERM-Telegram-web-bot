@@ -58,6 +58,7 @@ const validate = validations => [
   // подключение моделей и базы данных
   require('../db/model')
   const app = express()
+  app.use(require('./middleware').requestLogger)
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..')
   const pub = path.join(root, 'public')

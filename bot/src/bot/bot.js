@@ -35,7 +35,8 @@ const {
   updateUser,
   searchTasks,
   addAttachment,
-  deleteTask
+  deleteTask,
+  writeLog
 } = require('../services/service')
 const { getMemberStatus, getTelegramId } = require('../services/userInfoService')
 const { uploadFile } = require('../services/r2')
@@ -45,11 +46,27 @@ const { expandMapsUrl, extractCoords } = require('../services/maps')
 const { verifyAdmin, generateToken } = require('../auth/auth')
 const { startScheduler } = require('../services/scheduler')
 const bot = new Telegraf(botToken)
+if (typeof bot.use === 'function') {
+  bot.use(async (ctx, next) => {
+    if (ctx.message?.text) {
+      await writeLog(`Бот получил: ${ctx.message.text}`)
+    } else if (ctx.callbackQuery?.data) {
+      await writeLog(`Бот callback: ${ctx.callbackQuery.data}`)
+    }
+    return next()
+  })
+}
 require('../db/model')
 
 // Хранилище незавершённых команд /assign_task
 const pendingAssignments = new Map()
 const pendingComments = new Map()
+
+async function safeEditMessageText(ctx, text, extra) {
+  const current = ctx.update?.callback_query?.message?.text
+  if (current === text) return
+  await ctx.editMessageText(text, extra)
+}
 
 // Функция отправки кнопки. По умолчанию используется тип Web App.
 // Для открытия во внешнем браузере установите asWebApp = false
@@ -112,7 +129,7 @@ async function refreshTaskMessage(ctx, id) {
   const t = await getTask(id)
   if (!t) return
   const text = formatTask(t)
-  await ctx.editMessageText(text, taskKeyboard(id))
+  await safeEditMessageText(ctx, text, taskKeyboard(id))
 }
 
 // Главное меню с кнопками команд
@@ -382,7 +399,15 @@ bot.command('edit_last', async (ctx) => {
   const [id, ...text] = ctx.message.text.split(' ').slice(1)
   if (!id) return ctx.reply(messages.messageIdRequired)
   if (!text.length) return ctx.reply(messages.editTextRequired)
-  await call('editMessageText', { chat_id: ctx.chat.id, message_id: Number(id), text: text.join(' ') })
+  try {
+    await call('editMessageText', { chat_id: ctx.chat.id, message_id: Number(id), text: text.join(' ') })
+  } catch (err) {
+    if (err.description && err.description.includes('message is not modified')) {
+      await writeLog('Сообщение не изменилось')
+    } else {
+      throw err
+    }
+  }
 })
 
 bot.on('inline_query', async (ctx) => {
@@ -584,7 +609,8 @@ bot.action(/^complete_(full|partial|changed)_(.+)$/, async ctx => {
 
 bot.action(/^complete_(.+)$/, async ctx => {
   const id = ctx.match[1]
-  await ctx.editMessageText(
+  await safeEditMessageText(
+    ctx,
     'Выберите вариант',
     Markup.inlineKeyboard([
       [Markup.button.callback('Полностью', `complete_full_${id}`)],
@@ -605,7 +631,8 @@ bot.action(/^cancel_(technical|canceled|declined)_(.+)$/, async ctx => {
 
 bot.action(/^cancel_(.+)$/, async ctx => {
   const id = ctx.match[1]
-  await ctx.editMessageText(
+  await safeEditMessageText(
+    ctx,
     'Причина отмены?',
     Markup.inlineKeyboard([
       [Markup.button.callback('Технические', `cancel_technical_${id}`)],
@@ -623,7 +650,7 @@ bot.action(/^mytask_(.+)$/, async ctx => {
     await ctx.answerCbQuery('Задача не найдена', { show_alert: true })
     return
   }
-  await ctx.editMessageText(formatTask(t), taskKeyboard(id))
+  await safeEditMessageText(ctx, formatTask(t), taskKeyboard(id))
   await ctx.answerCbQuery()
 })
 
@@ -638,7 +665,7 @@ bot.action(/^del_(.+)$/, async (ctx) => {
   const id = ctx.match[1]
   await deleteTask(id)
   await ctx.answerCbQuery(messages.taskDeleted, { show_alert: false })
-  await ctx.editMessageText(messages.taskDeleted)
+  await safeEditMessageText(ctx, messages.taskDeleted)
 })
 
 bot.action('open_app', async (ctx) => {

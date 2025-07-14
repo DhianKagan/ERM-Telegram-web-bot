@@ -71,9 +71,9 @@ module.exports = function formatTask(task) {
     lines.push(`👤 *Создатель:* \`${mdEscape(String(task.created_by))}\``)
   }
 
-  if (task.comment) {
-    const text = stripTags(task.comment)
-    if (text.trim()) lines.push(`💬 ${mdEscape(text.trim())}`)
+  if (task.task_description) {
+    const text = stripTags(task.task_description)
+    if (text.trim()) lines.push(`📝 ${mdEscape(text.trim())}`)
   }
 
   return lines.join('\n')

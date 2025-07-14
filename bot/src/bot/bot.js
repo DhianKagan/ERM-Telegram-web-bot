@@ -131,7 +131,11 @@ async function refreshTaskMessage(ctx, id) {
   const t = await getTask(id)
   if (!t) return
   const text = formatTask(t)
-  await safeEditMessageText(ctx, text, { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) })
+  await safeEditMessageText(
+    ctx,
+    text,
+    { parse_mode: 'MarkdownV2', disable_web_page_preview: true, ...taskKeyboard(id, t.google_route_url) }
+  )
 }
 
 // Главное меню с кнопками команд
@@ -175,7 +179,10 @@ bot.start(async (ctx) => {
     const taskId = payload.slice(5)
     const task = await getTask(taskId)
     if (task) {
-      await ctx.reply(formatTask(task))
+      await ctx.reply(
+        formatTask(task),
+        { parse_mode: 'MarkdownV2', disable_web_page_preview: true }
+      )
       url += `&task=${taskId}`
     } else {
       await ctx.reply('Задача не найдена')
@@ -292,7 +299,11 @@ bot.command('list_tasks', async ctx => {
   for (const t of tasks) {
     await ctx.reply(
       formatTask(t),
-      { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+      {
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
+        ...taskKeyboard(t._id, t.google_route_url)
+      }
     )
   }
 })
@@ -306,7 +317,11 @@ bot.command('my_tasks', async ctx => {
     const t = tasks[0]
     return ctx.reply(
       formatTask(t),
-      { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+      {
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
+        ...taskKeyboard(t._id, t.google_route_url)
+      }
     )
   }
   const rows = tasks.map(t => [Markup.button.callback(t.title, `mytask_${t._id}`)])
@@ -349,6 +364,7 @@ bot.command('list_all_tasks', async (ctx) => {
       formatTask(t),
       {
         parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
         ...Markup.inlineKeyboard([
           Markup.button.callback('✔️', `done_${t.id}`),
           Markup.button.callback('❌', `del_${t.id}`)
@@ -365,7 +381,11 @@ bot.command('task_info', async (ctx) => {
   if (!t) return ctx.reply('Задача не найдена')
   await ctx.reply(
     formatTask(t),
-    { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) }
+    {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true,
+      ...taskKeyboard(id, t.google_route_url)
+    }
   )
 })
 
@@ -579,7 +599,11 @@ bot.action('my_tasks', async ctx => {
     for (const t of tasks) {
       await ctx.reply(
         formatTask(t),
-        { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+        {
+          parse_mode: 'MarkdownV2',
+          disable_web_page_preview: true,
+          ...taskKeyboard(t._id, t.google_route_url)
+        }
       )
     }
   }
@@ -598,7 +622,11 @@ bot.action('all_tasks', async ctx => {
     for (const t of tasks) {
       await ctx.reply(
         formatTask(t),
-        { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+        {
+          parse_mode: 'MarkdownV2',
+          disable_web_page_preview: true,
+          ...taskKeyboard(t._id, t.google_route_url)
+        }
       )
     }
   }
@@ -673,7 +701,11 @@ bot.action(/^mytask_(.+)$/, async ctx => {
   await safeEditMessageText(
     ctx,
     formatTask(t),
-    { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) }
+    {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true,
+      ...taskKeyboard(id, t.google_route_url)
+    }
   )
   await ctx.answerCbQuery()
 })

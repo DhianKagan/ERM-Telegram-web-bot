@@ -155,7 +155,7 @@ const validate = validations => [
   app.use(express.static(path.join(__dirname, '../../public')))
 
   // AdminJS для управления данными MongoDB
-  const initAdmin = require('../admin/admin')
+  const { default: initAdmin } = await import('../admin/admin.mjs')
   await initAdmin(app)
 
   // авторизация реализована через код подтверждения из Telegram

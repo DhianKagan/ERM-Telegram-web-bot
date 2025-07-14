@@ -15,4 +15,12 @@ export default [
       globals: globals.node,
     },
   },
+  {
+    files: ['**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+  },
 ];

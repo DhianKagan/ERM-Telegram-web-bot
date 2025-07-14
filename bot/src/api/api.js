@@ -55,7 +55,9 @@ const validate = validations => [
 ]
 
 ;(async () => {
-  // подключение моделей и базы данных
+  // подключение к MongoDB и моделям
+  const connect = require('../db/connection')
+  await connect()
   require('../db/model')
   const app = express()
   app.use(require('./middleware').requestLogger)

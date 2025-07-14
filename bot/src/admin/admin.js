@@ -6,6 +6,8 @@ const { default: AdminJS } = require('adminjs')
 const { Task, Archive, Group, User, Role, Department, Log } = require('../db/model')
 
 async function initAdmin(app) {
+  const connect = require('../db/connection')
+  await connect()
   const { default: AdminJSMongoose } = await import('@adminjs/mongoose')
   AdminJS.registerAdapter(AdminJSMongoose)
   const { default: AdminJSExpress } = await import('@adminjs/express')

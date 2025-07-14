@@ -1,6 +1,7 @@
 // Middleware проверки JWT и базовая обработка ошибок.
 // Модули: jsonwebtoken, config
 const jwt = require('jsonwebtoken');
+const { writeLog } = require('../services/service');
 
 // Обёртка для перехвата ошибок асинхронных функций
 const asyncHandler = fn => async (req, res, next) => {
@@ -47,4 +48,13 @@ function verifyToken(req, res, next) {
   });
 }
 
-module.exports = { verifyToken, asyncHandler, errorHandler };
+function requestLogger(req, res, next) {
+  const { method, originalUrl } = req
+  writeLog(`API запрос ${method} ${originalUrl}`).catch(() => {})
+  res.on('finish', () => {
+    writeLog(`API ответ ${method} ${originalUrl} ${res.statusCode}`).catch(() => {})
+  })
+  next()
+}
+
+module.exports = { verifyToken, asyncHandler, errorHandler, requestLogger };

@@ -67,7 +67,7 @@ const taskSchema = new mongoose.Schema({
   work_details: workSchema,
   title: { type: String, required: true },
   slug: String,
-  task_description: String,
+  task_description: { type: String, maxlength: 4096 },
   // Тип задачи пополнился вариантами строительства и ремонта
   task_type: {
     type: String,
@@ -99,7 +99,7 @@ const taskSchema = new mongoose.Schema({
   priority: { type: String, enum: ['Срочно', 'В течение дня', 'Бессрочно'], default: 'В течение дня' },
   priority_id: Number,
   created_by: Number,
-  comments: [{ author_id: Number, text: String, created_at: { type: Date, default: Date.now } }],
+  comments: [{ author_id: Number, text: { type: String, maxlength: 4096 }, created_at: { type: Date, default: Date.now } }],
   status: {
     type: String,
     enum: ['Новая', 'В работе', 'Выполнена', 'Отменена'],
@@ -115,7 +115,7 @@ const taskSchema = new mongoose.Schema({
     enum: ['technical', 'canceled', 'declined']
   },
   checklist: [checklistItemSchema],
-  comment: String,
+  comment: { type: String, maxlength: 4096 },
   files: [String],
   attachments: [{ name: String, url: String }],
   transport_type: { type: String, enum: ['Пешком', 'Авто', 'Дрон'], default: 'Авто' },

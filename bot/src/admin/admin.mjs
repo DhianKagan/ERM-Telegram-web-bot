@@ -2,7 +2,7 @@
 // Модули: AdminJS, @adminjs/express, @adminjs/mongoose, express, mongoose модели
 import AdminJS from 'adminjs'
 import AdminJSExpress from '@adminjs/express'
-import AdminJSMongoose from '@adminjs/mongoose'
+import * as AdminJSMongoose from '@adminjs/mongoose'
 import models from '../db/model.js'
 const { Task, Archive, Group, User, Role, Department, Log } = models
 import connect from '../db/connection.js'

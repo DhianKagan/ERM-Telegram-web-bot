@@ -6,6 +6,10 @@ function mdEscape(str) {
   return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&')
 }
 
+function stripTags(html) {
+  return String(html).replace(/<[^>]*>/g, '')
+}
+
 module.exports = function formatTask(task) {
   const lines = []
   const idTitle = [task.request_id,
@@ -14,9 +18,18 @@ module.exports = function formatTask(task) {
     .join(' ')
   if (idTitle) lines.push(`📌 *Задача:* _${mdEscape(idTitle)}_`)
 
+  if (task.task_type) {
+    lines.push(`🏷 *Тип:* _${mdEscape(task.task_type)}_`)
+  }
+
   if (task.due_date) {
     const d = new Date(task.due_date)
     lines.push(`⏰ *Срок:* \`${mdEscape(new Intl.DateTimeFormat('ru-RU').format(d))}\``)
+  }
+
+  if (task.start_date) {
+    const d = new Date(task.start_date)
+    lines.push(`🗓 *Начало:* \`${mdEscape(new Intl.DateTimeFormat('ru-RU').format(d))}\``)
   }
 
   const start = task.start_location ? mdEscape(task.start_location) : ''
@@ -41,6 +54,20 @@ module.exports = function formatTask(task) {
 
   if (task.route_distance_km) {
     lines.push(`🗺 *Расстояние:* ${mdEscape(String(task.route_distance_km))} км`)
+  }
+
+  if (Array.isArray(task.assignees) && task.assignees.length) {
+    const ids = task.assignees.map(id => `\`${mdEscape(String(id))}\``).join(', ')
+    lines.push(`👥 *Исполнители:* ${ids}`)
+  }
+
+  if (task.created_by) {
+    lines.push(`👤 *Создатель:* \`${mdEscape(String(task.created_by))}\``)
+  }
+
+  if (task.comment) {
+    const text = stripTags(task.comment)
+    if (text.trim()) lines.push(`💬 ${mdEscape(text.trim())}`)
   }
 
   return lines.join('\n')

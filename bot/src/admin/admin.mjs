@@ -3,7 +3,8 @@
 import AdminJS from 'adminjs'
 import AdminJSExpress from '@adminjs/express'
 import AdminJSMongoose from '@adminjs/mongoose'
-import { Task, Archive, Group, User, Role, Department, Log } from '../db/model'
+import models from '../db/model.js'
+const { Task, Archive, Group, User, Role, Department, Log } = models
 import connect from '../db/connection.js'
 
 async function initAdmin(app) {

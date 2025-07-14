@@ -34,7 +34,7 @@
     "@adminjs/mongoose": "^4.1.0"
   },
   "overrides": {
-    "glob": "^11.0.3"
+    "glob": "^7.2.3"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.27.2",

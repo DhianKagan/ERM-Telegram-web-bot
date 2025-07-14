@@ -154,7 +154,7 @@ const validate = validations => [
 
   // AdminJS для управления данными MongoDB
   const initAdmin = require('../admin/admin')
-  initAdmin(app)
+  await initAdmin(app)
 
   // авторизация реализована через код подтверждения из Telegram
 

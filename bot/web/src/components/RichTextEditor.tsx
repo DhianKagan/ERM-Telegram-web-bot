@@ -10,13 +10,19 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ value, onChange, readOnly }: RichTextEditorProps) {
+  if (readOnly) {
+    return (
+      <div className="ql-snow">
+        <div className="ql-editor" dangerouslySetInnerHTML={{ __html: value }} />
+      </div>
+    );
+  }
   return (
     <ReactQuill
       theme="snow"
       value={value}
       onChange={(val) => onChange && onChange(val)}
       className="bg-white"
-      readOnly={readOnly}
     />
   );
 }

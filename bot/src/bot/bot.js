@@ -112,24 +112,26 @@ async function showTaskMenu(ctx) {
   )
 }
 
-function taskKeyboard(id) {
-  return Markup.inlineKeyboard([
+function taskKeyboard(id, route) {
+  const rows = [
     [
-      Markup.button.callback('Принять', `accept_${id}`),
-      Markup.button.callback('Выполнено', `complete_${id}`)
+      Markup.button.callback('📥 Принять', `accept_${id}`),
+      Markup.button.callback('✔️ Выполнено', `complete_${id}`)
     ],
     [
-      Markup.button.callback('Изменить', `edit_${id}`),
-      Markup.button.callback('Отменить', `cancel_${id}`)
+      Markup.button.callback('✏️ Изменить', `edit_${id}`),
+      Markup.button.callback('❌ Отменить', `cancel_${id}`)
     ]
-  ])
+  ]
+  if (route) rows.push([Markup.button.url('📍 Маршрут', route)])
+  return Markup.inlineKeyboard(rows)
 }
 
 async function refreshTaskMessage(ctx, id) {
   const t = await getTask(id)
   if (!t) return
   const text = formatTask(t)
-  await safeEditMessageText(ctx, text, taskKeyboard(id))
+  await safeEditMessageText(ctx, text, { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) })
 }
 
 // Главное меню с кнопками команд
@@ -288,7 +290,10 @@ bot.command('list_tasks', async ctx => {
     return ctx.reply(messages.noTasks)
   }
   for (const t of tasks) {
-    await ctx.reply(formatTask(t), taskKeyboard(t._id))
+    await ctx.reply(
+      formatTask(t),
+      { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+    )
   }
 })
 
@@ -299,7 +304,10 @@ bot.command('my_tasks', async ctx => {
   }
   if (tasks.length === 1) {
     const t = tasks[0]
-    return ctx.reply(formatTask(t), taskKeyboard(t._id))
+    return ctx.reply(
+      formatTask(t),
+      { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+    )
   }
   const rows = tasks.map(t => [Markup.button.callback(t.title, `mytask_${t._id}`)])
   await ctx.reply(messages.chooseTask, Markup.inlineKeyboard(rows))
@@ -339,10 +347,13 @@ bot.command('list_all_tasks', async (ctx) => {
   for (const t of tasks) {
     await ctx.reply(
       formatTask(t),
-      Markup.inlineKeyboard([
-        Markup.button.callback('✔️', `done_${t.id}`),
-        Markup.button.callback('❌', `del_${t.id}`)
-      ])
+      {
+        parse_mode: 'MarkdownV2',
+        ...Markup.inlineKeyboard([
+          Markup.button.callback('✔️', `done_${t.id}`),
+          Markup.button.callback('❌', `del_${t.id}`)
+        ])
+      }
     )
   }
 })
@@ -352,7 +363,10 @@ bot.command('task_info', async (ctx) => {
   if (!id) return ctx.reply('Укажите id задачи')
   const t = await getTask(id)
   if (!t) return ctx.reply('Задача не найдена')
-  await ctx.reply(formatTask(t), taskKeyboard(id))
+  await ctx.reply(
+    formatTask(t),
+    { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) }
+  )
 })
 
 bot.command('upload_file', async (ctx) => {
@@ -563,7 +577,10 @@ bot.action('my_tasks', async ctx => {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(formatTask(t), taskKeyboard(t._id))
+      await ctx.reply(
+        formatTask(t),
+        { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+      )
     }
   }
   await ctx.answerCbQuery()
@@ -579,7 +596,10 @@ bot.action('all_tasks', async ctx => {
     await ctx.reply(messages.noTasks)
   } else {
     for (const t of tasks) {
-      await ctx.reply(formatTask(t), taskKeyboard(t._id))
+      await ctx.reply(
+        formatTask(t),
+        { parse_mode: 'MarkdownV2', ...taskKeyboard(t._id, t.google_route_url) }
+      )
     }
   }
   await ctx.answerCbQuery()
@@ -650,7 +670,11 @@ bot.action(/^mytask_(.+)$/, async ctx => {
     await ctx.answerCbQuery('Задача не найдена', { show_alert: true })
     return
   }
-  await safeEditMessageText(ctx, formatTask(t), taskKeyboard(id))
+  await safeEditMessageText(
+    ctx,
+    formatTask(t),
+    { parse_mode: 'MarkdownV2', ...taskKeyboard(id, t.google_route_url) }
+  )
   await ctx.answerCbQuery()
 })
 

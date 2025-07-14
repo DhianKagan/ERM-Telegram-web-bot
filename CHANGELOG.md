@@ -2,12 +2,8 @@
 
 # История изменений
 
-## [Новый]
-- Исправлен импорт AdminJS через `{ default }`, метод `registerAdapter` доступен.
-- Исправлен импорт `@adminjs/mongoose` через `* as`, исключена ошибка `does not provide an export named 'default'`.
-- Подключён AdminJS на пути `/admin`, устаревшая страница «Админ» удалена
-- Модули `@adminjs/express` и `@adminjs/mongoose` подключаются статически как ES‑модули
-- Инициализация AdminJS происходит после завершения подключения к MongoDB
+- Удалён AdminJS, админка `/admin` теперь использует кастомный бекенд
+- Бекенд защищён базовой аутентификацией через `express-basic-auth`
 - Меню бота упрощено: доступны только `/start` и `/register`
 - Переработан расчёт маршрутов: используется сервис `OSRM-Odessa-Region` вместо GraphHopper erm-map
 - Удалена страница «Справочники» и API `/api/v1/defaults` и `/api/v1/transports`; значения enum берутся из `taskFields.cjs`

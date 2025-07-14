@@ -1,14 +1,13 @@
 // Административная панель на основе AdminJS
 // Модули: AdminJS, @adminjs/express, @adminjs/mongoose, express, mongoose модели
 const AdminJS = require('adminjs')
-// @adminjs/express предоставляет только ES-модуль,
-// поэтому импорт выполняется динамически
-const AdminJSMongoose = require('@adminjs/mongoose')
+// @adminjs/express и @adminjs/mongoose доступны только как ES-модули,
+// поэтому их импорт выполняется динамически
 const { Task, Archive, Group, User, Role, Department, Log } = require('../db/model')
 
-AdminJS.registerAdapter(AdminJSMongoose)
-
 async function initAdmin(app) {
+  const { default: AdminJSMongoose } = await import('@adminjs/mongoose')
+  AdminJS.registerAdapter(AdminJSMongoose)
   const { default: AdminJSExpress } = await import('@adminjs/express')
   const admin = new AdminJS({
     rootPath: '/admin',

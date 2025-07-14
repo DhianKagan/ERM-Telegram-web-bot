@@ -291,8 +291,8 @@ const validate = validations => [
   })
 
   // SPA fallback: Express 5 требует имя wildcard-параметра
-  // поэтому используем "/{*splat}" вместо устаревшего "*"
-  app.get('/{*splat}', spaRateLimiter, (_req, res) => {
+  // поэтому используем "/:splat(*)" вместо устаревшего "*" и некорректного "/{*splat}"
+  app.get('/:splat(*)', spaRateLimiter, (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
 

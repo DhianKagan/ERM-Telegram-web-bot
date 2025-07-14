@@ -1,15 +1,14 @@
-// Кастомный бекенд админки на основе express-basic-auth
-// Модуль: express, express-basic-auth, path
+// Кастомный бекенд админки без базовой аутентификации
+// Модуль: express, path
 const path = require('path')
 const express = require('express')
-const basicAuth = require('express-basic-auth')
 const rateLimit = require('express-rate-limit')
+const { verifyToken } = require('../api/middleware')
+const checkRole = require('../middleware/checkRole')
 
 function initCustomAdmin(app) {
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin'
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password'
-  app.use('/admin', basicAuth({ users: { [ADMIN_EMAIL]: ADMIN_PASSWORD }, challenge: true }))
-
+  // Доступ контролируется ролью пользователя из базы данных
+  
   const router = express.Router()
   const pub = path.join(__dirname, '../../public')
 
@@ -20,6 +19,7 @@ function initCustomAdmin(app) {
   })
 
   router.use(adminRateLimiter)
+  router.use(verifyToken, checkRole('admin'))
   router.use(express.static(pub))
   router.get('*', (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))

@@ -23,7 +23,7 @@ export default function Tasks() {
 
 
   React.useEffect(() => {
-    authFetch("/tasks")
+    authFetch("/api/v1/tasks")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         setTasks(data);
@@ -34,12 +34,12 @@ export default function Tasks() {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     setPosting(true);
-    const res = await authFetch("/tasks", {
+    const res = await authFetch("/api/v1/tasks", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ description: text }),
+      body: JSON.stringify({ title: text, task_description: text }),
     });
     if (res.ok) {
       setText("");

@@ -14,6 +14,9 @@ exports.sendCode = async (req, res) => {
 
 exports.verifyCode = async (req, res) => {
   const { telegramId, code, username } = req.body
+  if (typeof telegramId !== 'string') {
+    return res.status(400).json({ error: 'Invalid telegramId' })
+  }
   if (otp.verifyCode({ telegramId, code })) {
     const id = telegramId
     try {

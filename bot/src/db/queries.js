@@ -157,7 +157,7 @@ async function createUser(id, username, role = 'user', extra = {}) {
 }
 
 async function getUser(id) {
-  return User.findOne({ telegram_id: id })
+  return User.findOne({ telegram_id: { $eq: id } })
 }
 
 

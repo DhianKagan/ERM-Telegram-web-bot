@@ -14,11 +14,11 @@ exports.sendCode = async (req, res) => {
 
 exports.verifyCode = async (req, res) => {
   const { telegramId, code, username } = req.body
-  if (typeof telegramId !== 'string') {
+  const id = String(telegramId)
+  if (!/^[0-9]+$/.test(id)) {
     return res.status(400).json({ error: 'Invalid telegramId' })
   }
-  if (otp.verifyCode({ telegramId, code })) {
-    const id = telegramId
+  if (otp.verifyCode({ telegramId: id, code })) {
     try {
       const status = await getMemberStatus(id)
       if (!['creator', 'administrator', 'member'].includes(status)) {
@@ -47,8 +47,11 @@ exports.sendAdminCode = async (req, res) => {
 
 exports.verifyAdminCode = async (req, res) => {
   const { telegramId, code, username } = req.body
-  if (otp.verifyAdminCode({ telegramId, code })) {
-    const id = telegramId
+  const id = String(telegramId)
+  if (!/^[0-9]+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid telegramId' })
+  }
+  if (otp.verifyAdminCode({ telegramId: id, code })) {
     let user = await getUser(id)
     if (!user) user = await createUser(id, username, 'admin')
     const role = user.role || 'user'

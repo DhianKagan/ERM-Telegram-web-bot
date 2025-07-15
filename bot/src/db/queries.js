@@ -1,6 +1,10 @@
 // Централизованные функции работы с MongoDB для всего проекта
 const { Task, Archive, Group, User, Department, Log } = require('./model')
 
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 async function createTask(data) {
   return Task.create(data)
 }
@@ -73,10 +77,11 @@ async function listRoutes(filters = {}) {
 }
 
 async function searchTasks(text) {
+  const safe = escapeRegex(text)
   return Task.find({
     $or: [
-      { title: { $regex: text, $options: 'i' } },
-      { task_description: { $regex: text, $options: 'i' } }
+      { title: { $regex: safe, $options: 'i' } },
+      { task_description: { $regex: safe, $options: 'i' } }
     ]
   }).limit(10)
 }
@@ -152,12 +157,16 @@ async function deleteDepartment(id) {
 }
 
 async function createUser(id, username, role = 'user', extra = {}) {
-  const email = `${id}@telegram.local`
-  return User.create({ telegram_id: id, username, email, role, ...extra })
+  const telegramId = Number(id)
+  if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id')
+  const email = `${telegramId}@telegram.local`
+  return User.create({ telegram_id: telegramId, username, email, role, ...extra })
 }
 
 async function getUser(id) {
-  return User.findOne({ telegram_id: { $eq: id } })
+  const telegramId = Number(id)
+  if (Number.isNaN(telegramId)) return null
+  return User.findOne({ telegram_id: telegramId })
 }
 
 
@@ -166,7 +175,9 @@ async function listUsers() {
 }
 
 async function updateUser(id, data) {
-  return User.findOneAndUpdate({ telegram_id: id }, data, { new: true })
+  const telegramId = Number(id)
+  if (Number.isNaN(telegramId)) return null
+  return User.findOneAndUpdate({ telegram_id: telegramId }, data, { new: true })
 }
 
 

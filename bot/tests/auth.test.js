@@ -1,12 +1,9 @@
-// Тесты модуля auth: проверка админа и JWT. Используются telegraf и jsonwebtoken.
+// Тесты модуля auth: генерация JWT и проверка кода
 jest.mock('telegraf', () => ({
-  Telegraf: jest.fn().mockImplementation(() => ({
-    telegram: { getChatAdministrators: jest.fn().mockResolvedValue([{ user: { id: 1 } }]) }
-  }))
+  Telegraf: jest.fn()
 }))
 jest.mock('jsonwebtoken')
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }))
-jest.mock('../src/services/gateway', () => ({ sendSms: jest.fn() }))
 jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member')
 }))
@@ -20,7 +17,7 @@ process.env.CHAT_ID = '1'
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 'test'
 process.env.APP_URL = 'https://localhost'
-const { verifyAdmin, generateToken } = require('../src/auth/auth')
+const { generateToken } = require('../src/auth/auth')
 const jwt = require('jsonwebtoken')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
@@ -31,18 +28,9 @@ afterEach(() => {
   jest.setSystemTime(0)
 })
 
-test('verifyAdmin true for admin id', async () => {
-  const ok = await verifyAdmin(1)
-  expect(ok).toBe(true)
-})
-
-test('verifyAdmin false for non admin', async () => {
-  const ok = await verifyAdmin(2)
-  expect(ok).toBe(false)
-})
 
 test('generateToken returns valid jwt', () => {
-  const token = generateToken({ id: 5, username: 'a', isAdmin: true })
+  const token = generateToken({ id: 5, username: 'a', role: 'admin' })
 const data = jwt.decode(token)
   expect(data.id).toBe(5)
 })
@@ -79,11 +67,11 @@ test('verifyCode возвращает токен', async () => {
 })
 
 test('clean удаляет старые записи при новом вызове', async () => {
-  const req1 = { body: { phone: '1' } }
+  const req1 = { body: { telegramId: 1 } }
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
   await authCtrl.sendCode(req1, res)
   jest.setSystemTime(6 * 60 * 1000)
-  const req2 = { body: { phone: '2' } }
+  const req2 = { body: { telegramId: 2 } }
   await authCtrl.sendCode(req2, res)
   expect(authCtrl.codes.size).toBe(1)
 })

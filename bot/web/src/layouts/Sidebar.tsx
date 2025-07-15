@@ -22,8 +22,8 @@ const items = [
   { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/roles", label: "Роли", icon: Cog6ToothIcon },
-  { to: "/logs", label: "Логи", icon: ClipboardDocumentListIcon },
+  { to: "/admin/roles", label: "Роли", icon: Cog6ToothIcon },
+  { to: "/admin/logs", label: "Логи", icon: ClipboardDocumentListIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 

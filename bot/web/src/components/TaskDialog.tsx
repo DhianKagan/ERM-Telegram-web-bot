@@ -35,7 +35,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isAdmin = React.useMemo(() => {
     const token = localStorage.getItem('token');
     const data = token ? parseJwt(token) : null;
-    return Boolean((data as any)?.isAdmin);
+    return (data as any)?.role === 'admin';
   }, []);
   const [editing, setEditing] = React.useState(!isEdit);
   const [expanded, setExpanded] = React.useState(false);

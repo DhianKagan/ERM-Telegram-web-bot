@@ -1,20 +1,20 @@
 // Контроллер отправки и проверки кодов подтверждения.
 // Модули: otp, auth, queries, userInfoService
 const otp = require('../services/otp')
-const { generateToken, verifyAdmin } = require('../auth/auth')
+const { generateToken } = require('../auth/auth')
 const { getUser, createUser } = require('../db/queries')
 const { getMemberStatus } = require('../services/userInfoService')
 
 exports.sendCode = async (req, res) => {
-  const { phone, telegramId } = req.body
-  if (!phone && !telegramId) return res.status(400).json({ error: 'phone or telegramId required' })
-  await otp.sendCode({ phone, telegramId })
+  const { telegramId } = req.body
+  if (!telegramId) return res.status(400).json({ error: 'telegramId required' })
+  await otp.sendCode({ telegramId })
   res.json({ status: 'sent' })
 }
 
 exports.verifyCode = async (req, res) => {
-  const { phone, telegramId, code, username } = req.body
-  if (otp.verifyCode({ phone, telegramId, code })) {
+  const { telegramId, code, username } = req.body
+  if (otp.verifyCode({ telegramId, code })) {
     const id = telegramId
     try {
       const status = await getMemberStatus(id)
@@ -26,8 +26,8 @@ exports.verifyCode = async (req, res) => {
     }
     let user = await getUser(id)
     if (!user) user = await createUser(id, username)
-    const isAdmin = await verifyAdmin(id)
-    const token = generateToken({ id, username: user.username, isAdmin })
+    const role = user.roleId?.name || 'user'
+    const token = generateToken({ id, username: user.username, role })
     return res.json({ token })
   }
   res.status(400).json({ error: 'invalid code' })

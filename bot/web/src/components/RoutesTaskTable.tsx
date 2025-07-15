@@ -46,7 +46,7 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
   const isAdmin = React.useMemo(() => {
     const token = localStorage.getItem('token')
     const data = token ? parseJwt(token) : null
-    return Boolean(data?.isAdmin)
+    return data?.role === 'admin'
   }, [])
   const openTask = (id: string) => {
     if (!isAdmin) return

@@ -1,7 +1,6 @@
 // Сервис генерации и проверки одноразовых кодов.
-// Модули: telegramApi, gateway
+// Модули: telegramApi
 const { call } = require('./telegramApi')
-const { sendSms } = require('./gateway')
 
 const codes = new Map()
 const attempts = new Map()
@@ -20,23 +19,19 @@ function clean() {
 
 setInterval(clean, EXPIRATION_MS).unref()
 
-async function sendCode({ phone, telegramId }) {
+async function sendCode({ telegramId }) {
   clean()
   const code = Math.floor(100000 + Math.random() * 900000).toString()
   const text = `Код подтверждения: ${code}`
-  const key = phone || String(telegramId)
+  const key = String(telegramId)
   codes.set(key, { code, ts: Date.now() })
   attempts.delete(key)
-  if (telegramId) {
-    await call('sendMessage', { chat_id: telegramId, text })
-  } else {
-    await sendSms(phone, text)
-  }
+  await call('sendMessage', { chat_id: telegramId, text })
 }
 
-function verifyCode({ phone, telegramId, code }) {
+function verifyCode({ telegramId, code }) {
   clean()
-  const key = phone || String(telegramId)
+  const key = String(telegramId)
   const entry = codes.get(key)
   const info = attempts.get(key) || { count: 0, ts: Date.now() }
   if (entry && info.count < MAX_ATTEMPTS && entry.code === code && Date.now() - entry.ts <= EXPIRATION_MS) {

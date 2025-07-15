@@ -1,7 +1,7 @@
 // HTTP API и мини-приложение. Модули: express, express-rate-limit,
-// сервисы и middleware. Используется spaRateLimiter
-// для ограничения /{*splat}. Есть маршрут /health для проверки
-// статуса.
+// сервисы и middleware. spaRateLimiter ограничивает SPA fallback
+// и использует маршрут "/:splat(*)" вместо устаревшего "/{*splat}".
+// Отдельный эндпойнт /health возвращает состояние сервера.
 require('dotenv').config()
 const config = require('../config')
 const express = require('express')

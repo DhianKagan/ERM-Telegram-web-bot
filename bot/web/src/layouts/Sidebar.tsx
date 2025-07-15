@@ -1,7 +1,9 @@
 // Боковое меню с навигацией по разделам
-import React from "react";
+import React, { useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/useSidebar";
+import { AuthContext } from "../context/AuthContext";
+import parseJwt from "../utils/parseJwt";
 import {
   HomeIcon,
   ClipboardDocumentListIcon,
@@ -15,20 +17,30 @@ import {
   ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
 
-const items = [
+const baseItems = [
   { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
   { to: "/tasks/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/admin", label: "Админ", icon: Cog6ToothIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
 export default function Sidebar() {
   const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
   const { pathname } = useLocation();
+  const { token } = useContext(AuthContext);
+  const role = React.useMemo(() => {
+    if (!token) return 'user';
+    const data = parseJwt(token);
+    return data?.role || 'user';
+  }, [token]);
+  const items = React.useMemo(() => {
+    return role === 'admin'
+      ? [...baseItems.slice(0, 6), { to: '/admin', label: 'Админ', icon: Cog6ToothIcon }, baseItems[6]]
+      : baseItems;
+  }, [role]);
   return (
     <aside
       className={`fixed top-0 left-0 z-30 h-full ${collapsed ? 'w-20' : 'w-60'} border-r border-stroke bg-white p-4 transition-all ${open ? 'translate-x-0' : '-translate-x-full'}`}

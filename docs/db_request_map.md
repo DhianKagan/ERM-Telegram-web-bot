@@ -14,7 +14,6 @@
 | Сводка по задачам | `summary()` | `GET /api/v1/tasks/report/summary` |
 | Пользователи | `createUser()`, `listUsers()` | `POST /api/v1/users`, `GET /api/v1/users` |
 | Группы | `createGroup()`, `listGroups()` | `POST /api/v1/groups`, `GET /api/v1/groups` |
-| Роли | `createRole()`, `listRoles()` | `POST /api/v1/roles`, `GET /api/v1/roles` |
 | Логи | `writeLog()`, `listLogs()` | `POST /api/v1/tasks/:id/status`, `GET /api/v1/logs`, `POST /api/v1/logs` |
 | Создать задачу | `createTask()` | `POST /api/v1/tasks` |
 | Список задач | `getTasks()` | `GET /api/v1/tasks` |

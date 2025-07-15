@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, Group, User, Role, Department, Log } = require('./model')
+const { Task, Archive, Group, User, Department, Log } = require('./model')
 
 async function createTask(data) {
   return Task.create(data)
@@ -151,35 +151,24 @@ async function deleteDepartment(id) {
   return Department.findByIdAndDelete(id)
 }
 
-async function createUser(id, username, roleId, extra = {}) {
+async function createUser(id, username, role = 'user', extra = {}) {
   const email = `${id}@telegram.local`
-  if (!roleId) {
-    const role = await Role.findOne({ name: 'user' })
-    roleId = role ? role._id : undefined
-  }
-  return User.create({ telegram_id: id, username, email, roleId, ...extra })
+  return User.create({ telegram_id: id, username, email, role, ...extra })
 }
 
 async function getUser(id) {
-  return User.findOne({ telegram_id: id }).populate('roleId').populate('departmentId')
+  return User.findOne({ telegram_id: { $eq: id } })
 }
 
 
 async function listUsers() {
-  return User.find().populate('roleId').populate('departmentId')
+  return User.find()
 }
 
 async function updateUser(id, data) {
   return User.findOneAndUpdate({ telegram_id: id }, data, { new: true })
 }
 
-async function createRole(name) {
-  return Role.create({ name })
-}
-
-async function listRoles() {
-  return Role.find()
-}
 
 async function writeLog(message, level = 'info') {
   return Log.create({ message, level })
@@ -213,8 +202,6 @@ module.exports = {
   getUser,
   listUsers,
   updateUser,
-  createRole,
-  listRoles,
   writeLog,
   listLogs,
   searchTasks,

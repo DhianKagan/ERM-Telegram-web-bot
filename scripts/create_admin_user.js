@@ -10,7 +10,7 @@ try {
   mongoose = require('../bot/node_modules/mongoose')
 }
 
-const { User, Role } = require('../bot/src/db/model')
+const { User } = require('../bot/src/db/model')
 
 const [, , idArg, usernameArg] = process.argv
 if (!idArg) {
@@ -27,18 +27,16 @@ async function main() {
     console.error('Ошибка подключения к MongoDB:', e.message)
     process.exit(1)
   }
-  let role = await Role.findOne({ name: 'admin' })
-  if (!role) role = await Role.create({ name: 'admin' })
   let user = await User.findOne({ telegram_id: telegramId })
   if (!user) {
     user = await User.create({
       telegram_id: telegramId,
       username,
       email: `${telegramId}@telegram.local`,
-      roleId: role._id
+      role: 'admin'
     })
   } else {
-    user.roleId = role._id
+    user.role = 'admin'
     user.username = username
     await user.save()
   }

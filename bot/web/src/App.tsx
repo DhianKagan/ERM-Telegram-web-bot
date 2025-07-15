@@ -14,6 +14,7 @@ const AdminPage = lazy(() => import("./pages/Admin"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
 import Sidebar from "./layouts/Sidebar";
@@ -36,6 +37,7 @@ function Content() {
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
           <Route path="/login" element={<CodeLogin />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
           <Route
             path="/profile"

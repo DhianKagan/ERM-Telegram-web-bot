@@ -23,8 +23,6 @@
 | POST | /api/v1/groups | Создание группы |
 | GET | /api/v1/users | Список пользователей |
 | POST | /api/v1/users | Создание пользователя |
-| GET | /api/v1/roles | Список ролей |
-| POST | /api/v1/roles | Создание роли |
 | GET | /api/v1/logs | Последние логи |
 | POST | /api/v1/logs | Записать сообщение в лог |
 | GET | /api/v1/tasks | Список задач |

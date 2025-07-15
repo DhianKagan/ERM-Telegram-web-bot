@@ -27,6 +27,7 @@ const routeRouter = require('../routes/route')
 const routesRouter = require('../routes/routes')
 const optimizerRouter = require('../routes/optimizer')
 const authUserRouter = require('../routes/authUser')
+const authAdminRouter = require('../routes/authAdmin')
 const formatUser = require('../utils/formatUser')
 const {
   updateTaskStatus,
@@ -34,8 +35,6 @@ const {
   listGroups,
   createUser,
   listUsers,
-  createRole,
-  listRoles,
   createDepartment,
   listDepartments,
   updateDepartment,
@@ -124,11 +123,6 @@ const validate = validations => [
     max: 100,
     message: { error: 'Too many requests, please try again later.' }
   })
-  const rolesRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: { error: 'Too many requests, please try again later.' }
-  })
   const departmentsRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 50,
@@ -212,35 +206,6 @@ const validate = validations => [
     res.json({ status: 'ok' })
   }))
 
-  /**
-   * @swagger
-   * /api/roles:
-   *   get:
-   *     summary: Список ролей
-   *     security:
-   *       - bearerAuth: []
-   */
-
-  app.get(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
-
-    res.json(await listRoles())
-  }))
-  /**
-   * @swagger
-   * /api/roles:
-   *   post:
-   *     summary: Создать роль
-   *     security:
-   *       - bearerAuth: []
-   */
-
-  app.post(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'),
-
-    validate([body('name').isString().notEmpty()]),
-    asyncHandler(async (req, res) => {
-    const role = await createRole(req.body.name)
-    res.json(role)
-  }))
 
   /**
    * @swagger
@@ -276,6 +241,8 @@ const validate = validations => [
 
   // авторизация пользователей и личный кабинет
   app.use(`${prefix}/auth`, authUserRouter)
+  // авторизация для админки
+  app.use(`${prefix}/admin_auth`, authAdminRouter)
   // работа с картами
   app.use(`${prefix}/maps`, mapsRouter)
   // маршрут

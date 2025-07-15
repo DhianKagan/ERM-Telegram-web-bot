@@ -158,15 +158,14 @@ const userSchema = new mongoose.Schema({
   // Email используется для совместимости со старым индексом в базе.
   // Сохраняем уникальное значение на основе telegram_id.
   email: { type: String, unique: true },
-  // Роль пользователя хранится через ссылку на коллекцию roles
-  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
+  // Роль пользователя хранится строкой, по умолчанию обычный пользователь
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
   // Дата прохождения верификации через Bot API
   verified_at: Date
 })
-const roleSchema = new mongoose.Schema({ name: String })
 const departmentSchema = new mongoose.Schema({ name: String })
 const logSchema = new mongoose.Schema({
   message: String,
@@ -182,7 +181,6 @@ const Department = mongoose.model('Department', departmentSchema)
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
 const User = mongoose.model('User', userSchema, 'telegram_users')
-const Role = mongoose.model('Role', roleSchema)
 const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Archive, Group, User, Role, Department, Log }
+module.exports = { Task, Archive, Group, User, Department, Log }

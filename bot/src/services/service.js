@@ -30,8 +30,6 @@ module.exports = {
   listUsers: q.listUsers,
   updateUser: q.updateUser,
   getUser: q.getUser,
-  createRole: q.createRole,
-  listRoles: q.listRoles,
   writeLog: q.writeLog,
   listLogs: q.listLogs,
   createDepartment: q.createDepartment,

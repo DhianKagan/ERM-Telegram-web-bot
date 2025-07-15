@@ -26,7 +26,7 @@ exports.verifyCode = async (req, res) => {
     }
     let user = await getUser(id)
     if (!user) user = await createUser(id, username)
-    const role = user.roleId?.name || 'user'
+    const role = user.role || 'user'
     const token = generateToken({ id, username: user.username, role })
     return res.json({ token })
   }
@@ -34,4 +34,24 @@ exports.verifyCode = async (req, res) => {
 }
 
 exports.codes = otp.codes
+
+exports.sendAdminCode = async (req, res) => {
+  const { telegramId } = req.body
+  if (!telegramId) return res.status(400).json({ error: 'telegramId required' })
+  await otp.sendAdminCode({ telegramId })
+  res.json({ status: 'sent' })
+}
+
+exports.verifyAdminCode = async (req, res) => {
+  const { telegramId, code, username } = req.body
+  if (otp.verifyAdminCode({ telegramId, code })) {
+    const id = telegramId
+    let user = await getUser(id)
+    if (!user) user = await createUser(id, username, 'admin')
+    const role = user.role || 'user'
+    const token = generateToken({ id, username: user.username, role })
+    return res.json({ token })
+  }
+  res.status(400).json({ error: 'invalid code' })
+}
 

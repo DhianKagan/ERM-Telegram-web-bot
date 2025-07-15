@@ -10,9 +10,7 @@ const TasksPage = lazy(() => import("./pages/TasksPage"));
 const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Reports = lazy(() => import("./pages/Reports"));
-const Roles = lazy(() => import("./pages/Roles"));
-const Logs = lazy(() => import("./pages/Logs"));
-const AdminPlaceholder = lazy(() => import("./pages/AdminPlaceholder"));
+const AdminPage = lazy(() => import("./pages/Admin"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
@@ -99,23 +97,7 @@ function Content() {
             path="/admin"
             element={
               <ProtectedRoute>
-                <AdminPlaceholder />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/roles"
-            element={
-              <ProtectedRoute>
-                <Roles />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/logs"
-            element={
-              <ProtectedRoute>
-                <Logs />
+                <AdminPage />
               </ProtectedRoute>
             }
           />

@@ -8,6 +8,7 @@ import { updateTask } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import fields from "../../../shared/taskFields.cjs";
 import parseJwt from "../utils/parseJwt";
+import userLink from "../utils/userLink";
 
 interface Task {
   _id: string
@@ -284,14 +285,14 @@ export default function TasksPage() {
               <td className="px-4 py-2 text-center">{t.due_date?.slice(0,10)}</td>
               <td className="px-4 py-2">
                 {(t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []))
-                  .map((id) => (
-                    <a
+                  .map(id => (
+                    <span
                       key={id}
-                      href={`tg://user?id=${id}`}
-                      className="text-accentPrimary mr-1 underline"
-                    >
-                      {userMap[id]?.name || userMap[id]?.username || id}
-                    </a>
+                      dangerouslySetInnerHTML={{
+                        __html: userLink(id, userMap[id]?.name || userMap[id]?.username)
+                      }}
+                      className="mr-1"
+                    />
                   ))}
               </td>
             </tr>

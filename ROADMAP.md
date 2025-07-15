@@ -138,3 +138,4 @@
 110. Перед обновлением зависимостей выполняйте `npm outdated`, затем
      `./scripts/audit_deps.sh` и `./scripts/setup_and_test.sh`
 111. Поле username в ответах API содержит Telegram ID
+112. ID пользователей показываются в интерфейсе ссылкой с именем.

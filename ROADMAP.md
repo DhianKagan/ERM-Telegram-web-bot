@@ -137,3 +137,4 @@
 109. Комментарии API обновлены для нового синтаксиса маршрутов
 110. Перед обновлением зависимостей выполняйте `npm outdated`, затем
      `./scripts/audit_deps.sh` и `./scripts/setup_and_test.sh`
+111. Поле username в ответах API содержит Telegram ID

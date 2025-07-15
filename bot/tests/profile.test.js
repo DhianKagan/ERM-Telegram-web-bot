@@ -29,14 +29,14 @@ test('получаем профиль', async () => {
   const req = { user: { id: 1 } }
   const resMock = { json: jest.fn(), sendStatus: jest.fn() }
   await ctrl.profile(req, resMock)
-  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test' })
+  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: '1' })
 })
 
 test('обновляем профиль', async () => {
   const req = { user: { id: 1 }, body: { name: 'N' } }
   const resMock = { json: jest.fn(), sendStatus: jest.fn() }
   await ctrl.updateProfile(req, resMock)
-  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: 'test', name: 'N' })
+  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: '1', name: 'N' })
 })
 
 afterAll(() => { stopScheduler(); stopQueue() })

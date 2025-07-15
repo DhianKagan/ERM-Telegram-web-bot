@@ -5,6 +5,7 @@ import Tabs from '../components/Tabs'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { fetchMentioned } from '../services/tasks'
 import { updateProfile } from '../services/auth'
+import userLink from '../utils/userLink'
 
 interface MentionedTask {
   _id: string
@@ -62,7 +63,12 @@ export default function Profile() {
               Сохранить
             </button>
             <div>
-              <b>Telegram ID:</b> {user.telegram_id}
+              <b>Telegram ID:</b>{' '}
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: userLink(user.telegram_id, user.name || user.username)
+                }}
+              />
             </div>
             <div>
               <b>Отдел:</b> {user.departmentId ? user.departmentId.name : 'не задан'}

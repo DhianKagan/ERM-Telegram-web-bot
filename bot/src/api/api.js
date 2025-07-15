@@ -1,6 +1,6 @@
 // HTTP API и мини-приложение. Модули: express, express-rate-limit,
 // сервисы и middleware. spaRateLimiter ограничивает SPA fallback
-// и использует маршрут "/:splat(*)" вместо устаревшего "/{*splat}".
+// и использует маршрут "/*splat" вместо устаревшего "/{*splat}".
 // Отдельный эндпойнт /health возвращает состояние сервера.
 require('dotenv').config()
 const config = require('../config')
@@ -290,9 +290,9 @@ const validate = validations => [
     res.sendFile(path.join(pub, 'index.html'))
   })
 
-  // SPA fallback: Express 5 требует имя wildcard-параметра
-  // поэтому используем "/:splat(*)" вместо устаревшего "*" и некорректного "/{*splat}"
-  app.get('/:splat(*)', spaRateLimiter, (_req, res) => {
+  // SPA fallback: Express 5 использует синтаксис `/*splat`
+  // вместо устаревшего `/{*splat}` или "*"
+  app.get('/*splat', spaRateLimiter, (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
 

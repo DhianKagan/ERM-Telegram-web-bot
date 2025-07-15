@@ -1,5 +1,5 @@
 // Форматирование задачи в виде компактного блока MarkdownV2
-// Модули: Intl.DateTimeFormat
+// Модули: Intl.DateTimeFormat, userLink
 
 function mdEscape(str) {
   // eslint-disable-next-line no-useless-escape
@@ -16,7 +16,9 @@ function stripTags(html) {
   return out
 }
 
-module.exports = function formatTask(task) {
+const userLink = require('./userLink')
+
+module.exports = function formatTask(task, users = {}) {
   const lines = []
   const idTitle = [task.request_id,
     task.title ? task.title.replace(/^ERM_\d+\s*/, '') : '']
@@ -63,12 +65,21 @@ module.exports = function formatTask(task) {
   }
 
   if (Array.isArray(task.assignees) && task.assignees.length) {
-    const ids = task.assignees.map(id => `\`${mdEscape(String(id))}\``).join(', ')
-    lines.push(`👥 *Исполнители:* ${ids}`)
+    const links = task.assignees
+      .map(id => userLink(id, users[id]?.name || users[id]?.username))
+      .join(', ')
+    lines.push(`👥 *Исполнители:* ${links}`)
+  }
+
+  if (Array.isArray(task.controllers) && task.controllers.length) {
+    const links = task.controllers
+      .map(id => userLink(id, users[id]?.name || users[id]?.username))
+      .join(', ')
+    lines.push(`🕵 *Контроль:* ${links}`)
   }
 
   if (task.created_by) {
-    lines.push(`👤 *Создатель:* \`${mdEscape(String(task.created_by))}\``)
+    lines.push(`👤 *Создатель:* ${userLink(task.created_by, users[task.created_by]?.name || users[task.created_by]?.username)}`)
   }
 
   if (task.task_description) {

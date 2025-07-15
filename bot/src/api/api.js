@@ -27,6 +27,7 @@ const routeRouter = require('../routes/route')
 const routesRouter = require('../routes/routes')
 const optimizerRouter = require('../routes/optimizer')
 const authUserRouter = require('../routes/authUser')
+const formatUser = require('../utils/formatUser')
 const {
   updateTaskStatus,
   createGroup,
@@ -175,7 +176,8 @@ const validate = validations => [
   }))
 
   app.get(`${prefix}/users`, usersRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
-    res.json(await listUsers())
+    const users = await listUsers()
+    res.json(users.map(u => formatUser(u)))
   }))
   app.post(`${prefix}/users`, usersRateLimiter, verifyToken, checkRole('admin'),
     validate([
@@ -185,7 +187,7 @@ const validate = validations => [
     ]),
     asyncHandler(async (req, res) => {
     const user = await createUser(req.body.id, req.body.username, req.body.roleId)
-    res.json(user)
+    res.json(formatUser(user))
   }))
 
   app.get(`${prefix}/departments`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {

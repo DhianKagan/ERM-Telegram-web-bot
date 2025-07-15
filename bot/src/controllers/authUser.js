@@ -2,11 +2,12 @@
 // Ранее здесь была авторизация через Telegram Login,
 // но теперь доступ осуществляется только по одноразовому коду.
 const { getUser, updateUser } = require('../db/queries')
+const formatUser = require('../utils/formatUser')
 
 exports.profile = async (req, res) => {
   const user = await getUser(req.user.id)
   if (!user) return res.sendStatus(404)
-  res.json(user)
+  res.json(formatUser(user))
 }
 
 exports.updateProfile = async (req, res) => {
@@ -15,7 +16,7 @@ exports.updateProfile = async (req, res) => {
     phone: req.body.phone
   })
   if (!user) return res.sendStatus(404)
-  res.json(user)
+  res.json(formatUser(user))
 }
 
 

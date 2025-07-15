@@ -5,7 +5,6 @@ process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db'
 process.env.JWT_SECRET = 's'
 
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }))
-jest.mock('../src/services/gateway', () => ({ sendSms: jest.fn() }))
 
 const { sendCode, verifyCode, codes, attempts } = require('../src/services/otp')
 

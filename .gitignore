@@ -2,6 +2,7 @@
 node_modules/
 bot/public/*
 !bot/public/.gitkeep
+!bot/public/admin-placeholder.html
 
 # переменные окружения
 .env

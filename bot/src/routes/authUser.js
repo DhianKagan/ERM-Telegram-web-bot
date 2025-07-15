@@ -19,13 +19,11 @@ const validate = validations => [
 
 
 router.post('/send_code', validate([
-  body('phone').optional().isMobilePhone('any'),
-  body('telegramId').optional().isInt()
+  body('telegramId').isInt()
 ]), asyncHandler(authCtrl.sendCode))
 
 router.post('/verify_code', validate([
-  body('phone').optional().isMobilePhone('any'),
-  body('telegramId').optional().isInt(),
+  body('telegramId').isInt(),
   body('code').isLength({ min: 4 })
 ]), asyncHandler(authCtrl.verifyCode))
 

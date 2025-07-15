@@ -113,7 +113,7 @@ export default function TasksPage() {
   const isAdmin = React.useMemo(() => {
     const token = localStorage.getItem('token');
     const data = token ? parseJwt(token) : null;
-    return Boolean(data?.isAdmin);
+    return data?.role === 'admin';
   }, []);
 
   const renderStatus = (t: Task) =>

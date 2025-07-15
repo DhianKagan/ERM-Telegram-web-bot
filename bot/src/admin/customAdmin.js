@@ -4,7 +4,6 @@ const path = require('path')
 const express = require('express')
 const rateLimit = require('express-rate-limit')
 const { verifyToken } = require('../api/middleware')
-const checkRole = require('../middleware/checkRole')
 
 function initCustomAdmin(app) {
   // Доступ контролируется ролью пользователя из базы данных
@@ -19,7 +18,11 @@ function initCustomAdmin(app) {
   })
 
   router.use(adminRateLimiter)
-  router.use(verifyToken, checkRole('admin'))
+  router.use(verifyToken)
+  router.use((req, res, next) => {
+    if (req.user.role === 'admin') return next()
+    res.sendFile(path.join(pub, 'admin-placeholder.html'))
+  })
   router.use(express.static(pub))
   // Express 5 использует синтаксис `/*splat` для wildcard-маршрута
   router.get('/*splat', (_req, res) => {

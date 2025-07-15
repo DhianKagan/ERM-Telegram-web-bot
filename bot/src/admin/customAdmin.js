@@ -21,7 +21,8 @@ function initCustomAdmin(app) {
   router.use(adminRateLimiter)
   router.use(verifyToken, checkRole('admin'))
   router.use(express.static(pub))
-  router.get('*', (_req, res) => {
+  // Express 5 требует именованный wildcard-параметр
+  router.get('/:splat(*)', (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
   app.use('/admin', router)

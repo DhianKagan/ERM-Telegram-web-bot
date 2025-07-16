@@ -195,7 +195,10 @@ async function getRole(id) {
 }
 
 async function updateRole(id, permissions) {
-  return Role.findByIdAndUpdate(id, { permissions }, { new: true })
+  const sanitizedPermissions = Array.isArray(permissions)
+    ? permissions.filter(item => typeof item === 'string' || typeof item === 'number')
+    : [];
+  return Role.findByIdAndUpdate(id, { permissions: sanitizedPermissions }, { new: true });
 }
 
 

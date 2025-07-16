@@ -218,7 +218,7 @@ const validate = validations => [
   }))
 
   app.patch(`${prefix}/roles/:id`, rolesRateLimiter, verifyToken, checkRole('admin'),
-    validate([body('permissions').isArray()]),
+    validate([body('permissions').isArray().custom(array => array.every(item => typeof item === 'string' || typeof item === 'number'))]),
     asyncHandler(async (req, res) => {
     const role = await updateRole(req.params.id, req.body.permissions)
     res.json(role)

@@ -220,3 +220,4 @@ NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 ## Контакты
 По вопросам безопасности пишите на [security@agro-market.ua](mailto:security@agro-market.ua).
 Владелец репозитория — [@AgroxOD](https://github.com/AgroxOD).
+\n- Путь `/cp` открывает панель управления с боковым меню.\n- В профиле можно редактировать имя и мобильный номер, поле `mobNumber` сохранено в базе.

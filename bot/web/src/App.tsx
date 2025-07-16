@@ -11,6 +11,7 @@ const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Reports = lazy(() => import("./pages/Reports"));
 const AdminPage = lazy(() => import("./pages/Admin"));
+const CpIndex = lazy(() => import("./pages/CpIndex"));
 const Profile = lazy(() => import("./pages/Profile"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
@@ -67,6 +68,14 @@ function Content() {
             element={
               <AdminRoute>
                 <Projects />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/cp"
+            element={
+              <AdminRoute>
+                <CpIndex />
               </AdminRoute>
             }
           />

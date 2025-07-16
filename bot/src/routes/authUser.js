@@ -33,7 +33,8 @@ router.patch(
   verifyToken,
   validate([
     body('name').optional().isString().notEmpty(),
-    body('phone').optional().isMobilePhone('any')
+    body('phone').optional().isMobilePhone('any'),
+    body('mobNumber').optional().isMobilePhone('any')
   ]),
   asyncHandler(ctrl.updateProfile)
 )

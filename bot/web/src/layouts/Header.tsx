@@ -9,8 +9,9 @@ import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 
 export default function Header() {
   const { toggle, collapsed, open } = useSidebar();
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, user } = useContext(AuthContext);
   const authItems = [
+    ...(user?.role === 'admin' ? [{ label: 'Админка', href: '/cp' }] : []),
     { label: 'Профиль', href: '/profile' },
     { label: 'Выход', onClick: logout },
   ];

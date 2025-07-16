@@ -210,6 +210,7 @@ NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 ## Дополнительные материалы
 Подробности смотрите в каталоге `docs/`, историю изменений — в `CHANGELOG.md`, планы — в `ROADMAP.md`.
 - Все запросы клиента используют единый префикс `/api/v1`
+- Функция `authFetch` перенаправляет на `/login` при отсутствии токена
 
 ## Контакты
 По вопросам безопасности пишите на [security@agro-market.ua](mailto:security@agro-market.ua).

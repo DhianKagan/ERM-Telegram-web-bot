@@ -1,14 +1,14 @@
 // Назначение файла: список задач и функции сортировки
-import React from "react";
-import { useSearchParams } from "react-router-dom";
-import KPIOverview from "../components/KPIOverview";
-import { useToast } from "../context/useToast";
-import useTasks from "../context/useTasks";
-import { updateTask } from "../services/tasks";
-import authFetch from "../utils/authFetch";
-import fields from "../../../shared/taskFields.cjs";
-import parseJwt from "../utils/parseJwt";
-import userLink from "../utils/userLink";
+import React from 'react'
+import { useSearchParams } from 'react-router-dom'
+import KPIOverview from '../components/KPIOverview'
+import { useToast } from '../context/useToast'
+import useTasks from '../context/useTasks'
+import { updateTask } from '../services/tasks'
+import authFetch from '../utils/authFetch'
+import fields from '../../../shared/taskFields.cjs'
+import parseJwt from '../utils/parseJwt'
+import userLink from '../utils/userLink'
 
 interface Task {
   _id: string
@@ -50,6 +50,12 @@ export default function TasksPage() {
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
   const [showExport, setShowExport] = React.useState(false);
+
+  const isAdmin = React.useMemo(() => {
+    const token = localStorage.getItem('token')
+    const data = token ? parseJwt(token) : null
+    return data?.role === 'admin'
+  }, [])
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
@@ -113,11 +119,6 @@ export default function TasksPage() {
     return map;
   }, [users]);
 
-  const isAdmin = React.useMemo(() => {
-    const token = localStorage.getItem('token');
-    const data = token ? parseJwt(token) : null;
-    return data?.role === 'admin';
-  }, []);
 
   const renderStatus = (t: Task) =>
     isAdmin ? (

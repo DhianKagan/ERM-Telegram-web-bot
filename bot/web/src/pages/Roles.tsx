@@ -28,7 +28,7 @@ export default function Roles() {
 
   return (
     <div className="space-y-4 p-4">
-      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Роли' }]} />
+      <Breadcrumbs items={[{ label: 'Задачи', href: '/tasks' }, { label: 'Роли' }]} />
       {roles.map(r => (
         <div key={r._id} className="rounded border p-4 space-y-2">
           <h3 className="font-semibold">{r.name}</h3>

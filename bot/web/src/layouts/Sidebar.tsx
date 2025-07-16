@@ -18,14 +18,17 @@ import {
 } from "@heroicons/react/24/outline";
 
 const baseItems = [
-  { to: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
   { to: "/tasks/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
-  { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
-  { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/roles", label: "Роли", icon: Cog6ToothIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
+];
+
+const adminExtra = [
+  { to: "/cp/projects", label: "Проекты", icon: RectangleStackIcon },
+  { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
+  { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
+  { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },
+  { to: "/cp/admin", label: "Админ", icon: Cog6ToothIcon },
 ];
 
 export default function Sidebar() {
@@ -38,9 +41,7 @@ export default function Sidebar() {
     return data?.role || 'user';
   }, [token]);
   const items = React.useMemo(() => {
-    return role === 'admin'
-      ? [...baseItems.slice(0, 6), { to: '/admin', label: 'Админ', icon: Cog6ToothIcon }, ...baseItems.slice(6)]
-      : baseItems;
+    return role === 'admin' ? [...baseItems, ...adminExtra] : baseItems;
   }, [role]);
   return (
     <aside

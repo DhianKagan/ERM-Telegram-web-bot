@@ -55,7 +55,7 @@ export default function Tasks() {
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Dashboard", href: "/dashboard" },
+          { label: "Задачи", href: "/tasks" },
           { label: "Задачи" },
         ]}
       />

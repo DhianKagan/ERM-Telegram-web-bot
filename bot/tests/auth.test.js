@@ -8,7 +8,7 @@ jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member')
 }))
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => null),
+  getUser: jest.fn(async id => (id === 99 ? { roleId: '686591126cc86a6bd16c18af' } : null)),
   createUser: jest.fn(async () => ({ username: 'u' }))
 }))
 jest.useFakeTimers().setSystemTime(0)
@@ -44,14 +44,22 @@ test('sendCode сохраняет код с таймстампом', async () =>
   expect(entry.code).toHaveLength(6)
 })
 
-test('verifyCode отклоняет просроченный код', () => {
+test('sendCode для админа использует adminCodes', async () => {
+  const req = { body: { telegramId: 99 } }
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
+  await authCtrl.sendCode(req, res)
+  const entry = authCtrl.adminCodes.get('99')
+  expect(entry).toBeDefined()
+})
+
+test('verifyCode отклоняет просроченный код', async () => {
   const req = { body: { telegramId: 111 } }
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
-  authCtrl.sendCode(req, res)
+  await authCtrl.sendCode(req, res)
   const code = authCtrl.codes.get('111').code
   jest.setSystemTime(6 * 60 * 1000)
   const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis() }
-  authCtrl.verifyCode({ body: { telegramId: 111, code } }, res2)
+  await authCtrl.verifyCode({ body: { telegramId: 111, code } }, res2)
   expect(res2.status).toHaveBeenCalledWith(400)
   expect(authCtrl.codes.has('111')).toBe(false)
 })

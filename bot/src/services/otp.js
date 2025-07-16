@@ -30,7 +30,7 @@ setInterval(clean, EXPIRATION_MS).unref()
 async function sendCode({ telegramId }) {
   clean()
   const code = Math.floor(100000 + Math.random() * 900000).toString()
-  const text = `Код подтверждения пользователя: ${code}`
+  const text = `Код входа для пользователя: ${code}`
   const key = String(telegramId)
   codes.set(key, { code, ts: Date.now() })
   attempts.delete(key)
@@ -40,7 +40,7 @@ async function sendCode({ telegramId }) {
 async function sendAdminCode({ telegramId }) {
   clean()
   const code = Math.floor(100000 + Math.random() * 900000).toString()
-  const text = `Код подтверждения админа: ${code}`
+  const text = `Код входа для Админа: ${code}`
   const key = String(telegramId)
   adminCodes.set(key, { code, ts: Date.now() })
   adminAttempts.delete(key)

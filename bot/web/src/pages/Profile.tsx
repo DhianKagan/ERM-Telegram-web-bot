@@ -30,7 +30,7 @@ export default function Profile() {
   if (!user) return <div>Загрузка...</div>
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Профиль' }]} />
+      <Breadcrumbs items={[{ label: 'Задачи', href: '/tasks' }, { label: 'Профиль' }]} />
       <div className="mx-auto max-w-xl rounded bg-white p-8 shadow">
         <h2 className="mb-4 text-2xl">Личный кабинет</h2>
         <Tabs

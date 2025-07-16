@@ -1,5 +1,6 @@
 // Выпадающее меню общего назначения
 import React from 'react'
+import { UserCircleIcon } from '@heroicons/react/24/outline'
 
 export interface DropdownItem {
   label: string
@@ -14,7 +15,7 @@ export default function DropdownMenu({ items }: { items: DropdownItem[] }) {
   return (
     <div className="relative" onBlur={close} tabIndex={0}>
       <button onClick={toggle} className="h-8 w-8 rounded-full focus:outline-none" aria-label="Меню профиля">
-        <img src="/img/avatar.png" alt="avatar" className="h-full w-full rounded-full" />
+        <UserCircleIcon className="h-full w-full text-gray-600" />
       </button>
       {open && (
         <ul className="absolute right-0 mt-2 w-48 rounded border border-stroke bg-white py-2 shadow-lg transition-all">

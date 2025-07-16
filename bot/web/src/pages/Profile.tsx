@@ -23,7 +23,7 @@ export default function Profile() {
   }, [])
   useEffect(() => {
     if (user) {
-      setName(user.name || user.username || '')
+      setName(user.name || user.telegram_username || '')
       setMobNumber(user.mobNumber || user.phone || '')
     }
   }, [user])

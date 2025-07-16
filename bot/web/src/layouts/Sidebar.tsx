@@ -24,6 +24,7 @@ const baseItems = [
   { to: "/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/routes", label: "Маршруты", icon: MapIcon },
+  { to: "/roles", label: "Роли", icon: Cog6ToothIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
@@ -38,7 +39,7 @@ export default function Sidebar() {
   }, [token]);
   const items = React.useMemo(() => {
     return role === 'admin'
-      ? [...baseItems.slice(0, 6), { to: '/admin', label: 'Админ', icon: Cog6ToothIcon }, baseItems[6]]
+      ? [...baseItems.slice(0, 6), { to: '/admin', label: 'Админ', icon: Cog6ToothIcon }, ...baseItems.slice(6)]
       : baseItems;
   }, [role]);
   return (

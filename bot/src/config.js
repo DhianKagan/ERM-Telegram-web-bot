@@ -34,5 +34,7 @@ module.exports = {
   gateway: {
     key: process.env.GATEWAY_API_KEY,
     sender: process.env.GATEWAY_SENDER
-  }
+  },
+  adminRoleId: process.env.ADMIN_ROLE_ID || '686591126cc86a6bd16c18af',
+  userRoleId: process.env.USER_ROLE_ID || '686633fdf6896f1ad3fa063e'
 }

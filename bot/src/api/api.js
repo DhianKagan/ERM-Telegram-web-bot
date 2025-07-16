@@ -39,6 +39,8 @@ const {
   listDepartments,
   updateDepartment,
   deleteDepartment,
+  listRoles,
+  updateRole,
   writeLog,
   listLogs
 } = require('../services/service')
@@ -133,6 +135,11 @@ const validate = validations => [
     max: 100,
     message: { error: 'Too many requests, please try again later.' }
   })
+  const rolesRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: { error: 'Too many requests, please try again later.' }
+  })
 
   const taskStatusRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -204,6 +211,17 @@ const validate = validations => [
   app.delete(`${prefix}/departments/:id`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
     await deleteDepartment(req.params.id)
     res.json({ status: 'ok' })
+  }))
+
+  app.get(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
+    res.json(await listRoles())
+  }))
+
+  app.patch(`${prefix}/roles/:id`, rolesRateLimiter, verifyToken, checkRole('admin'),
+    validate([body('permissions').isArray()]),
+    asyncHandler(async (req, res) => {
+    const role = await updateRole(req.params.id, req.body.permissions)
+    res.json(role)
   }))
 
 

@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, Group, User, Department, Log } = require('./model')
+const { Task, Archive, Group, User, Department, Log, Role } = require('./model')
 
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -156,11 +156,17 @@ async function deleteDepartment(id) {
   return Department.findByIdAndDelete(id)
 }
 
-async function createUser(id, username, role = 'user', extra = {}) {
+async function createUser(id, username, roleId, extra = {}) {
   const telegramId = Number(id)
   if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id')
   const email = `${telegramId}@telegram.local`
-  return User.create({ telegram_id: telegramId, username, email, role, ...extra })
+  let role = 'user'
+  let rId = roleId
+  if (roleId) {
+    const dbRole = await Role.findById(roleId)
+    if (dbRole) { role = dbRole.name; rId = dbRole._id }
+  }
+  return User.create({ telegram_id: telegramId, username, email, role, roleId: rId, ...extra })
 }
 
 async function getUser(id) {
@@ -178,6 +184,18 @@ async function updateUser(id, data) {
   const telegramId = Number(id)
   if (Number.isNaN(telegramId)) return null
   return User.findOneAndUpdate({ telegram_id: telegramId }, data, { new: true })
+}
+
+async function listRoles() {
+  return Role.find()
+}
+
+async function getRole(id) {
+  return Role.findById(id)
+}
+
+async function updateRole(id, permissions) {
+  return Role.findByIdAndUpdate(id, { permissions }, { new: true })
 }
 
 
@@ -213,6 +231,9 @@ module.exports = {
   getUser,
   listUsers,
   updateUser,
+  listRoles,
+  getRole,
+  updateRole,
   writeLog,
   listLogs,
   searchTasks,

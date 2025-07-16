@@ -2,7 +2,7 @@
 // Модули: otp, auth, queries, userInfoService
 const otp = require('../services/otp')
 const { generateToken } = require('../auth/auth')
-const { getUser, createUser } = require('../db/queries')
+const { getUser, createUser, updateUser } = require('../db/queries')
 const { getMemberStatus } = require('../services/userInfoService')
 const config = require('../config')
 
@@ -54,7 +54,12 @@ exports.verifyAdminCode = async (req, res) => {
   }
   if (otp.verifyAdminCode({ telegramId: id, code })) {
     let user = await getUser(id)
-    if (!user) user = await createUser(id, username, config.adminRoleId)
+    if (!user) {
+      user = await createUser(id, username, config.adminRoleId)
+    } else if (user.role !== 'admin') {
+      // если пользователь уже существует, повышаем его до роли администратора
+      user = await updateUser(id, { role: 'admin', roleId: config.adminRoleId })
+    }
     const role = user.role || 'user'
     const token = generateToken({ id, username: user.username, role })
     return res.json({ token })

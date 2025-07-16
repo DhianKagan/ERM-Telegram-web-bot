@@ -137,15 +137,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
   },[id,isEdit,user,DEFAULT_TASK_TYPE,DEFAULT_PRIORITY,DEFAULT_TRANSPORT,DEFAULT_PAYMENT,DEFAULT_STATUS]);
 
-  React.useEffect(()=>{
-    authFetch('/api/v1/users')
-      .then(r=>r.ok?r.json():[])
-      .then(list=>{setUsers(list);if(user) setCreator(user.telegram_id);});
-    // данные ролей и групп могут потребоваться позднее
-    authFetch('/api/v1/departments')
-      .then(r=>r.ok?r.json():[])
-      .then(setDepartments);
-  },[user]);
+  React.useEffect(() => {
+    if (isAdmin) {
+      authFetch('/api/v1/users')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((list) => {
+          setUsers(list)
+          if (user) setCreator((user as any).telegram_id)
+        })
+      // данные ролей и групп могут потребоваться позднее
+      authFetch('/api/v1/departments')
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setDepartments)
+    } else if (user) {
+      setCreator((user as any).telegram_id)
+    }
+  }, [user, isAdmin])
 
 
   React.useEffect(() => {

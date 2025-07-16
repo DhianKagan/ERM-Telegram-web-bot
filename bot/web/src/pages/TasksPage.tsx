@@ -63,16 +63,18 @@ export default function TasksPage() {
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : []))
       .then(setAll);
-    authFetch("/api/v1/users")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setUsers);
+    if (isAdmin) {
+      authFetch("/api/v1/users")
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setUsers);
+    }
     authFetch("/api/v1/tasks/report/summary")
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
     setStatuses(fields.find(f => f.name === 'status')?.options || []);
     setPriorities(fields.find(f => f.name === 'priority')?.options || []);
-  }, []);
+  }, [isAdmin]);
 
   React.useEffect(load, [load, version]);
 

@@ -26,7 +26,7 @@ export default function MultiUserSelect({ label, users, value, onChange, disable
           <option value="">выбрать</option>
           {users.map(u => (
             <option key={u.telegram_id} value={String(u.telegram_id)}>
-              {u.name || u.username}
+              {u.name || u.telegram_username || u.username}
             </option>
           ))}
         </select>
@@ -37,7 +37,7 @@ export default function MultiUserSelect({ label, users, value, onChange, disable
       <div className="mt-1 flex flex-wrap gap-1">
         {value.map(id => {
           const u = users.find(user => String(user.telegram_id) === id)
-          const name = u?.name || u?.username || id
+          const name = u?.name || u?.telegram_username || u?.username || id
           return (
             <span key={id} className="flex items-center rounded bg-gray-200 px-2 py-0.5 text-sm">
               {name}

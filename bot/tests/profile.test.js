@@ -10,10 +10,10 @@ const request = require('supertest')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
 
-jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
-  updateUser: jest.fn(async (_id, d) => ({ telegram_id: 1, username: 'test', ...d }))
-}))
+  jest.mock('../src/db/queries', () => ({
+    getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
+    updateUser: jest.fn(async (_id, d) => ({ telegram_id: 1, username: 'test', ...d }))
+  }))
 
 const ctrl = require('../src/controllers/authUser')
 
@@ -29,14 +29,25 @@ test('получаем профиль', async () => {
   const req = { user: { id: 1 } }
   const resMock = { json: jest.fn(), sendStatus: jest.fn() }
   await ctrl.profile(req, resMock)
-  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: '1' })
+  expect(resMock.json).toHaveBeenCalledWith({
+    telegram_id: 1,
+    username: '1',
+    telegram_username: 'test'
+  })
 })
 
 test('обновляем профиль', async () => {
   const req = { user: { id: 1 }, body: { name: 'N' } }
   const resMock = { json: jest.fn(), sendStatus: jest.fn() }
   await ctrl.updateProfile(req, resMock)
-  expect(resMock.json).toHaveBeenCalledWith({ telegram_id: 1, username: '1', name: 'N' })
+  expect(resMock.json).toHaveBeenCalledWith({
+    telegram_id: 1,
+    username: '1',
+    telegram_username: 'test',
+    name: 'N',
+    phone: undefined,
+    mobNumber: undefined
+  })
 })
 
 afterAll(() => { stopScheduler(); stopQueue() })

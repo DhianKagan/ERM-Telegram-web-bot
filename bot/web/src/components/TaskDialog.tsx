@@ -421,7 +421,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <label className="block text-sm font-medium">Задачу создал</label>
           <select value={creator} onChange={e=>setCreator(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
             <option value="">автор</option>
-            {users.map(u=>(<option key={u.telegram_id} value={u.telegram_id}>{u.name||u.username}</option>))}
+            {users.map(u=>(
+              <option key={u.telegram_id} value={u.telegram_id}>
+                {u.name || u.telegram_username || u.username}
+              </option>
+            ))}
           </select>
         </div>
         <MultiUserSelect

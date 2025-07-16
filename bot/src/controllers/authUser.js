@@ -13,7 +13,8 @@ exports.profile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   const user = await updateUser(req.user.id, {
     name: req.body.name,
-    phone: req.body.phone
+    phone: req.body.phone,
+    mobNumber: req.body.mobNumber
   })
   if (!user) return res.sendStatus(404)
   res.json(formatUser(user))

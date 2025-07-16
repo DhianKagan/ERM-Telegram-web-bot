@@ -17,14 +17,14 @@ export default function Profile() {
   const [tab, setTab] = useState('details')
   const [tasks, setTasks] = useState<MentionedTask[]>([])
   const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [mobNumber, setMobNumber] = useState('')
   useEffect(() => {
     fetchMentioned().then(setTasks)
   }, [])
   useEffect(() => {
     if (user) {
-      setName(user.name || '')
-      setPhone(user.phone || '')
+      setName(user.name || user.username || '')
+      setMobNumber(user.mobNumber || user.phone || '')
     }
   }, [user])
   if (!user) return <div>Загрузка...</div>
@@ -49,13 +49,13 @@ export default function Profile() {
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium">Телефон</label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full rounded border px-2 py-1" />
+              <input value={mobNumber} onChange={e => setMobNumber(e.target.value)} className="w-full rounded border px-2 py-1" />
             </div>
             <button
               type="button"
               onClick={async () => {
                 if (!token) return
-                const data = await updateProfile(token, { name, phone })
+                const data = await updateProfile(token, { name, mobNumber })
                 setUser(data)
               }}
               className="btn btn-blue"

@@ -159,6 +159,8 @@ const userSchema = new mongoose.Schema({
   name: String,
   // Номер телефона для связи
   phone: String,
+  // Альтернативный номер телефона
+  mobNumber: String,
   // Email используется для совместимости со старым индексом в базе.
   // Сохраняем уникальное значение на основе telegram_id.
   email: { type: String, unique: true },

@@ -8,7 +8,6 @@ import fields from "../../../shared/taskFields.cjs";
 import { createTask, updateTask, deleteTask, updateTaskStatus } from "../services/tasks";
 import { createLog } from "../services/logs";
 import authFetch from "../utils/authFetch";
-import parseJwt from "../utils/parseJwt";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
@@ -32,11 +31,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useContext(AuthContext);
   const { open, collapsed } = useSidebar();
-  const isAdmin = React.useMemo(() => {
-    const token = localStorage.getItem('token');
-    const data = token ? parseJwt(token) : null;
-    return (data as any)?.role === 'admin';
-  }, []);
+  const isAdmin = user?.role === 'admin';
   const [editing, setEditing] = React.useState(!isEdit);
   const [expanded, setExpanded] = React.useState(false);
   const initialRef = React.useRef<any>(null);

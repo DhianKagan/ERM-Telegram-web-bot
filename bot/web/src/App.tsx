@@ -17,6 +17,7 @@ const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
+const RolesPage = lazy(() => import("./pages/Roles"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -92,6 +93,14 @@ function Content() {
             element={
               <ProtectedRoute>
                 <RoutesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute>
+                <RolesPage />
               </ProtectedRoute>
             }
           />

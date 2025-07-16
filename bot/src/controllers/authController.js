@@ -4,6 +4,7 @@ const otp = require('../services/otp')
 const { generateToken } = require('../auth/auth')
 const { getUser, createUser } = require('../db/queries')
 const { getMemberStatus } = require('../services/userInfoService')
+const config = require('../config')
 
 exports.sendCode = async (req, res) => {
   const { telegramId } = req.body
@@ -28,7 +29,7 @@ exports.verifyCode = async (req, res) => {
       return res.status(400).json({ error: 'member check failed' })
     }
     let user = await getUser(id)
-    if (!user) user = await createUser(id, username)
+    if (!user) user = await createUser(id, username, config.userRoleId)
     const role = user.role || 'user'
     const token = generateToken({ id, username: user.username, role })
     return res.json({ token })
@@ -53,7 +54,7 @@ exports.verifyAdminCode = async (req, res) => {
   }
   if (otp.verifyAdminCode({ telegramId: id, code })) {
     let user = await getUser(id)
-    if (!user) user = await createUser(id, username, 'admin')
+    if (!user) user = await createUser(id, username, config.adminRoleId)
     const role = user.role || 'user'
     const token = generateToken({ id, username: user.username, role })
     return res.json({ token })

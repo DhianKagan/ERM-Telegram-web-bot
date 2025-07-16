@@ -148,6 +148,10 @@ taskSchema.pre('save', async function(next) {
 })
 
 const groupSchema = new mongoose.Schema({ name: String })
+const roleSchema = new mongoose.Schema({
+  name: String,
+  permissions: [String]
+})
 const userSchema = new mongoose.Schema({
   telegram_id: Number,
   username: String,
@@ -160,6 +164,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   // Роль пользователя хранится строкой, по умолчанию обычный пользователь
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
@@ -177,10 +182,11 @@ const Task = mongoose.model('Task', taskSchema)
 const Archive = mongoose.model('Archive', taskSchema, 'archives')
 const Group = mongoose.model('Group', groupSchema)
 const Department = mongoose.model('Department', departmentSchema)
+const Role = mongoose.model('Role', roleSchema)
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
 const User = mongoose.model('User', userSchema, 'telegram_users')
 const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Archive, Group, User, Department, Log }
+module.exports = { Task, Archive, Group, User, Department, Log, Role }

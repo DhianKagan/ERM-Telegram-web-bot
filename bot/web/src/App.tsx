@@ -12,9 +12,7 @@ const Projects = lazy(() => import("./pages/Projects"));
 const Reports = lazy(() => import("./pages/Reports"));
 const AdminPage = lazy(() => import("./pages/Admin"));
 const Profile = lazy(() => import("./pages/Profile"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
 const RolesPage = lazy(() => import("./pages/Roles"));
@@ -29,6 +27,7 @@ import { ToastProvider } from "./context/ToastContext";
 import { TasksProvider } from "./context/TasksContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 
 function Content() {
@@ -38,21 +37,12 @@ function Content() {
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
           <Route path="/login" element={<CodeLogin />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
           <Route
             path="/profile"
             element={
               <ProtectedRoute>
                 <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
               </ProtectedRoute>
             }
           />
@@ -73,46 +63,46 @@ function Content() {
             }
           />
           <Route
-            path="/projects"
+            path="/cp/projects"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <Projects />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
-            path="/reports"
+            path="/cp/reports"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <Reports />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
-            path="/routes"
+            path="/cp/routes"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <RoutesPage />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
-            path="/roles"
+            path="/cp/roles"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <RolesPage />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
-            path="/admin"
+            path="/cp/admin"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminPage />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/tasks" />} />
         </Routes>
       </Suspense>
     </main>

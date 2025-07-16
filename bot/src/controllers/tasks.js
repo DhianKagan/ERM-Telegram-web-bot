@@ -12,11 +12,16 @@ function handle(req, res, next) {
 exports.list = async (req, res) => {
   const user = await require('../db/queries').getUser(req.user.id)
   const { page, limit, ...filters } = req.query
-  const tasks = await service.get(
-    { ...filters, departmentId: user?.departmentId },
-    page ? Number(page) : undefined,
-    limit ? Number(limit) : undefined
-  )
+  let tasks
+  if (req.user.role === 'admin') {
+    tasks = await service.get(
+      { ...filters, departmentId: user?.departmentId },
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined
+    )
+  } else {
+    tasks = await service.mentioned(req.user.id)
+  }
   res.json(tasks)
 }
 

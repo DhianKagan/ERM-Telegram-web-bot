@@ -15,7 +15,7 @@ export default function Reports() {
   React.useEffect(()=>load(),[])
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Отчёты' }]} />
+      <Breadcrumbs items={[{ label: 'Задачи', href: '/tasks' }, { label: 'Отчёты' }]} />
       <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="text-xl font-semibold">Отчёты</h2>
         <ReportFilterForm onChange={load} />

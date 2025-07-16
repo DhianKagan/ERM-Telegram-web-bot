@@ -125,7 +125,7 @@ export default function RoutesPage() {
 
   return (
     <div className="space-y-4">
-      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Маршруты' }]} />
+      <Breadcrumbs items={[{ label: 'Задачи', href: '/tasks' }, { label: 'Маршруты' }]} />
       <div id="routes-map" className={`h-96 w-full rounded border ${hasDialog ? 'hidden' : ''}`} />
       <div className="flex justify-end space-x-2">
         <select value={vehicles} onChange={e=>setVehicles(Number(e.target.value))} className="rounded border px-2 py-1">

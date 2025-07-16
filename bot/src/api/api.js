@@ -27,7 +27,6 @@ const routeRouter = require('../routes/route')
 const routesRouter = require('../routes/routes')
 const optimizerRouter = require('../routes/optimizer')
 const authUserRouter = require('../routes/authUser')
-const authAdminRouter = require('../routes/authAdmin')
 const formatUser = require('../utils/formatUser')
 const {
   updateTaskStatus,
@@ -259,8 +258,6 @@ const validate = validations => [
 
   // авторизация пользователей и личный кабинет
   app.use(`${prefix}/auth`, authUserRouter)
-  // авторизация для админки
-  app.use(`${prefix}/admin_auth`, authAdminRouter)
   // работа с картами
   app.use(`${prefix}/maps`, mapsRouter)
   // маршрут

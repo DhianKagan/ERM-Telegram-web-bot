@@ -163,6 +163,10 @@ async function createUser(id, username, roleId, extra = {}) {
   let role = 'user'
   let rId = roleId
   if (roleId) {
+    const { Types } = require('mongoose');
+    if (!Types.ObjectId.isValid(roleId)) {
+      throw new Error('Invalid roleId');
+    }
     const dbRole = await Role.findById(roleId)
     if (dbRole) { role = dbRole.name; rId = dbRole._id }
   }

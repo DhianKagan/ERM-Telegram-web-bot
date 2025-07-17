@@ -1,20 +1,15 @@
 // Шапка приложения с кнопкой темы и бургером меню
 // Верхняя панель навигации
 import React, { useContext } from "react";
+import { Link } from "react-router-dom";
 import { useSidebar } from "../context/useSidebar";
 import { AuthContext } from "../context/AuthContext";
-import DropdownMenu from "../components/DropdownMenu";
 import NotificationDropdown from "../components/NotificationDropdown";
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 
 export default function Header() {
   const { toggle, collapsed, open } = useSidebar();
-  const { token, logout, user } = useContext(AuthContext);
-  const authItems = [
-    ...(user?.role === 'admin' ? [{ label: 'Админка', href: '/cp' }] : []),
-    { label: 'Профиль', href: '/profile' },
-    { label: 'Выход', onClick: logout },
-  ];
+  const { token, user } = useContext(AuthContext);
   return (
     <header
       className={`sticky top-0 z-10 flex h-14 items-center justify-between border-b border-stroke bg-white px-4 transition-all ${open ? (collapsed ? 'lg:ml-20' : 'lg:ml-60') : 'lg:ml-0'}`}
@@ -37,7 +32,11 @@ export default function Header() {
             <NotificationDropdown notifications={["Новое сообщение"]}>
               <BellIcon className="h-5 w-5" />
             </NotificationDropdown>
-            <DropdownMenu items={authItems} />
+            {user?.role === 'admin' && (
+              <Link to="/cp" className="rounded p-2 hover:text-accentPrimary">
+                Админка
+              </Link>
+            )}
           </>
         )}
       </div>

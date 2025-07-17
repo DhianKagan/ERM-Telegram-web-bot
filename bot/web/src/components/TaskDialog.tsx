@@ -95,7 +95,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(d=>{
         if(!d) return;
         const t=d.task||d;
-        setUsers(prev=>prev.length?prev:Object.values(d.users||{}));
+        setUsers(p => {
+          const list = [...p]
+          Object.values(d.users || {}).forEach(u => {
+            if (!list.some(v => v.telegram_id === u.telegram_id)) list.push(u)
+          })
+          return list
+        })
         setRequestId(t.request_id);
         setCreated(new Date(t.createdAt).toISOString().slice(0,10));
       });
@@ -173,7 +179,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setDueDate(t.due_date?new Date(t.due_date).toISOString().slice(0,16):"");
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
-      setUsers(prev=>prev.length?prev:Object.values(d.users||{}));
+      setUsers(p => {
+        const list = [...p]
+        Object.values(d.users || {}).forEach(u => {
+          if (!list.some(v => v.telegram_id === u.telegram_id)) list.push(u)
+        })
+        return list
+      })
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
       initialRef.current = {
         title: t.title||'',

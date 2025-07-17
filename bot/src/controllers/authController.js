@@ -2,7 +2,7 @@
 // Модули: otp, auth, queries, userInfoService
 const otp = require('../services/otp')
 const { generateToken } = require('../auth/auth')
-const { getUser, createUser } = require('../db/queries')
+const { getUser, createUser, updateUser } = require('../db/queries')
 const { getMemberStatus } = require('../services/userInfoService')
 const config = require('../config')
 
@@ -25,12 +25,18 @@ exports.verifyCode = async (req, res) => {
   if (!/^[0-9]+$/.test(id)) {
     return res.status(400).json({ error: 'Invalid telegramId' })
   }
-  const user = await getUser(id)
-  const roleId = user?.roleId?.toString()
-  const verified =
-    roleId === config.adminRoleId
-      ? otp.verifyAdminCode({ telegramId: id, code })
-      : otp.verifyCode({ telegramId: id, code })
+  let user = await getUser(id)
+  let roleId = user?.roleId?.toString()
+  let verified
+  if (roleId === config.adminRoleId || otp.adminCodes.has(id)) {
+    verified = otp.verifyAdminCode({ telegramId: id, code })
+    if (verified && user && roleId !== config.adminRoleId) {
+      user = await updateUser(id, { roleId: config.adminRoleId, role: 'admin' })
+      roleId = config.adminRoleId
+    }
+  } else {
+    verified = otp.verifyCode({ telegramId: id, code })
+  }
   if (verified) {
     try {
       const status = await getMemberStatus(id)

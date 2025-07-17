@@ -8,8 +8,13 @@ jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member')
 }))
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async id => (id === 99 ? { roleId: '686591126cc86a6bd16c18af' } : null)),
-  createUser: jest.fn(async () => ({ username: 'u' }))
+  getUser: jest.fn(async id => {
+    if (String(id) === '99') return { roleId: '686591126cc86a6bd16c18af' }
+    if (String(id) === '5') return { roleId: '686633fdf6896f1ad3fa063e' }
+    return null
+  }),
+  createUser: jest.fn(async () => ({ username: 'u' })),
+  updateUser: jest.fn(async () => ({ roleId: '686591126cc86a6bd16c18af', role: 'admin' }))
 }))
 jest.useFakeTimers().setSystemTime(0)
 process.env.BOT_TOKEN = 't'
@@ -22,6 +27,7 @@ const jwt = require('jsonwebtoken')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
 const authCtrl = require('../src/controllers/authController')
+const queries = require('../src/db/queries')
 
 afterEach(() => {
   authCtrl.codes.clear()
@@ -72,6 +78,14 @@ test('verifyCode возвращает токен', async () => {
   const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis() }
   await authCtrl.verifyCode({ body: { telegramId: 7, code, username: 'u' } }, res2)
   expect(res2.json).toHaveBeenCalledWith({ token: expect.any(String) })
+})
+
+test('admin code обновляет роль пользователя', async () => {
+  authCtrl.adminCodes.set('5', { code: '1234', ts: Date.now() })
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() }
+  await authCtrl.verifyCode({ body: { telegramId: 5, code: '1234', username: 'u' } }, res)
+  expect(res.json).toHaveBeenCalledWith({ token: expect.any(String) })
+  expect(queries.updateUser).toHaveBeenCalled()
 })
 
 test('clean удаляет старые записи при новом вызове', async () => {

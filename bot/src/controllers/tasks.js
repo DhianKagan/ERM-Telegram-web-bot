@@ -24,7 +24,7 @@ exports.list = async (req, res) => {
   const ids = new Set()
   tasks.forEach(t => {
     (t.assignees || []).forEach(id => ids.add(id))
-    (t.controllers || []).forEach(id => ids.add(id))
+    ;(t.controllers || []).forEach(id => ids.add(id))
     if (t.created_by) ids.add(t.created_by)
   })
   const users = await require('../db/queries').getUsersMap(Array.from(ids))

@@ -1,5 +1,5 @@
 // Назначение файла: список задач и функции сортировки
-import React from 'react'
+import React, { useContext } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import KPIOverview from '../components/KPIOverview'
 import { useToast } from '../context/useToast'
@@ -8,6 +8,7 @@ import { updateTask } from '../services/tasks'
 import authFetch from '../utils/authFetch'
 import fields from '../../../shared/taskFields.cjs'
 import parseJwt from '../utils/parseJwt'
+import { AuthContext } from '../context/AuthContext'
 import userLink from '../utils/userLink'
 
 interface Task {
@@ -50,12 +51,13 @@ export default function TasksPage() {
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
   const [showExport, setShowExport] = React.useState(false);
+  const { token } = useContext(AuthContext)
 
   const isAdmin = React.useMemo(() => {
-    const token = localStorage.getItem('token')
-    const data = token ? parseJwt(token) : null
+    if (!token) return false
+    const data = parseJwt(token)
     return data?.role === 'admin'
-  }, [])
+  }, [token])
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {

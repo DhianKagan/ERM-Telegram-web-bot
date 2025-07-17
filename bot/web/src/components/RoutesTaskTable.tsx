@@ -1,7 +1,8 @@
 // Таблица задач со сортировкой и фильтрами для страницы маршрутов
-import React from 'react'
+import React, { useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import parseJwt from '../utils/parseJwt'
+import { AuthContext } from '../context/AuthContext'
 
 interface Task {
   _id: string
@@ -43,11 +44,12 @@ export default function RoutesTaskTable({ tasks, onChange }: { tasks: Task[]; on
   })
   const navigate = useNavigate()
   const location = useLocation()
+  const { token } = useContext(AuthContext)
   const isAdmin = React.useMemo(() => {
-    const token = localStorage.getItem('token')
-    const data = token ? parseJwt(token) : null
+    if (!token) return false
+    const data = parseJwt(token)
     return data?.role === 'admin'
-  }, [])
+  }, [token])
   const openTask = (id: string) => {
     if (!isAdmin) return
     const params = new URLSearchParams(location.search)

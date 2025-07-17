@@ -71,9 +71,6 @@ export default function Profile() {
               />
             </div>
             <div>
-              <b>Отдел:</b> {user.departmentId ? user.departmentId.name : 'не задан'}
-            </div>
-            <div>
               <b>Упоминания:</b>
               <ul className="list-disc pl-5">
                 {tasks.map(t => (

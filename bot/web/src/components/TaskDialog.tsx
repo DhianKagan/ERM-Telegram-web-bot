@@ -54,7 +54,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [startDate, setStartDate] = React.useState("");
   const [dueDate, setDueDate] = React.useState("");
   const [controllers, setControllers] = React.useState<string[]>([]);
-  const [department, setDepartment] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [assignees, setAssignees] = React.useState<string[]>([]);
   const [start, setStart] = React.useState("");
@@ -69,7 +68,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const payments = fields.find(f=>f.name==='payment_method')?.options || [];
   const statuses = fields.find(f=>f.name==='status')?.options || [];
   const [users,setUsers]=React.useState<any[]>([]);
-  const [departments,setDepartments]=React.useState<any[]>([]);
   const [attachments,setAttachments]=React.useState<any[]>([]);
   const [files,setFiles]=React.useState<FileList|null>(null);
   const [distanceKm,setDistanceKm]=React.useState<number|null>(null);
@@ -94,8 +92,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   React.useEffect(()=>{
     setEditing(!isEdit)
     if(isEdit&&id){
-      authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
-        if(!t) return;
+      authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(d=>{
+        if(!d) return;
+        const t=d.task||d;
+        setUsers(prev=>prev.length?prev:Object.values(d.users||{}));
         setRequestId(t.request_id);
         setCreated(new Date(t.createdAt).toISOString().slice(0,10));
       });
@@ -116,7 +116,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         transportType: DEFAULT_TRANSPORT,
         paymentMethod: DEFAULT_PAYMENT,
         status: DEFAULT_STATUS,
-        department: '',
         creator: user ? String(user.telegram_id) : '',
         assignees: [],
         start: '',
@@ -140,10 +139,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setUsers(list)
           if (user) setCreator((user as any).telegram_id)
         })
-      // данные ролей и групп могут потребоваться позднее
-      authFetch('/api/v1/departments')
-        .then((r) => (r.ok ? r.json() : []))
-        .then(setDepartments)
     } else if (user) {
       setCreator((user as any).telegram_id)
     }
@@ -152,8 +147,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   React.useEffect(() => {
     if(!isEdit||!id) return;
-    authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(t=>{
-      if(!t) return;
+    authFetch(`/api/v1/tasks/${id}`).then(r=>r.ok?r.json():null).then(d=>{
+      if(!d) return;
+      const t=d.task||d;
       const curTaskType=t.task_type||DEFAULT_TASK_TYPE;
       const curPriority=t.priority||DEFAULT_PRIORITY;
       const curTransport=t.transport_type||DEFAULT_TRANSPORT;
@@ -167,7 +163,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setTransportType(curTransport);
       setPaymentMethod(curPayment);
       setStatus(curStatus);
-      setDepartment(t.departmentId||"");
       setCreator(String(t.created_by||""));
       setAssignees(t.assignees||[]);
       setStart(t.start_location||"");
@@ -178,6 +173,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setDueDate(t.due_date?new Date(t.due_date).toISOString().slice(0,16):"");
       setControllers(t.controllers||[]);
       setAttachments(t.attachments||[]);
+      setUsers(prev=>prev.length?prev:Object.values(d.users||{}));
       setDistanceKm(typeof t.route_distance_km==='number'?t.route_distance_km:null);
       initialRef.current = {
         title: t.title||'',
@@ -188,7 +184,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         transportType: curTransport,
         paymentMethod: curPayment,
         status: curStatus,
-        department: t.departmentId||'',
         creator: String(t.created_by||''),
         assignees: t.assignees||[],
         start: t.start_location||'',
@@ -259,7 +254,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       transport_type:transportType,
       payment_method:paymentMethod,
       status,
-      departmentId:department||undefined,
       created_by:creator,
       assignees,
       controllers,
@@ -300,7 +294,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setTransportType(d.transportType);
     setPaymentMethod(d.paymentMethod);
     setStatus(d.status);
-    setDepartment(d.department);
     setCreator(d.creator);
     setAssignees(d.assignees);
     setStart(d.start);
@@ -402,13 +395,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium">Отдел</label>
-          <select value={department} onChange={e=>setDepartment(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>
-            <option value="">Отдел</option>
-            {departments.map(d=>(<option key={d._id} value={d._id}>{d.name}</option>))}
-          </select>
-        </div>
         <div>
           <label className="block text-sm font-medium">Тип задачи</label>
           <select value={taskType} onChange={e=>setTaskType(e.target.value)} className="w-full rounded border px-2 py-1" disabled={!editing}>

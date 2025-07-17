@@ -173,7 +173,6 @@ Bad Request: message text is empty
 Примеры форматов:
 
 - `https://t.me/YourBot?start=task_<id>` — открывает задачу в приложении.
-- `https://t.me/YourBot?start=invite_<departmentId>` — присоединяет пользователя к отделу.
 
 После перехода по ссылке бот обработает payload и отправит кнопку для входа в мини‑приложение.
 

@@ -19,8 +19,6 @@
 | PATCH | /api/v1/tasks/:id/time | Добавить время |
 | POST | /api/v1/tasks/bulk | Массовое обновление |
 | GET | /api/v1/tasks/report/summary | KPI отчёт (`from`, `to`) |
-| GET | /api/v1/groups | Список групп |
-| POST | /api/v1/groups | Создание группы |
 | GET | /api/v1/users | Список пользователей |
 | POST | /api/v1/users | Создание пользователя |
 | GET | /api/v1/logs | Последние логи |

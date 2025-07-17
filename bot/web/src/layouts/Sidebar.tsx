@@ -24,7 +24,6 @@ const baseItems = [
 ];
 
 const adminExtra = [
-  { to: "/cp/projects", label: "Проекты", icon: RectangleStackIcon },
   { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
   { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },

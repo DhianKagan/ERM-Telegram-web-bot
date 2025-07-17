@@ -70,12 +70,17 @@ export default function TasksPage() {
       .then((r) => (r && r.ok ? r.json() : { tasks: [], users: [] }))
       .then((data) => {
         setAll(data.tasks);
-        setUsers(data.users);
+        const list = Array.isArray(data.users)
+          ? data.users
+          : Object.values(data.users || {});
+        setUsers(list);
       });
     if (isAdmin) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
-        .then(setUsers);
+        .then((list) =>
+          setUsers(Array.isArray(list) ? list : Object.values(list || {})),
+        );
     }
     authFetch("/api/v1/tasks/report/summary")
       .then(handleAuth)

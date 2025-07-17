@@ -2,7 +2,9 @@
 import authFetch from "../utils/authFetch";
 
 export const fetchKanban = () =>
-  authFetch("/api/v1/tasks?kanban=true").then((r) => (r.ok ? r.json() : []));
+  authFetch("/api/v1/tasks?kanban=true")
+    .then((r) => (r.ok ? r.json() : []))
+    .then((data) => (Array.isArray(data) ? data : data.tasks || []));
 
 export const updateTaskStatus = (id, status) =>
   authFetch(`/api/v1/tasks/${id}/status`, {

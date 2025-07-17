@@ -31,6 +31,15 @@ const { verifyToken, checkRole, asyncHandler } = require('../src/api/middleware'
 const app = express()
 app.use(express.json())
 
+const rateLimit = require('express-rate-limit')
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: "Too many requests, please try again later." }
+})
+
+app.use('/api/v1/', apiLimiter)
+
 app.get('/api/v1/logs', verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
   res.json(await listLogs())
 }))

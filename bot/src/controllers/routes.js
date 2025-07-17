@@ -5,7 +5,6 @@ const { validationResult } = require('express-validator')
 exports.all = async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
-  const user = await require('../db/queries').getUser(req.user.id)
   const filters = {
     from: req.query.from,
     to: req.query.to,

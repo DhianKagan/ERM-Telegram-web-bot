@@ -30,14 +30,8 @@ const authUserRouter = require('../routes/authUser')
 const formatUser = require('../utils/formatUser')
 const {
   updateTaskStatus,
-  createGroup,
-  listGroups,
   createUser,
   listUsers,
-  createDepartment,
-  listDepartments,
-  updateDepartment,
-  deleteDepartment,
   listRoles,
   updateRole,
   writeLog,
@@ -113,20 +107,10 @@ const validate = validations => [
   // простая проверка работоспособности контейнера
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-  // лимит запросов к группам и пользователям: 100 за 15 минут
-  const groupsRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later.' }
-  })
+  // лимит запросов к пользователям: 100 за 15 минут
   const usersRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
-    message: { error: 'Too many requests, please try again later.' }
-  })
-  const departmentsRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
     message: { error: 'Too many requests, please try again later.' }
   })
   const logsRateLimiter = rateLimit({
@@ -165,15 +149,6 @@ const validate = validations => [
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks
 
 
-  app.get(`${prefix}/groups`, groupsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
-    res.json(await listGroups())
-  }))
-  app.post(`${prefix}/groups`, groupsRateLimiter, verifyToken, checkRole('admin'),
-    validate([body('name').isString().notEmpty()]),
-    asyncHandler(async (req, res) => {
-    const group = await createGroup(req.body.name)
-    res.json(group)
-  }))
 
   app.get(`${prefix}/users`, usersRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     const users = await listUsers()
@@ -190,27 +165,6 @@ const validate = validations => [
     res.json(formatUser(user))
   }))
 
-  app.get(`${prefix}/departments`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
-    res.json(await listDepartments())
-  }))
-  app.post(`${prefix}/departments`, departmentsRateLimiter, verifyToken, checkRole('admin'),
-    validate([body('name').isString().notEmpty()]),
-    asyncHandler(async (req, res) => {
-    const dep = await createDepartment(req.body.name)
-    res.json(dep)
-  }))
-
-  app.patch(`${prefix}/departments/:id`, departmentsRateLimiter, verifyToken, checkRole('admin'),
-    validate([body('name').isString().notEmpty()]),
-    asyncHandler(async (req, res) => {
-    const dep = await updateDepartment(req.params.id, req.body.name)
-    res.json(dep)
-  }))
-
-  app.delete(`${prefix}/departments/:id`, departmentsRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (req, res) => {
-    await deleteDepartment(req.params.id)
-    res.json({ status: 'ok' })
-  }))
 
   app.get(`${prefix}/roles`, rolesRateLimiter, verifyToken, checkRole('admin'), asyncHandler(async (_req, res) => {
     res.json(await listRoles())

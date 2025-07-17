@@ -11,7 +11,6 @@ const router = express.Router()
 const detailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })
 
 router.get('/', verifyToken, [
-  query('project').optional().isMongoId(),
   query('status').optional().isString(),
   query('assignees').optional().isArray(),
   query('from').optional().isISO8601(),

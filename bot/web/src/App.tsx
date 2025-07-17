@@ -8,7 +8,6 @@ import {
 } from "react-router-dom";
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const TaskKanban = lazy(() => import("./pages/TaskKanban"));
-const Projects = lazy(() => import("./pages/Projects"));
 const Reports = lazy(() => import("./pages/Reports"));
 const AdminPage = lazy(() => import("./pages/Admin"));
 const CpIndex = lazy(() => import("./pages/CpIndex"));
@@ -61,14 +60,6 @@ function Content() {
               <ProtectedRoute>
                 <TaskKanban />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cp/projects"
-            element={
-              <AdminRoute>
-                <Projects />
-              </AdminRoute>
             }
           />
           <Route

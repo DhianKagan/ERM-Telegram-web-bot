@@ -67,8 +67,11 @@ export default function TasksPage() {
   const load = React.useCallback(() => {
     authFetch("/api/v1/tasks")
       .then(handleAuth)
-      .then((r) => (r && r.ok ? r.json() : []))
-      .then(setAll);
+      .then((r) => (r && r.ok ? r.json() : { tasks: [], users: [] }))
+      .then((data) => {
+        setAll(data.tasks);
+        setUsers(data.users);
+      });
     if (isAdmin) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))

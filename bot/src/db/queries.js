@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, Group, User, Department, Log, Role } = require('./model')
+const { Task, Archive, User, Log, Role } = require('./model')
 
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -17,9 +17,6 @@ async function assignTask(userId, taskId) {
   return Task.findByIdAndUpdate(taskId, { assigned_user_id: userId })
 }
 
-async function assignGroup(groupId, taskId) {
-  return Task.findByIdAndUpdate(taskId, { group_id: groupId })
-}
 
 async function listUserTasks(userId) {
   return Task.find({ assigned_user_id: userId })
@@ -53,8 +50,6 @@ async function updateTaskStatus(id, status) {
 async function getTasks(filters = {}, page, limit) {
   if (filters.kanban) return Task.find({}).sort('-createdAt')
   const q = {}
-  if (filters.project) q.group_id = filters.project
-  if (filters.departmentId) q.departmentId = filters.departmentId
   if (filters.status) q.status = filters.status
   if (filters.assignees) q.assignees = { $in: filters.assignees }
   if (filters.from || filters.to) q.createdAt = {}
@@ -67,13 +62,12 @@ async function getTasks(filters = {}, page, limit) {
 
 async function listRoutes(filters = {}) {
   const q = {}
-  if (filters.departmentId) q.departmentId = filters.departmentId
   // статус маршрута задаём как строку через $eq
   if (filters.status) q.status = { $eq: filters.status }
   if (filters.from || filters.to) q.createdAt = {}
   if (filters.from) q.createdAt.$gte = filters.from
   if (filters.to) q.createdAt.$lte = filters.to
-  return Task.find(q).select('startCoordinates finishCoordinates route_distance_km departmentId status createdAt')
+  return Task.find(q).select('startCoordinates finishCoordinates route_distance_km status createdAt')
 }
 
 async function searchTasks(text) {
@@ -127,34 +121,6 @@ async function summary(filters = {}) {
   return { count, time }
 }
 
-async function createGroup(name) {
-  return Group.create({ name })
-}
-
-async function listGroups() {
-  return Group.find()
-}
-
-async function createDepartment(name) {
-  return Department.create({ name })
-}
-
-async function listDepartments() {
-  return Department.find()
-}
-
-async function updateDepartment(id, name) {
-
-  if (typeof name !== 'string') {
-    throw new Error('Invalid input: name must be a string')
-  }
-  return Department.findByIdAndUpdate(id, { $set: { name: String(name) } }, { new: true })
-
-}
-
-async function deleteDepartment(id) {
-  return Department.findByIdAndDelete(id)
-}
 
 async function createUser(id, username, roleId, extra = {}) {
   const telegramId = Number(id)
@@ -182,6 +148,14 @@ async function getUser(id) {
 
 async function listUsers() {
   return User.find()
+}
+
+async function getUsersMap(ids = []) {
+  const numeric = ids.map(id => Number(id)).filter(id => !Number.isNaN(id))
+  const list = await User.find({ telegram_id: { $in: numeric } })
+  const map = {}
+  list.forEach(u => { map[u.telegram_id] = u })
+  return map
 }
 
 async function updateUser(id, data) {
@@ -218,7 +192,6 @@ async function listLogs() {
 module.exports = {
   createTask,
   assignTask,
-  assignGroup,
   listUserTasks,
   listAllTasks,
   listMentionedTasks,
@@ -230,13 +203,10 @@ module.exports = {
   bulkUpdate,
   deleteTask,
   summary,
-  createGroup,
-  listGroups,
-  createDepartment,
-  listDepartments,
   createUser,
   getUser,
   listUsers,
+  getUsersMap,
   updateUser,
   listRoles,
   getRole,
@@ -245,7 +215,5 @@ module.exports = {
   listLogs,
   searchTasks,
   addAttachment,
-  updateDepartment,
-  deleteDepartment,
   listRoutes
 }

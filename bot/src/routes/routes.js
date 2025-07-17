@@ -14,7 +14,6 @@ router.get('/all', verifyToken,
   validate([
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
-    query('department').optional().isMongoId(),
     query('status').optional().isString()
   ]),
   asyncHandler(ctrl.all))

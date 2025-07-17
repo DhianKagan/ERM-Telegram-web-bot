@@ -10,25 +10,36 @@ function handle(req, res, next) {
 }
 
 exports.list = async (req, res) => {
-  const user = await require('../db/queries').getUser(req.user.id)
   const { page, limit, ...filters } = req.query
   let tasks
   if (req.user.role === 'admin') {
     tasks = await service.get(
-      { ...filters, departmentId: user?.departmentId },
+      filters,
       page ? Number(page) : undefined,
       limit ? Number(limit) : undefined
     )
   } else {
     tasks = await service.mentioned(req.user.id)
   }
-  res.json(tasks)
+  const ids = new Set()
+  tasks.forEach(t => {
+    (t.assignees || []).forEach(id => ids.add(id))
+    (t.controllers || []).forEach(id => ids.add(id))
+    if (t.created_by) ids.add(t.created_by)
+  })
+  const users = await require('../db/queries').getUsersMap(Array.from(ids))
+  res.json({ tasks, users })
 }
 
 exports.detail = async (req, res) => {
   const task = await service.getById(req.params.id)
   if (!task) return res.sendStatus(404)
-  res.json(task)
+  const ids = new Set()
+  ;(task.assignees || []).forEach(id => ids.add(id))
+  ;(task.controllers || []).forEach(id => ids.add(id))
+  if (task.created_by) ids.add(task.created_by)
+  const users = await require('../db/queries').getUsersMap(Array.from(ids))
+  res.json({ task, users })
 }
 
 exports.create = [handle, async (req, res) => {

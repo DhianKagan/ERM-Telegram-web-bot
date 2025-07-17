@@ -9,8 +9,7 @@ exports.all = async (req, res) => {
   const filters = {
     from: req.query.from,
     to: req.query.to,
-    status: typeof req.query.status === 'string' ? req.query.status : undefined,
-    departmentId: req.query.department || user?.departmentId
+    status: typeof req.query.status === 'string' ? req.query.status : undefined
   }
   res.json(await service.list(filters))
 }

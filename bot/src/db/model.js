@@ -19,7 +19,6 @@ const applicantSchema = new mongoose.Schema({
   name: String,
   phone: String,
   email: String,
-  department: String
 }, { _id: false })
 
 const logisticsSchema = new mongoose.Schema({
@@ -94,8 +93,7 @@ const taskSchema = new mongoose.Schema({
   controller_user_id: Number,
   controllers: [Number],
   assignees: [Number],
-  group_id: mongoose.Schema.Types.ObjectId,
-  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+  // Поля проектов и отделов удалены
   priority: { type: String, enum: ['Срочно', 'В течение дня', 'Бессрочно'], default: 'В течение дня' },
   priority_id: Number,
   created_by: Number,
@@ -147,7 +145,6 @@ taskSchema.pre('save', async function(next) {
   next()
 })
 
-const groupSchema = new mongoose.Schema({ name: String })
 const roleSchema = new mongoose.Schema({
   name: String,
   permissions: [String]
@@ -167,13 +164,11 @@ const userSchema = new mongoose.Schema({
   // Роль пользователя хранится строкой, по умолчанию обычный пользователь
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
-  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
   // Дата прохождения верификации через Bot API
   verified_at: Date
 })
-const departmentSchema = new mongoose.Schema({ name: String })
 const logSchema = new mongoose.Schema({
   message: String,
   level: { type: String, enum: ['info', 'warn', 'error'], default: 'info' }
@@ -182,8 +177,6 @@ const logSchema = new mongoose.Schema({
 const Task = mongoose.model('Task', taskSchema)
 // Отдельная коллекция для архивных задач
 const Archive = mongoose.model('Archive', taskSchema, 'archives')
-const Group = mongoose.model('Group', groupSchema)
-const Department = mongoose.model('Department', departmentSchema)
 const Role = mongoose.model('Role', roleSchema)
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
@@ -191,4 +184,4 @@ const Role = mongoose.model('Role', roleSchema)
 const User = mongoose.model('User', userSchema, 'telegram_users')
 const Log = mongoose.model('Log', logSchema)
 
-module.exports = { Task, Archive, Group, User, Department, Log, Role }
+module.exports = { Task, Archive, User, Log, Role }

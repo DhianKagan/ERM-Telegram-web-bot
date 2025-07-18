@@ -3,7 +3,19 @@
 const path = require('path')
 const express = require('express')
 const rateLimit = require('express-rate-limit')
-const { verifyToken } = require('../api/middleware')
+const jwt = require('jsonwebtoken')
+const { jwtSecret } = require('../config')
+
+// Опциональная проверка токена: при ошибке продолжаем без пользователя
+function optionalVerify(req, _res, next) {
+  const auth = req.headers['authorization']
+  if (!auth) return next()
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : auth.trim()
+  jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }, (err, decoded) => {
+    if (!err) req.user = decoded
+    next()
+  })
+}
 
 function initCustomAdmin(app) {
   // Доступ контролируется ролью пользователя из базы данных
@@ -18,9 +30,9 @@ function initCustomAdmin(app) {
   })
 
   router.use(adminRateLimiter)
-  router.use(verifyToken)
+  router.use(optionalVerify)
   router.use((req, res, next) => {
-    if (req.user.role === 'admin') return next()
+    if (req.user && req.user.role === 'admin') return next()
     res.sendFile(path.join(pub, 'admin-placeholder.html'))
   })
   router.use(express.static(pub))
@@ -28,7 +40,7 @@ function initCustomAdmin(app) {
   router.get('/*splat', (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'))
   })
-  app.use('/admin', router)
+  app.use(['/admin', '/cp'], router)
 }
 
 module.exports = initCustomAdmin

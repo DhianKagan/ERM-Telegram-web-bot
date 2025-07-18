@@ -211,7 +211,8 @@ GitHub Actions используют тот же скрипт; workflow `docker.y
 ```bash
 NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 ```
-Скрипт назначает пользователю роль `admin` по его Telegram ID.
+Скрипт назначает пользователю роль `admin` и устанавливает `roleId`,
+чтобы при авторизации отправлялся код администратора.
 
 ## Дополнительные материалы
 Подробности смотрите в каталоге `docs/`, историю изменений — в `CHANGELOG.md`, планы — в `ROADMAP.md`.

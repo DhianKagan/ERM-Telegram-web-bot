@@ -13,18 +13,6 @@ async function getTask(id) {
   return Task.findById(id)
 }
 
-async function assignTask(userId, taskId) {
-  return Task.findByIdAndUpdate(taskId, { assigned_user_id: userId })
-}
-
-
-async function listUserTasks(userId) {
-  return Task.find({ assigned_user_id: userId })
-}
-
-async function listAllTasks() {
-  return Task.find()
-}
 
 async function listMentionedTasks(userId) {
   return Task.find({
@@ -92,9 +80,6 @@ async function bulkUpdate(ids, data) {
   await Task.updateMany({ _id: { $in: ids } }, data)
 }
 
-async function addAttachment(taskId, attachment) {
-  return Task.findByIdAndUpdate(taskId, { $push: { attachments: attachment } }, { new: true })
-}
 
 async function deleteTask(id) {
   const doc = await Task.findByIdAndDelete(id)
@@ -191,9 +176,6 @@ async function listLogs() {
 
 module.exports = {
   createTask,
-  assignTask,
-  listUserTasks,
-  listAllTasks,
   listMentionedTasks,
   updateTask,
   updateTaskStatus,
@@ -214,6 +196,5 @@ module.exports = {
   writeLog,
   listLogs,
   searchTasks,
-  addAttachment,
   listRoutes
 }

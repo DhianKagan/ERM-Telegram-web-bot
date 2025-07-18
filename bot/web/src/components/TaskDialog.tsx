@@ -147,6 +147,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         })
     } else if (user) {
       setCreator((user as any).telegram_id)
+      setUsers([user as any])
     }
   }, [user, isAdmin])
 

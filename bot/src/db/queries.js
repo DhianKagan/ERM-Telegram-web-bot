@@ -1,19 +1,18 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, User, Log, Role } = require('./model')
-const config = require('../config')
+const { Task, Archive, User, Log, Role } = require('./model');
+const config = require('../config');
 
 function escapeRegex(text) {
-  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 async function createTask(data) {
-  return Task.create(data)
+  return Task.create(data);
 }
 
 async function getTask(id) {
-  return Task.findById(id)
+  return Task.findById(id);
 }
-
 
 async function listMentionedTasks(userId) {
   return Task.find({
@@ -23,157 +22,183 @@ async function listMentionedTasks(userId) {
       { controllers: userId },
       { assignees: userId },
       { created_by: userId },
-      { 'comments.author_id': userId }
-    ]
-  })
+      { 'comments.author_id': userId },
+    ],
+  });
 }
 
 async function updateTask(id, fields) {
-  return Task.findByIdAndUpdate(id, fields, { new: true })
+  return Task.findByIdAndUpdate(id, fields, { new: true });
 }
 
 async function updateTaskStatus(id, status) {
-  return updateTask(id, { status })
+  return updateTask(id, { status });
 }
 
 async function getTasks(filters = {}, page, limit) {
-  if (filters.kanban) return Task.find({}).sort('-createdAt')
-  const q = {}
-  if (filters.status) q.status = filters.status
-  if (filters.assignees) q.assignees = { $in: filters.assignees }
-  if (filters.from || filters.to) q.createdAt = {}
-  if (filters.from) q.createdAt.$gte = filters.from
-  if (filters.to) q.createdAt.$lte = filters.to
-  let query = Task.find(q)
-  if (page && limit) query = query.skip((page - 1) * limit).limit(limit)
-  return query
+  if (filters.kanban) return Task.find({}).sort('-createdAt');
+  const q = {};
+  if (filters.status) q.status = filters.status;
+  if (filters.assignees) q.assignees = { $in: filters.assignees };
+  if (filters.from || filters.to) q.createdAt = {};
+  if (filters.from) q.createdAt.$gte = filters.from;
+  if (filters.to) q.createdAt.$lte = filters.to;
+  let query = Task.find(q);
+  if (page && limit) query = query.skip((page - 1) * limit).limit(limit);
+  return query;
 }
 
 async function listRoutes(filters = {}) {
-  const q = {}
+  const q = {};
   // статус маршрута задаём как строку через $eq
-  if (filters.status) q.status = { $eq: filters.status }
-  if (filters.from || filters.to) q.createdAt = {}
-  if (filters.from) q.createdAt.$gte = filters.from
-  if (filters.to) q.createdAt.$lte = filters.to
-  return Task.find(q).select('startCoordinates finishCoordinates route_distance_km status createdAt')
+  if (filters.status) q.status = { $eq: filters.status };
+  if (filters.from || filters.to) q.createdAt = {};
+  if (filters.from) q.createdAt.$gte = filters.from;
+  if (filters.to) q.createdAt.$lte = filters.to;
+  return Task.find(q).select(
+    'startCoordinates finishCoordinates route_distance_km status createdAt',
+  );
 }
 
 async function searchTasks(text) {
-  const safe = escapeRegex(text)
+  const safe = escapeRegex(text);
   return Task.find({
     $or: [
       { title: { $regex: safe, $options: 'i' } },
-      { task_description: { $regex: safe, $options: 'i' } }
-    ]
-  }).limit(10)
+      { task_description: { $regex: safe, $options: 'i' } },
+    ],
+  }).limit(10);
 }
 
 async function addTime(id, minutes) {
-  const task = await Task.findById(id)
-  if (!task) return null
-  task.time_spent += minutes
-  await task.save()
-  return task
+  const task = await Task.findById(id);
+  if (!task) return null;
+  task.time_spent += minutes;
+  await task.save();
+  return task;
 }
 
 async function bulkUpdate(ids, data) {
-  await Task.updateMany({ _id: { $in: ids } }, data)
+  await Task.updateMany({ _id: { $in: ids } }, data);
 }
-
 
 async function deleteTask(id) {
-  const doc = await Task.findByIdAndDelete(id)
-  if (!doc) return null
-  const data = doc.toObject()
-  data.request_id = `${data.request_id}-DEL`
-  await Archive.create(data)
-  return doc
+  const doc = await Task.findByIdAndDelete(id);
+  if (!doc) return null;
+  const data = doc.toObject();
+  data.request_id = `${data.request_id}-DEL`;
+  await Archive.create(data);
+  return doc;
 }
-
 
 async function summary(filters = {}) {
-  const match = {}
-  if (filters.from) match.createdAt = { $gte: new Date(filters.from) }
+  const match = {};
+  if (filters.from) match.createdAt = { $gte: new Date(filters.from) };
   if (filters.to) {
-    match.createdAt = match.createdAt || {}
-    match.createdAt.$lte = new Date(filters.to)
+    match.createdAt = match.createdAt || {};
+    match.createdAt.$lte = new Date(filters.to);
   }
-  const res = await Task.aggregate([
-    Object.keys(match).length ? { $match: match } : undefined,
-    { $group: { _id: null, count: { $sum: 1 }, time: { $sum: '$time_spent' } } }
-  ].filter(Boolean))
-  const { count = 0, time = 0 } = res[0] || {}
-  return { count, time }
+  const res = await Task.aggregate(
+    [
+      Object.keys(match).length ? { $match: match } : undefined,
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          time: { $sum: '$time_spent' },
+        },
+      },
+    ].filter(Boolean),
+  );
+  const { count = 0, time = 0 } = res[0] || {};
+  return { count, time };
 }
 
-
 async function createUser(id, username, roleId, extra = {}) {
-  const telegramId = Number(id)
-  if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id')
-  const email = `${telegramId}@telegram.local`
-  let role = 'user'
-  let rId = roleId || config.userRoleId
+  const telegramId = Number(id);
+  if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id');
+  const email = `${telegramId}@telegram.local`;
+  let role = 'user';
+  let rId = roleId || config.userRoleId;
   if (rId) {
     const { Types } = require('mongoose');
     if (!Types.ObjectId.isValid(rId)) {
       throw new Error('Invalid roleId');
     }
-    const dbRole = await Role.findById(rId)
-    if (dbRole) { role = dbRole.name; rId = dbRole._id }
+    const dbRole = await Role.findById(rId);
+    if (dbRole) {
+      role = dbRole.name;
+      rId = dbRole._id;
+    }
   }
-  return User.create({ telegram_id: telegramId, username, email, name: username, role, roleId: rId, ...extra })
+  return User.create({
+    telegram_id: telegramId,
+    username,
+    email,
+    name: username,
+    role,
+    roleId: rId,
+    access: extra.access || 1,
+    ...extra,
+  });
 }
 
 async function getUser(id) {
-  const telegramId = Number(id)
-  if (Number.isNaN(telegramId)) return null
-  return User.findOne({ telegram_id: telegramId })
+  const telegramId = Number(id);
+  if (Number.isNaN(telegramId)) return null;
+  return User.findOne({ telegram_id: telegramId });
 }
 
-
 async function listUsers() {
-  return User.find()
+  return User.find();
 }
 
 async function getUsersMap(ids = []) {
-  const numeric = ids.map(id => Number(id)).filter(id => !Number.isNaN(id))
-  const list = await User.find({ telegram_id: { $in: numeric } })
-  const map = {}
-  list.forEach(u => { map[u.telegram_id] = u })
-  return map
+  const numeric = ids.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
+  const list = await User.find({ telegram_id: { $in: numeric } });
+  const map = {};
+  list.forEach((u) => {
+    map[u.telegram_id] = u;
+  });
+  return map;
 }
 
 async function updateUser(id, data) {
-  const telegramId = Number(id)
-  if (Number.isNaN(telegramId)) return null
-  return User.findOneAndUpdate({ telegram_id: telegramId }, data, { new: true })
+  const telegramId = Number(id);
+  if (Number.isNaN(telegramId)) return null;
+  return User.findOneAndUpdate({ telegram_id: telegramId }, data, {
+    new: true,
+  });
 }
 
 async function listRoles() {
-  return Role.find()
+  return Role.find();
 }
 
 async function getRole(id) {
-  return Role.findById(id)
+  return Role.findById(id);
 }
 
 async function updateRole(id, permissions) {
   const sanitizedPermissions = Array.isArray(permissions)
-    ? permissions.filter(item => typeof item === 'string' || typeof item === 'number')
+    ? permissions.filter(
+        (item) => typeof item === 'string' || typeof item === 'number',
+      )
     : [];
-  return Role.findByIdAndUpdate(id, { permissions: sanitizedPermissions }, { new: true });
+  return Role.findByIdAndUpdate(
+    id,
+    { permissions: sanitizedPermissions },
+    { new: true },
+  );
 }
 
-
 async function writeLog(message, level = 'info') {
-  return Log.create({ message, level })
+  return Log.create({ message, level });
 }
 
 async function listLogs() {
-  return Log.find().sort({ createdAt: -1 }).limit(100)
+  return Log.find().sort({ createdAt: -1 }).limit(100);
 }
-
 
 module.exports = {
   createTask,
@@ -197,5 +222,5 @@ module.exports = {
   writeLog,
   listLogs,
   searchTasks,
-  listRoutes
-}
+  listRoutes,
+};

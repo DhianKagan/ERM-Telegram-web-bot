@@ -168,3 +168,6 @@
 - Добавлены тесты маршрута `/api/v1/users`
 - Скрипт create_admin_user.js устанавливает roleId администратора
 - Функция createUser записывает roleId и name по умолчанию
+- Добавлен docs/architecture.md с описанием модулей проекта
+- Настроен Prettier, используйте `npm run format` перед коммитами
+- Для экстренной замены токена создан INCIDENT_RESPONSE.md

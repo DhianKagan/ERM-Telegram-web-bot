@@ -157,3 +157,7 @@
 128. Покрыт тестами доступ к `/api/v1/users`
 129. Скрипт create_admin_user.js устанавливает roleId администратора
 130. createUser проставляет name и roleId по умолчанию
+131. Добавлен docs/architecture.md с кратким описанием модулей
+132. Настроен Prettier и команда `npm run format`
+133. В telegramApi.call реализован экспоненциальный бэкофф
+134. Создан INCIDENT_RESPONSE.md для экстренной смены токена

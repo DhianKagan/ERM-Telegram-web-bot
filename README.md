@@ -196,6 +196,7 @@ npm --prefix bot run check:mongo
 Перед обновлением пакетов выполняйте `npm outdated`, изучайте изменения major-
 версий и обязательно запускайте `./scripts/audit_deps.sh` и
 `./scripts/setup_and_test.sh`.
+Также перед коммитом запускайте `npm --prefix bot run format` для единообразного форматирования кода.
 
 ## Тесты
 ```bash
@@ -223,6 +224,7 @@ NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 - Загрузка задач в канбане корректно обрабатывает ответ с объектом
 - При смене токена роль пользователя на страницах задач обновляется без перезагрузки
 - Маршрут `/api/v1/users` покрыт отдельными тестами
+- Обзор модулей приведён в `docs/architecture.md`
 - Пользователь хранится в MongoDB со схемой:
   `telegram_id`, `username`, `name`, `phone`, `mobNumber`, `email`, `role`, `roleId`, `receive_reminders`, `verified_at`
 

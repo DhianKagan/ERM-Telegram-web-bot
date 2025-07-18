@@ -35,7 +35,15 @@ jest.mock('../src/db/model', () => ({
 
 jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }))
 
-jest.mock('../src/api/middleware', () => ({ verifyToken: (_req,_res,next)=>next(), asyncHandler: fn=>fn, errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}), checkRole: () => (_req,_res,next)=>next() }))
+const queries = require('../src/db/queries')
+jest.spyOn(queries, 'getUsersMap').mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } })
+
+jest.mock('../src/api/middleware', () => ({
+  verifyToken: (req,_res,next)=>{ req.user = { role: 'admin', id: 1 }; next() },
+  asyncHandler: fn=>fn,
+  errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}),
+  checkRole: () => (_req,_res,next)=>next()
+}))
 
 const router = require('../src/routes/tasks')
 const { Task, Archive } = require('../src/db/model')
@@ -76,6 +84,13 @@ test('добавление времени', async () => {
 test('bulk update статуса', async () => {
   await request(app).post('/api/v1/tasks/bulk').send({ ids:[id,id], status:'Выполнена' })
   expect(Task.updateMany).toHaveBeenCalled()
+})
+
+test('получение списка задач возвращает пользователей', async () => {
+  Task.find.mockResolvedValueOnce([{ _id:'1', assignees:[1], controllers:[], created_by:1 }])
+  const res = await request(app).get('/api/v1/tasks')
+  expect(res.body.users['1'].name).toBe('User')
+  expect(Array.isArray(res.body.tasks)).toBe(true)
 })
 
 test('summary report возвращает метрики', async () => {

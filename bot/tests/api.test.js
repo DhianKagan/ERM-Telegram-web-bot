@@ -7,15 +7,15 @@ process.env.APP_URL = 'https://localhost'
 
 const request = require('supertest')
 const express = require('express')
-jest.mock('../src/services/service', () => ({ listAllTasks: jest.fn() }))
-const services = require('../src/services/service')
+jest.mock('../src/services/tasks', () => ({ get: jest.fn() }))
+const tasksService = require('../src/services/tasks')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
 jest.unmock('jsonwebtoken')
 
 let app
 beforeAll(async () => {
-  services.listAllTasks.mockResolvedValue([{ id: 1 }])
+  tasksService.get.mockResolvedValue({ tasks: [{ id: 1 }], users: {} })
   const { verifyToken, asyncHandler, errorHandler } = require('../src/api/middleware')
   const { generateToken } = require('../src/auth/auth')
   app = express()
@@ -23,7 +23,7 @@ beforeAll(async () => {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
   const token = generateToken({ id: 1, username: 'test', isAdmin: true })
   app.get('/api/v1/tasks', verifyToken, asyncHandler(async (_req, res) => {
-    res.json(await services.listAllTasks())
+    res.json(await tasksService.get())
   }))
   app.use(errorHandler)
   app.locals.token = token
@@ -40,5 +40,5 @@ test('GET /api/v1/tasks отдает список задач', async () => {
   const token = app.locals.token
   const res = await request(app).get('/api/v1/tasks').set('Authorization', `Bearer ${token}`)
   expect(res.status).toBe(200)
-  expect(Array.isArray(res.body)).toBe(true)
+  expect(Array.isArray(res.body.tasks)).toBe(true)
 })

@@ -38,11 +38,13 @@ async function updateTaskStatus(id, status) {
 async function getTasks(filters = {}, page, limit) {
   if (filters.kanban) return Task.find({}).sort('-createdAt');
   const q = {};
-  if (filters.status) q.status = filters.status;
-  if (filters.assignees) q.assignees = { $in: filters.assignees };
+  if (filters.status) q.status = { $eq: filters.status }; // Use $eq to ensure literal value
+  if (filters.assignees && Array.isArray(filters.assignees)) {
+    q.assignees = { $in: filters.assignees.map(assignee => String(assignee)) }; // Sanitize assignees
+  }
   if (filters.from || filters.to) q.createdAt = {};
-  if (filters.from) q.createdAt.$gte = filters.from;
-  if (filters.to) q.createdAt.$lte = filters.to;
+  if (filters.from) q.createdAt.$gte = new Date(filters.from); // Ensure valid date
+  if (filters.to) q.createdAt.$lte = new Date(filters.to); // Ensure valid date
   let query = Task.find(q);
   if (page && limit) query = query.skip((page - 1) * limit).limit(limit);
   return query;

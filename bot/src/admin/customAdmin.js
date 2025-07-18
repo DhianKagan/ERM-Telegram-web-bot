@@ -18,12 +18,23 @@ function initCustomAdmin(app) {
   });
 
   router.use(adminRateLimiter);
+  // статика отдаётся без проверки токена
+  router.use(express.static(pub, { index: false }));
+
+  // Поддержка токена через параметр ?token= для первого запроса
+  router.use((req, _res, next) => {
+    if (!req.headers.authorization && req.query.token) {
+      req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    next();
+  });
+
   router.use(verifyToken);
   router.use((req, res, next) => {
     if (req.user.role === 'admin') return next();
     res.sendFile(path.join(pub, 'admin-placeholder.html'));
   });
-  router.use(express.static(pub));
+
   // Express 5 использует синтаксис `/*splat` для wildcard-маршрута
   router.get('/*splat', (_req, res) => {
     res.sendFile(path.join(pub, 'index.html'));

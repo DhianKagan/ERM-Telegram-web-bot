@@ -223,6 +223,8 @@ NODE_PATH=./bot/node_modules node scripts/create_admin_user.js <id> [username]
 - Загрузка задач в канбане корректно обрабатывает ответ с объектом
 - При смене токена роль пользователя на страницах задач обновляется без перезагрузки
 - Маршрут `/api/v1/users` покрыт отдельными тестами
+- Пользователь хранится в MongoDB со схемой:
+  `telegram_id`, `username`, `name`, `phone`, `mobNumber`, `email`, `role`, `roleId`, `receive_reminders`, `verified_at`
 
 ## Контакты
 По вопросам безопасности пишите на [security@agro-market.ua](mailto:security@agro-market.ua).

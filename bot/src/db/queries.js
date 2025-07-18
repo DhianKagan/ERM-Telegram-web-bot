@@ -1,5 +1,6 @@
 // Централизованные функции работы с MongoDB для всего проекта
 const { Task, Archive, User, Log, Role } = require('./model')
+const config = require('../config')
 
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -112,16 +113,16 @@ async function createUser(id, username, roleId, extra = {}) {
   if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id')
   const email = `${telegramId}@telegram.local`
   let role = 'user'
-  let rId = roleId
-  if (roleId) {
+  let rId = roleId || config.userRoleId
+  if (rId) {
     const { Types } = require('mongoose');
-    if (!Types.ObjectId.isValid(roleId)) {
+    if (!Types.ObjectId.isValid(rId)) {
       throw new Error('Invalid roleId');
     }
-    const dbRole = await Role.findById(roleId)
+    const dbRole = await Role.findById(rId)
     if (dbRole) { role = dbRole.name; rId = dbRole._id }
   }
-  return User.create({ telegram_id: telegramId, username, email, role, roleId: rId, ...extra })
+  return User.create({ telegram_id: telegramId, username, email, name: username, role, roleId: rId, ...extra })
 }
 
 async function getUser(id) {

@@ -11,6 +11,7 @@ try {
 }
 
 const { User } = require('../bot/src/db/model')
+const config = require('../bot/src/config')
 
 const [, , idArg, usernameArg] = process.argv
 if (!idArg) {
@@ -33,10 +34,12 @@ async function main() {
       telegram_id: telegramId,
       username,
       email: `${telegramId}@telegram.local`,
-      role: 'admin'
+      role: 'admin',
+      roleId: config.adminRoleId
     })
   } else {
     user.role = 'admin'
+    user.roleId = config.adminRoleId
     user.username = username
     await user.save()
   }

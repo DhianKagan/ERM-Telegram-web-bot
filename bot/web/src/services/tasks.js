@@ -55,6 +55,14 @@ export const fetchTasks = (params = {}) => {
   )
   const q = new URLSearchParams(filtered).toString()
   const url = '/api/v1/tasks' + (q ? `?${q}` : '')
-  return authFetch(url).then(r => (r.ok ? r.json() : []))
+  const key = `tasks_${q}`
+  try {
+    const cached = JSON.parse(localStorage.getItem(key) || '')
+    if (cached.time && Date.now() - cached.time < 60000) return Promise.resolve(cached.data)
+  } catch {}
+  return authFetch(url).then(r => (r.ok ? r.json() : [])).then(d => {
+    localStorage.setItem(key, JSON.stringify({ time: Date.now(), data: d }))
+    return d
+  })
 }
 

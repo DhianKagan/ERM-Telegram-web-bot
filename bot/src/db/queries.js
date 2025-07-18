@@ -36,17 +36,29 @@ async function updateTaskStatus(id, status) {
 }
 
 async function getTasks(filters = {}, page, limit) {
-  if (filters.kanban) return Task.find({}).sort('-createdAt');
+  if (filters.kanban) {
+    let qKanban = Task.find({}).sort('-createdAt');
+    if (typeof qKanban.lean === 'function') qKanban = qKanban.lean();
+    return qKanban;
+  }
   const q = {};
   if (filters.status) q.status = { $eq: filters.status }; // Use $eq to ensure literal value
   if (filters.assignees && Array.isArray(filters.assignees)) {
-    q.assignees = { $in: filters.assignees.map(assignee => String(assignee)) }; // Sanitize assignees
+    q.assignees = {
+      $in: filters.assignees.map((assignee) => String(assignee)),
+    }; // Sanitize assignees
   }
   if (filters.from || filters.to) q.createdAt = {};
   if (filters.from) q.createdAt.$gte = new Date(filters.from); // Ensure valid date
   if (filters.to) q.createdAt.$lte = new Date(filters.to); // Ensure valid date
   let query = Task.find(q);
-  if (page && limit) query = query.skip((page - 1) * limit).limit(limit);
+  if (typeof query.lean === 'function') query = query.lean();
+  if (typeof query.skip === 'function') {
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    query = query.skip((p - 1) * l).limit(l);
+    return query;
+  }
   return query;
 }
 

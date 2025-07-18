@@ -1,39 +1,50 @@
-// Очередь вызовов Telegram API. Ограничивает количество запросов.
-const queue = []
-let tokens = 30
-let timer
+// Очередь вызовов Telegram API с ограничением объёма.
+const queue = [];
+const MAX_QUEUE_SIZE = 100;
+let tokens = 30;
+let timer;
 
 function process() {
   while (tokens > 0 && queue.length) {
-    tokens--
-    const { fn, resolve, reject } = queue.shift()
-    Promise.resolve().then(fn).then(resolve).catch(reject)
+    tokens--;
+    const { fn, resolve, reject } = queue.shift();
+    Promise.resolve()
+      .then(fn)
+      .then(resolve)
+      .catch((e) => {
+        console.error('Ошибка очереди', e);
+        reject(e);
+      });
   }
 }
 
 function start() {
   if (!timer) {
     timer = setInterval(() => {
-      tokens = 30
-      process()
-    }, 1000)
+      tokens = 30;
+      process();
+    }, 1000);
   }
 }
-start()
+start();
 
 function stopQueue() {
   if (timer) {
-    clearInterval(timer)
-    timer = undefined
+    clearInterval(timer);
+    timer = undefined;
   }
 }
 
 function enqueue(fn) {
   return new Promise((resolve, reject) => {
-    queue.push({ fn, resolve, reject })
-    process()
-  })
+    if (queue.length >= MAX_QUEUE_SIZE) {
+      console.error('Превышен лимит очереди');
+      reject(new Error('queue overflow'));
+      return;
+    }
+    queue.push({ fn, resolve, reject });
+    process();
+  });
 }
 
-module.exports = { enqueue, queue, stopQueue }
-
+module.exports = { enqueue, queue, stopQueue, MAX_QUEUE_SIZE };

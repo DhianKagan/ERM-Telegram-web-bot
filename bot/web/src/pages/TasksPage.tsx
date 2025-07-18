@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import KPIOverview from '../components/KPIOverview'
 import { useToast } from '../context/useToast'
 import useTasks from '../context/useTasks'
-import { updateTask } from '../services/tasks'
+import { updateTask, fetchTasks } from '../services/tasks'
 import authFetch from '../utils/authFetch'
 import fields from '../../../shared/taskFields.cjs'
 import parseJwt from '../utils/parseJwt'
@@ -47,6 +47,7 @@ export default function TasksPage() {
   const [sortBy, setSortBy] = React.useState<string>('createdAt');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
+  const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
@@ -67,16 +68,16 @@ export default function TasksPage() {
   };
 
   const load = React.useCallback(() => {
-    authFetch("/api/v1/tasks")
-      .then(handleAuth)
-      .then((r) => (r && r.ok ? r.json() : { tasks: [], users: [] }))
+    setLoading(true);
+    fetchTasks()
       .then((data) => {
         setAll(data.tasks);
         const list = Array.isArray(data.users)
           ? data.users
           : Object.values(data.users || {});
         setUsers(list);
-      });
+      })
+      .finally(() => setLoading(false));
     if (isAdmin) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
@@ -226,6 +227,7 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
+      {loading && <div>Загрузка...</div>}
       <KPIOverview count={kpi.count} time={kpi.time} />
       <div className="flex items-center justify-between">
         <div className="flex gap-2">

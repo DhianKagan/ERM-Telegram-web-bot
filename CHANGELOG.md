@@ -219,6 +219,6 @@
 - Форма задачи остаётся открытой после сохранения, выбранные исполнители отображаются по имени
 - Обновлены файлы package-lock.json клиента, docker build выполняется без ошибок
 - JWT помещается в cookie HttpOnly
-- API защищён от CSRF при помощи lusca.csrf и express-session
-- Сессия использует secure cookie в продакшене, маршруты задач ограничены rate limit
+- API защищён от CSRF при помощи lusca.csrf, сессии хранятся через connect-mongo
+- Сессия хранится в MongoDB, cookie передаётся только по HTTPS, маршруты задач ограничены rate limit
 - CSRF-токен передается через cookie XSRF-TOKEN и добавляется в заголовок автоматической обёрткой fetch

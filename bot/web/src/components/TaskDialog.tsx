@@ -1,5 +1,6 @@
 // Общая форма создания и редактирования задач
 import React, { useContext } from "react";
+import DOMPurify from "dompurify";
 import { useSidebar } from "../context/useSidebar";
 import RichTextEditor from "./RichTextEditor";
 import MultiUserSelect from "./MultiUserSelect";
@@ -667,7 +668,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 <div className="flex items-center space-x-2">
                   <div className="flex flex-col">
                     <a
-                      href={endLink}
+                      href={DOMPurify.sanitize(endLink)}
                       target="_blank"
                       rel="noopener"
                       className="text-accentPrimary underline"

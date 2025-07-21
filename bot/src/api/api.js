@@ -9,6 +9,8 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const lusca = require('lusca');
 const { body, validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
@@ -71,6 +73,16 @@ const validate = (validations) => [
   app.set('trust proxy', 1);
   app.use(express.json());
   app.use(cookieParser());
+  // сессия для хранения CSRF-токена
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || 'session_secret',
+      resave: false,
+      saveUninitialized: true,
+    }),
+  );
+  // защита от CSRF через lusca
+  app.use(lusca.csrf());
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
   const connectSrc = ["'self'"];
   try {

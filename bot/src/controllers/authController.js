@@ -59,6 +59,12 @@ exports.verifyCode = async (req, res) => {
     const role = roleId === config.adminRoleId ? 'admin' : 'user';
     const access = role === 'admin' ? 2 : 1;
     const token = generateToken({ id, username: u.username, role, access });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return res.json({ token });
   }
   res.status(400).json({ error: 'invalid code' });

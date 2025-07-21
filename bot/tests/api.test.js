@@ -7,6 +7,7 @@ process.env.APP_URL = 'https://localhost'
 
 const request = require('supertest')
 const express = require('express')
+const cookieParser = require('cookie-parser')
 jest.mock('../src/services/tasks', () => ({ get: jest.fn() }))
 const tasksService = require('../src/services/tasks')
 const { stopScheduler } = require('../src/services/scheduler')
@@ -20,6 +21,7 @@ beforeAll(async () => {
   const { generateToken } = require('../src/auth/auth')
   app = express()
   app.use(express.json())
+  app.use(cookieParser())
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
   const token = generateToken({ id: 1, username: 'test', isAdmin: true })
   app.get('/api/v1/tasks', verifyToken, asyncHandler(async (_req, res) => {
@@ -38,7 +40,7 @@ test('GET /health', async () => {
 
 test('GET /api/v1/tasks отдает список задач', async () => {
   const token = app.locals.token
-  const res = await request(app).get('/api/v1/tasks').set('Authorization', `Bearer ${token}`)
+  const res = await request(app).get('/api/v1/tasks').set('Cookie', `token=${token}`)
   expect(res.status).toBe(200)
   expect(Array.isArray(res.body.tasks)).toBe(true)
 })

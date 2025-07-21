@@ -6,6 +6,7 @@ process.env.JWT_SECRET = 'secret'
 process.env.APP_URL = 'https://localhost'
 
 const express = require('express')
+const cookieParser = require('cookie-parser')
 const request = require('supertest')
 jest.unmock('jsonwebtoken')
 const jwt = require('jsonwebtoken')
@@ -16,6 +17,7 @@ const { stopQueue } = require('../src/services/messageQueue')
 let app
 beforeAll(() => {
   app = express()
+  app.use(cookieParser())
   app.get('/secure', verifyToken, (_req, res) => res.send('OK'))
 })
 
@@ -26,13 +28,13 @@ test('без токена возвращает 403', async () => {
 
 test('с валидным токеном 200', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET)
-  const res = await request(app).get('/secure').set('Authorization', `Bearer ${token}`)
+  const res = await request(app).get('/secure').set('Cookie', `token=${token}`)
   expect(res.status).toBe(200)
 })
 
 test('токен с другим алгоритмом отклоняется', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET, { algorithm: 'HS512' })
-  const res = await request(app).get('/secure').set('Authorization', `Bearer ${token}`)
+  const res = await request(app).get('/secure').set('Cookie', `token=${token}`)
   expect(res.status).toBe(401)
 })
 

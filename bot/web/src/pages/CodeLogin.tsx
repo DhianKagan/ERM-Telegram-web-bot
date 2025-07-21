@@ -1,37 +1,37 @@
 // Страница входа через код подтверждения
-import React, { useState } from 'react'
+import React, { useState } from "react";
 
 export default function CodeLogin() {
-  const [telegramId, setTelegramId] = useState('')
-  const [code, setCode] = useState('')
-  const [sent, setSent] = useState(false)
+  const [telegramId, setTelegramId] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
 
   async function send(e?: React.FormEvent) {
-    e?.preventDefault()
-    await fetch('/api/v1/auth/send_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramId: Number(telegramId) })
-    })
-    setSent(true)
+    e?.preventDefault();
+    await fetch("/api/v1/auth/send_code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ telegramId: Number(telegramId) }),
+    });
+    setSent(true);
   }
 
   async function verify(e?: React.FormEvent) {
-    e?.preventDefault()
-    const res = await fetch('/api/v1/auth/verify_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramId: Number(telegramId), code })
-    })
+    e?.preventDefault();
+    const res = await fetch("/api/v1/auth/verify_code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ telegramId: Number(telegramId), code }),
+    });
     if (res.ok) {
-      const data = await res.json()
-      localStorage.setItem('token', data.token)
-      window.location.href = '/'
+      window.location.href = "/";
     }
   }
 
   return (
-    <form className="p-4 flex flex-col gap-2" onSubmit={sent ? verify : send}>
+    <form className="flex flex-col gap-2 p-4" onSubmit={sent ? verify : send}>
       <input
         className="border p-2"
         placeholder="Telegram ID"
@@ -54,9 +54,9 @@ export default function CodeLogin() {
           onChange={(e) => setCode(e.target.value)}
         />
       )}
-      <button type="submit" className="bg-blue-500 text-white p-2">
-        {sent ? 'Войти по коду' : 'Отправить код'}
+      <button type="submit" className="bg-blue-500 p-2 text-white">
+        {sent ? "Войти по коду" : "Отправить код"}
       </button>
     </form>
-  )
+  );
 }

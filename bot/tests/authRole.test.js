@@ -10,16 +10,17 @@ const request = require('supertest');
 const checkRole = require('../src/middleware/checkRole');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
+const { ACCESS_ADMIN } = require('../src/utils/accessMask');
 
 function appWithRole(role) {
   const app = express();
   app.get(
     '/cp',
     (req, res, next) => {
-      req.user = { role };
+      req.user = { role, access: role === 'admin' ? 2 : 1 };
       next();
     },
-    checkRole('admin'),
+    checkRole(ACCESS_ADMIN),
     (_req, res) => res.sendStatus(200),
   );
   return app;

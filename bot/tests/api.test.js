@@ -28,7 +28,14 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use(cookieParser());
-  app.use(session({ secret: 'test', resave: false, saveUninitialized: true }));
+  app.use(
+    session({
+      secret: 'test',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { secure: process.env.NODE_ENV === 'production' },
+    }),
+  );
   app.use(lusca.csrf());
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   const token = generateToken({ id: 1, username: 'test', isAdmin: true });

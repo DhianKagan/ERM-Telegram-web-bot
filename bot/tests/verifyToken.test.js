@@ -20,7 +20,14 @@ let app;
 beforeAll(() => {
   app = express();
   app.use(cookieParser());
-  app.use(session({ secret: 'test', resave: false, saveUninitialized: true }));
+  app.use(
+    session({
+      secret: 'test',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { secure: process.env.NODE_ENV === 'production' },
+    }),
+  );
   app.use(lusca.csrf());
   app.get('/secure', verifyToken, (_req, res) => res.send('OK'));
 });

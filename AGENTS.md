@@ -179,3 +179,4 @@
   через `?token=`
 - Токен JWT теперь записывается в cookie HttpOnly
 - API защищён от CSRF middleware lusca.csrf
+- Сессия передаёт cookie только по HTTPS в продакшене, маршруты задач имеют rate limit

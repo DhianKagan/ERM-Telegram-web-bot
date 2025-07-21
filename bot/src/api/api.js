@@ -79,6 +79,7 @@ const validate = (validations) => [
       secret: process.env.SESSION_SECRET || 'session_secret',
       resave: false,
       saveUninitialized: true,
+      cookie: { secure: process.env.NODE_ENV === 'production' },
     }),
   );
   // защита от CSRF через lusca

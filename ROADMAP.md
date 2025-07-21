@@ -171,3 +171,4 @@
 153. Обновлены package-lock.json клиента для успешной сборки Docker
 154. JWT теперь хранится в cookie HttpOnly
 155. API использует lusca.csrf и express-session для защиты от CSRF
+156. Сессия передаёт cookie только по HTTPS в продакшене, маршруты задач лимитированы

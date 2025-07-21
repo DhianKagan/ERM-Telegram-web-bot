@@ -173,4 +173,5 @@
 155. API использует lusca.csrf и express-session для защиты от CSRF
 156. Сессия передаёт cookie только по HTTPS в продакшене, маршруты задач лимитированы
 157. CSRF-токен находится в cookie XSRF-TOKEN и автоматически отправляется authFetch
-158. Сессии хранятся в MongoDB через библиотеку connect-mongo
+158. Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена
+159. Сессии хранятся в MongoDB через библиотеку connect-mongo

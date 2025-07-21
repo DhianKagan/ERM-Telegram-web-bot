@@ -89,7 +89,13 @@ const validate = (validations) => [
   }
   app.use(session(sessionOpts));
   // защита от CSRF через lusca, токен кладётся в cookie XSRF-TOKEN
-  app.use(lusca.csrf({ angular: true }));
+  const csrf = lusca.csrf({ angular: true });
+  const csrfExclude = ['/api/v1/auth/send_code', '/api/v1/auth/verify_code'];
+  app.use((req, res, next) => {
+    const url = req.originalUrl.split('?')[0];
+    if (csrfExclude.includes(url)) return next();
+    return csrf(req, res, next);
+  });
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
   const connectSrc = ["'self'"];
   try {

@@ -8,6 +8,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { body, validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
@@ -69,6 +70,7 @@ const validate = (validations) => [
   // и не допустить обход rate limit по X-Forwarded-For
   app.set('trust proxy', 1);
   app.use(express.json());
+  app.use(cookieParser());
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
   const connectSrc = ["'self'"];
   try {

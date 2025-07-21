@@ -33,7 +33,9 @@ import TaskDialogRoute from "./components/TaskDialogRoute";
 function Content() {
   const { collapsed, open } = useSidebar();
   return (
-    <main className={`mt-14 p-4 transition-all ${open ? (collapsed ? 'md:ml-20' : 'md:ml-60') : 'md:ml-0'}`}>
+    <main
+      className={`mt-14 p-4 transition-all ${open ? (collapsed ? "md:ml-20" : "md:ml-60") : "md:ml-0"}`}
+    >
       <Suspense fallback={<div>Загрузка...</div>}>
         <Routes>
           <Route path="/login" element={<CodeLogin />} />
@@ -110,11 +112,11 @@ function Content() {
 }
 
 function Layout() {
-  const { token } = React.useContext(AuthContext);
+  const { user } = React.useContext(AuthContext);
   return (
     <>
-      {token && <Sidebar />}
-      {token && <Header />}
+      {user && <Sidebar />}
+      {user && <Header />}
       <Toasts />
       <Content />
       <TaskDialogRoute />

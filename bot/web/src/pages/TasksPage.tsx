@@ -1,40 +1,39 @@
 // Назначение файла: список задач и функции сортировки
-import React, { useContext } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import KPIOverview from '../components/KPIOverview'
-import { useToast } from '../context/useToast'
-import useTasks from '../context/useTasks'
-import { updateTask, fetchTasks } from '../services/tasks'
-import authFetch from '../utils/authFetch'
-import fields from '../../../shared/taskFields.cjs'
-import parseJwt from '../utils/parseJwt'
-import { AuthContext } from '../context/AuthContext'
-import userLink from '../utils/userLink'
+import React, { useContext } from "react";
+import { useSearchParams } from "react-router-dom";
+import KPIOverview from "../components/KPIOverview";
+import { useToast } from "../context/useToast";
+import useTasks from "../context/useTasks";
+import { updateTask, fetchTasks } from "../services/tasks";
+import authFetch from "../utils/authFetch";
+import fields from "../../../shared/taskFields.cjs";
+import { AuthContext } from "../context/AuthContext";
+import userLink from "../utils/userLink";
 
 interface Task {
-  _id: string
-  title: string
-  status: string
-  request_id: string
-  createdAt: string
-  start_date?: string
-  due_date?: string
-  priority?: string
-  assigned_user_id?: number
-  assignees?: number[]
-  attachments?: { name: string; url: string }[]
+  _id: string;
+  title: string;
+  status: string;
+  request_id: string;
+  createdAt: string;
+  start_date?: string;
+  due_date?: string;
+  priority?: string;
+  assigned_user_id?: number;
+  assignees?: number[];
+  attachments?: { name: string; url: string }[];
 }
 
 interface User {
-  telegram_id: number
-  username: string
-  name?: string
-  phone?: string
+  telegram_id: number;
+  username: string;
+  name?: string;
+  phone?: string;
 }
 
 interface KpiSummary {
-  count: number
-  time: number
+  count: number;
+  time: number;
 }
 
 export default function TasksPage() {
@@ -44,21 +43,16 @@ export default function TasksPage() {
   const [statuses, setStatuses] = React.useState<string[]>([]);
   const [priorities, setPriorities] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<string[]>([]);
-  const [sortBy, setSortBy] = React.useState<string>('createdAt');
-  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = React.useState<string>("createdAt");
+  const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
   const [showExport, setShowExport] = React.useState(false);
-  const { token } = useContext(AuthContext)
-
-  const isAdmin = React.useMemo(() => {
-    if (!token) return false
-    const data = parseJwt(token)
-    return data?.role === 'admin'
-  }, [token])
+  const { user } = useContext(AuthContext);
+  const isAdmin = user?.role === "admin";
 
   const handleAuth = (r) => {
     if (r.status === 401 || r.status === 403) {
@@ -89,14 +83,14 @@ export default function TasksPage() {
       .then(handleAuth)
       .then((r) => (r && r.ok ? r.json() : { count: 0, time: 0 }))
       .then(setKpi);
-    setStatuses(fields.find(f => f.name === 'status')?.options || []);
-    setPriorities(fields.find(f => f.name === 'priority')?.options || []);
+    setStatuses(fields.find((f) => f.name === "status")?.options || []);
+    setPriorities(fields.find((f) => f.name === "priority")?.options || []);
   }, [isAdmin]);
 
   React.useEffect(load, [load, version]);
 
   const filtered = React.useMemo(
-    () => (status === 'all' ? all : all.filter((t) => t.status === status)),
+    () => (status === "all" ? all : all.filter((t) => t.status === status)),
     [all, status],
   );
   const tasks = React.useMemo(() => {
@@ -106,8 +100,8 @@ export default function TasksPage() {
       const v2 = b[sortBy];
       if (v1 === undefined) return 1;
       if (v2 === undefined) return -1;
-      if (v1 > v2) return sortDir === 'asc' ? 1 : -1;
-      if (v1 < v2) return sortDir === 'asc' ? -1 : 1;
+      if (v1 > v2) return sortDir === "asc" ? 1 : -1;
+      if (v1 < v2) return sortDir === "asc" ? -1 : 1;
       return 0;
     });
     return list;
@@ -115,9 +109,9 @@ export default function TasksPage() {
   const counts = React.useMemo(
     () => ({
       all: all.length,
-      "Новая": all.filter((t) => t.status === "Новая").length,
+      Новая: all.filter((t) => t.status === "Новая").length,
       "В работе": all.filter((t) => t.status === "В работе").length,
-      "Выполнена": all.filter((t) => t.status === "Выполнена").length,
+      Выполнена: all.filter((t) => t.status === "Выполнена").length,
     }),
     [all],
   );
@@ -129,7 +123,6 @@ export default function TasksPage() {
     });
     return map;
   }, [users]);
-
 
   const renderStatus = (t: Task) =>
     isAdmin ? (
@@ -171,7 +164,6 @@ export default function TasksPage() {
       t.priority
     );
 
-
   const changeStatus = async () => {
     await authFetch("/api/v1/tasks/bulk", {
       method: "POST",
@@ -187,30 +179,30 @@ export default function TasksPage() {
 
   const handleSort = (col: string) => {
     if (sortBy === col) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortBy(col);
-      setSortDir('asc');
+      setSortDir("asc");
     }
   };
 
   const exportKeys = React.useMemo(
-    () => Array.from(new Set(all.flatMap(t => Object.keys(t)))).sort(),
-    [all]
+    () => Array.from(new Set(all.flatMap((t) => Object.keys(t)))).sort(),
+    [all],
   );
 
   const toCsv = () => {
-    const rows = [exportKeys.join(',')];
-    tasks.forEach(t => {
-      rows.push(exportKeys.map(k => JSON.stringify(t[k] ?? '')).join(','));
+    const rows = [exportKeys.join(",")];
+    tasks.forEach((t) => {
+      rows.push(exportKeys.map((k) => JSON.stringify(t[k] ?? "")).join(","));
     });
-    return rows.join('\n');
+    return rows.join("\n");
   };
 
   const download = (name: string, content: string) => {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = name;
     a.click();
@@ -219,11 +211,11 @@ export default function TasksPage() {
 
   const copyCsv = async () => {
     await navigator.clipboard.writeText(toCsv());
-    addToast('Скопировано');
+    addToast("Скопировано");
   };
 
-  const saveCsv = () => download('tasks.csv', toCsv());
-  const saveJson = () => download('tasks.json', JSON.stringify(tasks, null, 2));
+  const saveCsv = () => download("tasks.csv", toCsv());
+  const saveJson = () => download("tasks.json", JSON.stringify(tasks, null, 2));
 
   return (
     <div className="space-y-6">
@@ -242,12 +234,19 @@ export default function TasksPage() {
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={refresh} className="btn-gray rounded px-3">Обновить</button>
-          <button onClick={() => setShowExport(!showExport)} className="btn-gray rounded px-3">Экспорт</button>
+          <button onClick={refresh} className="btn-gray rounded px-3">
+            Обновить
+          </button>
+          <button
+            onClick={() => setShowExport(!showExport)}
+            className="btn-gray rounded px-3"
+          >
+            Экспорт
+          </button>
           <button
             onClick={() => {
-              params.set('newTask', '1')
-              setParams(params)
+              params.set("newTask", "1");
+              setParams(params);
             }}
             className="btn btn-blue"
           >
@@ -259,12 +258,48 @@ export default function TasksPage() {
         <thead className="bg-gray-50">
           <tr>
             <th></th>
-            <th className="px-4 py-2 text-left cursor-pointer" onClick={() => handleSort('title')}>Название {sortBy==='title'? (sortDir==='asc'?'▲':'▼'):''}</th>
-            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('status')}>Статус {sortBy==='status'? (sortDir==='asc'?'▲':'▼'):''}</th>
-            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('priority')}>Приоритет {sortBy==='priority'? (sortDir==='asc'?'▲':'▼'):''}</th>
-            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('start_date')}>Дата начала {sortBy==='start_date'? (sortDir==='asc'?'▲':'▼'):''}</th>
-            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('due_date')}>Дедлайн {sortBy==='due_date'? (sortDir==='asc'?'▲':'▼'):''}</th>
-            <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('assignees')}>Исполнители {sortBy==='assignees'? (sortDir==='asc'?'▲':'▼'):''}</th>
+            <th
+              className="cursor-pointer px-4 py-2 text-left"
+              onClick={() => handleSort("title")}
+            >
+              Название{" "}
+              {sortBy === "title" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
+            <th
+              className="cursor-pointer px-4 py-2"
+              onClick={() => handleSort("status")}
+            >
+              Статус{" "}
+              {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
+            <th
+              className="cursor-pointer px-4 py-2"
+              onClick={() => handleSort("priority")}
+            >
+              Приоритет{" "}
+              {sortBy === "priority" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
+            <th
+              className="cursor-pointer px-4 py-2"
+              onClick={() => handleSort("start_date")}
+            >
+              Дата начала{" "}
+              {sortBy === "start_date" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
+            <th
+              className="cursor-pointer px-4 py-2"
+              onClick={() => handleSort("due_date")}
+            >
+              Дедлайн{" "}
+              {sortBy === "due_date" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
+            <th
+              className="cursor-pointer px-4 py-2"
+              onClick={() => handleSort("assignees")}
+            >
+              Исполнители{" "}
+              {sortBy === "assignees" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -287,28 +322,37 @@ export default function TasksPage() {
                 <button
                   className="text-accentPrimary hover:underline"
                   onClick={() => {
-                    params.set('task', t._id)
-                    setParams(params)
+                    params.set("task", t._id);
+                    setParams(params);
                   }}
                 >
-                  {`${t.request_id} ${t.createdAt.slice(0,10)} ${t.title.replace(/^ERM_\d+\s*/, '')}`}
+                  {`${t.request_id} ${t.createdAt.slice(0, 10)} ${t.title.replace(/^ERM_\d+\s*/, "")}`}
                 </button>
               </td>
               <td className="px-4 py-2 text-center">{renderStatus(t)}</td>
               <td className="px-4 py-2 text-center">{renderPriority(t)}</td>
-              <td className="px-4 py-2 text-center">{t.start_date?.slice(0,10)}</td>
-              <td className="px-4 py-2 text-center">{t.due_date?.slice(0,10)}</td>
+              <td className="px-4 py-2 text-center">
+                {t.start_date?.slice(0, 10)}
+              </td>
+              <td className="px-4 py-2 text-center">
+                {t.due_date?.slice(0, 10)}
+              </td>
               <td className="px-4 py-2">
-                {(t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []))
-                  .map(id => (
-                    <span
-                      key={id}
-                      dangerouslySetInnerHTML={{
-                        __html: userLink(id, userMap[id]?.name || userMap[id]?.username)
-                      }}
-                      className="mr-1"
-                    />
-                  ))}
+                {(
+                  t.assignees ||
+                  (t.assigned_user_id ? [t.assigned_user_id] : [])
+                ).map((id) => (
+                  <span
+                    key={id}
+                    dangerouslySetInnerHTML={{
+                      __html: userLink(
+                        id,
+                        userMap[id]?.name || userMap[id]?.username,
+                      ),
+                    }}
+                    className="mr-1"
+                  />
+                ))}
               </td>
             </tr>
           ))}
@@ -323,24 +367,34 @@ export default function TasksPage() {
       {showExport && (
         <div className="space-y-2">
           <div className="flex gap-2">
-            <button onClick={copyCsv} className="btn-gray rounded px-3">Копировать CSV</button>
-            <button onClick={saveCsv} className="btn-gray rounded px-3">Скачать CSV</button>
-            <button onClick={saveJson} className="btn-gray rounded px-3">Скачать JSON</button>
+            <button onClick={copyCsv} className="btn-gray rounded px-3">
+              Копировать CSV
+            </button>
+            <button onClick={saveCsv} className="btn-gray rounded px-3">
+              Скачать CSV
+            </button>
+            <button onClick={saveJson} className="btn-gray rounded px-3">
+              Скачать JSON
+            </button>
           </div>
-          <div className="overflow-auto border rounded">
+          <div className="overflow-auto rounded border">
             <table className="min-w-full text-xs">
               <thead>
                 <tr>
-                  {exportKeys.map(k => (
-                    <th key={k} className="px-1 border-b bg-gray-50">{k}</th>
+                  {exportKeys.map((k) => (
+                    <th key={k} className="border-b bg-gray-50 px-1">
+                      {k}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {tasks.map(t => (
+                {tasks.map((t) => (
                   <tr key={t._id}>
-                    {exportKeys.map(k => (
-                      <td key={k} className="px-1 border-b">{String(t[k] ?? '')}</td>
+                    {exportKeys.map((k) => (
+                      <td key={k} className="border-b px-1">
+                        {String(t[k] ?? "")}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -349,7 +403,6 @@ export default function TasksPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

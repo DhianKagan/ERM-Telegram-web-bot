@@ -222,3 +222,4 @@
 - API защищён от CSRF при помощи lusca.csrf, сессии хранятся через connect-mongo
 - Сессия хранится в MongoDB, cookie передаётся только по HTTPS, маршруты задач ограничены rate limit
 - CSRF-токен передается через cookie XSRF-TOKEN и добавляется в заголовок автоматической обёрткой fetch
+- Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена

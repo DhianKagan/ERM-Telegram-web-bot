@@ -9,16 +9,16 @@ import { fetchKanban, updateTaskStatus } from "../services/tasks";
 const columns = ["Новая", "В работе", "Выполнена"];
 
 interface KanbanTask {
-  _id: string
-  status: string
-  title: string
+  _id: string;
+  status: string;
+  title: string;
 }
 
 export default function TaskKanban() {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [params, setParams] = useSearchParams();
 
-  const open = params.get('newTask') !== null;
+  const open = params.get("newTask") !== null;
   useEffect(() => {
     fetchKanban().then(setTasks);
   }, []);
@@ -36,8 +36,8 @@ export default function TaskKanban() {
     <div className="flex space-x-4 p-4">
       <button
         onClick={() => {
-          params.set('newTask', '1')
-          setParams(params)
+          params.set("newTask", "1");
+          setParams(params);
         }}
         className="btn-blue mb-4"
       >
@@ -79,13 +79,11 @@ export default function TaskKanban() {
       {open && (
         <TaskDialog
           onClose={() => {
-            params.delete('newTask')
-            setParams(params)
+            params.delete("newTask");
+            setParams(params);
           }}
           onSave={() => {
-            params.delete('newTask')
-            setParams(params)
-            fetchKanban().then(setTasks)
+            fetchKanban().then(setTasks);
           }}
         />
       )}

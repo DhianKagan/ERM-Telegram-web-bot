@@ -193,6 +193,9 @@ docker build -t telegram-task-bot .
 docker run --env-file .env -p 3000:3000 telegram-task-bot
 ```
 
+
+- Файлы `package-lock.json` обновлены, `docker compose build` проходит без ошибок
+
 Для проверки подключения к MongoDB выполните:
 
 ```bash

@@ -77,27 +77,29 @@ test('verifyCode отклоняет просроченный код', async () =
   expect(authCtrl.codes.has('111')).toBe(false);
 });
 
-test('verifyCode возвращает токен', async () => {
+test('verifyCode возвращает токен и устанавливает cookie', async () => {
   const req = { body: { telegramId: 7 } };
   const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
   await authCtrl.sendCode(req, res);
   const code = authCtrl.codes.get('7').code;
-  const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+  const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis(), cookie: jest.fn() };
   await authCtrl.verifyCode(
     { body: { telegramId: 7, code, username: 'u' } },
     res2,
   );
   expect(res2.json).toHaveBeenCalledWith({ token: expect.any(String) });
+  expect(res2.cookie).toHaveBeenCalled();
 });
 
 test('admin code обновляет роль пользователя', async () => {
   authCtrl.adminCodes.set('5', { code: '1234', ts: Date.now() });
-  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis(), cookie: jest.fn() };
   await authCtrl.verifyCode(
     { body: { telegramId: 5, code: '1234', username: 'u' } },
     res,
   );
   expect(res.json).toHaveBeenCalledWith({ token: expect.any(String) });
+  expect(res.cookie).toHaveBeenCalled();
   expect(queries.updateUser).toHaveBeenCalled();
 });
 

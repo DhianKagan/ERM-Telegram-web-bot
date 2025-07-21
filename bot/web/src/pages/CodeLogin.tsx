@@ -1,5 +1,6 @@
 // Страница входа через код подтверждения
 import React, { useState } from "react";
+import authFetch from "../utils/authFetch";
 
 export default function CodeLogin() {
   const [telegramId, setTelegramId] = useState("");
@@ -8,10 +9,9 @@ export default function CodeLogin() {
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
-    await fetch("/api/v1/auth/send_code", {
+    await authFetch("/api/v1/auth/send_code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ telegramId: Number(telegramId) }),
     });
     setSent(true);
@@ -19,10 +19,9 @@ export default function CodeLogin() {
 
   async function verify(e?: React.FormEvent) {
     e?.preventDefault();
-    const res = await fetch("/api/v1/auth/verify_code", {
+    const res = await authFetch("/api/v1/auth/verify_code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ telegramId: Number(telegramId), code }),
     });
     if (res.ok) {

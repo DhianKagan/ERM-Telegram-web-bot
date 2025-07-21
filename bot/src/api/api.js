@@ -82,8 +82,8 @@ const validate = (validations) => [
       cookie: { secure: process.env.NODE_ENV === 'production' },
     }),
   );
-  // защита от CSRF через lusca
-  app.use(lusca.csrf());
+  // защита от CSRF через lusca, токен кладётся в cookie XSRF-TOKEN
+  app.use(lusca.csrf({ angular: true }));
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap
   const connectSrc = ["'self'"];
   try {

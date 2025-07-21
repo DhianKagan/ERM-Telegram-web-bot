@@ -221,3 +221,4 @@
 - JWT помещается в cookie HttpOnly
 - API защищён от CSRF при помощи lusca.csrf и express-session
 - Сессия использует secure cookie в продакшене, маршруты задач ограничены rate limit
+- CSRF-токен передается через cookie XSRF-TOKEN и добавляется в заголовок автоматической обёрткой fetch

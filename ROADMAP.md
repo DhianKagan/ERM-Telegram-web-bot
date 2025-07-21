@@ -172,3 +172,4 @@
 154. JWT теперь хранится в cookie HttpOnly
 155. API использует lusca.csrf и express-session для защиты от CSRF
 156. Сессия передаёт cookie только по HTTPS в продакшене, маршруты задач лимитированы
+157. CSRF-токен находится в cookie XSRF-TOKEN и автоматически отправляется authFetch

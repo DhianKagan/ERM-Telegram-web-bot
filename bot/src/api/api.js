@@ -10,6 +10,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const lusca = require('lusca');
 const { body, validationResult } = require('express-validator');
 const path = require('path');
@@ -74,14 +75,19 @@ const validate = (validations) => [
   app.use(express.json());
   app.use(cookieParser());
   // сессия для хранения CSRF-токена
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || 'session_secret',
-      resave: false,
-      saveUninitialized: true,
-      cookie: { secure: process.env.NODE_ENV === 'production' },
-    }),
-  );
+  const sessionOpts = {
+    secret: process.env.SESSION_SECRET || 'session_secret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === 'production' },
+  };
+  if (process.env.NODE_ENV !== 'test') {
+    sessionOpts.store = MongoStore.create({
+      mongoUrl: config.mongoUrl,
+      collectionName: 'sessions',
+    });
+  }
+  app.use(session(sessionOpts));
   // защита от CSRF через lusca, токен кладётся в cookie XSRF-TOKEN
   app.use(lusca.csrf({ angular: true }));
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap

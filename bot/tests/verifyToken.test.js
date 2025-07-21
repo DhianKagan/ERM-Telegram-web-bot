@@ -18,6 +18,8 @@ let app
 beforeAll(() => {
   app = express()
   app.use(cookieParser())
+  const csrf = require('lusca').csrf
+  app.use(csrf())
   app.get('/secure', verifyToken, (_req, res) => res.send('OK'))
 })
 

@@ -26,7 +26,7 @@ beforeAll(() => {
       secret: 'test',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: false }
+      cookie: { secure: process.env.NODE_ENV !== 'test' }
     })
   )
   app.post('/secure', lusca.csrf({ angular: true }), (_req, res) => {

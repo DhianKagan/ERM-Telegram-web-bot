@@ -7,6 +7,8 @@ process.env.APP_URL = 'https://localhost'
 
 const express = require('express')
 const request = require('supertest')
+const cookieParser = require('cookie-parser')
+const session = require('express-session')
 const { errorHandler } = require('../src/api/middleware')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
@@ -28,4 +30,25 @@ test('errorHandler возвращает 400 для request.aborted', async () =>
   const res = await request(app).get('/aborted')
   expect(res.status).toBe(400)
   expect(res.body.error).toBe('request aborted')
+})
+
+test('errorHandler возвращает 403 при ошибке CSRF', async () => {
+  const appCsrf = express()
+  appCsrf.use(express.json())
+  appCsrf.use(cookieParser())
+  appCsrf.use(
+    session({
+      secret: 't',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { secure: false },
+    }),
+  )
+  const csrf = require('lusca').csrf({ angular: true })
+  appCsrf.use(csrf)
+  appCsrf.post('/csrf', (_req, res) => res.json({ ok: true }))
+  appCsrf.use(errorHandler)
+  const res = await request(appCsrf).post('/csrf')
+  expect(res.status).toBe(403)
+  expect(res.body.error).toMatch(/CSRF token/)
 })

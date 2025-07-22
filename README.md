@@ -23,4 +23,6 @@ npm --prefix bot run dev
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 
+Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.
+
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.

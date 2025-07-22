@@ -178,3 +178,4 @@
 159. Сессии хранятся в MongoDB через библиотеку connect-mongo
 160. Тесты используют secure cookie только в продакшене
 161. Обновлена зависимость form-data до 4.0.4
+162. Тест errorHandler использует secure cookie в зависимости от `NODE_ENV`

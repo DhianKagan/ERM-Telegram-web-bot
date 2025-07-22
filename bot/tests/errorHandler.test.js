@@ -41,7 +41,8 @@ test('errorHandler возвращает 403 при ошибке CSRF', async () 
       secret: 't',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: false },
+      // Для продакшена cookie передаются только по HTTPS
+      cookie: { secure: process.env.NODE_ENV === 'production' },
     }),
   )
   const csrf = require('lusca').csrf({ angular: true })

@@ -10,9 +10,11 @@ services:
     environment:
       - BOT_API_URL=${BOT_API_URL}
       - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/agrmcs?authSource=admin
+      - REDIS_URL=redis://redis:6379
     restart: always
     depends_on:
       - mongo_db
+      - redis
     ports:
       - "${HOST_PORT:-3000}:${PORT:-3000}"
   mongo_db:
@@ -31,6 +33,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
 
 volumes:
   mongo_db_example_app:

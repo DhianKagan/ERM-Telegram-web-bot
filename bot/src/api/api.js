@@ -14,8 +14,11 @@ const MongoStore = require('connect-mongo');
 const lusca = require('lusca');
 const { body, validationResult } = require('express-validator');
 const path = require('path');
-const fs = require('fs');
-const { execSync } = require('child_process');
+const fs = require('fs').promises;
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+const client = require('prom-client');
 const { swaggerUi, specs } = require('./swagger');
 
 process.on('unhandledRejection', (err) => {
@@ -65,9 +68,16 @@ const validate = (validations) => [
   const root = path.join(__dirname, '../..');
   const pub = path.join(root, 'public');
   const indexFile = path.join(pub, 'index.html');
-  if (!fs.existsSync(indexFile) || fs.statSync(indexFile).size === 0) {
+  let needBuild = false;
+  try {
+    const st = await fs.stat(indexFile);
+    if (st.size === 0) needBuild = true;
+  } catch {
+    needBuild = true;
+  }
+  if (needBuild) {
     console.log('Сборка интерфейса...');
-    execSync('npm run build-client', { cwd: root, stdio: 'inherit' });
+    await execAsync('npm run build-client', { cwd: root });
   }
   // доверяем только первому прокси, чтобы получать корректный IP
   // и не допустить обход rate limit по X-Forwarded-For
@@ -131,6 +141,11 @@ const validate = (validations) => [
 
   // простая проверка работоспособности контейнера
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  client.collectDefaultMetrics();
+  app.get('/metrics', async (_req, res) => {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  });
 
   // лимит запросов к пользователям: 100 за 15 минут
   const usersRateLimiter = rateLimit({

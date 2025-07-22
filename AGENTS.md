@@ -187,3 +187,4 @@
   маршруты задач имеют rate limit
 - Обновлена зависимость form-data до версии 4.0.4, pm2 не имеет исправления GHSA-x5gf-qvw8-r2rm
 - Тест errorHandler использует secure cookie в зависимости от `NODE_ENV`
+- Добавлено кеширование через Redis и эндпойнт `/metrics` для Prometheus

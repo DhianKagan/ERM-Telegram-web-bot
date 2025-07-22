@@ -192,3 +192,4 @@
 - Проверка initData WebApp реализована в маршруте `/api/v1/auth/verify_init`
 - Примеры конфигурации Prometheus хранятся в каталоге `prometheus`
 - Стресс-план описан в `docs/stress_plan.md`
+- Добавлен маршрут `/api/v1/csrf` для получения CSRF-токена и метрика `csrf_errors_total`

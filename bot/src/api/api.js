@@ -100,7 +100,11 @@ const validate = (validations) => [
   app.use(session(sessionOpts));
   // защита от CSRF через lusca, токен кладётся в cookie XSRF-TOKEN
   const csrf = lusca.csrf({ angular: true });
-  const csrfExclude = ['/api/v1/auth/send_code', '/api/v1/auth/verify_code'];
+  const csrfExclude = [
+    '/api/v1/auth/send_code',
+    '/api/v1/auth/verify_code',
+    '/api/v1/csrf',
+  ];
   app.use((req, res, next) => {
     const url = req.originalUrl.split('?')[0];
     if (csrfExclude.includes(url)) return next();
@@ -145,6 +149,9 @@ const validate = (validations) => [
   app.get('/metrics', async (_req, res) => {
     res.set('Content-Type', client.register.contentType);
     res.end(await client.register.metrics());
+  });
+  app.get(`${prefix}/csrf`, csrf, (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
   });
 
   // лимит запросов к пользователям: 100 за 15 минут

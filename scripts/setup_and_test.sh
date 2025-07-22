@@ -15,6 +15,7 @@ npm ci --prefix bot/web || npm --prefix bot/web install
 
 # Запускаем тесты и линтеры
 npm test --prefix bot -- --detectOpenHandles
+npm test --prefix bot tests/csrf.test.js
 npx eslint bot/src
 npm run lint --prefix bot/web
 

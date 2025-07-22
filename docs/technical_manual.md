@@ -62,6 +62,10 @@
 
 Бот разворачивает короткие ссылки Google Maps и сохраняет координаты задачи. После создания задачи из мини‑приложения отправляется событие `task_created` через `Telegram.WebApp.sendData`.
 
+## Проверка initData WebApp
+
+Перед выдачей токена сервер проверяет строку `initData`, полученную от Telegram. Подпись рассчитывается алгоритмом HMAC‑SHA256 с ключом `BOT_TOKEN`. Если подпись не совпадает, запрос отклоняется.
+
 ## Развёртывание и запуск
 
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
@@ -104,8 +108,12 @@ locust -f loadtest/locustfile.py --host http://localhost:3000
 
 ## Метрики Prometheus и Chaos testing
 
-Эндпойнт `/metrics` отдаёт данные prom-client. Для испытаний устойчивости
-можно запустить `npm --prefix bot run chaos`.
+Эндпойнт `/metrics` отдаёт данные prom-client. Для сбора метрик можно
+использовать Prometheus. Пример конфигурации приведён в каталоге
+`prometheus/prometheus.yml`. Базовое правило оповещения лежит в
+`prometheus/alert.rules.yml`.
+
+Для испытаний устойчивости можно запустить `npm --prefix bot run chaos`.
 
 ## Интерфейс админки
 

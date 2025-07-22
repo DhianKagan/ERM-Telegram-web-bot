@@ -11,6 +11,7 @@
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
 - Кеширование задач в Redis и метрики Prometheus по пути `/metrics`.
+- Проверка подписи initData веб‑приложения на сервере.
 
 ## Быстрый старт
 
@@ -25,6 +26,7 @@ npm --prefix bot run dev
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
+Подробный план описан в `docs/stress_plan.md`.
 
 Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.
 

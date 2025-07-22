@@ -1,0 +1,13 @@
+# Назначение файла: пример правил оповещения Prometheus
+# Модули: prom-client, Alertmanager
+groups:
+  - name: bot-alerts
+    rules:
+      - alert: BotDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Бот недоступен"
+          description: "Экспортер метрик не отвечает более одной минуты"

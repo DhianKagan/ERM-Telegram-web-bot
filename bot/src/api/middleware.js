@@ -20,7 +20,8 @@ function errorHandler(err, _req, res, _next) {
     return;
   }
   console.error(err);
-  res.status(500).json({ error: err.message });
+  const status = res.statusCode >= 400 ? res.statusCode : 500;
+  res.status(status).json({ error: err.message });
 }
 
 const { jwtSecret } = require('../config');

@@ -88,6 +88,25 @@ docker run -d -p 5000:5000 osrm-odessa
 
 Переменные `ROUTING_URL` и `VITE_ROUTING_URL` должны указывать на адрес сервиса.
 
+## Профилирование и нагрузка
+
+Скрипт `profiling/profile.py` запускает cProfile и делает серию запросов к API:
+
+```bash
+python profiling/profile.py
+```
+
+Для стресс‑тестов используется Locust:
+
+```bash
+locust -f loadtest/locustfile.py --host http://localhost:3000
+```
+
+## Метрики Prometheus и Chaos testing
+
+Эндпойнт `/metrics` отдаёт данные prom-client. Для испытаний устойчивости
+можно запустить `npm --prefix bot run chaos`.
+
 ## Интерфейс админки
 
 Веб‑интерфейс построен на TailAdmin. Стили описаны в `dashboard_tailadmin.md` и `extended_tailadmin_guide.md`. Цветовые палитры определены в Tailwind, компонентные примеры приведены в файлах `bot/web`.

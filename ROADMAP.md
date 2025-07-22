@@ -175,3 +175,4 @@
 157. CSRF-токен находится в cookie XSRF-TOKEN и автоматически отправляется authFetch
 158. Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена
 159. Сессии хранятся в MongoDB через библиотеку connect-mongo
+160. Тесты используют secure cookie только в продакшене

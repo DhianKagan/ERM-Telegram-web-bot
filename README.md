@@ -24,3 +24,4 @@ npm --prefix bot run dev
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
+\nОбработчик ошибок API возвращает статус из err.status или res.statusCode.

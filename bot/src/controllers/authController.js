@@ -72,3 +72,45 @@ exports.verifyCode = async (req, res) => {
 
 exports.codes = otp.codes;
 exports.adminCodes = otp.adminCodes;
+
+const verifyInit = require('../utils/verifyInitData');
+
+exports.verifyInitData = async (req, res) => {
+  const { initData } = req.body;
+  if (!initData || !verifyInit(initData)) {
+    return res.status(400).json({ error: 'invalid initData' });
+  }
+  const params = new URLSearchParams(initData);
+  let userData;
+  try {
+    userData = JSON.parse(params.get('user') || '{}');
+  } catch {
+    return res.status(400).json({ error: 'invalid user' });
+  }
+  const telegramId = String(userData.id);
+  if (!telegramId) return res.status(400).json({ error: 'no user id' });
+  let user = await getUser(telegramId);
+  if (!user) {
+    user = await createUser(
+      telegramId,
+      userData.username || '',
+      config.userRoleId,
+      { access: 1 },
+    );
+  }
+  const role = user.role || 'user';
+  const access = user.access || 1;
+  const token = generateToken({
+    id: telegramId,
+    username: user.username,
+    role,
+    access,
+  });
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  res.json({ token });
+};

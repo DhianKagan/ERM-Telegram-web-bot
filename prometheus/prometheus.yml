@@ -1,0 +1,10 @@
+# Назначение файла: пример конфигурации Prometheus для сбора метрик бота
+# Модули: prom-client
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'erm-bot'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['localhost:3000']

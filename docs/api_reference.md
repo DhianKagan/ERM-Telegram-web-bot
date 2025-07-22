@@ -9,6 +9,7 @@
 | GET | /health | Проверка работоспособности сервера |
 | POST | /api/v1/auth/send_code | Отправить код подтверждения |
 | POST | /api/v1/auth/verify_code | Проверить код и получить JWT |
+| POST | /api/v1/auth/verify_init | Проверить initData веб‑приложения |
 | GET | /api/v1/tasks | Список всех задач |
 | POST | /api/v1/tasks | Создание задачи |
 | PUT | /api/v1/tasks/:id | Обновление задачи |

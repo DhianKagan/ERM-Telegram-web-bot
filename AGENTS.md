@@ -183,3 +183,4 @@
 - Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена
 - Сессии хранятся через connect-mongo, cookie передаётся только по HTTPS,
   маршруты задач имеют rate limit
+- Обновлена зависимость form-data до версии 4.0.4, pm2 не имеет исправления GHSA-x5gf-qvw8-r2rm

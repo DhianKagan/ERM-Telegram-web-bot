@@ -1,7 +1,13 @@
 // Middleware проверки JWT и базовая обработка ошибок.
-// Модули: jsonwebtoken, config
+// Модули: jsonwebtoken, config, prom-client
 const jwt = require('jsonwebtoken');
 const { writeLog } = require('../services/service');
+const client = require('prom-client');
+
+const csrfErrors = new client.Counter({
+  name: 'csrf_errors_total',
+  help: 'Количество ошибок CSRF',
+});
 
 // Обёртка для перехвата ошибок асинхронных функций
 const asyncHandler = (fn) => async (req, res, next) => {
@@ -17,6 +23,12 @@ const asyncHandler = (fn) => async (req, res, next) => {
 function errorHandler(err, _req, res, _next) {
   if (err.type === 'request.aborted') {
     res.status(400).json({ error: 'request aborted' });
+    return;
+  }
+  if (err.code === 'EBADCSRFTOKEN') {
+    csrfErrors.inc();
+    writeLog('Ошибка CSRF-токена').catch(() => {});
+    res.status(403).json({ error: 'Invalid CSRF token' });
     return;
   }
   console.error(err);

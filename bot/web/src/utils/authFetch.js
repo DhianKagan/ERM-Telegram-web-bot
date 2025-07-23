@@ -22,7 +22,10 @@ export default async function authFetch(url, options = {}) {
         if (fresh) headers["X-XSRF-TOKEN"] = fresh;
         res = await fetch(url, opts);
       }
-    } catch {}
+    } catch (err) {
+      // Ошибка разбора тела ответа не мешает повторить запрос
+      console.error(err);
+    }
   }
   if (res.status === 401 || res.status === 403) {
     window.location.href = "/login";

@@ -23,6 +23,12 @@
 ```bash
 docker run -d --name redis -p 6379:6379 redis:alpine
 ```
+Если используете Redis на Railway, добавьте `?family=0` в `REDIS_URL`,
+например:
+
+```bash
+REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
+```
 
 ## Быстрый старт
 

@@ -93,6 +93,11 @@ docker run -d --name redis -p 6379:6379 redis:alpine
 ```
 
 При необходимости укажите адрес в переменной `REDIS_URL`.
+Если сервер Redis запущен на Railway, добавьте `?family=0`:
+
+```bash
+REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
+```
 
 ### Railway
 

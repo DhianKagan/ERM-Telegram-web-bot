@@ -26,7 +26,7 @@ const adminExtra = [
   { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
   { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },
-  { to: "/cp/admin", label: "Админ", icon: Cog6ToothIcon },
+  { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
 ];
 
 export default function Sidebar() {

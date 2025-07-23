@@ -10,17 +10,26 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
     getProfile()
-      .then(setUser)
-      .catch(() => setUser(null));
+      .then((u) => {
+        setUser(u);
+        setLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setLoading(false);
+      });
   }, []);
   const logout = () => {
     setUser(null);
   };
   return (
-    <AuthContext.Provider value={{ token: null, user, logout, setUser }}>
+    <AuthContext.Provider
+      value={{ token: null, user, logout, setUser, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

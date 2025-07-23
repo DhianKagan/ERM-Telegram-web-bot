@@ -8,6 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
+  if (loading) return null;
   return user ? children : <Navigate to="/login" />;
 }

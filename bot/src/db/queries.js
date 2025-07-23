@@ -1,9 +1,23 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, User, Log, Role } = require('./model');
+const { Task, Archive, User, Role } = require('./model');
+const logEngine = require('../services/wgLogEngine');
 const config = require('../config');
 
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Отфильтровывает ключи с операторами, чтобы предотвратить NoSQL-инъекции
+function sanitizeUpdate(data) {
+  const res = {};
+  if (data && typeof data === 'object') {
+    Object.entries(data).forEach(([k, v]) => {
+      if (typeof k === 'string' && !k.startsWith('$') && !k.includes('.')) {
+        res[k] = v;
+      }
+    });
+  }
+  return res;
 }
 
 async function createTask(data) {
@@ -28,7 +42,8 @@ async function listMentionedTasks(userId) {
 }
 
 async function updateTask(id, fields) {
-  return Task.findByIdAndUpdate(id, fields, { new: true });
+  const data = sanitizeUpdate(fields);
+  return Task.findByIdAndUpdate(id, data, { new: true });
 }
 
 async function updateTaskStatus(id, status) {
@@ -206,14 +221,6 @@ async function updateRole(id, permissions) {
   );
 }
 
-async function writeLog(message, level = 'info') {
-  return Log.create({ message, level });
-}
-
-async function listLogs() {
-  return Log.find().sort({ createdAt: -1 }).limit(100);
-}
-
 module.exports = {
   createTask,
   listMentionedTasks,
@@ -233,8 +240,8 @@ module.exports = {
   listRoles,
   getRole,
   updateRole,
-  writeLog,
-  listLogs,
+  writeLog: logEngine.writeLog,
+  listLogs: logEngine.listLogs,
   searchTasks,
   listRoutes,
 };

@@ -9,7 +9,11 @@ export default async function authFetch(url, options = {}) {
           ?.slice("XSRF-TOKEN=".length)
       : undefined;
   const headers = { ...(options.headers || {}) };
-  const token = getToken();
+  let token = getToken();
+  if (!token) {
+    await fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
+    token = getToken();
+  }
   if (token) headers["X-XSRF-TOKEN"] = token;
   const opts = { ...options, credentials: "include", headers };
   let res = await fetch(url, opts);

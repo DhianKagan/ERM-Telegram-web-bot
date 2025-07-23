@@ -1,5 +1,6 @@
 // Сервис для управления сущностями MongoDB через единый набор функций
-const q = require('../db/queries')
+const q = require('../db/queries');
+const logEngine = require('./wgLogEngine');
 
 module.exports = {
   getTask: q.getTask,
@@ -12,9 +13,9 @@ module.exports = {
   getRole: q.getRole,
   updateRole: q.updateRole,
   getUser: q.getUser,
-  writeLog: q.writeLog,
-  listLogs: q.listLogs,
+  writeLog: logEngine.writeLog,
+  listLogs: logEngine.listLogs,
   searchTasks: q.searchTasks,
   listMentionedTasks: q.listMentionedTasks,
-  deleteTask: q.deleteTask
-}
+  deleteTask: q.deleteTask,
+};

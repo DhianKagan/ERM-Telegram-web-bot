@@ -1,5 +1,6 @@
 // Централизованные функции работы с MongoDB для всего проекта
-const { Task, Archive, User, Log, Role } = require('./model');
+const { Task, Archive, User, Role } = require('./model');
+const logEngine = require('../services/wgLogEngine');
 const config = require('../config');
 
 function escapeRegex(text) {
@@ -206,14 +207,6 @@ async function updateRole(id, permissions) {
   );
 }
 
-async function writeLog(message, level = 'info') {
-  return Log.create({ message, level });
-}
-
-async function listLogs() {
-  return Log.find().sort({ createdAt: -1 }).limit(100);
-}
-
 module.exports = {
   createTask,
   listMentionedTasks,
@@ -233,8 +226,8 @@ module.exports = {
   listRoles,
   getRole,
   updateRole,
-  writeLog,
-  listLogs,
+  writeLog: logEngine.writeLog,
+  listLogs: logEngine.listLogs,
   searchTasks,
   listRoutes,
 };

@@ -9,7 +9,7 @@ import {
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const Reports = lazy(() => import("./pages/Reports"));
-const AdminPage = lazy(() => import("./pages/Admin"));
+const LogsPage = lazy(() => import("./pages/Logs"));
 const CpIndex = lazy(() => import("./pages/CpIndex"));
 const Profile = lazy(() => import("./pages/Profile"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
@@ -97,10 +97,10 @@ function Content() {
             }
           />
           <Route
-            path="/cp/admin"
+            path="/cp/logs"
             element={
               <AdminRoute>
-                <AdminPage />
+                <LogsPage />
               </AdminRoute>
             }
           />

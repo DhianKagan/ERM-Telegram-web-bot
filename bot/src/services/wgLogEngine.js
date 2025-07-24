@@ -3,7 +3,7 @@
 const { Log } = require('../db/model');
 const { LogEngine, LogMode } = require('@wgtechlabs/log-engine');
 
-const mode = process.env.LOG_LEVEL || 'info';
+const mode = process.env.LOG_LEVEL || 'debug';
 const modes = {
   debug: LogMode.DEBUG,
   info: LogMode.INFO,
@@ -53,7 +53,7 @@ if (process.env.LOG_TELEGRAM_TOKEN && process.env.LOG_TELEGRAM_CHAT) {
 }
 
 LogEngine.configure({
-  mode: modes[mode] || LogMode.INFO,
+  mode: modes[mode] || LogMode.DEBUG,
   enhancedOutputs: outputs,
 });
 

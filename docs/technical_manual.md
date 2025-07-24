@@ -90,7 +90,7 @@ API использует middleware `lusca.csrf`. Токен хранится в
 ## Развёртывание и запуск
 
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
-- Зависимости устанавливаются скриптом `./scripts/install_bot_deps.sh`.
+- Зависимости сервера и клиента устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
 - Для проверки зависимостей выполните `./scripts/audit_deps.sh`.
 
@@ -98,7 +98,7 @@ API использует middleware `lusca.csrf`. Токен хранится в
 
 ```bash
 ./scripts/create_env_from_exports.sh
-./scripts/install_bot_deps.sh
+./scripts/install_bot_deps.sh # устанавливает все зависимости
 npm --prefix bot run dev
 ```
 

@@ -15,6 +15,12 @@
 - `src/models`, `src/db` — схемы Mongoose и подключение к базе.
 - `web` — клиентская часть React с собственными контекстами.
 
+### Схема модулей
+
+Диаграмма зависимостей и связи компонентов приведены в файле
+`docs/architecture.md`. Она демонстрирует роль сервисов между API, ботом и
+клиентом.
+
 ## Маски доступа
 
 Роль пользователя описывается числовой маской в поле `access`:
@@ -88,6 +94,14 @@ API использует middleware `lusca.csrf`. Токен хранится в
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
 - Для проверки зависимостей выполните `./scripts/audit_deps.sh`.
 
+### Быстрый старт
+
+```bash
+./scripts/create_env_from_exports.sh
+./scripts/install_bot_deps.sh
+npm --prefix bot run dev
+```
+
 ### Redis
 
 Сервер Redis обеспечивает кеширование и метрики. Запустите контейнер командой:
@@ -142,6 +156,17 @@ locust -f loadtest/locustfile.py --host http://localhost:3000
 Эндпойнт `/metrics` отдаёт данные prom-client. Для сбора метрик можно
 использовать Prometheus. Пример конфигурации приведён в каталоге
 `prometheus/prometheus.yml`. Базовое правило оповещения лежит в
+`prometheus/alert.rules.yml`.
+
+Запуск Prometheus локально:
+
+```bash
+docker run -d -p 9090:9090 \
+  -v $(pwd)/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
+
+После старта откройте <http://localhost:9090> и добавьте правила из
 `prometheus/alert.rules.yml`.
 
 Для испытаний устойчивости можно запустить `npm --prefix bot run chaos`.

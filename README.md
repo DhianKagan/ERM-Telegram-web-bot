@@ -11,6 +11,7 @@
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
 - Кеширование задач в Redis и метрики Prometheus по пути `/metrics`.
+- Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Проверка подписи initData веб‑приложения на сервере.
 - Защита от CSRF через cookie `XSRF-TOKEN` и заголовок `X-XSRF-TOKEN`.
 - Логи выводятся на странице `/cp/logs`, используется движок WG Log Engine.
@@ -48,7 +49,7 @@ npm --prefix bot run dev
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
-Подробный план описан в `docs/stress_plan.md`.
+Подробный план и инструкции по отказоустойчивости описаны в `docs/stress_plan.md`.
 
 Приложение слушает `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
 

@@ -58,3 +58,15 @@ npm --prefix bot run dev
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
 За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.
+
+## Сборка контейнера
+
+Для локального развёртывания можно собрать контейнер через Docker Compose:
+
+```bash
+docker compose build
+docker compose up
+```
+
+Dockerfile используется из корня проекта, поэтому `.dockerignore` не исключает
+его из контекста.

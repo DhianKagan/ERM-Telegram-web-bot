@@ -1,5 +1,11 @@
 // Тесты формирования URL сервисом маршрутов
 process.env.ROUTING_URL = 'http://localhost:8000/route'
+process.env.NODE_ENV='test'
+process.env.BOT_TOKEN='t'
+process.env.CHAT_ID='1'
+process.env.JWT_SECRET='s'
+process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
+process.env.APP_URL='https://localhost'
 
 const { table, nearest } = require('../src/services/route')
 const { stopScheduler } = require('../src/services/scheduler')

@@ -202,3 +202,5 @@
 180. `docs/stress_plan.md` дополнен чек-листом отказоустойчивости
 181. Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Основной гайд по стилю — `docs/extended_tailadmin_guide.md`
 182. Docker Compose собирает образ из корня проекта; Dockerfile включён в контекст
+183. Маршрут `/api/v1/maps/expand` не требует CSRF-токена
+184. Страница `/cp/logs` получила фильтр по уровню, тексту и дате и сортировку

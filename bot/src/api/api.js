@@ -105,6 +105,7 @@ const validate = (validations) => [
     '/api/v1/auth/verify_code',
     '/api/v1/csrf',
     '/api/v1/optimizer',
+    '/api/v1/maps/expand',
   ];
   app.use((req, res, next) => {
     const url = req.originalUrl.split('?')[0];
@@ -269,8 +270,8 @@ const validate = (validations) => [
     logsRateLimiter,
     verifyToken,
     checkRole(ACCESS_ADMIN),
-    asyncHandler(async (_req, res) => {
-      res.json(await listLogs());
+    asyncHandler(async (req, res) => {
+      res.json(await listLogs(req.query));
     }),
   );
 

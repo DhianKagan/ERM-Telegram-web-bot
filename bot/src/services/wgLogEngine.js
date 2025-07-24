@@ -63,8 +63,21 @@ async function writeLog(message, level = 'info', metadata = {}) {
   LogEngine.log(level, message, metadata);
 }
 
-async function listLogs() {
-  return Log.find().sort({ createdAt: -1 }).limit(100);
+async function listLogs(params = {}) {
+  const { level, message, from, to, sort } = params;
+  const filter = {};
+  if (level) filter.level = level;
+  if (message) filter.message = { $regex: message, $options: 'i' };
+  if (from || to) {
+    filter.createdAt = {};
+    if (from) filter.createdAt.$gte = new Date(from);
+    if (to) filter.createdAt.$lte = new Date(to);
+  }
+  let sortObj = { createdAt: -1 };
+  if (sort === 'date_asc') sortObj = { createdAt: 1 };
+  if (sort === 'level') sortObj = { level: 1 };
+  if (sort === 'level_desc') sortObj = { level: -1 };
+  return Log.find(filter).sort(sortObj).limit(100);
 }
 
 module.exports = { writeLog, listLogs, logger: LogEngine };

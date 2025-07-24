@@ -4,6 +4,7 @@ process.env.BOT_TOKEN='t'
 process.env.CHAT_ID='1'
 process.env.JWT_SECRET='s'
 process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
+process.env.APP_URL='https://localhost'
 
 const request = require('supertest')
 const express = require('express')

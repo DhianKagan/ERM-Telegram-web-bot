@@ -327,7 +327,7 @@ const validate = (validations) => [
   app.use(errorHandler);
 
   const port = config.port;
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`API запущен на порту ${port}`);
     console.log(
       `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,

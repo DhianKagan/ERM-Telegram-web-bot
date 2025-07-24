@@ -16,6 +16,9 @@ yarn-error.log*
 # Docker
 *.tar
 
+# отчёты покрытия
+coverage/
+
 # другие
 .DS_Store
 .vscode/

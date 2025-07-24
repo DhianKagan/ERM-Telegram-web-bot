@@ -46,6 +46,8 @@ npm --prefix bot run dev
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
 Подробный план описан в `docs/stress_plan.md`.
 
+Приложение слушает `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
+
 Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.

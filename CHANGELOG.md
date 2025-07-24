@@ -244,3 +244,4 @@
   переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT`
   можно не задавать
 - Схема логов допускает уровни debug и log, чтобы перехватывать console.log
+- Маршрут `/api/v1/optimizer` исключён из проверки CSRF

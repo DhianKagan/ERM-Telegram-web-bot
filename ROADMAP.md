@@ -196,3 +196,4 @@
 175. Уровень логирования по умолчанию debug, переменные `LOG_LEVEL`,
      `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` необязательны
 176. Схема логов принимает уровни debug и log для обработки console.log
+177. Маршрут `/api/v1/optimizer` исключён из CSRF-проверки

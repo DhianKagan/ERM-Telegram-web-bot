@@ -84,6 +84,7 @@
 - Документ `docs/railway_full_setup.md` содержит пошаговое развёртывание всего проекта на Railway
 - README включает пример JSON с координатами
 - В мануале уточнено разворачивание коротких ссылок Google Maps
+- Удалены `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и файл `TailAdminDesign.fig`. Стилистические рекомендации вынесены в `docs/extended_tailadmin_guide.md`
 - В задачи сохраняется расстояние маршрута `route_distance_km`
 - При завершении задачи записывается `completed_at`, статус хранится на русском
 - Добавлено поле `google_route_url` со ссылкой маршрута

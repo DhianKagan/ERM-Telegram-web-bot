@@ -200,3 +200,4 @@
 178. Workflow CI выполняет линт, тесты и сборку клиента
 179. В `CHANGELOG.md` описан процесс релизов и семантического версионирования
 180. `docs/stress_plan.md` дополнен чек-листом отказоустойчивости
+181. Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Основной гайд по стилю — `docs/extended_tailadmin_guide.md`

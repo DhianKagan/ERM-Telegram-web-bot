@@ -104,6 +104,7 @@ const validate = (validations) => [
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
     '/api/v1/csrf',
+    '/api/v1/optimizer',
   ];
   app.use((req, res, next) => {
     const url = req.originalUrl.split('?')[0];

@@ -107,6 +107,7 @@ REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
 1. Создайте проект и подключите плагин **MongoDB**.
 2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
+4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 
 ### Сервис маршрутов OSRM
 

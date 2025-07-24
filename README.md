@@ -29,6 +29,7 @@
 ```bash
 docker run -d --name redis -p 6379:6379 redis:alpine
 ```
+
 Если используете Redis на Railway, добавьте `?family=0` в `REDIS_URL`,
 например:
 
@@ -42,7 +43,7 @@ REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
 git clone https://github.com/AgroxOD/agrmcs.git
 cd agrmcs
 ./scripts/create_env_from_exports.sh
-./scripts/install_bot_deps.sh
+./scripts/install_bot_deps.sh # устанавливает зависимости сервера и клиента
 npm --prefix bot run dev
 ```
 

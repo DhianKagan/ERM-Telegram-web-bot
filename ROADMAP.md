@@ -195,3 +195,4 @@
 174. API слушает PORT на 0.0.0.0, Railway перенаправляет HTTP на HTTPS
 175. Уровень логирования по умолчанию debug, переменные `LOG_LEVEL`,
      `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` необязательны
+176. Схема логов принимает уровни debug и log для обработки console.log

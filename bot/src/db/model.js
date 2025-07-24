@@ -208,7 +208,12 @@ const userSchema = new mongoose.Schema({
 const logSchema = new mongoose.Schema(
   {
     message: String,
-    level: { type: String, enum: ['info', 'warn', 'error'], default: 'info' },
+    // уровень логирования; console.log сохраняет уровень `log`
+    level: {
+      type: String,
+      enum: ['debug', 'info', 'warn', 'error', 'log'],
+      default: 'info',
+    },
   },
   { timestamps: true },
 );

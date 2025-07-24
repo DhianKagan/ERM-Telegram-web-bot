@@ -7,6 +7,7 @@
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён
+- Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`
 - Админка принимает токен в параметре `?token=` и статику можно загружать без
   заголовка Authorization
 - Страница `/cp/logs` заменяет `/cp/admin` и показывает логи

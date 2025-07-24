@@ -57,3 +57,4 @@ npm --prefix bot run dev
 Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
+За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.

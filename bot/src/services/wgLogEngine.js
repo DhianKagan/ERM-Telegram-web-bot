@@ -65,8 +65,9 @@ async function writeLog(message, level = 'info', metadata = {}) {
 
 async function listLogs(params = {}) {
   const { level, message, from, to, sort } = params;
+  const allowedLevels = ['debug', 'info', 'warn', 'error', 'log'];
   const filter = {};
-  if (level) filter.level = level;
+  if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
   if (message) filter.message = { $regex: message, $options: 'i' };
   if (from || to) {
     filter.createdAt = {};

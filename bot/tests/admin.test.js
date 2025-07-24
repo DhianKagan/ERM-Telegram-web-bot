@@ -120,6 +120,14 @@ test('фильтры логов передаются в сервис', async () 
   );
 });
 
+test('некорректный уровень логов игнорируется', async () => {
+  await request(app)
+    .get('/api/v1/logs?level=bad')
+    .set('x-role', 'admin')
+    .set('x-access', '2');
+  expect(listLogs).toHaveBeenCalledWith({ level: undefined });
+});
+
 test('обычный пользователь получает 403 при доступе к логам', async () => {
   const res = await request(app)
     .get('/api/v1/logs')

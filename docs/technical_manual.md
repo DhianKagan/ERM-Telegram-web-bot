@@ -48,7 +48,8 @@ API использует middleware `lusca.csrf`. Токен хранится в
 в заголовок. Если токен отсутствует, `authFetch` получает его перед запросом.
 Ошибки проверки увеличивают счётчик `csrf_errors_total` и
 фиксируются в логах. Логи собирает движок WG Log Engine,
-просмотреть их можно на странице `/cp/logs`.
+просмотреть их можно на странице `/cp/logs`. Уровни подсвечены цветом,
+ошибки могут дублироваться в Telegram.
 
 ## Карта запросов
 
@@ -105,7 +106,7 @@ REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
 Пошаговое развертывание на Railway:
 
 1. Создайте проект и подключите плагин **MongoDB**.
-2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`.
+2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`, `LOG_LEVEL` и `LOG_TELEGRAM_TOKEN`.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 

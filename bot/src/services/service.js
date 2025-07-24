@@ -14,7 +14,7 @@ module.exports = {
   updateRole: q.updateRole,
   getUser: q.getUser,
   writeLog: logEngine.writeLog,
-  listLogs: logEngine.listLogs,
+  listLogs: (params) => logEngine.listLogs(params),
   searchTasks: q.searchTasks,
   listMentionedTasks: q.listMentionedTasks,
   deleteTask: q.deleteTask,

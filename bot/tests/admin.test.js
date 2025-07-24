@@ -66,8 +66,8 @@ app.get(
   '/api/v1/logs',
   verifyToken,
   checkRole(ACCESS_ADMIN),
-  asyncHandler(async (_req, res) => {
-    res.json(await listLogs());
+  asyncHandler(async (req, res) => {
+    res.json(await listLogs(req.query));
   }),
 );
 app.post(
@@ -101,6 +101,23 @@ test('получение логов доступно админу', async () => 
     .set('x-role', 'admin')
     .set('x-access', '2');
   expect(res.body[0].message).toBe('log');
+  expect(listLogs).toHaveBeenCalledWith({});
+});
+
+test('фильтры логов передаются в сервис', async () => {
+  await request(app)
+    .get('/api/v1/logs?level=error&message=t&from=2024-01-01&to=2024-01-02&sort=date_asc')
+    .set('x-role', 'admin')
+    .set('x-access', '2');
+  expect(listLogs).toHaveBeenCalledWith(
+    expect.objectContaining({
+      level: 'error',
+      message: 't',
+      from: '2024-01-01',
+      to: '2024-01-02',
+      sort: 'date_asc',
+    }),
+  );
 });
 
 test('обычный пользователь получает 403 при доступе к логам', async () => {

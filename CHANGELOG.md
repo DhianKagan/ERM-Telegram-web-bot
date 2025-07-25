@@ -264,3 +264,4 @@
 - authFetch сохраняет тело запроса в `localStorage` при ошибке CSRF
 - Логи запросов указывают наличие cookie и заголовка CSRF
 - Добавлен файл docs/apply_analysis_plan.md с планом внедрения рекомендаций.
+- Тесты `routeCsrf.test.js` и `taskFields.test.js` предупреждают ошибки CSRF и контролируют форму задач

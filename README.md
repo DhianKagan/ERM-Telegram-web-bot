@@ -65,8 +65,8 @@ npm --prefix bot run dev
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
 За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.
+План внедрения рекомендаций из анализа описан в `docs/apply_analysis_plan.md`.
 
-## Сборка контейнера
 
 Для локального развёртывания можно собрать контейнер через Docker Compose:
 

@@ -89,7 +89,10 @@ const validate = (validations) => [
     secret: process.env.SESSION_SECRET || 'session_secret',
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === 'production' },
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    },
   };
   if (process.env.NODE_ENV !== 'test') {
     sessionOpts.store = MongoStore.create({

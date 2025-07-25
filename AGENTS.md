@@ -211,3 +211,4 @@
 - Тест `loginFlow.test.js` ограничивает `/api/protected` ста запросами за 15 минут
 
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN
+- Cookie `token` имеет SameSite=Lax, AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки

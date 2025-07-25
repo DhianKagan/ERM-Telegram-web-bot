@@ -67,8 +67,12 @@ function verifyToken(req, res, next) {
 }
 
 function requestLogger(req, res, next) {
-  const { method, originalUrl } = req;
-  writeLog(`API запрос ${method} ${originalUrl}`).catch(() => {});
+  const { method, originalUrl, headers, cookies } = req;
+  const tokenFlag = cookies && cookies.token ? 'token' : 'no-token';
+  const csrfFlag = headers['x-xsrf-token'] ? 'csrf' : 'no-csrf';
+  writeLog(
+    `API запрос ${method} ${originalUrl} ${tokenFlag} ${csrfFlag}`,
+  ).catch(() => {});
   res.on('finish', () => {
     writeLog(`API ответ ${method} ${originalUrl} ${res.statusCode}`).catch(
       () => {},

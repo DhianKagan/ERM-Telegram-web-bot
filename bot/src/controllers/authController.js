@@ -63,6 +63,7 @@ exports.verifyCode = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
+      domain: new URL(config.appUrl).hostname,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.json({ token });
@@ -110,6 +111,7 @@ exports.verifyInitData = async (req, res) => {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
+    domain: new URL(config.appUrl).hostname,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   res.json({ token });

@@ -208,6 +208,7 @@
 187. Фильтр уровня логов принимает только допустимые значения
 187. Добавлен тест `loginFlow.test.js` с полным сценарием логина и POST-запросом
 188. Тест `loginFlow.test.js` использует rate limit 100 запросов за 15 минут
+189. Тест `loginRouteFlow.test.js` проверяет CSRF-токен и вызов `/api/v1/route`
 189. Cookie `token` использует SameSite=Lax для сохранения сессии
 190. Cookie `XSRF-TOKEN` устанавливается с тем же доменом и SameSite=None
 191. AuthProvider запрашивает `/api/v1/csrf` при фокусе страницы

@@ -57,6 +57,7 @@ API использует middleware `lusca.csrf`. Токен хранится в
 При возврате вкладки в фокус AuthProvider повторно запрашивает `/api/v1/csrf`.
 Cookie `token` и сессия используют флаг `SameSite=Lax`, поэтому не теряются
 после перехода на внешние ссылки.
+Cookie `XSRF-TOKEN` задаётся с тем же доменом и также имеет `SameSite=Lax`.
 Каждый POST‑запрос через `authFetch` добавляет заголовок `X-XSRF-TOKEN`
 из cookie `XSRF-TOKEN`.
 Маршрут `/api/v1/optimizer` исключён из проверки CSRF, чтобы проще вызывать его из скриптов. Маршрут `/api/v1/maps/expand` также не требует токена.

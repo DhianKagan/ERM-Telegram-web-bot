@@ -85,6 +85,7 @@ const validate = (validations) => [
   app.use(express.json());
   app.use(cookieParser());
   // сессия для хранения CSRF-токена
+  const domain = new URL(config.appUrl).hostname;
   const sessionOpts = {
     secret: process.env.SESSION_SECRET || 'session_secret',
     resave: false,
@@ -92,6 +93,7 @@ const validate = (validations) => [
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      domain,
     },
   };
   if (process.env.NODE_ENV !== 'test') {
@@ -102,7 +104,16 @@ const validate = (validations) => [
   }
   app.use(session(sessionOpts));
   // защита от CSRF через lusca, токен кладётся в cookie XSRF-TOKEN
-  const csrf = lusca.csrf({ angular: true });
+  const csrf = lusca.csrf({
+    angular: true,
+    cookie: {
+      options: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        domain,
+      },
+    },
+  });
   const csrfExclude = [
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',

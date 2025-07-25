@@ -2,12 +2,14 @@
 // Модули: authFetch
 import authFetch from "../utils/authFetch";
 
-export const fetchRoute = (start, end) =>
-  authFetch("/api/v1/route", {
+export const fetchRoute = async (start, end) => {
+  await fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
+  const res = await authFetch("/api/v1/route", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ start, end })
-  }).then((r) => (r.ok ? r.json() : null));
-
+  });
+  return res.ok ? res.json() : null;
+};
 export default fetchRoute;
 

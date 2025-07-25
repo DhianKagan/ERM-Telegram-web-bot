@@ -11,7 +11,8 @@ export interface ParsedLog {
   message: string;
 }
 
-const ansiRegex = /\u001b\[[0-9;]*m/g;
+const ESC = "\u001b";
+const ansiRegex = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
 
 export default function parseAnsiLogEntry(line: string): ParsedLog {
   const clean = line.replace(ansiRegex, "");

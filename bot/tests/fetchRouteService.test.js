@@ -18,9 +18,8 @@ afterEach(()=>{ jest.resetAllMocks() })
 afterAll(()=>{ stopScheduler(); stopQueue() })
 
 test('fetchRoute предварительно запрашивает CSRF', async()=>{
-  global.fetch = jest.fn().mockResolvedValue({})
-  authFetch.mockResolvedValue({ ok:true, json: async()=>({d:1}) })
+  global.fetch = jest.fn().mockResolvedValue({ ok:true, json: async()=>({d:1}) })
   await fetchRoute({lat:1,lng:2},{lat:3,lng:4})
-  expect(global.fetch).toHaveBeenCalledWith('/api/v1/csrf', { credentials:'include' })
-  expect(authFetch).toHaveBeenCalledWith('/api/v1/route', expect.objectContaining({ method:'POST' }))
+  expect(global.fetch).toHaveBeenNthCalledWith(1, '/api/v1/csrf', { credentials:'include' })
+  expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/v1/route', expect.objectContaining({ method:'POST' }))
 })

@@ -8,6 +8,7 @@ process.env.APP_URL = 'https://localhost';
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const lusca = require('lusca');
 const request = require('supertest');
 jest.unmock('jsonwebtoken');
@@ -39,7 +40,7 @@ beforeAll(() => {
       secret: 'test',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: false },
+      cookie: { secure: process.env.NODE_ENV === 'production' },
     }),
   );
   const csrf = lusca.csrf({ angular: true });
@@ -60,7 +61,8 @@ beforeAll(() => {
     res.json({ csrfToken: req.csrfToken() });
   });
   app.use('/api/v1/auth', authRouter);
-  app.post('/api/protected', verifyToken, (_req, res) =>
+  const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+  app.post('/api/protected', limiter, verifyToken, (_req, res) =>
     res.json({ ok: true }),
   );
   app.use(errorHandler);

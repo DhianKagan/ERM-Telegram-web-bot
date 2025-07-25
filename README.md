@@ -51,6 +51,7 @@ npm --prefix bot run dev
 ```
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
+Тест `loginFlow.test.js` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
 Подробный план и инструкции по отказоустойчивости описаны в `docs/stress_plan.md`.

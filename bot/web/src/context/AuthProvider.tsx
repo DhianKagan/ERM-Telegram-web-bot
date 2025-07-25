@@ -12,7 +12,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
+    const loadCsrf = () =>
+      fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
+    loadCsrf();
+    const onVisible = () => {
+      if (!document.hidden) loadCsrf();
+    };
+    window.addEventListener("focus", loadCsrf);
+    document.addEventListener("visibilitychange", onVisible);
     getProfile()
       .then((u) => {
         setUser(u);
@@ -22,6 +29,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         setLoading(false);
       });
+    return () => {
+      window.removeEventListener("focus", loadCsrf);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
   const logout = () => {
     setUser(null);

@@ -21,10 +21,24 @@ export default async function authFetch(url, options = {}) {
     try {
       const data = await res.clone().json();
       if (data.error === "Invalid CSRF token") {
+        if (opts.body) {
+          try {
+            localStorage.setItem("csrf_payload", String(opts.body));
+          } catch (e) {
+            console.error(e);
+          }
+        }
         await fetch("/api/v1/csrf", { credentials: "include" });
         const fresh = getToken();
         if (fresh) headers["X-XSRF-TOKEN"] = fresh;
         res = await fetch(url, opts);
+        if (res.ok) {
+          try {
+            localStorage.removeItem("csrf_payload");
+          } catch (e) {
+            console.error(e);
+          }
+        }
       }
     } catch (err) {
       // Ошибка разбора тела ответа не мешает повторить запрос

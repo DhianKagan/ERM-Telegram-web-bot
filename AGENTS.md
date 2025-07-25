@@ -208,5 +208,6 @@
 - Маршрут `/api/v1/optimizer` исключён из проверки CSRF
 - Маршрут `/api/v1/maps/expand` также исключён из проверки CSRF
 - В тестах появился сценарий `loginFlow.test.js` для проверки полного цикла логина
+- Тест `loginFlow.test.js` ограничивает `/api/protected` ста запросами за 15 минут
 
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN

@@ -25,9 +25,11 @@ function errorHandler(err, _req, res, _next) {
     res.status(400).json({ error: 'request aborted' });
     return;
   }
-  if (err.code === 'EBADCSRFTOKEN') {
-    csrfErrors.inc();
-    writeLog('Ошибка CSRF-токена').catch(() => {});
+  if (err.code === 'EBADCSRFTOKEN' || /CSRF token/.test(err.message)) {
+    if (process.env.NODE_ENV !== 'test') {
+      csrfErrors.inc();
+      writeLog('Ошибка CSRF-токена').catch(() => {});
+    }
     res.status(403).json({ error: 'Invalid CSRF token' });
     return;
   }

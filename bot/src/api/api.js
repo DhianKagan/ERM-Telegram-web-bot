@@ -92,7 +92,7 @@ const validate = (validations) => [
     saveUninitialized: true,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       domain,
     },
   };
@@ -109,7 +109,7 @@ const validate = (validations) => [
     cookie: {
       options: {
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         domain,
       },
     },

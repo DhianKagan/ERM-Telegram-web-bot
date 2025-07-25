@@ -27,12 +27,15 @@ beforeEach(() => {
       secret: 'test',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: process.env.NODE_ENV === 'production' },
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+      },
     }),
   );
   const csrf = lusca.csrf({
     angular: true,
-    cookie: { options: { sameSite: 'lax', domain: 'localhost' } },
+    cookie: { options: { sameSite: 'none', domain: 'localhost' } },
   });
   const csrfExclude = ['/api/v1/csrf'];
   app.use((req, res, next) => {
@@ -56,7 +59,7 @@ test('GET /api/v1/csrf выдаёт токен и cookie', async () => {
   const res = await request(app).get('/api/v1/csrf');
   expect(res.status).toBe(200);
   expect(res.headers['set-cookie'][0]).toMatch(/XSRF-TOKEN/);
-  expect(res.headers['set-cookie'][0]).toMatch(/SameSite=Lax/);
+  expect(res.headers['set-cookie'][0]).toMatch(/SameSite=None/);
   expect(res.body.csrfToken).toBeDefined();
 });
 

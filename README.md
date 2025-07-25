@@ -10,8 +10,8 @@
 - Веб‑панель администратора на базе TailAdmin.
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
-- Кеширование задач в Redis и метрики Prometheus по пути `/metrics`.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
+- Метрики Prometheus по пути `/metrics`.
 - Проверка подписи initData веб‑приложения на сервере.
 - Защита от CSRF через cookie `XSRF-TOKEN` и заголовок `X-XSRF-TOKEN`.
  - Логи выводятся на странице `/cp/logs`, используется движок WG Log Engine.
@@ -34,19 +34,6 @@
 - Маршрут `/api/v1/optimizer` не требует CSRF-токена.
 - Тест `routeCsrf.test.js` проверяет CSRF при расчёте маршрута и использует самоподписанный сертификат,
   `taskFields.test.js` контролирует состав полей формы.
-
-Перед запуском необходимо поднять сервер Redis. По умолчанию используется `redis://localhost:6379`. Быстрый вариант — выполнить:
-
-```bash
-docker run -d --name redis -p 6379:6379 redis:alpine
-```
-
-Если используете Redis на Railway, добавьте `?family=0` в `REDIS_URL`,
-например:
-
-```bash
-REDIS_URL=redis://user:pass@redis.railway.internal:6379?family=0
-```
 
 ## Быстрый старт
 

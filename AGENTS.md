@@ -214,4 +214,5 @@
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN
 - Cookie `token` имеет SameSite=Lax, AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки
 - План внедрения улучшений описан в docs/apply_analysis_plan.md
-- Тесты `routeCsrf.test.js` и `taskFields.test.js` предотвращают ошибки CSRF и контролируют форму задач
+- Тест `routeCsrf.test.js` использует secure cookie и предотвращает ошибки CSRF,
+  `taskFields.test.js` контролирует форму задач

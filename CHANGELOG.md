@@ -262,3 +262,4 @@
 - AuthProvider обновляет CSRF-токен при фокусе страницы
 - authFetch сохраняет тело запроса в `localStorage` при ошибке CSRF
 - Логи запросов указывают наличие cookie и заголовка CSRF
+- Добавлен файл docs/apply_analysis_plan.md с планом внедрения рекомендаций.

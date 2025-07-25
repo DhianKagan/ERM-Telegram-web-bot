@@ -213,4 +213,5 @@
 192. authFetch записывает тело запроса в `localStorage` при ошибке CSRF
 193. Лог запросов фиксирует наличие токена и заголовка CSRF
 194. План внедрения рекомендаций из анализа описан в docs/apply_analysis_plan.md
-195. Тесты routeCsrf.test.js и taskFields.test.js помогают избегать ошибок при расчёте маршрутов и редактировании формы
+195. Тест routeCsrf.test.js использует secure cookie и проверяет CSRF при расчёте маршрутов,
+    а taskFields.test.js контролирует поля формы

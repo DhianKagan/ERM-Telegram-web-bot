@@ -260,7 +260,7 @@
 - Тест `loginFlow.test.js` применяет rate limit к маршруту `/api/protected`
 - Cookie `token` использует SameSite=Lax, чтобы сессия не терялась при возврате с внешних сайтов
 - AuthProvider обновляет CSRF-токен при фокусе страницы
-- Cookie `XSRF-TOKEN` имеет SameSite=Lax и общий домен для совпадения с заголовком
+- Cookie `XSRF-TOKEN` имеет SameSite=None и общий домен для совпадения с заголовком
 - authFetch сохраняет тело запроса в `localStorage` при ошибке CSRF
 - Логи запросов указывают наличие cookie и заголовка CSRF
 - Добавлен файл docs/apply_analysis_plan.md с планом внедрения рекомендаций.

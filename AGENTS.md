@@ -186,6 +186,7 @@
 - Токен JWT теперь записывается в cookie HttpOnly
 - API защищён от CSRF middleware lusca.csrf
 - CSRF-токен хранится в cookie `XSRF-TOKEN` и отправляется в заголовке `X-XSRF-TOKEN`
+- Cookie `XSRF-TOKEN` имеет флаг `SameSite=Lax` и общий домен по APP_URL
 - Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена
 - Сессии хранятся через connect-mongo, cookie передаётся только по HTTPS,
   маршруты задач имеют rate limit

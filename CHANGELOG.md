@@ -259,6 +259,7 @@
 - Интерфейс логов построен в виде таблицы с методом и статусом, включает экспорт в CSV/JSON и режим live
 - Добавлен тест `loginFlow.test.js` с полным циклом логина и запросом к защищённому маршруту
 - Тест `loginFlow.test.js` применяет rate limit к маршруту `/api/protected`
+- Добавлен тест `loginRouteFlow.test.js`, проверяющий CSRF и вызов `/api/v1/route`
 - Cookie `token` использует SameSite=Lax, чтобы сессия не терялась при возврате с внешних сайтов
 - AuthProvider обновляет CSRF-токен при фокусе страницы
 - Cookie `XSRF-TOKEN` имеет SameSite=None и общий домен для совпадения с заголовком

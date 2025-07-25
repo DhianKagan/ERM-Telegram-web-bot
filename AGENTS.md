@@ -211,6 +211,7 @@
 - Маршрут `/api/v1/maps/expand` также исключён из проверки CSRF
 - В тестах появился сценарий `loginFlow.test.js` для проверки полного цикла логина
 - Тест `loginFlow.test.js` ограничивает `/api/protected` ста запросами за 15 минут
+- Тест `loginRouteFlow.test.js` получает CSRF и вызывает `/api/v1/route`
 
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN
 - Cookie `token` имеет SameSite=Lax, AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки

@@ -260,6 +260,7 @@
 - Тест `loginFlow.test.js` применяет rate limit к маршруту `/api/protected`
 - Добавлен тест `loginRouteFlow.test.js`, проверяющий CSRF и вызов `/api/v1/route`
 - Cookie `token` использует SameSite=Lax и домен из APP_URL, поэтому сессия не теряется при возврате с внешних сайтов
+- Сессионная cookie получает срок жизни 7 дней, как и JWT
 - AuthProvider обновляет CSRF-токен при фокусе страницы
 - Cookie `XSRF-TOKEN` имеет SameSite=None и общий домен для совпадения с заголовком
 - authFetch сохраняет тело запроса в `localStorage` при ошибке CSRF

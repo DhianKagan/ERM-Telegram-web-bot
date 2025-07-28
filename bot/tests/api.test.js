@@ -33,7 +33,10 @@ beforeAll(async () => {
       secret: 'test',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: process.env.NODE_ENV === 'production' },
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      },
     }),
   );
   app.use(lusca.csrf());

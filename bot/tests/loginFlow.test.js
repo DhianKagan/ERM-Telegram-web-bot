@@ -40,7 +40,10 @@ beforeAll(() => {
       secret: 'test',
       resave: false,
       saveUninitialized: true,
-      cookie: { secure: process.env.NODE_ENV === 'production' },
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      },
     }),
   );
   const csrf = lusca.csrf({ angular: true });
@@ -77,6 +80,7 @@ test('полный цикл логина и запроса', async () => {
   const agent = request.agent(app);
   const csrfRes = await agent.get('/api/v1/csrf');
   const token = csrfRes.body.csrfToken;
+  expect(csrfRes.headers['set-cookie'][1]).toMatch(/Expires=/);
   expect(token).toBeDefined();
   await agent.post('/api/v1/auth/send_code').send({ telegramId: 1 });
   const code = codes.get('1').code;

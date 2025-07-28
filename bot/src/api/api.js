@@ -46,7 +46,8 @@ const {
   listLogs,
 } = require('../services/service');
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware');
-const checkRole = require('../middleware/checkRole');
+const { Roles } = require('../auth/roles.decorator.ts');
+const rolesGuard = require('../auth/roles.guard.ts');
 const { ACCESS_ADMIN } = require('../utils/accessMask');
 const validateDto = require('../middleware/validateDto.ts');
 const { CreateUserDto } = require('../dto/users.dto.ts');
@@ -218,7 +219,8 @@ const validate = (validations) => [
     `${prefix}/users`,
     usersRateLimiter,
     verifyToken,
-    checkRole(ACCESS_ADMIN),
+    Roles(ACCESS_ADMIN),
+    rolesGuard,
     asyncHandler(async (_req, res) => {
       const users = await listUsers();
       res.json(users.map((u) => formatUser(u)));
@@ -228,7 +230,8 @@ const validate = (validations) => [
     `${prefix}/users`,
     usersRateLimiter,
     verifyToken,
-    checkRole(ACCESS_ADMIN),
+    Roles(ACCESS_ADMIN),
+    rolesGuard,
     ...validateDto(CreateUserDto),
     asyncHandler(async (req, res) => {
       const user = await createUser(
@@ -244,7 +247,8 @@ const validate = (validations) => [
     `${prefix}/roles`,
     rolesRateLimiter,
     verifyToken,
-    checkRole(ACCESS_ADMIN),
+    Roles(ACCESS_ADMIN),
+    rolesGuard,
     asyncHandler(async (_req, res) => {
       res.json(await listRoles());
     }),
@@ -254,7 +258,8 @@ const validate = (validations) => [
     `${prefix}/roles/:id`,
     rolesRateLimiter,
     verifyToken,
-    checkRole(ACCESS_ADMIN),
+    Roles(ACCESS_ADMIN),
+    rolesGuard,
     validate([
       body('permissions')
         .isArray()
@@ -283,7 +288,8 @@ const validate = (validations) => [
     `${prefix}/logs`,
     logsRateLimiter,
     verifyToken,
-    checkRole(ACCESS_ADMIN),
+    Roles(ACCESS_ADMIN),
+    rolesGuard,
     [
       query('page').optional().isInt({ min: 1 }),
       query('limit').optional().isInt({ min: 1 }),

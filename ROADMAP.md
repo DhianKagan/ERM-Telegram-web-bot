@@ -223,3 +223,4 @@
 200. Документация по модулям вынесена в ModuleCore.md и docs/architecture.md
 - Инъекция зависимостей через tsyringe, контейнер src/container.ts
 201. Валидация запросов перенесена на классы DTO и `class-validator`
+202. Введён guard `rolesGuard` с декоратором `Roles` для проверки маски доступа

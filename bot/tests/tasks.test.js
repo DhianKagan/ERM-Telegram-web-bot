@@ -39,7 +39,7 @@ const queries = require('../src/db/queries')
 jest.spyOn(queries, 'getUsersMap').mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } })
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req,_res,next)=>{ req.user = { role: 'admin', id: 1 }; next() },
+  verifyToken: (req,_res,next)=>{ req.user = { role: 'admin', id: 1, access: 2 }; next() },
   asyncHandler: fn=>fn,
   errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}),
   checkRole: () => (_req,_res,next)=>next(),

@@ -283,3 +283,5 @@
 - Обновлены ModuleCore.md и docs/architecture.md: описана модульная структура
 - Добавлена библиотека tsyringe и контейнер src/container.ts для сервисов
 - Введены классы DTO и middleware валидации на основе `class-validator`
+- Добавлены `roles.guard.ts` и `roles.decorator.ts`, контроллеры задач и
+  пользователей используют проверку маски доступа

@@ -11,3 +11,11 @@ groups:
         annotations:
           summary: "Бот недоступен"
           description: "Экспортер метрик не отвечает более одной минуты"
+      - alert: CsrfErrors
+        expr: rate(csrf_errors_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Рост ошибок CSRF"
+          description: "Количество ошибок CSRF за 5 минут превысило порог"

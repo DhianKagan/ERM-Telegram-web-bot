@@ -24,7 +24,11 @@ export default function parseAnsiLogEntry(line: string): ParsedLog {
   };
   const msg = res.message;
   let m;
-  if ((m = msg.match(/API запрос (\w+) (\S+) (\w+) (\w+)/))) {
+  if ((m = msg.match(/API запрос (\w+) (\S+) token:([^ ]+) csrf:([^ ]+)/))) {
+    res.method = m[1];
+    res.endpoint = m[2];
+    res.csrf = m[4] !== "no-csrf";
+  } else if ((m = msg.match(/API запрос (\w+) (\S+) (\w+) (\w+)/))) {
     res.method = m[1];
     res.endpoint = m[2];
     res.csrf = m[4] !== "no-csrf";

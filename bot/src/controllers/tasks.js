@@ -47,7 +47,9 @@ exports.create = [
   handle,
   async (req, res) => {
     const task = await service.create(req.body);
-    await writeLog(`Создана задача ${task._id}`);
+    await writeLog(
+      `Создана задача ${task._id} пользователем ${req.user.id}/${req.user.username}`,
+    );
     res.status(201).json(task);
   },
 ];
@@ -57,7 +59,9 @@ exports.update = [
   async (req, res) => {
     const task = await service.update(req.params.id, req.body);
     if (!task) return res.sendStatus(404);
-    await writeLog(`Обновлена задача ${req.params.id}`);
+    await writeLog(
+      `Обновлена задача ${req.params.id} пользователем ${req.user.id}/${req.user.username}`,
+    );
     res.json(task);
   },
 ];
@@ -67,7 +71,9 @@ exports.addTime = [
   async (req, res) => {
     const task = await service.addTime(req.params.id, req.body.minutes);
     if (!task) return res.sendStatus(404);
-    await writeLog(`Время по задаче ${req.params.id} +${req.body.minutes}`);
+    await writeLog(
+      `Время по задаче ${req.params.id} +${req.body.minutes} пользователем ${req.user.id}/${req.user.username}`,
+    );
     res.json(task);
   },
 ];
@@ -76,7 +82,9 @@ exports.bulk = [
   handle,
   async (req, res) => {
     await service.bulk(req.body.ids, { status: req.body.status });
-    await writeLog('Массовое изменение статусов');
+    await writeLog(
+      `Массовое изменение статусов пользователем ${req.user.id}/${req.user.username}`,
+    );
     res.json({ status: 'ok' });
   },
 ];
@@ -93,6 +101,8 @@ exports.summary = async (req, res) => {
 exports.remove = async (req, res) => {
   const task = await service.remove(req.params.id);
   if (!task) return res.sendStatus(404);
-  await writeLog(`Удалена задача ${req.params.id}`);
+  await writeLog(
+    `Удалена задача ${req.params.id} пользователем ${req.user.id}/${req.user.username}`,
+  );
   res.sendStatus(204);
 };

@@ -28,7 +28,17 @@ function errorHandler(err, _req, res, _next) {
   if (err.code === 'EBADCSRFTOKEN' || /CSRF token/.test(err.message)) {
     if (process.env.NODE_ENV !== 'test') {
       csrfErrors.inc();
-      writeLog('Ошибка CSRF-токена').catch(() => {});
+      const header = _req.headers['x-xsrf-token']
+        ? String(_req.headers['x-xsrf-token']).slice(0, 8)
+        : 'none';
+      const cookie =
+        _req.cookies && _req.cookies['XSRF-TOKEN']
+          ? String(_req.cookies['XSRF-TOKEN']).slice(0, 8)
+          : 'none';
+      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : 'anon';
+      writeLog(
+        `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
+      ).catch(() => {});
     }
     res.status(403).json({ error: 'Invalid CSRF token' });
     return;
@@ -70,10 +80,13 @@ function verifyToken(req, res, next) {
 
 function requestLogger(req, res, next) {
   const { method, originalUrl, headers, cookies } = req;
-  const tokenFlag = cookies && cookies.token ? 'token' : 'no-token';
-  const csrfFlag = headers['x-xsrf-token'] ? 'csrf' : 'no-csrf';
+  const tokenVal =
+    cookies && cookies.token ? cookies.token.slice(0, 8) : 'no-token';
+  const csrfVal = headers['x-xsrf-token']
+    ? String(headers['x-xsrf-token']).slice(0, 8)
+    : 'no-csrf';
   writeLog(
-    `API запрос ${method} ${originalUrl} ${tokenFlag} ${csrfFlag}`,
+    `API запрос ${method} ${originalUrl} token:${tokenVal} csrf:${csrfVal}`,
   ).catch(() => {});
   res.on('finish', () => {
     writeLog(`API ответ ${method} ${originalUrl} ${res.statusCode}`).catch(

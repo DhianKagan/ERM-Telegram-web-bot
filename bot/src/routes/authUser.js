@@ -1,8 +1,7 @@
 // Роуты регистрации, входа и профиля
 // Роут только профиля пользователя
 const router = require('express').Router();
-const ctrl = require('../controllers/authUser');
-const authCtrl = require('../controllers/authController');
+const authCtrl = require('../auth/auth.controller.ts');
 const { verifyToken, asyncHandler } = require('../api/middleware');
 const validateDto = require('../middleware/validateDto.ts');
 const {
@@ -30,11 +29,11 @@ router.post(
   asyncHandler(authCtrl.verifyInitData),
 );
 
-router.get('/profile', verifyToken, ctrl.profile);
+router.get('/profile', verifyToken, authCtrl.profile);
 router.patch(
   '/profile',
   verifyToken,
   ...validateDto(UpdateProfileDto),
-  asyncHandler(ctrl.updateProfile),
+  asyncHandler(authCtrl.updateProfile),
 );
 module.exports = router;

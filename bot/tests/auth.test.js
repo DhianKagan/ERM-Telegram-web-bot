@@ -19,6 +19,7 @@ jest.mock('../src/db/queries', () => ({
     role: 'admin',
   })),
 }));
+jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
 jest.useFakeTimers().setSystemTime(0);
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -29,8 +30,9 @@ const { generateToken } = require('../src/auth/auth');
 const jwt = require('jsonwebtoken');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
-const authCtrl = require('../src/controllers/authController');
+const authCtrl = require('../src/auth/auth.controller.ts');
 const queries = require('../src/db/queries');
+const { writeLog } = require('../src/services/service');
 
 afterEach(() => {
   authCtrl.codes.clear();
@@ -101,6 +103,16 @@ test('admin code обновляет роль пользователя', async ()
   expect(res.json).toHaveBeenCalledWith({ token: expect.any(String) });
   expect(res.cookie).toHaveBeenCalled();
   expect(queries.updateUser).toHaveBeenCalled();
+});
+
+test('успешный вход записывается в лог', async () => {
+  const req = { body: { telegramId: 9 } };
+  const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+  await authCtrl.sendCode(req, res);
+  const code = authCtrl.codes.get('9').code;
+  const res2 = { json: jest.fn(), status: jest.fn().mockReturnThis(), cookie: jest.fn() };
+  await authCtrl.verifyCode({ body: { telegramId: 9, code, username: 'u' } }, res2);
+  expect(writeLog).toHaveBeenCalledWith('Вход пользователя 9/u');
 });
 
 test('clean удаляет старые записи при новом вызове', async () => {

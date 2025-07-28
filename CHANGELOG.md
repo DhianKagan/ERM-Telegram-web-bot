@@ -291,3 +291,5 @@
   `/api/v1/roles`, `/api/v1/logs`
 - Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
   `http_requests_total` и `http_request_duration_ms`, конфигурация обновлена
+- Добавлены тесты `authService.test.js` и `tasksService.test.js`,
+  workflow CI выполняет `setup_and_test.sh` и проверку зависимостей

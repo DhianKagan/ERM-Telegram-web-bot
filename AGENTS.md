@@ -231,3 +231,5 @@
   сервисами
 - Созданы middleware `logging.ts` и `metrics.ts`, метрики собираются через
   prom-client и доступны по пути `/metrics`
+- Добавлены тесты сервисов `authService` и `tasksService`, CI запускает
+  `setup_and_test.sh` и проверку зависимостей

@@ -59,6 +59,7 @@ npm --prefix bot run dev
 Тест `loginFlow.test.js` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
 Тест `loginRouteFlow.test.js` получает CSRF-токен и успешно вызывает `/api/v1/route`.
 Тест `loginTasksFlow.test.js` выполняет логин и создание задачи через `/api/v1/tasks`.
+Тесты `authService.test.js` и `tasksService.test.js` проверяют логику сервисов авторизации и задач.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
 Подробный план и инструкции по отказоустойчивости описаны в `docs/stress_plan.md`.

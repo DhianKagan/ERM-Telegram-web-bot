@@ -222,3 +222,4 @@
 - План внедрения улучшений описан в docs/apply_analysis_plan.md
 - Тест `routeCsrf.test.js` использует самоподписанный сертификат и предотвращает ошибки CSRF,
   `taskFields.test.js` контролирует форму задач
+- В ModuleCore.md и docs/architecture.md подробно описаны модули

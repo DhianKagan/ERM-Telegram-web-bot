@@ -42,8 +42,11 @@ jest.mock('../src/api/middleware', () => ({
   verifyToken: (req,_res,next)=>{ req.user = { role: 'admin', id: 1 }; next() },
   asyncHandler: fn=>fn,
   errorHandler: (err,_req,res,_next)=>res.status(500).json({error:err.message}),
-  checkRole: () => (_req,_res,next)=>next()
+  checkRole: () => (_req,_res,next)=>next(),
+  checkTaskAccess: (_req,_res,next)=>next()
 }))
+
+jest.mock('../src/middleware/taskAccess', () => (_req,_res,next)=> next())
 
 const router = require('../src/routes/tasks')
 const { Task, Archive } = require('../src/db/model')

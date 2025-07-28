@@ -33,6 +33,8 @@ jest.mock('../src/services/tasks', () => ({
   mentioned: jest.fn(),
 }))
 
+jest.mock('../src/middleware/taskAccess', () => (_req,_res,next)=> next())
+
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => null),
   createUser: jest.fn(async () => ({ username: 'u' })),

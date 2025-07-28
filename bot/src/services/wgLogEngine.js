@@ -22,7 +22,9 @@ const outputs = [
     },
   },
   async (level, message) => {
-    await Log.create({ message, level });
+    if (process.env.NODE_ENV !== 'test') {
+      await Log.create({ message, level });
+    }
   },
 ];
 

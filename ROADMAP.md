@@ -222,3 +222,4 @@
 199. Эндпойнт `/api/v1/logs` валидирует `page` и `limit` через query
 200. Документация по модулям вынесена в ModuleCore.md и docs/architecture.md
 - Инъекция зависимостей через tsyringe, контейнер src/container.ts
+201. Валидация запросов перенесена на классы DTO и `class-validator`

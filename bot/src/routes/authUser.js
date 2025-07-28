@@ -4,32 +4,29 @@ const router = require('express').Router();
 const ctrl = require('../controllers/authUser');
 const authCtrl = require('../controllers/authController');
 const { verifyToken, asyncHandler } = require('../api/middleware');
-const { body, validationResult } = require('express-validator');
-
-const validate = (validations) => [
-  ...validations,
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (errors.isEmpty()) return next();
-    res.status(400).json({ errors: errors.array() });
-  },
-];
+const validateDto = require('../middleware/validateDto.ts');
+const {
+  SendCodeDto,
+  VerifyCodeDto,
+  VerifyInitDto,
+  UpdateProfileDto,
+} = require('../dto/auth.dto.ts');
 
 router.post(
   '/send_code',
-  validate([body('telegramId').isInt()]),
+  ...validateDto(SendCodeDto),
   asyncHandler(authCtrl.sendCode),
 );
 
 router.post(
   '/verify_code',
-  validate([body('telegramId').isInt(), body('code').isLength({ min: 4 })]),
+  ...validateDto(VerifyCodeDto),
   asyncHandler(authCtrl.verifyCode),
 );
 
 router.post(
   '/verify_init',
-  validate([body('initData').isString()]),
+  ...validateDto(VerifyInitDto),
   asyncHandler(authCtrl.verifyInitData),
 );
 
@@ -37,11 +34,7 @@ router.get('/profile', verifyToken, ctrl.profile);
 router.patch(
   '/profile',
   verifyToken,
-  validate([
-    body('name').optional().isString().notEmpty(),
-    body('phone').optional().isMobilePhone('any'),
-    body('mobNumber').optional().isMobilePhone('any'),
-  ]),
+  ...validateDto(UpdateProfileDto),
   asyncHandler(ctrl.updateProfile),
 );
 module.exports = router;

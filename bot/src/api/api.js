@@ -48,6 +48,8 @@ const {
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware');
 const checkRole = require('../middleware/checkRole');
 const { ACCESS_ADMIN } = require('../utils/accessMask');
+const validateDto = require('../middleware/validateDto.ts');
+const { CreateUserDto } = require('../dto/users.dto.ts');
 
 const validate = (validations) => [
   ...validations,
@@ -227,11 +229,7 @@ const validate = (validations) => [
     usersRateLimiter,
     verifyToken,
     checkRole(ACCESS_ADMIN),
-    validate([
-      body('id').isInt(),
-      body('username').isString().notEmpty(),
-      body('roleId').optional().isMongoId(),
-    ]),
+    ...validateDto(CreateUserDto),
     asyncHandler(async (req, res) => {
       const user = await createUser(
         req.body.id,

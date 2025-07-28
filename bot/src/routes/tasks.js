@@ -1,9 +1,16 @@
 // Роуты задач: CRUD, время, массовые действия
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { body, param, query } = require('express-validator');
+const { param, query } = require('express-validator');
 const ctrl = require('../controllers/tasks');
 const { verifyToken } = require('../api/middleware');
+const validateDto = require('../middleware/validateDto.ts');
+const {
+  CreateTaskDto,
+  UpdateTaskDto,
+  AddTimeDto,
+  BulkStatusDto,
+} = require('../dto/tasks.dto.ts');
 
 const router = express.Router();
 
@@ -48,48 +55,7 @@ router.get(
   ctrl.detail,
 );
 
-router.post(
-  '/',
-  verifyToken,
-  [
-    body('title').optional().isString(),
-    body('task_description').optional().isString(),
-    body('task_type').optional().isString(),
-    body('task_type_id').optional().isInt(),
-    body('location').optional().isString(),
-    body('start_location').optional().isString(),
-    body('start_location_link').optional().isString(),
-    body('startCoordinates').optional().isObject(),
-    body('end_location').optional().isString(),
-    body('end_location_link').optional().isString(),
-    body('finishCoordinates').optional().isObject(),
-    body('google_route_url').optional().isString(),
-    body('route_distance_km').optional().isFloat(),
-    body('route_nodes').optional().isArray(),
-    body('start_date').optional().isISO8601(),
-    body('due_date').optional().isISO8601(),
-    body('remind_at').optional().isISO8601(),
-    body('controllers').optional().isArray(),
-    body('created_by').optional().isInt(),
-    body('comment').optional().isString(),
-    body('priority').optional().isString(),
-    body('priority_id').optional().isInt(),
-    body('transport_type').optional().isString(),
-    body('payment_method').optional().isString(),
-    body('status').optional().isString(),
-    body('completed_at').optional().isISO8601(),
-    body('completion_result').optional().isString(),
-    body('cancel_reason').optional().isString(),
-    body('applicant').optional().isObject(),
-    body('logistics_details').optional().isObject(),
-    body('procurement_details').optional().isObject(),
-    body('work_details').optional().isObject(),
-    body('custom_fields').optional(),
-    body('files').optional().isArray(),
-    body('assignees').optional().isArray(),
-  ],
-  ctrl.create,
-);
+router.post('/', verifyToken, ...validateDto(CreateTaskDto), ctrl.create);
 
 const checkTaskAccess = require('../middleware/taskAccess');
 
@@ -98,13 +64,15 @@ router.patch(
   verifyToken,
   [param('id').isMongoId()],
   checkTaskAccess,
+  ...validateDto(UpdateTaskDto),
   ctrl.update,
 );
 
 router.patch(
   '/:id/time',
   verifyToken,
-  [param('id').isMongoId(), body('minutes').isInt({ min: 1 })],
+  [param('id').isMongoId()],
+  ...validateDto(AddTimeDto),
   checkTaskAccess,
   ctrl.addTime,
 );
@@ -117,11 +85,6 @@ router.delete(
   ctrl.remove,
 );
 
-router.post(
-  '/bulk',
-  verifyToken,
-  [body('ids').isArray({ min: 1 }), body('status').isString()],
-  ctrl.bulk,
-);
+router.post('/bulk', verifyToken, ...validateDto(BulkStatusDto), ctrl.bulk);
 
 module.exports = router;

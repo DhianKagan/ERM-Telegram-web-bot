@@ -14,6 +14,7 @@ const { ACCESS_ADMIN } = require('../src/utils/accessMask');
 
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
+  createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
 }));
 
 jest.mock('../src/api/middleware', () => ({
@@ -35,12 +36,14 @@ jest.mock('../src/api/middleware', () => ({
     res.status(500).json({ error: err.message }),
 }));
 
-const { listUsers } = require('../src/db/queries');
+const { listUsers, createUser } = require('../src/db/queries');
 const {
   verifyToken,
   checkRole,
   asyncHandler,
 } = require('../src/api/middleware');
+const validateDto = require('../src/middleware/validateDto.ts');
+const { CreateUserDto } = require('../src/dto/users.dto.ts');
 
 const app = express();
 app.use(express.json());
@@ -50,6 +53,15 @@ app.get(
   checkRole(ACCESS_ADMIN),
   asyncHandler(async (_req, res) => {
     res.json(await listUsers());
+  }),
+);
+app.post(
+  '/api/v1/users',
+  verifyToken,
+  checkRole(ACCESS_ADMIN),
+  ...validateDto(CreateUserDto),
+  asyncHandler(async (req, res) => {
+    res.json(await createUser(req.body.id, req.body.username, req.body.roleId));
   }),
 );
 
@@ -73,4 +85,13 @@ test('обычный пользователь получает 403', async () =>
     .set('x-role', 'user')
     .set('x-access', '1');
   expect(res.status).toBe(403);
+});
+
+test('создание пользователя с ошибкой данных', async () => {
+  const res = await request(app)
+    .post('/api/v1/users')
+    .set('x-role', 'admin')
+    .set('x-access', '2')
+    .send({ username: 'a' });
+  expect(res.status).toBe(400);
 });

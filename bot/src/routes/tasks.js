@@ -2,7 +2,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { param, query } = require('express-validator');
-const ctrl = require('../controllers/tasks');
+const ctrl = require('../tasks/tasks.controller.ts');
 const { verifyToken } = require('../api/middleware');
 const validateDto = require('../middleware/validateDto.ts');
 const {

@@ -12,7 +12,8 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const lusca = require('lusca');
-const { body, validationResult, param } = require('express-validator');
+// query используется для валидации параметров пагинации
+const { body, validationResult, param, query } = require('express-validator');
 const path = require('path');
 const fs = require('fs').promises;
 const { exec } = require('child_process');

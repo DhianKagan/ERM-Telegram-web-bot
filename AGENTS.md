@@ -213,6 +213,8 @@
 - Тест `loginFlow.test.js` ограничивает `/api/protected` ста запросами за 15 минут
 - Тест `loginRouteFlow.test.js` получает CSRF и вызывает `/api/v1/route`
 - Тест `loginTasksFlow.test.js` создаёт задачу после логина
+- Скрипт seed.js выдаёт администратору маску доступа 2
+- Контроллеры задач не позволяют изменять чужие задачи
 
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN
 - Cookie `token` имеет SameSite=Lax и домен из APP_URL, AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки

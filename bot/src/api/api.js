@@ -12,7 +12,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const lusca = require('lusca');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, param } = require('express-validator');
 const path = require('path');
 const fs = require('fs').promises;
 const { exec } = require('child_process');
@@ -302,11 +302,14 @@ const validate = (validations) => [
     }),
   );
 
+  const checkTaskAccess = require('../middleware/taskAccess');
+
   app.post(
     `${prefix}/tasks/:id/status`,
     taskStatusRateLimiter,
     verifyToken,
-
+    [param('id').isMongoId()],
+    checkTaskAccess,
     validate([
       body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),

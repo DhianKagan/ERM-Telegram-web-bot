@@ -91,16 +91,31 @@ router.post(
   ctrl.create,
 );
 
-router.patch('/:id', verifyToken, [param('id').isMongoId()], ctrl.update);
+const checkTaskAccess = require('../middleware/taskAccess');
+
+router.patch(
+  '/:id',
+  verifyToken,
+  [param('id').isMongoId()],
+  checkTaskAccess,
+  ctrl.update,
+);
 
 router.patch(
   '/:id/time',
   verifyToken,
   [param('id').isMongoId(), body('minutes').isInt({ min: 1 })],
+  checkTaskAccess,
   ctrl.addTime,
 );
 
-router.delete('/:id', verifyToken, [param('id').isMongoId()], ctrl.remove);
+router.delete(
+  '/:id',
+  verifyToken,
+  [param('id').isMongoId()],
+  checkTaskAccess,
+  ctrl.remove,
+);
 
 router.post(
   '/bulk',

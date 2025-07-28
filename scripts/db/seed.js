@@ -1,10 +1,17 @@
 // Заполнение тестовыми данными
 import mongoose from 'mongoose'
 import { Task, Group, User, Log } from '../../bot/src/db/model.js'
+import config from '../../bot/src/config.js'
 import 'dotenv/config'
 
 const group = await Group.create({ name: 'Default' })
-const user = await User.create({ telegram_id: 1, username: 'admin', role: 'admin' })
+const user = await User.create({
+  telegram_id: 1,
+  username: 'admin',
+  role: 'admin',
+  roleId: config.adminRoleId,
+  access: 2,
+})
 await Task.create({
   title: 'Тестовая задача',
   task_description: 'Пример',

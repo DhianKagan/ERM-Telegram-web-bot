@@ -72,6 +72,11 @@ test('создание задачи возвращает 201', async () => {
   expect(Task.create).toHaveBeenCalledWith(expect.objectContaining({ start_date: '2025-01-01T10:00', google_route_url: 'g', route_distance_km: 1 }))
 })
 
+test('создание задачи с неверными данными', async () => {
+  const res = await request(app).post('/api/v1/tasks').send({ title: 1 })
+  expect(res.status).toBe(400)
+})
+
 const id = '507f191e810c19729de860ea'
 
 test('обновление задачи', async () => {
@@ -82,6 +87,11 @@ test('обновление задачи', async () => {
 test('добавление времени', async () => {
   await request(app).patch(`/api/v1/tasks/${id}/time`).send({ minutes:15 })
   expect(Task.findById).toHaveBeenCalled()
+})
+
+test('ошибка валидации времени', async () => {
+  const res = await request(app).patch(`/api/v1/tasks/${id}/time`).send({})
+  expect(res.status).toBe(400)
 })
 
 test('bulk update статуса', async () => {

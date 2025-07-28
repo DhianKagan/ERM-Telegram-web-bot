@@ -282,3 +282,4 @@
 - Исправлена ошибка ESLint в API: параметр `query` не был импортирован
 - Обновлены ModuleCore.md и docs/architecture.md: описана модульная структура
 - Добавлена библиотека tsyringe и контейнер src/container.ts для сервисов
+- Введены классы DTO и middleware валидации на основе `class-validator`

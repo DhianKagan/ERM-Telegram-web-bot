@@ -224,3 +224,4 @@
   `taskFields.test.js` контролирует форму задач
 - В ModuleCore.md и docs/architecture.md подробно описаны модули
 - Сервисы регистрируются через tsyringe, контейнер src/container.ts подключается в src/server.js
+- Валидация маршрутов использует классы DTO и middleware validateDto

@@ -60,7 +60,9 @@ app.get(
 );
 app.post(
   '/api/v1/users',
+
   usersRateLimiter,
+
   verifyToken,
   checkRole(ACCESS_ADMIN),
   ...validateDto(CreateUserDto),

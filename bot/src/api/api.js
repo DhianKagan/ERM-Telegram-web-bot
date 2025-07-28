@@ -285,6 +285,10 @@ const validate = (validations) => [
     logsRateLimiter,
     verifyToken,
     checkRole(ACCESS_ADMIN),
+    [
+      query('page').optional().isInt({ min: 1 }),
+      query('limit').optional().isInt({ min: 1 }),
+    ],
     asyncHandler(async (req, res) => {
       res.json(await listLogs(req.query));
     }),

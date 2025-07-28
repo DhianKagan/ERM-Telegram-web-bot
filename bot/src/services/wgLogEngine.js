@@ -66,7 +66,7 @@ async function writeLog(message, level = 'info', metadata = {}) {
 }
 
 async function listLogs(params = {}) {
-  const { level, message, from, to, sort } = params;
+  const { level, message, from, to, sort, page = 1, limit = 100 } = params;
   const allowedLevels = ['debug', 'info', 'warn', 'error', 'log'];
   const filter = {};
   if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
@@ -80,7 +80,12 @@ async function listLogs(params = {}) {
   if (sort === 'date_asc') sortObj = { createdAt: 1 };
   if (sort === 'level') sortObj = { level: 1 };
   if (sort === 'level_desc') sortObj = { level: -1 };
-  return Log.find(filter).sort(sortObj).limit(100);
+  const pageNum = Number(page) > 0 ? Number(page) : 1;
+  const lim = Number(limit) > 0 ? Number(limit) : 100;
+  return Log.find(filter)
+    .sort(sortObj)
+    .skip((pageNum - 1) * lim)
+    .limit(lim);
 }
 
 module.exports = { writeLog, listLogs, logger: LogEngine };

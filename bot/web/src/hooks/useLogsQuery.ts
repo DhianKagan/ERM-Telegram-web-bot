@@ -15,7 +15,7 @@ export interface LogFilters {
   noCsrf?: boolean;
 }
 
-export default function useLogsQuery(filters: LogFilters) {
+export default function useLogsQuery(filters: LogFilters, page: number) {
   const [logs, setLogs] = useState<ParsedLog[]>([]);
 
   useEffect(() => {
@@ -24,6 +24,8 @@ export default function useLogsQuery(filters: LogFilters) {
     if (filters.message) params.set("message", filters.message);
     if (filters.from) params.set("from", filters.from);
     if (filters.to) params.set("to", filters.to);
+    params.set("page", String(page));
+    params.set("limit", "50");
     authFetch(`/api/v1/logs?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: { message: string; level: string }[]) => {
@@ -32,7 +34,7 @@ export default function useLogsQuery(filters: LogFilters) {
         );
         setLogs(parsed);
       });
-  }, [filters]);
+  }, [filters, page]);
 
   return logs.filter((l) => {
     if (filters.method && l.method !== filters.method) return false;

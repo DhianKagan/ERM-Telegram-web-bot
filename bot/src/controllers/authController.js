@@ -5,6 +5,7 @@ const { generateToken } = require('../auth/auth');
 const { getUser, createUser, updateUser } = require('../db/queries');
 const { getMemberStatus } = require('../services/userInfoService');
 const config = require('../config');
+const { writeLog } = require('../services/service');
 
 exports.sendCode = async (req, res) => {
   const { telegramId } = req.body;
@@ -37,6 +38,7 @@ exports.verifyCode = async (req, res) => {
         role: 'admin',
         access: 2,
       });
+      await writeLog(`Пользователь ${id} повышен до администратора`);
       roleId = config.adminRoleId;
     }
   } else {

@@ -7,13 +7,18 @@ import FiltersPanel from "./FiltersPanel";
 export default function LogViewer() {
   const [filters, setFilters] = React.useState<LogFilters>({});
   const [live, setLive] = React.useState(true);
-  const logs = useLogsQuery(filters);
+  const [page, setPage] = React.useState(1);
+  const logs = useLogsQuery(filters, page);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   React.useEffect(() => {
     if (!live) return;
     const id = setInterval(() => setFilters({ ...filters }), 5000);
     return () => clearInterval(id);
-  }, [live, filters]);
+  }, [live, filters, page]);
 
   const exportCsv = () => {
     const rows = logs.map((l) =>
@@ -96,6 +101,21 @@ export default function LogViewer() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="flex justify-between text-sm">
+        <button
+          className="rounded border px-2 py-1"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+        >
+          Назад
+        </button>
+        <span>Страница {page}</span>
+        <button
+          className="rounded border px-2 py-1"
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Вперёд
+        </button>
       </div>
     </div>
   );

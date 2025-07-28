@@ -53,7 +53,10 @@ const validate = (validations) => [
   await connect();
   require('../db/model');
   const app = express();
-  app.use(require('./middleware').requestLogger);
+  const logging = require('../middleware/logging.ts');
+  const metrics = require('../middleware/metrics.ts');
+  app.use(logging);
+  app.use(metrics);
   // при отсутствии статических файлов выполняем сборку мини-приложения
   const root = path.join(__dirname, '../..');
   const pub = path.join(root, 'public');

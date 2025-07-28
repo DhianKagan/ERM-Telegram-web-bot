@@ -228,3 +228,5 @@
      успешные логины пишутся в логи
 204. Созданы UsersModule, RolesModule и LogsModule с отдельными сервисами и
      контроллерами
+205. Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
+     `http_requests_total` и `http_request_duration_ms`

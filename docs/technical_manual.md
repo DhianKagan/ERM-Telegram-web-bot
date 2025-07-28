@@ -180,10 +180,10 @@ locust -f loadtest/locustfile.py --host http://localhost:3000
 
 ## Метрики Prometheus и Chaos testing
 
-Эндпойнт `/metrics` отдаёт данные prom-client. Для сбора метрик можно
-использовать Prometheus. Пример конфигурации приведён в каталоге
-`prometheus/prometheus.yml`. Базовое правило оповещения лежит в
-`prometheus/alert.rules.yml`.
+Эндпойнт `/metrics` отдаёт данные prom-client. Отдельный middleware
+`metrics.ts` считает `http_requests_total` и `http_request_duration_ms`.
+Для сбора метрик используется Prometheus. Конфигурация хранится в
+`prometheus/prometheus.yml`, правила оповещений — в `prometheus/alert.rules.yml`.
 
 Запуск Prometheus локально:
 

@@ -287,3 +287,5 @@
   пользователей используют проверку маски доступа
 - Код авторизации перенесён в `auth.controller.ts` и `auth.service.ts`
 - Успешные логины записываются в базу логов
+- Созданы UsersModule, RolesModule и LogsModule с роутами `/api/v1/users`,
+  `/api/v1/roles`, `/api/v1/logs`

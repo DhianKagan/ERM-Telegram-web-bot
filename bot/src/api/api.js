@@ -13,7 +13,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const lusca = require('lusca');
 // query используется для валидации параметров пагинации
-const { body, validationResult, param, query } = require('express-validator');
+const { body, validationResult, param } = require('express-validator');
 const path = require('path');
 const fs = require('fs').promises;
 const { exec } = require('child_process');
@@ -35,22 +35,8 @@ const routeRouter = require('../routes/route');
 const routesRouter = require('../routes/routes');
 const optimizerRouter = require('../routes/optimizer');
 const authUserRouter = require('../routes/authUser');
-const formatUser = require('../utils/formatUser');
-const {
-  updateTaskStatus,
-  createUser,
-  listUsers,
-  listRoles,
-  updateRole,
-  writeLog,
-  listLogs,
-} = require('../services/service');
+const { updateTaskStatus, writeLog } = require('../services/service');
 const { verifyToken, asyncHandler, errorHandler } = require('./middleware');
-const { Roles } = require('../auth/roles.decorator.ts');
-const rolesGuard = require('../auth/roles.guard.ts');
-const { ACCESS_ADMIN } = require('../utils/accessMask');
-const validateDto = require('../middleware/validateDto.ts');
-const { CreateUserDto } = require('../dto/users.dto.ts');
 
 const validate = (validations) => [
   ...validations,
@@ -175,22 +161,9 @@ const validate = (validations) => [
     res.json({ csrfToken: req.csrfToken() });
   });
 
-  // лимит запросов к пользователям: 100 за 15 минут
-  const usersRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later.' },
-  });
-  const logsRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later.' },
-  });
-  const rolesRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: { error: 'Too many requests, please try again later.' },
-  });
+  const usersRouter = require('../routes/users');
+  const rolesRouter = require('../routes/roles');
+  const logsRouter = require('../routes/logs');
 
   const taskStatusRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -215,101 +188,9 @@ const validate = (validations) => [
 
   // Устаревшие маршруты /tasks удалены, используйте /api/tasks
 
-  app.get(
-    `${prefix}/users`,
-    usersRateLimiter,
-    verifyToken,
-    Roles(ACCESS_ADMIN),
-    rolesGuard,
-    asyncHandler(async (_req, res) => {
-      const users = await listUsers();
-      res.json(users.map((u) => formatUser(u)));
-    }),
-  );
-  app.post(
-    `${prefix}/users`,
-    usersRateLimiter,
-    verifyToken,
-    Roles(ACCESS_ADMIN),
-    rolesGuard,
-    ...validateDto(CreateUserDto),
-    asyncHandler(async (req, res) => {
-      const user = await createUser(
-        req.body.id,
-        req.body.username,
-        req.body.roleId,
-      );
-      res.json(formatUser(user));
-    }),
-  );
-
-  app.get(
-    `${prefix}/roles`,
-    rolesRateLimiter,
-    verifyToken,
-    Roles(ACCESS_ADMIN),
-    rolesGuard,
-    asyncHandler(async (_req, res) => {
-      res.json(await listRoles());
-    }),
-  );
-
-  app.patch(
-    `${prefix}/roles/:id`,
-    rolesRateLimiter,
-    verifyToken,
-    Roles(ACCESS_ADMIN),
-    rolesGuard,
-    validate([
-      body('permissions')
-        .isArray()
-        .custom((array) =>
-          array.every(
-            (item) => typeof item === 'string' || typeof item === 'number',
-          ),
-        ),
-    ]),
-    asyncHandler(async (req, res) => {
-      const role = await updateRole(req.params.id, req.body.permissions);
-      res.json(role);
-    }),
-  );
-
-  /**
-   * @swagger
-   * /api/logs:
-   *   get:
-   *     summary: Получить последние логи
-   *     security:
-   *       - bearerAuth: []
-   */
-
-  app.get(
-    `${prefix}/logs`,
-    logsRateLimiter,
-    verifyToken,
-    Roles(ACCESS_ADMIN),
-    rolesGuard,
-    [
-      query('page').optional().isInt({ min: 1 }),
-      query('limit').optional().isInt({ min: 1 }),
-    ],
-    asyncHandler(async (req, res) => {
-      res.json(await listLogs(req.query));
-    }),
-  );
-
-  app.post(
-    `${prefix}/logs`,
-    logsRateLimiter,
-    verifyToken,
-    asyncHandler(async (req, res) => {
-      if (typeof req.body.message === 'string') {
-        await writeLog(req.body.message);
-      }
-      res.json({ status: 'ok' });
-    }),
-  );
+  app.use(`${prefix}/users`, usersRouter);
+  app.use(`${prefix}/roles`, rolesRouter);
+  app.use(`${prefix}/logs`, logsRouter);
 
   const checkTaskAccess = require('../middleware/taskAccess');
 

@@ -15,7 +15,7 @@ const { stopQueue } = require('../src/services/messageQueue')
     updateUser: jest.fn(async (_id, d) => ({ telegram_id: 1, username: 'test', ...d }))
   }))
 
-const ctrl = require('../src/controllers/authUser')
+const ctrl = require('../src/auth/auth.controller.ts')
 
 
 let app

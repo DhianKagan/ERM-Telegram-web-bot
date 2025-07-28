@@ -12,9 +12,11 @@ const session = require('express-session');
 const lusca = require('lusca');
 const request = require('supertest');
 
-jest.mock('../src/controllers/authController', () => ({
+jest.mock('../src/auth/auth.controller.ts', () => ({
   sendCode: jest.fn((_req, res) => res.json({ status: 'ok' })),
   verifyCode: jest.fn((_req, res) => res.json({ token: 't' })),
+  profile: jest.fn((_req, res) => res.json({ ok: true })),
+  updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
 }));
 
 const authRouter = require('../src/routes/authUser');

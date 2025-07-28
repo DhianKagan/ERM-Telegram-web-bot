@@ -226,3 +226,4 @@
 - Сервисы регистрируются через tsyringe, контейнер src/container.ts подключается в src/server.js
 - Валидация маршрутов использует классы DTO и middleware validateDto
 - Маска доступа проверяется guard'ом rolesGuard с декоратором Roles
+- Каждый успешный вход пишется в логи через WG Log Engine

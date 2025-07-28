@@ -289,3 +289,5 @@
 - Успешные логины записываются в базу логов
 - Созданы UsersModule, RolesModule и LogsModule с роутами `/api/v1/users`,
   `/api/v1/roles`, `/api/v1/logs`
+- Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
+  `http_requests_total` и `http_request_duration_ms`, конфигурация обновлена

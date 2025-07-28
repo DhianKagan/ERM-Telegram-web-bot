@@ -207,10 +207,11 @@
 186. Тест `loginFlow.test.js` использует rate limit 100 запросов за 15 минут
 187. Тест `loginRouteFlow.test.js` проверяет CSRF-токен и вызов `/api/v1/route`
 188. Cookie `token` использует SameSite=Lax и домен из APP_URL для сохранения сессии
-189. Cookie `XSRF-TOKEN` устанавливается с тем же доменом и SameSite=None
-190. AuthProvider запрашивает `/api/v1/csrf` при фокусе страницы
-191. authFetch записывает тело запроса в `localStorage` при ошибке CSRF
-192. Лог запросов фиксирует наличие токена и заголовка CSRF
-193. План внедрения рекомендаций из анализа описан в docs/apply_analysis_plan.md
+189. Сессионная cookie хранится 7 дней, синхронно со сроком действия JWT
+190. Cookie `XSRF-TOKEN` устанавливается с тем же доменом и SameSite=None
+191. AuthProvider запрашивает `/api/v1/csrf` при фокусе страницы
+192. authFetch записывает тело запроса в `localStorage` при ошибке CSRF
+193. Лог запросов фиксирует наличие токена и заголовка CSRF
+194. План внедрения рекомендаций из анализа описан в docs/apply_analysis_plan.md
 194. Тест routeCsrf.test.js использует самоподписанный сертификат и проверяет CSRF при расчёте маршрутов,
      а taskFields.test.js контролирует поля формы

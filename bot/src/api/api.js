@@ -94,6 +94,7 @@ const validate = (validations) => [
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
       domain,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   };
   if (process.env.NODE_ENV !== 'test') {

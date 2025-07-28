@@ -35,6 +35,7 @@ beforeAll(() => {
   app = express();
   app.use(express.json());
   app.use(cookieParser());
+  app.set('trust proxy', 1);
   app.use(
     session({
       secret: 'test',
@@ -44,6 +45,7 @@ beforeAll(() => {
         secure: true,
         sameSite: 'none',
         domain: 'localhost',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     }),
   );
@@ -79,15 +81,22 @@ afterAll(() => {
 
 test('полный цикл логина и запроса', async () => {
   const agent = request.agent(app);
-  const csrfRes = await agent.get('/api/v1/csrf');
+  const csrfRes = await agent
+    .get('/api/v1/csrf')
+    .set('X-Forwarded-Proto', 'https');
   const token = csrfRes.body.csrfToken;
   expect(csrfRes.headers['set-cookie'][0]).toMatch(/XSRF-TOKEN/);
   expect(csrfRes.headers['set-cookie'][0]).toMatch(/SameSite=None/);
+  expect(csrfRes.headers['set-cookie'][1]).toMatch(/Expires=/);
   expect(token).toBeDefined();
-  await agent.post('/api/v1/auth/send_code').send({ telegramId: 1 });
+  await agent
+    .post('/api/v1/auth/send_code')
+    .set('X-Forwarded-Proto', 'https')
+    .send({ telegramId: 1 });
   const code = codes.get('1').code;
   const verifyRes = await agent
     .post('/api/v1/auth/verify_code')
+    .set('X-Forwarded-Proto', 'https')
     .set('X-XSRF-TOKEN', token)
     .send({ telegramId: 1, code, username: 'u' });
   expect(verifyRes.body.token).toBeDefined();
@@ -96,6 +105,7 @@ test('полный цикл логина и запроса', async () => {
   expect(verifyRes.headers['set-cookie'][0]).toMatch(/SameSite=Lax/);
   const res = await agent
     .post('/api/v1/route')
+    .set('X-Forwarded-Proto', 'https')
     .set('X-XSRF-TOKEN', token)
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
     .send({ start: { lat: 1, lng: 2 }, end: { lat: 3, lng: 4 } });

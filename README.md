@@ -76,3 +76,4 @@ docker compose up
 
 Dockerfile используется из корня проекта, поэтому `.dockerignore` не исключает
 его из контекста.
+- Добавлено описание модулей в ModuleCore.md и docs/architecture.md

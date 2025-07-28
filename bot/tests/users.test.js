@@ -7,6 +7,7 @@ process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const request = require('supertest');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
@@ -47,8 +48,10 @@ const { CreateUserDto } = require('../src/dto/users.dto.ts');
 
 const app = express();
 app.use(express.json());
+const usersRateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.get(
   '/api/v1/users',
+  usersRateLimiter,
   verifyToken,
   checkRole(ACCESS_ADMIN),
   asyncHandler(async (_req, res) => {
@@ -57,6 +60,9 @@ app.get(
 );
 app.post(
   '/api/v1/users',
+
+  usersRateLimiter,
+
   verifyToken,
   checkRole(ACCESS_ADMIN),
   ...validateDto(CreateUserDto),

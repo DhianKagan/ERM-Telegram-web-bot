@@ -230,3 +230,4 @@
      контроллерами
 205. Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
      `http_requests_total` и `http_request_duration_ms`
+206. Покрыты тестами сервисы авторизации и задач, CI использует `setup_and_test.sh`

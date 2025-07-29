@@ -293,3 +293,5 @@
   `http_requests_total` и `http_request_duration_ms`, конфигурация обновлена
 - Добавлены тесты `authService.test.js` и `tasksService.test.js`,
   workflow CI выполняет `setup_and_test.sh` и проверку зависимостей
+- Добавлены примеры API с DTO в README
+- Workflow `release.yml` разворачивает проект на Railway через Railway CLI

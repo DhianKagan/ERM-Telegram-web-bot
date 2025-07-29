@@ -239,3 +239,4 @@
 - Исправлен путь импорта в auth.controller.ts
 - Указано расширение `.ts` при импорте roles.decorator в roles.guard.ts
 - Cookie `token` передаётся по HTTPS только в продакшене, verifyToken пишет причину 403
+- Улучшены сообщения об ошибках сохранения задач, добавлена метрика `api_errors_total`, логи содержат IP и User-Agent

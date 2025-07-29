@@ -9,6 +9,12 @@ const csrfErrors = new client.Counter({
   help: 'Количество ошибок CSRF',
 });
 
+const apiErrors = new client.Counter({
+  name: 'api_errors_total',
+  help: 'Количество ошибок API',
+  labelNames: ['method', 'path', 'status'],
+});
+
 // Обёртка для перехвата ошибок асинхронных функций
 const asyncHandler = (fn) => async (req, res, next) => {
   try {
@@ -40,12 +46,17 @@ function errorHandler(err, _req, res, _next) {
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
       ).catch(() => {});
     }
-    res.status(403).json({ error: 'Invalid CSRF token' });
+    res.status(403).json({
+      error:
+        'Ошибка CSRF: токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.',
+    });
+    apiErrors.inc({ method: _req.method, path: _req.originalUrl, status: 403 });
     return;
   }
   console.error(err);
   const status = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(status).json({ error: err.message });
+  apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
 }
 
 const { jwtSecret } = require('../config');
@@ -62,12 +73,22 @@ function verifyToken(req, res, next) {
         writeLog(
           `Неверный формат токена ${req.method} ${req.originalUrl}`,
         ).catch(() => {});
-        return res.status(403).json({ message: 'Invalid token format' });
+        apiErrors.inc({
+          method: req.method,
+          path: req.originalUrl,
+          status: 403,
+        });
+        return res
+          .status(403)
+          .json({ message: 'Неверный формат токена авторизации' });
       }
     } else if (auth.includes(' ')) {
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part}`).catch(() => {});
-      return res.status(403).json({ message: 'Invalid token format' });
+      apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
+      return res
+        .status(403)
+        .json({ message: 'Неверный формат токена авторизации' });
     } else {
       token = auth;
     }
@@ -77,14 +98,20 @@ function verifyToken(req, res, next) {
     writeLog(`Отсутствует токен ${req.method} ${req.originalUrl}`).catch(
       () => {},
     );
-    return res.status(403).json({ message: 'No token provided' });
+    apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
+    return res.status(403).json({
+      message: 'Токен авторизации отсутствует. Выполните вход заново.',
+    });
   }
 
   const preview = token ? String(token).slice(0, 8) : 'none';
   jwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {
     if (err) {
       writeLog(`Неверный токен ${preview}`).catch(() => {});
-      return res.status(401).json({ message: 'Unauthorized' });
+      apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
+      return res
+        .status(401)
+        .json({ message: 'Недействительный токен. Выполните вход заново.' });
     }
     req.user = decoded;
     next();
@@ -92,7 +119,7 @@ function verifyToken(req, res, next) {
 }
 
 function requestLogger(req, res, next) {
-  const { method, originalUrl, headers, cookies } = req;
+  const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && cookies.token ? cookies.token.slice(0, 8) : 'no-token';
   const csrfVal = headers['x-xsrf-token']
@@ -103,13 +130,16 @@ function requestLogger(req, res, next) {
   if (auth) {
     authVal = auth.startsWith('Bearer ') ? auth.slice(7, 15) : auth.slice(0, 8);
   }
+  const ua = headers['user-agent']
+    ? String(headers['user-agent']).slice(0, 40)
+    : 'unknown';
   writeLog(
-    `API запрос ${method} ${originalUrl} token:${tokenVal} auth:${authVal} csrf:${csrfVal}`,
+    `API запрос ${method} ${originalUrl} token:${tokenVal} auth:${authVal} csrf:${csrfVal} ip:${ip} ua:${ua}`,
   ).catch(() => {});
   res.on('finish', () => {
-    writeLog(`API ответ ${method} ${originalUrl} ${res.statusCode}`).catch(
-      () => {},
-    );
+    writeLog(
+      `API ответ ${method} ${originalUrl} ${res.statusCode} ip:${ip}`,
+    ).catch(() => {});
   });
   next();
 }

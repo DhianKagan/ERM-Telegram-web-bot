@@ -302,3 +302,4 @@
 - verifyToken логирует причину отказа при отсутствии или ошибке токена
 - verifyToken выводит первые символы токена при ошибке
 - requestLogger выводит начало заголовка Authorization для сравнения с cookie
+- Выполнена ротация `BOT_TOKEN` и других секретов, изменения отражены в `.env.example` и `INCIDENT_RESPONSE.md`

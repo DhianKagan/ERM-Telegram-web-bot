@@ -21,7 +21,7 @@
 
 ## Хранение токена
 
-JWT помещается в cookie с флагами `HttpOnly`, `Secure` и `SameSite=Strict`. Браузер отправляет его автоматически, а JavaScript не имеет доступа.
+JWT помещается в cookie с флагами `HttpOnly`, `Secure` и `SameSite=Lax`. Браузер отправляет его автоматически, а JavaScript не имеет доступа.
 
 ## Маски доступа
 

@@ -307,3 +307,4 @@
 - Введена метрика `api_errors_total` и расширен формат логов (IP, User-Agent)
 - Добавлена переменная `COOKIE_DOMAIN` для указания домена cookie в продакшене
   и отключения его в режиме разработки
+- Middleware logging.ts выводит IP и User-Agent в логах

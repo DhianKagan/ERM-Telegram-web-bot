@@ -59,7 +59,9 @@ function verifyToken(req, res, next) {
     if (auth.startsWith('Bearer ')) {
       token = auth.slice(7).trim();
       if (!token) {
-        writeLog(`Неверный формат токена ${req.method} ${req.originalUrl}`).catch(() => {});
+        writeLog(
+          `Неверный формат токена ${req.method} ${req.originalUrl}`,
+        ).catch(() => {});
         return res.status(403).json({ message: 'Invalid token format' });
       }
     } else if (auth.includes(' ')) {
@@ -72,7 +74,9 @@ function verifyToken(req, res, next) {
   } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   } else {
-    writeLog(`Отсутствует токен ${req.method} ${req.originalUrl}`).catch(() => {});
+    writeLog(`Отсутствует токен ${req.method} ${req.originalUrl}`).catch(
+      () => {},
+    );
     return res.status(403).json({ message: 'No token provided' });
   }
 
@@ -94,8 +98,13 @@ function requestLogger(req, res, next) {
   const csrfVal = headers['x-xsrf-token']
     ? String(headers['x-xsrf-token']).slice(0, 8)
     : 'no-csrf';
+  const auth = headers.authorization;
+  let authVal = 'no-auth';
+  if (auth) {
+    authVal = auth.startsWith('Bearer ') ? auth.slice(7, 15) : auth.slice(0, 8);
+  }
   writeLog(
-    `API запрос ${method} ${originalUrl} token:${tokenVal} csrf:${csrfVal}`,
+    `API запрос ${method} ${originalUrl} token:${tokenVal} auth:${authVal} csrf:${csrfVal}`,
   ).catch(() => {});
   res.on('finish', () => {
     writeLog(`API ответ ${method} ${originalUrl} ${res.statusCode}`).catch(

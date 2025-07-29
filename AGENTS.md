@@ -219,7 +219,7 @@
 - Контроллеры задач не позволяют изменять чужие задачи
 
 - API слушает PORT на 0.0.0.0 для Railway, перенаправление HTTP→HTTPS выполняет Edge CDN
-- Cookie `token` имеет SameSite=Lax и домен из APP_URL, AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки
+- Cookie `token` имеет SameSite=Lax. Домен берётся из COOKIE_DOMAIN или из APP_URL только в продакшене. AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки
 - План внедрения улучшений описан в docs/apply_analysis_plan.md
 - Тест `routeCsrf.test.js` использует самоподписанный сертификат и предотвращает ошибки CSRF,
   `taskFields.test.js` контролирует форму задач

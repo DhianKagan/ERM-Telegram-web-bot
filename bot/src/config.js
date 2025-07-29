@@ -31,6 +31,7 @@ module.exports = {
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',
   routingUrl: process.env.ROUTING_URL || 'http://localhost:8000/route',
+  cookieDomain: process.env.COOKIE_DOMAIN,
   gateway: {
     key: process.env.GATEWAY_API_KEY,
     sender: process.env.GATEWAY_SENDER

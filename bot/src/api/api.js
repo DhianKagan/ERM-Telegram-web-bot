@@ -78,7 +78,10 @@ const validate = (validations) => [
   app.use(express.json());
   app.use(cookieParser());
   // сессия для хранения CSRF-токена
-  const domain = new URL(config.appUrl).hostname;
+  const domain =
+    process.env.NODE_ENV === 'production'
+      ? config.cookieDomain || new URL(config.appUrl).hostname
+      : undefined;
   const sessionOpts = {
     secret: process.env.SESSION_SECRET || 'session_secret',
     resave: false,
@@ -86,7 +89,7 @@ const validate = (validations) => [
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
-      domain,
+      ...(domain ? { domain } : {}),
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   };
@@ -104,7 +107,7 @@ const validate = (validations) => [
       options: {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'none',
-        domain,
+        ...(domain ? { domain } : {}),
       },
     },
   });

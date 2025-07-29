@@ -115,3 +115,9 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 Поля соответствуют `CreateTaskDto` в `src/dto/tasks.dto.ts`.
 - Исправлен путь к auth.service для стабильного запуска
 - Указано расширение `.ts` при импорте roles.decorator
+
+### Ротация токенов
+
+В июле 2025 года все секреты Telegram‑бота были перевыпущены. Значения
+обновлены в файлах `.env.example` и `.env`, а также в переменных Railway.
+Подробная запись приведена в `INCIDENT_RESPONSE.md`.

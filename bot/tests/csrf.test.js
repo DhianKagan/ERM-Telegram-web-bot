@@ -64,6 +64,13 @@ test('GET /api/v1/csrf выдаёт токен и cookie', async () => {
   expect(res.body.csrfToken).toBeDefined();
 });
 
+test('connect.sid создаётся вместе с токеном', async () => {
+  const res = await request(app).get('/api/v1/csrf');
+  const cookies = res.headers['set-cookie'];
+  const hasSession = cookies.some((c) => /^connect\.sid=/.test(c));
+  expect(hasSession).toBe(true);
+});
+
 test('запрос без CSRF токена получает 403', async () => {
   const res = await request(app).post('/api/protected');
   expect(res.status).toBe(403);

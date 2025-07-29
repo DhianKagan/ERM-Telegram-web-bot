@@ -112,12 +112,16 @@ curl -X POST "$APP_URL/api/v1/tasks" \
   -H "Content-Type: application/json" \
   -H "X-XSRF-TOKEN: $CSRF" \
   --cookie "XSRF-TOKEN=$CSRF" \
+  --cookie "$SESSION" \
   -d '{
     "title": "ERM_000123 Починить ворота",
     "task_description": "Не закрывается",
     "status": "Новая"
   }'
 ```
+
+Переменная `SESSION` должна содержать cookie `connect.sid`, полученную вместе
+с токеном через `/api/v1/csrf`. Без этой cookie проверка CSRF не пройдёт.
 
 Поля соответствуют `CreateTaskDto` в `src/dto/tasks.dto.ts`.
 

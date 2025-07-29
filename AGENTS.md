@@ -233,3 +233,5 @@
   prom-client и доступны по пути `/metrics`
 - Добавлены тесты сервисов `authService` и `tasksService`, CI запускает
   `setup_and_test.sh` и проверку зависимостей
+- Workflow `release.yml` публикует Docker-образ и запускает `railway up`
+- README содержит список модулей и пример создания задачи через API

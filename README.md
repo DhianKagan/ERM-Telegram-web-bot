@@ -84,3 +84,32 @@ Dockerfile используется из корня проекта, поэтом
 - Добавлено описание модулей в ModuleCore.md и docs/architecture.md
 - Реализованы UsersModule, RolesModule и LogsModule с отдельными контроллерами
   и сервисами
+
+## Модули проекта
+
+- **AuthModule** — проверка кода и выдача JWT
+- **TasksModule** — CRUD задач с расчётом маршрутов
+- **UsersModule** — управление пользователями
+- **RolesModule** — права и маски доступа
+- **LogsModule** — журналирование действий
+
+## CI/CD и деплой
+
+Workflow `release.yml` в GitHub Actions собирает Docker-образ и запускает
+`railway up` для обновления сервиса. Локально развёртывание выполняется через
+`docker compose`.
+
+### Пример создания задачи через API
+
+```bash
+curl -X POST "$APP_URL/api/v1/tasks" \
+  -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $CSRF" \
+  --cookie "XSRF-TOKEN=$CSRF" \
+  -d '{
+    "title": "ERM_000123 Починить ворота",
+    "task_description": "Не закрывается",
+    "status": "Новая"
+  }'
+```
+Поля соответствуют `CreateTaskDto` в `src/dto/tasks.dto.ts`.

@@ -231,3 +231,5 @@
 205. Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
      `http_requests_total` и `http_request_duration_ms`
 206. Покрыты тестами сервисы авторизации и задач, CI использует `setup_and_test.sh`
+207. Workflow `release.yml` деплоит приложение на Railway через Railway CLI
+208. README дополнен примером создания задачи через API и списком модулей

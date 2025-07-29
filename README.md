@@ -113,3 +113,4 @@ curl -X POST "$APP_URL/api/v1/tasks" \
   }'
 ```
 Поля соответствуют `CreateTaskDto` в `src/dto/tasks.dto.ts`.
+- Исправлен путь к auth.service для стабильного запуска

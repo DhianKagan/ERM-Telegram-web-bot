@@ -1,6 +1,6 @@
 // Контроллер авторизации и профиля
 // Основные модули: auth.service, config
-const service = require('./auth.service');
+const service = require('./auth.service.ts');
 const config = require('../config');
 const formatUser = require('../utils/formatUser');
 

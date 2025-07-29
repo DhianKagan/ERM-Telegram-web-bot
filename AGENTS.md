@@ -237,3 +237,4 @@
 - README содержит список модулей и пример создания задачи через API
 - Исправлен путь импорта в auth.controller.ts
 - Указано расширение `.ts` при импорте roles.decorator в roles.guard.ts
+- Cookie `token` передаётся по HTTPS только в продакшене, verifyToken пишет причину 403

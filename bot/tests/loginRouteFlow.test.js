@@ -101,7 +101,6 @@ test('полный цикл логина и запроса', async () => {
     .send({ telegramId: 1, code, username: 'u' });
   expect(verifyRes.body.token).toBeDefined();
   expect(verifyRes.headers['set-cookie'][0]).toMatch(/token=/);
-  expect(verifyRes.headers['set-cookie'][0]).toMatch(/Secure/);
   expect(verifyRes.headers['set-cookie'][0]).toMatch(/SameSite=Lax/);
   const res = await agent
     .post('/api/v1/route')

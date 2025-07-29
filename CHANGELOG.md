@@ -297,3 +297,4 @@
 - Workflow `release.yml` разворачивает проект на Railway через Railway CLI
 
 - Исправлена ошибка импорта auth.service
+- Указано расширение `.ts` в roles.guard.ts для корректного импорта

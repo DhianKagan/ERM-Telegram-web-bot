@@ -54,6 +54,10 @@ function errorHandler(err, _req, res, _next) {
     return;
   }
   console.error(err);
+  writeLog(
+    `Ошибка ${err.message} path:${_req.originalUrl} ip:${_req.ip}`,
+    'error',
+  ).catch(() => {});
   const status = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(status).json({ error: err.message });
   apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
@@ -71,7 +75,7 @@ function verifyToken(req, res, next) {
       token = auth.slice(7).trim();
       if (!token) {
         writeLog(
-          `Неверный формат токена ${req.method} ${req.originalUrl}`,
+          `Неверный формат токена ${req.method} ${req.originalUrl} ip:${req.ip}`,
         ).catch(() => {});
         apiErrors.inc({
           method: req.method,
@@ -84,7 +88,7 @@ function verifyToken(req, res, next) {
       }
     } else if (auth.includes(' ')) {
       const part = auth.slice(0, 8);
-      writeLog(`Неверный формат токена ${part}`).catch(() => {});
+      writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
       return res
         .status(403)
@@ -95,9 +99,9 @@ function verifyToken(req, res, next) {
   } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   } else {
-    writeLog(`Отсутствует токен ${req.method} ${req.originalUrl}`).catch(
-      () => {},
-    );
+    writeLog(
+      `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
+    ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
     return res.status(403).json({
       message: 'Токен авторизации отсутствует. Выполните вход заново.',
@@ -107,7 +111,7 @@ function verifyToken(req, res, next) {
   const preview = token ? String(token).slice(0, 8) : 'none';
   jwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {
     if (err) {
-      writeLog(`Неверный токен ${preview}`).catch(() => {});
+      writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
       return res
         .status(401)

@@ -1,6 +1,6 @@
 // Роуты логов: просмотр и запись
 const express = require('express');
-const rateLimit = require('express-rate-limit');
+const createRateLimiter = require('../utils/rateLimiter');
 const { query } = require('express-validator');
 const ctrl = require('../logs/logs.controller.ts');
 const { verifyToken } = require('../api/middleware');
@@ -11,7 +11,7 @@ const validateDto = require('../middleware/validateDto.ts');
 const { CreateLogDto } = require('../dto/logs.dto.ts');
 
 const router = express.Router();
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const limiter = createRateLimiter(15 * 60 * 1000, 100);
 
 router.get(
   '/',

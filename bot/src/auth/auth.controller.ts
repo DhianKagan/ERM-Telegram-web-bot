@@ -18,9 +18,10 @@ exports.verifyCode = async (req, res) => {
   const { telegramId, code, username } = req.body;
   try {
     const token = await service.verifyCode(telegramId, code, username);
+    const secure = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
+      secure,
       sameSite: 'lax',
       domain: new URL(config.appUrl).hostname,
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -35,9 +36,10 @@ exports.verifyCode = async (req, res) => {
 exports.verifyInitData = async (req, res) => {
   try {
     const token = await service.verifyInitData(req.body.initData);
+    const secure = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
+      secure,
       sameSite: 'lax',
       domain: new URL(config.appUrl).hostname,
       maxAge: 7 * 24 * 60 * 60 * 1000,

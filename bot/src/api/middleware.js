@@ -58,9 +58,12 @@ function verifyToken(req, res, next) {
   if (auth) {
     if (auth.startsWith('Bearer ')) {
       token = auth.slice(7).trim();
-      if (!token)
+      if (!token) {
+        writeLog(`Неверный формат токена ${req.method} ${req.originalUrl}`).catch(() => {});
         return res.status(403).json({ message: 'Invalid token format' });
+      }
     } else if (auth.includes(' ')) {
+      writeLog(`Неверный формат токена ${req.method} ${req.originalUrl}`).catch(() => {});
       return res.status(403).json({ message: 'Invalid token format' });
     } else {
       token = auth;
@@ -68,11 +71,15 @@ function verifyToken(req, res, next) {
   } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   } else {
+    writeLog(`Отсутствует токен ${req.method} ${req.originalUrl}`).catch(() => {});
     return res.status(403).json({ message: 'No token provided' });
   }
 
   jwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {
-    if (err) return res.status(401).json({ message: 'Unauthorized' });
+    if (err) {
+      writeLog(`Неверный токен ${req.method} ${req.originalUrl}`).catch(() => {});
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
     req.user = decoded;
     next();
   });

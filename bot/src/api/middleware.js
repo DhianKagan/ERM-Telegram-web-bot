@@ -63,7 +63,8 @@ function verifyToken(req, res, next) {
         return res.status(403).json({ message: 'Invalid token format' });
       }
     } else if (auth.includes(' ')) {
-      writeLog(`Неверный формат токена ${req.method} ${req.originalUrl}`).catch(() => {});
+      const part = auth.slice(0, 8);
+      writeLog(`Неверный формат токена ${part}`).catch(() => {});
       return res.status(403).json({ message: 'Invalid token format' });
     } else {
       token = auth;
@@ -75,9 +76,10 @@ function verifyToken(req, res, next) {
     return res.status(403).json({ message: 'No token provided' });
   }
 
+  const preview = token ? String(token).slice(0, 8) : 'none';
   jwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {
     if (err) {
-      writeLog(`Неверный токен ${req.method} ${req.originalUrl}`).catch(() => {});
+      writeLog(`Неверный токен ${preview}`).catch(() => {});
       return res.status(401).json({ message: 'Unauthorized' });
     }
     req.user = decoded;

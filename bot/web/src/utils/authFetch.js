@@ -18,33 +18,22 @@ export default async function authFetch(url, options = {}) {
   const opts = { ...options, credentials: "include", headers };
   let res = await fetch(url, opts);
   if (res.status === 403) {
-    let retry = false;
-    try {
-      const data = await res.clone().json();
-      if (data.error === "Invalid CSRF token") retry = true;
-    } catch (err) {
-      // Ошибка разбора тела ответа не мешает повторить запрос
-      console.error(err);
-      retry = true;
-    }
-    if (retry) {
-      if (opts.body) {
-        try {
-          localStorage.setItem("csrf_payload", String(opts.body));
-        } catch (e) {
-          console.error(e);
-        }
+    if (opts.body) {
+      try {
+        localStorage.setItem("csrf_payload", String(opts.body));
+      } catch (e) {
+        console.error(e);
       }
-      await fetch("/api/v1/csrf", { credentials: "include" });
-      const fresh = getToken();
-      if (fresh) headers["X-XSRF-TOKEN"] = fresh;
-      res = await fetch(url, opts);
-      if (res.ok) {
-        try {
-          localStorage.removeItem("csrf_payload");
-        } catch (e) {
-          console.error(e);
-        }
+    }
+    await fetch("/api/v1/csrf", { credentials: "include" });
+    const fresh = getToken();
+    if (fresh) headers["X-XSRF-TOKEN"] = fresh;
+    res = await fetch(url, opts);
+    if (res.ok && opts.body) {
+      try {
+        localStorage.removeItem("csrf_payload");
+      } catch (e) {
+        console.error(e);
       }
     }
   }

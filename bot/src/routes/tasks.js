@@ -1,6 +1,6 @@
 // Роуты задач: CRUD, время, массовые действия
 const express = require('express');
-const rateLimit = require('express-rate-limit');
+const createRateLimiter = require('../utils/rateLimiter');
 const { param, query } = require('express-validator');
 const ctrl = require('../tasks/tasks.controller.ts');
 const { verifyToken } = require('../api/middleware');
@@ -15,12 +15,8 @@ const {
 const router = express.Router();
 
 // Лимитирует 100 запросов к деталям и операциям с задачами за 15 минут
-const detailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const tasksLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests, please try again later.' },
-});
+const detailLimiter = createRateLimiter(15 * 60 * 1000, 100);
+const tasksLimiter = createRateLimiter(15 * 60 * 1000, 100);
 
 router.use(tasksLimiter);
 

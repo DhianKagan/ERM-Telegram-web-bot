@@ -309,3 +309,4 @@
   и отключения его в режиме разработки
 - Middleware logging.ts выводит IP и User-Agent в логах
 - Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
+- Логирование превышения лимитов запросов через rateLimiter.js

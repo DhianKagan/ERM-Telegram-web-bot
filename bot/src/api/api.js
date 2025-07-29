@@ -5,7 +5,7 @@
 require('dotenv').config();
 const config = require('../config');
 const express = require('express');
-const rateLimit = require('express-rate-limit');
+const createRateLimiter = require('../utils/rateLimiter');
 const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -171,19 +171,9 @@ const validate = (validations) => [
   const rolesRouter = require('../routes/roles');
   const logsRouter = require('../routes/logs');
 
-  const taskStatusRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: { error: 'Too many requests, please try again later.' },
-  });
+  const taskStatusRateLimiter = createRateLimiter(15 * 60 * 1000, 50);
   // ограничение обращений к SPA: 50 в минуту
-  const spaRateLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 50,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' },
-  });
+  const spaRateLimiter = createRateLimiter(60 * 1000, 50);
   app.use(express.static(path.join(__dirname, '../../public')));
 
   // Кастомный бекенд админки с базовой аутентификацией

@@ -1,6 +1,7 @@
 // Проверяет право пользователя изменять задачу
 const { hasAccess, ACCESS_ADMIN, ACCESS_USER } = require('../utils/accessMask');
 const service = require('../services/tasks');
+const { writeLog } = require('../services/service');
 
 module.exports = async function checkTaskAccess(req, res, next) {
   const task = await service.getById(req.params.id);
@@ -18,5 +19,8 @@ module.exports = async function checkTaskAccess(req, res, next) {
     req.task = task;
     return next();
   }
+  await writeLog(
+    `Нет доступа ${req.method} ${req.originalUrl} user:${id}/${req.user.username} ip:${req.ip}`,
+  ).catch(() => {});
   return res.status(403).json({ message: 'Forbidden' });
 };

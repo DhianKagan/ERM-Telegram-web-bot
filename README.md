@@ -34,6 +34,7 @@
 - Метрика `csrf_errors_total` отслеживается в Prometheus.
 - Метрика `api_errors_total` считает ответы с кодами 4xx и 5xx.
 - Middleware `logging.ts` выводит IP и User-Agent в логах.
+- Middleware `checkRole` и `checkTaskAccess` фиксируют отказ доступа в логах.
 - Логи включают IP и User-Agent для каждого запроса.
 - AuthProvider отслеживает загрузку профиля и предотвращает ложный редирект на `/login`.
 - Cookie `token` использует `SameSite=Lax`. В продакшене домен берётся из переменной `COOKIE_DOMAIN` либо из `APP_URL`. В режиме разработки домен не задаётся, что исключает ошибку с localhost.

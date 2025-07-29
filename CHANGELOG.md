@@ -308,3 +308,4 @@
 - Добавлена переменная `COOKIE_DOMAIN` для указания домена cookie в продакшене
   и отключения его в режиме разработки
 - Middleware logging.ts выводит IP и User-Agent в логах
+- Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах

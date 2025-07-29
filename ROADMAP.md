@@ -242,3 +242,4 @@
 213. Улучшены сообщения об ошибках сохранения задач, введена метрика `api_errors_total` и детальный лог IP и User-Agent
 214. Добавлена переменная `COOKIE_DOMAIN`, домен cookie задаётся только в продакшене
 215. Middleware logging.ts выводит IP и User-Agent в логах
+216. Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах

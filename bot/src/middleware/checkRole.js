@@ -1,5 +1,6 @@
 // Middleware для проверки роли или маски доступа
 const { hasAccess, ACCESS_USER } = require('../utils/accessMask');
+const { writeLog } = require('../services/service');
 
 module.exports = (expected) => (req, res, next) => {
   const role = req.user?.role || 'user';
@@ -10,5 +11,8 @@ module.exports = (expected) => (req, res, next) => {
     const allowed = Array.isArray(expected) ? expected : [expected];
     if (allowed.includes(role)) return next();
   }
+  writeLog(
+    `Недостаточно прав ${req.method} ${req.originalUrl} user:${req.user.id}/${req.user.username} ip:${req.ip}`,
+  ).catch(() => {});
   return res.status(403).json({ message: 'Forbidden' });
 };

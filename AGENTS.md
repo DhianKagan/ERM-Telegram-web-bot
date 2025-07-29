@@ -241,3 +241,4 @@
 - Cookie `token` передаётся по HTTPS только в продакшене, verifyToken пишет причину 403
 - Улучшены сообщения об ошибках сохранения задач, добавлена метрика `api_errors_total`, логи содержат IP и User-Agent
 - Middleware logging.ts выводит IP и User-Agent в логах
+- Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах

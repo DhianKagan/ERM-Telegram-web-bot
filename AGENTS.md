@@ -235,3 +235,4 @@
   `setup_and_test.sh` и проверку зависимостей
 - Workflow `release.yml` публикует Docker-образ и запускает `railway up`
 - README содержит список модулей и пример создания задачи через API
+- Исправлен путь импорта в auth.controller.ts

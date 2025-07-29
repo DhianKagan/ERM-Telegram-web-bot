@@ -295,3 +295,5 @@
   workflow CI выполняет `setup_and_test.sh` и проверку зависимостей
 - Добавлены примеры API с DTO в README
 - Workflow `release.yml` разворачивает проект на Railway через Railway CLI
+
+- Исправлена ошибка импорта auth.service

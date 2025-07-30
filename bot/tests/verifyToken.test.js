@@ -44,6 +44,7 @@ test('с валидным токеном 200', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET);
   const res = await request(app).get('/secure').set('Cookie', `token=${token}`);
   expect(res.status).toBe(200);
+  expect(res.headers['set-cookie']).toBeDefined();
 });
 
 test('токен с другим алгоритмом отклоняется', async () => {

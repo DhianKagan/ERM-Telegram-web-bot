@@ -314,3 +314,4 @@
 - Значение COOKIE_DOMAIN приводится к hostname, неподдерживаемые форматы вызывают ошибку.
 - Установка cookie `token` сопровождается логом с доменом
 - В railway_full_setup.md уточнён список переменных окружения с ссылкой на защиту от CSRF
+- verifyToken обновляет cookie `token` при каждом запросе для silent refresh

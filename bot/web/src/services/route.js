@@ -1,34 +1,13 @@
 // Запрос к API /api/v1/route для расчёта дистанции
-// Модули: fetch, document.cookie
+// Модули: authFetch
+import authFetch from "../utils/authFetch";
 
 export const fetchRoute = async (start, end) => {
-  const getToken = () =>
-    typeof document !== "undefined"
-      ? document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("XSRF-TOKEN="))
-          ?.slice("XSRF-TOKEN=".length)
-      : undefined;
-  let token = getToken();
-  if (!token) {
-    await fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
-    token = getToken();
-  }
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["X-XSRF-TOKEN"] = token;
-  const opts = {
+  const res = await authFetch("/api/v1/route", {
     method: "POST",
-    credentials: "include",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ start, end }),
-  };
-  let res = await fetch("/api/v1/route", opts);
-  if (res.status === 403) {
-    await fetch("/api/v1/csrf", { credentials: "include" });
-    const fresh = getToken();
-    if (fresh) headers["X-XSRF-TOKEN"] = fresh;
-    res = await fetch("/api/v1/route", opts);
-  }
+  });
   return res.ok ? res.json() : null;
 };
 export default fetchRoute;

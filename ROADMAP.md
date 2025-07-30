@@ -247,3 +247,4 @@
 217. Значение COOKIE_DOMAIN может быть URL, hostname извлекается автоматически и проверяется
 218. После установки cookie `token` в лог пишется домен
 219. Документ `docs/railway_full_setup.md` дополнен разделом «Переменные окружения»
+220. Middleware `verifyToken` продлевает cookie `token` при каждом запросе

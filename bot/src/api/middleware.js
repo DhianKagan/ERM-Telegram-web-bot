@@ -63,7 +63,8 @@ function errorHandler(err, _req, res, _next) {
   apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
 }
 
-const { jwtSecret } = require('../config');
+const config = require('../config');
+const { jwtSecret } = config;
 const secretKey = jwtSecret;
 
 // Проверка JWT-токена
@@ -118,6 +119,17 @@ function verifyToken(req, res, next) {
         .json({ message: 'Недействительный токен. Выполните вход заново.' });
     }
     req.user = decoded;
+    const cookieOpts = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+    if (cookieOpts.secure) {
+      cookieOpts.domain =
+        config.cookieDomain || new URL(config.appUrl).hostname;
+    }
+    res.cookie('token', token, cookieOpts);
     next();
   });
 }

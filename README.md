@@ -75,6 +75,7 @@ npm --prefix bot run dev
 Приложение слушает `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
 
 Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.
+Перечень переменных окружения для Railway приведён в `docs/railway_full_setup.md`.
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
 За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.

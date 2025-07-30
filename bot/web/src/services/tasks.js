@@ -67,7 +67,7 @@ export const fetchTasks = (params = {}) => {
     return Promise.resolve(cached.data);
   }
   return authFetch(url)
-    .then((r) => (r.ok ? r.json() : []))
+    .then((r) => (r.ok ? r.json() : { tasks: [], users: [] }))
     .then((d) => {
       localStorage.setItem(key, JSON.stringify({ time: Date.now(), data: d }));
       return d;

@@ -315,3 +315,4 @@
 - Установка cookie `token` сопровождается логом с доменом
 - В railway_full_setup.md уточнён список переменных окружения с ссылкой на защиту от CSRF
 - verifyToken обновляет cookie `token` при каждом запросе для silent refresh
+- CSRF-токен сохраняется в `localStorage` и передаётся в заголовке `X-XSRF-TOKEN`

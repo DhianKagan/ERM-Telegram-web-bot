@@ -1,18 +1,30 @@
-// Обёртка для fetch с учётом cookie и CSRF-токена
-// Модули: fetch, window.location, document.cookie
+// Обёртка для fetch с CSRF-токеном из localStorage
+// Модули: fetch, window.location, localStorage
 export default async function authFetch(url, options = {}) {
   const getToken = () =>
-    typeof document !== "undefined"
-      ? document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("XSRF-TOKEN="))
-          ?.slice("XSRF-TOKEN=".length)
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("csrfToken") || undefined
       : undefined;
+  const saveToken = (t) => {
+    try {
+      localStorage.setItem("csrfToken", t);
+    } catch (e) {
+      console.error(e);
+    }
+  };
   const headers = { ...(options.headers || {}) };
   let token = getToken();
   if (!token) {
-    await fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
-    token = getToken();
+    try {
+      const res = await fetch("/api/v1/csrf", { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (data.csrfToken) {
+        token = data.csrfToken;
+        saveToken(token);
+      }
+    } catch {
+      /* ignore */
+    }
   }
   if (token) headers["X-XSRF-TOKEN"] = token;
   const opts = { ...options, credentials: "include", headers };
@@ -25,9 +37,16 @@ export default async function authFetch(url, options = {}) {
         console.error(e);
       }
     }
-    await fetch("/api/v1/csrf", { credentials: "include" });
-    const fresh = getToken();
-    if (fresh) headers["X-XSRF-TOKEN"] = fresh;
+    try {
+      const r = await fetch("/api/v1/csrf", { credentials: "include" });
+      const d = await r.json().catch(() => ({}));
+      if (d.csrfToken) {
+        saveToken(d.csrfToken);
+        headers["X-XSRF-TOKEN"] = d.csrfToken;
+      }
+    } catch {
+      /* ignore */
+    }
     res = await fetch(url, opts);
     if (res.ok && opts.body) {
       try {

@@ -244,3 +244,4 @@
 214. Добавлена переменная `COOKIE_DOMAIN`, домен cookie задаётся только в продакшене
 215. Middleware logging.ts выводит IP и User-Agent в логах
 216. Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
+217. Значение COOKIE_DOMAIN может быть URL, hostname извлекается автоматически и проверяется

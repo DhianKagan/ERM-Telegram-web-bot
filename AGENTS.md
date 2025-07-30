@@ -245,3 +245,4 @@
 - Middleware logging.ts выводит IP и User-Agent в логах
 - Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
 - Функция rateLimiter.js логирует превышение лимитов с указанием IP и пути
+- После установки cookie `token` пишется лог с доменом

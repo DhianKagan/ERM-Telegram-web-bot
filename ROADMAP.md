@@ -245,3 +245,4 @@
 215. Middleware logging.ts выводит IP и User-Agent в логах
 216. Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
 217. Значение COOKIE_DOMAIN может быть URL, hostname извлекается автоматически и проверяется
+218. После установки cookie `token` в лог пишется домен

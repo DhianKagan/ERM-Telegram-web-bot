@@ -3,6 +3,7 @@
 const service = require('./auth.service.ts');
 const config = require('../config');
 const formatUser = require('../utils/formatUser');
+const { writeLog } = require('../services/service');
 
 exports.sendCode = async (req, res) => {
   const { telegramId } = req.body;
@@ -29,6 +30,8 @@ exports.verifyCode = async (req, res) => {
     cookieOpts.domain = config.cookieDomain || new URL(config.appUrl).hostname;
   }
   res.cookie('token', token, cookieOpts);
+  const preview = token.slice(0, 8);
+  writeLog(`Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`);
     res.json({ token });
   } catch (e) {
     const status = e.message === 'invalid code' ? 400 : 403;
@@ -50,6 +53,8 @@ exports.verifyInitData = async (req, res) => {
       cookieOpts.domain = config.cookieDomain || new URL(config.appUrl).hostname;
     }
     res.cookie('token', token, cookieOpts);
+    const preview = token.slice(0, 8);
+    writeLog(`Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`);
     res.json({ token });
   } catch (e) {
     res.status(400).json({ error: e.message });

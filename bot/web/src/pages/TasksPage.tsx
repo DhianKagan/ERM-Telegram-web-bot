@@ -65,7 +65,8 @@ export default function TasksPage() {
     setLoading(true);
     fetchTasks()
       .then((data) => {
-        setAll(data.tasks);
+        const tasks = Array.isArray(data) ? data : data.tasks || [];
+        setAll(tasks);
         const list = Array.isArray(data.users)
           ? data.users
           : Object.values(data.users || {});

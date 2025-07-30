@@ -246,3 +246,4 @@
 - Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
 - Функция rateLimiter.js логирует превышение лимитов с указанием IP и пути
 - После установки cookie `token` пишется лог с доменом
+- В railway_full_setup.md описан раздел «Переменные окружения» с `NODE_ENV` и `COOKIE_DOMAIN`, ссылка ведёт на раздел "Защита от CSRF"

@@ -4,6 +4,7 @@ const service = require('./auth.service.ts');
 const config = require('../config');
 const formatUser = require('../utils/formatUser');
 const { writeLog } = require('../services/service');
+const setTokenCookie = require('../utils/setTokenCookie');
 
 exports.sendCode = async (req, res) => {
   const { telegramId } = req.body;
@@ -19,19 +20,8 @@ exports.verifyCode = async (req, res) => {
   const { telegramId, code, username } = req.body;
   try {
     const token = await service.verifyCode(telegramId, code, username);
-  const secure = process.env.NODE_ENV === 'production';
-  const cookieOpts = {
-    httpOnly: true,
-    secure,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  };
-  if (secure) {
-    cookieOpts.domain = config.cookieDomain || new URL(config.appUrl).hostname;
-  }
-  res.cookie('token', token, cookieOpts);
-  const preview = token.slice(0, 8);
-  writeLog(`Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`);
+    setTokenCookie(res, token, config);
+    writeLog('Отправлена cookie token');
     res.json({ token });
   } catch (e) {
     const status = e.message === 'invalid code' ? 400 : 403;
@@ -42,19 +32,8 @@ exports.verifyCode = async (req, res) => {
 exports.verifyInitData = async (req, res) => {
   try {
     const token = await service.verifyInitData(req.body.initData);
-  const secure = process.env.NODE_ENV === 'production';
-  const cookieOpts = {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-    if (secure) {
-      cookieOpts.domain = config.cookieDomain || new URL(config.appUrl).hostname;
-    }
-    res.cookie('token', token, cookieOpts);
-    const preview = token.slice(0, 8);
-    writeLog(`Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`);
+    setTokenCookie(res, token, config);
+    writeLog('Отправлена cookie token');
     res.json({ token });
   } catch (e) {
     res.status(400).json({ error: e.message });

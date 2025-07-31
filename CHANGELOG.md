@@ -323,6 +323,8 @@
 - Функция `setTokenCookie` избавляет от дублирования кода установки cookie
 - Удалены неиспользуемые зависимости bcrypt и mongodb-memory-server
 - Удалён устаревший контроллер tasks.js, общая проверка перенесена в handleValidation
+- Удалён модуль `services/gateway.js`; поддержка SMS через GatewayAPI исключена
+  вместе с переменными `GATEWAY_API_KEY` и `GATEWAY_SENDER`
 - Удалён дублирующийся скрипт `.husky/husky.sh`, используется `.husky/_/husky.sh`
 - Удалён неиспользуемый пакет @aws-sdk/client-s3
 

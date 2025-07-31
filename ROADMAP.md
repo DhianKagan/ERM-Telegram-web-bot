@@ -250,6 +250,8 @@
 220. Middleware `verifyToken` продлевает cookie `token` при каждом запросе
 221. CSRF-токен сохраняется в `localStorage` и отправляется в заголовке
 222. При недоступности `localStorage` токен хранится в памяти, страница входа показывает ошибки
-223. Функция `setTokenCookie` объединяет установку cookie `token`
-224. Удалены из зависимостей bcrypt и mongodb-memory-server как неиспользуемые
+223. Проведена ревизия кода, удалена зависимость bcrypt
+224. Функция `setTokenCookie` объединяет установку cookie `token`
+225. Удалены из зависимостей bcrypt и mongodb-memory-server как неиспользуемые
+
 

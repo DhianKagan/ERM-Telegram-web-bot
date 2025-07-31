@@ -259,4 +259,5 @@
 - В tasks.service.ts и services/tasks.js дублирование расчёта маршрута заменено функцией applyRouteInfo
 - Удалён дублирующийся скрипт .husky/husky.sh
 - Функции Google Maps вынесены в модуль `bot/shared/mapUtils.js`
+- Веб‑клиент импортирует их через default объект `mapUtils`
 

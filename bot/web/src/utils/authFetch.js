@@ -3,9 +3,10 @@
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
 
 export default async function authFetch(url, options = {}) {
+  const { noRedirect, ...fetchOpts } = options;
   const getToken = getCsrfToken;
   const saveToken = setCsrfToken;
-  const headers = { ...(options.headers || {}) };
+  const headers = { ...(fetchOpts.headers || {}) };
   let token = getToken();
   if (!token) {
     try {
@@ -20,7 +21,7 @@ export default async function authFetch(url, options = {}) {
     }
   }
   if (token) headers["X-XSRF-TOKEN"] = token;
-  const opts = { ...options, credentials: "include", headers };
+  const opts = { ...fetchOpts, credentials: "include", headers };
   let res = await fetch(url, opts);
   if (res.status === 403) {
     if (opts.body) {
@@ -49,7 +50,7 @@ export default async function authFetch(url, options = {}) {
       }
     }
   }
-  if (res.status === 401 || res.status === 403) {
+  if ((res.status === 401 || res.status === 403) && !noRedirect) {
     window.location.href = "/login?expired=1";
   }
   return res;

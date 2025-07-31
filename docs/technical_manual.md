@@ -158,6 +158,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
 - Зависимости сервера и клиента устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
+- Перед коммитом Husky запускает `lint-staged`, используйте файл `.husky/_/husky.sh`.
 - В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
 - Тест `loginRouteFlow.test.js` проверяет получение CSRF-токена и вызов `/api/v1/route`.
 - Тесты `authService.test.js` и `tasksService.test.js` покрывают логику модулей авторизации и задач.
@@ -237,3 +238,4 @@ docker run -d -p 9090:9090 \
 Дополнительный план внедрения рекомендаций после аудита хранится в файле `docs/apply_analysis_plan.md`.
 Для подробностей обратитесь к исходным файлам в каталоге `docs/` или истории изменений в `CHANGELOG.md`.
 - Лишняя зависимость bcrypt удалена
+- Удалён пакет @aws-sdk/client-s3

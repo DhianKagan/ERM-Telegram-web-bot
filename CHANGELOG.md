@@ -322,3 +322,4 @@
 - Удалена неиспользуемая страница AdminPlaceholder и скрипт backup_mongo_r2.sh
 - Функция `setTokenCookie` избавляет от дублирования кода установки cookie
 - Удалены неиспользуемые зависимости bcrypt и mongodb-memory-server
+- Удалён устаревший контроллер tasks.js, общая проверка перенесена в handleValidation

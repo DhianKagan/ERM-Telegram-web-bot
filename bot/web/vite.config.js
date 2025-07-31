@@ -9,7 +9,7 @@ export default defineConfig({
     outDir: '../public',
     chunkSizeWarningLimit: 1500,
     commonjsOptions: {
-      include: [/shared/],
+      include: [/shared/, /node_modules/],
     },
     rollupOptions: {
       output: {

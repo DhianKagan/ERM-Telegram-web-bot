@@ -16,6 +16,7 @@
   "description": "Бот задач с REST API, работающий под управлением pm2",
   "dependencies": {
     "@wgtechlabs/log-engine": "^2.2.0",
+    "compression": "^1.7.4",
     "connect-mongo": "^5.1.0",
     "cookie-parser": "1.4.7",
     "cors": "^2.8.5",

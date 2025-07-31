@@ -256,4 +256,5 @@
 
 
 226. Удалён контроллер tasks.js, проверка валидации вынесена в handleValidation
+227. Убрана интеграция GatewayAPI и переменные `GATEWAY_API_KEY`, `GATEWAY_SENDER`
 

@@ -16,15 +16,7 @@ class TasksService {
 
   async create(data) {
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date
-    if (data.startCoordinates && data.finishCoordinates) {
-      data.google_route_url = generateRouteLink(data.startCoordinates, data.finishCoordinates)
-      try {
-        const r = await getRouteDistance(data.startCoordinates, data.finishCoordinates)
-        data.route_distance_km = Number((r.distance / 1000).toFixed(1))
-      } catch (e) {
-        void e
-      }
-    }
+    await this.applyRouteInfo(data)
     return this.repo.createTask(data)
   }
 
@@ -37,16 +29,26 @@ class TasksService {
   }
 
   async update(id, data) {
+    await this.applyRouteInfo(data)
+    return this.repo.updateTask(id, data)
+  }
+
+  async applyRouteInfo(data) {
     if (data.startCoordinates && data.finishCoordinates) {
-      data.google_route_url = generateRouteLink(data.startCoordinates, data.finishCoordinates)
+      data.google_route_url = generateRouteLink(
+        data.startCoordinates,
+        data.finishCoordinates,
+      )
       try {
-        const r = await getRouteDistance(data.startCoordinates, data.finishCoordinates)
+        const r = await getRouteDistance(
+          data.startCoordinates,
+          data.finishCoordinates,
+        )
         data.route_distance_km = Number((r.distance / 1000).toFixed(1))
-      } catch (e) {
-        void e
+      } catch {
+        /* пропускаем ошибку расчёта */
       }
     }
-    return this.repo.updateTask(id, data)
   }
 
   addTime(id, minutes) {

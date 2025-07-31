@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getProfile } from "../services/auth";
 import { AuthContext } from "./AuthContext";
+import { setCsrfToken } from "../utils/csrfToken";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -17,7 +18,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const res = await fetch("/api/v1/csrf", { credentials: "include" });
         const data = await res.json().catch(() => ({}));
         if (data.csrfToken) {
-          localStorage.setItem("csrfToken", data.csrfToken);
+          setCsrfToken(data.csrfToken);
         }
       } catch {
         /* ignore */

@@ -1,17 +1,10 @@
-// Обёртка для fetch с CSRF-токеном из localStorage
+// Обёртка для fetch с CSRF-токеном
 // Модули: fetch, window.location, localStorage
+import { getCsrfToken, setCsrfToken } from "./csrfToken";
+
 export default async function authFetch(url, options = {}) {
-  const getToken = () =>
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("csrfToken") || undefined
-      : undefined;
-  const saveToken = (t) => {
-    try {
-      localStorage.setItem("csrfToken", t);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const getToken = getCsrfToken;
+  const saveToken = setCsrfToken;
   const headers = { ...(options.headers || {}) };
   let token = getToken();
   if (!token) {
@@ -57,7 +50,7 @@ export default async function authFetch(url, options = {}) {
     }
   }
   if (res.status === 401 || res.status === 403) {
-    window.location.href = "/login";
+    window.location.href = "/login?expired=1";
   }
   return res;
 }

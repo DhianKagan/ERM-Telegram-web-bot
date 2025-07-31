@@ -249,3 +249,4 @@
 - В railway_full_setup.md описан раздел «Переменные окружения» с `NODE_ENV` и `COOKIE_DOMAIN`, ссылка ведёт на раздел "Защита от CSRF"
 - verifyToken продлевает cookie `token` при каждом запросе (silent refresh)
 - CSRF-токен хранится в `localStorage` и вставляется в заголовок `X-XSRF-TOKEN`
+- При недоступности `localStorage` токен хранится в памяти, страница входа сообщает об ошибке

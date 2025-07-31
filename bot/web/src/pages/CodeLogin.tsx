@@ -1,20 +1,35 @@
 // Страница входа через код подтверждения
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
 
 export default function CodeLogin() {
   const [telegramId, setTelegramId] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
+  const { addToast } = useToast();
+  const [params] = useSearchParams();
+
+  useEffect(() => {
+    if (params.get("expired")) {
+      addToast("Сессия истекла, войдите снова", "error");
+    }
+  }, [params, addToast]);
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
-    await authFetch("/api/v1/auth/send_code", {
+    const r = await authFetch("/api/v1/auth/send_code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: Number(telegramId) }),
     });
-    setSent(true);
+    if (r.ok) {
+      setSent(true);
+      addToast("Код отправлен");
+    } else {
+      addToast("Не удалось отправить код", "error");
+    }
   }
 
   async function verify(e?: React.FormEvent) {
@@ -26,6 +41,8 @@ export default function CodeLogin() {
     });
     if (res.ok) {
       window.location.href = "/";
+    } else {
+      addToast("Неверный код", "error");
     }
   }
 

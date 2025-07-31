@@ -70,6 +70,7 @@ npm --prefix bot run dev
 ```
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
+Перед каждым коммитом Husky выполняет `lint-staged`, инициализация происходит через файл `.husky/_/husky.sh`.
 Тест `loginFlow.test.js` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
 Тест `loginRouteFlow.test.js` получает CSRF-токен и успешно вызывает `/api/v1/route`.
 Тест `loginTasksFlow.test.js` выполняет логин и создание задачи через `/api/v1/tasks`.

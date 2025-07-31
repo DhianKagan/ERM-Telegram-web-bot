@@ -8,6 +8,9 @@ export default defineConfig({
   build: {
     outDir: '../public',
     chunkSizeWarningLimit: 1500,
+    commonjsOptions: {
+      include: [/shared/],
+    },
     rollupOptions: {
       output: {
         manualChunks: {

@@ -1,18 +1,11 @@
 // Роут расчёта расстояния
 // Модули: express, express-validator, service
 const router = require('express').Router()
-const { body, query, validationResult } = require('express-validator')
+const { body, query } = require('express-validator')
+const validate = require('../utils/validate')
 const { getRouteDistance, table, nearest, match, trip } = require('../services/route')
 const { verifyToken, asyncHandler } = require('../api/middleware')
 
-const validate = v => [
-  ...v,
-  (req, res, next) => {
-    const errors = validationResult(req)
-    if (errors.isEmpty()) return next()
-    res.status(400).json({ errors: errors.array() })
-  }
-]
 
 router.post('/', verifyToken,
   validate([

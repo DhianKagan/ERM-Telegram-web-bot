@@ -1,15 +1,10 @@
 // Роут расчёта оптимального маршрута для нескольких машин
 // Модули: express, express-validator, controller
 const router = require('express').Router()
-const { body, validationResult } = require('express-validator')
+const { body } = require('express-validator')
+const validate = require('../utils/validate')
 const ctrl = require('../controllers/optimizer')
 const { verifyToken, asyncHandler } = require('../api/middleware')
-
-const validate = v => [...v, (req, res, next) => {
-  const errors = validationResult(req)
-  if (errors.isEmpty()) return next()
-  res.status(400).json({ errors: errors.array() })
-}]
 
 router.post('/', verifyToken,
   validate([

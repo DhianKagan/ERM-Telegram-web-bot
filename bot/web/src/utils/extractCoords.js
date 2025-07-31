@@ -1,6 +1,6 @@
 // Извлекает координаты из ссылки Google Maps
-import { extractCoords as sharedExtract } from '../../../shared/mapUtils.js';
+import mapUtils from '../../../shared/mapUtils.js';
 
 export default function extractCoords(url) {
-  return sharedExtract(url)
+  return mapUtils.extractCoords(url)
 }

@@ -1,15 +1,9 @@
 // Контроллер задач с использованием TasksService
 // Основные модули: express-validator, services, wgLogEngine
-const { validationResult } = require('express-validator')
+const { handleValidation } = require('../utils/validate')
 const container = require('../container.ts').default || require('../container.ts')
 const service = container.resolve('TasksService')
 const { writeLog } = require('../services/service')
-
-function handle(req, res, next) {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
-  return next()
-}
 
 exports.list = async (req, res) => {
   const { page, limit, ...filters } = req.query
@@ -41,7 +35,7 @@ exports.detail = async (req, res) => {
 }
 
 exports.create = [
-  handle,
+  handleValidation,
   async (req, res) => {
     const task = await service.create(req.body)
     await writeLog(`Создана задача ${task._id} пользователем ${req.user.id}/${req.user.username}`)
@@ -50,7 +44,7 @@ exports.create = [
 ]
 
 exports.update = [
-  handle,
+  handleValidation,
   async (req, res) => {
     const task = await service.update(req.params.id, req.body)
     if (!task) return res.sendStatus(404)
@@ -60,7 +54,7 @@ exports.update = [
 ]
 
 exports.addTime = [
-  handle,
+  handleValidation,
   async (req, res) => {
     const task = await service.addTime(req.params.id, req.body.minutes)
     if (!task) return res.sendStatus(404)
@@ -70,7 +64,7 @@ exports.addTime = [
 ]
 
 exports.bulk = [
-  handle,
+  handleValidation,
   async (req, res) => {
     await service.bulk(req.body.ids, { status: req.body.status })
     await writeLog(`Массовое изменение статусов пользователем ${req.user.id}/${req.user.username}`)

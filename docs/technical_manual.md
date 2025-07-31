@@ -158,6 +158,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
 - Зависимости сервера и клиента устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
+- Перед коммитом Husky запускает `lint-staged`, используйте файл `.husky/_/husky.sh`.
 - В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
 - Тест `loginRouteFlow.test.js` проверяет получение CSRF-токена и вызов `/api/v1/route`.
 - Тесты `authService.test.js` и `tasksService.test.js` покрывают логику модулей авторизации и задач.
@@ -174,7 +175,7 @@ npm --prefix bot run dev
 Пошаговое развертывание на Railway:
 
 1. Создайте проект и подключите плагин **MongoDB**.
-2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать.
+2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 
@@ -239,3 +240,5 @@ docker run -d -p 9090:9090 \
 
 - Лишняя зависимость bcrypt удалена
 - Дублирование расчёта маршрутов устранено: добавлена функция applyRouteInfo
+- Удалён пакет @aws-sdk/client-s3
+

@@ -12,8 +12,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const loadCsrf = () =>
-      fetch("/api/v1/csrf", { credentials: "include" }).catch(() => {});
+    const loadCsrf = async () => {
+      try {
+        const res = await fetch("/api/v1/csrf", { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        if (data.csrfToken) {
+          localStorage.setItem("csrfToken", data.csrfToken);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
     loadCsrf();
     const onVisible = () => {
       if (!document.hidden) loadCsrf();

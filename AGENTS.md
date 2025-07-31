@@ -188,7 +188,7 @@
   через `?token=`
 - Токен JWT теперь записывается в cookie HttpOnly
 - API защищён от CSRF middleware lusca.csrf
-- CSRF-токен хранится в cookie `XSRF-TOKEN` и отправляется в заголовке `X-XSRF-TOKEN`
+- CSRF-токен сохраняется в `localStorage` и отправляется в заголовке `X-XSRF-TOKEN`
 - Cookie `XSRF-TOKEN` имеет флаг `SameSite=None` и общий домен по APP_URL
 - Маршруты `/api/v1/auth/send_code` и `/api/v1/auth/verify_code` не требуют CSRF-токена
 - Сессии хранятся через connect-mongo, cookie передаётся только по HTTPS,
@@ -248,3 +248,4 @@
 - После установки cookie `token` пишется лог с доменом
 - В railway_full_setup.md описан раздел «Переменные окружения» с `NODE_ENV` и `COOKIE_DOMAIN`, ссылка ведёт на раздел "Защита от CSRF"
 - verifyToken продлевает cookie `token` при каждом запросе (silent refresh)
+- CSRF-токен хранится в `localStorage` и вставляется в заголовок `X-XSRF-TOKEN`

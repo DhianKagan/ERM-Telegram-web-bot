@@ -45,12 +45,6 @@ module.exports = {
   chatId: process.env.CHAT_ID,
   jwtSecret: process.env.JWT_SECRET,
   mongoUrl: mongoUrlEnv,
-  r2: {
-    endpoint: process.env.R2_ENDPOINT,
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    bucket: process.env.R2_BUCKET_NAME,
-  },
   appUrl: appUrlEnv,
   port: process.env.PORT || 3000,
   locale: process.env.LOCALE || 'ru',

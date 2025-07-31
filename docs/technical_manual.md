@@ -242,4 +242,5 @@ docker run -d -p 9090:9090 \
 - Лишняя зависимость bcrypt удалена
 - Дублирование расчёта маршрутов устранено: добавлена функция applyRouteInfo
 - Удалён пакет @aws-sdk/client-s3
-
+- API сжимает ответы через middleware `compression`
+- Фильтры логов имеют атрибуты `aria-label`

@@ -8,6 +8,7 @@ const express = require('express');
 const createRateLimiter = require('../utils/rateLimiter');
 const helmet = require('helmet');
 const cors = require('cors');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
@@ -77,6 +78,7 @@ const validate = (validations) => [
   app.set('trust proxy', 1);
   app.use(express.json());
   app.use(cookieParser());
+  app.use(compression());
   // сессия для хранения CSRF-токена
   const domain =
     process.env.NODE_ENV === 'production'

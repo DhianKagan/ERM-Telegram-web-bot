@@ -165,3 +165,5 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 
 - Функция `handleValidation` переиспользуется в контроллерах и заменяет локальные проверки
 - Удалён неиспользуемый пакет @aws-sdk/client-s3
+- Ответы сервера сжимаются middleware `compression`
+- Фильтры логов получили атрибуты `aria-label`

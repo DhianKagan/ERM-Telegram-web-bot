@@ -2,8 +2,8 @@
 // API запросы для регистрации и входа
 import authFetch from "../utils/authFetch";
 
-export const getProfile = () =>
-  authFetch("/api/v1/auth/profile").then((r) => r.json());
+export const getProfile = (options) =>
+  authFetch("/api/v1/auth/profile", options).then((r) => r.json());
 
 export const updateProfile = (data) =>
   authFetch("/api/v1/auth/profile", {

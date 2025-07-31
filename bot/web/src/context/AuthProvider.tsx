@@ -30,7 +30,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
     window.addEventListener("focus", loadCsrf);
     document.addEventListener("visibilitychange", onVisible);
-    getProfile()
+    getProfile({ noRedirect: true })
       .then((u) => {
         setUser(u);
         setLoading(false);

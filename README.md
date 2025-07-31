@@ -146,3 +146,7 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 В июле 2025 года все секреты Telegram‑бота были перевыпущены. Значения
 обновлены в файлах `.env.example` и `.env`, а также в переменных Railway.
 Подробная запись приведена в `INCIDENT_RESPONSE.md`.
+
+### Обновления зависимостей
+
+Удалены неиспользуемые пакеты bcrypt и mongodb-memory-server.

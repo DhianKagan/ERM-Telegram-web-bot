@@ -323,3 +323,4 @@
 - Функция `setTokenCookie` избавляет от дублирования кода установки cookie
 - Удалены неиспользуемые зависимости bcrypt и mongodb-memory-server
 - Удалён устаревший контроллер tasks.js, общая проверка перенесена в handleValidation
+- Удалён неиспользуемый пакет @aws-sdk/client-s3

@@ -15,7 +15,6 @@
   "license": "ISC",
   "description": "Бот задач с REST API, работающий под управлением pm2",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.837.0",
     "@wgtechlabs/log-engine": "^2.2.0",
     "connect-mongo": "^5.1.0",
     "cookie-parser": "1.4.7",

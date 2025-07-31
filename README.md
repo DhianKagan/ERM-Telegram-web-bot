@@ -157,3 +157,4 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 
 Удалены неиспользуемые пакеты bcrypt и mongodb-memory-server.
 - Функция `handleValidation` переиспользуется в контроллерах и заменяет локальные проверки
+- Удалён неиспользуемый пакет @aws-sdk/client-s3

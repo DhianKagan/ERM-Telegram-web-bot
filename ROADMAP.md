@@ -253,8 +253,9 @@
 223. Проведена ревизия кода, удалена зависимость bcrypt
 224. Функция `setTokenCookie` объединяет установку cookie `token`
 225. Удалены из зависимостей bcrypt и mongodb-memory-server как неиспользуемые
-
-
 226. Удалён контроллер tasks.js, проверка валидации вынесена в handleValidation
 227. Убрана интеграция GatewayAPI и переменные `GATEWAY_API_KEY`, `GATEWAY_SENDER`
+228. Убрана интеграция GatewayAPI и переменные `GATEWAY_API_KEY`, `GATEWAY_SENDER`
+229. Удалён дублирующийся файл .husky/husky.sh
+230. Удалён пакет @aws-sdk/client-s3
 

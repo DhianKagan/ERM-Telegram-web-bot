@@ -1,6 +1,6 @@
 // Точка входа: выбирает режим приложения (браузер или Telegram)
 import React from "react";
-import ReactDOM from "react-dom/client";
+import * as ReactDOM from "react-dom/client";
 import "./index.css";
 
 const root = document.getElementById("root");

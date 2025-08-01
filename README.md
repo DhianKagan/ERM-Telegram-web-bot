@@ -72,7 +72,8 @@ git clone https://github.com/AgroxOD/agrmcs.git
 cd agrmcs
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает зависимости сервера и клиента
-npm --prefix bot run dev
+npm --prefix bot run build
+npm --prefix bot start
 ```
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.

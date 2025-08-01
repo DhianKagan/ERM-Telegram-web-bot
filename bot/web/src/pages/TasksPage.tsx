@@ -348,7 +348,9 @@ export default function TasksPage() {
                     dangerouslySetInnerHTML={{
                       __html: userLink(
                         id,
-                        userMap[id]?.name || userMap[id]?.username,
+                        userMap[id]?.name ||
+                          userMap[id]?.telegram_username ||
+                          userMap[id]?.username,
                       ),
                     }}
                     className="mr-1"

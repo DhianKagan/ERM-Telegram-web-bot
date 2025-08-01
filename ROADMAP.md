@@ -268,3 +268,4 @@
 237. Запросы с заголовком `Authorization` обходят проверку CSRF, переменная `DISABLE_CSRF=1` отключает middleware и предупреждает в продакшене
 238. Сервер компилируется TypeScript перед запуском, исходники в dist
 239. updateUser использует sanitizeUpdate и $eq
+

@@ -171,3 +171,4 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 - Удалён неиспользуемый пакет @aws-sdk/client-s3
 - Ответы сервера сжимаются middleware `compression`
 - Фильтры логов получили атрибуты `aria-label`
+- Обновление пользователя фильтрует ключи обновления и использует `$eq` для telegram_id

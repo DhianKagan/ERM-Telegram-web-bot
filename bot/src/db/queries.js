@@ -195,9 +195,15 @@ async function getUsersMap(ids = []) {
 async function updateUser(id, data) {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) return null;
-  return User.findOneAndUpdate({ telegram_id: telegramId }, data, {
-    new: true,
-  });
+  // Защищаем запрос от инъекций операторов и интерпретируем id как литерал
+  const sanitized = sanitizeUpdate(data);
+  return User.findOneAndUpdate(
+    { telegram_id: { $eq: telegramId } },
+    sanitized,
+    {
+      new: true,
+    },
+  );
 }
 
 async function listRoles() {

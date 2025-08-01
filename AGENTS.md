@@ -265,3 +265,4 @@
 - API сжимает ответы через compression
 - В форме фильтров логов используются aria-label
 - Запросы с заголовком `Authorization` обходят проверку CSRF, переменная `DISABLE_CSRF` отключает middleware и предупреждает в продакшене
+- Файл tsconfig.json исключает каталог `bot/shared` и папку `dist`

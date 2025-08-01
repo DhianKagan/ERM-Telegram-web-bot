@@ -1,6 +1,7 @@
 // Сервис пользователей через репозиторий
 // Основные модули: db/queries, utils/formatUser
 class UsersService {
+  repo
   constructor(repo) {
     this.repo = repo;
   }
@@ -17,4 +18,6 @@ class UsersService {
     return this.repo.updateUser(id, data);
   }
 }
+
+export default UsersService;
 module.exports = UsersService;

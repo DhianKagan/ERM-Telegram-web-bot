@@ -1,6 +1,7 @@
 // Сервис ролей через репозиторий
 // Основные модули: db/queries
 class RolesService {
+  repo
   constructor(repo) {
     this.repo = repo
   }
@@ -14,4 +15,6 @@ class RolesService {
     return this.repo.updateRole(id, permissions)
   }
 }
-module.exports = RolesService
+
+export default RolesService;
+module.exports = RolesService;

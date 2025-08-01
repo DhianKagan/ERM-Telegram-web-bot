@@ -1,6 +1,6 @@
 // Назначение: сбор Prometheus-метрик HTTP запросов
 // Основные модули: prom-client
-const client = require('prom-client');
+import client from 'prom-client';
 
 const httpRequestsTotal = new client.Counter({
   name: 'http_requests_total',
@@ -15,7 +15,7 @@ const httpRequestDurationMs = new client.Histogram({
   buckets: [50, 100, 300, 500, 1000, 3000, 5000],
 });
 
-function metrics(req, res, next) {
+export default function metrics(req, res, next) {
   const start = Date.now();
   res.on('finish', () => {
     const labels = {
@@ -28,5 +28,3 @@ function metrics(req, res, next) {
   });
   next();
 }
-
-module.exports = metrics;

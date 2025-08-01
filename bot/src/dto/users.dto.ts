@@ -1,8 +1,8 @@
 // Назначение файла: DTO для пользователей
 // Основные модули: routes, middleware
-const { body } = require('express-validator')
+import { body } from 'express-validator'
 
-class CreateUserDto {
+export class CreateUserDto {
   static rules() {
     return [
       body('id').isInt(),
@@ -12,4 +12,5 @@ class CreateUserDto {
   }
 }
 
+export default { CreateUserDto }
 module.exports = { CreateUserDto }

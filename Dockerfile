@@ -8,9 +8,9 @@ COPY bot/package*.json ./
 COPY bot/web/package*.json ./web/
 RUN npm ci && npm --prefix web ci
 
-# Копирование исходников и сборка клиента
+# Копирование исходников, сборка сервера и клиента
 COPY bot/ ./
-RUN npm run build-client && npm prune --omit=dev
+RUN npm run build && npm run build-client && npm prune --omit=dev
 
 FROM node:20-slim
 WORKDIR /app/bot

@@ -261,10 +261,10 @@
 - Общая функция handleValidation заменяет проверки в контроллерах, файл tasks.js удалён
 - В tasks.service.ts и services/tasks.js дублирование расчёта маршрута заменено функцией applyRouteInfo
 - Удалён дублирующийся скрипт .husky/husky.sh
-- Функции Google Maps вынесены в модуль `bot/shared/mapUtils.js`
-- Веб‑клиент импортирует их через default объект `mapUtils`
+ - Функции Google Maps находятся в модуле `bot/src/shared/mapUtils.js`
+ - Веб‑клиент импортирует их через default объект `mapUtils`
 - API сжимает ответы через compression
 - В форме фильтров логов используются aria-label
 - Запросы с заголовком `Authorization` обходят проверку CSRF, переменная `DISABLE_CSRF` отключает middleware и предупреждает в продакшене
-- Файл tsconfig.json исключает каталог `bot/shared` и папку `dist`
+ - Файл tsconfig.json исключает папку `dist`
 - Dockerfile копирует `tsconfig.json` перед сборкой сервера

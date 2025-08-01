@@ -10,6 +10,7 @@ RUN npm ci && npm --prefix web ci
 
 # Копирование исходников, сборка сервера и клиента
 COPY bot/ ./
+COPY tsconfig.json ../
 RUN npm run build && npm run build-client && npm prune --omit=dev
 
 FROM node:20-slim

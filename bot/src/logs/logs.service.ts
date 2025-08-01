@@ -1,6 +1,7 @@
 // Сервис логов через репозиторий
 // Основные модули: db/queries
 class LogsService {
+  repo
   constructor(repo) {
     this.repo = repo
   }
@@ -11,4 +12,6 @@ class LogsService {
     return this.repo.writeLog(message)
   }
 }
-module.exports = LogsService
+
+export default LogsService;
+module.exports = LogsService;

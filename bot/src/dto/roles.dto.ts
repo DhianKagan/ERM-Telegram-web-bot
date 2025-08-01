@@ -1,8 +1,8 @@
 // Назначение файла: DTO для ролей
 // Основные модули: routes, middleware
-const { body } = require('express-validator')
+import { body } from 'express-validator'
 
-class UpdateRoleDto {
+export class UpdateRoleDto {
   static rules() {
     return [
       body('permissions')
@@ -12,4 +12,5 @@ class UpdateRoleDto {
   }
 }
 
+export default { UpdateRoleDto }
 module.exports = { UpdateRoleDto }

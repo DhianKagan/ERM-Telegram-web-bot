@@ -1,26 +1,26 @@
 // Назначение файла: DTO запросов авторизации
 // Основные модули: routes, middleware
-const { body } = require('express-validator')
+import { body } from 'express-validator'
 
-class SendCodeDto {
+export class SendCodeDto {
   static rules() {
     return [body('telegramId').isInt()]
   }
 }
 
-class VerifyCodeDto {
+export class VerifyCodeDto {
   static rules() {
     return [body('telegramId').isInt(), body('code').isLength({ min: 4 })]
   }
 }
 
-class VerifyInitDto {
+export class VerifyInitDto {
   static rules() {
     return [body('initData').isString()]
   }
 }
 
-class UpdateProfileDto {
+export class UpdateProfileDto {
   static rules() {
     return [
       body('name').optional().isString().notEmpty(),
@@ -30,6 +30,12 @@ class UpdateProfileDto {
   }
 }
 
+export default {
+  SendCodeDto,
+  VerifyCodeDto,
+  VerifyInitDto,
+  UpdateProfileDto,
+}
 module.exports = {
   SendCodeDto,
   VerifyCodeDto,

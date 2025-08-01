@@ -1,11 +1,12 @@
 // Назначение файла: DTO для логов
 // Основные модули: routes, middleware
-const { body } = require('express-validator')
+import { body } from 'express-validator'
 
-class CreateLogDto {
+export class CreateLogDto {
   static rules() {
     return [body('message').isString().notEmpty()]
   }
 }
 
+export default { CreateLogDto }
 module.exports = { CreateLogDto }

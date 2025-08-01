@@ -4,6 +4,7 @@ import { getRouteDistance } from '../services/route.js';
 import { generateRouteLink } from '../services/maps.js';
 
 class TasksService {
+  repo
   constructor(repo) {
     this.repo = repo;
     if (!this.repo.createTask && this.repo.Task?.create) {

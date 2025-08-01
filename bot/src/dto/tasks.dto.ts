@@ -1,11 +1,11 @@
 // Назначение файла: DTO для операций с задачами
 // Основные модули: routes, middleware
-const { body } = require('express-validator')
+import { body } from 'express-validator'
 const fields = require('../../shared/taskFields.cjs')
 const statusField = fields.find((f) => f.name === 'status')
 const statusList = statusField ? statusField.options : ['Новая','В работе','Выполнена','Отменена']
 
-class CreateTaskDto {
+export class CreateTaskDto {
   static rules() {
     return [
       body('title').isString().notEmpty(),
@@ -17,7 +17,7 @@ class CreateTaskDto {
   }
 }
 
-class UpdateTaskDto {
+export class UpdateTaskDto {
   static rules() {
     return [
       body('title').optional().isString(),
@@ -27,13 +27,13 @@ class UpdateTaskDto {
   }
 }
 
-class AddTimeDto {
+export class AddTimeDto {
   static rules() {
     return [body('minutes').isInt({ min: 1 })]
   }
 }
 
-class BulkStatusDto {
+export class BulkStatusDto {
   static rules() {
     return [
       body('ids').isArray({ min: 1 }),
@@ -42,6 +42,12 @@ class BulkStatusDto {
   }
 }
 
+export default {
+  CreateTaskDto,
+  UpdateTaskDto,
+  AddTimeDto,
+  BulkStatusDto,
+}
 module.exports = {
   CreateTaskDto,
   UpdateTaskDto,

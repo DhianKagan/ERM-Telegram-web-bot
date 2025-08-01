@@ -1,11 +1,11 @@
 // Сервис авторизации: отправка и проверка кодов входа
 // Основные модули: otp, queries, userInfoService, writeLog
-const otp = require('../services/otp');
-const { generateToken } = require('./auth');
-const { getUser, createUser, updateUser } = require('../db/queries');
-const { getMemberStatus } = require('../services/userInfoService');
-const { writeLog } = require('../services/service');
-const config = require('../config');
+import otp from '../services/otp';
+import { generateToken } from './auth.js';
+import { getUser, createUser, updateUser } from '../db/queries.js';
+import { getMemberStatus } from '../services/userInfoService.js';
+import { writeLog } from '../services/service.js';
+import config from '../config.js';
 
 async function sendCode(telegramId) {
   if (!telegramId) throw new Error('telegramId required');
@@ -60,7 +60,7 @@ async function verifyCode(id, code, username) {
   return token;
 }
 
-const verifyInit = require('../utils/verifyInitData');
+import verifyInit from '../utils/verifyInitData.js';
 
 async function verifyInitData(initData) {
   if (!initData || !verifyInit(initData)) throw new Error('invalid initData');
@@ -94,6 +94,15 @@ async function updateProfile(id, data) {
   return user || null;
 }
 
+export default {
+  sendCode,
+  verifyCode,
+  verifyInitData,
+  getProfile,
+  updateProfile,
+  codes: otp.codes,
+  adminCodes: otp.adminCodes,
+};
 module.exports = {
   sendCode,
   verifyCode,

@@ -1,8 +1,8 @@
 // Назначение файла: middleware для проверки DTO
 // Основные модули: express-validator
-const { validationResult } = require('express-validator')
+import { validationResult } from 'express-validator'
 
-module.exports = function validateDto(Dto) {
+export default function validateDto(Dto) {
   return [
     ...Dto.rules(),
     (req, res, next) => {
@@ -12,3 +12,4 @@ module.exports = function validateDto(Dto) {
     },
   ]
 }
+module.exports = validateDto

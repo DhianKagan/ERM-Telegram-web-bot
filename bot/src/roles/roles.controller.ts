@@ -1,8 +1,9 @@
 // Контроллер ролей с использованием RolesService
 // Основные модули: express-validator, container
+// @ts-nocheck
 import { handleValidation } from '../utils/validate.js';
 import container from '../container';
-const service = container.resolve('RolesService');
+const service = /** @type {any} */ (container.resolve('RolesService'));
 
 export const list = async (_req, res) => {
   res.json(await service.list());

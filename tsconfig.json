@@ -1,0 +1,17 @@
+{
+  // Назначение файла: конфигурация TypeScript для серверной части
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "rootDir": "bot/src",
+    "outDir": "dist",
+    "allowJs": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": false
+  },
+  "include": ["bot/src/**/*"]
+}

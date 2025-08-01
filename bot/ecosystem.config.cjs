@@ -3,7 +3,7 @@ module.exports = {
   apps: [
     {
       name: 'api',
-      script: 'src/server.js',
+      script: 'dist/server.js',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
@@ -14,7 +14,7 @@ module.exports = {
     },
     {
       name: 'bot',
-      script: 'src/bot/bot.js',
+      script: 'dist/bot/bot.js',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',

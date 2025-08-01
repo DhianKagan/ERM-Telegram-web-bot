@@ -12,6 +12,7 @@
 - Поддержка расчёта маршрутов через сервис OSRM.
 - Общие функции Google Maps вынесены в `bot/shared/mapUtils.js`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../shared/mapUtils.js'`.
+- Конфигурация TypeScript исключает `bot/shared` для корректной сборки.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.
 - Проверка подписи initData веб‑приложения на сервере.

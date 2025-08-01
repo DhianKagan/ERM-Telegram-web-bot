@@ -13,5 +13,6 @@
     "skipLibCheck": true,
     "strict": false
   },
-  "include": ["bot/src/**/*"]
+  "include": ["bot/src/**/*"],
+  "exclude": ["bot/shared/**/*", "dist"]
 }

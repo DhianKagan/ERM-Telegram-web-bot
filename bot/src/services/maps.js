@@ -4,7 +4,7 @@ const {
   extractCoords,
   generateRouteLink,
   generateMultiRouteLink,
-} = require('../../shared/mapUtils')
+} = require('../shared/mapUtils')
 
 async function expandMapsUrl(shortUrl) {
   const res = await fetch(shortUrl, { redirect: 'follow' })

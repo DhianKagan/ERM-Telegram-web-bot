@@ -1,15 +1,16 @@
 // Роуты регистрации, входа и профиля
 // Роут только профиля пользователя
 const router = require('express').Router();
-const authCtrl = require('../auth/auth.controller.ts');
+const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+const authCtrl = require('../auth/auth.controller' + ext);
 const { verifyToken, asyncHandler } = require('../api/middleware');
-const validateDto = require('../middleware/validateDto.ts');
+const validateDto = require('../middleware/validateDto' + ext);
 const {
   SendCodeDto,
   VerifyCodeDto,
   VerifyInitDto,
   UpdateProfileDto,
-} = require('../dto/auth.dto.ts');
+} = require('../dto/auth.dto' + ext);
 
 router.post(
   '/send_code',

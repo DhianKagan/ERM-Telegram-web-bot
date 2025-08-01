@@ -54,8 +54,9 @@ const validate = (validations) => [
   await connect();
   require('../db/model');
   const app = express();
-  const logging = require('../middleware/logging.ts');
-  const metrics = require('../middleware/metrics.ts');
+  const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+  const logging = require('../middleware/logging' + ext);
+  const metrics = require('../middleware/metrics' + ext);
   app.use(logging);
   app.use(metrics);
   // при отсутствии статических файлов выполняем сборку мини-приложения

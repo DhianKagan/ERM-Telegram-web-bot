@@ -41,7 +41,7 @@ beforeEach(() => {
   const csrfExclude = ['/api/v1/csrf'];
   app.use((req, res, next) => {
     const url = req.originalUrl.split('?')[0];
-    if (csrfExclude.includes(url)) return next();
+    if (csrfExclude.includes(url) || req.headers.authorization) return next();
     return csrf(req, res, next);
   });
   app.get('/api/v1/csrf', csrf, (req, res) => {
@@ -74,4 +74,11 @@ test('connect.sid создаётся вместе с токеном', async () =
 test('запрос без CSRF токена получает 403', async () => {
   const res = await request(app).post('/api/protected');
   expect(res.status).toBe(403);
+});
+
+test('запрос с Authorization пропускает CSRF', async () => {
+  const res = await request(app)
+    .post('/api/protected')
+    .set('Authorization', 'Bearer t');
+  expect(res.status).toBe(200);
 });

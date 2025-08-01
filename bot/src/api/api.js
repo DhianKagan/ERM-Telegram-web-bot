@@ -120,9 +120,18 @@ const validate = (validations) => [
     '/api/v1/optimizer',
     '/api/v1/maps/expand',
   ];
+  const disableCsrf = process.env.DISABLE_CSRF === '1';
+  let csrfWarn = false;
   app.use((req, res, next) => {
     const url = req.originalUrl.split('?')[0];
-    if (csrfExclude.includes(url)) return next();
+    if (disableCsrf) {
+      if (!csrfWarn && process.env.NODE_ENV === 'production') {
+        console.warn('CSRF middleware отключён через DISABLE_CSRF');
+        csrfWarn = true;
+      }
+      return next();
+    }
+    if (csrfExclude.includes(url) || req.headers.authorization) return next();
     return csrf(req, res, next);
   });
   // политика безопасности без карт Google, разрешены тайлы OpenStreetMap

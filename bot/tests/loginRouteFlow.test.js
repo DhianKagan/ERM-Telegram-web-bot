@@ -22,6 +22,9 @@ jest.mock('../src/db/queries', () => ({
   createUser: jest.fn(async () => ({ username: 'u' })),
   updateUser: jest.fn(async () => ({})),
 }));
+jest.mock('../src/services/route', () => ({
+  getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
+}));
 
 const authRouter = require('../src/routes/authUser');
 const routeRouter = require('../src/routes/route');
@@ -64,6 +67,7 @@ beforeAll(() => {
     ) {
       return next();
     }
+    if (req.headers.authorization) return next();
     return csrf(req, res, next);
   });
   app.get('/api/v1/csrf', csrf, (req, res) => {
@@ -105,7 +109,6 @@ test('полный цикл логина и запроса', async () => {
   const res = await agent
     .post('/api/v1/route')
     .set('X-Forwarded-Proto', 'https')
-    .set('X-XSRF-TOKEN', token)
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
     .send({ start: { lat: 1, lng: 2 }, end: { lat: 3, lng: 4 } });
   expect(res.status).toBeLessThan(500);

@@ -58,6 +58,7 @@ beforeAll(() => {
     ) {
       return next();
     }
+    if (req.headers.authorization) return next();
     return csrf(req, res, next);
   });
   app.get('/api/v1/csrf', csrf, (req, res) => {
@@ -91,7 +92,6 @@ test('полный цикл логина и запроса', async () => {
   expect(verifyRes.body.token).toBeDefined();
   const res = await agent
     .post('/api/protected')
-    .set('X-XSRF-TOKEN', token)
     .set('Authorization', `Bearer ${verifyRes.body.token}`);
   expect(res.status).toBe(200);
 });

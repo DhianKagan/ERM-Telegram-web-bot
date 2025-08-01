@@ -339,4 +339,5 @@
 - Обновление профиля пользователя защищено от NoSQL-инъекций
 - Файл `tsconfig.json` исключает `bot/shared` и `dist`
 - Dockerfile собирает сервер командой `npm run build`
+- Dockerfile копирует `tsconfig.json`, исправлена ошибка `Cannot find tsconfig.json`
 

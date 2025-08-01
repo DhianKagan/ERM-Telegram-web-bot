@@ -105,6 +105,8 @@ docker compose up
 
 Dockerfile используется из корня проекта, поэтому `.dockerignore` не исключает
 его из контекста.
+- Перед сборкой сервера в контейнер копируется `tsconfig.json`,
+  иначе `npm run build` не находит конфигурацию TypeScript.
 - Перед сборкой клиента выполняется `npm run build`, чтобы скомпилировать сервер
 
 - Добавлено описание модулей в ModuleCore.md и docs/architecture.md

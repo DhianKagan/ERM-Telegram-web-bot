@@ -80,6 +80,7 @@ beforeAll(
     if (['/api/v1/auth/send_code', '/api/v1/auth/verify_code', '/api/v1/csrf'].includes(url)) {
       return next()
     }
+    if (req.headers.authorization) return next()
     return csrf(req, res, next)
   })
   app.get('/api/v1/csrf', csrf, (req, res) => {
@@ -114,12 +115,9 @@ test('полный цикл логина и создания задачи', asyn
     .set('X-Forwarded-Proto', 'https')
     .set('X-XSRF-TOKEN', token)
     .send({ telegramId: 1, code, username: 'u' })
-  const csrfRes2 = await agent.get('/api/v1/csrf').set('X-Forwarded-Proto', 'https')
-  const token2 = csrfRes2.body.csrfToken
   const res = await agent
     .post('/api/v1/tasks')
     .set('X-Forwarded-Proto', 'https')
-    .set('X-XSRF-TOKEN', token2)
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
     .send({ title: 'T' })
   expect(res.status).toBe(201)

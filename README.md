@@ -20,6 +20,8 @@
 - Защита от CSRF через токен из `/api/v1/csrf`.
   Токен сохраняется в `localStorage`, а при недоступности хранилища
   запоминается в памяти и подставляется в заголовок `X-XSRF-TOKEN`.
+  Запросы с заголовком `Authorization` обходят проверку CSRF.
+  Переменная `DISABLE_CSRF=1` полностью отключает middleware (для тестов).
 - Логи выводятся на странице `/cp/logs`, используется движок WG Log Engine.
 - Интерфейс логов показывает таблицу с методом, статусом и endpoint, поддерживает live режим,
   экспорт в CSV/JSON, фильтрацию, сортировку и постраничный просмотр.
@@ -76,8 +78,8 @@ npm --prefix bot run dev
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 Перед каждым коммитом Husky выполняет `lint-staged`, инициализация происходит через файл `.husky/_/husky.sh`.
 Тест `loginFlow.test.js` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
-Тест `loginRouteFlow.test.js` получает CSRF-токен и успешно вызывает `/api/v1/route`.
-Тест `loginTasksFlow.test.js` выполняет логин и создание задачи через `/api/v1/tasks`.
+Тест `loginRouteFlow.test.js` подтверждает вызов `/api/v1/route` без CSRF при наличии заголовка `Authorization`.
+Тест `loginTasksFlow.test.js` выполняет логин и создание задачи через `/api/v1/tasks` без CSRF-заголовка.
 Тесты `authService.test.js` и `tasksService.test.js` проверяют логику сервисов авторизации и задач.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.

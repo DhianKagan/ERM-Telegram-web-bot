@@ -11,8 +11,9 @@
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
  - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.js`.
- - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
- - Конфигурация TypeScript исключает `dist` для корректной сборки.
+- Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
+- Конфигурация TypeScript исключает `dist` для корректной сборки.
+- Dockerfile копирует каталог `dist` в образ, чтобы pm2 нашёл собранный сервер.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.
 - Проверка подписи initData веб‑приложения на сервере.

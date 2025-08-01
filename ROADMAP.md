@@ -271,4 +271,5 @@
 240. tsconfig.json исключает каталог `bot/shared` и папку `dist`
 241. Dockerfile запускает `npm run build` перед сборкой клиента
 242. Dockerfile копирует `tsconfig.json`, чтобы сборка не падала
+243. Dockerfile переносит `dist` в образ для запуска pm2
 

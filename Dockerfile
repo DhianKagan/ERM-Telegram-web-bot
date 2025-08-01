@@ -17,5 +17,6 @@ FROM node:20-slim
 WORKDIR /app/bot
 ENV NODE_ENV=production
 COPY --from=build /app/bot .
+COPY --from=build /app/dist ./dist
 EXPOSE 3000
 CMD ["npx", "pm2-runtime", "ecosystem.config.cjs"]

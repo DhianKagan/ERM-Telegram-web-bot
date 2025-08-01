@@ -2,13 +2,14 @@
 const express = require('express');
 const createRateLimiter = require('../utils/rateLimiter');
 const { query } = require('express-validator');
-const ctrl = require('../logs/logs.controller.ts');
+const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+const ctrl = require('../logs/logs.controller' + ext);
 const { verifyToken } = require('../api/middleware');
-const { Roles } = require('../auth/roles.decorator.ts');
-const rolesGuard = require('../auth/roles.guard.ts');
+const { Roles } = require('../auth/roles.decorator' + ext);
+const rolesGuard = require('../auth/roles.guard' + ext);
 const { ACCESS_ADMIN } = require('../utils/accessMask');
-const validateDto = require('../middleware/validateDto.ts');
-const { CreateLogDto } = require('../dto/logs.dto.ts');
+const validateDto = require('../middleware/validateDto' + ext);
+const { CreateLogDto } = require('../dto/logs.dto' + ext);
 
 const router = express.Router();
 const limiter = createRateLimiter(15 * 60 * 1000, 100);

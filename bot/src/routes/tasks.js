@@ -2,15 +2,16 @@
 const express = require('express');
 const createRateLimiter = require('../utils/rateLimiter');
 const { param, query } = require('express-validator');
-const ctrl = require('../tasks/tasks.controller.ts');
+const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+const ctrl = require('../tasks/tasks.controller' + ext);
 const { verifyToken } = require('../api/middleware');
-const validateDto = require('../middleware/validateDto.ts');
+const validateDto = require('../middleware/validateDto' + ext);
 const {
   CreateTaskDto,
   UpdateTaskDto,
   AddTimeDto,
   BulkStatusDto,
-} = require('../dto/tasks.dto.ts');
+} = require('../dto/tasks.dto' + ext);
 
 const router = express.Router();
 

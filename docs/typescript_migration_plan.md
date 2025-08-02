@@ -1,0 +1,41 @@
+<!-- Назначение файла: план миграции JavaScript в TypeScript, основные модули: bot, web. -->
+
+# План миграции на TypeScript
+
+## Инвентаризация JS-файлов
+
+| Каталог | Количество |
+| ------- | ---------- |
+| `bot/src` | 48 |
+| `bot/web` | 24 |
+| `bot/tests` | 46 |
+| `scripts` и корневые конфиги | 13 |
+
+### Высокий приоритет — сервер `bot/src`
+
+- `utils`: haversine.js, formatTask.js, validate.js, verifyInitData.js, setTokenCookie.js, accessMask.js, rateLimiter.js, userLink.js, formatUser.js
+- `bot`: bot.js, messages.js
+- `controllers`: maps.js, optimizer.js, routes.js
+- `middleware`: taskAccess.js, checkRole.js
+- `services`: messageQueue.js, userInfoService.js, tasks.js, route.js, maps.js, scheduler.js, wgLogEngine.js, optimizer.js, telegramApi.js, service.js, otp.js, routes.js
+- `routes`: tasks.js, route.js, authUser.js, maps.js, users.js, optimizer.js, logs.js, roles.js, routes.js
+- `api`: middleware.js, swagger.js, api.js
+- `прочее`: shared/mapUtils.js, models/User.js, admin/customAdmin.js, config.js, auth/auth.js, db/queries.js, db/model.js, db/connection.js
+
+### Средний приоритет
+
+- Клиент `bot/web`: утилиты (csrfToken.js, extractCoords.js, parseJwt.js и др.), сервисы (tasks.js, route.js, maps.js, optimizer.js, osrm.js)
+- Тесты `bot/tests`: 46 файлов
+
+### Низкий приоритет
+
+- Скрипты в `scripts/` и конфигурационные файлы (`babel.config.js`, `ecosystem.config.cjs`, `.prettierrc.cjs`, `eslint.config.js`)
+
+## Этапы
+
+1. Перевести файлы из `bot/src` на TypeScript, добавить типы входных данных и возврата.
+2. После миграции серверного кода обновить тесты и клиентские модули.
+3. Удалить `allowJs` и включить `noImplicitAny`, устранив оставшиеся `any`.
+4. После перевода включить проверку отсутствия `.js` через ESLint.
+5. Провести ревью архитектуры и внедрить проверки, исключающие возврат к JavaScript.
+

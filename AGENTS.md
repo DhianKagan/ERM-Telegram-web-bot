@@ -271,3 +271,4 @@
 - Dockerfile переносит каталог `dist` в образ для корректного запуска pm2
 - Исправлено подключение middleware `logging` и `metrics` в API
 - Устранена ошибка маршрута `/api/v1/users`, вызванная лишними аргументами
+- Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`

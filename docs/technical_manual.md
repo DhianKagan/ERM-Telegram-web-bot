@@ -10,7 +10,7 @@
 
 - `src/api` — Express API с подключением Swagger и лимитом запросов.
 - `src/bot` — Telegram‑бот на Telegraf и планировщик напоминаний.
-- `src/routes` — REST‑маршруты.
+- `src/routes` — REST‑маршруты. Маршруты `users`, `roles` и `logs` используют default‑импорт `rolesGuard`.
 - `src/services` — работа с Telegram API и MongoDB.
 - `src/models`, `src/db` — схемы Mongoose и подключение к базе.
 - `web` — клиентская часть React с собственными контекстами.

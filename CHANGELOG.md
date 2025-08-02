@@ -8,6 +8,7 @@
 
 - Исправлено подключение middleware `logging` и `metrics` в API.
 - Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
+- Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён
 - Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`

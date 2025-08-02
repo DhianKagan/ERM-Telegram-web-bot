@@ -274,3 +274,4 @@
 242. Dockerfile копирует `tsconfig.json`, чтобы сборка не падала
 243. Dockerfile переносит `dist` в образ для запуска pm2
 244. Исправлено подключение middleware логирования и метрик API
+245. Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`

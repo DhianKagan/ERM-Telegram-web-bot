@@ -7,6 +7,7 @@
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 
 - Исправлено подключение middleware `logging` и `metrics` в API.
+- Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён
 - Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`
@@ -14,7 +15,7 @@
   заголовка Authorization
 - Страница `/cp/logs` заменяет `/cp/admin` и показывает логи
 - Система логирования переведена на WG Log Engine
- - Общие функции Google Maps собраны в `bot/src/shared/mapUtils.js`
+- Общие функции Google Maps собраны в `bot/src/shared/mapUtils.js`
 - Добавлена цветовая маркировка уровней и уведомления Telegram через движок
 - Запрос `updateTask` фильтрует поля и игнорирует ключи с `$`, устранена ошибка CodeQL
 - Система ролей дополнена числовыми масками доступа; middleware `checkRole` поддерживает проверку масок
@@ -343,4 +344,3 @@
 - Dockerfile собирает сервер командой `npm run build`
 - Dockerfile копирует `tsconfig.json`, исправлена ошибка `Cannot find tsconfig.json`
 - Dockerfile переносит каталог `dist` в образ для корректной работы pm2
-

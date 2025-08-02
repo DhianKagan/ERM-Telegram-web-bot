@@ -6,14 +6,16 @@
 
 | Каталог | Количество |
 | ------- | ---------- |
-| `bot/src` | 48 |
+| `bot/src` | 46 |
 | `bot/web` | 24 |
 | `bot/tests` | 46 |
 | `scripts` и корневые конфиги | 13 |
 
+Переведены на TypeScript: `userLink`, `formatTask`.
+
 ### Высокий приоритет — сервер `bot/src`
 
-- `utils`: haversine.js, formatTask.js, validate.js, verifyInitData.js, setTokenCookie.js, accessMask.js, rateLimiter.js, userLink.js, formatUser.js
+- `utils`: haversine.js, validate.js, verifyInitData.js, setTokenCookie.js, accessMask.js, rateLimiter.js, formatUser.js
 - `bot`: bot.js, messages.js
 - `controllers`: maps.js, optimizer.js, routes.js
 - `middleware`: taskAccess.js, checkRole.js

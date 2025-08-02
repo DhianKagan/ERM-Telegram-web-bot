@@ -32,6 +32,7 @@
 Сборка выполнена в строгом режиме TypeScript (`strict`),
 опция `noImplicitAny` временно отключена для постепенной миграции.
 Подробный план миграции из JavaScript описан в `docs/typescript_migration_plan.md`.
+На TypeScript уже перенесены утилиты `userLink` и `formatTask`.
 
 ### Защита от инъекций
 

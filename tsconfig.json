@@ -11,7 +11,9 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
     "useDefineForClassFields": false
   },
   "include": ["bot/src/**/*"],

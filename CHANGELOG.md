@@ -6,6 +6,8 @@
 - Номер версии следует [семантическому версионированию](https://semver.org/lang/ru/).
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 
+- Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
+
 - Исправлено подключение middleware `logging` и `metrics` в API.
 - Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.

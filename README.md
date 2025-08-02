@@ -13,6 +13,7 @@
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.js`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
+- Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Dockerfile копирует каталог `dist` в образ, чтобы pm2 нашёл собранный сервер.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.

@@ -6,6 +6,8 @@
 - Номер версии следует [семантическому версионированию](https://semver.org/lang/ru/).
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 
+- Исправлено подключение middleware `logging` и `metrics` в API.
+
 - Документация сведена в `docs/technical_manual.md`, README сокращён
 - Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`
 - Админка принимает токен в параметре `?token=` и статику можно загружать без

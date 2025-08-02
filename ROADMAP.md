@@ -277,3 +277,4 @@
 245. Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`
 246. Включён строгий режим TypeScript в сборке
 247. Составлен план миграции JavaScript → TypeScript и запланированы проверки против возврата к `.js`
+248. Переведены на TypeScript утилиты `userLink` и `formatTask`

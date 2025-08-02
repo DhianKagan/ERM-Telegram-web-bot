@@ -55,8 +55,10 @@ const validate = (validations) => [
   require('../db/model');
   const app = express();
   const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
-  const logging = require('../middleware/logging' + ext);
-  const metrics = require('../middleware/metrics' + ext);
+  const loggingModule = require('../middleware/logging' + ext);
+  const metricsModule = require('../middleware/metrics' + ext);
+  const logging = loggingModule.default || loggingModule;
+  const metrics = metricsModule.default || metricsModule;
   app.use(logging);
   app.use(metrics);
   // при отсутствии статических файлов выполняем сборку мини-приложения

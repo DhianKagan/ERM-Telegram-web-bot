@@ -269,3 +269,4 @@
 - Файл tsconfig.json исключает папку `dist`
 - Dockerfile копирует `tsconfig.json` перед сборкой сервера
 - Dockerfile переносит каталог `dist` в образ для корректного запуска pm2
+- Исправлено подключение middleware `logging` и `metrics` в API

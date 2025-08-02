@@ -272,4 +272,5 @@
 241. Dockerfile запускает `npm run build` перед сборкой клиента
 242. Dockerfile копирует `tsconfig.json`, чтобы сборка не падала
 243. Dockerfile переносит `dist` в образ для запуска pm2
+244. Исправлено подключение middleware логирования и метрик API
 

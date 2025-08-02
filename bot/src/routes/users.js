@@ -12,23 +12,9 @@ const { CreateUserDto } = require('../dto/users.dto' + ext);
 
 const router = express.Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const middlewares = [limiter, verifyToken, Roles(ACCESS_ADMIN), rolesGuard];
 
-router.get(
-  '/',
-  limiter,
-  verifyToken,
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
-  ctrl.list,
-);
-router.post(
-  '/',
-  limiter,
-  verifyToken,
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
-  ...validateDto(CreateUserDto),
-  ctrl.create,
-);
+router.get('/', middlewares, ctrl.list);
+router.post('/', [...middlewares, ...validateDto(CreateUserDto)], ctrl.create);
 
 module.exports = router;

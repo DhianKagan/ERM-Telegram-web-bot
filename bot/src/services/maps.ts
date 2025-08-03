@@ -19,7 +19,7 @@ export const { extractCoords, generateRouteLink, generateMultiRouteLink } =
   };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
-  // Развёртывает короткий URL Google Maps с проверкой домена
+  // Развёртывает короткий URL Google Maps с проверкой домена и протокола
   const allowedHosts = [
     'goo.gl',
     'maps.app.goo.gl',
@@ -34,11 +34,23 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Некорректный URL');
   }
 
+  if (urlObj.protocol !== 'https:') {
+    throw new Error('Недопустимый протокол URL');
+  }
+
+  if (urlObj.username || urlObj.password) {
+    throw new Error('URL не должен содержать userinfo');
+  }
+
+  if (urlObj.port && urlObj.port !== '' && urlObj.port !== '443') {
+    throw new Error('Недопустимый порт URL');
+  }
+
   if (!allowedHosts.includes(urlObj.hostname)) {
     throw new Error('Недопустимый домен URL');
   }
 
-  const res = await fetch(shortUrl, { redirect: 'follow' });
+  const res = await fetch(urlObj.toString(), { redirect: 'follow' });
   return res.url;
 }
 

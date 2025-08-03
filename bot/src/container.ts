@@ -3,7 +3,7 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
 import routes from './services/routes.js';
-import maps from './services/maps.js';
+import maps from './services/maps';
 import telegram from './services/telegramApi.js';
 import scheduler from './services/scheduler.js';
 import TasksService from './tasks/tasks.service';

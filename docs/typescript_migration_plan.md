@@ -12,6 +12,7 @@
 | `scripts` и корневые конфиги | 13 |
 
 Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`.
+Переведены сервис, контроллер и роут карт.
 
 ### Высокий приоритет — сервер `bot/src`
 

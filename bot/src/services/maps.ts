@@ -1,26 +1,45 @@
 // Получение полной ссылки Google Maps и вспомогательные функции
 // Модули: node.js fetch, shared/mapUtils
-import mapUtils from '../shared/mapUtils.js'
+import mapUtils from '../shared/mapUtils.js';
 
-export interface Coordinates { lat: number; lng: number }
-
-export const {
-  extractCoords,
-  generateRouteLink,
-  generateMultiRouteLink,
-} = mapUtils as {
-  extractCoords: (url: string) => Coordinates | null
-  generateRouteLink: (
-    start: Coordinates | null,
-    end: Coordinates | null,
-    mode?: string,
-  ) => string
-  generateMultiRouteLink: (points?: Coordinates[], mode?: string) => string
+export interface Coordinates {
+  lat: number;
+  lng: number;
 }
 
+export const { extractCoords, generateRouteLink, generateMultiRouteLink } =
+  mapUtils as {
+    extractCoords: (url: string) => Coordinates | null;
+    generateRouteLink: (
+      start: Coordinates | null,
+      end: Coordinates | null,
+      mode?: string,
+    ) => string;
+    generateMultiRouteLink: (points?: Coordinates[], mode?: string) => string;
+  };
+
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
-  const res = await fetch(shortUrl, { redirect: 'follow' })
-  return res.url
+  // Развёртывает короткий URL Google Maps с проверкой домена
+  const allowedHosts = [
+    'goo.gl',
+    'maps.app.goo.gl',
+    'maps.google.com',
+    'www.google.com',
+  ];
+  let urlObj: URL;
+
+  try {
+    urlObj = new URL(shortUrl);
+  } catch {
+    throw new Error('Некорректный URL');
+  }
+
+  if (!allowedHosts.includes(urlObj.hostname)) {
+    throw new Error('Недопустимый домен URL');
+  }
+
+  const res = await fetch(shortUrl, { redirect: 'follow' });
+  return res.url;
 }
 
 const maps = {
@@ -28,10 +47,10 @@ const maps = {
   extractCoords,
   generateRouteLink,
   generateMultiRouteLink,
-}
+};
 
-export default maps
+export default maps;
 
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(module as any).exports = maps
+(module as any).exports = maps;

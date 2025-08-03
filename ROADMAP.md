@@ -281,3 +281,4 @@
 248. Переведены на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`
 249. Утилита verifyInitData выбрасывает ошибку при отсутствии BOT_TOKEN
 250. Исправлена типизация профиля пользователя для корректной сборки
+251. Проверяется домен коротких ссылок Google Maps для защиты от SSRF

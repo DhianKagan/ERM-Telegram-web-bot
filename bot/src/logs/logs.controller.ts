@@ -1,7 +1,7 @@
 // Контроллер логов с использованием LogsService
 // Основные модули: express-validator, container
 // @ts-nocheck
-import { handleValidation } from '../utils/validate.js';
+import { handleValidation } from '../utils/validate';
 import container from '../container';
 const service = /** @type {any} */ (container.resolve('LogsService'));
 

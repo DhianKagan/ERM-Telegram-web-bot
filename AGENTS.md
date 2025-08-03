@@ -10,7 +10,7 @@
 - Провайдеры контекстов экспортируйте из файлов контекста
 - Сборка TypeScript работает в строгом режиме; новые файлы пишите на TypeScript,
   план миграции описан в `docs/typescript_migration_plan.md`
-- Утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData` уже переведены на TypeScript
+- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` уже переведены на TypeScript
 
 ✅ Тесты
 
@@ -251,7 +251,7 @@
 - Улучшены сообщения об ошибках сохранения задач, добавлена метрика `api_errors_total`, логи содержат IP и User-Agent
 - Middleware logging.ts выводит IP и User-Agent в логах
 - Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
-- Функция rateLimiter.js логирует превышение лимитов с указанием IP и пути
+- Функция rateLimiter.ts логирует превышение лимитов с указанием IP и пути
 - После установки cookie `token` пишется лог с доменом
 - В railway_full_setup.md описан раздел «Переменные окружения» с `NODE_ENV` и `COOKIE_DOMAIN`, ссылка ведёт на раздел "Защита от CSRF"
 - verifyToken продлевает cookie `token` при каждом запросе (silent refresh)

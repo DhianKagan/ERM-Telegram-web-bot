@@ -14,7 +14,7 @@
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
-- Утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData` переписаны на TypeScript.
+- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` переписаны на TypeScript.
 - Dockerfile копирует каталог `dist` в образ, чтобы pm2 нашёл собранный сервер.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.

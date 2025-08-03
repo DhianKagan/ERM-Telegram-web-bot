@@ -11,11 +11,10 @@
 | `bot/tests` | 46 |
 | `scripts` и корневые конфиги | 13 |
 
-Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`.
+Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`.
 
 ### Высокий приоритет — сервер `bot/src`
 
-- `utils`: setTokenCookie.js, accessMask.js, rateLimiter.js, formatUser.js
 - `bot`: bot.js, messages.js
 - `controllers`: maps.js, optimizer.js, routes.js
 - `middleware`: taskAccess.js, checkRole.js

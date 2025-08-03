@@ -32,7 +32,7 @@
 Сборка выполнена в строгом режиме TypeScript (`strict`),
 опция `noImplicitAny` временно отключена для постепенной миграции.
 Подробный план миграции из JavaScript описан в `docs/typescript_migration_plan.md`.
-На TypeScript уже перенесены утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
+На TypeScript уже перенесены утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 
 ### Защита от инъекций
@@ -53,7 +53,7 @@
 - `1` — обычный пользователь.
 - `2` — администратор.
 
-Функция `hasAccess` из `bot/src/utils/accessMask.js` проверяет права. Для маршрутов введены `Roles` и `rolesGuard`,
+Функция `hasAccess` из `bot/src/utils/accessMask.ts` проверяет права. Для маршрутов введены `Roles` и `rolesGuard`,
 которые задают и проверяют маску доступа пользователя.
 
 ## Основные маршруты API

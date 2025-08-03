@@ -1,7 +1,7 @@
 // Контроллер задач с использованием TasksService
 // Основные модули: express-validator, services, wgLogEngine
 // @ts-nocheck
-import { handleValidation } from '../utils/validate.js';
+import { handleValidation } from '../utils/validate';
 import container from '../container';
 const service = /** @type {any} */ (container.resolve('TasksService'));
 import { writeLog } from '../services/service.js';

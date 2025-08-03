@@ -1,7 +1,7 @@
 // Контроллер пользователей с использованием UsersService
 // Основные модули: express-validator, container, utils/formatUser
 // @ts-nocheck
-import { handleValidation } from '../utils/validate.js';
+import { handleValidation } from '../utils/validate';
 import container from '../container';
 const service = /** @type {any} */ (container.resolve('UsersService'));
 import formatUser from '../utils/formatUser.js';

@@ -10,7 +10,7 @@
 - Провайдеры контекстов экспортируйте из файлов контекста
 - Сборка TypeScript работает в строгом режиме; новые файлы пишите на TypeScript,
   план миграции описан в `docs/typescript_migration_plan.md`
-- Утилиты `userLink` и `formatTask` уже переведены на TypeScript
+- Утилиты `userLink`, `formatTask`, `validate` и `haversine` уже переведены на TypeScript
 
 ✅ Тесты
 
@@ -260,7 +260,7 @@
 - Удалён модуль `services/gateway.js`, переменные `GATEWAY_API_KEY` и `GATEWAY_SENDER` больше не используются
 - Удалена неиспользуемая зависимость @aws-sdk/client-s3
 - Удалён модуль `services/r2.js`, переменные `R2_*` больше не используются
-- В роутерах используется функция `utils/validate.js` для проверки данных
+- В роутерах используется функция `utils/validate.ts` для проверки данных
 - Общая функция handleValidation заменяет проверки в контроллерах, файл tasks.js удалён
 - В tasks.service.ts и services/tasks.js дублирование расчёта маршрута заменено функцией applyRouteInfo
 - Удалён дублирующийся скрипт .husky/husky.sh

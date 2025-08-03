@@ -55,12 +55,17 @@ async function verifyCode(id, code, username) {
     });
   const role = roleId === config.adminRoleId ? 'admin' : 'user';
   const access = role === 'admin' ? 2 : 1;
-  const token = generateToken({ id: telegramId, username: u.username, role, access });
+  const token = generateToken({
+    id: telegramId,
+    username: u.username,
+    role,
+    access,
+  });
   await writeLog(`Вход пользователя ${telegramId}/${u.username}`);
   return token;
 }
 
-import verifyInit from '../utils/verifyInitData.js';
+import verifyInit from '../utils/verifyInitData';
 
 async function verifyInitData(initData) {
   if (!initData || !verifyInit(initData)) throw new Error('invalid initData');
@@ -75,11 +80,21 @@ async function verifyInitData(initData) {
   if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
   if (!user) {
-    user = await createUser(telegramId, userData.username || '', config.userRoleId, { access: 1 });
+    user = await createUser(
+      telegramId,
+      userData.username || '',
+      config.userRoleId,
+      { access: 1 },
+    );
   }
   const role = user.role || 'user';
   const access = user.access || 1;
-  const token = generateToken({ id: telegramId, username: user.username, role, access });
+  const token = generateToken({
+    id: telegramId,
+    username: user.username,
+    role,
+    access,
+  });
   await writeLog(`Вход пользователя ${telegramId}/${user.username}`);
   return token;
 }

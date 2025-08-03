@@ -1,0 +1,29 @@
+// Назначение файла: проверка подписи initData Telegram WebApp
+// Основные модули: crypto, config
+import crypto from 'crypto';
+import config from '../config.js';
+
+const { botToken } = config;
+
+export default function verifyInitData(initData: string): boolean {
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash') || '';
+  params.delete('hash');
+  const dataCheckString = [...params.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n');
+  const secretKey = crypto
+    .createHmac('sha256', 'WebAppData')
+    .update(botToken)
+    .digest();
+  const hmac = crypto
+    .createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
+  return hmac === hash;
+}
+
+// Совместимость с CommonJS
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(module as any).exports = verifyInitData;

@@ -10,7 +10,7 @@
 - Провайдеры контекстов экспортируйте из файлов контекста
 - Сборка TypeScript работает в строгом режиме; новые файлы пишите на TypeScript,
   план миграции описан в `docs/typescript_migration_plan.md`
-- Утилиты `userLink`, `formatTask`, `validate` и `haversine` уже переведены на TypeScript
+- Утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData` уже переведены на TypeScript
 
 ✅ Тесты
 

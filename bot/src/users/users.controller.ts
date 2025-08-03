@@ -3,8 +3,8 @@
 // @ts-nocheck
 import { handleValidation } from '../utils/validate';
 import container from '../container';
-const service = /** @type {any} */ (container.resolve('UsersService'));
-import formatUser from '../utils/formatUser.js';
+const service = /** @type {any} */ container.resolve('UsersService');
+import formatUser from '../utils/formatUser';
 
 export const list = async (_req, res) => {
   const users = await service.list();

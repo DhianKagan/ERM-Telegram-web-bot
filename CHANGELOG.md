@@ -8,6 +8,7 @@
 
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
+- На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - `verifyInitData` проверяет наличие переменной `BOT_TOKEN` и выбрасывает ошибку при её отсутствии.
 
 - Исправлено подключение middleware `logging` и `metrics` в API.
@@ -319,7 +320,7 @@
   и отключения его в режиме разработки
 - Middleware logging.ts выводит IP и User-Agent в логах
 - Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
-- Логирование превышения лимитов запросов через rateLimiter.js
+- Логирование превышения лимитов запросов через rateLimiter.ts
 - Значение COOKIE_DOMAIN приводится к hostname, неподдерживаемые форматы вызывают ошибку.
 - Установка cookie `token` сопровождается логом с доменом
 - В railway_full_setup.md уточнён список переменных окружения с ссылкой на защиту от CSRF

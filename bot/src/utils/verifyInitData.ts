@@ -13,9 +13,13 @@ export default function verifyInitData(initData: string): boolean {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`)
     .join('\n');
+  const token = botToken;
+  if (!token) {
+    throw new Error('BOT_TOKEN не задан');
+  }
   const secretKey = crypto
     .createHmac('sha256', 'WebAppData')
-    .update(botToken)
+    .update(token)
     .digest();
   const hmac = crypto
     .createHmac('sha256', secretKey)

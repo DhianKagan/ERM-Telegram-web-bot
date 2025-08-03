@@ -278,3 +278,4 @@
 246. Включён строгий режим TypeScript в сборке
 247. Составлен план миграции JavaScript → TypeScript и запланированы проверки против возврата к `.js`
 248. Переведены на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`
+249. Утилита verifyInitData выбрасывает ошибку при отсутствии BOT_TOKEN

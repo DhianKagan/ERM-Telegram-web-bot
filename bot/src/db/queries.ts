@@ -9,8 +9,9 @@ import {
   UserDocument,
   RoleDocument,
 } from './model';
-import logEngine from '../services/wgLogEngine';
+import * as logEngine from '../services/wgLogEngine';
 import config from '../config.js';
+import { Types, PipelineStage } from 'mongoose';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -86,9 +87,13 @@ export async function getTasks(
   limit?: number,
 ): Promise<TaskDocument[]> {
   if (filters.kanban) {
-    let qKanban = Task.find({}).sort('-createdAt');
-    if (typeof (qKanban as any).lean === 'function') qKanban = qKanban.lean();
-    return qKanban as unknown as Promise<TaskDocument[]>;
+    let qKanban: any = Task.find({});
+    if (typeof qKanban.sort === 'function')
+      qKanban = qKanban.sort('-createdAt');
+    if (typeof qKanban.lean === 'function') qKanban = qKanban.lean();
+    return (
+      typeof qKanban.exec === 'function' ? qKanban.exec() : qKanban
+    ) as Promise<TaskDocument[]>;
   }
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
@@ -100,15 +105,17 @@ export async function getTasks(
   if (filters.from || filters.to) q.createdAt = {} as Record<string, Date>;
   if (filters.from) (q.createdAt as any).$gte = new Date(filters.from);
   if (filters.to) (q.createdAt as any).$lte = new Date(filters.to);
-  let query = Task.find(q);
-  if (typeof (query as any).lean === 'function') query = query.lean();
-  if (typeof (query as any).skip === 'function' && limit) {
+  let query: any = Task.find(q);
+  if (typeof query.sort === 'function') query = query.sort('-createdAt');
+  if (typeof query.lean === 'function') query = query.lean();
+  if (limit && typeof query.skip === 'function') {
     const p = Number(page) || 1;
     const l = Number(limit) || 20;
     query = query.skip((p - 1) * l).limit(l);
-    return query as unknown as Promise<TaskDocument[]>;
   }
-  return query as unknown as Promise<TaskDocument[]>;
+  return (typeof query.exec === 'function' ? query.exec() : query) as Promise<
+    TaskDocument[]
+  >;
 }
 
 interface RoutesFilters {
@@ -183,17 +190,18 @@ export async function summary(
   if (filters.from || filters.to) match.createdAt = {} as Record<string, Date>;
   if (filters.from) (match.createdAt as any).$gte = filters.from;
   if (filters.to) (match.createdAt as any).$lte = filters.to;
-  const res = await Task.aggregate(
-    [
-      Object.keys(match).length ? { $match: match } : undefined,
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 },
-          time: { $sum: '$time_spent' },
-        },
+  const pipeline: (PipelineStage | undefined)[] = [
+    Object.keys(match).length ? { $match: match } : undefined,
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        time: { $sum: '$time_spent' },
       },
-    ].filter(Boolean),
+    },
+  ];
+  const res = await Task.aggregate(
+    pipeline.filter((s): s is PipelineStage => Boolean(s)),
   );
   const { count = 0, time = 0 } = (res[0] || {}) as any;
   return { count, time };
@@ -211,14 +219,13 @@ export async function createUser(
   let role = 'user';
   let rId = roleId || config.userRoleId;
   if (rId) {
-    const { Types } = await import('mongoose');
     if (!Types.ObjectId.isValid(rId)) {
       throw new Error('Invalid roleId');
     }
     const dbRole = await Role.findById(rId);
     if (dbRole) {
       role = dbRole.name || 'user';
-      rId = dbRole._id.toString();
+      rId = (dbRole._id as Types.ObjectId).toString();
     }
   }
   return User.create({

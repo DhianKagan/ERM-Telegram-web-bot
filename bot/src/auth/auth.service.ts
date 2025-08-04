@@ -6,6 +6,7 @@ import { getUser, createUser, updateUser } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config.js';
+import { Types } from 'mongoose';
 
 async function sendCode(telegramId) {
   if (!telegramId) throw new Error('telegramId required');
@@ -28,7 +29,7 @@ async function verifyCode(id, code, username) {
     verified = otp.verifyAdminCode({ telegramId: Number(telegramId), code });
     if (verified && user && roleId !== config.adminRoleId) {
       user = await updateUser(telegramId, {
-        roleId: config.adminRoleId,
+        roleId: new Types.ObjectId(config.adminRoleId),
         role: 'admin',
         access: 2,
       });

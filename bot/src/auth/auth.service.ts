@@ -1,7 +1,7 @@
 // Сервис авторизации: отправка и проверка кодов входа
 // Основные модули: otp, queries, userInfoService, writeLog
 import otp from '../services/otp';
-import { generateToken } from './auth.js';
+import { generateToken } from './auth';
 import { getUser, createUser, updateUser } from '../db/queries.js';
 import { getMemberStatus } from '../services/userInfoService.js';
 import { writeLog } from '../services/service.js';

@@ -4,12 +4,12 @@
 
 ## Инвентаризация JS-файлов
 
-| Каталог | Количество |
-| ------- | ---------- |
-| `bot/src` | 46 |
-| `bot/web` | 24 |
-| `bot/tests` | 46 |
-| `scripts` и корневые конфиги | 13 |
+| Каталог                      | Количество |
+| ---------------------------- | ---------- |
+| `bot/src`                    | 46         |
+| `bot/web`                    | 24         |
+| `bot/tests`                  | 46         |
+| `scripts` и корневые конфиги | 13         |
 
 Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`.
 Переведены сервис, контроллер и роут карт.
@@ -22,7 +22,7 @@
 - `services`: messageQueue.js, userInfoService.js, tasks.js, route.js, maps.js, scheduler.js, wgLogEngine.js, optimizer.js, telegramApi.js, service.js, otp.js, routes.js
 - `routes`: tasks.js, route.js, authUser.js, maps.js, users.js, optimizer.js, logs.js, roles.js, routes.js
 - `api`: middleware.js, swagger.js, api.js
-- `прочее`: shared/mapUtils.js, models/User.js, admin/customAdmin.js, config.js, auth/auth.js, db/queries.js, db/model.js, db/connection.js
+- `прочее`: shared/mapUtils.js, models/User.js, admin/customAdmin.js, config.js, db/queries.js, db/model.js, db/connection.js
 
 ### Средний приоритет
 
@@ -40,4 +40,3 @@
 3. Удалить `allowJs` и включить `noImplicitAny`, устранив оставшиеся `any`.
 4. После перевода включить проверку отсутствия `.js` через ESLint.
 5. Провести ревью архитектуры и внедрить проверки, исключающие возврат к JavaScript.
-

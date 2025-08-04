@@ -57,7 +57,7 @@ async function verifyCode(id, code, username) {
   const access = role === 'admin' ? 2 : 1;
   const token = generateToken({
     id: telegramId,
-    username: u.username,
+    username: u.username || '',
     role,
     access,
   });
@@ -91,7 +91,7 @@ async function verifyInitData(initData) {
   const access = user.access || 1;
   const token = generateToken({
     id: telegramId,
-    username: user.username,
+    username: user.username || '',
     role,
     access,
   });

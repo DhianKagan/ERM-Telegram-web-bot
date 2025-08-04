@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
 }
 
-const bot = new Telegraf(botToken);
+const bot = new Telegraf(botToken!);
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);
@@ -31,7 +31,7 @@ async function showMainMenu(ctx: any): Promise<void> {
 
 async function checkAndRegister(ctx: any): Promise<void> {
   try {
-    const member = await bot.telegram.getChatMember(chatId, ctx.from.id);
+    const member = await bot.telegram.getChatMember(chatId!, ctx.from.id);
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
       await ctx.reply(messages.accessOnlyGroup);
       return;

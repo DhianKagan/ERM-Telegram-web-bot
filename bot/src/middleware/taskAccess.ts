@@ -1,6 +1,6 @@
 // Назначение: проверка права пользователя изменять задачу
 // Основные модули: express, accessMask, tasks, service
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { hasAccess, ACCESS_ADMIN, ACCESS_USER } from '../utils/accessMask';
 import * as service from '../services/tasks';
 import { writeLog } from '../services/service';
@@ -11,10 +11,21 @@ interface UserInfo {
   access?: number;
 }
 
-interface RequestWithUser extends Request {
+interface TaskInfo {
+  created_by?: number;
+  assigned_user_id?: number;
+  controller_user_id?: number;
+  assignees?: number[];
+  controllers?: number[];
+}
+
+interface RequestWithUser {
+  method: string;
+  originalUrl: string;
+  ip: string;
+  params: Record<string, string>;
   user?: UserInfo;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  task?: any;
+  task?: TaskInfo;
 }
 
 export default async function checkTaskAccess(
@@ -22,7 +33,7 @@ export default async function checkTaskAccess(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const task = await service.getById(req.params.id);
+  const task = (await service.getById(req.params.id)) as TaskInfo | null;
   if (!task) {
     res.sendStatus(404);
     return;

@@ -1,6 +1,6 @@
 // Назначение: проверка роли или маски доступа
 // Основные модули: express, accessMask, service
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { hasAccess, ACCESS_USER } from '../utils/accessMask';
 import { writeLog } from '../services/service';
 
@@ -13,7 +13,10 @@ interface UserInfo {
   access?: number;
 }
 
-interface RequestWithUser extends Request {
+interface RequestWithUser {
+  method: string;
+  originalUrl: string;
+  ip: string;
   user?: UserInfo;
 }
 

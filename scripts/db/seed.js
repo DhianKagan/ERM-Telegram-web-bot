@@ -1,6 +1,6 @@
 // Заполнение тестовыми данными
 import mongoose from 'mongoose'
-import { Task, Group, User, Log } from '../../bot/src/db/model.js'
+import { Task, Group, User, Log } from '../../bot/src/db/model'
 import config from '../../bot/src/config.js'
 import 'dotenv/config'
 

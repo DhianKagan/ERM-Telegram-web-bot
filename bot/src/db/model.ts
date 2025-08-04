@@ -1,16 +1,22 @@
-// Модели MongoDB. Подключение выполняет модуль connection.js
-const mongoose = require('mongoose');
-const slugify = require('slugify');
-const connect = require('./connection');
+// Модели MongoDB. Подключение выполняет модуль connection.ts
+// Основные модули: mongoose, slugify, connection
+import mongoose, { Schema, Document, Model, Types } from 'mongoose';
+import slugify from 'slugify';
+import connect from './connection';
 
 if (process.env.NODE_ENV !== 'test') {
-  connect().catch((e) => {
+  connect().catch((e: any) => {
     console.error('Не удалось подключиться к MongoDB:', e.message);
     process.exit(1);
   });
 }
 
-const checklistItemSchema = new mongoose.Schema(
+export interface ChecklistItem {
+  text?: string;
+  done?: boolean;
+}
+
+const checklistItemSchema = new Schema<ChecklistItem>(
   {
     text: String,
     done: { type: Boolean, default: false },
@@ -18,7 +24,13 @@ const checklistItemSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const applicantSchema = new mongoose.Schema(
+export interface Applicant {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
+const applicantSchema = new Schema<Applicant>(
   {
     name: String,
     phone: String,
@@ -27,7 +39,16 @@ const applicantSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const logisticsSchema = new mongoose.Schema(
+export interface Logistics {
+  start_location?: string;
+  end_location?: string;
+  start_date?: Date;
+  end_date?: Date;
+  transport?: string;
+  transport_type?: 'Пешком' | 'Авто' | 'Дрон';
+}
+
+const logisticsSchema = new Schema<Logistics>(
   {
     start_location: String,
     end_location: String,
@@ -43,7 +64,13 @@ const logisticsSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const itemSchema = new mongoose.Schema(
+export interface Item {
+  name?: string;
+  quantity?: number;
+  cost?: number;
+}
+
+const itemSchema = new Schema<Item>(
   {
     name: String,
     quantity: Number,
@@ -52,7 +79,14 @@ const itemSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const procurementSchema = new mongoose.Schema(
+export interface Procurement {
+  items?: Item[];
+  vendor?: string;
+  total_cost?: number;
+  payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
+}
+
+const procurementSchema = new Schema<Procurement>(
   {
     items: [itemSchema],
     vendor: String,
@@ -66,7 +100,13 @@ const procurementSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const workSchema = new mongoose.Schema(
+export interface Work {
+  description?: string;
+  deadline?: Date;
+  performers?: number[];
+}
+
+const workSchema = new Schema<Work>(
   {
     description: String,
     deadline: Date,
@@ -75,7 +115,73 @@ const workSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const taskSchema = new mongoose.Schema(
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+export interface Comment {
+  author_id: number;
+  text: string;
+  created_at?: Date;
+}
+
+export interface Attachment {
+  name: string;
+  url: string;
+}
+
+export interface TaskAttrs {
+  request_id?: string;
+  submission_date?: Date;
+  applicant?: Applicant;
+  logistics_details?: Logistics;
+  procurement_details?: Procurement;
+  work_details?: Work;
+  title: string;
+  slug?: string;
+  task_description?: string;
+  task_type?: 'Доставить' | 'Купить' | 'Выполнить' | 'Построить' | 'Починить';
+  task_type_id?: number;
+  start_date?: Date;
+  due_date?: Date;
+  remind_at?: Date;
+  location?: string;
+  start_location?: string;
+  start_location_link?: string;
+  startCoordinates?: Coordinates;
+  end_location?: string;
+  end_location_link?: string;
+  finishCoordinates?: Coordinates;
+  google_route_url?: string;
+  route_distance_km?: number;
+  route_nodes?: number[];
+  assigned_user_id?: number;
+  controller_user_id?: number;
+  controllers?: number[];
+  assignees?: number[];
+  priority?: 'Срочно' | 'В течение дня' | 'Бессрочно';
+  priority_id?: number;
+  created_by?: number;
+  comments?: Comment[];
+  status?: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+  completed_at?: Date;
+  completion_result?: 'full' | 'partial' | 'changed';
+  cancel_reason?: 'technical' | 'canceled' | 'declined';
+  checklist?: ChecklistItem[];
+  comment?: string;
+  files?: string[];
+  attachments?: Attachment[];
+  transport_type?: 'Пешком' | 'Авто' | 'Дрон';
+  payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
+  telegram_topic_id?: number;
+  time_spent?: number;
+  custom_fields?: mongoose.Schema.Types.Mixed;
+}
+
+export interface TaskDocument extends TaskAttrs, Document {}
+
+const taskSchema = new Schema<TaskDocument>(
   {
     request_id: String,
     submission_date: Date,
@@ -159,12 +265,12 @@ const taskSchema = new mongoose.Schema(
 
     telegram_topic_id: Number,
     time_spent: { type: Number, default: 0 },
-    custom_fields: mongoose.Schema.Types.Mixed,
+    custom_fields: Schema.Types.Mixed,
   },
   { timestamps: true },
 );
 
-taskSchema.pre('save', async function (next) {
+taskSchema.pre<TaskDocument>('save', async function (next) {
   if (!this.request_id) {
     const count = await this.constructor.countDocuments();
     const num = String(count + 1).padStart(6, '0');
@@ -179,11 +285,35 @@ taskSchema.pre('save', async function (next) {
   next();
 });
 
-const roleSchema = new mongoose.Schema({
+export interface RoleAttrs {
+  name?: string;
+  permissions?: (string | number)[];
+}
+
+export interface RoleDocument extends RoleAttrs, Document {}
+
+const roleSchema = new Schema<RoleDocument>({
   name: String,
   permissions: [String],
 });
-const userSchema = new mongoose.Schema({
+
+export interface UserAttrs {
+  telegram_id: number;
+  username?: string;
+  name?: string;
+  phone?: string;
+  mobNumber?: string;
+  email: string;
+  role?: 'user' | 'admin';
+  access: number;
+  roleId?: Types.ObjectId;
+  receive_reminders?: boolean;
+  verified_at?: Date;
+}
+
+export interface UserDocument extends UserAttrs, Document {}
+
+const userSchema = new Schema<UserDocument>({
   telegram_id: Number,
   username: String,
   // Полное имя пользователя для отображения в интерфейсе
@@ -199,13 +329,22 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   // Маска доступа: 1 - пользователь, 2 - администратор
   access: { type: Number, default: 1 },
-  roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
+  roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
   // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
   // Дата прохождения верификации через Bot API
   verified_at: Date,
 });
-const logSchema = new mongoose.Schema(
+
+export interface LogAttrs {
+  message?: string;
+  // уровень логирования; console.log сохраняет уровень `log`
+  level?: 'debug' | 'info' | 'warn' | 'error' | 'log';
+}
+
+export interface LogDocument extends LogAttrs, Document {}
+
+const logSchema = new Schema<LogDocument>(
   {
     message: String,
     // уровень логирования; console.log сохраняет уровень `log`
@@ -218,14 +357,31 @@ const logSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const Task = mongoose.model('Task', taskSchema);
+export const Task: Model<TaskDocument> = mongoose.model<TaskDocument>(
+  'Task',
+  taskSchema,
+);
 // Отдельная коллекция для архивных задач
-const Archive = mongoose.model('Archive', taskSchema, 'archives');
-const Role = mongoose.model('Role', roleSchema);
+export const Archive: Model<TaskDocument> = mongoose.model<TaskDocument>(
+  'Archive',
+  taskSchema,
+  'archives',
+);
+export const Role: Model<RoleDocument> = mongoose.model<RoleDocument>(
+  'Role',
+  roleSchema,
+);
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
-const User = mongoose.model('User', userSchema, 'telegram_users');
-const Log = mongoose.model('Log', logSchema);
+export const User: Model<UserDocument> = mongoose.model<UserDocument>(
+  'User',
+  userSchema,
+  'telegram_users',
+);
+export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
+  'Log',
+  logSchema,
+);
 
-module.exports = { Task, Archive, User, Log, Role };
+export { Task, Archive, User, Log, Role };

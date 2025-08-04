@@ -3,9 +3,9 @@
 // @ts-nocheck
 import { handleValidation } from '../utils/validate';
 import container from '../container';
-const service = /** @type {any} */ (container.resolve('TasksService'));
+const service = /** @type {any} */ container.resolve('TasksService');
 import { writeLog } from '../services/service';
-import { getUsersMap } from '../db/queries.js';
+import { getUsersMap } from '../db/queries';
 
 export const list = async (req, res) => {
   const { page, limit, ...filters } = req.query;

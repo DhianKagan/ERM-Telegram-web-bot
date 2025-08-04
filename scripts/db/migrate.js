@@ -1,7 +1,7 @@
 // Скрипт миграции MongoDB: создаёт индексы
 import mongoose from 'mongoose'
 import 'dotenv/config'
-import '../bot/src/db/model.js'
+import '../bot/src/db/model'
 
 await mongoose.connection.db.collection('tasks').createIndex({ due_date: 1 })
 await mongoose.connection.db.collection('tasks').createIndex({ start_date: 1 })

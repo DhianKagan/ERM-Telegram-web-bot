@@ -272,7 +272,9 @@ const taskSchema = new Schema<TaskDocument>(
 
 taskSchema.pre<TaskDocument>('save', async function (next) {
   if (!this.request_id) {
-    const count = await this.constructor.countDocuments();
+    const count = await (
+      this.constructor as unknown as Model<TaskDocument>
+    ).countDocuments();
     const num = String(count + 1).padStart(6, '0');
     this.request_id = `ERM_${num}`;
   }
@@ -383,5 +385,3 @@ export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
   'Log',
   logSchema,
 );
-
-export { Task, Archive, User, Log, Role };

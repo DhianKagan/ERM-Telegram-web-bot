@@ -20,6 +20,8 @@
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` переписаны на TypeScript.
 - Модуль авторизации `auth` переписан на TypeScript.
+- Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript.
+- Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`.
 - Все сервисы переписаны на TypeScript и снабжены интерфейсами.
 - Значение `username` в токене по умолчанию пустое, что устраняет ошибку сборки.
 - Dockerfile копирует каталог `dist` в образ, чтобы pm2 нашёл собранный сервер.

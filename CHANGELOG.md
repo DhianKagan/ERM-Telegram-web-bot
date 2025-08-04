@@ -18,6 +18,7 @@
 - Исправлено подключение middleware `logging` и `metrics` в API.
 - Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.
+- Исправлены ошибки TypeScript, из-за которых падала сборка Docker.
 - Исправлена типизация профиля пользователя: `formatUser` принимает отсутствующий `telegram_id`.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён

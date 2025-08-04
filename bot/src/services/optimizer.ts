@@ -23,12 +23,19 @@ export async function optimize(
   count = Math.min(count, tasks.length);
 
   const center = {
-    lat: tasks.reduce((s, t) => s + (t.startCoordinates!.lat || 0), 0) / tasks.length,
-    lng: tasks.reduce((s, t) => s + (t.startCoordinates!.lng || 0), 0) / tasks.length,
+    lat:
+      tasks.reduce((s, t) => s + (t.startCoordinates!.lat || 0), 0) /
+      tasks.length,
+    lng:
+      tasks.reduce((s, t) => s + (t.startCoordinates!.lng || 0), 0) /
+      tasks.length,
   };
 
   const angle = (t: TaskLike): number =>
-    Math.atan2(t.startCoordinates!.lat - center.lat, t.startCoordinates!.lng - center.lng);
+    Math.atan2(
+      t.startCoordinates!.lat - center.lat,
+      t.startCoordinates!.lng - center.lng,
+    );
 
   const sorted = tasks.sort((a, b) => angle(a) - angle(b));
   const step = Math.ceil(sorted.length / count);
@@ -48,7 +55,7 @@ export async function optimize(
         .map((t) => `${t.startCoordinates!.lng},${t.startCoordinates!.lat}`)
         .join(';');
       try {
-        const data: any = await route.trip(points, { roundtrip: false });
+        const data: any = await route.trip(points, { roundtrip: 'false' });
         const ordered = data.trips?.[0]?.waypoints
           ? data.trips[0].waypoints.map((wp: any) => g[wp.waypoint_index])
           : g;
@@ -66,4 +73,3 @@ export async function optimize(
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = { optimize };
-

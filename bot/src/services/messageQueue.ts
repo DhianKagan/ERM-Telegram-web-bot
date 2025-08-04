@@ -10,7 +10,7 @@ interface QueueItem<T> {
 export const queue: QueueItem<unknown>[] = [];
 export const MAX_QUEUE_SIZE = 100;
 let tokens = 30;
-let timer: NodeJS.Timer | undefined;
+let timer: NodeJS.Timeout | undefined;
 
 function process(): void {
   while (tokens > 0 && queue.length) {
@@ -50,7 +50,11 @@ export function enqueue<T>(fn: () => Promise<T> | T): Promise<T> {
       reject(new Error('queue overflow'));
       return;
     }
-    queue.push({ fn, resolve, reject });
+    queue.push({
+      fn: fn as () => Promise<unknown> | unknown,
+      resolve: resolve as unknown as (value: unknown) => void,
+      reject,
+    });
     process();
   });
 }
@@ -58,4 +62,3 @@ export function enqueue<T>(fn: () => Promise<T> | T): Promise<T> {
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = { enqueue, queue, stopQueue, MAX_QUEUE_SIZE };
-

@@ -4,7 +4,7 @@ import { getRouteDistance } from '../services/route';
 import { generateRouteLink } from '../services/maps';
 
 class TasksService {
-  repo
+  repo;
   constructor(repo) {
     this.repo = repo;
     if (!this.repo.createTask && this.repo.Task?.create) {
@@ -45,7 +45,9 @@ class TasksService {
           data.startCoordinates,
           data.finishCoordinates,
         );
-        data.route_distance_km = Number((r.distance / 1000).toFixed(1));
+        if (typeof r.distance === 'number') {
+          data.route_distance_km = Number((r.distance / 1000).toFixed(1));
+        }
       } catch {
         /* пропускаем ошибку расчёта */
       }

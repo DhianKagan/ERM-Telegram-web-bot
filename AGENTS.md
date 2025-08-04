@@ -13,6 +13,7 @@
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` уже переведены на TypeScript
 - Сервис, контроллер и роут карт переписаны на TypeScript
 - Модуль авторизации переписан на TypeScript
+- Отсутствующий `username` заменяется пустой строкой для успешной сборки
 
 ✅ Тесты
 

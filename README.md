@@ -13,6 +13,8 @@
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.js`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
 - Сервис и контроллер карт переведены на TypeScript.
+- Подключение к MongoDB, модели и запросы (`connection.ts`, `model.ts`,
+  `queries.ts`) используют строгие типы TypeScript.
 - Развёртывание коротких ссылок Google Maps проверяет домен, протокол https, отсутствие userinfo и нестандартного порта.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.

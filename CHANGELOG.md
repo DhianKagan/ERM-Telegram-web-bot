@@ -10,6 +10,8 @@
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписан модуль `auth`.
+- Подключение, модели и запросы MongoDB (`connection.ts`, `model.ts`,
+  `queries.ts`) переведены на TypeScript и снабжены типами схем.
 - Все сервисы переписаны на TypeScript, добавлены интерфейсы и тесты `getRouteDistance`.
 - `verifyInitData` проверяет наличие переменной `BOT_TOKEN` и выбрасывает ошибку при её отсутствии.
 

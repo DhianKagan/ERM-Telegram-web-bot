@@ -13,6 +13,7 @@
 - `src/routes` — REST‑маршруты. Маршруты `users`, `roles` и `logs` используют default‑импорт `rolesGuard`.
 - `src/services` — работа с Telegram API и MongoDB.
 - `src/models`, `src/db` — схемы Mongoose и подключение к базе.
+- Файлы `connection.ts`, `model.ts` и `queries.ts` написаны на TypeScript.
 - `web` — клиентская часть React с собственными контекстами.
 - Контейнер собирается через `Dockerfile` в корне репозитория.
   Отдельный `bot/Dockerfile` удалён за ненадобностью.

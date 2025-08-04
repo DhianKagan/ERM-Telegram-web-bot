@@ -2,7 +2,7 @@
 // Основные модули: otp, queries, userInfoService, writeLog
 import * as otp from '../services/otp';
 import { generateToken } from './auth';
-import { getUser, createUser, updateUser } from '../db/queries.js';
+import { getUser, createUser, updateUser } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config.js';

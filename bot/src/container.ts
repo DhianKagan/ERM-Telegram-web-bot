@@ -10,7 +10,7 @@ import TasksService from './tasks/tasks.service';
 import UsersService from './users/users.service';
 import RolesService from './roles/roles.service';
 import LogsService from './logs/logs.service';
-import queries from './db/queries.js';
+import queries from './db/queries';
 
 // Регистрация сервисов для последующей инъекции
 container.register('TasksRepository', { useValue: queries });

@@ -289,3 +289,4 @@
 252. Проверяется протокол https, userinfo и порт коротких ссылок Google Maps
 253. Уточнена типизация `username` в модуле авторизации для сборки Docker
 254. API и middleware переписаны на TypeScript, исходные `.js` файлы удалены
+255. Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript

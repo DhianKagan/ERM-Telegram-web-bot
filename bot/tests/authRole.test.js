@@ -7,7 +7,7 @@ process.env.APP_URL = 'https://localhost';
 
 const express = require('express');
 const request = require('supertest');
-const checkRole = require('../src/middleware/checkRole');
+const checkRole = require('../src/middleware/checkRole').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 const { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } = require('../src/utils/accessMask');

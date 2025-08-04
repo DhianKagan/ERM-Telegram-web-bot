@@ -7,7 +7,7 @@ process.env.APP_URL = 'https://localhost'
 
 const express = require('express')
 const request = require('supertest')
-const router = require('../src/routes/tasks')
+const router = require('../src/routes/tasks.ts')
 const { stopScheduler } = require('../src/services/scheduler')
 const { stopQueue } = require('../src/services/messageQueue')
 

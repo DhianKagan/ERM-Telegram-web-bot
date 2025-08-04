@@ -10,6 +10,7 @@ interface FetchOptions {
 }
 
 export const getProfile = (options?: FetchOptions) =>
+
   authFetch('/api/v1/auth/profile', options).then((r) => r.json())
 
 interface ProfileData {

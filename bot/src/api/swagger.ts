@@ -19,7 +19,7 @@ const options: swaggerJsdoc.Options = {
       },
     },
   },
-  apis: ['./src/api/api.ts', './src/routes/tasks.js'],
+  apis: ['./src/api/api.ts', './src/routes/tasks.ts'],
 };
 
 const specs = swaggerJsdoc(options);

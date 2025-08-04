@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import config from '../config.js';
 
-const secretKey: string = config.jwtSecret;
+const secretKey: string = config.jwtSecret!; // переменная гарантирована в config
 
 interface Payload {
   id: string | number;

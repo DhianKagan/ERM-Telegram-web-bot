@@ -12,6 +12,8 @@
 - На TypeScript переписан модуль `auth`.
 - `verifyInitData` проверяет наличие переменной `BOT_TOKEN` и выбрасывает ошибку при её отсутствии.
 
+- Уточнена типизация `username` в auth.service и auth.ts для корректной сборки Docker.
+
 - Исправлено подключение middleware `logging` и `metrics` в API.
 - Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.

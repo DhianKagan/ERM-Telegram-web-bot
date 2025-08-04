@@ -285,3 +285,4 @@
 - Устранена ошибка маршрута `/api/v1/users`, вызванная лишними аргументами
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`
 - Уточнена типизация профиля: `formatUser` поддерживает пустой `telegram_id`, сборка проходит
+- Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript, версии `.js` удалены

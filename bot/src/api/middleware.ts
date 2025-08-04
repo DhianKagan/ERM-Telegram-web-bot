@@ -1,8 +1,10 @@
 // Middleware проверки JWT и базовая обработка ошибок.
 // Модули: jsonwebtoken, config, prom-client
-const jwt = require('jsonwebtoken');
-const { writeLog } = require('../services/service');
-const client = require('prom-client');
+import jwt from 'jsonwebtoken';
+import { writeLog } from '../services/service';
+import client from 'prom-client';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import config from '../config';
 
 const csrfErrors = new client.Counter({
   name: 'csrf_errors_total',
@@ -15,18 +17,25 @@ const apiErrors = new client.Counter({
   labelNames: ['method', 'path', 'status'],
 });
 
-// Обёртка для перехвата ошибок асинхронных функций
-const asyncHandler = (fn) => async (req, res, next) => {
-  try {
-    await fn(req, res, next);
-  } catch (e) {
-    next(e);
-  }
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+): RequestHandler => {
+  return async (req, res, next) => {
+    try {
+      await fn(req, res, next);
+    } catch (e) {
+      next(e);
+    }
+  };
 };
 
-// Обработчик ошибок API
-// eslint-disable-next-line no-unused-vars
-function errorHandler(err, _req, res, _next) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function errorHandler(
+  err: any,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+): void {
   if (err.type === 'request.aborted') {
     res.status(400).json({ error: 'request aborted' });
     return;
@@ -41,7 +50,9 @@ function errorHandler(err, _req, res, _next) {
         _req.cookies && _req.cookies['XSRF-TOKEN']
           ? String(_req.cookies['XSRF-TOKEN']).slice(0, 8)
           : 'none';
-      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : 'anon';
+      const uid = (_req as any).user
+        ? `${(_req as any).user.id}/${(_req as any).user.username}`
+        : 'anon';
       writeLog(
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
       ).catch(() => {});
@@ -63,14 +74,16 @@ function errorHandler(err, _req, res, _next) {
   apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
 }
 
-const config = require('../config');
 const { jwtSecret } = config;
 const secretKey = jwtSecret;
 
-// Проверка JWT-токена
-function verifyToken(req, res, next) {
+export function verifyToken(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const auth = req.headers['authorization'];
-  let token;
+  let token: string | undefined;
   if (auth) {
     if (auth.startsWith('Bearer ')) {
       token = auth.slice(7).trim();
@@ -83,30 +96,29 @@ function verifyToken(req, res, next) {
           path: req.originalUrl,
           status: 403,
         });
-        return res
-          .status(403)
-          .json({ message: 'Неверный формат токена авторизации' });
+        res.status(403).json({ message: 'Неверный формат токена авторизации' });
+        return;
       }
     } else if (auth.includes(' ')) {
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-      return res
-        .status(403)
-        .json({ message: 'Неверный формат токена авторизации' });
+      res.status(403).json({ message: 'Неверный формат токена авторизации' });
+      return;
     } else {
       token = auth;
     }
-  } else if (req.cookies && req.cookies.token) {
-    token = req.cookies.token;
+  } else if (req.cookies && (req.cookies as any).token) {
+    token = (req.cookies as any).token;
   } else {
     writeLog(
       `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
     ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-    return res.status(403).json({
+    res.status(403).json({
       message: 'Токен авторизации отсутствует. Выполните вход заново.',
     });
+    return;
   }
 
   const preview = token ? String(token).slice(0, 8) : 'none';
@@ -114,12 +126,13 @@ function verifyToken(req, res, next) {
     if (err) {
       writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
-      return res
+      res
         .status(401)
         .json({ message: 'Недействительный токен. Выполните вход заново.' });
+      return;
     }
-    req.user = decoded;
-    const cookieOpts = {
+    (req as any).user = decoded;
+    const cookieOpts: any = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -134,8 +147,12 @@ function verifyToken(req, res, next) {
   });
 }
 
-function requestLogger(req, res, next) {
-  const { method, originalUrl, headers, cookies, ip } = req;
+export function requestLogger(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const { method, originalUrl, headers, cookies, ip } = req as any;
   const tokenVal =
     cookies && cookies.token ? cookies.token.slice(0, 8) : 'no-token';
   const csrfVal = headers['x-xsrf-token']
@@ -160,4 +177,4 @@ function requestLogger(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, asyncHandler, errorHandler, requestLogger };
+export default { verifyToken, asyncHandler, errorHandler, requestLogger };

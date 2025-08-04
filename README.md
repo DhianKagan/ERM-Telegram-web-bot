@@ -180,6 +180,8 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 
 Август 2025 года: из конфигурации убран модуль отправки SMS через GatewayAPI, переменные `GATEWAY_API_KEY` и `GATEWAY_SENDER` удалены.
 
+Сентябрь 2025 года: API и связанные middleware переписаны на TypeScript, исходные `.js` файлы удалены.
+
 ### Обновления зависимостей
 
 Удалены неиспользуемые пакеты bcrypt и mongodb-memory-server.

@@ -1,16 +1,16 @@
 // Назначение: настройка WG Log Engine и вывод логов в разные каналы
-// Модули: @wgtechlabs/log-engine, mongoose, node:process, fetch
-const { Log } = require('../db/model');
-const { LogEngine, LogMode } = require('@wgtechlabs/log-engine');
+// Модули: @wgtechlabs/log-engine, mongoose, fetch
+import { Log } from '../db/model';
+import { LogEngine, LogMode } from '@wgtechlabs/log-engine';
 
 const mode = process.env.LOG_LEVEL || 'debug';
-const modes = {
+const modes: Record<string, LogMode> = {
   debug: LogMode.DEBUG,
   info: LogMode.INFO,
   warn: LogMode.WARN,
   error: LogMode.ERROR,
 };
-const outputs = [
+const outputs: any[] = [
   'console',
   {
     type: 'file',
@@ -21,7 +21,7 @@ const outputs = [
       append: true,
     },
   },
-  async (level, message) => {
+  async (level: string, message: string) => {
     if (process.env.NODE_ENV !== 'test') {
       await Log.create({ message, level });
     }
@@ -36,7 +36,7 @@ if (process.env.LOG_ERROR_WEBHOOK_URL) {
 }
 
 if (process.env.LOG_TELEGRAM_TOKEN && process.env.LOG_TELEGRAM_CHAT) {
-  outputs.push(async (level, message) => {
+  outputs.push(async (level: string, message: string) => {
     if (level === 'warn' || level === 'error') {
       const text = `⚠️ [${level.toUpperCase()}] ${message}`;
       await fetch(
@@ -61,14 +61,28 @@ LogEngine.configure({
 
 LogEngine.configureRedaction({ customPatterns: [/[\w-]{30,}/] });
 
-async function writeLog(message, level = 'info', metadata = {}) {
+export async function writeLog(
+  message: string,
+  level = 'info',
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
   LogEngine.log(level, message, metadata);
 }
 
-async function listLogs(params = {}) {
+export interface ListLogParams {
+  level?: string;
+  message?: string;
+  from?: string;
+  to?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function listLogs(params: ListLogParams = {}): Promise<unknown> {
   const { level, message, from, to, sort, page = 1, limit = 100 } = params;
   const allowedLevels = ['debug', 'info', 'warn', 'error', 'log'];
-  const filter = {};
+  const filter: any = {};
   if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
   if (message) filter.message = { $regex: message, $options: 'i' };
   if (from || to) {
@@ -76,7 +90,7 @@ async function listLogs(params = {}) {
     if (from) filter.createdAt.$gte = new Date(from);
     if (to) filter.createdAt.$lte = new Date(to);
   }
-  let sortObj = { createdAt: -1 };
+  let sortObj: any = { createdAt: -1 };
   if (sort === 'date_asc') sortObj = { createdAt: 1 };
   if (sort === 'level') sortObj = { level: 1 };
   if (sort === 'level_desc') sortObj = { level: -1 };
@@ -88,4 +102,9 @@ async function listLogs(params = {}) {
     .limit(lim);
 }
 
-module.exports = { writeLog, listLogs, logger: LogEngine };
+export const logger = LogEngine;
+
+// Совместимость с CommonJS
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(module as any).exports = { writeLog, listLogs, logger };
+

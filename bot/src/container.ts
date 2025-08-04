@@ -2,10 +2,10 @@
 // Основные модули: services, api
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import routes from './services/routes.js';
+import routes from './services/routes';
 import maps from './services/maps';
-import telegram from './services/telegramApi.js';
-import scheduler from './services/scheduler.js';
+import telegram from './services/telegramApi';
+import scheduler from './services/scheduler';
 import TasksService from './tasks/tasks.service';
 import UsersService from './users/users.service';
 import RolesService from './roles/roles.service';

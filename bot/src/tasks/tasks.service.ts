@@ -1,6 +1,6 @@
 // Сервис задач через репозиторий.
 // Основные модули: db/queries, services/route, services/maps
-import { getRouteDistance } from '../services/route.js';
+import { getRouteDistance } from '../services/route';
 import { generateRouteLink } from '../services/maps';
 
 class TasksService {

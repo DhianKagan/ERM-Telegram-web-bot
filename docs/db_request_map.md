@@ -16,7 +16,7 @@
 | Логи | `writeLog()`, `listLogs()` | `POST /api/v1/tasks/:id/status`, `GET /api/v1/logs`, `POST /api/v1/logs` |
 | Удалить задачу | `deleteTask()` | `DELETE /api/v1/tasks/:id` |
 
-Команды бота вызывают те же функции через `services/service.js`:
+Команды бота вызывают те же функции через `services/service.ts`:
 
 - `/create_task <текст>` — `createTask()`
 - `/list_users` — `listUsers()`

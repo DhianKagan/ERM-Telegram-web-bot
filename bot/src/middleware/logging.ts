@@ -1,6 +1,6 @@
 // Назначение: логирование HTTP запросов и ответов
 // Основные модули: wgLogEngine
-import { writeLog } from '../services/service.js';
+import { writeLog } from '../services/service';
 
 export default function logging(req, res, next) {
   const { method, originalUrl, headers, cookies, ip } = req;

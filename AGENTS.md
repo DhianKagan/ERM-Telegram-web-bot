@@ -10,6 +10,7 @@
 - Провайдеры контекстов экспортируйте из файлов контекста
 - Сборка TypeScript работает в строгом режиме; новые файлы пишите на TypeScript,
   план миграции описан в `docs/typescript_migration_plan.md`
+- Все сервисы переведены на TypeScript и используют интерфейсы входных и выходных данных
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` уже переведены на TypeScript
 - Сервис, контроллер и роут карт переписаны на TypeScript
 - Модуль авторизации переписан на TypeScript

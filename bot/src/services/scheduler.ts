@@ -1,14 +1,14 @@
-// Планировщик напоминаний для задач.
-// Использует node-cron и Telegram Bot API.
-const cron = require('node-cron');
-const { Task, User } = require('../db/model');
-const { call } = require('./telegramApi');
-const { enqueue } = require('./messageQueue');
-const { chatId } = require('../config');
+// Планировщик напоминаний для задач
+// Модули: node-cron, telegramApi, messageQueue, config
+import cron from 'node-cron';
+import { Task, User } from '../db/model';
+import { call } from './telegramApi';
+import { enqueue } from './messageQueue';
+import { chatId } from '../config';
 
-let task;
+let task: cron.ScheduledTask | undefined;
 
-function startScheduler() {
+export function startScheduler(): void {
   const expr = process.env.SCHEDULE_CRON || '*/1 * * * *';
   task = cron.schedule(expr, async () => {
     const tasks = await Task.find({
@@ -16,9 +16,10 @@ function startScheduler() {
       status: { $ne: 'done' },
     }).lean();
     for (const t of tasks) {
-      const ids = new Set();
-      if (t.assigned_user_id) ids.add(t.assigned_user_id);
-      if (Array.isArray(t.assignees)) t.assignees.forEach((id) => ids.add(id));
+      const ids = new Set<number>();
+      if (t.assigned_user_id) ids.add(t.assigned_user_id as number);
+      if (Array.isArray(t.assignees))
+        (t.assignees as number[]).forEach((id) => ids.add(id));
       let notified = false;
       for (const id of ids) {
         const user = await User.findOne({ telegram_id: id }).lean();
@@ -50,11 +51,14 @@ function startScheduler() {
   });
 }
 
-function stopScheduler() {
+export function stopScheduler(): void {
   if (task) {
     task.stop();
     task = undefined;
   }
 }
 
-module.exports = { startScheduler, stopScheduler };
+// Совместимость с CommonJS
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(module as any).exports = { startScheduler, stopScheduler };
+

@@ -19,7 +19,7 @@
 - `bot`: bot.js, messages.js
 - `controllers`: maps.js, optimizer.js, routes.js
 - `middleware`: taskAccess.js, checkRole.js
-- `services`: messageQueue.js, userInfoService.js, tasks.js, route.js, maps.js, scheduler.js, wgLogEngine.js, optimizer.js, telegramApi.js, service.js, otp.js, routes.js
+- `services`: messageQueue.ts, userInfoService.ts, tasks.ts, route.ts, maps.ts, scheduler.ts, wgLogEngine.ts, optimizer.ts, telegramApi.ts, service.ts, otp.ts, routes.ts
 - `routes`: tasks.js, route.js, authUser.js, maps.js, users.js, optimizer.js, logs.js, roles.js, routes.js
 - `api`: middleware.js, swagger.js, api.js
 - `прочее`: shared/mapUtils.js, models/User.js, admin/customAdmin.js, config.js, db/queries.js, db/model.js, db/connection.js

@@ -2,7 +2,7 @@
 // Основные модули: express-rate-limit, services/service
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
-import { writeLog } from '../services/service.js';
+import { writeLog } from '../services/service';
 
 export default function createRateLimiter(windowMs: number, max: number) {
   return rateLimit({

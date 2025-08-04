@@ -2,7 +2,7 @@
 // Основные модули: auth.service, utils/formatUser, services/service, utils/setTokenCookie
 import service from './auth.service';
 import formatUser from '../utils/formatUser';
-import { writeLog } from '../services/service.js';
+import { writeLog } from '../services/service';
 import setTokenCookie from '../utils/setTokenCookie';
 
 export const sendCode = async (req, res) => {

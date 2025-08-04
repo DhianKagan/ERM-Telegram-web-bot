@@ -4,7 +4,7 @@
 import { handleValidation } from '../utils/validate';
 import container from '../container';
 const service = /** @type {any} */ (container.resolve('TasksService'));
-import { writeLog } from '../services/service.js';
+import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries.js';
 
 export const list = async (req, res) => {

@@ -3,8 +3,8 @@
 import otp from '../services/otp';
 import { generateToken } from './auth';
 import { getUser, createUser, updateUser } from '../db/queries.js';
-import { getMemberStatus } from '../services/userInfoService.js';
-import { writeLog } from '../services/service.js';
+import { getMemberStatus } from '../services/userInfoService';
+import { writeLog } from '../services/service';
 import config from '../config.js';
 
 async function sendCode(telegramId) {

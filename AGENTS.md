@@ -12,6 +12,7 @@
   план миграции описан в `docs/typescript_migration_plan.md`
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` уже переведены на TypeScript
 - Сервис, контроллер и роут карт переписаны на TypeScript
+- Модуль авторизации переписан на TypeScript
 
 ✅ Тесты
 

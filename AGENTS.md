@@ -153,7 +153,7 @@
 - Зависимость `glob` зафиксирована на версии 7.2.3 для совместимости с CommonJS
 
 - Маршрут `/admin` объявлен как `/*splat` для Express 5
-- Комментарии в `bot/src/api/api.js` обновлены для нового синтаксиса
+- Файлы `bot/src/api/api.ts`, `middleware.ts` и `swagger.ts` переписаны на TypeScript
 - Перед обновлением зависимостей выполняйте `npm outdated`, затем
   `./scripts/audit_deps.sh` и `./scripts/setup_and_test.sh`
 

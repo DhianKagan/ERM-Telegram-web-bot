@@ -1,8 +1,9 @@
 // Генерация документации Swagger/OpenAPI
-const swaggerUi = require('swagger-ui-express')
-const swaggerJsdoc = require('swagger-jsdoc')
+// Модули: swagger-ui-express, swagger-jsdoc
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 
-const options = {
+const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -18,12 +19,9 @@ const options = {
       },
     },
   },
-  apis: ['./src/api/api.js', './src/routes/tasks.js'],
-}
+  apis: ['./src/api/api.ts', './src/routes/tasks.js'],
+};
 
-const specs = swaggerJsdoc(options)
+const specs = swaggerJsdoc(options);
 
-module.exports = {
-  swaggerUi,
-  specs,
-}
+export { swaggerUi, specs };

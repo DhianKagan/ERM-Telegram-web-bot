@@ -45,9 +45,8 @@ router.post<unknown, DistanceResponse, DistanceBody>(
   }) as RequestHandler<unknown, DistanceResponse, DistanceBody>),
 );
 
-interface TableQuery {
+interface TableQuery extends Record<string, string> {
   points: string;
-  [key: string]: unknown;
 }
 
 router.get<unknown, unknown, unknown, TableQuery>(
@@ -56,13 +55,12 @@ router.get<unknown, unknown, unknown, TableQuery>(
   validate([query('points').isString()]),
   asyncHandler((async (req, res) => {
     const { points, ...params } = req.query as TableQuery;
-    res.json(await table(points, params));
+    res.json(await table(points, params as Record<string, string | number>));
   }) as RequestHandler<unknown, unknown, unknown, TableQuery>),
 );
 
-interface PointQuery {
+interface PointQuery extends Record<string, string> {
   point: string;
-  [key: string]: unknown;
 }
 router.get<unknown, unknown, unknown, PointQuery>(
   '/nearest',
@@ -70,13 +68,12 @@ router.get<unknown, unknown, unknown, PointQuery>(
   validate([query('point').isString()]),
   asyncHandler((async (req, res) => {
     const { point, ...params } = req.query as PointQuery;
-    res.json(await nearest(point, params));
+    res.json(await nearest(point, params as Record<string, string | number>));
   }) as RequestHandler<unknown, unknown, unknown, PointQuery>),
 );
 
-interface PointsQuery {
+interface PointsQuery extends Record<string, string> {
   points: string;
-  [key: string]: unknown;
 }
 router.get<unknown, unknown, unknown, PointsQuery>(
   '/match',
@@ -84,7 +81,7 @@ router.get<unknown, unknown, unknown, PointsQuery>(
   validate([query('points').isString()]),
   asyncHandler((async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
-    res.json(await match(points, params));
+    res.json(await match(points, params as Record<string, string | number>));
   }) as RequestHandler<unknown, unknown, unknown, PointsQuery>),
 );
 
@@ -94,7 +91,7 @@ router.get<unknown, unknown, unknown, PointsQuery>(
   validate([query('points').isString()]),
   asyncHandler((async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
-    res.json(await trip(points, params));
+    res.json(await trip(points, params as Record<string, string | number>));
   }) as RequestHandler<unknown, unknown, unknown, PointsQuery>),
 );
 

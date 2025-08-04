@@ -66,7 +66,8 @@ export async function writeLog(
   level = 'info',
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
-  LogEngine.log(level, message, metadata);
+  const fn = (LogEngine as any)[level] || LogEngine.info;
+  fn(message, metadata);
 }
 
 export interface ListLogParams {
@@ -107,4 +108,3 @@ export const logger = LogEngine;
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = { writeLog, listLogs, logger };
-

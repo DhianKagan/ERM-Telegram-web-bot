@@ -1,16 +1,16 @@
 // Планировщик напоминаний для задач
 // Модули: node-cron, telegramApi, messageQueue, config
-import cron from 'node-cron';
+import { schedule, ScheduledTask } from 'node-cron';
 import { Task, User } from '../db/model';
 import { call } from './telegramApi';
 import { enqueue } from './messageQueue';
 import { chatId } from '../config';
 
-let task: cron.ScheduledTask | undefined;
+let task: ScheduledTask | undefined;
 
 export function startScheduler(): void {
   const expr = process.env.SCHEDULE_CRON || '*/1 * * * *';
-  task = cron.schedule(expr, async () => {
+  task = schedule(expr, async () => {
     const tasks = await Task.find({
       remind_at: { $lte: new Date() },
       status: { $ne: 'done' },
@@ -61,4 +61,3 @@ export function stopScheduler(): void {
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = { startScheduler, stopScheduler };
-

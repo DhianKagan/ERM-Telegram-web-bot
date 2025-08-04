@@ -1,6 +1,6 @@
 // Сервис авторизации: отправка и проверка кодов входа
 // Основные модули: otp, queries, userInfoService, writeLog
-import otp from '../services/otp';
+import * as otp from '../services/otp';
 import { generateToken } from './auth';
 import { getUser, createUser, updateUser } from '../db/queries.js';
 import { getMemberStatus } from '../services/userInfoService';
@@ -12,9 +12,9 @@ async function sendCode(telegramId) {
   const user = await getUser(telegramId);
   const roleId = user?.roleId?.toString();
   if (roleId === config.adminRoleId) {
-    await otp.sendAdminCode({ telegramId });
+    await otp.sendAdminCode({ telegramId: Number(telegramId) });
   } else {
-    await otp.sendCode({ telegramId });
+    await otp.sendCode({ telegramId: Number(telegramId) });
   }
 }
 
@@ -25,7 +25,7 @@ async function verifyCode(id, code, username) {
   let roleId = user?.roleId?.toString();
   let verified;
   if (roleId === config.adminRoleId || otp.adminCodes.has(telegramId)) {
-    verified = otp.verifyAdminCode({ telegramId, code });
+    verified = otp.verifyAdminCode({ telegramId: Number(telegramId), code });
     if (verified && user && roleId !== config.adminRoleId) {
       user = await updateUser(telegramId, {
         roleId: config.adminRoleId,
@@ -36,11 +36,11 @@ async function verifyCode(id, code, username) {
       roleId = config.adminRoleId;
     }
   } else {
-    verified = otp.verifyCode({ telegramId, code });
+    verified = otp.verifyCode({ telegramId: Number(telegramId), code });
   }
   if (!verified) throw new Error('invalid code');
   try {
-    const status = await getMemberStatus(telegramId);
+    const status = await getMemberStatus(Number(telegramId));
     if (!['creator', 'administrator', 'member'].includes(status)) {
       throw new Error('not in group');
     }

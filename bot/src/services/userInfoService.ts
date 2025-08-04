@@ -3,11 +3,11 @@
 import { Telegraf, Context } from 'telegraf';
 import { botToken, chatId } from '../config';
 
-const bot = new Telegraf(botToken);
+const bot = new Telegraf(botToken!);
 
 /** Возвращает статус участника чата по его Telegram ID. */
 export async function getMemberStatus(id: number): Promise<string> {
-  const member = await bot.telegram.getChatMember(chatId, id);
+  const member = await bot.telegram.getChatMember(chatId!, id);
   return member.status;
 }
 
@@ -20,4 +20,3 @@ export function getTelegramId(ctx: Context): number | undefined {
 // Совместимость с CommonJS
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = { getMemberStatus, getTelegramId };
-

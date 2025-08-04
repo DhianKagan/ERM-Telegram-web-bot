@@ -364,3 +364,5 @@
 - Расширена проверка коротких ссылок Google Maps: DNS-разрешение и фильтрация приватных IP защищают от SSRF
 - API, middleware и swagger переписаны на TypeScript, исходные `.js` удалены
 - Middleware `checkRole`, `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript
+- Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`
+

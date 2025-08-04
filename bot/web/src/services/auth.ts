@@ -3,7 +3,14 @@
 // Основные модули: authFetch
 import authFetch from '../utils/authFetch'
 
-export const getProfile = (options?: RequestInit) =>
+interface FetchOptions {
+  method?: string
+  headers?: Record<string, string>
+  body?: string
+}
+
+export const getProfile = (options?: FetchOptions) =>
+
   authFetch('/api/v1/auth/profile', options).then((r) => r.json())
 
 interface ProfileData {

@@ -1,7 +1,7 @@
 // Назначение файла: установка cookie token
 // Основные модули: express, config
 import { Response, CookieOptions } from 'express';
-import config from '../config.js';
+import config from '../config';
 
 export default function setTokenCookie(
   res: Response,

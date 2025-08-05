@@ -10,7 +10,7 @@ import {
   RoleDocument,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
-import config from '../config.js';
+import config from '../config';
 import { Types, PipelineStage } from 'mongoose';
 
 function escapeRegex(text: string): string {

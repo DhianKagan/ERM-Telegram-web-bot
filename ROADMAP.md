@@ -5,6 +5,8 @@
 - Документация собрана в одном файле technical_manual.md
 - Модули `db/connection.ts`, `db/model.ts` и `db/queries.ts` переведены на
   TypeScript
+- Контроллеры маршрутов и оптимизации, модуль `config.ts`, модель `AuthUser`
+  и кастомный бекенд админки переведены на TypeScript
 
 1. Подготовка окружения: `.env` из `.env.example`, запуск Docker Compose
 2. Развитие бота и мини‑приложения в каталоге `bot`

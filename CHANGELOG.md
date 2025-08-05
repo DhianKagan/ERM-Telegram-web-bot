@@ -381,3 +381,4 @@
 - Файл `taskFields.js` перемещён в `bot/src/shared` для корректной Docker-сборки
 - `taskFields.ts` заменил `taskFields.js`, поля типизированы интерфейсом
 - Скрипт `create_admin_user.ts` переписан на TypeScript
+- Устранена ошибка ESLint: `authFetch` использует локальный интерфейс `FetchOptions` вместо `RequestInit`

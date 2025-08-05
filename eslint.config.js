@@ -1,9 +1,11 @@
 /**
  * Назначение файла: базовая конфигурация ESLint для серверной части.
- * Подключает стандартные правила и окружение Node.
+ * Подключает стандартные правила, окружение Node и поддержку TypeScript.
  */
 import js from './bot/node_modules/@eslint/js/src/index.js';
 import globals from './bot/node_modules/globals/index.js';
+import tsParser from './bot/node_modules/@typescript-eslint/parser/dist/index.js';
+import tsPlugin from './bot/node_modules/@typescript-eslint/eslint-plugin/dist/index.js';
 
 export default [
   js.configs.recommended,
@@ -21,6 +23,24 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: globals.node,
+    },
+  },
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tsParser,
+      globals: globals.node,
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...tsPlugin.configs.recommended.rules,
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
+      'no-undef': 'off',
     },
   },
 ];

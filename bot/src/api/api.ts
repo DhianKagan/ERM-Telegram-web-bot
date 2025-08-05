@@ -156,7 +156,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   const connectSrc = ["'self'"];
   try {
     connectSrc.push(new URL(config.routingUrl).origin);
-  } catch {}
+  } catch {
+    // Игнорируем ошибку парсинга URL маршрутизации
+  }
   connectSrc.push('https://router.project-osrm.org');
   app.use(
     helmet({

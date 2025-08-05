@@ -2,9 +2,7 @@
 // Основные модули: utils/accessMask, services/service
 import { hasAccess, ACCESS_USER } from '../utils/accessMask';
 import { writeLog } from '../services/service';
-// Импорт декоратора ролей
-const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
-const { ROLES_KEY } = require('./roles.decorator' + ext);
+import { ROLES_KEY } from './roles.decorator';
 
 export default function rolesGuard(req, res, next) {
   const required = req[ROLES_KEY];

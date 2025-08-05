@@ -22,6 +22,7 @@
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.
 - Исправлены ошибки TypeScript, из-за которых падала сборка Docker.
 - Исправлена типизация профиля пользователя: `formatUser` принимает отсутствующий `telegram_id`.
+- Модуль `shared/mapUtils` и утилиты веб-клиента переписаны на TypeScript.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён
 - Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`
@@ -29,7 +30,7 @@
   заголовка Authorization
 - Страница `/cp/logs` заменяет `/cp/admin` и показывает логи
 - Система логирования переведена на WG Log Engine
-- Общие функции Google Maps собраны в `bot/src/shared/mapUtils.js`
+- Общие функции Google Maps собраны в `bot/src/shared/mapUtils.ts`
 - Развёртывание коротких ссылок Google Maps проверяет домен по белому списку
 - Проверяется протокол https, отсутствие userinfo и нестандартного порта у коротких ссылок Google Maps
 - Добавлена цветовая маркировка уровней и уведомления Telegram через движок
@@ -368,4 +369,3 @@
 - API, middleware и swagger переписаны на TypeScript, исходные `.js` удалены
 - Middleware `checkRole`, `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript
 - Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`
-

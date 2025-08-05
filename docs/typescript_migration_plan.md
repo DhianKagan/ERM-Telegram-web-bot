@@ -22,7 +22,7 @@
 - `services`: messageQueue.ts, userInfoService.ts, tasks.ts, route.ts, maps.ts, scheduler.ts, wgLogEngine.ts, optimizer.ts, telegramApi.ts, service.ts, otp.ts, routes.ts
 - `routes`: tasks.js, route.js, authUser.js, maps.js, users.js, optimizer.js, logs.js, roles.js, routes.js
 - `api`: middleware.js, swagger.js, api.js
-- `прочее`: shared/mapUtils.js, models/User.js, admin/customAdmin.js, config.js
+- `прочее`: models/User.js, admin/customAdmin.js, config.js
 
 ### Средний приоритет
 

@@ -2,14 +2,16 @@
 // Модули: mongoose
 import mongoose, { Schema, Document } from 'mongoose';
 
-interface AuthUser {
+ interface AuthUser {
   name: string;
   email: string;
   passwordHash: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
 }
 
-const UserSchema = new Schema<AuthUser>(
+export type AuthUserDocument = AuthUser & Document;
+
+const UserSchema = new Schema<AuthUserDocument>(
   {
     name: { type: String, required: true },
     email: { type: String, unique: true, required: true },
@@ -19,7 +21,7 @@ const UserSchema = new Schema<AuthUser>(
   { timestamps: true },
 );
 
-const AuthUserModel = mongoose.model<AuthUser & Document>('AuthUser', UserSchema);
+const AuthUserModel = mongoose.model<AuthUserDocument>('AuthUser', UserSchema);
 
 export default AuthUserModel;
 

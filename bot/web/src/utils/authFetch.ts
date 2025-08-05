@@ -3,7 +3,16 @@
 // Основные модули: fetch, window.location, localStorage
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
 
-interface AuthFetchOptions extends RequestInit {
+interface FetchOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  credentials?: string;
+  redirect?: string;
+  [key: string]: unknown;
+}
+
+interface AuthFetchOptions extends FetchOptions {
   noRedirect?: boolean;
 }
 
@@ -31,7 +40,7 @@ export default async function authFetch(
     }
   }
   if (token) headers["X-XSRF-TOKEN"] = token;
-  const opts: RequestInit = { ...fetchOpts, credentials: "include", headers };
+  const opts: FetchOptions = { ...fetchOpts, credentials: "include", headers };
   let res = await fetch(url, opts);
   if (res.status === 403) {
     if (opts.body) {

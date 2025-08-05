@@ -6,7 +6,7 @@ import { useToast } from "../context/useToast";
 import useTasks from "../context/useTasks";
 import { updateTask, fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import fields from "../../../shared/taskFields.cjs";
+import fields from "../../../shared/taskFields.js";
 import { AuthContext } from "../context/AuthContext";
 import userLink from "../utils/userLink";
 

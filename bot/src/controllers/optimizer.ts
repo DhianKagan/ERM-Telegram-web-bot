@@ -11,7 +11,7 @@ export async function optimize(req: Request, res: Response): Promise<void> {
     return;
   }
   const routes = await service.optimize(
-    (req.body.tasks as unknown[]) || [],
+    (req.body.tasks as string[]) || [],
     req.body.count,
     req.body.method,
   );

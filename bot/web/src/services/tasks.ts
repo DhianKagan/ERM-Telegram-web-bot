@@ -1,4 +1,5 @@
-// Запросы к API задач
+// Назначение: запросы к API задач
+// Основные модули: authFetch
 import authFetch from "../utils/authFetch";
 
 export const fetchKanban = () =>
@@ -6,7 +7,7 @@ export const fetchKanban = () =>
     .then((r) => (r.ok ? r.json() : []))
     .then((data) => (Array.isArray(data) ? data : data.tasks || []));
 
-export const updateTaskStatus = (id, status) =>
+export const updateTaskStatus = (id: string, status: string) =>
   authFetch(`/api/v1/tasks/${id}/status`, {
     method: "POST",
     headers: {
@@ -15,7 +16,7 @@ export const updateTaskStatus = (id, status) =>
     body: JSON.stringify({ status }),
   });
 
-export const createTask = (data) =>
+export const createTask = (data: Record<string, unknown>) =>
   authFetch("/api/v1/tasks", {
     method: "POST",
     headers: {
@@ -25,19 +26,19 @@ export const createTask = (data) =>
   }).then(async (r) => {
     if (!r.ok) return null;
     const result = await r.json();
-    const id = result._id || result.id;
-    if (id && window.Telegram?.WebApp) {
-      window.Telegram.WebApp.sendData(`task_created:${id}`);
+    const id = (result as any)._id || (result as any).id;
+    if (id && (window as any).Telegram?.WebApp) {
+      (window as any).Telegram.WebApp.sendData(`task_created:${id}`);
     }
     return result;
   });
 
-export const deleteTask = (id) =>
+export const deleteTask = (id: string) =>
   authFetch(`/api/v1/tasks/${id}`, {
     method: "DELETE",
   });
 
-export const updateTask = (id, data) =>
+export const updateTask = (id: string, data: Record<string, unknown>) =>
   authFetch(`/api/v1/tasks/${id}`, {
     method: "PATCH",
     headers: {
@@ -49,14 +50,14 @@ export const updateTask = (id, data) =>
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));
 
-export const fetchTasks = (params = {}) => {
+export const fetchTasks = (params: Record<string, unknown> = {}) => {
   const filtered = Object.fromEntries(
     Object.entries(params).filter(([, v]) => v),
   );
-  const q = new URLSearchParams(filtered).toString();
+  const q = new URLSearchParams(filtered as Record<string, string>).toString();
   const url = "/api/v1/tasks" + (q ? `?${q}` : "");
   const key = `tasks_${q}`;
-  let cached;
+  let cached: { time?: number; data?: unknown };
   try {
     cached = JSON.parse(localStorage.getItem(key) || "");
   } catch {

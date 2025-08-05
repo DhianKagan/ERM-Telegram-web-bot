@@ -25,6 +25,7 @@
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - ESLint проверяет серверные файлы TypeScript; правила `no-explicit-any` и `ban-ts-comment` отключены.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
+- Утилита `authFetch` и сервисы веб‑клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks` и `osrm` переписаны на TypeScript.
 - Модуль авторизации `auth` переписан на TypeScript.
 - Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript.
 - Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`.

@@ -5,7 +5,7 @@
     "module": "commonjs",
     "rootDir": "bot/src",
     "outDir": "dist",
-    "allowJs": true,
+    "allowJs": false,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,

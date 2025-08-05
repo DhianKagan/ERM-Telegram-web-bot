@@ -6,7 +6,7 @@
 
 | Каталог                      | Количество |
 | ---------------------------- | ---------- |
-| `bot/src`                    | 46         |
+| `bot/src`                    | 45         |
 | `bot/web`                    | 24         |
 | `bot/tests`                  | 46         |
 | `scripts` и корневые конфиги | 13         |
@@ -16,7 +16,7 @@
 
 ### Высокий приоритет — сервер `bot/src`
 
-- `bot`: bot.js, messages.js
+- `bot`: bot.js
 - `controllers`: maps.js, optimizer.js, routes.js
 - `middleware`: taskAccess.js, checkRole.js
 - `services`: messageQueue.ts, userInfoService.ts, tasks.ts, route.ts, maps.ts, scheduler.ts, wgLogEngine.ts, optimizer.ts, telegramApi.ts, service.ts, otp.ts, routes.ts

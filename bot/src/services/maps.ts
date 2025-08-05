@@ -2,7 +2,7 @@
 // Модули: node.js fetch, dns/promises, net, shared/mapUtils
 import { lookup } from 'dns/promises';
 import net from 'net';
-import mapUtils from '../shared/mapUtils.js';
+import mapUtils from '../shared/mapUtils';
 
 export interface Coordinates {
   lat: number;

@@ -12,6 +12,7 @@
 - Поддержка расчёта маршрутов через сервис OSRM.
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.js`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
+- Текстовые ответы бота собраны в `bot/src/messages.ts`.
 - Сервис и контроллер карт переведены на TypeScript.
 - Подключение к MongoDB, модели и запросы (`connection.ts`, `model.ts`,
   `queries.ts`) используют строгие типы TypeScript.

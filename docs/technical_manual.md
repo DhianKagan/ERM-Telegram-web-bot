@@ -168,7 +168,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 4. Мини‑приложение можно открыть по команде `/task_form_app`.
 
 Бот разворачивает короткие ссылки Google Maps, проверяя домен, протокол https, отсутствие userinfo и нестандартного порта, и сохраняет координаты задачи. После создания задачи из мини‑приложения отправляется событие `task_created` через `Telegram.WebApp.sendData`.
-Общие функции формирования ссылок и извлечения координат находятся в `bot/src/shared/mapUtils.js` и используются сервером и клиентом. Веб‑клиент импортирует модуль как `import mapUtils from '../../../src/shared/mapUtils.js'`.
+Общие функции формирования ссылок и извлечения координат находятся в `bot/src/shared/mapUtils.ts` и используются сервером и клиентом. Веб‑клиент импортирует модуль как `import mapUtils from '../../../src/shared/mapUtils'`.
 
 ## Проверка initData WebApp
 
@@ -252,7 +252,7 @@ docker run -d -p 9090:9090 \
 
 ## Ответы бота
 
-Типовые сообщения собраны в `bot/src/messages.js` и перечислены в `docs/bot_responses.md`. При необходимости их можно обновить скриптом `set_bot_messages.sh`.
+Типовые сообщения собраны в `bot/src/messages.ts` и перечислены в `docs/bot_responses.md`. При необходимости их можно обновить скриптом `set_bot_messages.sh`.
 
 ---
 

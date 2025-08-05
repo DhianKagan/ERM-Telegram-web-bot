@@ -29,12 +29,11 @@ export const asyncHandler = (
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(
   err: any,
   _req: Request,
   res: Response,
-  _next: NextFunction,
+  _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): void {
   if (err.type === 'request.aborted') {
     res.status(400).json({ error: 'request aborted' });

@@ -1,5 +1,6 @@
-#!/usr/bin/env node
-// Скрипт установки URL для Attachment Menu Telegram
+#!/usr/bin/env ts-node
+// Назначение файла: скрипт установки URL для Attachment Menu Telegram
+// Модули: node-fetch, dotenv
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
@@ -24,8 +25,17 @@ if (!base.startsWith('https://')) {
 const url = `${base.replace(/\/$/, '')}/menu`;
 const chatId = process.env.CHAT_ID;
 
-async function updateMenu() {
-  const params = {
+interface MenuButtonRequest {
+  menu_button: {
+    type: 'web_app';
+    text: string;
+    web_app: { url: string };
+  };
+  chat_id?: string;
+}
+
+async function updateMenu(): Promise<void> {
+  const params: MenuButtonRequest = {
     menu_button: {
       type: 'web_app',
       text: 'Мои задачи',
@@ -38,13 +48,13 @@ async function updateMenu() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)
   });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.description);
+  const data: { ok: boolean; description?: string } = await res.json();
+  if (!data.ok) throw new Error(data.description || 'Неизвестная ошибка');
 }
 
 updateMenu()
   .then(() => console.log('Attachment Menu обновлено'))
   .catch(err => {
-    console.error('Ошибка:', err.message);
+    console.error('Ошибка:', (err as Error).message);
     process.exit(1);
   });

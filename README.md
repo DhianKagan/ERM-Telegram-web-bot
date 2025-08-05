@@ -197,6 +197,8 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 
 Сентябрь 2025 года: API и связанные middleware переписаны на TypeScript, исходные `.js` файлы удалены.
 
+Октябрь 2025 года: скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переписаны на TypeScript и запускаются через `ts-node`.
+
 ### Обновления зависимостей
 
 Удалены неиспользуемые пакеты bcrypt и mongodb-memory-server.

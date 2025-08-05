@@ -23,6 +23,7 @@
 ✅ Тесты
 
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`
+- Все тесты написаны на TypeScript, Jest ищет файлы `.test.ts`
 - Проверяйте зависимости командой `./scripts/audit_deps.sh`
 - Скрипт пропускает слабые уязвимости флагом `--audit-level high`
 - Скрипт `install_bot_deps.sh` завершает установку,
@@ -228,10 +229,10 @@
 - Функция `updateTask` удаляет ключи с `$` для защиты от инъекций
 - Маршрут `/api/v1/optimizer` исключён из проверки CSRF
 - Маршрут `/api/v1/maps/expand` также исключён из проверки CSRF
-- В тестах появился сценарий `loginFlow.test.js` для проверки полного цикла логина
-- Тест `loginFlow.test.js` ограничивает `/api/protected` ста запросами за 15 минут
-- Тест `loginRouteFlow.test.js` получает CSRF и вызывает `/api/v1/route`
-- Тест `loginTasksFlow.test.js` создаёт задачу после логина
+- В тестах появился сценарий `loginFlow.test.ts` для проверки полного цикла логина
+- Тест `loginFlow.test.ts` ограничивает `/api/protected` ста запросами за 15 минут
+- Тест `loginRouteFlow.test.ts` получает CSRF и вызывает `/api/v1/route`
+- Тест `loginTasksFlow.test.ts` создаёт задачу после логина
 - Скрипт seed.ts выдаёт администратору маску доступа 2
 - Контроллеры задач не позволяют изменять чужие задачи
 
@@ -239,8 +240,8 @@
 - Cookie `token` имеет SameSite=Lax. Домен берётся из COOKIE_DOMAIN или из APP_URL только в продакшене. AuthProvider повторно запрашивает `/api/v1/csrf` при возврате вкладки
 - COOKIE_DOMAIN можно задавать как URL. При старте берётся hostname, неверное значение вызывает ошибку
 - План внедрения улучшений описан в docs/apply_analysis_plan.md
-- Тест `routeCsrf.test.js` использует самоподписанный сертификат и предотвращает ошибки CSRF,
-  `taskFields.test.js` контролирует форму задач
+- Тест `routeCsrf.test.ts` использует самоподписанный сертификат и предотвращает ошибки CSRF,
+  `taskFields.test.ts` контролирует форму задач
 - В ModuleCore.md и docs/architecture.md подробно описаны модули
 - Сервисы регистрируются через tsyringe, контейнер src/container.ts подключается в src/server.js
 - Валидация маршрутов использует классы DTO и middleware validateDto

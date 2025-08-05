@@ -296,4 +296,5 @@
 257. Клиентские утилиты parseJwt, csrfToken и extractCoords переписаны на TypeScript
 258. Текстовые ответы бота вынесены в `bot/src/messages.ts`
 259. Утилита parseGoogleAddress переписана на TypeScript
+260. Утилита authFetch и сервисы веб-клиента logs, maps, optimizer, roles, route, routes, tasks и osrm переписаны на TypeScript
 

@@ -5,7 +5,7 @@ import { useSidebar } from "../context/useSidebar";
 import RichTextEditor from "./RichTextEditor";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
-import fields from "../../../shared/taskFields.js";
+import fields from "../../../src/shared/taskFields.js";
 import {
   createTask,
   updateTask,

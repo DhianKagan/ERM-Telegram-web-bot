@@ -252,7 +252,7 @@ docker run -d -p 9090:9090 \
 
 ## Ответы бота
 
-Типовые сообщения собраны в `bot/src/messages.js` и перечислены в `docs/bot_responses.md`. При необходимости их можно обновить скриптом `set_bot_messages.sh`.
+Типовые сообщения собраны в `bot/src/messages.ts` и перечислены в `docs/bot_responses.md`. При необходимости их можно обновить скриптом `set_bot_messages.sh`.
 
 ---
 

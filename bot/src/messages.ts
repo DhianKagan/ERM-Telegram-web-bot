@@ -1,6 +1,6 @@
-// Список текстовых ответов бота на команды Telegram
-// Экспортируется объект messages для использования в bot.js
-module.exports = {
+// Назначение: список текстовых ответов бота на команды Telegram
+// Основные модули: отсутствуют
+const messages = {
   accessOnlyGroup: 'Доступ разрешён только участникам группы',
   accessError: 'Ошибка проверки доступа',
   registered: 'Вы зарегистрированы в системе.',
@@ -9,11 +9,13 @@ module.exports = {
   miniAppLinkText: 'Открыть приложение',
   idLabel: 'Ваш ID',
   statusLabel: 'Статус в группе',
-  unauthorizedCreateTask: 'Недостаточно прав: только администраторы могут создавать задачи.',
+  unauthorizedCreateTask:
+    'Недостаточно прав: только администраторы могут создавать задачи.',
   taskNameRequired: 'Укажите название задачи после команды',
   taskCreated: 'Задача создана.',
   taskCreatedInApp: 'Задача создана через приложение',
-  unauthorizedAssignTask: 'Недостаточно прав: только администраторы могут назначать задачи.',
+  unauthorizedAssignTask:
+    'Недостаточно прав: только администраторы могут назначать задачи.',
   taskAssigned: 'Задача назначена.',
   adminsOnly: 'Только для админов',
   invalidAddUserFormat: 'Формат: /add_user id username',
@@ -36,5 +38,7 @@ module.exports = {
   fullMapLink: 'Полная ссылка',
   mapCoords: 'Координаты',
   mapLinkError: 'Не удалось получить ссылку',
-  help: `Доступные команды:\n/start - запуск бота\n/register - регистрация`
-}
+  help: `Доступные команды:\n/start - запуск бота\n/register - регистрация`,
+} as const;
+
+export default messages;

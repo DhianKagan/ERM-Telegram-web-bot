@@ -1,11 +1,12 @@
 // Общая форма создания и редактирования задач
+// Модули: React, DOMPurify, контексты, сервисы задач и логов
 import React, { useContext } from "react";
 import DOMPurify from "dompurify";
 import { useSidebar } from "../context/useSidebar";
 import RichTextEditor from "./RichTextEditor";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
-import fields from "../../../src/shared/taskFields.js";
+import fields from "../../../src/shared/taskFields";
 import {
   createTask,
   updateTask,

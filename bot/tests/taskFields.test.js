@@ -1,6 +1,7 @@
 // Проверка списка полей формы задачи
+// Модули: jest
 process.env.NODE_ENV='test'
-const fields=require('../src/shared/taskFields.js')
+const fields=require('../src/shared/taskFields').default
 
 test('содержит все обязательные поля',()=>{
   const names=fields.map(f=>f.name)

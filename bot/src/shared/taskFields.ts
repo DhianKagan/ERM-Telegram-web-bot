@@ -1,12 +1,22 @@
 // Назначение файла: общие поля формы задачи для бота и веб-клиента
-module.exports = [
+// Модули: отсутствуют
+
+interface TaskField {
+  name: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  options?: string[];
+  default?: string;
+}
+
+const fields: TaskField[] = [
   { name: 'title', label: 'Название', type: 'text', required: true },
   {
     name: 'task_type',
     label: 'Тип',
     type: 'select',
     options: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить'],
-
     default: 'Доставить',
   },
   {
@@ -45,3 +55,5 @@ module.exports = [
   { name: 'description', label: '🔨 Задача', type: 'richtext' },
   { name: 'comment', label: 'Комментарий', type: 'richtext' },
 ];
+
+export default fields;

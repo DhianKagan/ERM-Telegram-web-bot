@@ -10,6 +10,7 @@
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписаны утилиты `parseJwt`, `csrfToken` и `extractCoords`.
+- На TypeScript переписана утилита `parseGoogleAddress`.
 - На TypeScript переписан модуль `auth`.
 - На TypeScript переведён модуль `messages`.
 - Подключение, модели и запросы MongoDB (`connection.ts`, `model.ts`,

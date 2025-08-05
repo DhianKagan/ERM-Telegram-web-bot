@@ -33,7 +33,7 @@
 Сборка выполнена в строгом режиме TypeScript (`strict`),
 опция `noImplicitAny` временно отключена для постепенной миграции.
 Подробный план миграции из JavaScript описан в `docs/typescript_migration_plan.md`.
-На TypeScript уже перенесены утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken` и `extractCoords`.
+На TypeScript уже перенесены утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress`.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 
 ### Защита от инъекций

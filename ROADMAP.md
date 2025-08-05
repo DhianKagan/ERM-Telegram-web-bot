@@ -293,4 +293,5 @@
 256. В сервисе профиля веб-клиента `auth` используется локальный тип `FetchOptions` вместо `RequestInit`
 257. Клиентские утилиты parseJwt, csrfToken и extractCoords переписаны на TypeScript
 258. Текстовые ответы бота вынесены в `bot/src/messages.ts`
+259. Утилита parseGoogleAddress переписана на TypeScript
 

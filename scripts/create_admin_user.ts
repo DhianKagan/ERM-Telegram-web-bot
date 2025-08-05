@@ -1,32 +1,34 @@
 #!/usr/bin/env node
-// Скрипт создания администратора по Telegram ID
+// Назначение файла: скрипт создания администратора по Telegram ID
 // Модули: mongoose, dotenv, модели проекта
-require('dotenv').config();
 
-let mongoose;
+import dotenv from 'dotenv';
+dotenv.config();
+
+let mongoose: typeof import('mongoose');
 try {
   mongoose = require('mongoose');
-} catch (e) {
+} catch {
   mongoose = require('../bot/node_modules/mongoose');
 }
 
-const { User } = require('../bot/src/db/model');
-const config = require('../bot/src/config');
+import { User } from '../bot/src/db/model';
+import config from '../bot/src/config';
 
 const [, , idArg, usernameArg] = process.argv;
 if (!idArg) {
   console.log(
-    'Использование: node scripts/create_admin_user.js <telegram_id> [username]',
+    'Использование: node scripts/create_admin_user.ts <telegram_id> [username]',
   );
   process.exit(1);
 }
 const telegramId = Number(idArg);
 const username = usernameArg || `admin_${telegramId}`;
 
-async function main() {
+async function main(): Promise<void> {
   try {
-    await mongoose.connect(process.env.MONGO_DATABASE_URL);
-  } catch (e) {
+    await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
+  } catch (e: any) {
     console.error('Ошибка подключения к MongoDB:', e.message);
     process.exit(1);
   }
@@ -51,7 +53,7 @@ async function main() {
   await mongoose.disconnect();
 }
 
-main().catch((e) => {
+main().catch((e: any) => {
   console.error('Ошибка:', e.message);
   process.exit(1);
 });

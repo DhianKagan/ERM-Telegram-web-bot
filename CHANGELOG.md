@@ -378,3 +378,5 @@
 - ESLint проверяет серверные файлы TypeScript, правила `no-explicit-any` и `ban-ts-comment` отключены
 - Модуль `taskFields` переименован в `taskFields.js`, исправлены типы оптимизатора и модели пользователя для успешной Docker-сборки
 - Файл `taskFields.js` перемещён в `bot/src/shared` для корректной Docker-сборки
+- `taskFields.ts` заменил `taskFields.js`, поля типизированы интерфейсом
+- Скрипт `create_admin_user.ts` переписан на TypeScript

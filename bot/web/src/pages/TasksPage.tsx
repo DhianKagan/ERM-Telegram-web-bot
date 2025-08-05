@@ -1,4 +1,5 @@
 // Назначение файла: список задач и функции сортировки
+// Модули: React, контексты, сервисы задач
 import React, { useContext } from "react";
 import { useSearchParams } from "react-router-dom";
 import KPIOverview from "../components/KPIOverview";
@@ -6,7 +7,7 @@ import { useToast } from "../context/useToast";
 import useTasks from "../context/useTasks";
 import { updateTask, fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import fields from "../../../src/shared/taskFields.js";
+import fields from "../../../src/shared/taskFields";
 import { AuthContext } from "../context/AuthContext";
 import userLink from "../utils/userLink";
 

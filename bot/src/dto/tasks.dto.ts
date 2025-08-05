@@ -1,7 +1,7 @@
 // Назначение файла: DTO для операций с задачами
 // Основные модули: routes, middleware
 import { body } from 'express-validator';
-import fields from '../shared/taskFields.js';
+import fields from '../shared/taskFields';
 const statusField = fields.find((f) => f.name === 'status');
 const statusList: readonly string[] = statusField?.options ?? [
   'Новая',

@@ -3,7 +3,7 @@
 import 'dotenv/config';
 import { botToken, chatId } from '../config';
 import { Telegraf, Markup } from 'telegraf';
-import messages from '../messages.js';
+import messages from '../messages';
 import { createUser, getUser } from '../services/service';
 import { startScheduler } from '../services/scheduler';
 import '../db/model';

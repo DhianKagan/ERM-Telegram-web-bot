@@ -292,3 +292,4 @@
 255. Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript
 256. В сервисе профиля веб-клиента `auth` используется локальный тип `FetchOptions` вместо `RequestInit`
 
+257. Текстовые ответы бота вынесены в `bot/src/messages.ts`

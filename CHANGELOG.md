@@ -10,6 +10,7 @@
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписан модуль `auth`.
+- На TypeScript переведён модуль `messages`.
 - Подключение, модели и запросы MongoDB (`connection.ts`, `model.ts`,
   `queries.ts`) переведены на TypeScript и снабжены типами схем.
 - Все сервисы переписаны на TypeScript, добавлены интерфейсы и тесты `getRouteDistance`.
@@ -368,4 +369,3 @@
 - API, middleware и swagger переписаны на TypeScript, исходные `.js` удалены
 - Middleware `checkRole`, `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript
 - Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`
-

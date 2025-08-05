@@ -17,6 +17,7 @@
 - Подключение к MongoDB, модели и запросы (`connection.ts`, `model.ts`,
   `queries.ts`) используют строгие типы TypeScript.
 - Развёртывание коротких ссылок Google Maps проверяет домен, протокол https, отсутствие userinfo и нестандартного порта.
+- Скрипт заполнения базы `scripts/db/seed.ts` написан на TypeScript.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.

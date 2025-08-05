@@ -1,6 +1,6 @@
-#!/usr/bin/env node
-// Скрипт получения URL кнопки меню Telegram
-// Модули: node fetch, dotenv
+#!/usr/bin/env ts-node
+// Назначение файла: скрипт получения URL кнопки меню Telegram
+// Модули: node-fetch, dotenv
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
@@ -14,15 +14,24 @@ if (!token) {
 
 const chatId = process.env.CHAT_ID;
 
-async function getMenuButton() {
+interface WebApp {
+  url: string;
+}
+
+interface MenuButton {
+  type: string;
+  web_app?: WebApp;
+}
+
+async function getMenuButton(): Promise<MenuButton> {
   const params = chatId ? { chat_id: chatId } : {};
   const res = await fetch(`https://api.telegram.org/bot${token}/getChatMenuButton`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)
   });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.description);
+  const data: { ok: boolean; result: MenuButton; description?: string } = await res.json();
+  if (!data.ok) throw new Error(data.description || 'Неизвестная ошибка');
   return data.result;
 }
 
@@ -37,6 +46,6 @@ getMenuButton()
     }
   })
   .catch(err => {
-    console.error('Ошибка:', err.message);
+    console.error('Ошибка:', (err as Error).message);
     process.exit(1);
   });

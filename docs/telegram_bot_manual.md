@@ -120,9 +120,9 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getMe"
 ```
 
 ## Проверка URL кнопки меню
-Скрипт `scripts/get_menu_button_url.js` выводит текущую ссылку в меню Telegram. Если меню сброшено к стандартным командам, вернётся `/empty`.
+Скрипт `scripts/get_menu_button_url.ts` выводит текущую ссылку в меню Telegram. Если меню сброшено к стандартным командам, вернётся `/empty`.
 ```bash
-node scripts/get_menu_button_url.js
+ts-node scripts/get_menu_button_url.ts
 ```
 Пример вывода при дефолтных переменных окружения:
 ```
@@ -130,10 +130,10 @@ node scripts/get_menu_button_url.js
 ```
 
 ## Обновление кнопки меню
-Скрипт `scripts/set_menu_button_url.js` отправляет запрос `setChatMenuButton` с типом `web_app`.
+Скрипт `scripts/set_menu_button_url.ts` отправляет запрос `setChatMenuButton` с типом `web_app`.
 URL берётся из переменной `APP_URL` файла `.env`.
 ```bash
-node scripts/set_menu_button_url.js
+ts-node scripts/set_menu_button_url.ts
 ```
 Если задан `CHAT_ID`, кнопка обновится только в указанном чате.
 
@@ -143,7 +143,7 @@ node scripts/set_menu_button_url.js
 3. Страница выбора задачи расположена по пути `/menu` мини‑приложения.
 4. Обновите ссылку кнопкой скриптом:
 ```bash
-node scripts/set_attachment_menu_url.js
+ts-node scripts/set_attachment_menu_url.ts
 ```
 
 ## Типовые ошибки API

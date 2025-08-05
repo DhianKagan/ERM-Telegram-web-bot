@@ -382,3 +382,4 @@
 - `taskFields.ts` заменил `taskFields.js`, поля типизированы интерфейсом
 - Скрипт `create_admin_user.ts` переписан на TypeScript
 - Устранена ошибка ESLint: `authFetch` использует локальный интерфейс `FetchOptions` вместо `RequestInit`
+- Скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переписаны на TypeScript

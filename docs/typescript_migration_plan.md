@@ -11,7 +11,7 @@
 | `bot/tests`                  | 46         |
 | `scripts` и корневые конфиги | 13         |
 
-Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`.
+Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken` и `extractCoords`.
 Переведены сервис, контроллер и роут карт.
 
 ### Высокий приоритет — сервер `bot/src`
@@ -26,7 +26,7 @@
 
 ### Средний приоритет
 
-- Клиент `bot/web`: утилиты (csrfToken.js, extractCoords.js, parseJwt.js и др.), сервисы (tasks.js, route.js, maps.js, optimizer.js, osrm.js)
+- Клиент `bot/web`: утилиты и сервисы (tasks.js, route.js, maps.js, optimizer.js, osrm.js)
 - Тесты `bot/tests`: 46 файлов
 
 ### Низкий приоритет

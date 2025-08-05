@@ -13,7 +13,7 @@
 - Все сервисы переведены на TypeScript и используют интерфейсы входных и выходных данных
 - Подключение к MongoDB, модели и запросы (`bot/src/db/connection.ts`,
   `bot/src/db/model.ts`, `bot/src/db/queries.ts`) реализованы на TypeScript
-- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` уже переведены на TypeScript
+- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken` и `extractCoords` уже переведены на TypeScript
 - Сервис, контроллер и роут карт переписаны на TypeScript
 - Модуль авторизации переписан на TypeScript
 - Отсутствующий `username` заменяется пустой строкой для успешной сборки

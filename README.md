@@ -18,7 +18,7 @@
 - Развёртывание коротких ссылок Google Maps проверяет домен, протокол https, отсутствие userinfo и нестандартного порта.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
 - Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
-- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter` переписаны на TypeScript.
+- Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken` и `extractCoords` переписаны на TypeScript.
 - Модуль авторизации `auth` переписан на TypeScript.
 - Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript.
 - Типизация сервиса `auth` веб-клиента исправлена: вместо `RequestInit` используется локальный интерфейс `FetchOptions`.

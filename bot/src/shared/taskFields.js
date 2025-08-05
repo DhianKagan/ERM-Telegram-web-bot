@@ -7,14 +7,14 @@ module.exports = [
     type: 'select',
     options: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить'],
 
-    default: 'Доставить'
+    default: 'Доставить',
   },
   {
     name: 'priority',
     label: 'Приоритет',
     type: 'select',
     options: ['Срочно', 'В течение дня', 'Бессрочно'],
-    default: 'В течение дня'
+    default: 'В течение дня',
   },
   { name: 'department', label: 'Отдел', type: 'select' },
   { name: 'creator', label: 'Задачу создал', type: 'select' },
@@ -25,7 +25,7 @@ module.exports = [
     label: 'Тип транспорта',
     type: 'select',
     options: ['Пешком', 'Авто', 'Дрон'],
-    default: 'Авто'
+    default: 'Авто',
   },
   { name: 'end_location', label: 'Финальная точка', type: 'location' },
   {
@@ -33,15 +33,15 @@ module.exports = [
     label: 'Способ оплаты',
     type: 'select',
     options: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
-    default: 'Карта'
+    default: 'Карта',
   },
   {
     name: 'status',
     label: 'Статус',
     type: 'select',
     options: ['Новая', 'В работе', 'Выполнена', 'Отменена'],
-    default: 'Новая'
+    default: 'Новая',
   },
   { name: 'description', label: '🔨 Задача', type: 'richtext' },
-  { name: 'comment', label: 'Комментарий', type: 'richtext' }
-]
+  { name: 'comment', label: 'Комментарий', type: 'richtext' },
+];

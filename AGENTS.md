@@ -273,7 +273,7 @@
 - Общая функция handleValidation заменяет проверки в контроллерах, файл tasks.js удалён
 - В tasks.service.ts и services/tasks.js дублирование расчёта маршрута заменено функцией applyRouteInfo
 - Удалён дублирующийся скрипт .husky/husky.sh
-- Функции Google Maps находятся в модуле `bot/src/shared/mapUtils.js`
+- Функции Google Maps находятся в модуле `bot/src/shared/mapUtils.ts`
 - Веб‑клиент импортирует их через default объект `mapUtils`
 - API сжимает ответы через compression
 - В форме фильтров логов используются aria-label

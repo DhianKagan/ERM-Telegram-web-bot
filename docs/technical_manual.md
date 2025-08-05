@@ -34,6 +34,8 @@
 опция `noImplicitAny` временно отключена для постепенной миграции.
 Подробный план миграции из JavaScript описан в `docs/typescript_migration_plan.md`.
 На TypeScript уже перенесены утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress`.
+Переписаны на TypeScript модуль `config`, контроллеры `routes` и `optimizer`,
+модель `AuthUser` и кастомный бекенд админки; дублирующие JS‑роуты удалены.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 
 ### Защита от инъекций

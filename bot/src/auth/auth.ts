@@ -1,7 +1,7 @@
 // Назначение файла: генерация JWT.
 // Основные модули: jsonwebtoken, config
 import jwt from 'jsonwebtoken';
-import config from '../config.js';
+import config from '../config';
 
 const secretKey: string = config.jwtSecret!; // переменная гарантирована в config
 

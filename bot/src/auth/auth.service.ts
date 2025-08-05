@@ -5,7 +5,7 @@ import { generateToken } from './auth';
 import { getUser, createUser, updateUser } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
-import config from '../config.js';
+import config from '../config';
 import { Types } from 'mongoose';
 
 async function sendCode(telegramId) {

@@ -1,7 +1,7 @@
 // Назначение файла: проверка подписи initData Telegram WebApp
 // Основные модули: crypto, config
 import crypto from 'crypto';
-import config from '../config.js';
+import config from '../config';
 
 const { botToken } = config;
 

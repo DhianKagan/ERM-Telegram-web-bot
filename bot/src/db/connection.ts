@@ -1,7 +1,7 @@
 // Управление подключением к MongoDB с пулом соединений и резервным URL
 // Модули: mongoose, config
 import mongoose, { ConnectOptions, Connection } from 'mongoose';
-import config from '../config.js';
+import config from '../config';
 
 const { mongoUrl } = config;
 const backupUrl = process.env.MONGO_BACKUP_URL;

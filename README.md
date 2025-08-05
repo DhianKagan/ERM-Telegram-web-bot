@@ -10,10 +10,13 @@
 - Веб‑панель администратора на базе TailAdmin.
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
-- Общие функции Google Maps находятся в `bot/src/shared/mapUtils.js`.
-- Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.js'`.
+- Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
+- Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
 - Текстовые ответы бота собраны в `bot/src/messages.ts`.
 - Сервис и контроллер карт переведены на TypeScript.
+- Контроллеры маршрутов и оптимизации, модуль `config.ts`, модель `AuthUser`
+  и кастомный бекенд админки переписаны на TypeScript, дублирующие JS‑роуты
+  удалены.
 - Подключение к MongoDB, модели и запросы (`connection.ts`, `model.ts`,
   `queries.ts`) используют строгие типы TypeScript.
 - Развёртывание коротких ссылок Google Maps проверяет домен, протокол https, отсутствие userinfo и нестандартного порта.

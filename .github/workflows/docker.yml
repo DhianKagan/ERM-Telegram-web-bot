@@ -62,7 +62,7 @@ jobs:
         run: npm --prefix bot test
 
       - name: Проверка MongoDB
-        run: node scripts/check_mongo.cjs
+        run: npm --prefix bot run check:mongo
 
       - name: Проверка docker-compose.yml
         run: docker compose config

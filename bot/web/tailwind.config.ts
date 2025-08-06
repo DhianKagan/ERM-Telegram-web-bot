@@ -1,5 +1,7 @@
-// Полная конфигурация Tailwind из шаблона TailAdmin
-
+/**
+ * Назначение файла: полная конфигурация Tailwind из шаблона TailAdmin.
+ * Основные модули: tailwindcss/defaultTheme, tailwindcss/colors.
+ */
 import defaultTheme from "tailwindcss/defaultTheme";
 import colors from "tailwindcss/colors";
 
@@ -322,4 +324,4 @@ export default {
     },
   },
   plugins: [],
-};
+} satisfies import('tailwindcss').Config;

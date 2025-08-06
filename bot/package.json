@@ -8,7 +8,7 @@
     "build": "tsc -p ..",
     "build-client": "npm --prefix web run build",
     "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "check:mongo": "node ../../scripts/check_mongo.cjs",
+    "check:mongo": "ts-node ../../scripts/check_mongo.ts",
     "chaos": "ts-node ../../scripts/chaos.ts"
   },
   "postinstall": "npm --prefix web install && npm run build-client && husky install",

@@ -22,6 +22,7 @@ export default {
       '2xsm': '375px',
       xsm: '425px',
       '3xl': '2000px',
+
       ...defaultTheme.screens,
     },
     extend: {
@@ -272,6 +273,7 @@ export default {
       },
       opacity: {
         65: '.65',
+
       },
       backgroundImage: {
         video: "url('../images/video/video.png')",

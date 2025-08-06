@@ -8,7 +8,7 @@
     "build": "tsc -p ..",
     "build-client": "npm --prefix web run build",
     "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "check:mongo": "ts-node ../../scripts/check_mongo.ts",
+    "check:mongo": "node ../scripts/check_mongo.mjs",
 
     "chaos": "ts-node ../../scripts/chaos.ts"
   },

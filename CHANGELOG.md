@@ -5,6 +5,7 @@
 - Релизы создаются при пуше тега вида `vMAJOR.MINOR.PATCH`.
 - Номер версии следует [семантическому версионированию](https://semver.org/lang/ru/).
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
+- Дорожная карта и план внедрения обновлены по результатам анализа `TSrecomendation.md`.
 
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.

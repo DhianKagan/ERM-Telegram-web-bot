@@ -41,6 +41,7 @@
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`
 - Для GitHub Actions требуется собственный MongoDB-хост или Railway CLI
 - Рекомендуется проверять базу командой `npm --prefix bot run check:mongo`
+- Скрипт `check_mongo` выводит понятное сообщение при недоступности базы
 - Переменная `BOT_API_URL` позволяет использовать локальный telegram-bot-api
 - Docker Compose содержит healthcheck для MongoDB
 - Добавлена пагинация списка задач в API

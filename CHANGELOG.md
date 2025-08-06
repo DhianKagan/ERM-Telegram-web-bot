@@ -387,3 +387,4 @@
 - Скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переписаны на TypeScript
 - Автотесты переведены на TypeScript, конфигурация Jest обновлена.
 - Проверка MongoDB в workflow Docker запускает TypeScript-скрипт через `npm --prefix bot run check:mongo`.
+- Скрипт `check_mongo` корректно сообщает об отсутствии базы данных вместо ошибки `db`.

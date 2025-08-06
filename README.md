@@ -201,6 +201,8 @@ curl -X POST "$APP_URL/api/v1/tasks" \
 
 Октябрь 2025 года: скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переписаны на TypeScript и запускаются через `ts-node`.
 
+Ноябрь 2025 года: скрипт проверки MongoDB выводит понятное сообщение при недоступности базы.
+
 ### Обновления зависимостей
 
 Удалены неиспользуемые пакеты bcrypt и mongodb-memory-server.

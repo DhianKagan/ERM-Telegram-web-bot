@@ -53,8 +53,12 @@ try {
 
 async function main() {
   async function tryConnect(u) {
-    await mongoose.connect(u);
-    await mongoose.connection.db.admin().ping();
+    const conn = await mongoose.connect(u);
+    const db = conn.connection && conn.connection.db;
+    if (!db) {
+      throw new Error('База данных недоступна');
+    }
+    await db.admin().ping();
   }
 
   try {

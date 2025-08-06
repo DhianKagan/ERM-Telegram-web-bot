@@ -18,6 +18,8 @@
   `queries.ts`) переведены на TypeScript и снабжены типами схем.
 - Все сервисы переписаны на TypeScript, добавлены интерфейсы и тесты `getRouteDistance`.
 - `verifyInitData` проверяет наличие переменной `BOT_TOKEN` и выбрасывает ошибку при её отсутствии.
+- Конфигурации Vite, Tailwind и PostCSS переписаны на TypeScript,
+  скрипт проверки MongoDB и тема интерфейса также написаны на TypeScript.
 
 - Уточнена типизация `username` в auth.service и auth.ts для корректной сборки Docker.
 

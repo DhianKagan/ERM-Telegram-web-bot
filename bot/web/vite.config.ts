@@ -1,12 +1,19 @@
-// Конфигурация Vite для мини-приложения. Плагин react и настройка каталога сборки.
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+
+/**
+ * Назначение файла: конфигурация Vite для мини-приложения.
+ * Основные модули: vite, @vitejs/plugin-react.
+ */
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "../public",
+
+    outDir: '../public',
+
     chunkSizeWarningLimit: 1500,
     commonjsOptions: {
       include: [/shared/, /node_modules/],
@@ -14,7 +21,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
+
+          react: ['react', 'react-dom', 'react-router-dom'],
+
         },
       },
     },

@@ -1,19 +1,24 @@
 #!/usr/bin/env ts-node
-/// <reference types="node" />
-/* eslint-disable @typescript-eslint/no-var-requires */
-// Проверка подключения к MongoDB
+/**
+ * Назначение файла: проверка подключения к MongoDB.
+ * Основные модули: dotenv, fs, path, mongoose.
+ */
+
 import fs from 'fs';
 import path from 'path';
 
 try {
-  require('dotenv').config();
+  const dotenv = await import('dotenv');
+  dotenv.config();
 } catch (e: any) {
-  if (e.code === 'MODULE_NOT_FOUND') {
+  if (e.code === 'ERR_MODULE_NOT_FOUND' || e.code === 'MODULE_NOT_FOUND') {
+
     console.warn('Модуль dotenv не найден, читаем .env вручную');
     const envPath = path.resolve(__dirname, '..', '.env');
     if (fs.existsSync(envPath)) {
       const env = fs.readFileSync(envPath, 'utf8');
-      env.split(/\r?\n/).forEach((line) => {
+      env.split(/\r?\n/).forEach(line => {
+
         const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
         if (m && !process.env[m[1]]) {
           process.env[m[1]] = m[2].replace(/(^['"]|['"]$)/g, '');
@@ -25,27 +30,23 @@ try {
   }
 }
 
-let mongoose: any;
+
+let mongoose: typeof import('mongoose');
 try {
-  mongoose = require('mongoose');
+  mongoose = await import('mongoose');
 } catch {
-  mongoose = require('../bot/node_modules/mongoose');
+  mongoose = await import('../bot/node_modules/mongoose');
 }
 
-const url = (
-  process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+const url = (process.env.MONGO_DATABASE_URL || process.env.MONGODB_URI || process.env.DATABASE_URL || '').trim();
+
 if (!url) {
   console.error('Не задан MONGO_DATABASE_URL');
   process.exit(1);
 }
 if (!/mongodb(?:\+srv)?:\/\/.+:.+@/.test(url)) {
-  console.warn(
-    'Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой',
-  );
+  console.warn('Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой');
+
 }
 
 // Выводим домен и имя базы без логина и пароля
@@ -58,8 +59,9 @@ try {
   console.warn('Не удалось разобрать строку подключения:', e.message);
 }
 
-async function main(): Promise<void> {
-  async function tryConnect(u: string): Promise<void> {
+async function main() {
+  async function tryConnect(u: string) {
+
     await mongoose.connect(u);
     await mongoose.connection.db.admin().ping();
   }
@@ -71,9 +73,9 @@ async function main(): Promise<void> {
   } catch (e: any) {
     console.error('Ошибка подключения к MongoDB:', e.message);
     if (/bad auth/i.test(e.message) && !/authSource/.test(url)) {
-      const alt = url.includes('?')
-        ? `${url}&authSource=admin`
-        : `${url}?authSource=admin`;
+
+      const alt = url.includes('?') ? `${url}&authSource=admin` : `${url}?authSource=admin`;
+
       console.log('Повторная попытка с authSource=admin');
       try {
         await mongoose.disconnect();
@@ -91,4 +93,5 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+await main();
+

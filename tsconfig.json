@@ -17,5 +17,5 @@
     "useDefineForClassFields": false
   },
   "include": ["bot/src/**/*"],
-  "exclude": ["dist", "bot/src/api/*.js"]
+  "exclude": ["dist"]
 }

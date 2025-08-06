@@ -388,3 +388,4 @@
 - Автотесты переведены на TypeScript, конфигурация Jest обновлена.
 - Проверка MongoDB в workflow Docker запускает TypeScript-скрипт через `npm --prefix bot run check:mongo`.
 - Скрипт `check_mongo` корректно сообщает об отсутствии базы данных вместо ошибки `db`.
+- Восстановлен файл `ecosystem.config.cjs` для запуска через pm2.

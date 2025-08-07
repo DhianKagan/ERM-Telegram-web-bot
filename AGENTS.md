@@ -17,6 +17,7 @@
 - ESLint проверяет TypeScript-файлы сервера, правило `no-explicit-any` включено,
   `ban-ts-comment` отключено
 - ESLint запрещает файлы `.js` вне конфигурации
+- Корневой `package.json` хранит зависимости `eslint` и `jiti`, линтер запускается командой `npx eslint bot/src`
 - Конфигурации ESLint, Prettier и Babel переведены на TypeScript, `scripts/check_no_js.sh` блокирует возврат к JavaScript
 - Удалены остаточные CommonJS-экспорты и явные `any`, `asyncHandler` допускает обработчики без `next`
 - Все сервисы, включая веб-клиент (`logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks`, `osrm`) и утилиту `authFetch`, переписаны на TypeScript и используют интерфейсы входных и выходных данных

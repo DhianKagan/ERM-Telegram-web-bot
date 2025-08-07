@@ -10,20 +10,6 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { CreateUserDto } from '../dto/users.dto';
 
-interface UsersResponse {
-  users: unknown[];
-}
-
-interface CreateUserBody {
-  telegramId: number;
-  name?: string;
-  roleId?: number;
-}
-
-interface CreateUserResponse {
-  status: string;
-}
-
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const middlewares = [

@@ -29,6 +29,7 @@
 - Исправлено подключение middleware `logging` и `metrics` в API.
 - Убраны лишние аргументы маршрута `/api/v1/users`, исключающего ошибку `argument handler must be a function`.
 - Исправлен импорт middleware `rolesGuard` в маршрутах `users`, `roles` и `logs`.
+- Удалены неиспользуемые интерфейсы в маршрутах задач и пользователей для прохождения ESLint.
 - Исправлены ошибки TypeScript, из-за которых падала сборка Docker.
 - Исправлена типизация профиля пользователя: `formatUser` принимает отсутствующий `telegram_id`.
 - Модуль `shared/mapUtils` и утилиты веб-клиента переписаны на TypeScript.

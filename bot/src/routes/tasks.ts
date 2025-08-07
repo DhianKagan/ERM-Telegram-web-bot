@@ -14,33 +14,6 @@ import {
 } from '../dto/tasks.dto';
 import checkTaskAccess from '../middleware/taskAccess';
 
-interface ListQuery {
-  status?: string;
-  assignees?: string[];
-  from?: string;
-  to?: string;
-  page?: number;
-  limit?: number;
-}
-
-interface TasksListResponse {
-  tasks: unknown[];
-  users: Record<string, unknown>;
-}
-
-interface TaskParams {
-  id: string;
-}
-
-interface TaskResponse {
-  task: unknown;
-  users: Record<string, unknown>;
-}
-
-interface StatusResponse {
-  status: string;
-}
-
 const router = Router();
 
 const detailLimiter = createRateLimiter(15 * 60 * 1000, 100);

@@ -41,6 +41,7 @@ interface TaskData {
   controllers?: number[];
   created_by?: number;
   comments?: { author_id?: number; text?: string }[];
+  task_description?: string;
 }
 
 export default function formatTask(

@@ -31,7 +31,7 @@ async function showMainMenu(ctx: Context): Promise<void> {
 
 async function checkAndRegister(ctx: Context): Promise<void> {
   try {
-    const member = await bot.telegram.getChatMember(chatId!, ctx.from.id);
+    const member = await bot.telegram.getChatMember(chatId!, ctx.from!.id);
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
       await ctx.reply(messages.accessOnlyGroup);
       return;
@@ -40,11 +40,11 @@ async function checkAndRegister(ctx: Context): Promise<void> {
     await ctx.reply(messages.accessError);
     return;
   }
-  const user = await getUser(ctx.from.id);
+  const user = await getUser(ctx.from!.id);
   if (user) {
     await ctx.reply(messages.welcomeBack);
   } else {
-    await createUser(ctx.from.id, ctx.from.username);
+    await createUser(ctx.from!.id, ctx.from?.username || '');
     await ctx.reply(messages.registrationSuccess);
   }
 }

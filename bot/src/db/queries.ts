@@ -86,7 +86,7 @@ export async function getTasks(
   limit?: number,
 ): Promise<TaskDocument[]> {
   if (filters.kanban) {
-    let qKanban: unknown = Task.find({});
+    let qKanban: any = Task.find({});
     if (typeof qKanban.sort === 'function')
       qKanban = qKanban.sort('-createdAt');
     if (typeof qKanban.lean === 'function') qKanban = qKanban.lean();
@@ -106,7 +106,7 @@ export async function getTasks(
     (q.createdAt as Record<string, Date>).$gte = new Date(filters.from);
   if (filters.to)
     (q.createdAt as Record<string, Date>).$lte = new Date(filters.to);
-  let query: unknown = Task.find(q);
+  let query: any = Task.find(q);
   if (typeof query.sort === 'function') query = query.sort('-createdAt');
   if (typeof query.lean === 'function') query = query.lean();
   if (limit && typeof query.skip === 'function') {
@@ -172,8 +172,8 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   const doc = await Task.findByIdAndDelete(id);
   if (!doc) return null;
   const data = doc.toObject();
-  (data as Record<string, unknown>).request_id = `${
-    (data as Record<string, unknown>).request_id
+  (data as unknown as Record<string, unknown>).request_id = `${
+    (data as unknown as Record<string, unknown>).request_id
   }-DEL`;
   await Archive.create(data);
   return doc;

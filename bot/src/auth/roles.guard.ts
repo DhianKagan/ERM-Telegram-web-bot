@@ -11,7 +11,7 @@ export default function rolesGuard(
   res: Response,
   next: NextFunction,
 ) {
-  const required = (req as Record<string | symbol, unknown>)[
+  const required = (req as unknown as Record<string | symbol, unknown>)[
     ROLES_KEY
   ] as number | undefined;
   if (!required) return next();

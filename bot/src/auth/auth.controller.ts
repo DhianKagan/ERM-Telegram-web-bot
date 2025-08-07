@@ -6,6 +6,7 @@ import { writeLog } from '../services/service';
 import setTokenCookie from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
 import { Request, Response } from 'express';
+import type { UserDocument } from '../db/model';
 
 export const sendCode = async (req: Request, res: Response) => {
   const { telegramId } = req.body;
@@ -38,15 +39,30 @@ export const verifyInitData = async (req: Request, res: Response) => {
   }
 };
 
-export const profile = async (req: RequestWithUser, res: Response) => {
-  const user = await service.getProfile(req.user!.id);
-  if (!user) return res.sendStatus(404);
+export const profile = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  const user = await service.getProfile(req.user!.id!);
+  if (!user) {
+    res.sendStatus(404);
+    return;
+  }
   res.json(formatUser(user));
 };
 
-export const updateProfile = async (req: RequestWithUser, res: Response) => {
-  const user = await service.updateProfile(req.user!.id, req.body);
-  if (!user) return res.sendStatus(404);
+export const updateProfile = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  const user = await service.updateProfile(
+    req.user!.id!,
+    req.body as Partial<UserDocument>,
+  );
+  if (!user) {
+    res.sendStatus(404);
+    return;
+  }
   await writeLog(`Профиль ${req.user!.id}/${req.user!.username} изменён`);
   res.json(formatUser(user));
 };

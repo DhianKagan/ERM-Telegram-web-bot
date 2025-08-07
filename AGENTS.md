@@ -16,6 +16,7 @@
 - Исключение `bot/src/api/*.js` убрано из `tsconfig.json`, сервер полностью на TypeScript
 - ESLint проверяет TypeScript-файлы сервера, правило `no-explicit-any` включено,
   `ban-ts-comment` отключено
+- ESLint запрещает файлы `.js` вне конфигурации
 - Удалены остаточные CommonJS-экспорты и явные `any`, `asyncHandler` допускает обработчики без `next`
 - Все сервисы, включая веб-клиент (`logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks`, `osrm`) и утилиту `authFetch`, переписаны на TypeScript и используют интерфейсы входных и выходных данных
 - Подключение к MongoDB, модели и запросы (`bot/src/db/connection.ts`,

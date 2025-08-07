@@ -70,13 +70,11 @@ export async function writeLog(
   level = 'info',
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
-  const fn =
-    (
-      LogEngine as Record<
-        string,
-        (msg: string, meta?: Record<string, unknown>) => void
-      >
-    )[level] || LogEngine.info;
+  const engine = LogEngine as unknown as Record<
+    string,
+    (msg: string, meta?: Record<string, unknown>) => void
+  >;
+  const fn = engine[level] || LogEngine.info;
   fn(message, metadata);
 }
 
@@ -97,9 +95,10 @@ export function listLogs(params: ListLogParams = {}): Promise<unknown> {
   if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
   if (message) filter.message = { $regex: message, $options: 'i' };
   if (from || to) {
-    filter.createdAt = {};
-    if (from) filter.createdAt.$gte = new Date(from);
-    if (to) filter.createdAt.$lte = new Date(to);
+    const range: Record<string, Date> = {};
+    if (from) range.$gte = new Date(from);
+    if (to) range.$lte = new Date(to);
+    filter.createdAt = range;
   }
   let sortObj: Record<string, 1 | -1> = { createdAt: -1 };
   if (sort === 'date_asc') sortObj = { createdAt: 1 };

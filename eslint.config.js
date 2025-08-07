@@ -27,6 +27,7 @@ export default [
   },
   {
     files: ['**/*.ts'],
+    ignores: ['bot/web/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -38,7 +39,7 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/ban-ts-comment': 'off',
       'no-undef': 'off',
     },

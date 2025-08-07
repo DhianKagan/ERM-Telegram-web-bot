@@ -28,8 +28,9 @@ const username = usernameArg || `admin_${telegramId}`;
 async function main(): Promise<void> {
   try {
     await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
-  } catch (e: any) {
-    console.error('Ошибка подключения к MongoDB:', e.message);
+  } catch (e: unknown) {
+    const err = e as Error;
+    console.error('Ошибка подключения к MongoDB:', err.message);
     process.exit(1);
   }
   let user = await User.findOne({ telegram_id: telegramId });
@@ -53,7 +54,8 @@ async function main(): Promise<void> {
   await mongoose.disconnect();
 }
 
-main().catch((e: any) => {
-  console.error('Ошибка:', e.message);
+main().catch((e: unknown) => {
+  const err = e as Error;
+  console.error('Ошибка:', err.message);
   process.exit(1);
 });

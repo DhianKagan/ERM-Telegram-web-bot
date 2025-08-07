@@ -10,7 +10,8 @@ type Endpoint = (typeof allowed)[number];
 
 /** Проверка формата координат */
 export function validateCoords(value: string): string {
-  const coordRx = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
+  const coordRx =
+    /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
   if (!coordRx.test(value)) throw new Error('Некорректные координаты');
   return value;
 }
@@ -23,8 +24,12 @@ async function call<T>(
   if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт');
   const safeCoords = validateCoords(coords);
   const url = new URL(`${base}/${endpoint}`);
-  url.searchParams.append(endpoint === 'nearest' ? 'point' : 'points', safeCoords);
-  for (const [k, v] of Object.entries(params)) url.searchParams.append(k, String(v));
+  url.searchParams.append(
+    endpoint === 'nearest' ? 'point' : 'points',
+    safeCoords,
+  );
+  for (const [k, v] of Object.entries(params))
+    url.searchParams.append(k, String(v));
   const res = await fetch(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || data.code || 'Route error');
@@ -84,4 +89,3 @@ export async function trip<T = unknown>(
 ): Promise<T> {
   return call('trip', points, params);
 }
-

@@ -13,8 +13,7 @@ export async function all(req: Request, res: Response): Promise<void> {
   const filters = {
     from: req.query.from as string | undefined,
     to: req.query.to as string | undefined,
-    status:
-      typeof req.query.status === 'string' ? req.query.status : undefined,
+    status: typeof req.query.status === 'string' ? req.query.status : undefined,
   };
   res.json(await service.list(filters));
 }

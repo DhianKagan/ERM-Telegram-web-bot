@@ -2,11 +2,11 @@
 // Модули: mongoose
 import mongoose, { Schema, Document } from 'mongoose';
 
- interface AuthUser {
+interface AuthUser {
   name: string;
   email: string;
   passwordHash: string;
-  role: "user" | "admin";
+  role: 'user' | 'admin';
 }
 
 export type AuthUserDocument = AuthUser & Document;

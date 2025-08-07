@@ -1,6 +1,6 @@
 // Назначение файла: DTO для пользователей
 // Основные модули: routes, middleware
-import { body } from 'express-validator'
+import { body } from 'express-validator';
 
 export class CreateUserDto {
   static rules() {
@@ -8,8 +8,8 @@ export class CreateUserDto {
       body('id').isInt(),
       body('username').isString().notEmpty(),
       body('roleId').optional().isMongoId(),
-    ]
+    ];
   }
 }
 
-export default { CreateUserDto }
+export default { CreateUserDto };

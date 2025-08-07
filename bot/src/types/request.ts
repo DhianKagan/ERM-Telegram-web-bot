@@ -28,4 +28,3 @@ export type RequestWithUser<
 };
 
 export default RequestWithUser;
-

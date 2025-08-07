@@ -25,7 +25,11 @@ const apiErrors = new client.Counter({
 });
 
 export const asyncHandler = (
-  fn: (req: Request, res: Response, next?: NextFunction) => Promise<void> | void,
+  fn: (
+    req: Request,
+    res: Response,
+    next?: NextFunction,
+  ) => Promise<void> | void,
 ): RequestHandler => {
   return async (req, res, next) => {
     try {

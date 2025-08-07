@@ -18,19 +18,19 @@ let connecting: Promise<typeof mongoose> | null;
 mongoose.connection.on('disconnected', async () => {
   console.error('Соединение с MongoDB прервано');
   if (backupUrl && mongoUrl !== backupUrl) {
-      try {
-        await mongoose.connect(backupUrl, opts);
-        console.log('Подключились к резервной базе');
-      } catch (e: unknown) {
-        const err = e as { message?: string };
-        console.error('Ошибка подключения к резервной базе:', err.message);
-      }
+    try {
+      await mongoose.connect(backupUrl, opts);
+      console.log('Подключились к резервной базе');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      console.error('Ошибка подключения к резервной базе:', err.message);
     }
-  });
-  mongoose.connection.on('error', (e: unknown) => {
-    const err = e as { message?: string };
-    console.error('Ошибка MongoDB:', err.message);
-  });
+  }
+});
+mongoose.connection.on('error', (e: unknown) => {
+  const err = e as { message?: string };
+  console.error('Ошибка MongoDB:', err.message);
+});
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -47,14 +47,14 @@ export default async function connect(): Promise<Connection> {
       connecting = mongoose.connect(mongoUrl, opts);
       await connecting;
       return mongoose.connection;
-      } catch (e: unknown) {
-        const err = e as { message?: string };
-        console.error(`Попытка ${attempt} не удалась:`, err.message);
-        if (attempt === attempts) throw e;
-        await sleep(delayMs);
-      } finally {
-        connecting = null;
-      }
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      console.error(`Попытка ${attempt} не удалась:`, err.message);
+      if (attempt === attempts) throw e;
+      await sleep(delayMs);
+    } finally {
+      connecting = null;
+    }
   }
   return mongoose.connection;
 }

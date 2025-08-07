@@ -21,7 +21,10 @@ async function applyRouteInfo(data: TaskData): Promise<void> {
       data.finishCoordinates,
     );
     try {
-      const r = await getRouteDistance(data.startCoordinates, data.finishCoordinates);
+      const r = await getRouteDistance(
+        data.startCoordinates,
+        data.finishCoordinates,
+      );
       data.route_distance_km = Number((r.distance! / 1000).toFixed(1));
     } catch {
       /* игнорируем ошибки маршрута */
@@ -61,4 +64,3 @@ export const remove = (id: string): Promise<unknown> => q.deleteTask(id);
 
 export const mentioned = (userId: number): Promise<unknown> =>
   q.listMentionedTasks(userId);
-

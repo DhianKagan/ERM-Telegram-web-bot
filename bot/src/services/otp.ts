@@ -46,7 +46,9 @@ export async function sendCode({ telegramId }: SendCodePayload): Promise<void> {
   await call('sendMessage', { chat_id: telegramId, text });
 }
 
-export async function sendAdminCode({ telegramId }: SendCodePayload): Promise<void> {
+export async function sendAdminCode({
+  telegramId,
+}: SendCodePayload): Promise<void> {
   clean();
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const text = `Код входа для Админа: ${code}`;
@@ -104,5 +106,3 @@ export function verifyAdminCode({ telegramId, code }: VerifyPayload): boolean {
   if (info.count >= MAX_ATTEMPTS) adminCodes.delete(key);
   return false;
 }
-
-

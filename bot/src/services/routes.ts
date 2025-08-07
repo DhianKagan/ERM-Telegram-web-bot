@@ -9,4 +9,3 @@ export interface RoutesFilter {
 export function list(filters: RoutesFilter): Promise<unknown> {
   return q.listRoutes(filters);
 }
-

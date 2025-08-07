@@ -52,59 +52,57 @@ export const detail = async (req: Request, res: Response) => {
 
 export const create = [
   handleValidation,
-    async (req: RequestWithUser, res: Response) => {
-      const task = await service.create(
-        req.body as Partial<TaskDocument>,
-      );
-      await writeLog(
-        `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
-      );
-      res.status(201).json(task);
-    },
-  ];
+  async (req: RequestWithUser, res: Response) => {
+    const task = await service.create(req.body as Partial<TaskDocument>);
+    await writeLog(
+      `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
+    );
+    res.status(201).json(task);
+  },
+];
 
 export const update = [
   handleValidation,
-    async (req: RequestWithUser, res: Response) => {
-      const task = await service.update(
-        req.params.id,
-        req.body as Partial<TaskDocument>,
-      );
-      if (!task) return res.sendStatus(404);
-      await writeLog(
-        `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
-      );
-      res.json(task);
-    },
-  ];
+  async (req: RequestWithUser, res: Response) => {
+    const task = await service.update(
+      req.params.id,
+      req.body as Partial<TaskDocument>,
+    );
+    if (!task) return res.sendStatus(404);
+    await writeLog(
+      `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
+    );
+    res.json(task);
+  },
+];
 
 export const addTime = [
   handleValidation,
-    async (req: RequestWithUser, res: Response) => {
-      const { minutes } = req.body as { minutes: number };
-      const task = await service.addTime(req.params.id, minutes);
-      if (!task) return res.sendStatus(404);
-      await writeLog(
-        `Время по задаче ${req.params.id} +${minutes} пользователем ${req.user!.id}/${req.user!.username}`,
-      );
-      res.json(task);
-    },
-  ];
+  async (req: RequestWithUser, res: Response) => {
+    const { minutes } = req.body as { minutes: number };
+    const task = await service.addTime(req.params.id, minutes);
+    if (!task) return res.sendStatus(404);
+    await writeLog(
+      `Время по задаче ${req.params.id} +${minutes} пользователем ${req.user!.id}/${req.user!.username}`,
+    );
+    res.json(task);
+  },
+];
 
 export const bulk = [
   handleValidation,
-    async (req: RequestWithUser, res: Response) => {
-      const { ids, status } = req.body as {
-        ids: string[];
-        status: TaskDocument['status'];
-      };
-      await service.bulk(ids, { status });
-      await writeLog(
-        `Массовое изменение статусов пользователем ${req.user!.id}/${req.user!.username}`,
-      );
-      res.json({ status: 'ok' });
-    },
-  ];
+  async (req: RequestWithUser, res: Response) => {
+    const { ids, status } = req.body as {
+      ids: string[];
+      status: TaskDocument['status'];
+    };
+    await service.bulk(ids, { status });
+    await writeLog(
+      `Массовое изменение статусов пользователем ${req.user!.id}/${req.user!.username}`,
+    );
+    res.json({ status: 'ok' });
+  },
+];
 
 export const mentioned = async (req: RequestWithUser, res: Response) => {
   const tasks = await service.mentioned(String(req.user!.id));

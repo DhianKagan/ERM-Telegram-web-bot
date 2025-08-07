@@ -1,22 +1,22 @@
 // Назначение файла: DTO запросов авторизации
 // Основные модули: routes, middleware
-import { body } from 'express-validator'
+import { body } from 'express-validator';
 
 export class SendCodeDto {
   static rules() {
-    return [body('telegramId').isInt()]
+    return [body('telegramId').isInt()];
   }
 }
 
 export class VerifyCodeDto {
   static rules() {
-    return [body('telegramId').isInt(), body('code').isLength({ min: 4 })]
+    return [body('telegramId').isInt(), body('code').isLength({ min: 4 })];
   }
 }
 
 export class VerifyInitDto {
   static rules() {
-    return [body('initData').isString()]
+    return [body('initData').isString()];
   }
 }
 
@@ -26,7 +26,7 @@ export class UpdateProfileDto {
       body('name').optional().isString().notEmpty(),
       body('phone').optional().isMobilePhone('any'),
       body('mobNumber').optional().isMobilePhone('any'),
-    ]
+    ];
   }
 }
 
@@ -35,4 +35,4 @@ export default {
   VerifyCodeDto,
   VerifyInitDto,
   UpdateProfileDto,
-}
+};

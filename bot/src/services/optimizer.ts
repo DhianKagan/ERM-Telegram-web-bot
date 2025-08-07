@@ -77,4 +77,3 @@ export async function optimize(
 
   return groups.map((g) => g.map((t) => t._id.toString()));
 }
-

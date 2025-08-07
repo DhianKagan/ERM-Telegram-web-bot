@@ -3,8 +3,14 @@
 import { hasAccess, ACCESS_USER } from '../utils/accessMask';
 import { writeLog } from '../services/service';
 import { ROLES_KEY } from './roles.decorator';
+import type { RequestWithUser } from '../types/request';
+import { Response, NextFunction } from 'express';
 
-export default function rolesGuard(req, res, next) {
+export default function rolesGuard(
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction,
+) {
   const required = req[ROLES_KEY];
   if (!required) return next();
   const mask = req.user?.access || ACCESS_USER;

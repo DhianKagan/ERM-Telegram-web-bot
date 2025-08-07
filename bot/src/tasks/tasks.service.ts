@@ -21,7 +21,7 @@ class TasksService {
     return this.repo.createTask(data);
   }
 
-  get(filters: any, page: number, limit: number) {
+  get(filters: any, page?: number, limit?: number) {
     return this.repo.getTasks(filters, page, limit);
   }
 

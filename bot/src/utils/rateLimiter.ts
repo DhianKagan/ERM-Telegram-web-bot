@@ -23,5 +23,4 @@ export default function createRateLimiter(windowMs: number, max: number) {
 }
 
 // Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = createRateLimiter;

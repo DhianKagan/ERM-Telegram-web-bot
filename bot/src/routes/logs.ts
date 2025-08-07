@@ -33,29 +33,26 @@ interface LogResponse {
 const router = Router();
 const limiter = createRateLimiter(15 * 60 * 1000, 100);
 
-router.get<unknown, LogsResponse, unknown, LogsQuery>(
+router.get(
   '/',
-  limiter,
-  verifyToken,
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
-  [
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1 }),
-  ],
-  ctrl.list as RequestHandler<unknown, LogsResponse, unknown, LogsQuery>,
+  limiter as RequestHandler,
+  verifyToken as RequestHandler,
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  query('page').optional().isInt({ min: 1 }) as unknown as RequestHandler,
+  query('limit').optional().isInt({ min: 1 }) as unknown as RequestHandler,
+  ctrl.list as unknown as RequestHandler,
 );
 
-router.post<unknown, LogResponse, LogBody>(
+router.post(
   '/',
-  limiter,
-  verifyToken,
-  ...validateDto(CreateLogDto),
-  ctrl.create as RequestHandler<unknown, LogResponse, LogBody>,
+  limiter as RequestHandler,
+  verifyToken as RequestHandler,
+  ...(validateDto(CreateLogDto) as RequestHandler[]),
+  ctrl.create as unknown as RequestHandler,
 );
 
 export default router;
 
 // Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = router;

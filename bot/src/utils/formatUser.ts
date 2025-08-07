@@ -16,5 +16,4 @@ export default function formatUser(user: UserLike | null): UserLike | null {
 }
 
 // Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (module as any).exports = formatUser;

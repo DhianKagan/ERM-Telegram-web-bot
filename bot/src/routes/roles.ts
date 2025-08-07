@@ -45,9 +45,9 @@ router.patch(
   verifyToken as unknown as RequestHandler,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
-  [param('id').isMongoId()],
+  param('id').isMongoId(),
   ...(validateDto(UpdateRoleDto) as RequestHandler[]),
-  ctrl.update as RequestHandler,
+  ctrl.update as unknown as RequestHandler,
 );
 
 export default router;

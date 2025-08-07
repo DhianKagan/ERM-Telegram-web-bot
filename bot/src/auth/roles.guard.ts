@@ -11,12 +11,12 @@ export default function rolesGuard(
   res: Response,
   next: NextFunction,
 ) {
-  const required = req[ROLES_KEY];
+  const required = (req as any)[ROLES_KEY];
   if (!required) return next();
   const mask = req.user?.access || ACCESS_USER;
   if (hasAccess(mask, required)) return next();
   writeLog(
-    `Недостаточно прав ${req.method} ${req.originalUrl} user:${req.user.id}/${req.user.username} ip:${req.ip}`,
+    `Недостаточно прав ${req.method} ${req.originalUrl} user:${req.user?.id}/${req.user?.username} ip:${req.ip}`,
   ).catch(() => {});
   return res.status(403).json({ message: 'Forbidden' });
 }

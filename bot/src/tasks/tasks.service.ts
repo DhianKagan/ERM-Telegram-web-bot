@@ -4,37 +4,37 @@ import { getRouteDistance } from '../services/route';
 import { generateRouteLink } from '../services/maps';
 
 class TasksService {
-  repo;
-  constructor(repo) {
+  repo: any;
+  constructor(repo: any) {
     this.repo = repo;
     if (!this.repo.createTask && this.repo.Task?.create) {
       this.repo.createTask = this.repo.Task.create.bind(this.repo.Task);
     }
     if (!this.repo.createTask) {
-      this.repo.createTask = async (d) => ({ _id: '1', ...d });
+      this.repo.createTask = async (d: any) => ({ _id: '1', ...d });
     }
   }
 
-  async create(data) {
+  async create(data: any) {
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     await this.applyRouteInfo(data);
     return this.repo.createTask(data);
   }
 
-  get(filters, page, limit) {
+  get(filters: any, page: number, limit: number) {
     return this.repo.getTasks(filters, page, limit);
   }
 
-  getById(id) {
+  getById(id: string) {
     return this.repo.getTask(id);
   }
 
-  async update(id, data) {
+  async update(id: string, data: any) {
     await this.applyRouteInfo(data);
     return this.repo.updateTask(id, data);
   }
 
-  async applyRouteInfo(data) {
+  async applyRouteInfo(data: any) {
     if (data.startCoordinates && data.finishCoordinates) {
       data.google_route_url = generateRouteLink(
         data.startCoordinates,
@@ -54,23 +54,23 @@ class TasksService {
     }
   }
 
-  addTime(id, minutes) {
+  addTime(id: string, minutes: number) {
     return this.repo.addTime(id, minutes);
   }
 
-  bulk(ids, data) {
+  bulk(ids: string[], data: any) {
     return this.repo.bulkUpdate(ids, data);
   }
 
-  summary(filters) {
+  summary(filters: any) {
     return this.repo.summary(filters);
   }
 
-  remove(id) {
+  remove(id: string) {
     return this.repo.deleteTask(id);
   }
 
-  mentioned(userId) {
+  mentioned(userId: string) {
     return this.repo.listMentionedTasks(userId);
   }
 }

@@ -12,7 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "strict": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "useUnknownInCatchVariables": false,
     "useDefineForClassFields": false
   },

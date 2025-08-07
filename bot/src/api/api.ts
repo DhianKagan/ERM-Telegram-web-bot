@@ -143,9 +143,10 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl;
     if (process.env.DISABLE_CSRF === '1') {
-      if (!globalThis.csrfWarn) {
+      // Используем каст, чтобы избежать обращения к несуществующему полю globalThis
+      if (!(globalThis as Record<string, unknown>).csrfWarn) {
         console.warn('CSRF middleware disabled');
-        (globalThis as any).csrfWarn = true;
+        (globalThis as Record<string, unknown>).csrfWarn = true;
       }
       return next();
     }
@@ -240,7 +241,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 
   app.use(errorHandler);
 
-  const port = config.port;
+  const port: number = config.port;
   app.listen(port, '0.0.0.0', () => {
     console.log(`API запущен на порту ${port}`);
     console.log(

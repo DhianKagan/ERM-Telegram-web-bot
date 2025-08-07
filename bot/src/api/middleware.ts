@@ -3,7 +3,13 @@
 import jwt from 'jsonwebtoken';
 import { writeLog } from '../services/service';
 import client from 'prom-client';
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+import {
+  Request,
+  Response,
+  NextFunction,
+  RequestHandler,
+  CookieOptions,
+} from 'express';
 import config from '../config';
 import type { RequestWithUser } from '../types/request';
 
@@ -51,9 +57,7 @@ export function errorHandler(
         _req.cookies && _req.cookies['XSRF-TOKEN']
           ? String(_req.cookies['XSRF-TOKEN']).slice(0, 8)
           : 'none';
-      const uid = _req.user
-        ? `${_req.user.id}/${_req.user.username}`
-        : 'anon';
+      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : 'anon';
       writeLog(
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
       ).catch(() => {});
@@ -76,7 +80,8 @@ export function errorHandler(
 }
 
 const { jwtSecret } = config;
-const secretKey = jwtSecret;
+// Строго задаём тип секретного ключа JWT
+const secretKey: string = jwtSecret;
 
 export function verifyToken(
   req: RequestWithUser,
@@ -123,29 +128,41 @@ export function verifyToken(
   }
 
   const preview = token ? String(token).slice(0, 8) : 'none';
-  jwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {
-    if (err) {
-      writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
-      apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
-      res
-        .status(401)
-        .json({ message: 'Недействительный токен. Выполните вход заново.' });
-      return;
-    }
-    req.user = decoded as RequestWithUser['user'];
-    const cookieOpts: Record<string, any> = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-    if (cookieOpts.secure) {
-      cookieOpts.domain =
-        config.cookieDomain || new URL(config.appUrl).hostname;
-    }
-    res.cookie('token', token, cookieOpts);
-    next();
-  });
+  jwt.verify(
+    token,
+    secretKey,
+    { algorithms: ['HS256'] },
+    (
+      err: jwt.VerifyErrors | null,
+      decoded: jwt.JwtPayload | string | undefined,
+    ) => {
+      if (err) {
+        writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
+        apiErrors.inc({
+          method: req.method,
+          path: req.originalUrl,
+          status: 401,
+        });
+        res
+          .status(401)
+          .json({ message: 'Недействительный токен. Выполните вход заново.' });
+        return;
+      }
+      req.user = decoded as RequestWithUser['user'];
+      const cookieOpts: CookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      };
+      if (cookieOpts.secure) {
+        cookieOpts.domain =
+          config.cookieDomain || new URL(config.appUrl).hostname;
+      }
+      res.cookie('token', token, cookieOpts);
+      next();
+    },
+  );
 }
 
 export function requestLogger(

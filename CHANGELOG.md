@@ -5,7 +5,8 @@
 - Релизы создаются при пуше тега вида `vMAJOR.MINOR.PATCH`.
 - Номер версии следует [семантическому версионированию](https://semver.org/lang/ru/).
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
-- Дорожная карта и план внедрения обновлены по результатам анализа `TSrecomendation.md`.
+- Дорожная карта и план внедрения обновлены; устаревшие документы `TSrecomendation.md` и `analys2025.md` удалены,
+  содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
 
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Исправлена типизация порта, Request получил метод `csrfToken`, `jwt.verify` использует строгие типы.
@@ -318,7 +319,7 @@
 - Повышение пользователя до администратора фиксируется в логах
 - В Prometheus добавлено правило оповещения `CsrfErrors`
 - Исправлена ошибка ESLint в API: параметр `query` не был импортирован
-- Обновлены ModuleCore.md и docs/architecture.md: описана модульная структура
+- Обновлён файл `docs/architecture.md`: описана модульная структура
 - Добавлена библиотека tsyringe и контейнер src/container.ts для сервисов
 - Введены классы DTO и middleware валидации на основе `class-validator`
 - Добавлены `roles.guard.ts` и `roles.decorator.ts`, контроллеры задач и

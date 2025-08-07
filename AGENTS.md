@@ -2,6 +2,8 @@
 
 - Документация и комментарии пишутся только по‑русски
 - Все технические файлы сведены в `docs/technical_manual.md`
+- Документация по модулям объединена в `docs/architecture.md`, устаревшие файлы
+  `ModuleCore.md`, `TSrecomendation.md` и `analys2025.md` удалены
 - В начале каждого файла указывайте назначение и основные модули
 - Текстовые сообщения бота в `bot/src/messages.ts` должны быть на русском
 - Код делайте лаконичным и понятным
@@ -247,7 +249,7 @@
 - План внедрения улучшений описан в docs/apply_analysis_plan.md
 - Тест `routeCsrf.test.ts` использует самоподписанный сертификат и предотвращает ошибки CSRF,
   `taskFields.test.ts` контролирует форму задач
-- В ModuleCore.md и docs/architecture.md подробно описаны модули
+- Модули подробно описаны в `docs/architecture.md`
 - Сервисы регистрируются через tsyringe, контейнер src/container.ts подключается в src/server.js
 - Валидация маршрутов использует классы DTO и middleware validateDto
 - Маска доступа проверяется guard'ом rolesGuard с декоратором Roles

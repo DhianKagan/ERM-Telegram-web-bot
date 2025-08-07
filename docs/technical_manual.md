@@ -40,6 +40,7 @@
 модель `AuthUser` и кастомный бекенд админки; дублирующие JS‑роуты удалены.
 Удалены остаточные CommonJS-экспорты и явные `any`, `asyncHandler` допускает обработчики без `next`.
 Тип `RequestWithUser` вынесен в `src/types/request.ts` и подключён во всех контроллерах и middleware.
+Конфигурации ESLint, Prettier и Babel написаны на TypeScript, скрипт `scripts/check_no_js.sh` гарантирует отсутствие JavaScript.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 
 ### Защита от инъекций

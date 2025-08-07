@@ -13,11 +13,14 @@ fi
 npm ci --prefix bot || npm --prefix bot install
 npm ci --prefix bot/web || npm --prefix bot/web install
 
+# Проверяем отсутствие JavaScript-файлов
+./scripts/check_no_js.sh
+
 # Запускаем тесты и линтеры
 npm test --prefix bot -- --detectOpenHandles
 npm test --prefix bot tests/csrf.test.ts
 npm run test:types --prefix bot
-npx eslint bot/src
+node -r ./bot/node_modules/ts-node/register bot/node_modules/eslint/bin/eslint.js bot/src
 npm run lint --prefix bot/web
 
 # Проверяем конфигурацию docker compose при наличии команды docker

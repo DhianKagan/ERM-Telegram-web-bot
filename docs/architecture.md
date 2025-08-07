@@ -6,6 +6,7 @@
 Перейти от монолитного JavaScript‑кода к модульной архитектуре на TypeScript,
 используя Express и MongoDB. Структура вдохновлена подходами NestJS:
 чёткое разделение слоёв, DTO‑валидация и декораторы для RBAC.
+Конфигурации ESLint, Prettier и Babel написаны на TypeScript, `scripts/check_no_js.sh` исключает возврат к JavaScript.
 
 ## Структура каталогов
 

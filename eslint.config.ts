@@ -1,23 +1,17 @@
 /**
- * Назначение файла: базовая конфигурация ESLint для серверной части.
+ * Назначение файла: базовая конфигурация ESLint для сервера и клиента.
  * Подключает стандартные правила, окружение Node и поддержку TypeScript,
- * запрещая JavaScript-файлы вне конфигурации.
+ * запрещая любые JavaScript-файлы.
  */
 import js from './bot/node_modules/@eslint/js/src/index.js';
 import globals from './bot/node_modules/globals/index.js';
 import tsParser from './bot/node_modules/@typescript-eslint/parser/dist/index.js';
 import tsPlugin from './bot/node_modules/@typescript-eslint/eslint-plugin/dist/index.js';
 
-export default [
+const config = [
   js.configs.recommended,
   {
     files: ['**/*.js'],
-    ignores: [
-      'eslint.config.js',
-      'bot/eslint.config.js',
-      'bot/web/eslint.config.js',
-      'bot/babel.config.js',
-    ],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'commonjs',
@@ -61,3 +55,6 @@ export default [
     },
   },
 ];
+
+export default config;
+module.exports = config;

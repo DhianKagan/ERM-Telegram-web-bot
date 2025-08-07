@@ -1,11 +1,15 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tsParser from '@typescript-eslint/parser'
-import tsPlugin from '@typescript-eslint/eslint-plugin'
+/**
+ * Конфигурация ESLint для веб-клиента
+ * Модули: eslint-plugin-react-hooks, eslint-plugin-react-refresh
+ */
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 
-export default [
+const config = [
   { ignores: ['dist'] },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -39,4 +43,7 @@ export default [
       ],
     },
   },
-]
+];
+
+export default config;
+module.exports = config;

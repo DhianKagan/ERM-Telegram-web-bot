@@ -4,16 +4,16 @@
   "main": "src/bot/bot.js",
   "types": "bot.d.ts",
   "scripts": {
-    "test": "jest --coverage",
+    "test": "node -r ./node_modules/ts-node/register ./node_modules/jest/bin/jest.js --coverage",
     "start": "node dist/server.js",
     "build": "tsc -p ..",
     "build-client": "npm --prefix web run build",
-    "format": "prettier --write \"src/**/*.{js,ts}\"",
+    "format": "npx jiti ./node_modules/prettier/bin/prettier.cjs --config ../prettier.config.ts \"src/**/*.{js,ts}\"",
     "check:mongo": "node ../scripts/check_mongo.mjs",
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd bot --project tsconfig.json --files tests/requestWithUser.test-d.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\""
   },
   "postinstall": "npm --prefix web install && npm run build-client && husky install",
   "author": "",
@@ -69,12 +69,13 @@
     "eslint": "^9.29.0",
     "husky": "^9.0.11",
     "jest": "^30.0.3",
+    "jiti": "^1.21.7",
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",
     "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
-    "tsd": "^0.31.0"
+    "tsd": "^0.31.0",
+    "typescript": "^5.4.5"
   },
   "jest": {
     "testMatch": [
@@ -87,7 +88,7 @@
   "lint-staged": {
     "*.{js,ts}": [
       "prettier --write",
-      "eslint --fix",
+      "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js --fix",
       "jest --bail --findRelatedTests"
     ]
   }

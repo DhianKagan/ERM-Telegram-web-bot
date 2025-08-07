@@ -28,6 +28,7 @@
 - ESLint проверяет серверные файлы TypeScript; правило `no-explicit-any` включено,
   `ban-ts-comment` остаётся отключено.
 - ESLint запрещает файлы `.js` вне конфигурации.
+- Конфигурационные файлы переведены на TypeScript, скрипт `scripts/check_no_js.sh` предотвращает возврат к JavaScript.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
 - Утилита `authFetch` и сервисы веб‑клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks` и `osrm` переписаны на TypeScript.

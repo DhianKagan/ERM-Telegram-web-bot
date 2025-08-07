@@ -144,7 +144,7 @@ Dockerfile используется из корня проекта, поэтом
   иначе `npm run build` не находит конфигурацию TypeScript.
 - Перед сборкой клиента выполняется `npm run build`, чтобы скомпилировать сервер
 
-- Добавлено описание модулей в ModuleCore.md и docs/architecture.md
+- Описание модулей собрано в docs/architecture.md
 - Реализованы UsersModule, RolesModule и LogsModule с отдельными контроллерами
   и сервисами
 

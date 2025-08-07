@@ -299,3 +299,5 @@
   `config`, модель пользователя и кастомный админ-бекенд; дублирующие
   JS‑роуты удалены
 - Скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переведены на TypeScript
+- Для tsd добавлен локальный `bot/tsconfig.json`, интерфейсы маршрутов экспортированы
+  для корректной работы ESLint

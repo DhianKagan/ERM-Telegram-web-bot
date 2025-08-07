@@ -12,17 +12,17 @@ import {
 } from '../services/route';
 import { verifyToken, asyncHandler } from '../api/middleware';
 
-interface Point {
+export interface Point {
   lat: number;
   lng: number;
 }
 
-interface DistanceBody {
+export interface DistanceBody {
   start: Point;
   end: Point;
 }
 
-interface DistanceResponse {
+export interface DistanceResponse {
   distance: number;
   route_distance_km?: number;
   [key: string]: unknown;

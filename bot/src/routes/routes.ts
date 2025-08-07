@@ -5,13 +5,13 @@ import { query, validationResult } from 'express-validator';
 import * as ctrl from '../controllers/routes';
 import { verifyToken, asyncHandler } from '../api/middleware';
 
-interface RoutesQuery {
+export interface RoutesQuery {
   from?: string;
   to?: string;
   status?: string;
 }
 
-interface RoutesResponse {
+export interface RoutesResponse {
   routes: unknown[];
 }
 

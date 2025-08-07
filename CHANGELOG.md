@@ -18,6 +18,8 @@
 - На TypeScript переведён модуль `messages`.
 - Подключение, модели и запросы MongoDB (`connection.ts`, `model.ts`,
   `queries.ts`) переведены на TypeScript и снабжены типами схем.
+- Добавлен локальный `tsconfig.json` в каталоге `bot` для проверки типов.
+- Интерфейсы маршрутов экспортированы для корректной работы ESLint.
 - Все сервисы переписаны на TypeScript, добавлены интерфейсы и тесты `getRouteDistance`.
 - `verifyInitData` проверяет наличие переменной `BOT_TOKEN` и выбрасывает ошибку при её отсутствии.
 - Конфигурации Vite, Tailwind и PostCSS переписаны на TypeScript,

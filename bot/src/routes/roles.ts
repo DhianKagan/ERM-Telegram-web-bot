@@ -11,19 +11,19 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { UpdateRoleDto } from '../dto/roles.dto';
 
-interface RoleUpdateParams {
+export interface RoleUpdateParams {
   id: string;
 }
 
-interface RolesResponse {
+export interface RolesResponse {
   roles: unknown[];
 }
 
-interface UpdateRoleBody {
+export interface UpdateRoleBody {
   access: number;
 }
 
-interface UpdateRoleResponse {
+export interface UpdateRoleResponse {
   status: string;
 }
 

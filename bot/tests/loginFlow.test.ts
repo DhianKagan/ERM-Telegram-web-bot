@@ -25,7 +25,7 @@ jest.mock('../src/db/queries', () => ({
   updateUser: jest.fn(async () => ({})),
 }));
 
-const authRouter = require('../src/routes/authUser');
+const authRouter = require('../src/routes/authUser').default;
 const { verifyToken, errorHandler } = require('../src/api/middleware');
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');

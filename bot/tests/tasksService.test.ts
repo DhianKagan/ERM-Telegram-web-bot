@@ -15,7 +15,7 @@ jest.mock('../src/services/maps', () => ({
 
 const route = require('../src/services/route');
 const maps = require('../src/services/maps');
-const TasksService = require('../src/tasks/tasks.service.ts');
+const TasksService = require('../src/tasks/tasks.service.ts').default;
 
 function createRepo() {
   return {

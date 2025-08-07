@@ -44,7 +44,7 @@ const {
   checkRole,
   asyncHandler,
 } = require('../src/api/middleware');
-const validateDto = require('../src/middleware/validateDto.ts');
+const validateDto = require('../src/middleware/validateDto.ts').default;
 const { CreateUserDto } = require('../src/dto/users.dto.ts');
 
 const app = express();

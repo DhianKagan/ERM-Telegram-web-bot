@@ -28,7 +28,8 @@ seed()
     console.log('Добавлены тестовые документы');
     process.exit(0);
   })
-  .catch((err: any) => {
-    console.error('Ошибка:', err.message);
+  .catch((err: unknown) => {
+    const error = err as Error;
+    console.error('Ошибка:', error.message);
     process.exit(1);
   });

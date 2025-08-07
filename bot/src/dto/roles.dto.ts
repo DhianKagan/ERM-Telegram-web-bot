@@ -1,6 +1,6 @@
 // Назначение файла: DTO для ролей
 // Основные модули: routes, middleware
-import { body } from 'express-validator'
+import { body } from 'express-validator';
 
 export class UpdateRoleDto {
   static rules() {
@@ -12,8 +12,8 @@ export class UpdateRoleDto {
             (item) => typeof item === 'string' || typeof item === 'number',
           ),
         ),
-    ]
+    ];
   }
 }
 
-export default { UpdateRoleDto }
+export default { UpdateRoleDto };

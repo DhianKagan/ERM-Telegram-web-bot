@@ -36,4 +36,3 @@ export async function call<T = unknown>(
     throw err;
   }
 }
-

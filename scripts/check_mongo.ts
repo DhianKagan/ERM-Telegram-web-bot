@@ -10,8 +10,9 @@ import path from 'path';
 try {
   const dotenv = await import('dotenv');
   dotenv.config();
-} catch (e: any) {
-  if (e.code === 'ERR_MODULE_NOT_FOUND' || e.code === 'MODULE_NOT_FOUND') {
+} catch (e: unknown) {
+  const err = e as NodeJS.ErrnoException;
+  if (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND') {
 
     console.warn('Модуль dotenv не найден, читаем .env вручную');
     const envPath = path.resolve(__dirname, '..', '.env');
@@ -26,7 +27,7 @@ try {
       });
     }
   } else {
-    throw e;
+    throw err;
   }
 }
 
@@ -55,8 +56,9 @@ try {
   const domain = port ? `${hostname}:${port}` : hostname;
   const dbName = pathname.replace(/^\//, '') || '(по умолчанию)';
   console.log(`Подключение к ${domain}/${dbName}`);
-} catch (e: any) {
-  console.warn('Не удалось разобрать строку подключения:', e.message);
+} catch (e: unknown) {
+  const err = e as Error;
+  console.warn('Не удалось разобрать строку подключения:', err.message);
 }
 
 async function main() {
@@ -73,9 +75,10 @@ async function main() {
     await tryConnect(url);
     console.log('MongoDB подключена');
     process.exit(0);
-  } catch (e: any) {
-    console.error('Ошибка подключения к MongoDB:', e.message);
-    if (/bad auth/i.test(e.message) && !/authSource/.test(url)) {
+  } catch (e: unknown) {
+    const err = e as Error;
+    console.error('Ошибка подключения к MongoDB:', err.message);
+    if (/bad auth/i.test(err.message) && !/authSource/.test(url)) {
 
       const alt = url.includes('?') ? `${url}&authSource=admin` : `${url}?authSource=admin`;
 
@@ -85,11 +88,12 @@ async function main() {
         await tryConnect(alt);
         console.log('Подключение успешно с authSource=admin');
         process.exit(0);
-      } catch (e2: any) {
-        console.error('Снова ошибка:', e2.message);
+      } catch (e2: unknown) {
+        const err2 = e2 as Error;
+        console.error('Снова ошибка:', err2.message);
       }
     }
-    if (/bad auth/i.test(e.message)) {
+    if (/bad auth/i.test(err.message)) {
       console.error('Проверьте логин и пароль в MONGO_DATABASE_URL');
     }
     process.exit(1);

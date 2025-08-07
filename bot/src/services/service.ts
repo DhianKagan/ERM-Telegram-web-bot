@@ -18,4 +18,3 @@ export const listLogs = (params: Record<string, unknown>) => wgListLogs(params);
 export const searchTasks = q.searchTasks;
 export const listMentionedTasks = q.listMentionedTasks;
 export const deleteTask = q.deleteTask;
-

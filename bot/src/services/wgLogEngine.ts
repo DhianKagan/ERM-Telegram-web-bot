@@ -1,7 +1,11 @@
 // Назначение: настройка WG Log Engine и вывод логов в разные каналы
 // Модули: @wgtechlabs/log-engine, mongoose, fetch
 import { Log } from '../db/model';
-import { LogEngine, LogMode, EnhancedOutputTarget } from '@wgtechlabs/log-engine';
+import {
+  LogEngine,
+  LogMode,
+  EnhancedOutputTarget,
+} from '@wgtechlabs/log-engine';
 
 const mode = process.env.LOG_LEVEL || 'debug';
 const modes: Record<string, LogMode> = {
@@ -66,7 +70,13 @@ export async function writeLog(
   level = 'info',
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
-  const fn = (LogEngine as any)[level] || LogEngine.info;
+  const fn =
+    (
+      LogEngine as Record<
+        string,
+        (msg: string, meta?: Record<string, unknown>) => void
+      >
+    )[level] || LogEngine.info;
   fn(message, metadata);
 }
 
@@ -83,7 +93,7 @@ export interface ListLogParams {
 export function listLogs(params: ListLogParams = {}): Promise<unknown> {
   const { level, message, from, to, sort, page = 1, limit = 100 } = params;
   const allowedLevels = ['debug', 'info', 'warn', 'error', 'log'];
-  const filter: Record<string, any> = {};
+  const filter: Record<string, unknown> = {};
   if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
   if (message) filter.message = { $regex: message, $options: 'i' };
   if (from || to) {

@@ -11,7 +11,7 @@ import {
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
-import { Types, PipelineStage } from 'mongoose';
+import { Types, PipelineStage, Query } from 'mongoose';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -86,13 +86,15 @@ export async function getTasks(
   limit?: number,
 ): Promise<TaskDocument[]> {
   if (filters.kanban) {
-    let qKanban: any = Task.find({});
-    if (typeof qKanban.sort === 'function')
-      qKanban = qKanban.sort('-createdAt');
-    if (typeof qKanban.lean === 'function') qKanban = qKanban.lean();
-    return (
-      typeof qKanban.exec === 'function' ? qKanban.exec() : qKanban
-    ) as Promise<TaskDocument[]>;
+    type TaskQuery = Query<TaskDocument[], TaskDocument>;
+    const isQuery = (v: unknown): v is TaskQuery =>
+      typeof v === 'object' && v !== null && 'exec' in v;
+    let qKanban: TaskQuery | TaskDocument[] = Task.find({});
+    if (isQuery(qKanban)) {
+      qKanban = qKanban.sort('-createdAt').lean();
+      return qKanban.exec();
+    }
+    return qKanban;
   }
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
@@ -106,17 +108,20 @@ export async function getTasks(
     (q.createdAt as Record<string, Date>).$gte = new Date(filters.from);
   if (filters.to)
     (q.createdAt as Record<string, Date>).$lte = new Date(filters.to);
-  let query: any = Task.find(q);
-  if (typeof query.sort === 'function') query = query.sort('-createdAt');
-  if (typeof query.lean === 'function') query = query.lean();
-  if (limit && typeof query.skip === 'function') {
-    const p = Number(page) || 1;
-    const l = Number(limit) || 20;
-    query = query.skip((p - 1) * l).limit(l);
+  type TaskQuery = Query<TaskDocument[], TaskDocument>;
+  const isQuery = (v: unknown): v is TaskQuery =>
+    typeof v === 'object' && v !== null && 'exec' in v;
+  let query: TaskQuery | TaskDocument[] = Task.find(q);
+  if (isQuery(query)) {
+    query = query.sort('-createdAt').lean();
+    if (limit) {
+      const p = Number(page) || 1;
+      const l = Number(limit) || 20;
+      query = query.skip((p - 1) * l).limit(l);
+    }
+    return query.exec();
   }
-  return (typeof query.exec === 'function' ? query.exec() : query) as Promise<
-    TaskDocument[]
-  >;
+  return query;
 }
 
 export interface RoutesFilters {
@@ -131,10 +136,8 @@ export async function listRoutes(
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
   if (filters.from || filters.to) q.createdAt = {} as Record<string, Date>;
-  if (filters.from)
-    (q.createdAt as Record<string, Date>).$gte = filters.from;
-  if (filters.to)
-    (q.createdAt as Record<string, Date>).$lte = filters.to;
+  if (filters.from) (q.createdAt as Record<string, Date>).$gte = filters.from;
+  if (filters.to) (q.createdAt as Record<string, Date>).$lte = filters.to;
   return Task.find(q).select(
     'startCoordinates finishCoordinates route_distance_km status createdAt',
   );
@@ -195,8 +198,7 @@ export async function summary(
   if (filters.from || filters.to) match.createdAt = {} as Record<string, Date>;
   if (filters.from)
     (match.createdAt as Record<string, Date>).$gte = filters.from;
-  if (filters.to)
-    (match.createdAt as Record<string, Date>).$lte = filters.to;
+  if (filters.to) (match.createdAt as Record<string, Date>).$lte = filters.to;
   const pipeline: (PipelineStage | undefined)[] = [
     Object.keys(match).length ? { $match: match } : undefined,
     {
@@ -210,7 +212,10 @@ export async function summary(
   const res = await Task.aggregate(
     pipeline.filter((s): s is PipelineStage => Boolean(s)),
   );
-  const { count = 0, time = 0 } = (res[0] || {}) as { count?: number; time?: number };
+  const { count = 0, time = 0 } = (res[0] || {}) as {
+    count?: number;
+    time?: number;
+  };
   return { count, time };
 }
 

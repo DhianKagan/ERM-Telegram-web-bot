@@ -1,6 +1,9 @@
 // Назначение файла: расчёт расстояния между двумя координатами
 // Основные модули: Math
-export interface Coord { lat: number; lng: number }
+export interface Coord {
+  lat: number;
+  lng: number;
+}
 
 export default function haversine(a: Coord, b: Coord): number {
   const R = 6371;

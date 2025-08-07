@@ -25,7 +25,8 @@
 - Исключение `bot/src/api/*.js` удалено, весь серверный код на TypeScript.
 - Сборка выполняется в строгом режиме TypeScript; включён флаг `noImplicitAny`; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Конфигурации Vite, Tailwind и PostCSS написаны на TypeScript, скрипт темы перенесён в исходники.
-- ESLint проверяет серверные файлы TypeScript; правила `no-explicit-any` и `ban-ts-comment` отключены.
+- ESLint проверяет серверные файлы TypeScript; правило `no-explicit-any` включено,
+  `ban-ts-comment` остаётся отключено.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
 - Утилита `authFetch` и сервисы веб‑клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks` и `osrm` переписаны на TypeScript.

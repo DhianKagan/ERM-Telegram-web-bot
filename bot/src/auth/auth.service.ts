@@ -20,7 +20,11 @@ async function sendCode(telegramId: number | string) {
   }
 }
 
-async function verifyCode(id: string | number, code: string, username?: string) {
+async function verifyCode(
+  id: string | number,
+  code: string,
+  username?: string,
+) {
   const telegramId = String(id);
   if (!/^[0-9]+$/.test(telegramId)) throw new Error('Invalid telegramId');
   let user = await getUser(telegramId);
@@ -106,10 +110,7 @@ async function getProfile(id: string | number) {
   return user || null;
 }
 
-async function updateProfile(
-  id: string | number,
-  data: Partial<UserDocument>,
-) {
+async function updateProfile(id: string | number, data: Partial<UserDocument>) {
   const user = await updateUser(id, data);
   return user || null;
 }

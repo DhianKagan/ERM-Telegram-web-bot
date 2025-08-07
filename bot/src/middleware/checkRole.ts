@@ -3,22 +3,9 @@
 import { Response, NextFunction } from 'express';
 import { hasAccess, ACCESS_USER } from '../utils/accessMask';
 import { writeLog } from '../services/service';
+import type { RequestWithUser } from '../types/request';
 
 type Expected = number | string | string[];
-
-interface UserInfo {
-  id?: number;
-  username?: string;
-  role?: string;
-  access?: number;
-}
-
-interface RequestWithUser {
-  method: string;
-  originalUrl: string;
-  ip: string;
-  user?: UserInfo;
-}
 
 export default function checkRole(expected: Expected) {
   return (req: RequestWithUser, res: Response, next: NextFunction): void => {

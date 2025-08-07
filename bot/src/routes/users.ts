@@ -24,7 +24,7 @@ router.post(
   '/',
   ...middlewares,
   ...(validateDto(CreateUserDto) as RequestHandler[]),
-  ctrl.create as RequestHandler,
+  ...(ctrl.create as RequestHandler[]),
 );
 
 export default router;

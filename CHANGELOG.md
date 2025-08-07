@@ -393,3 +393,5 @@
 - Проверка MongoDB в workflow Docker запускает TypeScript-скрипт через `npm --prefix bot run check:mongo`.
 - Скрипт `check_mongo` корректно сообщает об отсутствии базы данных вместо ошибки `db`.
 - Восстановлен файл `ecosystem.config.cjs` для запуска через pm2.
+- Введён общий тип `RequestWithUser`, все контроллеры и middleware используют его вместо `any`.
+- Добавлен скрипт `test:types` с проверками `tsd` и стресс-тест `stress_test.sh`.

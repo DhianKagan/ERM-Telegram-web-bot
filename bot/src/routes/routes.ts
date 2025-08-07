@@ -26,17 +26,15 @@ const validate = (v: ReturnType<typeof query>[]): RequestHandler[] => [
   },
 ];
 
-router.get<unknown, RoutesResponse, unknown, RoutesQuery>(
+router.get(
   '/all',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
     query('status').optional().isString(),
   ]),
-  asyncHandler(
-    ctrl.all as RequestHandler<unknown, RoutesResponse, unknown, RoutesQuery>,
-  ),
+  asyncHandler(ctrl.all as any),
 );
 
 export default router;

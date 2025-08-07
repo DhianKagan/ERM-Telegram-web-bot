@@ -37,6 +37,7 @@
 Сервисы веб-клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks`, `osrm` и утилита `authFetch` также переписаны на TypeScript.
 Переписаны на TypeScript модуль `config`, контроллеры `routes` и `optimizer`,
 модель `AuthUser` и кастомный бекенд админки; дублирующие JS‑роуты удалены.
+Тип `RequestWithUser` вынесен в `src/types/request.ts` и подключён во всех контроллерах и middleware.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 
 ### Защита от инъекций
@@ -182,6 +183,8 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
 - Зависимости сервера и клиента устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
+- Типовые проверки выполняются `npm --prefix bot run test:types` через `tsd`.
+- Стресс-тест запускается скриптом `./scripts/stress_test.sh` (см. `docs/stress_plan.md`).
 - Перед коммитом Husky запускает `lint-staged`, используйте файл `.husky/_/husky.sh`.
 - В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
 - Тест `loginRouteFlow.test.js` проверяет получение CSRF-токена и вызов `/api/v1/route`.

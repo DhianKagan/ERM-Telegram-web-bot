@@ -30,69 +30,69 @@ interface DistanceResponse {
 
 const router = Router();
 
-router.post<unknown, DistanceResponse, DistanceBody>(
+router.post(
   '/',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([
     body('start.lat').isFloat(),
     body('start.lng').isFloat(),
     body('end.lat').isFloat(),
     body('end.lng').isFloat(),
   ]),
-  asyncHandler((async (req, res) => {
+  asyncHandler(async (req, res) => {
     const data = await getRouteDistance(req.body.start, req.body.end);
     res.json(data);
-  }) as RequestHandler<unknown, DistanceResponse, DistanceBody>),
+  }),
 );
 
 interface TableQuery extends Record<string, string> {
   points: string;
 }
 
-router.get<unknown, unknown, unknown, TableQuery>(
+router.get(
   '/table',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
-  asyncHandler((async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as TableQuery;
     res.json(await table(points, params as Record<string, string | number>));
-  }) as RequestHandler<unknown, unknown, unknown, TableQuery>),
+  }),
 );
 
 interface PointQuery extends Record<string, string> {
   point: string;
 }
-router.get<unknown, unknown, unknown, PointQuery>(
+router.get(
   '/nearest',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([query('point').isString()]),
-  asyncHandler((async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { point, ...params } = req.query as PointQuery;
     res.json(await nearest(point, params as Record<string, string | number>));
-  }) as RequestHandler<unknown, unknown, unknown, PointQuery>),
+  }),
 );
 
 interface PointsQuery extends Record<string, string> {
   points: string;
 }
-router.get<unknown, unknown, unknown, PointsQuery>(
+router.get(
   '/match',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
-  asyncHandler((async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
     res.json(await match(points, params as Record<string, string | number>));
-  }) as RequestHandler<unknown, unknown, unknown, PointsQuery>),
+  }),
 );
 
-router.get<unknown, unknown, unknown, PointsQuery>(
+router.get(
   '/trip',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
-  asyncHandler((async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
     res.json(await trip(points, params as Record<string, string | number>));
-  }) as RequestHandler<unknown, unknown, unknown, PointsQuery>),
+  }),
 );
 
 export default router;

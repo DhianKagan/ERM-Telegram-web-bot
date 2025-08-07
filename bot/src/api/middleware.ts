@@ -5,6 +5,7 @@ import { writeLog } from '../services/service';
 import client from 'prom-client';
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import config from '../config';
+import type { RequestWithUser } from '../types/request';
 
 const csrfErrors = new client.Counter({
   name: 'csrf_errors_total',
@@ -30,16 +31,17 @@ export const asyncHandler = (
 };
 
 export function errorHandler(
-  err: any,
-  _req: Request,
+  err: unknown,
+  _req: RequestWithUser,
   res: Response,
   _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): void {
-  if (err.type === 'request.aborted') {
+  const error = err as { [key: string]: any; message: string };
+  if (error.type === 'request.aborted') {
     res.status(400).json({ error: 'request aborted' });
     return;
   }
-  if (err.code === 'EBADCSRFTOKEN' || /CSRF token/.test(err.message)) {
+  if (error.code === 'EBADCSRFTOKEN' || /CSRF token/.test(error.message)) {
     if (process.env.NODE_ENV !== 'test') {
       csrfErrors.inc();
       const header = _req.headers['x-xsrf-token']
@@ -49,8 +51,8 @@ export function errorHandler(
         _req.cookies && _req.cookies['XSRF-TOKEN']
           ? String(_req.cookies['XSRF-TOKEN']).slice(0, 8)
           : 'none';
-      const uid = (_req as any).user
-        ? `${(_req as any).user.id}/${(_req as any).user.username}`
+      const uid = _req.user
+        ? `${_req.user.id}/${_req.user.username}`
         : 'anon';
       writeLog(
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
@@ -63,13 +65,13 @@ export function errorHandler(
     apiErrors.inc({ method: _req.method, path: _req.originalUrl, status: 403 });
     return;
   }
-  console.error(err);
+  console.error(error);
   writeLog(
-    `Ошибка ${err.message} path:${_req.originalUrl} ip:${_req.ip}`,
+    `Ошибка ${error.message} path:${_req.originalUrl} ip:${_req.ip}`,
     'error',
   ).catch(() => {});
   const status = res.statusCode >= 400 ? res.statusCode : 500;
-  res.status(status).json({ error: err.message });
+  res.status(status).json({ error: error.message });
   apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
 }
 
@@ -77,7 +79,7 @@ const { jwtSecret } = config;
 const secretKey = jwtSecret;
 
 export function verifyToken(
-  req: Request,
+  req: RequestWithUser,
   res: Response,
   next: NextFunction,
 ): void {
@@ -107,8 +109,8 @@ export function verifyToken(
     } else {
       token = auth;
     }
-  } else if (req.cookies && (req.cookies as any).token) {
-    token = (req.cookies as any).token;
+  } else if (req.cookies && (req.cookies as Record<string, string>).token) {
+    token = (req.cookies as Record<string, string>).token;
   } else {
     writeLog(
       `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
@@ -130,8 +132,8 @@ export function verifyToken(
         .json({ message: 'Недействительный токен. Выполните вход заново.' });
       return;
     }
-    (req as any).user = decoded;
-    const cookieOpts: any = {
+    req.user = decoded as RequestWithUser['user'];
+    const cookieOpts: Record<string, any> = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -147,13 +149,15 @@ export function verifyToken(
 }
 
 export function requestLogger(
-  req: Request,
+  req: RequestWithUser,
   res: Response,
   next: NextFunction,
 ): void {
-  const { method, originalUrl, headers, cookies, ip } = req as any;
+  const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
-    cookies && cookies.token ? cookies.token.slice(0, 8) : 'no-token';
+    cookies && (cookies as Record<string, string>).token
+      ? (cookies as Record<string, string>).token.slice(0, 8)
+      : 'no-token';
   const csrfVal = headers['x-xsrf-token']
     ? String(headers['x-xsrf-token']).slice(0, 8)
     : 'no-csrf';

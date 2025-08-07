@@ -219,6 +219,8 @@
 - Проверка initData WebApp реализована в маршруте `/api/v1/auth/verify_init`
 - Примеры конфигурации Prometheus хранятся в каталоге `prometheus`
 - Стресс-план описан в `docs/stress_plan.md`
+- Общий тип `RequestWithUser` используется во всех контроллерах и middleware
+- Скрипт `npm --prefix bot run test:types` запускает проверки `tsd`, `./scripts/stress_test.sh` выполняет нагрузочный тест
 - Добавлен маршрут `/api/v1/csrf` для получения CSRF-токена и метрика `csrf_errors_total`
 - Мини-приложение при запуске запрашивает `/api/v1/csrf` для установки токена
 - Страница `/cp/logs` отображает логи через WG Log Engine

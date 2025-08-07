@@ -30,28 +30,24 @@ interface UpdateRoleResponse {
 const router = Router();
 const limiter = createRateLimiter(15 * 60 * 1000, 50);
 
-router.get<unknown, RolesResponse>(
+router.get(
   '/',
-  limiter,
-  verifyToken,
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
-  ctrl.list as RequestHandler<unknown, RolesResponse>,
+  limiter as unknown as RequestHandler,
+  verifyToken as unknown as RequestHandler,
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  ctrl.list as RequestHandler,
 );
 
-router.patch<RoleUpdateParams, UpdateRoleResponse, UpdateRoleBody>(
+router.patch(
   '/:id',
-  limiter,
-  verifyToken,
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
+  limiter as unknown as RequestHandler,
+  verifyToken as unknown as RequestHandler,
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   [param('id').isMongoId()],
-  ...validateDto(UpdateRoleDto),
-  ctrl.update as RequestHandler<
-    RoleUpdateParams,
-    UpdateRoleResponse,
-    UpdateRoleBody
-  >,
+  ...(validateDto(UpdateRoleDto) as RequestHandler[]),
+  ctrl.update as RequestHandler,
 );
 
 export default router;

@@ -16,6 +16,7 @@ npm ci --prefix bot/web || npm --prefix bot/web install
 # Запускаем тесты и линтеры
 npm test --prefix bot -- --detectOpenHandles
 npm test --prefix bot tests/csrf.test.ts
+npm run test:types --prefix bot
 npx eslint bot/src
 npm run lint --prefix bot/web
 
@@ -27,3 +28,6 @@ if command -v docker >/dev/null; then
 else
   echo "Предупреждение: Docker не найден, пропускаем проверку docker compose." >&2
 fi
+
+# Запускаем стресс-тест при наличии locust
+./scripts/stress_test.sh

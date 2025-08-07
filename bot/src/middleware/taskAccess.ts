@@ -4,29 +4,7 @@ import { Response, NextFunction } from 'express';
 import { hasAccess, ACCESS_ADMIN, ACCESS_USER } from '../utils/accessMask';
 import * as service from '../services/tasks';
 import { writeLog } from '../services/service';
-
-interface UserInfo {
-  id?: number;
-  username?: string;
-  access?: number;
-}
-
-interface TaskInfo {
-  created_by?: number;
-  assigned_user_id?: number;
-  controller_user_id?: number;
-  assignees?: number[];
-  controllers?: number[];
-}
-
-interface RequestWithUser {
-  method: string;
-  originalUrl: string;
-  ip: string;
-  params: Record<string, string>;
-  user?: UserInfo;
-  task?: TaskInfo;
-}
+import type { RequestWithUser, TaskInfo } from '../types/request';
 
 export default async function checkTaskAccess(
   req: RequestWithUser,

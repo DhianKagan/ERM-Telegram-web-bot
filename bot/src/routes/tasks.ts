@@ -55,7 +55,7 @@ router.post(
   '/',
   verifyToken as unknown as RequestHandler,
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
-  ctrl.create as RequestHandler,
+  ...(ctrl.create as RequestHandler[]),
 );
 
 router.patch(
@@ -64,7 +64,7 @@ router.patch(
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),
-  ctrl.update as RequestHandler,
+  ...(ctrl.update as RequestHandler[]),
 );
 
 router.patch(
@@ -73,7 +73,7 @@ router.patch(
   param('id').isMongoId(),
   ...(validateDto(AddTimeDto) as RequestHandler[]),
   checkTaskAccess as unknown as RequestHandler,
-  ctrl.addTime as RequestHandler,
+  ...(ctrl.addTime as RequestHandler[]),
 );
 
 router.delete(
@@ -88,7 +88,7 @@ router.post(
   '/bulk',
   verifyToken as unknown as RequestHandler,
   ...(validateDto(BulkStatusDto) as RequestHandler[]),
-  ctrl.bulk as RequestHandler,
+  ...(ctrl.bulk as RequestHandler[]),
 );
 
 export default router;

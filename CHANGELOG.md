@@ -11,6 +11,7 @@
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Исправлена типизация порта, Request получил метод `csrfToken`, `jwt.verify` использует строгие типы.
 - Включён флаг `noImplicitAny` и обновлены типы сервисов задач и пользователей.
+- ESLint запрещает файлы `.js` вне конфигурации.
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписаны утилиты `parseJwt`, `csrfToken` и `extractCoords`.

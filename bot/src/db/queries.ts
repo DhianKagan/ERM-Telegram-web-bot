@@ -73,7 +73,7 @@ export async function updateTaskStatus(
   return updateTask(id, { status } as Partial<TaskDocument>);
 }
 
-interface TaskFilters {
+export interface TaskFilters {
   status?: string;
   assignees?: (string | number)[];
   from?: string | Date;
@@ -118,7 +118,7 @@ export async function getTasks(
   >;
 }
 
-interface RoutesFilters {
+export interface RoutesFilters {
   status?: string;
   from?: Date;
   to?: Date;
@@ -174,7 +174,7 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   return doc;
 }
 
-interface SummaryFilters {
+export interface SummaryFilters {
   status?: string;
   assignees?: number[];
   from?: Date;

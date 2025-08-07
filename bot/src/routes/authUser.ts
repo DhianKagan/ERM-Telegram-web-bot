@@ -11,34 +11,6 @@ import {
   UpdateProfileDto,
 } from '../dto/auth.dto';
 
-interface SendCodeBody {
-  telegramId: number;
-}
-interface SendCodeResponse {
-  status?: string;
-  error?: string;
-}
-
-interface VerifyCodeBody {
-  telegramId: number;
-  code: string;
-  username?: string;
-}
-interface TokenResponse {
-  token?: string;
-  error?: string;
-}
-
-interface VerifyInitBody {
-  initData: string;
-}
-
-interface UpdateProfileBody {
-  name?: string;
-  phone?: string;
-  mobNumber?: string;
-}
-
 const router = Router();
 
 router.post(
@@ -59,7 +31,11 @@ router.post(
   asyncHandler(authCtrl.verifyInitData as any),
 );
 
-router.get('/profile', verifyToken as RequestHandler, authCtrl.profile as unknown as RequestHandler);
+router.get(
+  '/profile',
+  verifyToken as RequestHandler,
+  authCtrl.profile as unknown as RequestHandler,
+);
 router.patch(
   '/profile',
   verifyToken as RequestHandler,

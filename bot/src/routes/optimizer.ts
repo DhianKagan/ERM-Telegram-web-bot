@@ -6,16 +6,6 @@ import validate from '../utils/validate';
 import * as ctrl from '../controllers/optimizer';
 import { verifyToken, asyncHandler } from '../api/middleware';
 
-interface OptimizeBody {
-  tasks: string[];
-  count?: number;
-  method?: 'angle' | 'trip';
-}
-
-interface OptimizeResponse {
-  routes: unknown;
-}
-
 const router = Router();
 
 router.post(

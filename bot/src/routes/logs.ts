@@ -11,25 +11,6 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { CreateLogDto } from '../dto/logs.dto';
 
-interface LogsQuery {
-  page?: number;
-  limit?: number;
-}
-
-interface LogsResponse {
-  logs: unknown[];
-  total?: number;
-}
-
-interface LogBody {
-  level: string;
-  message: string;
-}
-
-interface LogResponse {
-  status: string;
-}
-
 const router = Router();
 const limiter = createRateLimiter(15 * 60 * 1000, 100);
 

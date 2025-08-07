@@ -18,6 +18,7 @@
 - На TypeScript переписан модуль `auth`.
 - Утилита `authFetch` и сервисы веб-клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks` и `osrm` переписаны на TypeScript.
 - На TypeScript переведён модуль `messages`.
+- Уточнены типы сервиса задач, фильтры задач экспортированы из `db/queries.ts`.
 - Подключение, модели и запросы MongoDB (`connection.ts`, `model.ts`,
   `queries.ts`) переведены на TypeScript и снабжены типами схем.
 - Добавлен локальный `tsconfig.json` в каталоге `bot` для проверки типов.

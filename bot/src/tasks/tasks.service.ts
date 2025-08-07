@@ -2,26 +2,53 @@
 // Основные модули: db/queries, services/route, services/maps
 import { getRouteDistance } from '../services/route';
 import { generateRouteLink } from '../services/maps';
+import type { TaskDocument } from '../db/model';
+import type { TaskFilters, SummaryFilters } from '../db/queries';
+
+interface TasksRepository {
+  createTask(data: Partial<TaskDocument>): Promise<TaskDocument>;
+  getTasks(
+    filters: TaskFilters,
+    page?: number,
+    limit?: number,
+  ): Promise<TaskDocument[]>;
+  getTask(id: string): Promise<TaskDocument | null>;
+  updateTask(
+    id: string,
+    data: Partial<TaskDocument>,
+  ): Promise<TaskDocument | null>;
+  addTime(id: string, minutes: number): Promise<TaskDocument | null>;
+  bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
+  summary(filters: SummaryFilters): Promise<{ count: number; time: number }>;
+  deleteTask(id: string): Promise<TaskDocument | null>;
+  listMentionedTasks(userId: string | number): Promise<TaskDocument[]>;
+}
 
 class TasksService {
-  repo: any;
-  constructor(repo: any) {
+  repo: TasksRepository;
+  constructor(repo: TasksRepository) {
     this.repo = repo;
-    if (!this.repo.createTask && this.repo.Task?.create) {
-      this.repo.createTask = this.repo.Task.create.bind(this.repo.Task);
+    if (!this.repo.createTask && (this.repo as any).Task?.create) {
+      this.repo.createTask = (this.repo as any).Task.create.bind(
+        (this.repo as any).Task,
+      );
     }
     if (!this.repo.createTask) {
-      this.repo.createTask = async (d: any) => ({ _id: '1', ...d });
+      this.repo.createTask = async (d: Partial<TaskDocument>) =>
+        ({
+          _id: '1',
+          ...d,
+        }) as TaskDocument;
     }
   }
 
-  async create(data: any) {
+  async create(data: Partial<TaskDocument>) {
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     await this.applyRouteInfo(data);
     return this.repo.createTask(data);
   }
 
-  get(filters: any, page?: number, limit?: number) {
+  get(filters: TaskFilters, page?: number, limit?: number) {
     return this.repo.getTasks(filters, page, limit);
   }
 
@@ -29,12 +56,12 @@ class TasksService {
     return this.repo.getTask(id);
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Partial<TaskDocument>) {
     await this.applyRouteInfo(data);
     return this.repo.updateTask(id, data);
   }
 
-  async applyRouteInfo(data: any) {
+  async applyRouteInfo(data: Partial<TaskDocument>) {
     if (data.startCoordinates && data.finishCoordinates) {
       data.google_route_url = generateRouteLink(
         data.startCoordinates,
@@ -58,11 +85,11 @@ class TasksService {
     return this.repo.addTime(id, minutes);
   }
 
-  bulk(ids: string[], data: any) {
+  bulk(ids: string[], data: Partial<TaskDocument>) {
     return this.repo.bulkUpdate(ids, data);
   }
 
-  summary(filters: any) {
+  summary(filters: SummaryFilters) {
     return this.repo.summary(filters);
   }
 

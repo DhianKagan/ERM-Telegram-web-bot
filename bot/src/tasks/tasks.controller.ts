@@ -8,6 +8,7 @@ const service = container.resolve<TasksService>('TasksService');
 import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
+import type { TaskDocument } from '../db/model';
 
 interface Task {
   assignees?: number[];
@@ -52,7 +53,9 @@ export const detail = async (req: Request, res: Response) => {
 export const create = [
   handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      const task = await service.create(req.body);
+      const task = await service.create(
+        req.body as Partial<TaskDocument>,
+      );
       await writeLog(
         `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
@@ -63,7 +66,10 @@ export const create = [
 export const update = [
   handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      const task = await service.update(req.params.id, req.body);
+      const task = await service.update(
+        req.params.id,
+        req.body as Partial<TaskDocument>,
+      );
       if (!task) return res.sendStatus(404);
       await writeLog(
         `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
@@ -75,10 +81,11 @@ export const update = [
 export const addTime = [
   handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      const task = await service.addTime(req.params.id, req.body.minutes);
+      const { minutes } = req.body as { minutes: number };
+      const task = await service.addTime(req.params.id, minutes);
       if (!task) return res.sendStatus(404);
       await writeLog(
-        `Время по задаче ${req.params.id} +${req.body.minutes} пользователем ${req.user!.id}/${req.user!.username}`,
+        `Время по задаче ${req.params.id} +${minutes} пользователем ${req.user!.id}/${req.user!.username}`,
       );
       res.json(task);
     },
@@ -87,7 +94,11 @@ export const addTime = [
 export const bulk = [
   handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      await service.bulk(req.body.ids, { status: req.body.status });
+      const { ids, status } = req.body as {
+        ids: string[];
+        status: TaskDocument['status'];
+      };
+      await service.bulk(ids, { status });
       await writeLog(
         `Массовое изменение статусов пользователем ${req.user!.id}/${req.user!.username}`,
       );

@@ -27,7 +27,7 @@ export default function initCustomAdmin(app: Express): void {
 
   router.use(verifyToken);
   router.use((req: RequestWithUser, res: Response, next: NextFunction) => {
-    if (req.user.role === 'admin') return next();
+    if (req.user?.role === 'admin') return next();
     res.sendFile(path.join(pub, 'admin-placeholder.html'));
   });
 

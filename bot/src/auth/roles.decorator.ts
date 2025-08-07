@@ -6,7 +6,7 @@ import { Request, Response, NextFunction } from 'express'
 
 export function Roles(mask: number) {
   return function (req: Request, _res: Response, next: NextFunction) {
-    ;(req as Record<string | symbol, unknown>)[ROLES_KEY] = mask
+    ;(req as unknown as Record<string | symbol, unknown>)[ROLES_KEY] = mask
     return next()
   }
 }

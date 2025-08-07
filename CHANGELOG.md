@@ -12,6 +12,7 @@
 - Исправлена типизация порта, Request получил метод `csrfToken`, `jwt.verify` использует строгие типы.
 - Включён флаг `noImplicitAny` и обновлены типы сервисов задач и пользователей.
 - ESLint запрещает файлы `.js` вне конфигурации.
+- Корневой `package.json` содержит зависимости `eslint` и `jiti`, поэтому `npx eslint bot/src` выполняется без ошибок.
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписаны утилиты `parseJwt`, `csrfToken` и `extractCoords`.

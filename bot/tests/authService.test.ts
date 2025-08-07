@@ -25,7 +25,7 @@ jest.mock('../src/services/userInfoService', () => ({
 jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
 jest.mock('../src/utils/verifyInitData', () => jest.fn(() => true));
 
-const service = require('../src/auth/auth.service.ts');
+const service = require('../src/auth/auth.service.ts').default;
 const queries = require('../src/db/queries');
 const otp = require('../src/services/otp');
 const verifyInit = require('../src/utils/verifyInitData');

@@ -1,12 +1,12 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест проверки функции verifyInitData
 process.env.BOT_TOKEN = 'x';
-process.env.CHAT_ID='1'
-process.env.JWT_SECRET='s'
-process.env.MONGO_DATABASE_URL='mongodb://localhost/db'
-process.env.APP_URL='https://localhost'
+process.env.CHAT_ID = '1';
+process.env.JWT_SECRET = 's';
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.APP_URL = 'https://localhost';
 const crypto = require('crypto');
-const verify = require('../src/utils/verifyInitData');
+const verify = require('../src/utils/verifyInitData').default;
 
 test('корректная строка возвращает true', () => {
   const data = { query_id: '1', user: JSON.stringify({ id: 1 }) };

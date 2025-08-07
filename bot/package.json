@@ -12,7 +12,8 @@
     "check:mongo": "node ../scripts/check_mongo.mjs",
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd bot --project tsconfig.json --files tests/requestWithUser.test-d.ts",
-    "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30"
+    "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
+    "lint": "eslint \"src/**/*.ts\""
   },
   "postinstall": "npm --prefix web install && npm run build-client && husky install",
   "author": "",

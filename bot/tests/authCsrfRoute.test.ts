@@ -20,7 +20,7 @@ jest.mock('../src/auth/auth.controller.ts', () => ({
   updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
 }));
 
-const authRouter = require('../src/routes/authUser');
+const authRouter = require('../src/routes/authUser').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 

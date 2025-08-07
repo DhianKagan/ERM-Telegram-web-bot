@@ -15,7 +15,7 @@ const https = require('https');
 const fs = require('fs');
 const request = require('supertest');
 
-const routeRouter = require('../src/routes/route');
+const routeRouter = require('../src/routes/route').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 

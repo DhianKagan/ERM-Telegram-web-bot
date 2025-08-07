@@ -27,8 +27,8 @@ jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
 }));
 
-const authRouter = require('../src/routes/authUser');
-const routeRouter = require('../src/routes/route');
+const authRouter = require('../src/routes/authUser').default;
+const routeRouter = require('../src/routes/route').default;
 const { verifyToken, errorHandler } = require('../src/api/middleware');
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');

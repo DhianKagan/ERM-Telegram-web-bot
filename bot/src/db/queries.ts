@@ -90,7 +90,7 @@ export async function getTasks(
   if (filters.kanban) {
     const res = Task.find({}) as unknown;
     if (isQuery(res)) {
-      return res.sort('-createdAt').lean().exec();
+      return res.sort('-createdAt').exec();
     }
     return res as TaskDocument[];
   }
@@ -114,7 +114,7 @@ export async function getTasks(
       const l = Number(limit) || 20;
       query = query.skip((p - 1) * l).limit(l);
     }
-    return query.lean().exec();
+    return query.exec();
   }
   return res as TaskDocument[];
 }

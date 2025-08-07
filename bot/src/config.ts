@@ -52,7 +52,8 @@ export const chatId = process.env.CHAT_ID;
 export const jwtSecret = process.env.JWT_SECRET;
 export const mongoUrl = mongoUrlEnv;
 export const appUrl = appUrlEnv;
-export const port = process.env.PORT || 3000;
+// Приводим порт к числу для корректной передачи в listen
+export const port = Number.parseInt(process.env.PORT ?? '', 10) || 3000;
 export const locale = process.env.LOCALE || 'ru';
 export const routingUrl =
   process.env.ROUTING_URL || 'http://localhost:8000/route';

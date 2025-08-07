@@ -2,7 +2,7 @@
 // Основные модули: dotenv, telegraf, service, scheduler, config
 import 'dotenv/config';
 import { botToken, chatId } from '../config';
-import { Telegraf, Markup } from 'telegraf';
+import { Telegraf, Markup, Context } from 'telegraf';
 import messages from '../messages';
 import { createUser, getUser } from '../services/service';
 import { startScheduler } from '../services/scheduler';
@@ -22,14 +22,14 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-async function showMainMenu(ctx: any): Promise<void> {
+async function showMainMenu(ctx: Context): Promise<void> {
   await ctx.reply(
     messages.menuPrompt,
     Markup.keyboard([['Регистрация']]).resize(),
   );
 }
 
-async function checkAndRegister(ctx: any): Promise<void> {
+async function checkAndRegister(ctx: Context): Promise<void> {
   try {
     const member = await bot.telegram.getChatMember(chatId!, ctx.from.id);
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
@@ -62,8 +62,9 @@ async function startBot(retry = 0): Promise<void> {
     await bot.telegram.deleteWebhook();
     await bot.launch({ dropPendingUpdates: true });
     console.log('Бот запущен');
-  } catch (err: any) {
-    if (err.response?.error_code === 409 && retry < 5) {
+  } catch (err: unknown) {
+    const e = err as { response?: { error_code?: number } };
+    if (e.response?.error_code === 409 && retry < 5) {
       console.error('Конфликт polling, повторная попытка запуска');
       await new Promise((res) => setTimeout(res, 3000));
       return startBot(retry + 1);

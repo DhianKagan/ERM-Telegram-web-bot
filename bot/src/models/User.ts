@@ -24,7 +24,3 @@ const UserSchema = new Schema<AuthUserDocument>(
 const AuthUserModel = mongoose.model<AuthUserDocument>('AuthUser', UserSchema);
 
 export default AuthUserModel;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = AuthUserModel;

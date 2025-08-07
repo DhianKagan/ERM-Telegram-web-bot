@@ -7,8 +7,9 @@ import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config';
 import { Types } from 'mongoose';
+import type { UserDocument } from '../db/model';
 
-async function sendCode(telegramId: any) {
+async function sendCode(telegramId: number | string) {
   if (!telegramId) throw new Error('telegramId required');
   const user = await getUser(telegramId);
   const roleId = user?.roleId?.toString();
@@ -19,7 +20,7 @@ async function sendCode(telegramId: any) {
   }
 }
 
-async function verifyCode(id: any, code: any, username: any) {
+async function verifyCode(id: string | number, code: string, username?: string) {
   const telegramId = String(id);
   if (!/^[0-9]+$/.test(telegramId)) throw new Error('Invalid telegramId');
   let user = await getUser(telegramId);
@@ -68,7 +69,7 @@ async function verifyCode(id: any, code: any, username: any) {
 
 import verifyInit from '../utils/verifyInitData';
 
-async function verifyInitData(initData: any) {
+async function verifyInitData(initData: string) {
   if (!initData || !verifyInit(initData)) throw new Error('invalid initData');
   const params = new URLSearchParams(initData);
   let userData;
@@ -100,26 +101,20 @@ async function verifyInitData(initData: any) {
   return token;
 }
 
-async function getProfile(id: any) {
+async function getProfile(id: string | number) {
   const user = await getUser(id);
   return user || null;
 }
 
-async function updateProfile(id: any, data: any) {
+async function updateProfile(
+  id: string | number,
+  data: Partial<UserDocument>,
+) {
   const user = await updateUser(id, data);
   return user || null;
 }
 
 export default {
-  sendCode,
-  verifyCode,
-  verifyInitData,
-  getProfile,
-  updateProfile,
-  codes: otp.codes,
-  adminCodes: otp.adminCodes,
-};
-module.exports = {
   sendCode,
   verifyCode,
   verifyInitData,

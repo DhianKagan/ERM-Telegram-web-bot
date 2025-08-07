@@ -10,6 +10,14 @@ export interface TaskLike {
   startCoordinates?: { lat: number; lng: number };
 }
 
+interface TripWaypoint {
+  waypoint_index: number;
+}
+
+interface TripData {
+  trips?: { waypoints: TripWaypoint[] }[];
+}
+
 export async function optimize(
   taskIds: string[],
   count = 1,
@@ -55,11 +63,11 @@ export async function optimize(
         .map((t) => `${t.startCoordinates!.lng},${t.startCoordinates!.lat}`)
         .join(';');
       try {
-        const data: any = await route.trip(points, { roundtrip: 'false' });
+        const data = await route.trip<TripData>(points, { roundtrip: 'false' });
         const ordered = data.trips?.[0]?.waypoints
-          ? data.trips[0].waypoints.map((wp: any) => g[wp.waypoint_index])
+          ? data.trips[0].waypoints.map((wp) => g[wp.waypoint_index])
           : g;
-        routes.push(ordered.map((t: TaskLike) => t._id.toString()));
+        routes.push(ordered.map((t) => t._id.toString()));
       } catch {
         routes.push(g.map((t) => t._id.toString()));
       }
@@ -70,6 +78,3 @@ export async function optimize(
   return groups.map((g) => g.map((t) => t._id.toString()));
 }
 
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { optimize };

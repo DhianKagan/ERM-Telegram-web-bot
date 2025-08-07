@@ -36,9 +36,3 @@ export default {
   VerifyInitDto,
   UpdateProfileDto,
 }
-module.exports = {
-  SendCodeDto,
-  VerifyCodeDto,
-  VerifyInitDto,
-  UpdateProfileDto,
-}

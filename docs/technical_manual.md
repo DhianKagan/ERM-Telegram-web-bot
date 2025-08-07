@@ -38,6 +38,7 @@
 Сервисы `LogsService` и `UsersService` используют интерфейсы репозитория и не содержат `any`.
 Переписаны на TypeScript модуль `config`, контроллеры `routes` и `optimizer`,
 модель `AuthUser` и кастомный бекенд админки; дублирующие JS‑роуты удалены.
+Удалены остаточные CommonJS-экспорты и явные `any`, `asyncHandler` допускает обработчики без `next`.
 Тип `RequestWithUser` вынесен в `src/types/request.ts` и подключён во всех контроллерах и middleware.
 Утилита `verifyInitData` выбрасывает ошибку при отсутствии переменной `BOT_TOKEN`.
 

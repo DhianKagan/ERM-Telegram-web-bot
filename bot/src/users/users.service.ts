@@ -41,4 +41,3 @@ class UsersService {
 }
 
 export default UsersService;
-module.exports = UsersService;

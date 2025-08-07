@@ -17,7 +17,3 @@ export async function optimize(req: Request, res: Response): Promise<void> {
   );
   res.json({ routes });
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { optimize };

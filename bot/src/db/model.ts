@@ -5,8 +5,9 @@ import slugify from 'slugify';
 import connect from './connection';
 
 if (process.env.NODE_ENV !== 'test') {
-  connect().catch((e: any) => {
-    console.error('Не удалось подключиться к MongoDB:', e.message);
+  connect().catch((e: unknown) => {
+    const err = e as { message?: string };
+    console.error('Не удалось подключиться к MongoDB:', err.message);
     process.exit(1);
   });
 }

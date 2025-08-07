@@ -16,11 +16,7 @@ router.post(
     body('count').optional().isInt({ min: 1, max: 3 }),
     body('method').optional().isIn(['angle', 'trip']),
   ]),
-  asyncHandler(ctrl.optimize as any),
+  asyncHandler(ctrl.optimize),
 );
 
 export default router;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = router;

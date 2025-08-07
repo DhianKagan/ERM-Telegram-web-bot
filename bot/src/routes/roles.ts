@@ -51,7 +51,3 @@ router.patch(
 );
 
 export default router;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = router;

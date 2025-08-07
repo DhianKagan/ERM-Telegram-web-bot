@@ -34,11 +34,7 @@ router.get(
     query('to').optional().isISO8601(),
     query('status').optional().isString(),
   ]),
-  asyncHandler(ctrl.all as any),
+  asyncHandler(ctrl.all),
 );
 
 export default router;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = router;

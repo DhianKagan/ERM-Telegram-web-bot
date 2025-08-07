@@ -10,7 +10,7 @@ const modes: Record<string, LogMode> = {
   warn: LogMode.WARN,
   error: LogMode.ERROR,
 };
-const outputs: any[] = [
+const outputs: unknown[] = [
   'console',
   {
     type: 'file',
@@ -66,7 +66,9 @@ export async function writeLog(
   level = 'info',
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
-  const fn = (LogEngine as any)[level] || LogEngine.info;
+  const fn = (
+    LogEngine as Record<string, (msg: string, meta?: Record<string, unknown>) => void>
+  )[level] || LogEngine.info;
   fn(message, metadata);
 }
 
@@ -83,7 +85,7 @@ export interface ListLogParams {
 export function listLogs(params: ListLogParams = {}): Promise<unknown> {
   const { level, message, from, to, sort, page = 1, limit = 100 } = params;
   const allowedLevels = ['debug', 'info', 'warn', 'error', 'log'];
-  const filter: any = {};
+  const filter: Record<string, unknown> = {};
   if (level && allowedLevels.includes(level)) filter.level = { $eq: level };
   if (message) filter.message = { $regex: message, $options: 'i' };
   if (from || to) {
@@ -91,7 +93,7 @@ export function listLogs(params: ListLogParams = {}): Promise<unknown> {
     if (from) filter.createdAt.$gte = new Date(from);
     if (to) filter.createdAt.$lte = new Date(to);
   }
-  let sortObj: any = { createdAt: -1 };
+  let sortObj: Record<string, 1 | -1> = { createdAt: -1 };
   if (sort === 'date_asc') sortObj = { createdAt: 1 };
   if (sort === 'level') sortObj = { level: 1 };
   if (sort === 'level_desc') sortObj = { level: -1 };
@@ -104,7 +106,3 @@ export function listLogs(params: ListLogParams = {}): Promise<unknown> {
 }
 
 export const logger = LogEngine;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { writeLog, listLogs, logger };

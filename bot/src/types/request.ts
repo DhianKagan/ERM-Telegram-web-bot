@@ -21,7 +21,7 @@ export type RequestWithUser<
   P = ParamsDictionary,
   ResBody = unknown,
   ReqBody = unknown,
-  ReqQuery = Record<string, any>,
+  ReqQuery = Record<string, unknown>,
 > = Request<P, ResBody, ReqBody, ReqQuery> & {
   user?: UserInfo;
   task?: TaskInfo;

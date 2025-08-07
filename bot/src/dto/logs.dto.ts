@@ -9,4 +9,3 @@ export class CreateLogDto {
 }
 
 export default { CreateLogDto }
-module.exports = { CreateLogDto }

@@ -27,6 +27,3 @@ export default function verifyInitData(initData: string): boolean {
     .digest('hex');
   return hmac === hash;
 }
-
-// Совместимость с CommonJS
-(module as any).exports = verifyInitData;

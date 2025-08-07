@@ -12,11 +12,6 @@ export async function getMemberStatus(id: number): Promise<string> {
 }
 
 /** Извлекает Telegram ID из контекста сообщения. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getTelegramId(ctx: Context): number | undefined {
   return ctx.from?.id;
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { getMemberStatus, getTelegramId };

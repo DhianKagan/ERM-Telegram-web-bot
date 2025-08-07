@@ -58,7 +58,3 @@ export function enqueue<T>(fn: () => Promise<T> | T): Promise<T> {
     process();
   });
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { enqueue, queue, stopQueue, MAX_QUEUE_SIZE };

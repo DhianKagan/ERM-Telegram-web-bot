@@ -19,23 +19,3 @@ export const searchTasks = q.searchTasks;
 export const listMentionedTasks = q.listMentionedTasks;
 export const deleteTask = q.deleteTask;
 
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = {
-  getTask,
-  updateTask,
-  updateTaskStatus,
-  createUser,
-  listUsers,
-  updateUser,
-  listRoles,
-  getRole,
-  updateRole,
-  getUser,
-  writeLog,
-  listLogs,
-  searchTasks,
-  listMentionedTasks,
-  deleteTask,
-};
-

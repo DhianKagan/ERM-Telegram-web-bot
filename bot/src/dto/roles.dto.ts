@@ -7,12 +7,13 @@ export class UpdateRoleDto {
     return [
       body('permissions')
         .isArray()
-        .custom((arr: any[]) =>
-          arr.every((item: any) => typeof item === 'string' || typeof item === 'number'),
+        .custom((arr: unknown[]) =>
+          arr.every(
+            (item) => typeof item === 'string' || typeof item === 'number',
+          ),
         ),
     ]
   }
 }
 
 export default { UpdateRoleDto }
-module.exports = { UpdateRoleDto }

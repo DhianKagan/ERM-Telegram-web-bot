@@ -14,7 +14,3 @@ export default function validate(
 ): Array<ValidationChain | typeof handleValidation> {
   return [...rules, handleValidation];
 }
-
-// Совместимость с CommonJS
-(module as any).exports = validate;
-(module as any).exports.handleValidation = handleValidation;

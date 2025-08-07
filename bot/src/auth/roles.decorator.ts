@@ -2,10 +2,11 @@
 // Основные модули: middleware
 export const ROLES_KEY = Symbol('roles')
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function Roles(mask: any) {
-  return function (req: any, _res: any, next: any) {
-    req[ROLES_KEY] = mask
+import { Request, Response, NextFunction } from 'express'
+
+export function Roles(mask: number) {
+  return function (req: Request, _res: Response, next: NextFunction) {
+    ;(req as Record<string | symbol, unknown>)[ROLES_KEY] = mask
     return next()
   }
 }

@@ -8,7 +8,7 @@ import { writeLog } from '../services/service';
 import config from '../config';
 import { Types } from 'mongoose';
 
-async function sendCode(telegramId) {
+async function sendCode(telegramId: any) {
   if (!telegramId) throw new Error('telegramId required');
   const user = await getUser(telegramId);
   const roleId = user?.roleId?.toString();
@@ -19,7 +19,7 @@ async function sendCode(telegramId) {
   }
 }
 
-async function verifyCode(id, code, username) {
+async function verifyCode(id: any, code: any, username: any) {
   const telegramId = String(id);
   if (!/^[0-9]+$/.test(telegramId)) throw new Error('Invalid telegramId');
   let user = await getUser(telegramId);
@@ -68,7 +68,7 @@ async function verifyCode(id, code, username) {
 
 import verifyInit from '../utils/verifyInitData';
 
-async function verifyInitData(initData) {
+async function verifyInitData(initData: any) {
   if (!initData || !verifyInit(initData)) throw new Error('invalid initData');
   const params = new URLSearchParams(initData);
   let userData;
@@ -100,12 +100,12 @@ async function verifyInitData(initData) {
   return token;
 }
 
-async function getProfile(id) {
+async function getProfile(id: any) {
   const user = await getUser(id);
   return user || null;
 }
 
-async function updateProfile(id, data) {
+async function updateProfile(id: any, data: any) {
   const user = await updateUser(id, data);
   return user || null;
 }

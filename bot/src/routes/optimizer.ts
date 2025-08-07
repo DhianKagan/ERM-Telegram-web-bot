@@ -18,17 +18,15 @@ interface OptimizeResponse {
 
 const router = Router();
 
-router.post<unknown, OptimizeResponse, OptimizeBody>(
+router.post(
   '/',
-  verifyToken,
-  validate([
+  verifyToken as RequestHandler,
+  ...validate([
     body('tasks').isArray({ min: 1 }),
     body('count').optional().isInt({ min: 1, max: 3 }),
     body('method').optional().isIn(['angle', 'trip']),
   ]),
-  asyncHandler(
-    ctrl.optimize as RequestHandler<unknown, OptimizeResponse, OptimizeBody>,
-  ),
+  asyncHandler(ctrl.optimize as any),
 );
 
 export default router;

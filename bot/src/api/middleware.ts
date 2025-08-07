@@ -81,7 +81,7 @@ export function errorHandler(
 
 const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
-const secretKey: string = jwtSecret;
+const secretKey: string = jwtSecret || '';
 
 export function verifyToken(
   req: RequestWithUser,

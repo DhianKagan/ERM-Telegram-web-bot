@@ -41,54 +41,30 @@ interface UpdateProfileBody {
 
 const router = Router();
 
-router.post<unknown, SendCodeResponse, SendCodeBody>(
+router.post(
   '/send_code',
-  ...validateDto(SendCodeDto),
-  asyncHandler(
-    authCtrl.sendCode as RequestHandler<
-      unknown,
-      SendCodeResponse,
-      SendCodeBody
-    >,
-  ),
+  ...(validateDto(SendCodeDto) as RequestHandler[]),
+  asyncHandler(authCtrl.sendCode as any),
 );
 
-router.post<unknown, TokenResponse, VerifyCodeBody>(
+router.post(
   '/verify_code',
-  ...validateDto(VerifyCodeDto),
-  asyncHandler(
-    authCtrl.verifyCode as RequestHandler<
-      unknown,
-      TokenResponse,
-      VerifyCodeBody
-    >,
-  ),
+  ...(validateDto(VerifyCodeDto) as RequestHandler[]),
+  asyncHandler(authCtrl.verifyCode as any),
 );
 
-router.post<unknown, TokenResponse, VerifyInitBody>(
+router.post(
   '/verify_init',
-  ...validateDto(VerifyInitDto),
-  asyncHandler(
-    authCtrl.verifyInitData as RequestHandler<
-      unknown,
-      TokenResponse,
-      VerifyInitBody
-    >,
-  ),
+  ...(validateDto(VerifyInitDto) as RequestHandler[]),
+  asyncHandler(authCtrl.verifyInitData as any),
 );
 
-router.get('/profile', verifyToken, authCtrl.profile);
-router.patch<unknown, unknown, UpdateProfileBody>(
+router.get('/profile', verifyToken as RequestHandler, authCtrl.profile as unknown as RequestHandler);
+router.patch(
   '/profile',
-  verifyToken,
-  ...validateDto(UpdateProfileDto),
-  asyncHandler(
-    authCtrl.updateProfile as RequestHandler<
-      unknown,
-      unknown,
-      UpdateProfileBody
-    >,
-  ),
+  verifyToken as RequestHandler,
+  ...(validateDto(UpdateProfileDto) as RequestHandler[]),
+  asyncHandler(authCtrl.updateProfile as any),
 );
 
 export default router;

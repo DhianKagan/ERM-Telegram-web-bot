@@ -14,7 +14,8 @@
     "strict": true,
     "noImplicitAny": true,
     "useUnknownInCatchVariables": false,
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
+    "typeRoots": ["./bot/node_modules/@types", "./node_modules/@types"]
   },
   "include": ["bot/src/**/*"],
   "exclude": ["dist"]

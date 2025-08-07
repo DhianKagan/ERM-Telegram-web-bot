@@ -16,7 +16,5 @@ export default function validate(
 }
 
 // Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 (module as any).exports = validate;
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 (module as any).exports.handleValidation = handleValidation;

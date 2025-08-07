@@ -1,8 +1,13 @@
 // Назначение: логирование HTTP запросов и ответов
 // Основные модули: wgLogEngine
 import { writeLog } from '../services/service';
+import { Request, Response, NextFunction } from 'express';
 
-export default function logging(req, res, next) {
+export default function logging(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && cookies.token ? String(cookies.token).slice(0, 8) : 'no-token';

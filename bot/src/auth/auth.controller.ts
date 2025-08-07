@@ -39,15 +39,15 @@ export const verifyInitData = async (req: Request, res: Response) => {
 };
 
 export const profile = async (req: RequestWithUser, res: Response) => {
-  const user = await service.getProfile(req.user.id);
+  const user = await service.getProfile(req.user!.id);
   if (!user) return res.sendStatus(404);
   res.json(formatUser(user));
 };
 
 export const updateProfile = async (req: RequestWithUser, res: Response) => {
-  const user = await service.updateProfile(req.user.id, req.body);
+  const user = await service.updateProfile(req.user!.id, req.body);
   if (!user) return res.sendStatus(404);
-  await writeLog(`Профиль ${req.user.id}/${req.user.username} изменён`);
+  await writeLog(`Профиль ${req.user!.id}/${req.user!.username} изменён`);
   res.json(formatUser(user));
 };
 

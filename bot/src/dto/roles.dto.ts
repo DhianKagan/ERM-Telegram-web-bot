@@ -7,7 +7,9 @@ export class UpdateRoleDto {
     return [
       body('permissions')
         .isArray()
-        .custom(arr => arr.every(item => typeof item === 'string' || typeof item === 'number')),
+        .custom((arr: any[]) =>
+          arr.every((item: any) => typeof item === 'string' || typeof item === 'number'),
+        ),
     ]
   }
 }

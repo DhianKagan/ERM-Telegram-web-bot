@@ -53,9 +53,3 @@ export default {
   AddTimeDto,
   BulkStatusDto,
 };
-module.exports = {
-  CreateTaskDto,
-  UpdateTaskDto,
-  AddTimeDto,
-  BulkStatusDto,
-};

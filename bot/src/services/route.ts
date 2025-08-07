@@ -57,41 +57,31 @@ export async function getRouteDistance(
   };
 }
 
-export async function table(
+export async function table<T = unknown>(
   points: string,
   params: Record<string, string | number> = {},
-): Promise<unknown> {
+): Promise<T> {
   return call('table', points, params);
 }
 
-export async function nearest(
+export async function nearest<T = unknown>(
   point: string,
   params: Record<string, string | number> = {},
-): Promise<unknown> {
+): Promise<T> {
   return call('nearest', point, params);
 }
 
-export async function match(
+export async function match<T = unknown>(
   points: string,
   params: Record<string, string | number> = {},
-): Promise<unknown> {
+): Promise<T> {
   return call('match', points, params);
 }
 
-export async function trip(
+export async function trip<T = unknown>(
   points: string,
   params: Record<string, string | number> = {},
-): Promise<unknown> {
+): Promise<T> {
   return call('trip', points, params);
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = {
-  getRouteDistance,
-  table,
-  nearest,
-  match,
-  trip,
-};
 

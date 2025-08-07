@@ -18,7 +18,3 @@ export async function all(req: Request, res: Response): Promise<void> {
   };
   res.json(await service.list(filters));
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { all };

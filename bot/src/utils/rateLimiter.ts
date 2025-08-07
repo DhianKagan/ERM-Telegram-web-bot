@@ -21,6 +21,3 @@ export default function createRateLimiter(windowMs: number, max: number) {
     },
   });
 }
-
-// Совместимость с CommonJS
-(module as any).exports = createRateLimiter;

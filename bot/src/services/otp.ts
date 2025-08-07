@@ -105,16 +105,4 @@ export function verifyAdminCode({ telegramId, code }: VerifyPayload): boolean {
   return false;
 }
 
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = {
-  sendCode,
-  verifyCode,
-  codes,
-  attempts,
-  sendAdminCode,
-  verifyAdminCode,
-  adminCodes,
-  adminAttempts,
-};
 

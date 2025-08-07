@@ -25,7 +25,7 @@ const apiErrors = new client.Counter({
 });
 
 export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+  fn: (req: Request, res: Response, next?: NextFunction) => Promise<void> | void,
 ): RequestHandler => {
   return async (req, res, next) => {
     try {
@@ -42,7 +42,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): void {
-  const error = err as { [key: string]: any; message: string };
+  const error = err as { [key: string]: unknown; message: string };
   if (error.type === 'request.aborted') {
     res.status(400).json({ error: 'request aborted' });
     return;

@@ -28,4 +28,3 @@ class LogsService {
 }
 
 export default LogsService;
-module.exports = LogsService;

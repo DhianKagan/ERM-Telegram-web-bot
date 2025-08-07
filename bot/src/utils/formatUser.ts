@@ -14,6 +14,3 @@ export default function formatUser(user: UserLike | null): UserLike | null {
   obj.username = String(obj.telegram_id ?? '');
   return obj;
 }
-
-// Совместимость с CommonJS
-(module as any).exports = formatUser;

@@ -22,7 +22,31 @@ interface UsersIndex {
   [id: string]: { name?: string; username?: string };
 }
 
-export default function formatTask(task: any, users: UsersIndex = {}): string {
+interface TaskData {
+  request_id?: string;
+  title?: string;
+  task_type?: string;
+  due_date?: string | Date;
+  start_date?: string | Date;
+  start_location?: string;
+  end_location?: string;
+  start_location_link?: string;
+  end_location_link?: string;
+  transport_type?: string;
+  payment_method?: string;
+  priority?: string;
+  status?: string;
+  route_distance_km?: number;
+  assignees?: number[];
+  controllers?: number[];
+  created_by?: number;
+  comments?: { author_id?: number; text?: string }[];
+}
+
+export default function formatTask(
+  task: TaskData,
+  users: UsersIndex = {},
+): string {
   const lines: string[] = [];
   const idTitle = [
     task.request_id,

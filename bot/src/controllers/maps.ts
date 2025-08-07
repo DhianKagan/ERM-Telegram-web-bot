@@ -11,7 +11,3 @@ export async function expand(req: Request, res: Response): Promise<void> {
     res.status(400).json({ error: 'invalid url' })
   }
 }
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(module as any).exports = { expand }

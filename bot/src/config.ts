@@ -79,7 +79,3 @@ const config = {
 };
 
 export default config;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = { ...config, default: config };

@@ -51,7 +51,7 @@ export const detail = async (req: Request, res: Response) => {
 
 export const create = [
   handleValidation,
-    async (req: RequestWithUser<any, any, any, any>, res: Response) => {
+    async (req: RequestWithUser, res: Response) => {
       const task = await service.create(req.body);
       await writeLog(
         `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
@@ -62,7 +62,7 @@ export const create = [
 
 export const update = [
   handleValidation,
-    async (req: RequestWithUser<any, any, any, any>, res: Response) => {
+    async (req: RequestWithUser, res: Response) => {
       const task = await service.update(req.params.id, req.body);
       if (!task) return res.sendStatus(404);
       await writeLog(
@@ -74,7 +74,7 @@ export const update = [
 
 export const addTime = [
   handleValidation,
-    async (req: RequestWithUser<any, any, any, any>, res: Response) => {
+    async (req: RequestWithUser, res: Response) => {
       const task = await service.addTime(req.params.id, req.body.minutes);
       if (!task) return res.sendStatus(404);
       await writeLog(
@@ -86,7 +86,7 @@ export const addTime = [
 
 export const bulk = [
   handleValidation,
-    async (req: RequestWithUser<any, any, any, any>, res: Response) => {
+    async (req: RequestWithUser, res: Response) => {
       await service.bulk(req.body.ids, { status: req.body.status });
       await writeLog(
         `Массовое изменение статусов пользователем ${req.user!.id}/${req.user!.username}`,

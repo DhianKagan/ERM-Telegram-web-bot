@@ -13,4 +13,3 @@ export class CreateUserDto {
 }
 
 export default { CreateUserDto }
-module.exports = { CreateUserDto }

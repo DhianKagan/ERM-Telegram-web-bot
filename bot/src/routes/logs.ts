@@ -34,6 +34,3 @@ router.post(
 );
 
 export default router;
-
-// Совместимость с CommonJS
-(module as any).exports = router;

@@ -25,8 +25,7 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
   if (data && typeof data === 'object') {
     Object.entries(data).forEach(([k, v]) => {
       if (typeof k === 'string' && !k.startsWith('$') && !k.includes('.')) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (res as any)[k] = v;
+        (res as Record<string, unknown>)[k] = v;
       }
     });
   }
@@ -87,7 +86,7 @@ export async function getTasks(
   limit?: number,
 ): Promise<TaskDocument[]> {
   if (filters.kanban) {
-    let qKanban: any = Task.find({});
+    let qKanban: unknown = Task.find({});
     if (typeof qKanban.sort === 'function')
       qKanban = qKanban.sort('-createdAt');
     if (typeof qKanban.lean === 'function') qKanban = qKanban.lean();
@@ -103,9 +102,11 @@ export async function getTasks(
     };
   }
   if (filters.from || filters.to) q.createdAt = {} as Record<string, Date>;
-  if (filters.from) (q.createdAt as any).$gte = new Date(filters.from);
-  if (filters.to) (q.createdAt as any).$lte = new Date(filters.to);
-  let query: any = Task.find(q);
+  if (filters.from)
+    (q.createdAt as Record<string, Date>).$gte = new Date(filters.from);
+  if (filters.to)
+    (q.createdAt as Record<string, Date>).$lte = new Date(filters.to);
+  let query: unknown = Task.find(q);
   if (typeof query.sort === 'function') query = query.sort('-createdAt');
   if (typeof query.lean === 'function') query = query.lean();
   if (limit && typeof query.skip === 'function') {
@@ -130,8 +131,10 @@ export async function listRoutes(
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
   if (filters.from || filters.to) q.createdAt = {} as Record<string, Date>;
-  if (filters.from) (q.createdAt as any).$gte = filters.from;
-  if (filters.to) (q.createdAt as any).$lte = filters.to;
+  if (filters.from)
+    (q.createdAt as Record<string, Date>).$gte = filters.from;
+  if (filters.to)
+    (q.createdAt as Record<string, Date>).$lte = filters.to;
   return Task.find(q).select(
     'startCoordinates finishCoordinates route_distance_km status createdAt',
   );
@@ -169,7 +172,9 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   const doc = await Task.findByIdAndDelete(id);
   if (!doc) return null;
   const data = doc.toObject();
-  (data as any).request_id = `${(data as any).request_id}-DEL`;
+  (data as Record<string, unknown>).request_id = `${
+    (data as Record<string, unknown>).request_id
+  }-DEL`;
   await Archive.create(data);
   return doc;
 }
@@ -188,8 +193,10 @@ export async function summary(
   if (filters.status) match.status = filters.status;
   if (filters.assignees) match.assignees = { $in: filters.assignees };
   if (filters.from || filters.to) match.createdAt = {} as Record<string, Date>;
-  if (filters.from) (match.createdAt as any).$gte = filters.from;
-  if (filters.to) (match.createdAt as any).$lte = filters.to;
+  if (filters.from)
+    (match.createdAt as Record<string, Date>).$gte = filters.from;
+  if (filters.to)
+    (match.createdAt as Record<string, Date>).$lte = filters.to;
   const pipeline: (PipelineStage | undefined)[] = [
     Object.keys(match).length ? { $match: match } : undefined,
     {
@@ -203,7 +210,7 @@ export async function summary(
   const res = await Task.aggregate(
     pipeline.filter((s): s is PipelineStage => Boolean(s)),
   );
-  const { count = 0, time = 0 } = (res[0] || {}) as any;
+  const { count = 0, time = 0 } = (res[0] || {}) as { count?: number; time?: number };
   return { count, time };
 }
 

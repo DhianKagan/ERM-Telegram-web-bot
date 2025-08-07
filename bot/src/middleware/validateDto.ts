@@ -17,4 +17,3 @@ export default function validateDto(Dto: ValidatableDto): RequestHandler[] {
     },
   ];
 }
-module.exports = validateDto;

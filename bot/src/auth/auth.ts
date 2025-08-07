@@ -28,5 +28,3 @@ export function generateToken(user: Payload): string {
     },
   );
 }
-
-module.exports = { generateToken };

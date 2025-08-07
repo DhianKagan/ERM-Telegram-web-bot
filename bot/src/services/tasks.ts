@@ -62,17 +62,3 @@ export const remove = (id: string): Promise<unknown> => q.deleteTask(id);
 export const mentioned = (userId: number): Promise<unknown> =>
   q.listMentionedTasks(userId);
 
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = {
-  create,
-  get,
-  getById,
-  update,
-  addTime,
-  bulk,
-  remove,
-  summary,
-  mentioned,
-};
-

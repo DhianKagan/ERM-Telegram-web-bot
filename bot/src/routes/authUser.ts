@@ -16,19 +16,19 @@ const router = Router();
 router.post(
   '/send_code',
   ...(validateDto(SendCodeDto) as RequestHandler[]),
-  asyncHandler(authCtrl.sendCode as any),
+  asyncHandler(authCtrl.sendCode),
 );
 
 router.post(
   '/verify_code',
   ...(validateDto(VerifyCodeDto) as RequestHandler[]),
-  asyncHandler(authCtrl.verifyCode as any),
+  asyncHandler(authCtrl.verifyCode),
 );
 
 router.post(
   '/verify_init',
   ...(validateDto(VerifyInitDto) as RequestHandler[]),
-  asyncHandler(authCtrl.verifyInitData as any),
+  asyncHandler(authCtrl.verifyInitData),
 );
 
 router.get(
@@ -40,11 +40,7 @@ router.patch(
   '/profile',
   verifyToken as RequestHandler,
   ...(validateDto(UpdateProfileDto) as RequestHandler[]),
-  asyncHandler(authCtrl.updateProfile as any),
+  asyncHandler(authCtrl.updateProfile),
 );
 
 export default router;
-
-// Совместимость с CommonJS
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(module as any).exports = router;

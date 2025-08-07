@@ -24,6 +24,3 @@ export default function setTokenCookie(
     `Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`,
   );
 }
-
-// Совместимость с CommonJS
-(module as any).exports = setTokenCookie;

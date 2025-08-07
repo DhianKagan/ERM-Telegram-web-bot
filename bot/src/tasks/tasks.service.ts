@@ -24,14 +24,16 @@ interface TasksRepository {
   listMentionedTasks(userId: string | number): Promise<TaskDocument[]>;
 }
 
+interface RepositoryWithModel extends TasksRepository {
+  Task?: { create: (data: Partial<TaskDocument>) => Promise<TaskDocument> };
+}
+
 class TasksService {
   repo: TasksRepository;
-  constructor(repo: TasksRepository) {
+  constructor(repo: RepositoryWithModel) {
     this.repo = repo;
-    if (!this.repo.createTask && (this.repo as any).Task?.create) {
-      this.repo.createTask = (this.repo as any).Task.create.bind(
-        (this.repo as any).Task,
-      );
+    if (!this.repo.createTask && repo.Task?.create) {
+      this.repo.createTask = repo.Task.create.bind(repo.Task);
     }
     if (!this.repo.createTask) {
       this.repo.createTask = async (d: Partial<TaskDocument>) =>
@@ -103,4 +105,3 @@ class TasksService {
 }
 
 export default TasksService;
-module.exports = TasksService;

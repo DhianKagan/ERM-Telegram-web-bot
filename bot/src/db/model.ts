@@ -270,7 +270,7 @@ const taskSchema = new Schema<TaskDocument>(
   { timestamps: true },
 );
 
-taskSchema.pre<TaskDocument>('save', async function (next) {
+taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
   if (!this.request_id) {
     const count = await (
       this.constructor as unknown as Model<TaskDocument>
@@ -284,7 +284,6 @@ taskSchema.pre<TaskDocument>('save', async function (next) {
     this.title = this.request_id;
   }
   this.slug = slugify(this.title, { lower: true, strict: true });
-  next();
 });
 
 export interface RoleAttrs {

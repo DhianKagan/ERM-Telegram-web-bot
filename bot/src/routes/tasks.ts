@@ -47,9 +47,9 @@ const detailLimiter = createRateLimiter(15 * 60 * 1000, 100);
 const tasksLimiter = createRateLimiter(15 * 60 * 1000, 100);
 router.use(tasksLimiter);
 
-router.get<unknown, TasksListResponse, unknown, ListQuery>(
+router.get(
   '/',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   [
     query('status').optional().isString(),
     query('assignees').optional().isArray(),
@@ -57,65 +57,65 @@ router.get<unknown, TasksListResponse, unknown, ListQuery>(
     query('to').optional().isISO8601(),
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1 }),
-  ],
-  ctrl.list as RequestHandler<unknown, TasksListResponse, unknown, ListQuery>,
+  ] as RequestHandler[],
+  ctrl.list as RequestHandler,
 );
 
 router.get('/mentioned', verifyToken, ctrl.mentioned);
 
-router.get<unknown, unknown, unknown, { from?: string; to?: string }>(
+router.get(
   '/report/summary',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   [query('from').optional().isISO8601(), query('to').optional().isISO8601()],
   ctrl.summary as RequestHandler,
 );
 
-router.get<TaskParams, TaskResponse>(
+router.get(
   '/:id',
-  verifyToken,
+  verifyToken as unknown as RequestHandler,
   detailLimiter,
-  [param('id').isMongoId()],
-  ctrl.detail as RequestHandler<TaskParams, TaskResponse>,
+  param('id').isMongoId(),
+  ctrl.detail as RequestHandler,
 );
 
-router.post<unknown, unknown, CreateTaskDto>(
+router.post(
   '/',
-  verifyToken,
-  ...validateDto(CreateTaskDto),
-  ctrl.create as RequestHandler<unknown, unknown, CreateTaskDto>,
+  verifyToken as unknown as RequestHandler,
+  ...(validateDto(CreateTaskDto) as RequestHandler[]),
+  ctrl.create as RequestHandler,
 );
 
-router.patch<TaskParams, unknown, UpdateTaskDto>(
+router.patch(
   '/:id',
-  verifyToken,
-  [param('id').isMongoId()],
-  checkTaskAccess,
-  ...validateDto(UpdateTaskDto),
-  ctrl.update as RequestHandler<TaskParams, unknown, UpdateTaskDto>,
+  verifyToken as unknown as RequestHandler,
+  param('id').isMongoId(),
+  checkTaskAccess as unknown as RequestHandler,
+  ...(validateDto(UpdateTaskDto) as RequestHandler[]),
+  ctrl.update as RequestHandler,
 );
 
-router.patch<TaskParams, unknown, AddTimeDto>(
+router.patch(
   '/:id/time',
-  verifyToken,
-  [param('id').isMongoId()],
-  ...validateDto(AddTimeDto),
-  checkTaskAccess,
-  ctrl.addTime as RequestHandler<TaskParams, unknown, AddTimeDto>,
+  verifyToken as unknown as RequestHandler,
+  param('id').isMongoId(),
+  ...(validateDto(AddTimeDto) as RequestHandler[]),
+  checkTaskAccess as unknown as RequestHandler,
+  ctrl.addTime as RequestHandler,
 );
 
-router.delete<TaskParams>(
+router.delete(
   '/:id',
-  verifyToken,
-  [param('id').isMongoId()],
-  checkTaskAccess,
-  ctrl.remove as RequestHandler<TaskParams>,
+  verifyToken as unknown as RequestHandler,
+  param('id').isMongoId(),
+  checkTaskAccess as unknown as RequestHandler,
+  ctrl.remove as RequestHandler,
 );
 
-router.post<unknown, StatusResponse, BulkStatusDto>(
+router.post(
   '/bulk',
-  verifyToken,
-  ...validateDto(BulkStatusDto),
-  ctrl.bulk as RequestHandler<unknown, StatusResponse, BulkStatusDto>,
+  verifyToken as unknown as RequestHandler,
+  ...(validateDto(BulkStatusDto) as RequestHandler[]),
+  ctrl.bulk as RequestHandler,
 );
 
 export default router;

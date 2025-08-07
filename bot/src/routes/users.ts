@@ -26,17 +26,19 @@ interface CreateUserResponse {
 
 const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const middlewares = [limiter, verifyToken, Roles(ACCESS_ADMIN), rolesGuard];
+const middlewares = [
+  limiter,
+  verifyToken,
+  Roles(ACCESS_ADMIN),
+  rolesGuard,
+] as RequestHandler[];
 
-router.get<unknown, UsersResponse>(
+router.get('/', ...middlewares, ctrl.list as RequestHandler);
+router.post(
   '/',
-  middlewares,
-  ctrl.list as RequestHandler<unknown, UsersResponse>,
-);
-router.post<unknown, CreateUserResponse, CreateUserBody>(
-  '/',
-  [...middlewares, ...validateDto(CreateUserDto)],
-  ctrl.create as RequestHandler<unknown, CreateUserResponse, CreateUserBody>,
+  ...middlewares,
+  ...(validateDto(CreateUserDto) as RequestHandler[]),
+  ctrl.create as RequestHandler,
 );
 
 export default router;

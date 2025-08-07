@@ -23,7 +23,7 @@
 - Скрипт заполнения базы `scripts/db/seed.ts` написан на TypeScript.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
 - Исключение `bot/src/api/*.js` удалено, весь серверный код на TypeScript.
-- Сборка выполняется в строгом режиме TypeScript; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
+- Сборка выполняется в строгом режиме TypeScript; включён флаг `noImplicitAny`; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Конфигурации Vite, Tailwind и PostCSS написаны на TypeScript, скрипт темы перенесён в исходники.
 - ESLint проверяет серверные файлы TypeScript; правила `no-explicit-any` и `ban-ts-comment` отключены.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.

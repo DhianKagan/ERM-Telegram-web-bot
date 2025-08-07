@@ -85,16 +85,14 @@ export async function getTasks(
   page?: number,
   limit?: number,
 ): Promise<TaskDocument[]> {
+  const isQuery = (v: unknown): v is Query<TaskDocument[], TaskDocument> =>
+    typeof v === 'object' && v !== null && 'exec' in v;
   if (filters.kanban) {
-    type TaskQuery = Query<TaskDocument[], TaskDocument>;
-    const isQuery = (v: unknown): v is TaskQuery =>
-      typeof v === 'object' && v !== null && 'exec' in v;
-    let qKanban: TaskQuery | TaskDocument[] = Task.find({});
-    if (isQuery(qKanban)) {
-      qKanban = qKanban.sort('-createdAt').lean();
-      return qKanban.exec();
+    const res = Task.find({}) as unknown;
+    if (isQuery(res)) {
+      return res.sort('-createdAt').lean().exec();
     }
-    return qKanban;
+    return res as TaskDocument[];
   }
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
@@ -108,20 +106,17 @@ export async function getTasks(
     (q.createdAt as Record<string, Date>).$gte = new Date(filters.from);
   if (filters.to)
     (q.createdAt as Record<string, Date>).$lte = new Date(filters.to);
-  type TaskQuery = Query<TaskDocument[], TaskDocument>;
-  const isQuery = (v: unknown): v is TaskQuery =>
-    typeof v === 'object' && v !== null && 'exec' in v;
-  let query: TaskQuery | TaskDocument[] = Task.find(q);
-  if (isQuery(query)) {
-    query = query.sort('-createdAt').lean();
+  const res = Task.find(q) as unknown;
+  if (isQuery(res)) {
+    let query = res.sort('-createdAt');
     if (limit) {
       const p = Number(page) || 1;
       const l = Number(limit) || 20;
       query = query.skip((p - 1) * l).limit(l);
     }
-    return query.exec();
+    return query.lean().exec();
   }
-  return query;
+  return res as TaskDocument[];
 }
 
 export interface RoutesFilters {

@@ -184,7 +184,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 ## Развёртывание и запуск
 
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
-- Зависимости сервера и клиента устанавливаются скриптом `./scripts/install_bot_deps.sh`.
+- Корневые, серверные и клиентские зависимости устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
 - Типовые проверки выполняются `npm --prefix bot run test:types` через `tsd`.
 - Стресс-тест запускается скриптом `./scripts/stress_test.sh` (см. `docs/stress_plan.md`).
@@ -198,7 +198,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 
 ```bash
 ./scripts/create_env_from_exports.sh
-./scripts/install_bot_deps.sh # устанавливает все зависимости
+./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
 npm --prefix bot run dev
 ```
 

@@ -61,6 +61,12 @@ router.get(
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as TableQuery;
+    const max = Number(process.env.ROUTE_TABLE_MAX_POINTS || '25');
+    const count = points.split(';').length;
+    if (count > max) {
+      res.status(400).json({ error: 'Слишком много точек' });
+      return;
+    }
     res.json(await table(points, params as Record<string, string | number>));
   }),
 );

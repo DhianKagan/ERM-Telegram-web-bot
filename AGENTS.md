@@ -32,5 +32,6 @@
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
 - Docker Compose содержит healthcheck для MongoDB.
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
+- Запросы OSRM кешируются на 10 минут; переменные `ROUTE_CACHE_ENABLED` и `ROUTE_CACHE_TTL` управляют кешом.
 - Стресс-план описан в `docs/stress_plan.md`.
 - План внедрения улучшений описан в `docs/apply_analysis_plan.md`.

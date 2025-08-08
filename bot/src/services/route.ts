@@ -3,6 +3,7 @@
 import { routingUrl } from '../config';
 import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
+import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
 
 const base = routingUrl.replace(/\/route$/, '');
 
@@ -32,6 +33,9 @@ async function call<T>(
   );
   for (const [k, v] of Object.entries(params))
     url.searchParams.append(k, String(v));
+  const key = buildCacheKey(endpoint, safeCoords, params);
+  const cached = await cacheGet<T>(key);
+  if (cached) return cached;
   const trace = getTrace();
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
@@ -46,6 +50,7 @@ async function call<T>(
       throw new Error(data.message || data.code || 'Route error');
     }
     timer({ endpoint, status: res.status });
+    await cacheSet(key, data);
     return data as T;
   } catch (e) {
     osrmErrorsTotal.inc({
@@ -73,6 +78,10 @@ export async function getRouteDistance(
   start: Point,
   end: Point,
 ): Promise<RouteDistance> {
+  const coords = `${start.lng},${start.lat};${end.lng},${end.lat}`;
+  const key = buildCacheKey('route', coords, {});
+  const cached = await cacheGet<RouteDistance>(key);
+  if (cached) return cached;
   const url = `${routingUrl}?start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`;
   const trace = getTrace();
   const headers: Record<string, string> = {};
@@ -88,7 +97,9 @@ export async function getRouteDistance(
       throw new Error(data.message || data.code || 'Route error');
     }
     timer({ endpoint: 'route', status: res.status });
-    return { distance: data.routes?.[0]?.distance, waypoints: data.waypoints };
+    const result = { distance: data.routes?.[0]?.distance, waypoints: data.waypoints };
+    await cacheSet(key, result);
+    return result;
   } catch (e) {
     osrmErrorsTotal.inc({
       endpoint: 'route',
@@ -128,3 +139,17 @@ export async function trip<T = unknown>(
 ): Promise<T> {
   return call('trip', points, params);
 }
+
+/** Сборка ключа кеша */
+export function buildCacheKey(
+  endpoint: string,
+  coords: string,
+  params: Record<string, string | number>,
+): string {
+  const search = new URLSearchParams();
+  for (const [k, v] of Object.entries(params).sort()) search.append(k, String(v));
+  return `${endpoint}:${coords}:${search.toString()}`;
+}
+
+/** Очистка кеша маршрутов */
+export const clearRouteCache = cacheClear;

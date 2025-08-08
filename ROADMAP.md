@@ -21,6 +21,7 @@
 - Оптимизированы запросы задач: добавлен скрипт `ensureIndexes` с индексами `{assigneeId,status,dueAt}` и `createdAt`.
 - Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, метрика `rate_limit_drops_total` доступна в Prometheus
 - Добавлены гистограммы HTTP (method, route, status), метрики OSRM и поддержка traceparent.
+- Стабилизированы запросы OSRM: алгоритм MLD по умолчанию, кеш и ограничение размера матриц.
 
 ## Ближайшие задачи
 

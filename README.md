@@ -113,7 +113,7 @@
 git clone https://github.com/AgroxOD/agrmcs.git
 cd agrmcs
 ./scripts/create_env_from_exports.sh
-./scripts/install_bot_deps.sh # устанавливает зависимости сервера и клиента
+./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
 npm --prefix bot run build
 npm --prefix bot start
 ```

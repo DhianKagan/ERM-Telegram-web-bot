@@ -1,4 +1,5 @@
-import { table, clearRouteCache } from '../src/services/route';
+process.env.APP_URL = 'https://localhost';
+const { table, clearRouteCache } = require('../src/services/route');
 
 global.fetch = jest.fn(async () => ({
   ok: true,

@@ -18,6 +18,7 @@
 - Включён флаг `noImplicitAny` и обновлены типы сервисов задач и пользователей.
 - ESLint запрещает файлы `.js` вне конфигурации.
 - Корневой `package.json` содержит зависимости `eslint` и `jiti`, поэтому `npx eslint bot/src` выполняется без ошибок.
+- Добавлен композитный индекс `assigneeId,status,dueAt` и индекс `createdAt` для задач, внедрён скрипт `ensureIndexes` и тесты explain().
 - Скрипт `install_bot_deps.sh` устанавливает корневые, серверные и клиентские зависимости,
   что обеспечивает работу `npx eslint bot/src` в Docker.
 - Разделена защита от CSRF для Admin UI и Mini App: маршруты `/api/tma`

@@ -18,6 +18,7 @@
   синхронизатор токенов и защищённые cookie
 - Внедрён единый middleware ошибок с форматом `application/problem+json`
 - Добавлен корневой `package.json` с зависимостями `eslint`, `jiti` и `reflect-metadata` для запуска `npx eslint bot/src`
+- Оптимизированы запросы задач: добавлен скрипт `ensureIndexes` с индексами `{assigneeId,status,dueAt}` и `createdAt`.
 - Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, метрика `rate_limit_drops_total` доступна в Prometheus
 - Добавлены гистограммы HTTP (method, route, status), метрики OSRM и поддержка traceparent.
 

@@ -179,6 +179,15 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
 - `/edit_last <id> <текст>` — `call('editMessageText')`
 - `/app` — выдаёт ссылку на мини‑приложение
 
+## Индексы MongoDB
+
+| Запрос | Индекс |
+|--------|--------|
+| `db.tasks.find({ assigneeId, status }).sort({ dueAt: 1 })` | `{ assigneeId: 1, status: 1, dueAt: 1 }` |
+| `db.tasks.find().sort({ createdAt: -1 })` | `{ createdAt: -1 }` |
+
+Порядок ключей в композитном индексе следует правилу ESR: сначала поля равенства `assigneeId`, `status`, затем сортировка по `dueAt`.
+
 Валидация входных данных выполняется через классы DTO в каталоге `src/dto`.
 Middleware `validateDto` подключает правила из метода `rules` и возвращает
 ошибку 400 при несоответствии.

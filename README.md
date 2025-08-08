@@ -10,7 +10,10 @@
 - Веб‑панель администратора на базе TailAdmin.
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
-- Запросы к OSRM кешируются в памяти или Redis на 10 минут.
+- Запросы к OSRM кешируются в памяти или Redis на 10 минут и очищаются при
+  изменении задач, матрица `/table` ограничена по размеру и частоте
+  переменными `ROUTE_TABLE_GUARD`, `ROUTE_TABLE_MAX_POINTS` и
+  `ROUTE_TABLE_MIN_INTERVAL_MS`.
 - Заголовки безопасности формируются через Helmet и Content Security Policy.
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.

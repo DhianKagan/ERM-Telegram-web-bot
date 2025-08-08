@@ -166,6 +166,11 @@ npm --prefix bot start
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
 Подробный план и инструкции по отказоустойчивости описаны в `docs/stress_plan.md`.
 
+## Тестирование
+
+- `pnpm test:e2e` запускает сценарии Playwright.
+- `pnpm test:api` проверяет API через Supertest.
+
 Приложение слушает `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
 
 Переменная `NODE_ENV` управляет флагом `secure` у cookie: в продакшене они передаются только по HTTPS.

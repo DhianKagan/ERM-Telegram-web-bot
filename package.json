@@ -1,13 +1,28 @@
 {
   "name": "erm-telegram-web-bot",
   "private": true,
-  "description": "Вспомогательные зависимости для запуска ESLint.",
+  "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
-    "lint": "eslint bot/src"
+    "lint": "eslint bot/src",
+    "test:e2e": "playwright test tests/e2e",
+    "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",
+    "format": "prettier --write ."
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "@types/express": "^4.17.21",
+    "@types/supertest": "^2.0.16",
     "eslint": "^9.29.0",
-    "jiti": "^2.5.1"
+    "express": "^4.19.2",
+    "jiti": "^2.5.1",
+    "mocha": "^10.7.3",
+    "prettier": "^3.3.3",
+    "supertest": "^6.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "prettier-plugin-tailwindcss": "^0.6.13",
+    "tailwindcss": "^3.4.7",
+    "@types/mocha": "^10.0.6"
   },
   "dependencies": {
     "reflect-metadata": "^0.1.14"

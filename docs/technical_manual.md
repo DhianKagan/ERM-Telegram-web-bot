@@ -73,11 +73,73 @@
 | GET   | /health                  | Проверка сервера            |
 | POST  | /api/v1/auth/send_code   | Отправить код подтверждения |
 | POST  | /api/v1/auth/verify_code | Подтвердить код             |
+| POST  | /api/v1/auth/verify_init | Проверить initData          |
 | GET   | /api/v1/tasks            | Список задач                |
 | POST  | /api/v1/tasks            | Создать задачу              |
+| GET   | /api/v1/tasks/:id        | Получить задачу             |
 | PATCH | /api/v1/tasks/:id        | Обновить задачу             |
+| PATCH | /api/v1/tasks/:id/time   | Добавить время              |
+| POST  | /api/v1/tasks/:id/status | Изменить статус             |
+| POST  | /api/v1/tasks/bulk       | Массовое обновление         |
+| GET   | /api/v1/tasks/report/summary | KPI отчёт                |
+| GET   | /api/v1/users            | Список пользователей        |
+| POST  | /api/v1/users            | Создать пользователя        |
+| GET   | /api/v1/logs             | Последние логи              |
+| POST  | /api/v1/logs             | Записать сообщение в лог    |
+| DELETE| /api/v1/tasks/:id        | Удалить задачу              |
 
-Более подробная карта запросов приведена в разделе "Карта запросов".
+Подробная карта запросов приведена в разделе «Карта запросов».
+
+### Параметры отчёта KPI
+
+| Параметр | Тип      | Описание               |
+|----------|----------|------------------------|
+| `from`   | ISO 8601 | Начальная дата периода |
+| `to`     | ISO 8601 | Конечная дата периода  |
+
+### Параметры списка задач
+
+| Параметр | Тип | Описание                     |
+|----------|-----|------------------------------|
+| `page`   | int | Номер страницы, начиная с 1  |
+| `limit`  | int | Количество задач на странице |
+
+### Поля задачи
+
+| Поле            | Enum                                                   | По умолчанию    |
+|-----------------|-------------------------------------------------------|-----------------|
+| `task_type`     | `Доставить`, `Купить`, `Выполнить`, `Построить`, `Починить` | `Доставить`     |
+| `transport_type`| `Пешком`, `Авто`, `Дрон`                               | `Авто`          |
+| `payment_method`| `Наличные`, `Карта`, `Безнал`, `Без оплаты`           | `Карта`         |
+| `priority`      | `Срочно`, `В течение дня`, `Бессрочно`                | `В течение дня` |
+| `status`        | `Новая`, `В работе`, `Выполнена`, `Отменена`          | `Новая`         |
+
+## Карта запросов
+
+Ниже перечислены основные операции с MongoDB и соответствующие маршруты API.
+
+| Операция            | Функция            | Маршрут                                    |
+|---------------------|-------------------|--------------------------------------------|
+| Создать задачу      | `createTask()`    | `POST /api/v1/tasks`                       |
+| Получить список задач | `getTasks()`    | `GET /api/v1/tasks`                        |
+| Обновить задачу     | `updateTask()`    | `PATCH /api/v1/tasks/:id`                  |
+| Изменить статус     | `updateTaskStatus()` | `POST /api/v1/tasks/:id/status`        |
+| Добавить время      | `addTime()`       | `PATCH /api/v1/tasks/:id/time`             |
+| Массовое обновление | `bulkUpdate()`    | `POST /api/v1/tasks/bulk`                  |
+| Сводка по задачам   | `summary()`       | `GET /api/v1/tasks/report/summary`         |
+| Пользователи        | `createUser()`, `listUsers()` | `POST /api/v1/users`, `GET /api/v1/users` |
+| Логи                | `writeLog()`, `listLogs()` | `POST /api/v1/logs`, `GET /api/v1/logs` |
+| Удалить задачу      | `deleteTask()`    | `DELETE /api/v1/tasks/:id`                 |
+
+Команды бота вызывают те же функции через `services/service.ts`:
+
+- `/create_task <текст>` — `createTask()`
+- `/list_users` — `listUsers()`
+- `/add_user <id> <username>` — `createUser()`
+- `/update_task_status <taskId> <status>` — `updateTaskStatus()`
+- `/send_photo <url>` — `call('sendPhoto')`
+- `/edit_last <id> <текст>` — `call('editMessageText')`
+- `/app` — выдаёт ссылку на мини‑приложение
 
 Валидация входных данных выполняется через классы DTO в каталоге `src/dto`.
 Middleware `validateDto` подключает правила из метода `rules` и возвращает

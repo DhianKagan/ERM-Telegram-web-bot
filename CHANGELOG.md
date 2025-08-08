@@ -7,6 +7,7 @@
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 - Дорожная карта и план внедрения обновлены; устаревшие документы `TSrecomendation.md` и `analys2025.md` удалены,
   содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
+- Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
 
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Исправлена типизация порта, Request получил метод `csrfToken`, `jwt.verify` использует строгие типы.

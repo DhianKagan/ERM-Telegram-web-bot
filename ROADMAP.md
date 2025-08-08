@@ -3,6 +3,7 @@
 # Дорожная карта проекта
 
 - Документация собрана в одном файле technical_manual.md
+- Разделы API и карта запросов перенесены в него, отдельные файлы `api_reference.md` и `db_request_map.md` удалены
 - Документация по модулям объединена в docs/architecture.md
 - Модули `db/connection.ts`, `db/model.ts` и `db/queries.ts` переведены на
   TypeScript

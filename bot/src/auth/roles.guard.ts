@@ -5,6 +5,7 @@ import { writeLog } from '../services/service';
 import { ROLES_KEY } from './roles.decorator';
 import type { RequestWithUser } from '../types/request';
 import { Response, NextFunction } from 'express';
+import { sendProblem } from '../utils/problem';
 
 export default function rolesGuard(
   req: RequestWithUser,
@@ -20,5 +21,10 @@ export default function rolesGuard(
   writeLog(
     `Недостаточно прав ${req.method} ${req.originalUrl} user:${req.user?.id}/${req.user?.username} ip:${req.ip}`,
   ).catch(() => {});
-  return res.status(403).json({ message: 'Forbidden' });
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Доступ запрещён',
+    status: 403,
+    detail: 'Forbidden',
+  });
 }

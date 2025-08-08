@@ -2,6 +2,7 @@
 // Основные модули: verifyInitData
 import type { Request, Response, NextFunction } from "express";
 import verifyInitData from "../utils/verifyInitData";
+import { sendProblem } from "../utils/problem";
 
 export default function tmaAuthGuard(
   req: Request,
@@ -16,7 +17,12 @@ export default function tmaAuthGuard(
     initData = String(req.headers["x-telegram-init-data"]);
   }
   if (!initData || !verifyInitData(initData)) {
-    res.sendStatus(401);
+    sendProblem(req, res, {
+      type: "about:blank",
+      title: "Ошибка авторизации",
+      status: 401,
+      detail: "invalid init data",
+    });
     return;
   }
   res.locals.initData = initData;

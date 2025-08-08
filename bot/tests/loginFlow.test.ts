@@ -26,7 +26,8 @@ jest.mock('../src/db/queries', () => ({
 }));
 
 const authRouter = require('../src/routes/authUser').default;
-const { verifyToken, errorHandler } = require('../src/api/middleware');
+const { verifyToken } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
@@ -70,7 +71,7 @@ beforeAll(() => {
   app.post('/api/protected', limiter, verifyToken, (_req, res) =>
     res.json({ ok: true }),
   );
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 });
 
 afterAll(() => {

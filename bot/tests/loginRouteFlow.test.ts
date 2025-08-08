@@ -29,7 +29,8 @@ jest.mock('../src/services/route', () => ({
 
 const authRouter = require('../src/routes/authUser').default;
 const routeRouter = require('../src/routes/route').default;
-const { verifyToken, errorHandler } = require('../src/api/middleware');
+const { verifyToken } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
@@ -76,7 +77,7 @@ beforeAll(() => {
   });
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/route', routeRouter);
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 });
 
 afterAll(() => {

@@ -5,6 +5,7 @@ import { hasAccess, ACCESS_ADMIN, ACCESS_USER } from '../utils/accessMask';
 import * as service from '../services/tasks';
 import { writeLog } from '../services/service';
 import type { RequestWithUser, TaskInfo } from '../types/request';
+import { sendProblem } from '../utils/problem';
 
 export default async function checkTaskAccess(
   req: RequestWithUser,
@@ -13,7 +14,12 @@ export default async function checkTaskAccess(
 ): Promise<void> {
   const task = (await service.getById(req.params.id)) as TaskInfo | null;
   if (!task) {
-    res.sendStatus(404);
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Задача не найдена',
+      status: 404,
+      detail: 'Not Found',
+    });
     return;
   }
   const mask = req.user?.access ?? ACCESS_USER;
@@ -33,5 +39,10 @@ export default async function checkTaskAccess(
   await writeLog(
     `Нет доступа ${req.method} ${req.originalUrl} user:${id}/${req.user?.username} ip:${req.ip}`,
   ).catch(() => {});
-  res.status(403).json({ message: 'Forbidden' });
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Доступ запрещён',
+    status: 403,
+    detail: 'Forbidden',
+  });
 }

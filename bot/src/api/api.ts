@@ -36,12 +36,9 @@ import routesRouter from "../routes/routes";
 import optimizerRouter from "../routes/optimizer";
 import authUserRouter from "../routes/authUser";
 import { updateTaskStatus, writeLog } from "../services/service";
-import {
-  verifyToken,
-  asyncHandler,
-  errorHandler,
-  requestLogger,
-} from "./middleware";
+import { verifyToken, asyncHandler, requestLogger } from "./middleware";
+import errorMiddleware from "../middleware/errorMiddleware";
+import { sendProblem } from "../utils/problem";
 import usersRouter from "../routes/users";
 import rolesRouter from "../routes/roles";
 import logsRouter from "../routes/logs";
@@ -64,7 +61,12 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (errors.isEmpty()) return next();
-    res.status(400).json({ errors: errors.array() });
+    sendProblem(req, res, {
+      type: "about:blank",
+      title: "Ошибка валидации",
+      status: 400,
+      detail: JSON.stringify(errors.array()),
+    });
   },
 ];
 
@@ -203,7 +205,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
    *       200:
    *         description: Токен доступа
    *       401:
-   *         description: Ошибка авторизации
+   *         $ref: '#/components/responses/Problem'
    */
   app.post(
     "/api/auth/tma-login",
@@ -266,7 +268,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     res.sendFile(path.join(pub, "index.html"));
   });
 
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 
   const port: number = config.port;
   app.listen(port, "0.0.0.0", () => {

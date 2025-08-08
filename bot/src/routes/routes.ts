@@ -4,6 +4,7 @@ import { Router, RequestHandler } from 'express';
 import { query, validationResult } from 'express-validator';
 import * as ctrl from '../controllers/routes';
 import { verifyToken, asyncHandler } from '../api/middleware';
+import { sendProblem } from '../utils/problem';
 
 export interface RoutesQuery {
   from?: string;
@@ -22,7 +23,12 @@ const validate = (v: ReturnType<typeof query>[]): RequestHandler[] => [
   (req, res, next) => {
     const errors = validationResult(req);
     if (errors.isEmpty()) return next();
-    res.status(400).json({ errors: errors.array() });
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка валидации',
+      status: 400,
+      detail: JSON.stringify(errors.array()),
+    });
   },
 ];
 

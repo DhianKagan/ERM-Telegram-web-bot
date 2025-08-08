@@ -7,6 +7,7 @@ import setTokenCookie from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
 import { Request, Response } from 'express';
 import type { UserDocument } from '../db/model';
+import { sendProblem } from '../utils/problem';
 
 export const sendCode = async (req: Request, res: Response) => {
   const { telegramId } = req.body;
@@ -14,7 +15,12 @@ export const sendCode = async (req: Request, res: Response) => {
     await service.sendCode(telegramId);
     res.json({ status: 'sent' });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка отправки кода',
+      status: 400,
+      detail: String((e as Error).message),
+    });
   }
 };
 
@@ -25,7 +31,12 @@ export const verifyCode = async (req: Request, res: Response) => {
     setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка подтверждения кода',
+      status: 400,
+      detail: String((e as Error).message),
+    });
   }
 };
 
@@ -35,7 +46,12 @@ export const verifyInitData = async (req: Request, res: Response) => {
     setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка авторизации',
+      status: 400,
+      detail: String((e as Error).message),
+    });
   }
 };
 
@@ -45,7 +61,12 @@ export const profile = async (
 ): Promise<void> => {
   const user = await service.getProfile(req.user!.id!);
   if (!user) {
-    res.sendStatus(404);
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Пользователь не найден',
+      status: 404,
+      detail: 'Not Found',
+    });
     return;
   }
   res.json(formatUser(user));
@@ -60,7 +81,12 @@ export const updateProfile = async (
     req.body as Partial<UserDocument>,
   );
   if (!user) {
-    res.sendStatus(404);
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Пользователь не найден',
+      status: 404,
+      detail: 'Not Found',
+    });
     return;
   }
   await writeLog(`Профиль ${req.user!.id}/${req.user!.username} изменён`);

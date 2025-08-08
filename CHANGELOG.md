@@ -7,7 +7,8 @@
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
 - Дорожная карта и план внедрения обновлены; устаревшие документы `TSrecomendation.md` и `analys2025.md` удалены,
   содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
-- Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
+ - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
+ - Добавлен единый middleware ошибок с ответами `application/problem+json` по [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457).
 
 - Руководство по настройке Telegram-бота перенесено в `docs/technical_manual.md`, файл `docs/telegram_bot_manual.md` удалён.
 

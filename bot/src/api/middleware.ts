@@ -1,8 +1,7 @@
-// Middleware проверки JWT и базовая обработка ошибок.
-// Модули: jsonwebtoken, config, prom-client
+// Middleware проверки JWT и вспомогательные функции.
+// Модули: jsonwebtoken, config
 import jwt from "jsonwebtoken";
 import { writeLog } from "../services/service";
-import client from "prom-client";
 import {
   Request,
   Response,
@@ -13,13 +12,11 @@ import {
 import config from "../config";
 import type { RequestWithUser } from "../types/request";
 import { randomUUID } from "crypto";
+import { sendProblem } from "../utils/problem";
 
-const csrfErrors = new client.Counter({
-  name: "csrf_errors_total",
-  help: "Количество ошибок CSRF",
-});
+import client from "prom-client";
 
-const apiErrors = new client.Counter({
+export const apiErrors = new client.Counter({
   name: "api_errors_total",
   help: "Количество ошибок API",
   labelNames: ["method", "path", "status"],
@@ -41,54 +38,6 @@ export const asyncHandler = (
   };
 };
 
-export function errorHandler(
-  err: unknown,
-  _req: RequestWithUser,
-  res: Response,
-  _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
-): void {
-  const error = err as { [key: string]: unknown; message: string };
-  if (error.type === "request.aborted") {
-    res.status(400).json({ error: "request aborted" });
-    return;
-  }
-  if (error.code === "EBADCSRFTOKEN" || /CSRF token/.test(error.message)) {
-    if (process.env.NODE_ENV !== "test") {
-      csrfErrors.inc();
-      const header = _req.headers["x-xsrf-token"]
-        ? String(_req.headers["x-xsrf-token"]).slice(0, 8)
-        : "none";
-      const cookie =
-        _req.cookies && _req.cookies["XSRF-TOKEN"]
-          ? String(_req.cookies["XSRF-TOKEN"]).slice(0, 8)
-          : "none";
-      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : "anon";
-      writeLog(
-        `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
-      ).catch(() => {});
-    }
-    res
-      .status(403)
-      .type("application/problem+json")
-      .json({
-        type: "about:blank",
-        title: "Ошибка CSRF",
-        status: 403,
-        detail:
-          "Токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.",
-      });
-    apiErrors.inc({ method: _req.method, path: _req.originalUrl, status: 403 });
-    return;
-  }
-  console.error(error);
-  writeLog(
-    `Ошибка ${error.message} path:${_req.originalUrl} ip:${_req.ip}`,
-    "error",
-  ).catch(() => {});
-  const status = res.statusCode >= 400 ? res.statusCode : 500;
-  res.status(status).json({ error: error.message });
-  apiErrors.inc({ method: _req.method, path: _req.originalUrl, status });
-}
 
 const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
@@ -109,12 +58,13 @@ export function verifyToken(
         writeLog(
           `Неверный формат токена ${req.method} ${req.originalUrl} ip:${req.ip}`,
         ).catch(() => {});
-        apiErrors.inc({
-          method: req.method,
-          path: req.originalUrl,
+        apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
+        sendProblem(req, res, {
+          type: "about:blank",
+          title: "Ошибка авторизации",
           status: 403,
+          detail: "Неверный формат токена авторизации",
         });
-        res.status(403).json({ message: "Неверный формат токена авторизации" });
         return;
       }
       fromHeader = true;
@@ -122,7 +72,12 @@ export function verifyToken(
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-      res.status(403).json({ message: "Неверный формат токена авторизации" });
+      sendProblem(req, res, {
+        type: "about:blank",
+        title: "Ошибка авторизации",
+        status: 403,
+        detail: "Неверный формат токена авторизации",
+      });
       return;
     } else {
       token = auth;
@@ -135,8 +90,11 @@ export function verifyToken(
       `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
     ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-    res.status(403).json({
-      message: "Токен авторизации отсутствует. Выполните вход заново.",
+    sendProblem(req, res, {
+      type: "about:blank",
+      title: "Ошибка авторизации",
+      status: 403,
+      detail: "Токен авторизации отсутствует. Выполните вход заново.",
     });
     return;
   }
@@ -152,14 +110,13 @@ export function verifyToken(
     ) => {
       if (err) {
         writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
-        apiErrors.inc({
-          method: req.method,
-          path: req.originalUrl,
+        apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
+        sendProblem(req, res, {
+          type: "about:blank",
+          title: "Ошибка авторизации",
           status: 401,
+          detail: "Недействительный токен. Выполните вход заново.",
         });
-        res
-          .status(401)
-          .json({ message: "Недействительный токен. Выполните вход заново." });
         return;
       }
       req.user = decoded as RequestWithUser["user"];
@@ -218,5 +175,4 @@ export function requestLogger(
   });
   next();
 }
-
-export default { verifyToken, asyncHandler, errorHandler, requestLogger };
+export default { verifyToken, asyncHandler, requestLogger, apiErrors };

@@ -44,7 +44,8 @@ jest.mock('../src/db/queries', () => ({
 
 const authRouter = require('../src/routes/authUser').default;
 const tasksRouter = require('../src/routes/tasks').default;
-const { verifyToken, errorHandler } = require('../src/api/middleware');
+const { verifyToken } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
@@ -98,7 +99,7 @@ beforeAll(
       });
       app.use('/api/v1/auth', authRouter);
       app.use('/api/v1/tasks', tasksRouter);
-      app.use(errorHandler);
+      app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
         baseUrl = `https://localhost:${server.address().port}`;

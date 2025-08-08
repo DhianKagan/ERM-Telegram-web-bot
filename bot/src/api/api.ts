@@ -166,9 +166,21 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
 
-  const taskStatusRateLimiter = createRateLimiter(15 * 60 * 1000, 50);
-  const spaRateLimiter = createRateLimiter(60 * 1000, 50);
-  const tmaLoginRateLimiter = createRateLimiter(15 * 60 * 1000, 20); // 20 запросов за 15 минут
+  const taskStatusRateLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    name: 'task-status',
+  });
+  const spaRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 50,
+    name: 'spa',
+  });
+  const tmaLoginRateLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    name: 'tma-login',
+  }); // 20 запросов за 15 минут
 
   /**
    * @openapi

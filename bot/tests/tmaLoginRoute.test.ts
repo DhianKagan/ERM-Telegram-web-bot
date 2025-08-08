@@ -10,7 +10,11 @@ const express = require("express");
 const request = require("supertest");
 const tmaAuthGuard = require("../src/auth/tmaAuth.guard").default;
 const createRateLimiter = require("../src/utils/rateLimiter").default;
-const tmaLoginRateLimiter = createRateLimiter(15 * 60 * 1000, 20);
+const tmaLoginRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  name: 'tma-login',
+});
 
 function buildInitData(ts) {
   const data = {

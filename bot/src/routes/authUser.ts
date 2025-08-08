@@ -3,6 +3,8 @@
 import { Router, RequestHandler } from 'express';
 import * as authCtrl from '../auth/auth.controller';
 import { verifyToken, asyncHandler } from '../api/middleware';
+import createRateLimiter from '../utils/rateLimiter';
+import { rateLimits } from '../rateLimits';
 import validateDto from '../middleware/validateDto';
 import {
   SendCodeDto,
@@ -12,6 +14,8 @@ import {
 } from '../dto/auth.dto';
 
 const router = Router();
+const authLimiter = createRateLimiter(rateLimits.auth);
+router.use(authLimiter as unknown as RequestHandler);
 
 router.post(
   '/send_code',

@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "build": "tsc -p ..",
     "build-client": "npm --prefix web run build",
-    "format": "npx jiti ./node_modules/prettier/bin/prettier.cjs --config ../prettier.config.ts \"src/**/*.{js,ts}\"",
+    "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",
     "check:mongo": "node ../scripts/check_mongo.mjs",
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd bot --project tsconfig.json --files tests/requestWithUser.test-d.ts",

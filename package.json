@@ -8,5 +8,8 @@
   "devDependencies": {
     "eslint": "^9.29.0",
     "jiti": "^2.5.1"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.14"
   }
 }

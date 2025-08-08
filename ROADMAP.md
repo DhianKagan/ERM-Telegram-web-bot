@@ -17,7 +17,7 @@
 - Разделена защита от CSRF: Mini App работает без cookie, Admin UI использует
   синхронизатор токенов и защищённые cookie
 - Внедрён единый middleware ошибок с форматом `application/problem+json`
-- Добавлен корневой `package.json` с зависимостями `eslint` и `jiti` для запуска `npx eslint bot/src`
+- Добавлен корневой `package.json` с зависимостями `eslint`, `jiti` и `reflect-metadata` для запуска `npx eslint bot/src`
 
 ## Ближайшие задачи
 

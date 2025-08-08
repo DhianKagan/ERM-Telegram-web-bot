@@ -22,6 +22,7 @@
 - Все технические файлы сведены в `docs/technical_manual.md`.
 - Руководство по настройке Telegram-бота включено туда.
 - Документация по модулям находится в `docs/architecture.md`.
+- Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - Рекомендуется проверять базу командой `npm --prefix bot run check:mongo`.

@@ -107,16 +107,17 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     process.env.NODE_ENV === "production"
       ? config.cookieDomain || new URL(config.appUrl).hostname
       : undefined;
+  const cookieFlags: session.CookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    ...(domain ? { domain } : {}),
+  };
   const sessionOpts: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "session_secret",
     resave: false,
     saveUninitialized: true,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      ...(domain ? { domain } : {}),
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    },
+    cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },
   };
   if (process.env.NODE_ENV !== "test") {
     sessionOpts.store = MongoStore.create({
@@ -128,13 +129,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 
   const csrf = lusca.csrf({
     angular: true,
-    cookie: {
-      options: {
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none",
-        ...(domain ? { domain } : {}),
-      },
-    },
+    cookie: { options: cookieFlags },
   });
   const csrfExclude = [
     "/api/v1/auth/send_code",
@@ -143,8 +138,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     "/api/v1/optimizer",
     "/api/v1/maps/expand",
   ];
+  const csrfExcludePrefix = ["/api/tma"];
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const url = req.originalUrl;
+    const url = req.originalUrl.split("?")[0];
     if (process.env.DISABLE_CSRF === "1") {
       // Используем каст, чтобы избежать обращения к несуществующему полю globalThis
       if (!(globalThis as Record<string, unknown>).csrfWarn) {
@@ -153,7 +149,12 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
       }
       return next();
     }
-    if (csrfExclude.includes(url) || req.headers.authorization) return next();
+    if (
+      csrfExclude.includes(url) ||
+      csrfExcludePrefix.some((p) => url.startsWith(p)) ||
+      req.headers.authorization
+    )
+      return next();
     return csrf(req, res, next);
   });
 

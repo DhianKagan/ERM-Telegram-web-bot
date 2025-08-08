@@ -67,10 +67,16 @@ export function errorHandler(
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
       ).catch(() => {});
     }
-    res.status(403).json({
-      error:
-        "Ошибка CSRF: токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.",
-    });
+    res
+      .status(403)
+      .type("application/problem+json")
+      .json({
+        type: "about:blank",
+        title: "Ошибка CSRF",
+        status: 403,
+        detail:
+          "Токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.",
+      });
     apiErrors.inc({ method: _req.method, path: _req.originalUrl, status: 403 });
     return;
   }
@@ -95,6 +101,7 @@ export function verifyToken(
 ): void {
   const auth = req.headers["authorization"];
   let token: string | undefined;
+  let fromHeader = false;
   if (auth) {
     if (auth.startsWith("Bearer ")) {
       token = auth.slice(7).trim();
@@ -110,6 +117,7 @@ export function verifyToken(
         res.status(403).json({ message: "Неверный формат токена авторизации" });
         return;
       }
+      fromHeader = true;
     } else if (auth.includes(" ")) {
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
@@ -118,6 +126,7 @@ export function verifyToken(
       return;
     } else {
       token = auth;
+      fromHeader = true;
     }
   } else if (req.cookies && (req.cookies as Record<string, string>).token) {
     token = (req.cookies as Record<string, string>).token;
@@ -164,7 +173,9 @@ export function verifyToken(
         cookieOpts.domain =
           config.cookieDomain || new URL(config.appUrl).hostname;
       }
-      res.cookie("token", token, cookieOpts);
+      if (!fromHeader) {
+        res.cookie("token", token, cookieOpts);
+      }
       next();
     },
   );

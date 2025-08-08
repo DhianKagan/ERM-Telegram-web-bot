@@ -58,5 +58,6 @@ test('errorHandler возвращает 403 при ошибке CSRF', async () 
   appCsrf.use(errorHandler);
   const res = await request(appCsrf).post('/csrf');
   expect(res.status).toBe(403);
-  expect(res.body.error).toMatch(/CSRF/);
+  expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+  expect(res.body.title).toBe('Ошибка CSRF');
 });

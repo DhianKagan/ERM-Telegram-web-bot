@@ -18,6 +18,10 @@
 - Корневой `package.json` содержит зависимости `eslint` и `jiti`, поэтому `npx eslint bot/src` выполняется без ошибок.
 - Скрипт `install_bot_deps.sh` устанавливает корневые, серверные и клиентские зависимости,
   что обеспечивает работу `npx eslint bot/src` в Docker.
+- Разделена защита от CSRF для Admin UI и Mini App: маршруты `/api/tma`
+  исключены из проверки, ошибки возвращают тело `application/problem+json`.
+- Cookie сессии и CSRF-токенов имеют флаги `HttpOnly`, `Secure`, `SameSite=None`.
+- Добавлена документация `docs/security/cookies_csrf.md`.
 - Добавлен guard `tmaAuthGuard` с проверкой подписи и `auth_date`, маршрут `/api/auth/tma-login` выдаёт краткоживущий токен.
 - Логи HTTP и API содержат `trace-id` для отслеживания запросов.
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.

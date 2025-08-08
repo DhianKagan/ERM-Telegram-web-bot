@@ -1,7 +1,7 @@
 // Назначение файла: генерация JWT.
 // Основные модули: jsonwebtoken, config
-import jwt from 'jsonwebtoken';
-import config from '../config';
+import jwt from "jsonwebtoken";
+import config from "../config";
 
 const secretKey: string = config.jwtSecret!; // переменная гарантирована в config
 
@@ -23,8 +23,24 @@ export function generateToken(user: Payload): string {
     secretKey,
     {
       // токен действует неделю, чтобы вход не требовался каждый час
-      expiresIn: '7d',
-      algorithm: 'HS256',
+      expiresIn: "7d",
+      algorithm: "HS256",
+    },
+  );
+}
+
+export function generateShortToken(user: Payload): string {
+  return jwt.sign(
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      access: user.access,
+    },
+    secretKey,
+    {
+      expiresIn: "5m",
+      algorithm: "HS256",
     },
   );
 }

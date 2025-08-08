@@ -176,8 +176,10 @@ export function requestLogger(
   next: NextFunction,
 ): void {
   const traceId =
-    (req as unknown as Record<string, unknown>).traceId || randomUUID();
-  (req as unknown as Record<string, unknown>).traceId = traceId;
+    ((req as unknown as Record<string, string>).traceId as
+      | string
+      | undefined) || randomUUID();
+  (req as unknown as Record<string, string>).traceId = traceId;
   res.setHeader("x-trace-id", traceId);
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =

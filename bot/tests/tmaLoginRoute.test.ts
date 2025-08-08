@@ -9,6 +9,8 @@ const crypto = require("crypto");
 const express = require("express");
 const request = require("supertest");
 const tmaAuthGuard = require("../src/auth/tmaAuth.guard").default;
+const createRateLimiter = require("../src/utils/rateLimiter").default;
+const tmaLoginRateLimiter = createRateLimiter(15 * 60 * 1000, 20);
 
 function buildInitData(ts) {
   const data = {
@@ -27,8 +29,11 @@ function buildInitData(ts) {
 
 test("валидный initData возвращает 200", async () => {
   const app = express();
-  app.post("/api/auth/tma-login", tmaAuthGuard, (_req, res) =>
-    res.json({ token: "ok" }),
+  app.post(
+    "/api/auth/tma-login",
+    tmaLoginRateLimiter,
+    tmaAuthGuard,
+    (_req, res) => res.json({ token: "ok" }),
   );
   const now = Math.floor(Date.now() / 1000);
   const initData = buildInitData(now);
@@ -40,8 +45,11 @@ test("валидный initData возвращает 200", async () => {
 
 test("неверный hash возвращает 401", async () => {
   const app = express();
-  app.post("/api/auth/tma-login", tmaAuthGuard, (_req, res) =>
-    res.json({ token: "ok" }),
+  app.post(
+    "/api/auth/tma-login",
+    tmaLoginRateLimiter,
+    tmaAuthGuard,
+    (_req, res) => res.json({ token: "ok" }),
   );
   const now = Math.floor(Date.now() / 1000);
   const bad = `query_id=1&user=%7B%22id%22%3A1%7D&auth_date=${now}&hash=bad`;
@@ -53,8 +61,11 @@ test("неверный hash возвращает 401", async () => {
 
 test("просроченный auth_date возвращает 401", async () => {
   const app = express();
-  app.post("/api/auth/tma-login", tmaAuthGuard, (_req, res) =>
-    res.json({ token: "ok" }),
+  app.post(
+    "/api/auth/tma-login",
+    tmaLoginRateLimiter,
+    tmaAuthGuard,
+    (_req, res) => res.json({ token: "ok" }),
   );
   const old = Math.floor(Date.now() / 1000) - 600;
   const initData = buildInitData(old);

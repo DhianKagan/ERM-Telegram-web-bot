@@ -37,6 +37,7 @@
 - Конфигурации Vite, Tailwind и PostCSS переписаны на TypeScript,
   скрипт проверки MongoDB и тема интерфейса также написаны на TypeScript.
 - Удалено исключение `bot/src/api/*.js` из `tsconfig.json`, план миграции обновлён.
+- Добавлен лимитер запросов для входа через Telegram Mini App и исправлена типизация `traceId`.
 
 - Уточнена типизация `username` в auth.service и auth.ts для корректной сборки Docker.
 

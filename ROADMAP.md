@@ -331,3 +331,4 @@
 275. Конфигурации ESLint, Prettier и Babel переведены на TypeScript, добавлена проверка отсутствия .js файлов
 276. Реализован `tmaAuthGuard` и маршрут `/api/auth/tma-login` с проверкой `auth_date`
 277. Логи HTTP и API включают `trace-id` каждого запроса
+278. RequestWithUser использует `ParsedQs` в `query` для совместимости с Express 5

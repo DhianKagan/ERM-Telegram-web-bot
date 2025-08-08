@@ -103,8 +103,8 @@
 - Страница задач корректно обрабатывает пустой ответ fetchTasks.
 - Исполнители на странице задач отображаются по имени при наличии `telegram_username`.
 - Маршрут `/api/v1/optimizer` не требует CSRF-токена.
-- Тест `routeCsrf.test.js` проверяет CSRF при расчёте маршрута и использует самоподписанный сертификат,
-  `taskFields.test.js` контролирует состав полей формы.
+- Тест `routeCsrf.test.ts` проверяет CSRF при расчёте маршрута и использует самоподписанный сертификат,
+  `taskFields.test.ts` контролирует состав полей формы.
   Значения enum хранятся в `bot/src/shared/taskFields.ts` и используются сервером и клиентом.
 
 ## Быстрый старт
@@ -120,10 +120,10 @@ npm --prefix bot start
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
 Перед каждым коммитом Husky выполняет `lint-staged`, инициализация происходит через файл `.husky/_/husky.sh`.
-Тест `loginFlow.test.js` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
-Тест `loginRouteFlow.test.js` подтверждает вызов `/api/v1/route` без CSRF при наличии заголовка `Authorization`.
-Тест `loginTasksFlow.test.js` выполняет логин и создание задачи через `/api/v1/tasks` без CSRF-заголовка.
-Тесты `authService.test.js` и `tasksService.test.js` проверяют логику сервисов авторизации и задач.
+Тест `loginFlow.test.ts` проверяет полный цикл логина и ограничивает `/api/protected` ста запросами за 15 минут.
+Тест `loginRouteFlow.test.ts` подтверждает вызов `/api/v1/route` без CSRF при наличии заголовка `Authorization`.
+Тест `loginTasksFlow.test.ts` выполняет логин и создание задачи через `/api/v1/tasks` без CSRF-заголовка.
+Тесты `authService.test.ts` и `tasksService.test.ts` проверяют логику сервисов авторизации и задач.
 Для профилирования запустите `python profiling/profile.py`,
 нагрузочное тестирование выполняет `locust -f loadtest/locustfile.py`.
 Подробный план и инструкции по отказоустойчивости описаны в `docs/stress_plan.md`.
@@ -135,6 +135,7 @@ npm --prefix bot start
 
 Полную техническую документацию смотрите в файле `docs/technical_manual.md`.
 Разделы API и карта запросов перенесены туда, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
+Руководство по настройке Telegram-бота также включено в этот документ, отдельный файл удалён.
 За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.
 План внедрения рекомендаций из анализа описан в `docs/apply_analysis_plan.md`.
 

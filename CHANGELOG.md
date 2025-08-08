@@ -9,6 +9,8 @@
   содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
 - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
 
+- Руководство по настройке Telegram-бота перенесено в `docs/technical_manual.md`, файл `docs/telegram_bot_manual.md` удалён.
+
 - Включён строгий режим TypeScript и добавлен план миграции из JavaScript (`docs/typescript_migration_plan.md`).
 - Исправлена типизация порта, Request получил метод `csrfToken`, `jwt.verify` использует строгие типы.
 - Включён флаг `noImplicitAny` и обновлены типы сервисов задач и пользователей.
@@ -208,7 +210,7 @@
   ссылки выводятся в меню и не открываются автоматически
 - При расчёте нескольких машин задачи распределяются между всеми авто
 - README дополнен примером JSON со `startCoordinates` и `finishCoordinates`
-- В `docs/telegram_bot_manual.md` описано разворачивание коротких ссылок Google Maps
+- Разворачивание коротких ссылок Google Maps описано в `docs/technical_manual.md`
 - Статус задач переведён на русский, добавлено поле `completed_at`
 - Сервис ORSM поддерживает `/table`, `/nearest`, `/match` и `/trip`
 - Координаты запросов к ORSM валидируются для защиты от SSRF

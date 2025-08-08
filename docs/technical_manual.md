@@ -54,6 +54,33 @@
 `docs/architecture.md`. Она демонстрирует роль сервисов между API, ботом и
 клиентом.
 
+## Настройка Telegram-бота
+
+Основной файл бота `bot/src/bot/bot.ts` использует библиотеку Telegraf и
+обрабатывает обновления методом polling (`getUpdates`). Вебхуки не требуются.
+
+### Получение токена
+
+1. Напишите [@BotFather](https://t.me/BotFather) команду `/newbot`.
+2. Сохраните выданный токен в переменной `BOT_TOKEN` файла `.env`.
+
+### Установка команд
+
+Скрипт `scripts/set_bot_commands.sh` отправляет список из
+`scripts/bot_commands.json` в метод `setMyCommands`:
+
+```bash
+BOT_TOKEN=123 scripts/set_bot_commands.sh
+```
+
+При отсутствии терминала воспользуйтесь командой `/setcommands` у BotFather.
+
+### Обновление меню
+
+Скрипт `scripts/set_menu_button_url.ts` устанавливает ссылку мини‑приложения из
+переменной `APP_URL`. Текущую ссылку выводит
+`scripts/get_menu_button_url.ts`.
+
 ## Маски доступа
 
 Роль пользователя описывается числовой маской в поле `access`:

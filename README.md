@@ -10,6 +10,7 @@
 - Веб‑панель администратора на базе TailAdmin.
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
+- Заголовки безопасности формируются через Helmet и Content Security Policy.
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
 - Текстовые ответы бота собраны в `bot/src/messages.ts`.

@@ -332,3 +332,5 @@
 276. Реализован `tmaAuthGuard` и маршрут `/api/auth/tma-login` с проверкой `auth_date`
 277. Логи HTTP и API включают `trace-id` каждого запроса
 278. RequestWithUser использует `ParsedQs` в `query` для совместимости с Express 5
+279. Добавлены заголовки безопасности Helmet и Content Security Policy
+     с расширяемыми белыми списками через переменные окружения

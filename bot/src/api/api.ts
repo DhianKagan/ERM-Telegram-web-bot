@@ -9,7 +9,7 @@ import express, {
   RequestHandler,
 } from "express";
 import createRateLimiter from "../utils/rateLimiter";
-import helmet from "helmet";
+import applySecurity from "../security";
 import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -160,33 +160,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     return csrf(req, res, next);
   });
 
-  const connectSrc = ["'self'"];
-  try {
-    connectSrc.push(new URL(config.routingUrl).origin);
-  } catch {
-    // Игнорируем ошибку парсинга URL маршрутизации
-  }
-  connectSrc.push("https://router.project-osrm.org");
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          "frame-src": ["'self'", "https://oauth.telegram.org"],
-          "script-src": ["'self'", "'unsafe-eval'", "https://telegram.org"],
-          "media-src": ["'self'", "data:"],
-          "img-src": [
-            "'self'",
-            "data:",
-            "https://a.tile.openstreetmap.org",
-            "https://b.tile.openstreetmap.org",
-            "https://c.tile.openstreetmap.org",
-          ],
-          "connect-src": connectSrc,
-        },
-      },
-    }),
-  );
+  applySecurity(app);
   app.use(cors());
   const prefix = "/api/v1";
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));

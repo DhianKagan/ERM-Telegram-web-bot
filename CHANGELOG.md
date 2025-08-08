@@ -25,6 +25,7 @@
 - Добавлена документация `docs/security/cookies_csrf.md`.
 - Добавлен guard `tmaAuthGuard` с проверкой подписи и `auth_date`, маршрут `/api/auth/tma-login` выдаёт краткоживущий токен.
 - Логи HTTP и API содержат `trace-id` для отслеживания запросов.
+- Добавлены лимиты на `/api/v1/auth` и `/api/v1/route`, метрика `rate_limit_drops_total` отображает превышения.
 - Переписаны на TypeScript утилиты `userLink`, `formatTask`, `validate`, `haversine` и `verifyInitData`.
 - На TypeScript переписаны утилиты `accessMask`, `formatUser`, `setTokenCookie` и `rateLimiter`.
 - На TypeScript переписаны утилиты `parseJwt`, `csrfToken` и `extractCoords`.

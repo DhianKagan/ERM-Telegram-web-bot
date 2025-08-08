@@ -11,6 +11,8 @@ import {
   trip,
 } from '../services/route';
 import { verifyToken, asyncHandler } from '../api/middleware';
+import createRateLimiter from '../utils/rateLimiter';
+import { rateLimits } from '../rateLimits';
 
 export interface Point {
   lat: number;
@@ -29,9 +31,12 @@ export interface DistanceResponse {
 }
 
 const router = Router();
+const routeLimiter = createRateLimiter(rateLimits.route);
+const tableLimiter = createRateLimiter(rateLimits.table);
 
 router.post(
   '/',
+  routeLimiter as unknown as RequestHandler,
   verifyToken as unknown as RequestHandler,
   validate([
     body('start.lat').isFloat(),
@@ -51,6 +56,7 @@ interface TableQuery extends Record<string, string> {
 
 router.get(
   '/table',
+  tableLimiter as unknown as RequestHandler,
   verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
@@ -64,6 +70,7 @@ interface PointQuery extends Record<string, string> {
 }
 router.get(
   '/nearest',
+  routeLimiter as unknown as RequestHandler,
   verifyToken as unknown as RequestHandler,
   validate([query('point').isString()]),
   asyncHandler(async (req, res) => {
@@ -77,6 +84,7 @@ interface PointsQuery extends Record<string, string> {
 }
 router.get(
   '/match',
+  routeLimiter as unknown as RequestHandler,
   verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
@@ -87,6 +95,7 @@ router.get(
 
 router.get(
   '/trip',
+  routeLimiter as unknown as RequestHandler,
   verifyToken as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {

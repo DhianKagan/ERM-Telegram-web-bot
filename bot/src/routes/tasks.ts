@@ -16,8 +16,16 @@ import checkTaskAccess from '../middleware/taskAccess';
 
 const router = Router();
 
-const detailLimiter = createRateLimiter(15 * 60 * 1000, 100);
-const tasksLimiter = createRateLimiter(15 * 60 * 1000, 100);
+const detailLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  name: 'task-detail',
+});
+const tasksLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  name: 'tasks',
+});
 router.use(tasksLimiter);
 
 router.get(

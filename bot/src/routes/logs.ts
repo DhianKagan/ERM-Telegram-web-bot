@@ -12,7 +12,11 @@ import validateDto from '../middleware/validateDto';
 import { CreateLogDto } from '../dto/logs.dto';
 
 const router = Router();
-const limiter = createRateLimiter(15 * 60 * 1000, 100);
+const limiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  name: 'logs',
+});
 
 router.get(
   '/',

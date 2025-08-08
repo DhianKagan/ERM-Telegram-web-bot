@@ -5,6 +5,11 @@ import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
 import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
 
+const tableGuard = process.env.ROUTE_TABLE_GUARD !== '0';
+const tableMaxPoints = Number(process.env.ROUTE_TABLE_MAX_POINTS || '100');
+const tableMinInterval = Number(process.env.ROUTE_TABLE_MIN_INTERVAL_MS || '200');
+let tableLastCall = 0;
+
 const base = routingUrl.replace(/\/route$/, '');
 
 const allowed = ['table', 'nearest', 'match', 'trip'] as const;
@@ -116,6 +121,15 @@ export async function table<T = unknown>(
   points: string,
   params: Record<string, string | number> = {},
 ): Promise<T> {
+  if (tableGuard) {
+    const count = points.split(';').length;
+    if (count > tableMaxPoints) throw new Error('Слишком много точек');
+    const now = Date.now();
+    const diff = now - tableLastCall;
+    if (diff < tableMinInterval)
+      await new Promise((r) => setTimeout(r, tableMinInterval - diff));
+    tableLastCall = Date.now();
+  }
   return call('table', points, params);
 }
 

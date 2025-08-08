@@ -8,6 +8,7 @@ process.env.APP_URL = 'https://localhost';
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 5000 })),
+  clearRouteCache: jest.fn(),
 }));
 jest.mock('../src/services/maps', () => ({
   generateRouteLink: jest.fn(() => 'url'),

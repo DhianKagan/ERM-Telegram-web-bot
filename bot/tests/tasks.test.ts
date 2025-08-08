@@ -13,6 +13,7 @@ const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 1000 })),
+  clearRouteCache: jest.fn(),
 }));
 jest.mock('../src/services/maps', () => ({
   generateRouteLink: jest.fn(() => 'g'),

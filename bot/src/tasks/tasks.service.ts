@@ -1,6 +1,6 @@
 // Сервис задач через репозиторий.
 // Основные модули: db/queries, services/route, services/maps
-import { getRouteDistance } from '../services/route';
+import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from '../services/maps';
 import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
@@ -47,7 +47,9 @@ class TasksService {
   async create(data: Partial<TaskDocument>) {
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     await this.applyRouteInfo(data);
-    return this.repo.createTask(data);
+    const task = await this.repo.createTask(data);
+    await clearRouteCache();
+    return task;
   }
 
   get(filters: TaskFilters, page?: number, limit?: number) {
@@ -60,7 +62,9 @@ class TasksService {
 
   async update(id: string, data: Partial<TaskDocument>) {
     await this.applyRouteInfo(data);
-    return this.repo.updateTask(id, data);
+    const task = await this.repo.updateTask(id, data);
+    await clearRouteCache();
+    return task;
   }
 
   async applyRouteInfo(data: Partial<TaskDocument>) {
@@ -83,20 +87,25 @@ class TasksService {
     }
   }
 
-  addTime(id: string, minutes: number) {
-    return this.repo.addTime(id, minutes);
+  async addTime(id: string, minutes: number) {
+    const task = await this.repo.addTime(id, minutes);
+    await clearRouteCache();
+    return task;
   }
 
-  bulk(ids: string[], data: Partial<TaskDocument>) {
-    return this.repo.bulkUpdate(ids, data);
+  async bulk(ids: string[], data: Partial<TaskDocument>) {
+    await this.repo.bulkUpdate(ids, data);
+    await clearRouteCache();
   }
 
   summary(filters: SummaryFilters) {
     return this.repo.summary(filters);
   }
 
-  remove(id: string) {
-    return this.repo.deleteTask(id);
+  async remove(id: string) {
+    const task = await this.repo.deleteTask(id);
+    await clearRouteCache();
+    return task;
   }
 
   mentioned(userId: string) {

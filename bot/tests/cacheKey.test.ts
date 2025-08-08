@@ -1,7 +1,12 @@
+// Назначение: проверка сборки ключей кеша OSRM
+// Основные модули: services/route
 process.env.APP_URL = 'https://localhost';
 const { buildCacheKey } = require('../src/services/route');
 
-test('формирует корректный ключ кеша', () => {
-  const key = buildCacheKey('table', '1,1;2,2', { annotations: 'duration' });
-  expect(key).toBe('table:1,1;2,2:annotations=duration');
+describe('сборка ключей кеша', () => {
+  test('порядок параметров не влияет', () => {
+    const a = buildCacheKey('table', '1,1;2,2', { a: 1, b: 2 });
+    const b = buildCacheKey('table', '1,1;2,2', { b: 2, a: 1 });
+    expect(a).toBe(b);
+  });
 });

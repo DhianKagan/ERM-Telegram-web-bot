@@ -2,16 +2,13 @@
 // Основные модули: wgLogEngine
 import { writeLog } from "../services/service";
 import { Request, Response, NextFunction } from "express";
-import { randomUUID } from "crypto";
 
 export default function logging(
   req: Request,
   res: Response,
   next: NextFunction,
-) {
-  const traceId = randomUUID();
-  (req as unknown as Record<string, unknown>).traceId = traceId;
-  res.setHeader("x-trace-id", traceId);
+): void {
+  const traceId = (req as unknown as Record<string, string>).traceId;
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && cookies.token ? String(cookies.token).slice(0, 8) : "no-token";

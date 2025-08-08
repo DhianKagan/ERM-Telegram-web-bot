@@ -1,27 +1,28 @@
 // Middleware проверки JWT и базовая обработка ошибок.
 // Модули: jsonwebtoken, config, prom-client
-import jwt from 'jsonwebtoken';
-import { writeLog } from '../services/service';
-import client from 'prom-client';
+import jwt from "jsonwebtoken";
+import { writeLog } from "../services/service";
+import client from "prom-client";
 import {
   Request,
   Response,
   NextFunction,
   RequestHandler,
   CookieOptions,
-} from 'express';
-import config from '../config';
-import type { RequestWithUser } from '../types/request';
+} from "express";
+import config from "../config";
+import type { RequestWithUser } from "../types/request";
+import { randomUUID } from "crypto";
 
 const csrfErrors = new client.Counter({
-  name: 'csrf_errors_total',
-  help: 'Количество ошибок CSRF',
+  name: "csrf_errors_total",
+  help: "Количество ошибок CSRF",
 });
 
 const apiErrors = new client.Counter({
-  name: 'api_errors_total',
-  help: 'Количество ошибок API',
-  labelNames: ['method', 'path', 'status'],
+  name: "api_errors_total",
+  help: "Количество ошибок API",
+  labelNames: ["method", "path", "status"],
 });
 
 export const asyncHandler = (
@@ -47,28 +48,28 @@ export function errorHandler(
   _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): void {
   const error = err as { [key: string]: unknown; message: string };
-  if (error.type === 'request.aborted') {
-    res.status(400).json({ error: 'request aborted' });
+  if (error.type === "request.aborted") {
+    res.status(400).json({ error: "request aborted" });
     return;
   }
-  if (error.code === 'EBADCSRFTOKEN' || /CSRF token/.test(error.message)) {
-    if (process.env.NODE_ENV !== 'test') {
+  if (error.code === "EBADCSRFTOKEN" || /CSRF token/.test(error.message)) {
+    if (process.env.NODE_ENV !== "test") {
       csrfErrors.inc();
-      const header = _req.headers['x-xsrf-token']
-        ? String(_req.headers['x-xsrf-token']).slice(0, 8)
-        : 'none';
+      const header = _req.headers["x-xsrf-token"]
+        ? String(_req.headers["x-xsrf-token"]).slice(0, 8)
+        : "none";
       const cookie =
-        _req.cookies && _req.cookies['XSRF-TOKEN']
-          ? String(_req.cookies['XSRF-TOKEN']).slice(0, 8)
-          : 'none';
-      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : 'anon';
+        _req.cookies && _req.cookies["XSRF-TOKEN"]
+          ? String(_req.cookies["XSRF-TOKEN"]).slice(0, 8)
+          : "none";
+      const uid = _req.user ? `${_req.user.id}/${_req.user.username}` : "anon";
       writeLog(
         `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid}`,
       ).catch(() => {});
     }
     res.status(403).json({
       error:
-        'Ошибка CSRF: токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.',
+        "Ошибка CSRF: токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.",
     });
     apiErrors.inc({ method: _req.method, path: _req.originalUrl, status: 403 });
     return;
@@ -76,7 +77,7 @@ export function errorHandler(
   console.error(error);
   writeLog(
     `Ошибка ${error.message} path:${_req.originalUrl} ip:${_req.ip}`,
-    'error',
+    "error",
   ).catch(() => {});
   const status = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(status).json({ error: error.message });
@@ -85,17 +86,17 @@ export function errorHandler(
 
 const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
-const secretKey: string = jwtSecret || '';
+const secretKey: string = jwtSecret || "";
 
 export function verifyToken(
   req: RequestWithUser,
   res: Response,
   next: NextFunction,
 ): void {
-  const auth = req.headers['authorization'];
+  const auth = req.headers["authorization"];
   let token: string | undefined;
   if (auth) {
-    if (auth.startsWith('Bearer ')) {
+    if (auth.startsWith("Bearer ")) {
       token = auth.slice(7).trim();
       if (!token) {
         writeLog(
@@ -106,14 +107,14 @@ export function verifyToken(
           path: req.originalUrl,
           status: 403,
         });
-        res.status(403).json({ message: 'Неверный формат токена авторизации' });
+        res.status(403).json({ message: "Неверный формат токена авторизации" });
         return;
       }
-    } else if (auth.includes(' ')) {
+    } else if (auth.includes(" ")) {
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-      res.status(403).json({ message: 'Неверный формат токена авторизации' });
+      res.status(403).json({ message: "Неверный формат токена авторизации" });
       return;
     } else {
       token = auth;
@@ -126,16 +127,16 @@ export function verifyToken(
     ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
     res.status(403).json({
-      message: 'Токен авторизации отсутствует. Выполните вход заново.',
+      message: "Токен авторизации отсутствует. Выполните вход заново.",
     });
     return;
   }
 
-  const preview = token ? String(token).slice(0, 8) : 'none';
+  const preview = token ? String(token).slice(0, 8) : "none";
   jwt.verify(
     token,
     secretKey,
-    { algorithms: ['HS256'] },
+    { algorithms: ["HS256"] },
     (
       err: jwt.VerifyErrors | null,
       decoded: jwt.JwtPayload | string | undefined,
@@ -149,21 +150,21 @@ export function verifyToken(
         });
         res
           .status(401)
-          .json({ message: 'Недействительный токен. Выполните вход заново.' });
+          .json({ message: "Недействительный токен. Выполните вход заново." });
         return;
       }
-      req.user = decoded as RequestWithUser['user'];
+      req.user = decoded as RequestWithUser["user"];
       const cookieOpts: CookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       };
       if (cookieOpts.secure) {
         cookieOpts.domain =
           config.cookieDomain || new URL(config.appUrl).hostname;
       }
-      res.cookie('token', token, cookieOpts);
+      res.cookie("token", token, cookieOpts);
       next();
     },
   );
@@ -174,28 +175,32 @@ export function requestLogger(
   res: Response,
   next: NextFunction,
 ): void {
+  const traceId =
+    (req as unknown as Record<string, unknown>).traceId || randomUUID();
+  (req as unknown as Record<string, unknown>).traceId = traceId;
+  res.setHeader("x-trace-id", traceId);
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && (cookies as Record<string, string>).token
       ? (cookies as Record<string, string>).token.slice(0, 8)
-      : 'no-token';
-  const csrfVal = headers['x-xsrf-token']
-    ? String(headers['x-xsrf-token']).slice(0, 8)
-    : 'no-csrf';
+      : "no-token";
+  const csrfVal = headers["x-xsrf-token"]
+    ? String(headers["x-xsrf-token"]).slice(0, 8)
+    : "no-csrf";
   const auth = headers.authorization;
-  let authVal = 'no-auth';
+  let authVal = "no-auth";
   if (auth) {
-    authVal = auth.startsWith('Bearer ') ? auth.slice(7, 15) : auth.slice(0, 8);
+    authVal = auth.startsWith("Bearer ") ? auth.slice(7, 15) : auth.slice(0, 8);
   }
-  const ua = headers['user-agent']
-    ? String(headers['user-agent']).slice(0, 40)
-    : 'unknown';
+  const ua = headers["user-agent"]
+    ? String(headers["user-agent"]).slice(0, 40)
+    : "unknown";
   writeLog(
-    `API запрос ${method} ${originalUrl} token:${tokenVal} auth:${authVal} csrf:${csrfVal} ip:${ip} ua:${ua}`,
+    `API запрос ${method} ${originalUrl} trace:${traceId} token:${tokenVal} auth:${authVal} csrf:${csrfVal} ip:${ip} ua:${ua}`,
   ).catch(() => {});
-  res.on('finish', () => {
+  res.on("finish", () => {
     writeLog(
-      `API ответ ${method} ${originalUrl} ${res.statusCode} ip:${ip}`,
+      `API ответ ${method} ${originalUrl} ${res.statusCode} trace:${traceId} ip:${ip}`,
     ).catch(() => {});
   });
   next();

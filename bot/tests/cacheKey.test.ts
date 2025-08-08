@@ -1,4 +1,5 @@
-import { buildCacheKey } from '../src/services/route';
+process.env.APP_URL = 'https://localhost';
+const { buildCacheKey } = require('../src/services/route');
 
 test('формирует корректный ключ кеша', () => {
   const key = buildCacheKey('table', '1,1;2,2', { annotations: 'duration' });

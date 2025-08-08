@@ -11,7 +11,6 @@ import {
 } from "express";
 import config from "../config";
 import type { RequestWithUser } from "../types/request";
-import { randomUUID } from "crypto";
 import { sendProblem } from "../utils/problem";
 
 import client from "prom-client";
@@ -37,7 +36,6 @@ export const asyncHandler = (
     }
   };
 };
-
 
 const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
@@ -143,12 +141,7 @@ export function requestLogger(
   res: Response,
   next: NextFunction,
 ): void {
-  const traceId =
-    ((req as unknown as Record<string, string>).traceId as
-      | string
-      | undefined) || randomUUID();
-  (req as unknown as Record<string, string>).traceId = traceId;
-  res.setHeader("x-trace-id", traceId);
+  const traceId = (req as unknown as Record<string, string>).traceId;
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && (cookies as Record<string, string>).token

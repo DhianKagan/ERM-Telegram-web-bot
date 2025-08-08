@@ -27,7 +27,7 @@ import { promises as fs } from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
 const execAsync = promisify(exec);
-import client from "prom-client";
+import { register } from "../metrics";
 import { swaggerUi, specs } from "./swagger";
 import tasksRouter from "../routes/tasks";
 import mapsRouter from "../routes/maps";
@@ -78,10 +78,13 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   const app = express();
   const ext = process.env.NODE_ENV === "test" ? ".ts" : ".js";
   const tmaAuthGuard = container.resolve("tmaAuthGuard") as RequestHandler;
+  const traceModule = await import("../middleware/trace" + ext);
   const loggingModule = await import("../middleware/logging" + ext);
   const metricsModule = await import("../middleware/metrics" + ext);
+  const trace = (traceModule.default || traceModule) as RequestHandler;
   const logging = (loggingModule.default || loggingModule) as RequestHandler;
   const metrics = (metricsModule.default || metricsModule) as RequestHandler;
+  app.use(trace);
   app.use(logging);
   app.use(metrics);
 
@@ -206,10 +209,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.get("/health", (_req: Request, res: Response) =>
     res.json({ status: "ok" }),
   );
-  client.collectDefaultMetrics();
   app.get("/metrics", async (_req: Request, res: Response) => {
-    res.set("Content-Type", client.register.contentType);
-    res.end(await client.register.metrics());
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
   });
   app.get(`${prefix}/csrf`, csrf, (req: Request, res: Response) => {
     res.json({ csrfToken: req.csrfToken() });

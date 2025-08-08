@@ -30,5 +30,6 @@
 - Рекомендуется проверять базу командой `npm --prefix bot run check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
 - Docker Compose содержит healthcheck для MongoDB.
+- Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
 - Стресс-план описан в `docs/stress_plan.md`.
 - План внедрения улучшений описан в `docs/apply_analysis_plan.md`.

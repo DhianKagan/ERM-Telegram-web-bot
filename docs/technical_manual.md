@@ -329,7 +329,7 @@ locust -f loadtest/locustfile.py --host http://localhost:3000
 ## Метрики Prometheus и Chaos testing
 
 Эндпойнт `/metrics` отдаёт данные prom-client. Отдельный middleware
-`metrics.ts` считает `http_requests_total` и `http_request_duration_ms`.
+`metrics.ts` считает `http_requests_total` и `http_request_duration_seconds{method,route,status}`. Для OSRM добавлены `osrm_request_duration_seconds` и `osrm_errors_total`.
 Для сбора метрик используется Prometheus. Конфигурация хранится в
 `prometheus/prometheus.yml`, правила оповещений — в `prometheus/alert.rules.yml`.
 

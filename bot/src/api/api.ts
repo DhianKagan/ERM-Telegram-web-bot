@@ -189,6 +189,10 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
 
+  const taskStatusRateLimiter = createRateLimiter(15 * 60 * 1000, 50);
+  const spaRateLimiter = createRateLimiter(60 * 1000, 50);
+  const tmaLoginRateLimiter = createRateLimiter(15 * 60 * 1000, 20); // 20 запросов за 15 минут
+
   /**
    * @openapi
    * /api/auth/tma-login:
@@ -202,6 +206,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
    */
   app.post(
     "/api/auth/tma-login",
+    tmaLoginRateLimiter,
     tmaAuthGuard,
     asyncHandler(async (_req: Request, res: Response) => {
       const token = await authService.verifyTmaLogin(res.locals.initData);
@@ -221,8 +226,6 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     res.json({ csrfToken: req.csrfToken() });
   });
 
-  const taskStatusRateLimiter = createRateLimiter(15 * 60 * 1000, 50);
-  const spaRateLimiter = createRateLimiter(60 * 1000, 50);
   app.use(express.static(path.join(__dirname, "../../public")));
 
   const initAdmin = (await import("../admin/customAdmin")).default;

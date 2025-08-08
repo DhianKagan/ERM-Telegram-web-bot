@@ -335,6 +335,11 @@ docker run -d -p 9090:9090 \
 
 Для испытаний устойчивости можно запустить `npm --prefix bot run chaos`.
 
+## Безопасность
+
+Флаги cookie и защита от CSRF описаны в `docs/security/cookies_csrf.md`.
+Content Security Policy и расширение списков разрешённых доменов — в `docs/security/csp.md`.
+
 ## Интерфейс админки
 
 Веб‑интерфейс построен на TailAdmin. Советы по стилизации собраны в `extended_tailadmin_guide.md`. Цветовые палитры определены в Tailwind, компонентные примеры приведены в файлах `bot/web`.

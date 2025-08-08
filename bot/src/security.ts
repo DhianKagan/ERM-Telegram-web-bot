@@ -1,0 +1,70 @@
+// Назначение: middleware безопасности Helmet и CSP.
+// Основные модули: express, helmet, config
+import express from "express";
+import helmet from "helmet";
+import config from "./config";
+
+const parseList = (env?: string): string[] =>
+  env
+    ? env
+        .split(/[ ,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+export default function applySecurity(app: express.Express): void {
+  const reportOnly = process.env.CSP_REPORT_ONLY !== "false";
+
+  const connectSrc = [
+    "'self'",
+    "https://router.project-osrm.org",
+    ...parseList(process.env.CSP_CONNECT_SRC_ALLOWLIST),
+  ];
+  try {
+    connectSrc.push(new URL(config.routingUrl).origin);
+  } catch {
+    // Игнорируем некорректный routingUrl
+  }
+
+  const imgSrc = [
+    "'self'",
+    "data:",
+    "https://a.tile.openstreetmap.org",
+    "https://b.tile.openstreetmap.org",
+    "https://c.tile.openstreetmap.org",
+    ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
+  ];
+
+  const scriptSrc = [
+    "'self'",
+    "'unsafe-eval'",
+    "https://telegram.org",
+    ...parseList(process.env.CSP_SCRIPT_SRC_ALLOWLIST),
+  ];
+
+  const styleSrc = [
+    "'self'",
+    "'unsafe-inline'",
+    ...parseList(process.env.CSP_STYLE_SRC_ALLOWLIST),
+  ];
+
+  app.use(
+    helmet({
+      hsts: true,
+      noSniff: true,
+      referrerPolicy: { policy: "no-referrer" },
+      frameguard: { action: "deny" },
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          "frame-src": ["'self'", "https://oauth.telegram.org"],
+          "script-src": scriptSrc,
+          "style-src": styleSrc,
+          "img-src": imgSrc,
+          "connect-src": connectSrc,
+        },
+        reportOnly,
+      },
+    }),
+  );
+}

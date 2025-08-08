@@ -18,6 +18,7 @@
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `npm run format` перед коммитами.
 - Линтер запускайте `npx eslint bot/src`.
+- Индексы MongoDB создавайте скриптом `scripts/db/ensureIndexes.ts`.
 - Для корректного разрешения модулей установлен `reflect-metadata` в корневых зависимостях.
 
 ## Документация

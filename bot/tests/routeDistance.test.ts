@@ -8,10 +8,11 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-const { getRouteDistance } = require('../src/services/route');
+const { getRouteDistance, clearRouteCache } = require('../src/services/route');
 
-afterEach(() => {
+afterEach(async () => {
   jest.resetAllMocks();
+  await clearRouteCache();
 });
 
 test('getRouteDistance возвращает дистанцию', async () => {

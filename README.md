@@ -116,6 +116,23 @@
 (не старше 5 минут) и выдаёт краткоживущий JWT. Cookie в этом потоке не
 используются.
 
+## Примеры ошибок API
+
+Запрос без токена возвращает JSON в формате [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457):
+
+```
+HTTP/1.1 403
+Content-Type: application/problem+json
+
+{
+  "type": "about:blank",
+  "title": "Ошибка авторизации",
+  "status": 403,
+  "detail": "Токен авторизации отсутствует. Выполните вход заново.",
+  "instance": "<trace-id>"
+}
+```
+
 ## Быстрый старт
 
 ```bash

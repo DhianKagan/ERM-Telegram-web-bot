@@ -9,6 +9,7 @@ import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
 import type { TaskDocument } from '../db/model';
+import { sendProblem } from '../utils/problem';
 
 interface Task {
   assignees?: number[];
@@ -41,7 +42,15 @@ export const list = async (req: RequestWithUser, res: Response) => {
 
 export const detail = async (req: Request, res: Response) => {
   const task = (await service.getById(req.params.id)) as Task | null;
-  if (!task) return res.sendStatus(404);
+  if (!task) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Задача не найдена',
+      status: 404,
+      detail: 'Not Found',
+    });
+    return;
+  }
   const ids = new Set<number>();
   (task.assignees || []).forEach((id: number) => ids.add(id));
   (task.controllers || []).forEach((id: number) => ids.add(id));
@@ -68,7 +77,15 @@ export const update = [
       req.params.id,
       req.body as Partial<TaskDocument>,
     );
-    if (!task) return res.sendStatus(404);
+    if (!task) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Задача не найдена',
+        status: 404,
+        detail: 'Not Found',
+      });
+      return;
+    }
     await writeLog(
       `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
     );
@@ -81,7 +98,15 @@ export const addTime = [
   async (req: RequestWithUser, res: Response) => {
     const { minutes } = req.body as { minutes: number };
     const task = await service.addTime(req.params.id, minutes);
-    if (!task) return res.sendStatus(404);
+    if (!task) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Задача не найдена',
+        status: 404,
+        detail: 'Not Found',
+      });
+      return;
+    }
     await writeLog(
       `Время по задаче ${req.params.id} +${minutes} пользователем ${req.user!.id}/${req.user!.username}`,
     );
@@ -115,7 +140,15 @@ export const summary = async (req: Request, res: Response) => {
 
 export const remove = async (req: RequestWithUser, res: Response) => {
   const task = await service.remove(req.params.id);
-  if (!task) return res.sendStatus(404);
+  if (!task) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Задача не найдена',
+      status: 404,
+      detail: 'Not Found',
+    });
+    return;
+  }
   await writeLog(
     `Удалена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
   );

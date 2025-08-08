@@ -27,7 +27,7 @@ jest.mock('../src/api/middleware', () => ({
   errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
 }));
-const { errorHandler } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const routesRouter = require('../src/routes/routes').default;
 
 let app;
@@ -35,7 +35,7 @@ beforeAll(() => {
   app = express();
   app.use(express.json());
   app.use('/api/v1/routes', routesRouter);
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 });
 
 afterAll(() => {

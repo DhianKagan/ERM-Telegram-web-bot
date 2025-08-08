@@ -2,6 +2,7 @@
 // Основные модули: express-validator
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain } from 'express-validator';
+import { sendProblem } from './problem';
 
 export function handleValidation(
   req: Request,
@@ -10,7 +11,12 @@ export function handleValidation(
 ): void {
   const errors = validationResult(req);
   if (errors.isEmpty()) return next();
-  res.status(400).json({ errors: errors.array() });
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Ошибка валидации',
+    status: 400,
+    detail: JSON.stringify(errors.array()),
+  });
 }
 
 export default function validate(

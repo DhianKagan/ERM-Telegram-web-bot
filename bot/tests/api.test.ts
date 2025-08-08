@@ -20,11 +20,8 @@ jest.unmock('jsonwebtoken');
 let app;
 beforeAll(async () => {
   tasksService.get.mockResolvedValue({ tasks: [{ id: 1 }], users: {} });
-  const {
-    verifyToken,
-    asyncHandler,
-    errorHandler,
-  } = require('../src/api/middleware');
+  const { verifyToken, asyncHandler } = require('../src/api/middleware');
+  const errorMiddleware = require('../src/middleware/errorMiddleware').default;
   const { generateToken } = require('../src/auth/auth');
   app = express();
   app.use(express.json());
@@ -50,7 +47,7 @@ beforeAll(async () => {
       res.json(await tasksService.get());
     }),
   );
-  app.use(errorHandler);
+  app.use(errorMiddleware);
   app.locals.token = token;
 });
 

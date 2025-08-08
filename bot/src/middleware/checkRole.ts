@@ -4,6 +4,7 @@ import { Response, NextFunction } from 'express';
 import { hasAccess, ACCESS_USER } from '../utils/accessMask';
 import { writeLog } from '../services/service';
 import type { RequestWithUser } from '../types/request';
+import { sendProblem } from '../utils/problem';
 
 type Expected = number | string | string[];
 
@@ -20,6 +21,11 @@ export default function checkRole(expected: Expected) {
     writeLog(
       `Недостаточно прав ${req.method} ${req.originalUrl} user:${req.user?.id}/${req.user?.username} ip:${req.ip}`,
     ).catch(() => {});
-    res.status(403).json({ message: 'Forbidden' });
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Доступ запрещён',
+      status: 403,
+      detail: 'Forbidden',
+    });
   };
 }

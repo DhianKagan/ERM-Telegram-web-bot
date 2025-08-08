@@ -17,6 +17,26 @@ const options: swaggerJsdoc.Options = {
           scheme: 'bearer',
         },
       },
+      responses: {
+        Problem: {
+          description: 'Ошибка RFC 9457',
+          content: {
+            'application/problem+json': {
+              schema: {
+                type: 'object',
+                required: ['type', 'title', 'status', 'instance'],
+                properties: {
+                  type: { type: 'string', format: 'uri' },
+                  title: { type: 'string' },
+                  status: { type: 'integer' },
+                  detail: { type: 'string' },
+                  instance: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   },
   apis: ['./src/api/api.ts', './src/routes/tasks.ts'],

@@ -10,7 +10,7 @@ const express = require('express');
 const request = require('supertest');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
-const { errorHandler } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
@@ -22,7 +22,7 @@ beforeAll(() => {
     err.type = 'request.aborted';
     next(err);
   });
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 });
 
 afterAll(() => {
@@ -30,13 +30,16 @@ afterAll(() => {
   stopQueue();
 });
 
-test('errorHandler возвращает 400 для request.aborted', async () => {
+test('errorMiddleware возвращает проблему для request.aborted', async () => {
   const res = await request(app).get('/aborted');
   expect(res.status).toBe(400);
-  expect(res.body.error).toBe('request aborted');
+  expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+  expect(res.body.type).toBe('about:blank');
+  expect(res.body.title).toBe('Некорректный запрос');
+  expect(res.body.instance).toBeDefined();
 });
 
-test('errorHandler возвращает 403 при ошибке CSRF', async () => {
+test('errorMiddleware возвращает проблему при ошибке CSRF', async () => {
   const appCsrf = express();
   appCsrf.use(express.json());
   appCsrf.use(cookieParser());
@@ -55,9 +58,11 @@ test('errorHandler возвращает 403 при ошибке CSRF', async () 
   const csrf = require('lusca').csrf({ angular: true });
   appCsrf.use(csrf);
   appCsrf.post('/csrf', (_req, res) => res.json({ ok: true }));
-  appCsrf.use(errorHandler);
+  appCsrf.use(errorMiddleware);
   const res = await request(appCsrf).post('/csrf');
   expect(res.status).toBe(403);
   expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+  expect(res.body.type).toBe('about:blank');
   expect(res.body.title).toBe('Ошибка CSRF');
+  expect(res.body.instance).toBeDefined();
 });

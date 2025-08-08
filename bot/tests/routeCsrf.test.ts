@@ -33,7 +33,7 @@ jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
 }));
 
-const { errorHandler } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 
 let app;
 let server;
@@ -66,7 +66,7 @@ beforeAll(
         res.json({ csrfToken: req.csrfToken() }),
       );
       app.use('/api/v1/route', routeRouter);
-      app.use(errorHandler);
+      app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
         baseUrl = `https://localhost:${server.address().port}`;

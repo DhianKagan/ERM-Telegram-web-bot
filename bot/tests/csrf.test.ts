@@ -13,7 +13,7 @@ const session = require('express-session');
 const lusca = require('lusca');
 const request = require('supertest');
 const client = require('prom-client');
-const { errorHandler } = require('../src/api/middleware');
+const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
@@ -64,7 +64,7 @@ beforeEach(() => {
   });
   app.post('/api/protected', (_req, res) => res.json({ ok: true }));
   app.post('/api/tma/protected', (_req, res) => res.json({ ok: true }));
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 });
 
 afterAll(() => {

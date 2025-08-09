@@ -1,24 +1,25 @@
 // Middleware проверки JWT и вспомогательные функции.
 // Модули: jsonwebtoken, config
-import jwt from "jsonwebtoken";
-import { writeLog } from "../services/service";
+import jwt from 'jsonwebtoken';
+import { writeLog } from '../services/service';
 import {
   Request,
   Response,
   NextFunction,
   RequestHandler,
   CookieOptions,
-} from "express";
-import config from "../config";
-import type { RequestWithUser } from "../types/request";
-import { sendProblem } from "../utils/problem";
+} from 'express';
+import config from '../config';
+import type { RequestWithUser } from '../types/request';
+import { sendProblem } from '../utils/problem';
+import shouldLog from '../utils/shouldLog';
 
-import client from "prom-client";
+import client from 'prom-client';
 
 export const apiErrors = new client.Counter({
-  name: "api_errors_total",
-  help: "Количество ошибок API",
-  labelNames: ["method", "path", "status"],
+  name: 'api_errors_total',
+  help: 'Количество ошибок API',
+  labelNames: ['method', 'path', 'status'],
 });
 
 export const asyncHandler = (
@@ -39,42 +40,46 @@ export const asyncHandler = (
 
 const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
-const secretKey: string = jwtSecret || "";
+const secretKey: string = jwtSecret || '';
 
 export function verifyToken(
   req: RequestWithUser,
   res: Response,
   next: NextFunction,
 ): void {
-  const auth = req.headers["authorization"];
+  const auth = req.headers['authorization'];
   let token: string | undefined;
   let fromHeader = false;
   if (auth) {
-    if (auth.startsWith("Bearer ")) {
+    if (auth.startsWith('Bearer ')) {
       token = auth.slice(7).trim();
       if (!token) {
         writeLog(
           `Неверный формат токена ${req.method} ${req.originalUrl} ip:${req.ip}`,
         ).catch(() => {});
-        apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-        sendProblem(req, res, {
-          type: "about:blank",
-          title: "Ошибка авторизации",
+        apiErrors.inc({
+          method: req.method,
+          path: req.originalUrl,
           status: 403,
-          detail: "Неверный формат токена авторизации",
+        });
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 403,
+          detail: 'Неверный формат токена авторизации',
         });
         return;
       }
       fromHeader = true;
-    } else if (auth.includes(" ")) {
+    } else if (auth.includes(' ')) {
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
       sendProblem(req, res, {
-        type: "about:blank",
-        title: "Ошибка авторизации",
+        type: 'about:blank',
+        title: 'Ошибка авторизации',
         status: 403,
-        detail: "Неверный формат токена авторизации",
+        detail: 'Неверный формат токена авторизации',
       });
       return;
     } else {
@@ -89,39 +94,43 @@ export function verifyToken(
     ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
     sendProblem(req, res, {
-      type: "about:blank",
-      title: "Ошибка авторизации",
+      type: 'about:blank',
+      title: 'Ошибка авторизации',
       status: 403,
-      detail: "Токен авторизации отсутствует. Выполните вход заново.",
+      detail: 'Токен авторизации отсутствует. Выполните вход заново.',
     });
     return;
   }
 
-  const preview = token ? String(token).slice(0, 8) : "none";
+  const preview = token ? String(token).slice(0, 8) : 'none';
   jwt.verify(
     token,
     secretKey,
-    { algorithms: ["HS256"] },
+    { algorithms: ['HS256'] },
     (
       err: jwt.VerifyErrors | null,
       decoded: jwt.JwtPayload | string | undefined,
     ) => {
       if (err) {
         writeLog(`Неверный токен ${preview} ip:${req.ip}`).catch(() => {});
-        apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
-        sendProblem(req, res, {
-          type: "about:blank",
-          title: "Ошибка авторизации",
+        apiErrors.inc({
+          method: req.method,
+          path: req.originalUrl,
           status: 401,
-          detail: "Недействительный токен. Выполните вход заново.",
+        });
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 401,
+          detail: 'Недействительный токен. Выполните вход заново.',
         });
         return;
       }
-      req.user = decoded as RequestWithUser["user"];
+      req.user = decoded as RequestWithUser['user'];
       const cookieOpts: CookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       };
       if (cookieOpts.secure) {
@@ -129,7 +138,7 @@ export function verifyToken(
           config.cookieDomain || new URL(config.appUrl).hostname;
       }
       if (!fromHeader) {
-        res.cookie("token", token, cookieOpts);
+        res.cookie('token', token, cookieOpts);
       }
       next();
     },
@@ -141,27 +150,30 @@ export function requestLogger(
   res: Response,
   next: NextFunction,
 ): void {
+  if (!shouldLog(req)) {
+    return next();
+  }
   const traceId = (req as unknown as Record<string, string>).traceId;
   const { method, originalUrl, headers, cookies, ip } = req;
   const tokenVal =
     cookies && (cookies as Record<string, string>).token
       ? (cookies as Record<string, string>).token.slice(0, 8)
-      : "no-token";
-  const csrfVal = headers["x-xsrf-token"]
-    ? String(headers["x-xsrf-token"]).slice(0, 8)
-    : "no-csrf";
+      : 'no-token';
+  const csrfVal = headers['x-xsrf-token']
+    ? String(headers['x-xsrf-token']).slice(0, 8)
+    : 'no-csrf';
   const auth = headers.authorization;
-  let authVal = "no-auth";
+  let authVal = 'no-auth';
   if (auth) {
-    authVal = auth.startsWith("Bearer ") ? auth.slice(7, 15) : auth.slice(0, 8);
+    authVal = auth.startsWith('Bearer ') ? auth.slice(7, 15) : auth.slice(0, 8);
   }
-  const ua = headers["user-agent"]
-    ? String(headers["user-agent"]).slice(0, 40)
-    : "unknown";
+  const ua = headers['user-agent']
+    ? String(headers['user-agent']).slice(0, 40)
+    : 'unknown';
   writeLog(
     `API запрос ${method} ${originalUrl} trace:${traceId} token:${tokenVal} auth:${authVal} csrf:${csrfVal} ip:${ip} ua:${ua}`,
   ).catch(() => {});
-  res.on("finish", () => {
+  res.on('finish', () => {
     writeLog(
       `API ответ ${method} ${originalUrl} ${res.statusCode} trace:${traceId} ip:${ip}`,
     ).catch(() => {});

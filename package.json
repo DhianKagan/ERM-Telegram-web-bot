@@ -17,7 +17,7 @@
     "eslint": "^9.29.0",
     "express": "^4.19.2",
     "jiti": "^2.5.1",
-    "mocha": "^10.7.3",
+    "mocha": "^11.7.1",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.13",
     "supertest": "^6.3.3",

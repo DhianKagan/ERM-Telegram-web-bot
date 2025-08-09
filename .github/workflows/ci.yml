@@ -18,7 +18,7 @@ jobs:
           node-version: 20
       - name: Установка зависимостей
         run: ./scripts/install_bot_deps.sh
-      - name: Проверка зависимостей
+      - name: Проверка зависимостей (audit-ci)
         run: ./scripts/audit_deps.sh
       - name: Тесты и линтеры
         run: ./scripts/setup_and_test.sh

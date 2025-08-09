@@ -13,6 +13,7 @@
 - Добавлены гистограммы HTTP и OSRM, поддержка W3C Trace Context и метрики ошибок OSRM.
 - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
 - Добавлен единый middleware ошибок с ответами `application/problem+json` по [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457).
+- Настроен Dependabot для еженедельных npm-обновлений; CI выполняет `audit-ci` и падает при уязвимостях уровня high.
 
 - Руководство по настройке Telegram-бота перенесено в `docs/technical_manual.md`, файл `docs/telegram_bot_manual.md` удалён.
 

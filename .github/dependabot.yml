@@ -1,0 +1,21 @@
+# Назначение файла: конфигурация Dependabot для автоматического обновления зависимостей.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - security
+  - package-ecosystem: npm
+    directory: "/bot"
+    schedule:
+      interval: weekly
+    labels:
+      - security
+  - package-ecosystem: npm
+    directory: "/bot/web"
+    schedule:
+      interval: weekly
+    labels:
+      - security

@@ -15,7 +15,8 @@
 
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха.
-- Проверяйте зависимости командой `./scripts/audit_deps.sh` (флаг `--audit-level high` пропускает слабые уязвимости).
+- Проверяйте зависимости командой `./scripts/audit_deps.sh` (использует `audit-ci` и пропускает слабые уязвимости `--audit-level high`).
+- Dependabot еженедельно обновляет npm-зависимости, для PR по безопасности используйте шаблон `Security Update`.
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`.
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `npm run format` перед коммитами.

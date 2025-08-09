@@ -11,18 +11,19 @@
   "devDependencies": {
     "@playwright/test": "^1.47.2",
     "@types/express": "^4.17.21",
+    "@types/mocha": "^10.0.6",
     "@types/supertest": "^2.0.16",
+    "audit-ci": "^7.1.0",
     "eslint": "^9.29.0",
     "express": "^4.19.2",
     "jiti": "^2.5.1",
     "mocha": "^10.7.3",
     "prettier": "^3.3.3",
-    "supertest": "^6.3.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.6.3",
     "prettier-plugin-tailwindcss": "^0.6.13",
+    "supertest": "^6.3.3",
     "tailwindcss": "^3.4.7",
-    "@types/mocha": "^10.0.6"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "reflect-metadata": "^0.1.14"

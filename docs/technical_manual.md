@@ -117,7 +117,7 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
 | GET    | /api/v1/tasks/:id            | Получить задачу             |
 | PATCH  | /api/v1/tasks/:id            | Обновить задачу             |
 | PATCH  | /api/v1/tasks/:id/time       | Добавить время              |
-| POST   | /api/v1/tasks/:id/status     | Изменить статус             |
+| PATCH  | /api/v1/tasks/:id/status     | Изменить статус             |
 | POST   | /api/v1/tasks/bulk           | Массовое обновление         |
 | GET    | /api/v1/tasks/report/summary | KPI отчёт                   |
 | GET    | /api/v1/users                | Список пользователей        |
@@ -161,7 +161,7 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
 | Создать задачу        | `createTask()`                | `POST /api/v1/tasks`                      |
 | Получить список задач | `getTasks()`                  | `GET /api/v1/tasks`                       |
 | Обновить задачу       | `updateTask()`                | `PATCH /api/v1/tasks/:id`                 |
-| Изменить статус       | `updateTaskStatus()`          | `POST /api/v1/tasks/:id/status`           |
+| Изменить статус       | `updateTaskStatus()`          | `PATCH /api/v1/tasks/:id/status`          |
 | Добавить время        | `addTime()`                   | `PATCH /api/v1/tasks/:id/time`            |
 | Массовое обновление   | `bulkUpdate()`                | `POST /api/v1/tasks/bulk`                 |
 | Сводка по задачам     | `summary()`                   | `GET /api/v1/tasks/report/summary`        |
@@ -256,13 +256,13 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 
 Базовые функции взаимодействуют с MongoDB и API следующим образом:
 
-| Операция            | Функция              | Маршрут                         |
-| ------------------- | -------------------- | ------------------------------- |
-| Создать задачу      | `createTask()`       | POST `/api/v1/tasks`            |
-| Получить задачи     | `getTasks()`         | GET `/api/v1/tasks`             |
-| Обновить задачу     | `updateTask()`       | PATCH `/api/v1/tasks/:id`       |
-| Изменить статус     | `updateTaskStatus()` | POST `/api/v1/tasks/:id/status` |
-| Массовое обновление | `bulkUpdate()`       | POST `/api/v1/tasks/bulk`       |
+| Операция            | Функция              | Маршрут                          |
+| ------------------- | -------------------- | -------------------------------- |
+| Создать задачу      | `createTask()`       | POST `/api/v1/tasks`             |
+| Получить задачи     | `getTasks()`         | GET `/api/v1/tasks`              |
+| Обновить задачу     | `updateTask()`       | PATCH `/api/v1/tasks/:id`        |
+| Изменить статус     | `updateTaskStatus()` | PATCH `/api/v1/tasks/:id/status` |
+| Массовое обновление | `bulkUpdate()`       | POST `/api/v1/tasks/bulk`        |
 
 Команды бота вызывают те же функции через сервисы в `src/services`.
 Функция `updateTask()` фильтрует поля обновления и игнорирует ключи, начинающиеся с `$`.

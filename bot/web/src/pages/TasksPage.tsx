@@ -1,7 +1,7 @@
 // Назначение файла: список задач и функции сортировки
 // Модули: React, контексты, сервисы задач
 import React, { useContext } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import KPIOverview from "../components/KPIOverview";
 import { useToast } from "../context/useToast";
 import useTasks from "../context/useTasks";
@@ -236,6 +236,9 @@ export default function TasksPage() {
           ))}
         </div>
         <div className="flex gap-2">
+          <Link to="/tasks/kanban" className="btn-gray rounded px-3">
+            Доска
+          </Link>
           <button onClick={refresh} className="btn-gray rounded px-3">
             Обновить
           </button>

@@ -50,6 +50,10 @@
     "glob": "^7.2.3"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-proposal-decorators": "^7.28.0",
+    "@babel/plugin-transform-private-methods": "^7.27.1",
+    "@babel/plugin-transform-private-property-in-object": "^7.27.1",
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
@@ -68,6 +72,7 @@
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "babel-jest": "^30.0.2",
+    "babel-plugin-transform-typescript-metadata": "^0.3.2",
     "eslint": "^9.29.0",
     "husky": "^9.0.11",
     "jest": "^30.0.3",

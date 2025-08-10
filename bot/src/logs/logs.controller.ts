@@ -1,29 +1,33 @@
 // Контроллер логов с использованием LogsService
-// Основные модули: express-validator, container, express
+// Основные модули: express-validator, express
 import { Request, Response } from 'express';
+import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
-import container from '../container';
-import LogsService from './logs.service';
+import { TOKENS } from '../di/tokens';
+import type LogsService from './logs.service';
 import { ListLogParams } from '../services/wgLogEngine';
 
-const service = container.resolve<LogsService>('LogsService');
+@injectable()
+export default class LogsController {
+  constructor(@inject(TOKENS.LogsService) private service: LogsService) {}
 
-export const list = async (
-  req: Request<unknown, unknown, unknown, ListLogParams>,
-  res: Response,
-): Promise<void> => {
-  res.json(await service.list(req.query));
-};
-
-export const create = [
-  handleValidation,
-  async (
-    req: Request<unknown, unknown, { message?: string }>,
+  list = async (
+    req: Request<unknown, unknown, unknown, ListLogParams>,
     res: Response,
   ): Promise<void> => {
-    if (typeof req.body.message === 'string') {
-      await service.write(req.body.message);
-    }
-    res.json({ status: 'ok' });
-  },
-];
+    res.json(await this.service.list(req.query));
+  };
+
+  create = [
+    handleValidation,
+    async (
+      req: Request<unknown, unknown, { message?: string }>,
+      res: Response,
+    ): Promise<void> => {
+      if (typeof req.body.message === 'string') {
+        await this.service.write(req.body.message);
+      }
+      res.json({ status: 'ok' });
+    },
+  ];
+}

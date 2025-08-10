@@ -1,58 +1,59 @@
 // Назначение файла: HTTP API и мини-приложение.
 // Основные модули: express, сервисы, middleware
-import dotenv from "dotenv";
-import config from "../config";
+import dotenv from 'dotenv';
+import config from '../config';
 import express, {
   Request,
   Response,
   NextFunction,
   RequestHandler,
-} from "express";
-import createRateLimiter from "../utils/rateLimiter";
-import applySecurity from "../security";
-import cors from "cors";
-import compression from "compression";
-import cookieParser from "cookie-parser";
-import session from "express-session";
-import MongoStore from "connect-mongo";
-import lusca from "lusca";
+} from 'express';
+import createRateLimiter from '../utils/rateLimiter';
+import applySecurity from '../security';
+import cors from 'cors';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import MongoStore from 'connect-mongo';
+import lusca from 'lusca';
 import {
   body,
   validationResult,
   param,
   ValidationChain,
-} from "express-validator";
-import path from "path";
-import { promises as fs } from "fs";
-import { exec } from "child_process";
-import { promisify } from "util";
+} from 'express-validator';
+import path from 'path';
+import { promises as fs } from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 const execAsync = promisify(exec);
-import { register } from "../metrics";
-import { swaggerUi, specs } from "./swagger";
-import tasksRouter from "../routes/tasks";
-import mapsRouter from "../routes/maps";
-import routeRouter from "../routes/route";
-import routesRouter from "../routes/routes";
-import optimizerRouter from "../routes/optimizer";
-import authUserRouter from "../routes/authUser";
-import { updateTaskStatus, writeLog } from "../services/service";
-import { verifyToken, asyncHandler, requestLogger } from "./middleware";
-import errorMiddleware from "../middleware/errorMiddleware";
-import { sendProblem } from "../utils/problem";
-import usersRouter from "../routes/users";
-import rolesRouter from "../routes/roles";
-import logsRouter from "../routes/logs";
-import checkTaskAccess from "../middleware/taskAccess";
-import container from "../container";
-import authService from "../auth/auth.service";
+import { register } from '../metrics';
+import { swaggerUi, specs } from './swagger';
+import tasksRouter from '../routes/tasks';
+import mapsRouter from '../routes/maps';
+import routeRouter from '../routes/route';
+import routesRouter from '../routes/routes';
+import optimizerRouter from '../routes/optimizer';
+import authUserRouter from '../routes/authUser';
+import { updateTaskStatus, writeLog } from '../services/service';
+import { verifyToken, asyncHandler, requestLogger } from './middleware';
+import errorMiddleware from '../middleware/errorMiddleware';
+import { sendProblem } from '../utils/problem';
+import usersRouter from '../routes/users';
+import rolesRouter from '../routes/roles';
+import logsRouter from '../routes/logs';
+import checkTaskAccess from '../middleware/taskAccess';
+import container from '../di';
+import { TOKENS } from '../di/tokens';
+import authService from '../auth/auth.service';
 
 dotenv.config();
 
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled rejection in API:", err);
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection in API:', err);
 });
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception in API:", err);
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception in API:', err);
   process.exit(1);
 });
 
@@ -62,8 +63,8 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     const errors = validationResult(req);
     if (errors.isEmpty()) return next();
     sendProblem(req, res, {
-      type: "about:blank",
-      title: "Ошибка валидации",
+      type: 'about:blank',
+      title: 'Ошибка валидации',
       status: 400,
       detail: JSON.stringify(errors.array()),
     });
@@ -71,16 +72,16 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 ];
 
 (async () => {
-  const { default: connect } = await import("../db/connection");
+  const { default: connect } = await import('../db/connection');
   await connect();
-  await import("../db/model");
+  await import('../db/model');
 
   const app = express();
-  const ext = process.env.NODE_ENV === "test" ? ".ts" : ".js";
-  const tmaAuthGuard = container.resolve("tmaAuthGuard") as RequestHandler;
-  const traceModule = await import("../middleware/trace" + ext);
-  const loggingModule = await import("../middleware/logging" + ext);
-  const metricsModule = await import("../middleware/metrics" + ext);
+  const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+  const tmaAuthGuard = container.resolve<RequestHandler>(TOKENS.TmaAuthGuard);
+  const traceModule = await import('../middleware/trace' + ext);
+  const loggingModule = await import('../middleware/logging' + ext);
+  const metricsModule = await import('../middleware/metrics' + ext);
   const trace = (traceModule.default || traceModule) as RequestHandler;
   const logging = (loggingModule.default || loggingModule) as RequestHandler;
   const metrics = (metricsModule.default || metricsModule) as RequestHandler;
@@ -88,9 +89,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use(logging);
   app.use(metrics);
 
-  const root = path.join(__dirname, "../..");
-  const pub = path.join(root, "public");
-  const indexFile = path.join(pub, "index.html");
+  const root = path.join(__dirname, '../..');
+  const pub = path.join(root, 'public');
+  const indexFile = path.join(pub, 'index.html');
   let needBuild = false;
   try {
     const st = await fs.stat(indexFile);
@@ -99,35 +100,35 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     needBuild = true;
   }
   if (needBuild) {
-    console.log("Сборка интерфейса...");
-    await execAsync("npm run build-client", { cwd: root });
+    console.log('Сборка интерфейса...');
+    await execAsync('npm run build-client', { cwd: root });
   }
 
-  app.set("trust proxy", 1);
+  app.set('trust proxy', 1);
   app.use(express.json());
   app.use(cookieParser());
   app.use(compression());
 
   const domain =
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV === 'production'
       ? config.cookieDomain || new URL(config.appUrl).hostname
       : undefined;
   const cookieFlags: session.CookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "none",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
     ...(domain ? { domain } : {}),
   };
   const sessionOpts: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "session_secret",
+    secret: process.env.SESSION_SECRET || 'session_secret',
     resave: false,
     saveUninitialized: true,
     cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },
   };
-  if (process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV !== 'test') {
     sessionOpts.store = MongoStore.create({
       mongoUrl: config.mongoUrl,
-      collectionName: "sessions",
+      collectionName: 'sessions',
     });
   }
   app.use(session(sessionOpts));
@@ -137,19 +138,19 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     cookie: { options: cookieFlags },
   });
   const csrfExclude = [
-    "/api/v1/auth/send_code",
-    "/api/v1/auth/verify_code",
-    "/api/v1/csrf",
-    "/api/v1/optimizer",
-    "/api/v1/maps/expand",
+    '/api/v1/auth/send_code',
+    '/api/v1/auth/verify_code',
+    '/api/v1/csrf',
+    '/api/v1/optimizer',
+    '/api/v1/maps/expand',
   ];
-  const csrfExcludePrefix = ["/api/tma"];
+  const csrfExcludePrefix = ['/api/tma'];
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const url = req.originalUrl.split("?")[0];
-    if (process.env.DISABLE_CSRF === "1") {
+    const url = req.originalUrl.split('?')[0];
+    if (process.env.DISABLE_CSRF === '1') {
       // Используем каст, чтобы избежать обращения к несуществующему полю globalThis
       if (!(globalThis as Record<string, unknown>).csrfWarn) {
-        console.warn("CSRF middleware disabled");
+        console.warn('CSRF middleware disabled');
         (globalThis as Record<string, unknown>).csrfWarn = true;
       }
       return next();
@@ -165,8 +166,8 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 
   applySecurity(app);
   app.use(cors());
-  const prefix = "/api/v1";
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+  const prefix = '/api/v1';
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
 
   const taskStatusRateLimiter = createRateLimiter({
@@ -197,7 +198,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
    *         $ref: '#/components/responses/Problem'
    */
   app.post(
-    "/api/auth/tma-login",
+    '/api/auth/tma-login',
     tmaLoginRateLimiter,
     tmaAuthGuard,
     asyncHandler(async (_req: Request, res: Response) => {
@@ -206,20 +207,20 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     }),
   );
 
-  app.get("/health", (_req: Request, res: Response) =>
-    res.json({ status: "ok" }),
+  app.get('/health', (_req: Request, res: Response) =>
+    res.json({ status: 'ok' }),
   );
-  app.get("/metrics", async (_req: Request, res: Response) => {
-    res.set("Content-Type", register.contentType);
+  app.get('/metrics', async (_req: Request, res: Response) => {
+    res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   });
   app.get(`${prefix}/csrf`, csrf, (req: Request, res: Response) => {
     res.json({ csrfToken: req.csrfToken() });
   });
 
-  app.use(express.static(path.join(__dirname, "../../public")));
+  app.use(express.static(path.join(__dirname, '../../public')));
 
-  const initAdmin = (await import("../admin/customAdmin")).default;
+  const initAdmin = (await import('../admin/customAdmin')).default;
   initAdmin(app);
 
   app.use(`${prefix}/users`, usersRouter);
@@ -236,33 +237,33 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     `${prefix}/tasks/:id/status`,
     taskStatusRateLimiter,
     verifyToken,
-    [param("id").isMongoId()],
+    [param('id').isMongoId()],
     checkTaskAccess,
     validate([
-      body("status").isIn(["Новая", "В работе", "Выполнена", "Отменена"]),
+      body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
       await updateTaskStatus(req.params.id, req.body.status);
       await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
-      res.json({ status: "ok" });
+      res.json({ status: 'ok' });
     }),
   );
 
-  app.get("/", spaRateLimiter, (_req: Request, res: Response) => {
-    res.sendFile(path.join(pub, "index.html"));
+  app.get('/', spaRateLimiter, (_req: Request, res: Response) => {
+    res.sendFile(path.join(pub, 'index.html'));
   });
 
-  app.get("/*splat", spaRateLimiter, (_req: Request, res: Response) => {
-    res.sendFile(path.join(pub, "index.html"));
+  app.get('/*splat', spaRateLimiter, (_req: Request, res: Response) => {
+    res.sendFile(path.join(pub, 'index.html'));
   });
 
   app.use(errorMiddleware);
 
   const port: number = config.port;
-  app.listen(port, "0.0.0.0", () => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`API запущен на порту ${port}`);
     console.log(
-      `Окружение: ${process.env.NODE_ENV || "development"}, Node ${process.version}`,
+      `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
     );
   });
 })();

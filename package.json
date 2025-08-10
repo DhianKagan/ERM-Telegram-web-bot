@@ -6,6 +6,7 @@
     "lint": "eslint bot/src",
     "test:e2e": "playwright test tests/e2e",
     "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",
+    "test:unit": "jest",
     "format": "prettier --write ."
   },
   "devDependencies": {
@@ -23,7 +24,10 @@
     "supertest": "^6.3.3",
     "tailwindcss": "^3.4.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.2"
   },
   "dependencies": {
     "reflect-metadata": "^0.1.14"

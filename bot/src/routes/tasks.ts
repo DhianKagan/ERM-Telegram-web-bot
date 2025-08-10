@@ -3,7 +3,8 @@
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
-import * as ctrl from '../tasks/tasks.controller';
+import container from '../di';
+import TasksController from '../tasks/tasks.controller';
 import { verifyToken } from '../api/middleware';
 import validateDto from '../middleware/validateDto';
 import {
@@ -15,6 +16,7 @@ import {
 import checkTaskAccess from '../middleware/taskAccess';
 
 const router = Router();
+const ctrl = container.resolve(TasksController);
 
 const detailLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,

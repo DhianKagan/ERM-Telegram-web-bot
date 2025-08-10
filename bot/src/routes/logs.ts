@@ -3,7 +3,8 @@
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { query } from 'express-validator';
-import * as ctrl from '../logs/logs.controller';
+import container from '../di';
+import LogsController from '../logs/logs.controller';
 import { verifyToken } from '../api/middleware';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
@@ -17,6 +18,7 @@ const limiter = createRateLimiter({
   max: 100,
   name: 'logs',
 });
+const ctrl = container.resolve(LogsController);
 
 router.get(
   '/',

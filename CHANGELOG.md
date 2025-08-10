@@ -343,7 +343,7 @@
 - В Prometheus добавлено правило оповещения `CsrfErrors`
 - Исправлена ошибка ESLint в API: параметр `query` не был импортирован
 - Обновлён файл `docs/architecture.md`: описана модульная структура
-- Добавлена библиотека tsyringe и контейнер src/container.ts для сервисов
+- Добавлена библиотека tsyringe и контейнер src/di/index.ts для сервисов
 - Введены классы DTO и middleware валидации на основе `class-validator`
 - Добавлены `roles.guard.ts` и `roles.decorator.ts`, контроллеры задач и
   пользователей используют проверку маски доступа

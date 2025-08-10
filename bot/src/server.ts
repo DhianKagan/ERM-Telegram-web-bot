@@ -1,4 +1,4 @@
 // Назначение файла: стартовый скрипт API.
-// Основные модули: container, api
-import './container';
+// Основные модули: di, api
+import './di';
 import './api/api';

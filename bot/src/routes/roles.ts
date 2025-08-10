@@ -3,7 +3,8 @@
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param } from 'express-validator';
-import * as ctrl from '../roles/roles.controller';
+import container from '../di';
+import RolesController from '../roles/roles.controller';
 import { verifyToken } from '../api/middleware';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
@@ -33,6 +34,7 @@ const limiter = createRateLimiter({
   max: 50,
   name: 'roles',
 });
+const ctrl = container.resolve(RolesController);
 
 router.get(
   '/',

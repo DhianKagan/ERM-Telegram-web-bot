@@ -1,9 +1,10 @@
 // Контроллер пользователей с использованием UsersService
-// Основные модули: express-validator, container, utils/formatUser, express
+// Основные модули: express-validator, utils/formatUser, express
 import { Request, Response } from 'express';
+import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
-import container from '../container';
-import UsersService from './users.service';
+import { TOKENS } from '../di/tokens';
+import type UsersService from './users.service';
 import formatUser from '../utils/formatUser';
 
 interface CreateUserBody {
@@ -12,24 +13,27 @@ interface CreateUserBody {
   roleId?: string;
 }
 
-const service = container.resolve<UsersService>('UsersService');
+@injectable()
+export default class UsersController {
+  constructor(@inject(TOKENS.UsersService) private service: UsersService) {}
 
-export const list = async (_req: Request, res: Response): Promise<void> => {
-  const users = await service.list();
-  res.json(users.map((u) => formatUser(u)));
-};
+  list = async (_req: Request, res: Response): Promise<void> => {
+    const users = await this.service.list();
+    res.json(users.map((u) => formatUser(u)));
+  };
 
-export const create = [
-  handleValidation,
-  async (
-    req: Request<unknown, unknown, CreateUserBody>,
-    res: Response,
-  ): Promise<void> => {
-    const user = await service.create(
-      req.body.id,
-      req.body.username,
-      req.body.roleId,
-    );
-    res.status(201).json(formatUser(user));
-  },
-];
+  create = [
+    handleValidation,
+    async (
+      req: Request<unknown, unknown, CreateUserBody>,
+      res: Response,
+    ): Promise<void> => {
+      const user = await this.service.create(
+        req.body.id,
+        req.body.username,
+        req.body.roleId,
+      );
+      res.status(201).json(formatUser(user));
+    },
+  ];
+}

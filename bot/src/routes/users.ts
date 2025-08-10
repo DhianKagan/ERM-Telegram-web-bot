@@ -2,7 +2,8 @@
 // Модули: express, express-rate-limit, controllers/users
 import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
-import * as ctrl from '../users/users.controller';
+import container from '../di';
+import UsersController from '../users/users.controller';
 import { verifyToken } from '../api/middleware';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
@@ -18,6 +19,7 @@ const middlewares = [
   Roles(ACCESS_ADMIN),
   rolesGuard,
 ] as RequestHandler[];
+const ctrl = container.resolve(UsersController);
 
 router.get('/', ...middlewares, ctrl.list as RequestHandler);
 router.post(

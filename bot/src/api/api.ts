@@ -233,7 +233,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);
 
-  app.post(
+  app.patch(
     `${prefix}/tasks/:id/status`,
     taskStatusRateLimiter,
     verifyToken,

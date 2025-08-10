@@ -9,7 +9,7 @@ export const fetchKanban = () =>
 
 export const updateTaskStatus = (id: string, status: string) =>
   authFetch(`/api/v1/tasks/${id}/status`, {
-    method: "POST",
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },

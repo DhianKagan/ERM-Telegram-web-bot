@@ -1,5 +1,7 @@
 // Корневой компонент мини‑приложения agrmcs
 import React, { Suspense, lazy } from "react";
+import { useTranslation, I18nextProvider } from "react-i18next";
+import i18n from "./i18n";
 import {
   BrowserRouter as Router,
   Routes,
@@ -32,11 +34,12 @@ import TaskDialogRoute from "./components/TaskDialogRoute";
 
 function Content() {
   const { collapsed, open } = useSidebar();
+  const { t } = useTranslation();
   return (
     <main
       className={`mt-14 p-4 transition-all ${open ? (collapsed ? "md:ml-20" : "md:ml-60") : "md:ml-0"}`}
     >
-      <Suspense fallback={<div>Загрузка...</div>}>
+      <Suspense fallback={<div>{t("loading")}</div>}>
         <Routes>
           <Route path="/login" element={<CodeLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
@@ -126,18 +129,20 @@ function Layout() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <ToastProvider>
-          <SidebarProvider>
-            <TasksProvider>
-              <Router>
-                <Layout />
-              </Router>
-            </TasksProvider>
-          </SidebarProvider>
-        </ToastProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <I18nextProvider i18n={i18n}>
+      <AuthProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <SidebarProvider>
+              <TasksProvider>
+                <Router>
+                  <Layout />
+                </Router>
+              </TasksProvider>
+            </SidebarProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </I18nextProvider>
   );
 }

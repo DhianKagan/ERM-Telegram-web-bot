@@ -6,16 +6,18 @@ import { useSidebar } from "../context/useSidebar";
 import { AuthContext } from "../context/AuthContext";
 import NotificationDropdown from "../components/NotificationDropdown";
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
 export default function Header() {
   const { toggle, collapsed, open } = useSidebar();
   const { user } = useContext(AuthContext);
+  const { t, i18n } = useTranslation();
   return (
     <header
       className={`border-stroke sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-white px-4 transition-all ${open ? (collapsed ? "lg:ml-20" : "lg:ml-60") : "lg:ml-0"}`}
     >
       <div className="flex items-center gap-2">
-        <button onClick={toggle} className="block" aria-label="Меню">
+        <button onClick={toggle} className="block" aria-label={t("menu")}>
           <Bars3Icon className="h-6 w-6" />
         </button>
         <h1 className="font-bold">agrmcs</h1>
@@ -29,17 +31,26 @@ export default function Header() {
           </span>
           <input
             className="focus:border-brand-300 h-9 rounded-lg border border-gray-300 bg-gray-50 pr-2 pl-8 text-sm focus:outline-none"
-            placeholder="Поиск"
+            placeholder={t("search")}
           />
         </div>
+        <select
+          className="rounded border p-1 text-sm"
+          value={i18n.language}
+          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          aria-label={t("language")}
+        >
+          <option value="ru">RU</option>
+          <option value="en">EN</option>
+        </select>
         {user && (
           <>
-            <NotificationDropdown notifications={["Новое сообщение"]}>
+            <NotificationDropdown notifications={[t("newMessage")]}>
               <BellIcon className="h-5 w-5" />
             </NotificationDropdown>
             {user?.role === "admin" && (
               <Link to="/cp" className="hover:text-accentPrimary rounded p-2">
-                Админка
+                {t("adminPanel")}
               </Link>
             )}
           </>

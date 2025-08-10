@@ -27,6 +27,8 @@
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",
     "react-router-dom": "^7.6.2",
+    "react-i18next": "^15.6.1",
+    "i18next": "^25.3.2",
     "validator": "^13.15.15"
   },
   "devDependencies": {

@@ -14,6 +14,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const LogsPage = lazy(() => import("./pages/Logs"));
 const CpIndex = lazy(() => import("./pages/CpIndex"));
 const Profile = lazy(() => import("./pages/Profile"));
+const MyTasks = lazy(() => import("./pages/MyTasks"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
@@ -43,6 +44,14 @@ function Content() {
         <Routes>
           <Route path="/login" element={<CodeLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
+          <Route
+            path="/profile/mytasks"
+            element={
+              <ProtectedRoute>
+                <MyTasks />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={

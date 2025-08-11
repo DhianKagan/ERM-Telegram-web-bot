@@ -3,23 +3,30 @@ import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import Tabs from "../components/Tabs";
 import Breadcrumbs from "../components/Breadcrumbs";
-import { fetchMentioned } from "../services/tasks";
+import { fetchTasks } from "../services/tasks";
 import { updateProfile } from "../services/auth";
-import userLink from "../utils/userLink";
+import SkeletonCard from "../components/SkeletonCard";
+import Pagination from "../components/Pagination";
 
-interface MentionedTask {
+interface TaskItem {
   _id: string;
-  title: string;
+  task_description: string;
 }
 
 export default function Profile() {
   const { user, setUser } = useContext(AuthContext);
   const [tab, setTab] = useState("details");
-  const [tasks, setTasks] = useState<MentionedTask[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const perPage = 10;
   const [name, setName] = useState("");
   const [mobNumber, setMobNumber] = useState("");
   useEffect(() => {
-    fetchMentioned().then(setTasks);
+    fetchTasks().then((d: any) => {
+      setTasks(d.tasks || []);
+      setLoading(false);
+    });
   }, []);
   useEffect(() => {
     if (user) {
@@ -38,7 +45,7 @@ export default function Profile() {
         <Tabs
           options={[
             { key: "details", label: "Детали" },
-            { key: "history", label: "История" },
+            { key: "tasks", label: "Мои задачи" },
           ]}
           active={tab}
           onChange={setTab}
@@ -72,27 +79,37 @@ export default function Profile() {
               Сохранить
             </button>
             <div>
-              <b>Telegram ID:</b>{" "}
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: userLink(
-                    user.telegram_id,
-                    user.name || user.username,
-                  ),
-                }}
-              />
-            </div>
-            <div>
-              <b>Упоминания:</b>
-              <ul className="list-disc pl-5">
-                {tasks.map((t) => (
-                  <li key={t._id}>{t.title}</li>
-                ))}
-              </ul>
+              <b>Telegram ID:</b> {user.telegram_id}
             </div>
           </div>
         ) : (
-          <div className="text-body text-sm">История действий пока пуста.</div>
+          <div className="space-y-4">
+            {loading ? (
+              <SkeletonCard />
+            ) : (
+              <>
+                <ul className="space-y-2">
+                  {tasks
+                    .slice((page - 1) * perPage, page * perPage)
+                    .map((t) => (
+                      <li
+                        key={t._id}
+                        className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                      >
+                        {t.task_description}
+                      </li>
+                    ))}
+                </ul>
+                {Math.ceil(tasks.length / perPage) > 1 && (
+                  <Pagination
+                    total={Math.ceil(tasks.length / perPage)}
+                    page={page}
+                    onChange={setPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

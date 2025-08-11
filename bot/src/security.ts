@@ -1,7 +1,7 @@
 // Назначение: middleware безопасности Helmet и CSP.
 // Основные модули: express, helmet, config
 import express from 'express';
-import helmet from 'helmet';
+import helmet, { type ContentSecurityPolicyOptions } from 'helmet';
 import config from './config';
 
 const parseList = (env?: string): string[] =>
@@ -55,6 +55,19 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 
+  const directives: ContentSecurityPolicyOptions['directives'] = {
+    'frame-src': ["'self'", 'https://oauth.telegram.org'],
+    'script-src': scriptSrc,
+    'style-src': styleSrc,
+    'font-src': fontSrc,
+    'img-src': imgSrc,
+    'connect-src': connectSrc,
+  };
+
+  if (reportOnly) {
+    directives['upgrade-insecure-requests'] = null;
+  }
+
   app.use(
     helmet({
       hsts: true,
@@ -63,14 +76,7 @@ export default function applySecurity(app: express.Express): void {
       frameguard: { action: 'deny' },
       contentSecurityPolicy: {
         useDefaults: true,
-        directives: {
-          'frame-src': ["'self'", 'https://oauth.telegram.org'],
-          'script-src': scriptSrc,
-          'style-src': styleSrc,
-          'font-src': fontSrc,
-          'img-src': imgSrc,
-          'connect-src': connectSrc,
-        },
+        directives,
         reportOnly,
       },
     }),

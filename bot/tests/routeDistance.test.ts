@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты функции getRouteDistance сервиса маршрутов
-process.env.ROUTING_URL = 'http://localhost:8000/route';
+process.env.ROUTING_URL = 'https://localhost:8000/route';
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -18,7 +18,11 @@ afterEach(async () => {
 test('getRouteDistance возвращает дистанцию', async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
-    json: async () => ({ code: 'Ok', routes: [{ distance: 1000 }], waypoints: [] }),
+    json: async () => ({
+      code: 'Ok',
+      routes: [{ distance: 1000 }],
+      waypoints: [],
+    }),
   });
   const res = await getRouteDistance({ lat: 1, lng: 2 }, { lat: 3, lng: 4 });
   expect(res.distance).toBe(1000);
@@ -33,4 +37,3 @@ test('getRouteDistance выбрасывает ошибку при неверно
     getRouteDistance({ lat: 1, lng: 2 }, { lat: 3, lng: 4 }),
   ).rejects.toThrow('Bad');
 });
-

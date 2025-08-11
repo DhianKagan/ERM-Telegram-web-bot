@@ -5,21 +5,27 @@
 Репозиторий `OSRM-Odessa-Region` содержит обёртку Flask для OSRM и предоставляет HTTP‑интерфейс расчёта маршрутов. Сервис принимает координаты начала и конца и возвращает ответ OSRM.
 
 ## Локальный запуск
+
 ```bash
 docker build -t osrm-odessa .
 docker run -d -p 5000:5000 osrm-odessa
 ```
+
 После запуска можно выполнить запрос:
+
 ```bash
-curl "http://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
+curl "https://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
 ```
+
 Сервис также поддерживает дополнительные пути:
+
 - `/table?points=p1;p2[;...]` — матрица времени и расстояний
 - `/nearest?point=p&number=n` — поиск ближайших участков
 - `/match?points=p1;p2[;...]` — привязка GPS-трека
 - `/trip?points=p1;p2[;...]` — оптимальный объезд точек
 
 ## Развёртывание на Railway
+
 1. Создайте новый сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
 2. Railway установит зависимости и запустит приложение автоматически.
 3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,

@@ -6,7 +6,7 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-process.env.ROUTING_URL = 'http://localhost:8000/route';
+process.env.ROUTING_URL = 'https://localhost:8000/route';
 
 const express = require('express');
 const request = require('supertest');

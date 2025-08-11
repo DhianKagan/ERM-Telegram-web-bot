@@ -2,7 +2,7 @@
 // Основные модули: express, helmet, config
 import express from 'express';
 import helmet from 'helmet';
-import type { HelmetOptions } from 'helmet';
+import type { HelmetOptions, ContentSecurityPolicyOptions } from 'helmet';
 
 import config from './config';
 
@@ -57,17 +57,23 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 
+  const directives: NonNullable<ContentSecurityPolicyOptions['directives']> = {
+    'frame-src': ["'self'", 'https://oauth.telegram.org'],
+    'script-src': scriptSrc,
+    'style-src': styleSrc,
+    'font-src': fontSrc,
+    'img-src': imgSrc,
+    'connect-src': connectSrc,
+  };
 
-  const csp: NonNullable<HelmetOptions['contentSecurityPolicy']> = {
+  if (reportOnly) directives['upgrade-insecure-requests'] = null;
+  else directives['upgrade-insecure-requests'] = [];
+  const reportUri = process.env.CSP_REPORT_URI;
+  if (reportUri) directives['report-uri'] = [reportUri];
+
+  const csp: ContentSecurityPolicyOptions = {
     useDefaults: true,
-    directives: {
-      'frame-src': ["'self'", 'https://oauth.telegram.org'],
-      'script-src': scriptSrc,
-      'style-src': styleSrc,
-      'font-src': fontSrc,
-      'img-src': imgSrc,
-      'connect-src': connectSrc,
-    },
+    directives,
     reportOnly,
   };
 
@@ -79,7 +85,6 @@ export default function applySecurity(app: express.Express): void {
       frameguard: { action: 'deny' },
 
       contentSecurityPolicy: csp,
-
     }),
   );
 }

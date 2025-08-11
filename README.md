@@ -18,6 +18,7 @@ npm --prefix bot run dev
 - Веб‑панель администратора на базе TailAdmin.
 - REST API с документацией Swagger по пути `/api-docs`.
 - Поддержка расчёта маршрутов через сервис OSRM.
+- Переменная `ROUTING_URL` проверяется на использование протокола HTTPS.
 - Канбан-доска задач с перетаскиванием и обновлением статуса.
 - Запросы к OSRM кешируются в памяти или Redis на 10 минут и очищаются при
   изменении задач, матрица `/table` ограничена по размеру и частоте
@@ -26,6 +27,8 @@ npm --prefix bot run dev
 - Заголовки безопасности формируются через Helmet и Content Security Policy,
   по умолчанию разрешающие Google Fonts; списки источников стилей и шрифтов
   расширяются через `CSP_STYLE_SRC_ALLOWLIST` и `CSP_FONT_SRC_ALLOWLIST`.
+- В строгом режиме CSP добавляет `upgrade-insecure-requests` и отправляет отчёты
+  на адрес из `CSP_REPORT_URI`.
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
 - Текстовые ответы бота собраны в `bot/src/messages.ts`.

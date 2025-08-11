@@ -43,19 +43,23 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [mobNumber, setMobNumber] = useState("");
   useEffect(() => {
-    fetchTasks().then((d: any) => {
-      setTasks(d.tasks || []);
-      const list: UserInfo[] = Array.isArray(d.users)
-        ? d.users
-        : Object.values(d.users || {});
-      const map: Record<number, UserInfo> = {};
-      list.forEach((u) => {
-        map[u.telegram_id] = u;
-      });
-      setUserMap(map);
-      setLoading(false);
-    });
-  }, []);
+    if (tab === "tasks" && user && tasks.length === 0) {
+      setLoading(true);
+      fetchTasks()
+        .then((d: any) => {
+          setTasks(d.tasks || []);
+          const list: UserInfo[] = Array.isArray(d.users)
+            ? d.users
+            : Object.values(d.users || {});
+          const map: Record<number, UserInfo> = {};
+          list.forEach((u) => {
+            map[u.telegram_id] = u;
+          });
+          setUserMap(map);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [tab, user, tasks.length]);
   useEffect(() => {
     if (user) {
       setName(user.name || user.telegram_username || "");

@@ -23,7 +23,9 @@ npm --prefix bot run dev
   изменении задач, матрица `/table` ограничена по размеру и частоте
   переменными `ROUTE_TABLE_GUARD`, `ROUTE_TABLE_MAX_POINTS` и
   `ROUTE_TABLE_MIN_INTERVAL_MS`.
-- Заголовки безопасности формируются через Helmet и Content Security Policy.
+- Заголовки безопасности формируются через Helmet и Content Security Policy,
+  по умолчанию разрешающие Google Fonts; списки источников стилей и шрифтов
+  расширяются через `CSP_STYLE_SRC_ALLOWLIST` и `CSP_FONT_SRC_ALLOWLIST`.
 - Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
 - Текстовые ответы бота собраны в `bot/src/messages.ts`.

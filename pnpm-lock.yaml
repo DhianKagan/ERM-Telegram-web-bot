@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       reflect-metadata:
-        specifier: ^0.1.14
-        version: 0.1.14
+        specifier: ^0.2.2
+        version: 0.2.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.47.2
@@ -1941,8 +1941,8 @@ packages:
     resolution: {integrity: sha512-7KA6+N9IGat52d83dvxnApAWN+MtVb1MiVuMR/cf1O4kYsJG+g/Aav0AHcHKsb6StinayfPLne0+fMX2sOzAKg==}
     engines: {node: '>=6'}
 
-  reflect-metadata@0.1.14:
-    resolution: {integrity: sha512-ZhYeb6nRaXCfhnndflDK8qI6ZQ/YcWZCISRAWICW9XYqMUwjZM9Z0DveWX/ABN01oxSHwVxKQmxeYZSsm0jh5A==}
+  reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -4502,7 +4502,7 @@ snapshots:
 
   readline-transform@1.0.0: {}
 
-  reflect-metadata@0.1.14: {}
+  reflect-metadata@0.2.2: {}
 
   require-directory@2.1.1: {}
 

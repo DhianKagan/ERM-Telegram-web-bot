@@ -30,6 +30,6 @@
     "ts-jest": "^29.2.2"
   },
   "dependencies": {
-    "reflect-metadata": "^0.1.14"
+    "reflect-metadata": "^0.2.2"
   }
 }

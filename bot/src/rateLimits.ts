@@ -5,8 +5,8 @@ const test = process.env.NODE_ENV === 'test';
 export const rateLimits = {
   auth: {
     windowMs: test ? 200 : 60_000,
-    max: test ? 2 : 5,
-    adminMax: test ? 5 : 50,
+    max: test ? 2 : 50,
+    adminMax: test ? 5 : 500,
     name: 'auth',
   },
   route: {

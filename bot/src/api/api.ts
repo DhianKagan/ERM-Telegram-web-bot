@@ -35,7 +35,12 @@ import routeRouter from '../routes/route';
 import routesRouter from '../routes/routes';
 import optimizerRouter from '../routes/optimizer';
 import authUserRouter from '../routes/authUser';
-import { updateTaskStatus, writeLog } from '../services/service';
+import {
+  updateTaskStatus,
+  writeLog,
+  listMentionedTasks,
+  getTask,
+} from '../services/service';
 import { verifyToken, asyncHandler, requestLogger } from './middleware';
 import errorMiddleware from '../middleware/errorMiddleware';
 import { sendProblem } from '../utils/problem';
@@ -232,6 +237,87 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use(`${prefix}/optimizer`, optimizerRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);
+
+  app.get(
+    '/api/tma/tasks',
+    tmaAuthGuard,
+    asyncHandler(async (req: Request, res: Response) => {
+      const initData = res.locals.initData as string;
+      let userId: number;
+      try {
+        const params = new URLSearchParams(initData);
+        const user = JSON.parse(params.get('user') || '{}');
+        userId = Number(user.id);
+      } catch {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 401,
+          detail: 'invalid user',
+        });
+        return;
+      }
+      const tasks = await listMentionedTasks(userId);
+      res.json(tasks);
+    }),
+  );
+
+  app.patch(
+    '/api/tma/tasks/:id/status',
+    tmaAuthGuard,
+    [param('id').isMongoId()],
+    validate([
+      body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
+    ]),
+    asyncHandler(async (req: Request, res: Response) => {
+      const initData = res.locals.initData as string;
+      let userId: number;
+      try {
+        const params = new URLSearchParams(initData);
+        const user = JSON.parse(params.get('user') || '{}');
+        userId = Number(user.id);
+      } catch {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 401,
+          detail: 'invalid user',
+        });
+        return;
+      }
+      const task = await getTask(req.params.id);
+      if (!task) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Задача не найдена',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
+      const ids = [
+        task.assigned_user_id,
+        task.controller_user_id,
+        ...(task.controllers || []),
+        ...(task.assignees || []),
+        task.created_by,
+      ].map((id) => Number(id));
+      if (!ids.includes(userId)) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Доступ запрещён',
+          status: 403,
+          detail: 'Forbidden',
+        });
+        return;
+      }
+      await updateTaskStatus(req.params.id, req.body.status);
+      await writeLog(
+        `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${userId}`,
+      );
+      res.json({ status: 'ok' });
+    }),
+  );
 
   app.patch(
     `${prefix}/tasks/:id/status`,

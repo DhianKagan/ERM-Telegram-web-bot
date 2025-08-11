@@ -1,7 +1,9 @@
 // Назначение: middleware безопасности Helmet и CSP.
 // Основные модули: express, helmet, config
 import express from 'express';
-import helmet, { type ContentSecurityPolicyOptions } from 'helmet';
+import helmet from 'helmet';
+import type { HelmetOptions } from 'helmet';
+
 import config from './config';
 
 const parseList = (env?: string): string[] =>
@@ -55,18 +57,19 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 
-  const directives: ContentSecurityPolicyOptions['directives'] = {
-    'frame-src': ["'self'", 'https://oauth.telegram.org'],
-    'script-src': scriptSrc,
-    'style-src': styleSrc,
-    'font-src': fontSrc,
-    'img-src': imgSrc,
-    'connect-src': connectSrc,
-  };
 
-  if (reportOnly) {
-    directives['upgrade-insecure-requests'] = null;
-  }
+  const csp: NonNullable<HelmetOptions['contentSecurityPolicy']> = {
+    useDefaults: true,
+    directives: {
+      'frame-src': ["'self'", 'https://oauth.telegram.org'],
+      'script-src': scriptSrc,
+      'style-src': styleSrc,
+      'font-src': fontSrc,
+      'img-src': imgSrc,
+      'connect-src': connectSrc,
+    },
+    reportOnly,
+  };
 
   app.use(
     helmet({
@@ -74,11 +77,9 @@ export default function applySecurity(app: express.Express): void {
       noSniff: true,
       referrerPolicy: { policy: 'no-referrer' },
       frameguard: { action: 'deny' },
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives,
-        reportOnly,
-      },
+
+      contentSecurityPolicy: csp,
+
     }),
   );
 }

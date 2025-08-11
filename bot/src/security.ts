@@ -3,6 +3,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import type { HelmetOptions } from 'helmet';
+
 import config from './config';
 
 const parseList = (env?: string): string[] =>
@@ -56,6 +57,7 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 
+
   const csp: NonNullable<HelmetOptions['contentSecurityPolicy']> = {
     useDefaults: true,
     directives: {
@@ -75,7 +77,9 @@ export default function applySecurity(app: express.Express): void {
       noSniff: true,
       referrerPolicy: { policy: 'no-referrer' },
       frameguard: { action: 'deny' },
+
       contentSecurityPolicy: csp,
+
     }),
   );
 }

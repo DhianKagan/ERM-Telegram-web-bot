@@ -1,5 +1,5 @@
 // Назначение файла: HTTP API и мини-приложение.
-// Основные модули: express, сервисы, middleware
+// Основные модули: express, express-rate-limit, сервисы, middleware
 import dotenv from 'dotenv';
 import config from '../config';
 import express, {
@@ -190,6 +190,11 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     max: 20,
     name: 'tma-login',
   }); // 20 запросов за 15 минут
+  const tmaTasksRateLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    name: 'tma-tasks',
+  });
 
   /**
    * @openapi
@@ -240,6 +245,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 
   app.get(
     '/api/tma/tasks',
+    tmaTasksRateLimiter,
     tmaAuthGuard,
     asyncHandler(async (req: Request, res: Response) => {
       const initData = res.locals.initData as string;
@@ -264,6 +270,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
 
   app.patch(
     '/api/tma/tasks/:id/status',
+    tmaTasksRateLimiter,
     tmaAuthGuard,
     [param('id').isMongoId()],
     validate([

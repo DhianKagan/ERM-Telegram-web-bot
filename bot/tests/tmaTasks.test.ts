@@ -1,4 +1,4 @@
-// Назначение: автотесты. Модули: jest, supertest.
+// Назначение: автотесты. Модули: jest, supertest, express-rate-limit.
 // Тесты TMA-эндпоинтов задач
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -9,6 +9,12 @@ process.env.APP_URL = 'https://localhost';
 
 const express = require('express');
 const request = require('supertest');
+const createRateLimiter = require('../src/utils/rateLimiter').default;
+const tmaTasksRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  name: 'tma-tasks',
+});
 
 jest.mock('../src/utils/verifyInitData', () => jest.fn(() => true));
 
@@ -38,6 +44,7 @@ app.use(express.json());
 
 app.get(
   '/api/tma/tasks',
+  tmaTasksRateLimiter,
   tmaAuthGuard,
   asyncHandler(async (req, res) => {
     const params = new URLSearchParams(res.locals.initData);
@@ -49,6 +56,7 @@ app.get(
 
 app.patch(
   '/api/tma/tasks/:id/status',
+  tmaTasksRateLimiter,
   tmaAuthGuard,
   asyncHandler(async (req, res) => {
     const params = new URLSearchParams(res.locals.initData);

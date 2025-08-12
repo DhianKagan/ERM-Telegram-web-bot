@@ -18,6 +18,7 @@ interface TaskItem {
   createdAt: string;
   assignees?: number[];
   assigned_user_id?: number;
+  created_by?: number;
 }
 
 interface UserInfo {
@@ -36,16 +37,24 @@ export default function MyTasks() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [view, setView] = useState<"assigned" | "created">("assigned");
   const perPage = 10;
 
   useEffect(() => {
     setLoading(true);
     fetchTasks()
       .then((d: any) => {
-        setTasks(d.tasks || []);
-        const list: UserInfo[] = Array.isArray(d.users)
+        const raw = Array.isArray(d) ? d : d.items || d.tasks || d.data || [];
+        const listTasks = raw.map((t: any) => ({
+          id: t._id ?? t.id,
+          _id: t._id ?? t.id,
+          ...t,
+        }));
+        console.log("rows", listTasks.length, listTasks[0]);
+        setTasks(listTasks);
+        const list: UserInfo[] = Array.isArray(d?.users)
           ? d.users
-          : Object.values(d.users || {});
+          : Object.values(d?.users || {});
         const map: Record<number, UserInfo> = {};
         list.forEach((u) => {
           map[u.telegram_id] = u;
@@ -57,11 +66,13 @@ export default function MyTasks() {
 
   if (!user) return <div>Загрузка...</div>;
 
-  const myTasks = tasks.filter((t) =>
-    (t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : [])).includes(
-      user.telegram_id,
-    ),
-  );
+  const myTasks = tasks.filter((t) => {
+    const assigned =
+      t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
+    return view === "assigned"
+      ? assigned.includes(user.telegram_id)
+      : t.created_by === user.telegram_id;
+  });
 
   const sorted = [...myTasks];
   sorted.sort((a, b) => {
@@ -96,6 +107,24 @@ export default function MyTasks() {
         <SkeletonCard />
       ) : (
         <>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setView("assigned")}
+              className={`rounded border px-2 py-1 ${
+                view === "assigned" ? "bg-accentPrimary text-white" : ""
+              }`}
+            >
+              Назначенные мне
+            </button>
+            <button
+              onClick={() => setView("created")}
+              className={`rounded border px-2 py-1 ${
+                view === "created" ? "bg-accentPrimary text-white" : ""
+              }`}
+            >
+              Созданные мной
+            </button>
+          </div>
           <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm">
             <thead className="bg-gray-50">
               <tr>

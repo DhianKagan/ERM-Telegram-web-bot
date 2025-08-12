@@ -2,9 +2,13 @@
 // Основные модули: express, helmet, config
 import express from 'express';
 import helmet from 'helmet';
-import type { ContentSecurityPolicyOptions } from 'helmet';
+import type { HelmetOptions } from 'helmet';
 
 import config from './config';
+
+type CSPConfig = NonNullable<
+  Exclude<HelmetOptions['contentSecurityPolicy'], boolean>
+>;
 
 const parseList = (env?: string): string[] =>
   env
@@ -57,7 +61,7 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 
-  const directives: NonNullable<ContentSecurityPolicyOptions['directives']> = {
+  const directives: NonNullable<CSPConfig['directives']> = {
     'frame-src': ["'self'", 'https://oauth.telegram.org'],
     'script-src': scriptSrc,
     'style-src': styleSrc,
@@ -71,7 +75,7 @@ export default function applySecurity(app: express.Express): void {
   const reportUri = process.env.CSP_REPORT_URI;
   if (reportUri) directives['report-uri'] = [reportUri];
 
-  const csp: ContentSecurityPolicyOptions = {
+  const csp: CSPConfig = {
     useDefaults: true,
     directives,
     reportOnly,

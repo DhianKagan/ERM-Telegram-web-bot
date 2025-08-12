@@ -10,6 +10,7 @@ import authFetch from "../utils/authFetch";
 import fields from "../../../src/shared/taskFields";
 import { AuthContext } from "../context/AuthContext";
 import userLink from "../utils/userLink";
+import { matchSorter } from "@tanstack/match-sorter-utils";
 
 interface Task {
   _id: string;
@@ -47,6 +48,10 @@ export default function TasksPage() {
   const [bulkStatus, setBulkStatus] = React.useState<string>("");
   const [sortBy, setSortBy] = React.useState<string>("createdAt");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
+  const [search, setSearch] = React.useState("");
+  const [views, setViews] = React.useState<
+    { name: string; status: string; search: string }[]
+  >([]);
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
@@ -92,10 +97,26 @@ export default function TasksPage() {
 
   React.useEffect(load, [load, version]);
 
-  const filtered = React.useMemo(
-    () => (status === "all" ? all : all.filter((t) => t.status === status)),
-    [all, status],
-  );
+  React.useEffect(() => {
+    const stored = localStorage.getItem("taskViews");
+    if (stored) {
+      try {
+        setViews(JSON.parse(stored));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const filtered = React.useMemo(() => {
+    let list = status === "all" ? all : all.filter((t) => t.status === status);
+    if (search.trim()) {
+      list = matchSorter(list, search.trim(), {
+        keys: ["title", "request_id"],
+      });
+    }
+    return list;
+  }, [all, status, search]);
   const tasks = React.useMemo(() => {
     const list = [...filtered];
     list.sort((a, b) => {
@@ -197,6 +218,26 @@ export default function TasksPage() {
     }
   };
 
+  const saveView = () => {
+    const name = prompt("Название вида?");
+    if (!name) return;
+    const data = [
+      ...views.filter((v) => v.name !== name),
+      { name, status, search },
+    ];
+    setViews(data);
+    localStorage.setItem("taskViews", JSON.stringify(data));
+    addToast("Вид сохранён");
+  };
+
+  const applyView = (name: string) => {
+    const v = views.find((x) => x.name === name);
+    if (!v) return;
+    setStatus(v.status);
+    setSearch(v.search);
+    addToast("Вид применён");
+  };
+
   const exportKeys = React.useMemo(
     () => Array.from(new Set(all.flatMap((t) => Object.keys(t)))).sort(),
     [all],
@@ -267,6 +308,34 @@ export default function TasksPage() {
             Новая задача
           </button>
         </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск"
+          className="rounded border px-2 py-1"
+        />
+        {views.length > 0 && (
+          <select
+            onChange={(e) => {
+              if (e.target.value) applyView(e.target.value);
+            }}
+            className="rounded border px-1"
+            value=""
+          >
+            <option value="">Выбор вида</option>
+            {views.map((v) => (
+              <option key={v.name} value={v.name}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <button onClick={saveView} className="btn-gray rounded px-3">
+          Сохранить вид
+        </button>
       </div>
       <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm">
         <thead className="bg-gray-50">

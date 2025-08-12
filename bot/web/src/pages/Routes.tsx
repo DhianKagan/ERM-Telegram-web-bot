@@ -47,8 +47,16 @@ export default function RoutesPage() {
   );
 
   const load = React.useCallback(() => {
-    fetchTasks().then((data) => {
-      const list = Array.isArray(data) ? data : data.tasks || [];
+    fetchTasks().then((data: any) => {
+      const raw = Array.isArray(data)
+        ? data
+        : data.items || data.tasks || data.data || [];
+      const list = raw.map((t: any) => ({
+        id: t._id ?? t.id,
+        _id: t._id ?? t.id,
+        ...t,
+      }));
+      console.log("rows", list.length, list[0]);
       setTasks(list);
       setSorted(list);
     });

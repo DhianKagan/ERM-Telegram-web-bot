@@ -10,7 +10,7 @@ import authFetch from "../utils/authFetch";
 import fields from "../../../src/shared/taskFields";
 import { AuthContext } from "../context/AuthContext";
 import userLink from "../utils/userLink";
-import { matchSorter } from "@tanstack/match-sorter-utils";
+import { matchSorter } from "match-sorter";
 
 interface Task {
   _id: string;

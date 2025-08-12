@@ -1,5 +1,5 @@
 // Страница отображения маршрутов на карте с фильтрами
-import React from "react";
+import React, { useContext } from "react";
 import Breadcrumbs from "../components/Breadcrumbs";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -9,6 +9,7 @@ import createMultiRouteLink from "../utils/createMultiRouteLink";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 
 interface Task {
   _id: string;
@@ -36,6 +37,7 @@ export default function RoutesPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const hasDialog = params.has("task") || params.has("newTask");
+  const { user } = useContext(AuthContext);
 
   const openTask = React.useCallback(
     (id: string) => {
@@ -47,7 +49,7 @@ export default function RoutesPage() {
   );
 
   const load = React.useCallback(() => {
-    fetchTasks().then((data: any) => {
+    fetchTasks({}, Number((user as any)?.telegram_id)).then((data: any) => {
       const raw = Array.isArray(data)
         ? data
         : data.items || data.tasks || data.data || [];
@@ -60,7 +62,7 @@ export default function RoutesPage() {
       setTasks(list);
       setSorted(list);
     });
-  }, []);
+  }, [user]);
 
   const calculate = React.useCallback(() => {
     const ids = sorted.map((t) => t._id);

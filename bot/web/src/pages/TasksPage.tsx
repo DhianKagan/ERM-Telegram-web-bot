@@ -64,7 +64,7 @@ export default function TasksPage() {
 
   const load = React.useCallback(() => {
     setLoading(true);
-    fetchTasks()
+    fetchTasks({}, Number((user as any)?.telegram_id))
       .then((data) => {
         const tasks = Array.isArray(data) ? data : data.tasks || [];
         setAll(tasks);
@@ -87,7 +87,7 @@ export default function TasksPage() {
       .then(setKpi);
     setStatuses(fields.find((f) => f.name === "status")?.options || []);
     setPriorities(fields.find((f) => f.name === "priority")?.options || []);
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   React.useEffect(load, [load, version]);
 

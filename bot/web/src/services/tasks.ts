@@ -50,13 +50,16 @@ export const updateTask = (id: string, data: Record<string, unknown>) =>
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));
 
-export const fetchTasks = (params: Record<string, unknown> = {}) => {
+export const fetchTasks = (
+  params: Record<string, unknown> = {},
+  userId?: number,
+) => {
   const filtered = Object.fromEntries(
     Object.entries(params).filter(([, v]) => v),
   );
   const q = new URLSearchParams(filtered as Record<string, string>).toString();
   const url = "/api/v1/tasks" + (q ? `?${q}` : "");
-  const key = `tasks_${q}`;
+  const key = `tasks_${userId ?? "anon"}_${q}`;
   let cached: { time?: number; data?: unknown };
   try {
     cached = JSON.parse(localStorage.getItem(key) || "");

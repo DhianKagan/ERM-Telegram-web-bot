@@ -44,6 +44,7 @@ export default function TasksPage() {
   const [statuses, setStatuses] = React.useState<string[]>([]);
   const [priorities, setPriorities] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = React.useState<string>("");
   const [sortBy, setSortBy] = React.useState<string>("createdAt");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [kpi, setKpi] = React.useState<KpiSummary>({ count: 0, time: 0 });
@@ -126,6 +127,10 @@ export default function TasksPage() {
     return map;
   }, [users]);
 
+  React.useEffect(() => {
+    if (statuses.length && !bulkStatus) setBulkStatus(statuses[0]);
+  }, [statuses, bulkStatus]);
+
   const renderStatus = (t: Task) =>
     isAdmin ? (
       <select
@@ -172,11 +177,15 @@ export default function TasksPage() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ids: selected, status: "done" }),
+      body: JSON.stringify({ ids: selected, status: bulkStatus }),
     });
     setSelected([]);
     addToast("Статус обновлён");
     load();
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? tasks.map((t) => t._id) : []);
   };
 
   const handleSort = (col: string) => {
@@ -262,7 +271,15 @@ export default function TasksPage() {
       <table className="min-w-full divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm shadow-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th></th>
+            <th className="px-4 py-2 text-center">
+              <input
+                type="checkbox"
+                checked={
+                  selected.length > 0 && selected.length === tasks.length
+                }
+                onChange={(e) => toggleAll(e.target.checked)}
+              />
+            </th>
             <th
               className="cursor-pointer px-4 py-2 text-left"
               onClick={() => handleSort("title")}
@@ -366,9 +383,22 @@ export default function TasksPage() {
         </tbody>
       </table>
       {selected.length > 0 && (
-        <button onClick={changeStatus} className="btn-green">
-          Сменить статус
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value)}
+            className="rounded border px-1"
+          >
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <button onClick={changeStatus} className="btn-green">
+            Сменить статус
+          </button>
+        </div>
       )}
 
       {showExport && (

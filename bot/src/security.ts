@@ -2,7 +2,7 @@
 // Основные модули: express, helmet, config
 import express from 'express';
 import helmet from 'helmet';
-import type { HelmetOptions, ContentSecurityPolicyOptions } from 'helmet';
+import type { ContentSecurityPolicyOptions } from 'helmet';
 
 import config from './config';
 

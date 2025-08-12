@@ -41,8 +41,9 @@ export default function MyTasks() {
   const perPage = 10;
 
   useEffect(() => {
+    if (!user) return;
     setLoading(true);
-    fetchTasks()
+    fetchTasks({}, Number((user as any).telegram_id))
       .then((d: any) => {
         const raw = Array.isArray(d) ? d : d.items || d.tasks || d.data || [];
         const listTasks = raw.map((t: any) => ({
@@ -62,7 +63,7 @@ export default function MyTasks() {
         setUserMap(map);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   if (!user) return <div>Загрузка...</div>;
 

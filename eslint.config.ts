@@ -3,10 +3,10 @@
  * Подключает стандартные правила, окружение Node и поддержку TypeScript,
  * запрещая любые JavaScript-файлы.
  */
-import js from './bot/node_modules/@eslint/js/src/index.js';
-import globals from './bot/node_modules/globals/index.js';
-import tsParser from './bot/node_modules/@typescript-eslint/parser/dist/index.js';
-import tsPlugin from './bot/node_modules/@typescript-eslint/eslint-plugin/dist/index.js';
+import js from '@eslint/js';
+import globals from 'globals';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 
 const config = [
   js.configs.recommended,

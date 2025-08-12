@@ -18,6 +18,7 @@
 - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
 - Добавлен единый middleware ошибок с ответами `application/problem+json` по [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457).
 - Настроен Dependabot для еженедельных npm-обновлений; CI выполняет `audit-ci` и падает при уязвимостях уровня high.
+- Веб‑клиент поддерживает массовую смену статуса задач с выбором любого статуса и выделение всех задач.
 - Реализована канбан-доска задач с перетаскиванием, переключателем таблица/доска и обновлением статуса через PATCH `/api/v1/tasks/:id/status`.
 
 - Руководство по настройке Telegram-бота перенесено в `docs/technical_manual.md`, файл `docs/telegram_bot_manual.md` удалён.

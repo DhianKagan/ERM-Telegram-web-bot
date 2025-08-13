@@ -87,6 +87,7 @@ export default function applySecurity(app: express.Express): void {
       noSniff: true,
       referrerPolicy: { policy: 'no-referrer' },
       frameguard: { action: 'deny' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
 
       contentSecurityPolicy: csp,
     }),

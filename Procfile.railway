@@ -1,0 +1,3 @@
+# Назначение файла: запуск API и бота на Railway отдельными процессами.
+api: node bot/dist/server.js
+bot: ./scripts/set_bot_commands.sh && node bot/dist/bot/bot.js

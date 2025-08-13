@@ -1,14 +1,18 @@
-// Компонент просмотра логов с таблицей и экспортом
-// Модули: React, useLogsQuery, FiltersPanel
+// Компонент просмотра логов на AG Grid и экспортом
+// Модули: React, useLogsQuery, FiltersPanel, ag-grid, useGrid
 import React from "react";
+import { AgGridReact } from "ag-grid-react";
 import useLogsQuery, { LogFilters } from "../hooks/useLogsQuery";
 import FiltersPanel from "./FiltersPanel";
+import useGrid from "../hooks/useGrid";
+import logColumns from "../columns/logColumns";
 
 export default function LogViewer() {
   const [filters, setFilters] = React.useState<LogFilters>({});
   const [live, setLive] = React.useState(true);
   const [page, setPage] = React.useState(1);
   const logs = useLogsQuery(filters, page);
+  const { defaultColDef, gridOptions } = useGrid({ pagination: false });
 
   React.useEffect(() => {
     setPage(1);
@@ -46,14 +50,6 @@ export default function LogViewer() {
     a.click();
   };
 
-  const colors: Record<string, string> = {
-    info: "text-success-600",
-    warn: "text-warning-600",
-    error: "text-error-600",
-    debug: "text-gray-500",
-    log: "text-gray-500",
-  };
-
   return (
     <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -76,31 +72,13 @@ export default function LogViewer() {
         </div>
       </div>
       <FiltersPanel filters={filters} onChange={setFilters} />
-      <div className="overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-gray-50">
-            <tr>
-              <th className="text-left">Уровень</th>
-              <th className="text-left">Время</th>
-              <th className="text-left">Метод</th>
-              <th className="text-left">Статус</th>
-              <th className="text-left">Endpoint</th>
-              <th className="text-left">Сообщение</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((l, i) => (
-              <tr key={i} className="border-b last:border-b-0">
-                <td className={colors[l.level] || ""}>{l.level}</td>
-                <td>{l.time}</td>
-                <td>{l.method}</td>
-                <td>{l.status}</td>
-                <td>{l.endpoint}</td>
-                <td className="whitespace-pre-wrap">{l.message}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="ag-theme-alpine" style={{ height: 500 }}>
+        <AgGridReact
+          rowData={logs}
+          columnDefs={logColumns}
+          defaultColDef={defaultColDef}
+          {...gridOptions}
+        />
       </div>
       <div className="flex justify-between text-sm">
         <button

@@ -18,6 +18,7 @@
   содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
 - Добавлены гистограммы HTTP и OSRM, поддержка W3C Trace Context и метрики ошибок OSRM.
 - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
+- Добавлен сервис `useGrid` для AG Grid и вынесены конфигурации колонок.
 - Добавлен единый middleware ошибок с ответами `application/problem+json` по [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457).
 - Настроен Dependabot для еженедельных npm-обновлений; CI выполняет `audit-ci` и падает при уязвимостях уровня high.
 - Веб‑клиент поддерживает массовую смену статуса задач с выбором любого статуса и выделение всех задач.

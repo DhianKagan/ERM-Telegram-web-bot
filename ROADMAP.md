@@ -22,6 +22,7 @@
 - Оптимизированы запросы задач: добавлен скрипт `ensureIndexes` с индексами `{assigneeId,status,dueAt}` и `createdAt`.
 - Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, метрика `rate_limit_drops_total` доступна в Prometheus
 - Добавлены гистограммы HTTP (method, route, status), метрики OSRM и поддержка traceparent.
+- Таблицы админки переведены на AG Grid с сервисом `useGrid` и модульными колонками.
 - Dependabot еженедельно обновляет npm-зависимости, CI запускает `audit-ci` с порогом `high`.
 - Политика CSP разрешает подключение Google Fonts, источники стилей и шрифтов
   расширяются переменными `CSP_STYLE_SRC_ALLOWLIST` и `CSP_FONT_SRC_ALLOWLIST`.

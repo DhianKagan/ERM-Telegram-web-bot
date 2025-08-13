@@ -21,7 +21,6 @@ export default function Tasks() {
   const perPage = 10;
   const { addToast } = useToast();
 
-
   React.useEffect(() => {
     authFetch("/api/v1/tasks")
       .then((r) => (r.ok ? r.json() : []))
@@ -54,10 +53,7 @@ export default function Tasks() {
   return (
     <div className="space-y-6">
       <Breadcrumbs
-        items={[
-          { label: "Задачи", href: "/tasks" },
-          { label: "Задачи" },
-        ]}
+        items={[{ label: "Задачи", href: "/tasks" }, { label: "Задачи" }]}
       />
       <h2 className="text-xl font-semibold">Задачи</h2>
       <form onSubmit={add} className="flex gap-2">

@@ -2,7 +2,6 @@
 import React from "react";
 import * as ReactDOM from "react-dom/client";
 import "./index.css";
-import "./theme";
 
 const root = document.getElementById("root");
 if (!root) {
@@ -25,5 +24,7 @@ function render(Component: React.ComponentType) {
 if (isBrowser) {
   import("./App").then(({ default: App }) => render(App));
 } else {
-  import("./TelegramApp").then(({ default: TelegramApp }) => render(TelegramApp));
+  import("./TelegramApp").then(({ default: TelegramApp }) =>
+    render(TelegramApp),
+  );
 }

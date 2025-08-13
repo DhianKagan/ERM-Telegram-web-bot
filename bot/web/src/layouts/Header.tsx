@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useSidebar } from "../context/useSidebar";
 import { AuthContext } from "../context/AuthContext";
 import NotificationDropdown from "../components/NotificationDropdown";
+import ThemeToggle from "../components/ThemeToggle";
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
@@ -45,6 +46,7 @@ export default function Header() {
         </select>
         {user && (
           <>
+            <ThemeToggle />
             <NotificationDropdown notifications={[t("newMessage")]}>
               <BellIcon className="h-5 w-5" />
             </NotificationDropdown>

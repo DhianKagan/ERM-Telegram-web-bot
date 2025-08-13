@@ -6,7 +6,7 @@ export interface JwtPayload {
 
 export default function parseJwt<T = JwtPayload>(token: string): T | null {
   try {
-    const base = token.split('.')[1];
+    const base = token.split(".")[1];
     const json = atob(base);
     return JSON.parse(json) as T;
   } catch {

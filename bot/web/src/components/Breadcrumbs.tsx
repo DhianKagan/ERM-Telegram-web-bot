@@ -1,18 +1,22 @@
 // Хлебные крошки навигации
-import React from 'react'
+import React from "react";
 
 export interface Crumb {
-  label: string
-  href?: string
+  label: string;
+  href?: string;
 }
 
 export default function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
-    <nav className="mb-4 text-sm text-body">
+    <nav className="text-body mb-4 text-sm">
       <ol className="list-reset flex">
         {items.map((c, idx) => (
           <React.Fragment key={idx}>
-            {idx > 0 && <li><span className="px-2 text-body">/</span></li>}
+            {idx > 0 && (
+              <li>
+                <span className="text-body px-2">/</span>
+              </li>
+            )}
             <li>
               {c.href ? (
                 <a href={c.href} className="text-primary hover:underline">
@@ -26,5 +30,5 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
         ))}
       </ol>
     </nav>
-  )
+  );
 }

@@ -26,6 +26,9 @@ import {
 } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import createRouteLink from "../utils/createRouteLink";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface Props {
   onClose: () => void;
@@ -42,7 +45,32 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const initialRef = React.useRef<any>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
-  const [title, setTitle] = React.useState("");
+  const taskSchema = z.object({
+    title: z.string().min(1, "Название обязательно"),
+    description: z.string().optional(),
+    controllers: z.array(z.string()).default([]),
+    assignees: z.array(z.string()).default([]),
+    startDate: z.string().optional(),
+    dueDate: z.string().optional(),
+  });
+  type TaskFormValues = z.infer<typeof taskSchema>;
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      controllers: [],
+      assignees: [],
+      startDate: "",
+      dueDate: "",
+    },
+  });
   const DEFAULT_TASK_TYPE =
     fields.find((f) => f.name === "task_type")?.default || "";
   const DEFAULT_PRIORITY =
@@ -54,17 +82,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
 
   const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
-  const [description, setDescription] = React.useState("");
   const [comment, setComment] = React.useState("");
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
-  const [startDate, setStartDate] = React.useState("");
-  const [dueDate, setDueDate] = React.useState("");
-  const [controllers, setControllers] = React.useState<string[]>([]);
   const [creator, setCreator] = React.useState("");
-  const [assignees, setAssignees] = React.useState<string[]>([]);
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
   const [startCoordinates, setStartCoordinates] = React.useState<{
@@ -160,6 +183,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         attachments: [],
         distanceKm: null,
       };
+      reset({
+        title: "",
+        description: "",
+        assignees: [],
+        controllers: [],
+        startDate: "",
+        dueDate: "",
+      });
     }
   }, [
     id,
@@ -170,6 +201,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_TRANSPORT,
     DEFAULT_PAYMENT,
     DEFAULT_STATUS,
+    reset,
   ]);
 
   React.useEffect(() => {
@@ -198,27 +230,30 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         const curTransport = t.transport_type || DEFAULT_TRANSPORT;
         const curPayment = t.payment_method || DEFAULT_PAYMENT;
         const curStatus = t.status || DEFAULT_STATUS;
-        setTitle(t.title || "");
+        const formValues = {
+          title: t.title || "",
+          description: t.task_description || "",
+          assignees: t.assignees || [],
+          controllers: t.controllers || [],
+          startDate: t.start_date
+            ? new Date(t.start_date).toISOString().slice(0, 16)
+            : "",
+          dueDate: t.due_date
+            ? new Date(t.due_date).toISOString().slice(0, 16)
+            : "",
+        };
+        reset(formValues);
         setTaskType(curTaskType);
-        setDescription(t.task_description || "");
         setComment(t.comment || "");
         setPriority(curPriority);
         setTransportType(curTransport);
         setPaymentMethod(curPayment);
         setStatus(curStatus);
         setCreator(String(t.created_by || ""));
-        setAssignees(t.assignees || []);
         setStart(t.start_location || "");
         setStartLink(t.start_location_link || "");
         setEnd(t.end_location || "");
         setEndLink(t.end_location_link || "");
-        setStartDate(
-          t.start_date ? new Date(t.start_date).toISOString().slice(0, 16) : "",
-        );
-        setDueDate(
-          t.due_date ? new Date(t.due_date).toISOString().slice(0, 16) : "",
-        );
-        setControllers(t.controllers || []);
         setAttachments(t.attachments || []);
         setUsers((p) => {
           const list = [...p];
@@ -232,27 +267,23 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           typeof t.route_distance_km === "number" ? t.route_distance_km : null,
         );
         initialRef.current = {
-          title: t.title || "",
+          title: formValues.title,
           taskType: curTaskType,
-          description: t.task_description || "",
+          description: formValues.description,
           comment: t.comment || "",
           priority: curPriority,
           transportType: curTransport,
           paymentMethod: curPayment,
           status: curStatus,
           creator: String(t.created_by || ""),
-          assignees: t.assignees || [],
+          assignees: formValues.assignees,
           start: t.start_location || "",
           startLink: t.start_location_link || "",
           end: t.end_location || "",
           endLink: t.end_location_link || "",
-          startDate: t.start_date
-            ? new Date(t.start_date).toISOString().slice(0, 16)
-            : "",
-          dueDate: t.due_date
-            ? new Date(t.due_date).toISOString().slice(0, 16)
-            : "",
-          controllers: t.controllers || [],
+          startDate: formValues.startDate,
+          dueDate: formValues.dueDate,
+          controllers: formValues.controllers,
           attachments: t.attachments || [],
           distanceKm:
             typeof t.route_distance_km === "number"
@@ -268,6 +299,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_TRANSPORT,
     DEFAULT_PAYMENT,
     DEFAULT_STATUS,
+    reset,
   ]);
 
   const handleStartLink = async (v: string) => {
@@ -326,25 +358,25 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
   }, [startCoordinates, finishCoordinates]);
 
-  const submit = async () => {
+  const submit = handleSubmit(async (formData) => {
     const payload: { [key: string]: any } = {
-      title,
+      title: formData.title,
       task_type: taskType,
-      task_description: description,
+      task_description: formData.description,
       comment,
       priority,
       transport_type: transportType,
       payment_method: paymentMethod,
       status,
       created_by: creator,
-      assignees,
-      controllers,
+      assignees: formData.assignees,
+      controllers: formData.controllers,
       start_location: start,
       start_location_link: startLink,
       end_location: end,
       end_location_link: endLink,
-      start_date: startDate || undefined,
-      due_date: dueDate || undefined,
+      start_date: formData.startDate || undefined,
+      due_date: formData.dueDate || undefined,
       files: files ? Array.from(files).map((f) => f.name) : undefined,
     };
     if (startCoordinates) payload.startCoordinates = startCoordinates;
@@ -363,8 +395,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         .then((d) => {
           if (d) {
             const t = d.task || d;
-            setAssignees(t.assignees || []);
-            setControllers(t.controllers || []);
+            reset({
+              title: t.title || "",
+              description: t.task_description || "",
+              assignees: t.assignees || [],
+              controllers: t.controllers || [],
+              startDate: t.start_date
+                ? new Date(t.start_date).toISOString().slice(0, 16)
+                : "",
+              dueDate: t.due_date
+                ? new Date(t.due_date).toISOString().slice(0, 16)
+                : "",
+            });
             setCreator(String(t.created_by || ""));
             setUsers((p) => {
               const list = [...p];
@@ -378,7 +420,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         });
     }
     if (data && onSave) onSave(data);
-  };
+  });
 
   const handleDelete = async () => {
     if (!id) return;
@@ -391,23 +433,25 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const resetForm = () => {
     const d = initialRef.current;
     if (!d) return;
-    setTitle(d.title);
+    reset({
+      title: d.title,
+      description: d.description,
+      assignees: d.assignees,
+      controllers: d.controllers,
+      startDate: d.startDate,
+      dueDate: d.dueDate,
+    });
     setTaskType(d.taskType);
-    setDescription(d.description);
     setComment(d.comment);
     setPriority(d.priority);
     setTransportType(d.transportType);
     setPaymentMethod(d.paymentMethod);
     setStatus(d.status);
     setCreator(d.creator);
-    setAssignees(d.assignees);
     setStart(d.start);
     setStartLink(d.startLink);
     setEnd(d.end);
     setEndLink(d.endLink);
-    setStartDate(d.startDate);
-    setDueDate(d.dueDate);
-    setControllers(d.controllers);
     setAttachments(d.attachments);
     setDistanceKm(d.distanceKm);
   };
@@ -503,20 +547,21 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div>
           <label className="block text-sm font-medium">Название задачи</label>
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            {...register("title")}
             placeholder="Название"
             className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
             disabled={!editing}
           />
+          {errors.title && (
+            <p className="text-sm text-red-600">{errors.title.message}</p>
+          )}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium">Дата начала</label>
             <input
               type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              {...register("startDate")}
               className="w-full rounded border px-2 py-1"
               disabled={!editing}
             />
@@ -525,8 +570,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <label className="block text-sm font-medium">Срок выполнения</label>
             <input
               type="datetime-local"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              {...register("dueDate")}
               className="w-full rounded border px-2 py-1"
               disabled={!editing}
             />
@@ -598,12 +642,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ))}
             </select>
           </div>
-          <MultiUserSelect
-            label="Исполнител(и)ь"
-            users={users}
-            value={assignees}
-            onChange={setAssignees}
-            disabled={!editing}
+          <Controller
+            name="assignees"
+            control={control}
+            render={({ field }) => (
+              <MultiUserSelect
+                label="Исполнител(и)ь"
+                users={users}
+                value={field.value}
+                onChange={field.onChange}
+                disabled={!editing}
+              />
+            )}
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -761,10 +811,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         </div>
         <div>
           <label className="block text-sm font-medium">🔨 Задача</label>
-          <RichTextEditor
-            value={description}
-            onChange={setDescription}
-            readOnly={!editing}
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <RichTextEditor
+                value={field.value}
+                onChange={field.onChange}
+                readOnly={!editing}
+              />
+            )}
           />
         </div>
         <div>
@@ -775,12 +831,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             readOnly={!editing}
           />
         </div>
-        <MultiUserSelect
-          label="Контролёр"
-          users={users}
-          value={controllers}
-          onChange={setControllers}
-          disabled={!editing}
+        <Controller
+          name="controllers"
+          control={control}
+          render={({ field }) => (
+            <MultiUserSelect
+              label="Контролёр"
+              users={users}
+              value={field.value}
+              onChange={field.onChange}
+              disabled={!editing}
+            />
+          )}
         />
         {attachments.length > 0 && (
           <div>

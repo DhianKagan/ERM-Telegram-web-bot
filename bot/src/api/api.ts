@@ -251,13 +251,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     tmaTasksRateLimiter,
     tmaAuthGuard,
     asyncHandler(async (req: Request, res: Response) => {
-      const initData = res.locals.initData as string;
-      let userId: number;
-      try {
-        const params = new URLSearchParams(initData);
-        const user = JSON.parse(params.get('user') || '{}');
-        userId = Number(user.id);
-      } catch {
+      const initData = res.locals.initData as { user?: { id?: number } };
+      const userId = Number(initData.user?.id);
+      if (!userId) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка авторизации',
@@ -280,13 +276,9 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
       body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
-      const initData = res.locals.initData as string;
-      let userId: number;
-      try {
-        const params = new URLSearchParams(initData);
-        const user = JSON.parse(params.get('user') || '{}');
-        userId = Number(user.id);
-      } catch {
+      const initData = res.locals.initData as { user?: { id?: number } };
+      const userId = Number(initData.user?.id);
+      if (!userId) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка авторизации',

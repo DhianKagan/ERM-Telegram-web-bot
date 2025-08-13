@@ -23,7 +23,9 @@ jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member'),
 }));
 jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
-jest.mock('../src/utils/verifyInitData', () => jest.fn(() => true));
+jest.mock('../src/utils/verifyInitData', () =>
+  jest.fn(() => ({ user: { id: 4, username: 'u' } })),
+);
 
 const service = require('../src/auth/auth.service.ts').default;
 const queries = require('../src/db/queries');
@@ -61,7 +63,7 @@ test('verifyCode создаёт пользователя при отсутств
 
 test('verifyInitData создаёт пользователя и возвращает токен', async () => {
   const data = 'user=%7B%22id%22%3A4%2C%22username%22%3A%22u%22%7D';
-  verifyInit.mockReturnValueOnce(true);
+  verifyInit.mockReturnValueOnce({ user: { id: 4, username: 'u' } });
   const token = await service.verifyInitData(data);
   expect(queries.createUser).toHaveBeenCalled();
   expect(typeof token).toBe('string');

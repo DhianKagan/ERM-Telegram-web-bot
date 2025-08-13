@@ -1,8 +1,8 @@
 // Назначение файла: guard проверки initData мини-приложения
 // Основные модули: verifyInitData
-import type { Request, Response, NextFunction } from "express";
-import verifyInitData from "../utils/verifyInitData";
-import { sendProblem } from "../utils/problem";
+import type { Request, Response, NextFunction } from 'express';
+import verifyInitData from '../utils/verifyInitData';
+import { sendProblem } from '../utils/problem';
 
 export default function tmaAuthGuard(
   req: Request,
@@ -10,21 +10,31 @@ export default function tmaAuthGuard(
   next: NextFunction,
 ) {
   const auth = req.headers.authorization;
-  let initData: string | null = null;
-  if (auth && auth.startsWith("tma ")) {
-    initData = auth.slice(4).trim();
-  } else if (req.headers["x-telegram-init-data"]) {
-    initData = String(req.headers["x-telegram-init-data"]);
+  let raw: string | null = null;
+  if (auth && auth.startsWith('tma ')) {
+    raw = auth.slice(4).trim();
+  } else if (req.headers['x-telegram-init-data']) {
+    raw = String(req.headers['x-telegram-init-data']);
   }
-  if (!initData || !verifyInitData(initData)) {
+  if (!raw) {
     sendProblem(req, res, {
-      type: "about:blank",
-      title: "Ошибка авторизации",
+      type: 'about:blank',
+      title: 'Ошибка авторизации',
       status: 401,
-      detail: "invalid init data",
+      detail: 'invalid init data',
     });
     return;
   }
-  res.locals.initData = initData;
+  try {
+    res.locals.initData = verifyInitData(raw);
+  } catch {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка авторизации',
+      status: 401,
+      detail: 'invalid init data',
+    });
+    return;
+  }
   next();
 }

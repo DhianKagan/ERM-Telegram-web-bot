@@ -16,7 +16,9 @@ const tmaTasksRateLimiter = createRateLimiter({
   name: 'tma-tasks',
 });
 
-jest.mock('../src/utils/verifyInitData', () => jest.fn(() => true));
+jest.mock('../src/utils/verifyInitData', () =>
+  jest.fn(() => ({ user: { id: 123, username: 'u' } })),
+);
 
 jest.mock('../src/services/service', () => ({
   listMentionedTasks: jest.fn(async () => [
@@ -46,9 +48,8 @@ app.get(
   '/api/tma/tasks',
   tmaTasksRateLimiter,
   tmaAuthGuard,
-  asyncHandler(async (req, res) => {
-    const params = new URLSearchParams(res.locals.initData);
-    const user = JSON.parse(params.get('user') || '{}');
+  asyncHandler(async (_req, res) => {
+    const user = res.locals.initData.user;
     const tasks = await listMentionedTasks(user.id);
     res.json(tasks);
   }),
@@ -59,8 +60,7 @@ app.patch(
   tmaTasksRateLimiter,
   tmaAuthGuard,
   asyncHandler(async (req, res) => {
-    const params = new URLSearchParams(res.locals.initData);
-    const user = JSON.parse(params.get('user') || '{}');
+    const user = res.locals.initData.user;
     const task = await getTask(req.params.id);
     const ids = [
       task.assigned_user_id,

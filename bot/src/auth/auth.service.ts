@@ -1,16 +1,16 @@
 // Сервис авторизации: отправка и проверка кодов входа
 // Основные модули: otp, queries, userInfoService, writeLog
-import * as otp from "../services/otp";
-import { generateToken, generateShortToken } from "./auth";
-import { getUser, createUser, updateUser } from "../db/queries";
-import { getMemberStatus } from "../services/userInfoService";
-import { writeLog } from "../services/service";
-import config from "../config";
-import { Types } from "mongoose";
-import type { UserDocument } from "../db/model";
+import * as otp from '../services/otp';
+import { generateToken, generateShortToken } from './auth';
+import { getUser, createUser, updateUser } from '../db/queries';
+import { getMemberStatus } from '../services/userInfoService';
+import { writeLog } from '../services/service';
+import config from '../config';
+import { Types } from 'mongoose';
+import type { UserDocument } from '../db/model';
 
 async function sendCode(telegramId: number | string) {
-  if (!telegramId) throw new Error("telegramId required");
+  if (!telegramId) throw new Error('telegramId required');
   const user = await getUser(telegramId);
   const roleId = user?.roleId?.toString();
   if (roleId === config.adminRoleId) {
@@ -26,7 +26,7 @@ async function verifyCode(
   username?: string,
 ) {
   const telegramId = String(id);
-  if (!/^[0-9]+$/.test(telegramId)) throw new Error("Invalid telegramId");
+  if (!/^[0-9]+$/.test(telegramId)) throw new Error('Invalid telegramId');
   let user = await getUser(telegramId);
   let roleId = user?.roleId?.toString();
   let verified;
@@ -35,7 +35,7 @@ async function verifyCode(
     if (verified && user && roleId !== config.adminRoleId) {
       user = await updateUser(telegramId, {
         roleId: new Types.ObjectId(config.adminRoleId),
-        role: "admin",
+        role: 'admin',
         access: 2,
       });
       await writeLog(`Пользователь ${telegramId} повышен до администратора`);
@@ -44,26 +44,26 @@ async function verifyCode(
   } else {
     verified = otp.verifyCode({ telegramId: Number(telegramId), code });
   }
-  if (!verified) throw new Error("invalid code");
+  if (!verified) throw new Error('invalid code');
   try {
     const status = await getMemberStatus(Number(telegramId));
-    if (!["creator", "administrator", "member"].includes(status)) {
-      throw new Error("not in group");
+    if (!['creator', 'administrator', 'member'].includes(status)) {
+      throw new Error('not in group');
     }
   } catch (e) {
-    if (e.message === "not in group") throw e;
-    throw new Error("member check failed");
+    if (e.message === 'not in group') throw e;
+    throw new Error('member check failed');
   }
   let u = user;
   if (!u)
     u = await createUser(telegramId, username, roleId || config.userRoleId, {
       access: roleId === config.adminRoleId ? 2 : 1,
     });
-  const role = roleId === config.adminRoleId ? "admin" : "user";
-  const access = role === "admin" ? 2 : 1;
+  const role = roleId === config.adminRoleId ? 'admin' : 'user';
+  const access = role === 'admin' ? 2 : 1;
   const token = generateToken({
     id: telegramId,
-    username: u.username || "",
+    username: u.username || '',
     role,
     access,
   });
@@ -71,33 +71,33 @@ async function verifyCode(
   return token;
 }
 
-import verifyInit from "../utils/verifyInitData";
+import verifyInit from '../utils/verifyInitData';
 
 async function verifyInitData(initData: string) {
-  if (!initData || !verifyInit(initData)) throw new Error("invalid initData");
-  const params = new URLSearchParams(initData);
-  let userData;
+  let data;
   try {
-    userData = JSON.parse(params.get("user") || "{}");
+    data = verifyInit(initData);
   } catch {
-    throw new Error("invalid user");
+    throw new Error('invalid initData');
   }
+  const userData = data.user;
+  if (!userData) throw new Error('invalid user');
   const telegramId = String(userData.id);
-  if (!telegramId) throw new Error("no user id");
+  if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
   if (!user) {
     user = await createUser(
       telegramId,
-      userData.username || "",
+      userData.username || '',
       config.userRoleId,
       { access: 1 },
     );
   }
-  const role = user.role || "user";
+  const role = user.role || 'user';
   const access = user.access || 1;
   const token = generateToken({
     id: telegramId,
-    username: user.username || "",
+    username: user.username || '',
     role,
     access,
   });
@@ -105,31 +105,25 @@ async function verifyInitData(initData: string) {
   return token;
 }
 
-async function verifyTmaLogin(initData: string) {
-  if (!initData || !verifyInit(initData)) throw new Error("invalid initData");
-  const params = new URLSearchParams(initData);
-  let userData;
-  try {
-    userData = JSON.parse(params.get("user") || "{}");
-  } catch {
-    throw new Error("invalid user");
-  }
+async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
+  const userData = initData.user;
+  if (!userData) throw new Error('invalid user');
   const telegramId = String(userData.id);
-  if (!telegramId) throw new Error("no user id");
+  if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
   if (!user) {
     user = await createUser(
       telegramId,
-      userData.username || "",
+      userData.username || '',
       config.userRoleId,
       { access: 1 },
     );
   }
-  const role = user.role || "user";
+  const role = user.role || 'user';
   const access = user.access || 1;
   const token = generateShortToken({
     id: telegramId,
-    username: user.username || "",
+    username: user.username || '',
     role,
     access,
   });

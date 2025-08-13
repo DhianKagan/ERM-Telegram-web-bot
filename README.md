@@ -72,6 +72,7 @@ node bot/dist/bot/bot.js
 - Конфигурационные файлы переведены на TypeScript, скрипт `scripts/check_no_js.sh` предотвращает возврат к JavaScript.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
+- `verifyInitData` использует библиотеку `@telegram-apps/init-data-node` и возвращает распарсенные данные.
 - Утилита `authFetch` и сервисы веб‑клиента `logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks` и `osrm` переписаны на TypeScript.
 - Модуль авторизации `auth` переписан на TypeScript.
 - Middleware `checkRole` и `taskAccess`, сервис `auth` веб-клиента и файл бота `bot` переписаны на TypeScript.

@@ -1,34 +1,17 @@
 // Назначение файла: проверка подписи initData Telegram WebApp
-// Основные модули: crypto, config
-import crypto from "crypto";
-import config from "../config";
+// Основные модули: @telegram-apps/init-data-node, config
+import { parse, validate } from '@telegram-apps/init-data-node';
+import config from '../config';
 
 const { botToken } = config;
 
-export default function verifyInitData(initData: string): boolean {
-  const params = new URLSearchParams(initData);
-  const authDate = Number(params.get("auth_date") || 0);
-  const hash = params.get("hash") || "";
-  if (!authDate) return false;
-  params.delete("hash");
-  const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("\n");
+export default function verifyInitData(initData: string) {
   const token = botToken;
   if (!token) {
-    throw new Error("BOT_TOKEN не задан");
+    throw new Error('BOT_TOKEN не задан');
   }
-  const secretKey = crypto
-    .createHmac("sha256", "WebAppData")
-    .update(token)
-    .digest();
-  const hmac = crypto
-    .createHmac("sha256", secretKey)
-    .update(dataCheckString)
-    .digest("hex");
-  if (hmac !== hash) return false;
-  const now = Math.floor(Date.now() / 1000);
-  if (now - authDate > 300) return false;
-  return true;
+  validate(initData, token, { expiresIn: 300 });
+  return parse(initData);
 }
+
+export type InitData = ReturnType<typeof verifyInitData>;

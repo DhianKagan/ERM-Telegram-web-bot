@@ -9,7 +9,24 @@
 ```bash
 pnpm install
 ./scripts/setup_and_test.sh
-npm --prefix bot run dev
+pnpm --dir bot dev
+```
+
+## Структура пакетов
+
+- `bot` — Telegram‑бот, REST API и мини‑приложение React.
+- `api` — серверные обработчики в каталоге `bot/src/api`.
+- `shared` — общие утилиты и типы в `bot/src/shared`.
+
+## Пример локального запуска
+
+```bash
+# API и бот вместе в режиме разработки
+pnpm --dir bot dev
+
+# Отдельный бот после сборки
+pnpm --dir bot build
+node bot/dist/bot/bot.js
 ```
 
 ## Возможности
@@ -50,7 +67,7 @@ npm --prefix bot run dev
 - ESLint проверяет серверные файлы TypeScript; правило `no-explicit-any` включено,
   `ban-ts-comment` остаётся отключено.
 - ESLint запрещает файлы `.js` вне конфигурации.
-- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `npx eslint bot/src` работает без дополнительных флагов.
+- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `pnpm exec eslint bot/src` работает без дополнительных флагов.
 - Конфигурационные файлы переведены на TypeScript, скрипт `scripts/check_no_js.sh` предотвращает возврат к JavaScript.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
@@ -101,7 +118,7 @@ npm --prefix bot run dev
 - Клиент при запуске обращается к `/api/v1/csrf` и сохраняет токен в `localStorage`.
 - Если `localStorage` недоступен, значение хранится в памяти до перезагрузки.
 - При возврате на страницу AuthProvider заново запрашивает `/api/v1/csrf`.
-- Запуск `npm --prefix bot run test:types` проверяет типы через `tsd`,
+- Запуск `pnpm --dir bot test:types` проверяет типы через `tsd`,
   `./scripts/stress_test.sh` выполняет стресс-тест из `docs/stress_plan.md`.
 - Каталог `bot` содержит собственный `tsconfig.json` для тестов типов.
 - Функция `authFetch` повторяет запрос при ответе 403,
@@ -167,10 +184,10 @@ git clone https://github.com/AgroxOD/agrmcs.git
 cd agrmcs
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
-npm --prefix bot run build
-npm --prefix bot run dev # запуск в режиме разработки
+pnpm --dir bot build
+pnpm --dir bot dev # запуск в режиме разработки
 # или
-npm --prefix bot start
+pnpm --dir bot start
 ```
 
 Скрипт `setup_and_test.sh` запускает тесты, а `audit_deps.sh` проверяет зависимости.
@@ -210,8 +227,8 @@ Dockerfile используется из корня проекта, поэтом
 его из контекста.
 
 - Перед сборкой сервера в контейнер копируется `tsconfig.json`,
-  иначе `npm run build` не находит конфигурацию TypeScript.
-- Перед сборкой клиента выполняется `npm run build`, чтобы скомпилировать сервер
+  иначе `pnpm --dir bot build` не находит конфигурацию TypeScript.
+- Перед сборкой клиента выполняется `pnpm --dir bot build`, чтобы скомпилировать сервер
 
 - Описание модулей собрано в docs/architecture.md
 - Реализованы UsersModule, RolesModule и LogsModule с отдельными контроллерами

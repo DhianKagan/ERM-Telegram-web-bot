@@ -5,6 +5,7 @@
 - Релизы создаются при пуше тега вида `vMAJOR.MINOR.PATCH`.
 - Номер версии следует [семантическому версионированию](https://semver.org/lang/ru/).
 - Файл `release.yml` собирает образ и выкладывает его на Railway.
+- Инструкции переведены на pnpm, описаны пакеты `bot`, `api` и `shared`, добавлен пример локального запуска.
 - Добавлены инструкции по сборке образа и запуску двух процессов на Railway.
 - CSP добавляет `upgrade-insecure-requests` в боевом режиме и поддерживает
   отчёты через переменную `CSP_REPORT_URI`; все сервисы переведены на HTTPS.
@@ -425,7 +426,7 @@
 - Устранена ошибка ESLint: `authFetch` использует локальный интерфейс `FetchOptions` вместо `RequestInit`
 - Скрипты `get_menu_button_url`, `set_menu_button_url`, `set_attachment_menu_url` и `chaos` переписаны на TypeScript
 - Автотесты переведены на TypeScript, конфигурация Jest обновлена.
-- Проверка MongoDB в workflow Docker запускает TypeScript-скрипт через `npm --prefix bot run check:mongo`.
+- Проверка MongoDB в workflow Docker запускает TypeScript-скрипт через `pnpm --dir bot check:mongo`.
 - Скрипт `check_mongo` корректно сообщает об отсутствии базы данных вместо ошибки `db`.
 - Восстановлен файл `ecosystem.config.cjs` для запуска через pm2.
 - Введён общий тип `RequestWithUser`, все контроллеры и middleware используют его вместо `any`.

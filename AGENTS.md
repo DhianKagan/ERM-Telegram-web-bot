@@ -21,8 +21,8 @@
 - Dependabot еженедельно обновляет npm-зависимости, для PR по безопасности используйте шаблон `Security Update`.
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`.
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
-- Настроен Prettier, используйте `npm run format` перед коммитами.
-- Линтер запускайте `npx eslint bot/src`.
+- Настроен Prettier, используйте `pnpm format` перед коммитами.
+- Линтер запускайте `pnpm lint`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.
 - Индексы MongoDB создавайте скриптом `scripts/db/ensureIndexes.ts`.
 - Для корректного разрешения модулей установлен `reflect-metadata` в корневых зависимостях.
@@ -35,7 +35,7 @@
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
-- Рекомендуется проверять базу командой `npm --prefix bot run check:mongo`.
+- Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
 - Docker Compose содержит healthcheck для MongoDB.
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.

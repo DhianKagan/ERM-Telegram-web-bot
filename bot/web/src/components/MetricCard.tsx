@@ -13,7 +13,7 @@ export default function MetricCard({ title, value, icon: Icon }: Props) {
     <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5">
       <div>
         <p className="text-sm text-gray-500">{title}</p>
-        <p className="mt-2 text-2xl font-bold text-accentPrimary">{value}</p>
+        <p className="text-accentPrimary mt-2 text-2xl font-bold">{value}</p>
       </div>
       <Icon className="h-8 w-8 text-gray-400" />
     </div>

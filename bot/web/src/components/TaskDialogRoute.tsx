@@ -4,6 +4,7 @@ import React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 import useTasks from "../context/useTasks";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function TaskDialogRoute() {
   const [params] = useSearchParams();
@@ -18,12 +19,16 @@ export default function TaskDialogRoute() {
     navigate({ search: params.toString() }, { replace: true });
   };
   return (
-    <TaskDialog
-      id={id || undefined}
-      onClose={close}
-      onSave={() => {
-        refresh();
-      }}
-    />
+    <Dialog open onOpenChange={close}>
+      <DialogContent className="p-0">
+        <TaskDialog
+          id={id || undefined}
+          onClose={close}
+          onSave={() => {
+            refresh();
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }

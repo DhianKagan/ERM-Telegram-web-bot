@@ -23,8 +23,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-
     </ToastContext.Provider>
   );
 };
-

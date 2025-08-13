@@ -15,7 +15,6 @@ export default function NotificationBar({
   message: string;
   type?: "success" | "error";
   onClose?: () => void;
-
 }) {
   const [show, setShow] = React.useState(true);
   React.useEffect(() => {

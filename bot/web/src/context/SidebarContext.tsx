@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { SidebarContext, type SidebarState } from "./SidebarContext";
 
-
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -21,5 +20,3 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     </SidebarContext.Provider>
   );
 };
-
-

@@ -1,12 +1,12 @@
 // Контекст аутентификации
-import { createContext } from 'react'
+import { createContext } from "react";
 
 interface AuthContextType {
-  token: string | null
-  user: Record<string, unknown> | null
-  loading: boolean
-  logout: () => void
-  setUser: (u: Record<string, unknown> | null) => void
+  token: string | null;
+  user: Record<string, unknown> | null;
+  loading: boolean;
+  logout: () => void;
+  setUser: (u: Record<string, unknown> | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -15,5 +15,4 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: () => {},
   setUser: () => {},
-})
-
+});

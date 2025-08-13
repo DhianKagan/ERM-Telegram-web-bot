@@ -68,3 +68,10 @@ test('verifyInitData создаёт пользователя и возвраща
   expect(queries.createUser).toHaveBeenCalled();
   expect(typeof token).toBe('string');
 });
+
+test('verifyInitData выбрасывает ошибку при неверных данных', async () => {
+  verifyInit.mockImplementationOnce(() => {
+    throw new Error('bad');
+  });
+  await expect(service.verifyInitData('bad')).rejects.toThrow('invalid initData');
+});

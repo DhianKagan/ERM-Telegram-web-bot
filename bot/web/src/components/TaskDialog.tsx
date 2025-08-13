@@ -273,7 +273,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const handleStartLink = async (v: string) => {
     setStartLink(v);
     const url = validateURL(v);
-    if (url) {
+    // Разрешены только ссылки с протоколом HTTP(S)
+    if (url && /^(https?:\/\/)/i.test(url)) {
       let link = url;
       if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(url)) {
         const data = await expandLink(url);
@@ -287,6 +288,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     } else {
       setStart("");
       setStartCoordinates(null);
+      setStartLink("");
     }
   };
 
@@ -611,7 +613,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <div className="flex items-center space-x-2">
                 <div className="flex flex-col">
                   <a
-                    href={startLink}
+                    href={DOMPurify.sanitize(startLink)}
                     target="_blank"
                     rel="noopener"
                     className="text-accentPrimary underline"

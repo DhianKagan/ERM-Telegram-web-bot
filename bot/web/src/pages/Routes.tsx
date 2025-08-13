@@ -4,7 +4,7 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
-import RoutesTaskTable from "../components/RoutesTaskTable";
+import TaskTable from "../components/TaskTable";
 import createMultiRouteLink from "../utils/createMultiRouteLink";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -202,7 +202,11 @@ export default function RoutesPage() {
       )}
       <div className="max-w-full space-y-2">
         <h3 className="text-lg font-semibold">Задачи</h3>
-        <RoutesTaskTable tasks={tasks} onChange={setSorted} />
+        <TaskTable
+          tasks={tasks}
+          onDataChange={setSorted}
+          onRowClick={openTask}
+        />
       </div>
     </div>
   );

@@ -17,6 +17,8 @@
     "@telegram-apps/telegram-ui": "^2.1.8",
     "apexcharts": "^4.7.0",
     "chart.js": "^4.5.0",
+    "ag-grid-community": "^32.3.2",
+    "ag-grid-react": "^32.3.2",
     "dompurify": "^3.2.6",
     "leaflet": "^1.9.4",
     "match-sorter": "^8.1.0",

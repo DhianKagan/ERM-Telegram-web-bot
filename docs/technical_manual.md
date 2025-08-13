@@ -17,7 +17,7 @@
 - `web` — клиентская часть React с собственными контекстами.
 - Контейнер собирается через `Dockerfile` в корне репозитория.
   Отдельный `bot/Dockerfile` удалён за ненадобностью.
-- В образ копируется `tsconfig.json`, чтобы `npm run build` нашёл конфигурацию
+- В образ копируется `tsconfig.json`, чтобы `pnpm --dir bot build` нашёл конфигурацию
 
 ### Лимиты запросов
 
@@ -37,7 +37,7 @@
 
 ### Сборка TypeScript
 
-Перед запуском сервер компилируется командой `npm --prefix bot run build`.
+Перед запуском сервер компилируется командой `pnpm --dir bot build`.
 Файлы из `bot/src` собираются в каталог `dist` в корне проекта, затем
 переносятся в образ Docker и запускаются через `pm2`.
 
@@ -287,7 +287,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
 - Корневые, серверные и клиентские зависимости устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
-- Типовые проверки выполняются `npm --prefix bot run test:types` через `tsd`.
+- Типовые проверки выполняются `pnpm --dir bot test:types` через `tsd`.
 - Стресс-тест запускается скриптом `./scripts/stress_test.sh` (см. `docs/stress_plan.md`).
 - Перед коммитом Husky запускает `lint-staged`, используйте файл `.husky/_/husky.sh`.
 - В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
@@ -300,7 +300,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 ```bash
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
-npm --prefix bot run dev
+pnpm --dir bot dev
 ```
 
 Пошаговое развертывание на Railway:
@@ -353,7 +353,7 @@ docker run -d -p 9090:9090 \
 После старта откройте <http://localhost:9090> и добавьте правила из
 `prometheus/alert.rules.yml`.
 
-Для испытаний устойчивости можно запустить `npm --prefix bot run chaos`.
+Для испытаний устойчивости можно запустить `pnpm --dir bot chaos`.
 
 ## Безопасность
 

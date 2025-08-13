@@ -1,14 +1,10 @@
-// Таблица последних задач
+// Таблица последних задач на AG Grid
+// Модули: React, authFetch, ag-grid, useGrid
 import React, { useEffect, useState } from "react";
+import { AgGridReact } from "ag-grid-react";
 import authFetch from "../utils/authFetch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import useGrid from "../hooks/useGrid";
+import recentTaskColumns from "../columns/recentTaskColumns";
 
 interface Task {
   _id: string;
@@ -21,6 +17,7 @@ interface Task {
 export default function RecentTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const { defaultColDef, gridOptions } = useGrid({ paginationPageSize: 5 });
   useEffect(() => {
     authFetch("/api/v1/tasks?limit=5")
       .then((r) => (r.ok ? r.json() : []))
@@ -48,25 +45,13 @@ export default function RecentTasks() {
   }
 
   return (
-    <Table className="text-sm">
-      <TableHeader>
-        <TableRow>
-          <TableHead className="text-left">Название</TableHead>
-          <TableHead className="text-center">Статус</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tasks.map((t) => {
-          const name = t.title.replace(/^ERM_\d+\s*/, "");
-          const date = t.createdAt?.slice(0, 10);
-          return (
-            <TableRow key={t._id} className="border-b">
-              <TableCell>{`${t.request_id} ${date} ${name}`}</TableCell>
-              <TableCell className="text-center">{t.status}</TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="ag-theme-alpine" style={{ height: 200 }}>
+      <AgGridReact
+        rowData={tasks}
+        columnDefs={recentTaskColumns}
+        defaultColDef={defaultColDef}
+        {...gridOptions}
+      />
+    </div>
   );
 }

@@ -90,6 +90,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   const trace = (traceModule.default || traceModule) as RequestHandler;
   const logging = (loggingModule.default || loggingModule) as RequestHandler;
   const metrics = (metricsModule.default || metricsModule) as RequestHandler;
+  applySecurity(app);
   app.use(trace);
   app.use(logging);
   app.use(metrics);
@@ -169,7 +170,6 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     return csrf(req, res, next);
   });
 
-  applySecurity(app);
   app.use(cors());
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));

@@ -277,7 +277,7 @@
      успешные логины пишутся в логи
 211. Созданы UsersModule, RolesModule и LogsModule с отдельными сервисами и
      контроллерами
-212. Добавлены middleware `logging.ts` и `metrics.ts`; Prometheus собирает
+212. Добавлены middleware `pinoLogger.ts` и `metrics.ts`; Prometheus собирает
      `http_requests_total` и `http_request_duration_ms`
 213. Покрыты тестами сервисы авторизации и задач, CI использует `setup_and_test.sh`
 214. Workflow `release.yml` деплоит приложение на Railway через Railway CLI
@@ -288,7 +288,7 @@
 219. Выполнять регулярную ротацию секретов и обновлять значения в `.env` и Railway
 220. Улучшены сообщения об ошибках сохранения задач, введена метрика `api_errors_total` и детальный лог IP и User-Agent
 221. Добавлена переменная `COOKIE_DOMAIN`, домен cookie задаётся только в продакшене
-222. Middleware logging.ts выводит IP и User-Agent в логах
+222. Middleware pinoLogger.ts выводит IP и User-Agent в логах
 223. Middleware checkRole и checkTaskAccess фиксируют отказ доступа в логах
 224. Значение COOKIE_DOMAIN может быть URL, hostname извлекается автоматически и проверяется
 225. После установки cookie `token` в лог пишется домен

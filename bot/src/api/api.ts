@@ -43,6 +43,7 @@ import {
 } from '../services/service';
 import { verifyToken, asyncHandler, requestLogger } from './middleware';
 import errorMiddleware from '../middleware/errorMiddleware';
+import globalLimiter from '../middleware/globalLimiter';
 import { sendProblem } from '../utils/problem';
 import usersRouter from '../routes/users';
 import rolesRouter from '../routes/roles';
@@ -174,6 +175,7 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
+  app.use(globalLimiter);
 
   const taskStatusRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,

@@ -16,6 +16,7 @@
 - Обновлена документация: исправлены инструкции клонирования и структура фронтенда.
 - Дорожная карта и план внедрения обновлены; устаревшие документы `TSrecomendation.md` и `analys2025.md` удалены,
   содержание `ModuleCore.md` перенесено в `docs/architecture.md`.
+- Добавлены зависимости `pino` и `pino-http`, middleware `pinoLogger.ts` генерирует reqId из traceparent и заменяет `logging.ts`.
 - Добавлены гистограммы HTTP и OSRM, поддержка W3C Trace Context и метрики ошибок OSRM.
 - Разделы API и карта запросов объединены в `docs/technical_manual.md`, файлы `docs/api_reference.md` и `docs/db_request_map.md` удалены.
 - Добавлен сервис `useGrid` для AG Grid и вынесены конфигурации колонок.

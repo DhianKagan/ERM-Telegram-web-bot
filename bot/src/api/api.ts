@@ -86,14 +86,15 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
   const tmaAuthGuard = container.resolve<RequestHandler>(TOKENS.TmaAuthGuard);
   const traceModule = await import('../middleware/trace' + ext);
-  const loggingModule = await import('../middleware/logging' + ext);
+  const pinoLoggerModule = await import('../middleware/pinoLogger' + ext);
   const metricsModule = await import('../middleware/metrics' + ext);
   const trace = (traceModule.default || traceModule) as RequestHandler;
-  const logging = (loggingModule.default || loggingModule) as RequestHandler;
+  const pinoLogger = (pinoLoggerModule.default ||
+    pinoLoggerModule) as RequestHandler;
   const metrics = (metricsModule.default || metricsModule) as RequestHandler;
   applySecurity(app);
   app.use(trace);
-  app.use(logging);
+  app.use(pinoLogger);
   app.use(metrics);
 
   const root = path.join(__dirname, '../..');

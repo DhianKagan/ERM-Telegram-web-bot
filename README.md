@@ -131,7 +131,7 @@ node bot/dist/bot/bot.js
   либо временно в памяти.
 - Метрика `csrf_errors_total` отслеживается в Prometheus.
 - Метрика `api_errors_total` считает ответы с кодами 4xx и 5xx.
-- Middleware `logging.ts` выводит IP и User-Agent в логах.
+- Middleware `pinoLogger.ts` выводит IP и User-Agent в логах и генерирует reqId из traceparent.
 - Middleware `checkRole` и `checkTaskAccess` фиксируют отказ доступа в логах.
 - Логи включают IP и User-Agent для каждого запроса.
 - Превышение лимитов запросов также записывается с IP и путём запроса.

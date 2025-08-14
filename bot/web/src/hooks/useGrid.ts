@@ -27,7 +27,13 @@ export default function useGrid<T = any>(options: GridOptions<T> = {}) {
   );
 
   const dataTypeDefinitions = React.useMemo(
-    () => ({ object: { valueFormatter: objectFormatter } }),
+    () => ({
+      object: {
+        baseDataType: "object",
+        extendsDataType: "object",
+        valueFormatter: objectFormatter,
+      },
+    }),
     [objectFormatter],
   );
 

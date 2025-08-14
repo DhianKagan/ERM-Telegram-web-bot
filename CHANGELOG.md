@@ -454,3 +454,5 @@
 - Исправлен импорт `matchSorter` в веб‑клиенте: используется пакет `match-sorter`, сборка Docker проходит.
 - Заголовок CORP переведён в режим cross-origin; `applySecurity` вызывается до трассировки и логирования.
 - Добавлена зависимость `@telegram-apps/init-data-node`, утилита `verifyInitData` использует её и возвращает объект, обновлён `tmaAuth.guard`.
+
+- Исправлена конфигурация Tailwind: расширено поле content и PostCSS явно подключает Tailwind.

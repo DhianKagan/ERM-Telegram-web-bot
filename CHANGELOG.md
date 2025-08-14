@@ -458,3 +458,4 @@
 - Добавлена зависимость `@telegram-apps/init-data-node`, утилита `verifyInitData` использует её и возвращает объект, обновлён `tmaAuth.guard`.
 
 - Исправлена конфигурация Tailwind: расширено поле content и PostCSS явно подключает Tailwind.
+- Удалён инлайновый скрипт из веб-клиента, CSP использует nonce и 'strict-dynamic'; useGrid форматирует объектные значения.

@@ -1,8 +1,9 @@
 // Назначение: middleware безопасности Helmet и CSP.
-// Основные модули: express, helmet, config
+// Основные модули: express, helmet, config, crypto
 import express from 'express';
 import helmet from 'helmet';
 import type { HelmetOptions } from 'helmet';
+import crypto from 'node:crypto';
 
 import config from '../config';
 
@@ -20,6 +21,10 @@ const parseList = (env?: string): string[] =>
 
 export default function applySecurity(app: express.Express): void {
   const reportOnly = process.env.CSP_REPORT_ONLY !== 'false';
+  app.use((_, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    next();
+  });
 
   const connectSrc = [
     "'self'",
@@ -43,7 +48,8 @@ export default function applySecurity(app: express.Express): void {
 
   const scriptSrc = [
     "'self'",
-    "'unsafe-eval'",
+    (_req: any, res: any) => `'nonce-${res.locals.cspNonce}'`,
+    "'strict-dynamic'",
     'https://telegram.org',
     ...parseList(process.env.CSP_SCRIPT_SRC_ALLOWLIST),
   ];

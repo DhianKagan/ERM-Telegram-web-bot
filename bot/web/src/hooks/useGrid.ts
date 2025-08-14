@@ -6,22 +6,29 @@ import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
 export default function useGrid<T = any>(options: GridOptions<T> = {}) {
+  const objectFormatter = React.useCallback((p: any) => {
+    const val: unknown = p.value;
+    if (val && typeof val === "object") {
+      const obj = val as Record<string, unknown>;
+      return typeof obj.name === "string" ? obj.name : JSON.stringify(obj);
+    }
+    return (val as string | number | undefined) ?? "";
+  }, []);
+
   const defaultColDef = React.useMemo<ColDef>(
     () => ({
       sortable: true,
       filter: true,
       resizable: true,
       floatingFilter: true,
-      valueFormatter: (p) => {
-        const val: unknown = p.value;
-        if (val && typeof val === "object") {
-          const obj = val as Record<string, unknown>;
-          return typeof obj.name === "string" ? obj.name : JSON.stringify(obj);
-        }
-        return (val as string | number | undefined) ?? "";
-      },
+      valueFormatter: objectFormatter,
     }),
-    [],
+    [objectFormatter],
+  );
+
+  const dataTypeDefinitions = React.useMemo(
+    () => ({ object: { valueFormatter: objectFormatter } }),
+    [objectFormatter],
   );
 
   const gridOptions = React.useMemo<GridOptions<T>>(
@@ -29,9 +36,10 @@ export default function useGrid<T = any>(options: GridOptions<T> = {}) {
       pagination: true,
       paginationPageSize: 25,
       paginationPageSizeSelector: [25, 50, 100],
+      dataTypeDefinitions,
       ...options,
     }),
-    [options],
+    [options, dataTypeDefinitions],
   );
 
   return { defaultColDef, gridOptions };

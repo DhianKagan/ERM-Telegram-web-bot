@@ -102,7 +102,9 @@ export default function RoutesPage() {
     }
   }, []);
 
-  React.useEffect(load, [load]);
+  React.useEffect(() => {
+    load();
+  }, [load, location.key]);
 
   React.useEffect(() => {
     if (!sorted.length || hasDialog) return;

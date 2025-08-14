@@ -52,6 +52,7 @@ export default function taskColumns(
     {
       headerName: "Исполнители",
       field: "assignees",
+      valueFormatter: (p) => (p.value ? (p.value as number[]).join(", ") : ""),
       cellRenderer: (p: any) => {
         const ids =
           p.data.assignees ||

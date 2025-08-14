@@ -1,11 +1,11 @@
 // Роуты логов: просмотр и запись
-// Модули: express, express-validator, controllers/logs
+// Модули: express, express-validator, controllers/logs, middleware/auth
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { query } from 'express-validator';
 import container from '../di';
 import LogsController from '../logs/logs.controller';
-import { verifyToken } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
@@ -23,7 +23,7 @@ const ctrl = container.resolve(LogsController);
 router.get(
   '/',
   limiter as RequestHandler,
-  verifyToken as RequestHandler,
+  authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   query('page').optional().isInt({ min: 1 }) as unknown as RequestHandler,
@@ -34,7 +34,7 @@ router.get(
 router.post(
   '/',
   limiter as RequestHandler,
-  verifyToken as RequestHandler,
+  authMiddleware(),
   ...(validateDto(CreateLogDto) as RequestHandler[]),
   ctrl.create as unknown as RequestHandler,
 );

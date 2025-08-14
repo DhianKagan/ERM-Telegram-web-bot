@@ -1,11 +1,11 @@
 // Роуты ролей: список и обновление
-// Модули: express, express-validator, controllers/roles
+// Модули: express, express-validator, controllers/roles, middleware/auth
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param } from 'express-validator';
 import container from '../di';
 import RolesController from '../roles/roles.controller';
-import { verifyToken } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
@@ -39,7 +39,7 @@ const ctrl = container.resolve(RolesController);
 router.get(
   '/',
   limiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   ctrl.list as RequestHandler,
@@ -48,7 +48,7 @@ router.get(
 router.patch(
   '/:id',
   limiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),

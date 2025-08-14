@@ -1,9 +1,10 @@
 // Роуты для получения маршрутов
-// Модули: express, express-validator, controllers/routes
+// Модули: express, express-validator, controllers/routes, middleware/auth
 import { Router, RequestHandler } from 'express';
 import { query, validationResult } from 'express-validator';
 import * as ctrl from '../controllers/routes';
-import { verifyToken, asyncHandler } from '../api/middleware';
+import { asyncHandler } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import { sendProblem } from '../utils/problem';
 
 export interface RoutesQuery {
@@ -34,7 +35,7 @@ const validate = (v: ReturnType<typeof query>[]): RequestHandler[] => [
 
 router.get(
   '/all',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),

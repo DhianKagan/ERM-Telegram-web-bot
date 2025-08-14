@@ -1,5 +1,5 @@
 // Роут расчёта расстояния
-// Модули: express, express-validator, services/route
+// Модули: express, express-validator, services/route, middleware/auth
 import { Router, RequestHandler } from 'express';
 import { body, query } from 'express-validator';
 import validate from '../utils/validate';
@@ -10,7 +10,8 @@ import {
   match,
   trip,
 } from '../services/route';
-import { verifyToken, asyncHandler } from '../api/middleware';
+import { asyncHandler } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import createRateLimiter from '../utils/rateLimiter';
 import { rateLimits } from '../rateLimits';
 
@@ -37,7 +38,7 @@ const tableLimiter = createRateLimiter(rateLimits.table);
 router.post(
   '/',
   routeLimiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([
     body('start.lat').isFloat(),
     body('start.lng').isFloat(),
@@ -57,7 +58,7 @@ interface TableQuery extends Record<string, string> {
 router.get(
   '/table',
   tableLimiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as TableQuery;
@@ -77,7 +78,7 @@ interface PointQuery extends Record<string, string> {
 router.get(
   '/nearest',
   routeLimiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([query('point').isString()]),
   asyncHandler(async (req, res) => {
     const { point, ...params } = req.query as PointQuery;
@@ -91,7 +92,7 @@ interface PointsQuery extends Record<string, string> {
 router.get(
   '/match',
   routeLimiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
@@ -102,7 +103,7 @@ router.get(
 router.get(
   '/trip',
   routeLimiter as unknown as RequestHandler,
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;

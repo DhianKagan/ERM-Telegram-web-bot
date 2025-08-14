@@ -1,11 +1,11 @@
 // Роуты задач: CRUD, время, массовые действия
-// Модули: express, express-validator, controllers/tasks
+// Модули: express, express-validator, controllers/tasks, middleware/auth
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
 import container from '../di';
 import TasksController from '../tasks/tasks.controller';
-import { verifyToken } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import validateDto from '../middleware/validateDto';
 import {
   CreateTaskDto,
@@ -32,7 +32,7 @@ router.use(tasksLimiter);
 
 router.get(
   '/',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   [
     query('status').optional().isString(),
     query('assignees').optional().isArray(),
@@ -44,18 +44,18 @@ router.get(
   ctrl.list as RequestHandler,
 );
 
-router.get('/mentioned', verifyToken, ctrl.mentioned);
+router.get('/mentioned', authMiddleware(), ctrl.mentioned);
 
 router.get(
   '/report/summary',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   [query('from').optional().isISO8601(), query('to').optional().isISO8601()],
   ctrl.summary as RequestHandler,
 );
 
 router.get(
   '/:id',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   detailLimiter,
   param('id').isMongoId(),
   ctrl.detail as RequestHandler,
@@ -63,14 +63,14 @@ router.get(
 
 router.post(
   '/',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
 );
 
 router.patch(
   '/:id',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),
@@ -79,7 +79,7 @@ router.patch(
 
 router.patch(
   '/:id/time',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   param('id').isMongoId(),
   ...(validateDto(AddTimeDto) as RequestHandler[]),
   checkTaskAccess as unknown as RequestHandler,
@@ -88,7 +88,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ctrl.remove as RequestHandler,
@@ -96,7 +96,7 @@ router.delete(
 
 router.post(
   '/bulk',
-  verifyToken as unknown as RequestHandler,
+  authMiddleware(),
   ...(validateDto(BulkStatusDto) as RequestHandler[]),
   ...(ctrl.bulk as RequestHandler[]),
 );

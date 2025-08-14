@@ -1,8 +1,10 @@
 // Роуты регистрации, входа и профиля
 // Роут только профиля пользователя
+// Модули: express, auth.controller, middleware/auth
 import { Router, RequestHandler } from 'express';
 import * as authCtrl from '../auth/auth.controller';
-import { verifyToken, asyncHandler } from '../api/middleware';
+import { asyncHandler } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import createRateLimiter from '../utils/rateLimiter';
 import { rateLimits } from '../rateLimits';
 import validateDto from '../middleware/validateDto';
@@ -37,12 +39,12 @@ router.post(
 
 router.get(
   '/profile',
-  verifyToken as RequestHandler,
+  authMiddleware(),
   authCtrl.profile as unknown as RequestHandler,
 );
 router.patch(
   '/profile',
-  verifyToken as RequestHandler,
+  authMiddleware(),
   ...(validateDto(UpdateProfileDto) as RequestHandler[]),
   asyncHandler(authCtrl.updateProfile),
 );

@@ -12,6 +12,14 @@ export default function useGrid<T = any>(options: GridOptions<T> = {}) {
       filter: true,
       resizable: true,
       floatingFilter: true,
+      valueFormatter: (p) => {
+        const val: unknown = p.value;
+        if (val && typeof val === "object") {
+          const obj = val as Record<string, unknown>;
+          return typeof obj.name === "string" ? obj.name : JSON.stringify(obj);
+        }
+        return (val as string | number | undefined) ?? "";
+      },
     }),
     [],
   );

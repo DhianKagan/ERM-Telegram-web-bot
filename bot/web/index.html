@@ -12,22 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@100..900&family=Roboto:wght@100..900&display=swap"
     />
     <title>agrmcs dashboard</title>
-    <script>
-      (function () {
-        var m = document.cookie.match(/theme=([^;]+)/);
-        var t = m ? decodeURIComponent(m[1]) : "light";
-        var tokens = document.cookie.match(/theme-tokens=([^;]+)/);
-        if (tokens) {
-          try {
-            var obj = JSON.parse(decodeURIComponent(tokens[1]));
-            for (var k in obj) {
-              document.documentElement.style.setProperty("--" + k, obj[k]);
-            }
-          } catch (e) {}
-        }
-        if (t === "dark") document.documentElement.classList.add("dark");
-      })();
-    </script>
+    <script type="module" src="/src/themeInit.ts"></script>
   </head>
   <body class="min-h-screen bg-white font-sans">
     <div id="root"></div>

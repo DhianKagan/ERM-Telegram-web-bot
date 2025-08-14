@@ -1,0 +1,12 @@
+{
+  "light": {
+    "primary": "#3C50E0",
+    "background": "#FFFFFF",
+    "foreground": "#1C2434"
+  },
+  "dark": {
+    "primary": "#3C50E0",
+    "background": "#1C2434",
+    "foreground": "#FFFFFF"
+  }
+}

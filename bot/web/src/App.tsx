@@ -19,11 +19,12 @@ const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
 const RolesPage = lazy(() => import("./pages/Roles"));
+const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
 import { useSidebar } from "./context/useSidebar";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "./context/ThemeProvider";
 import { AuthProvider } from "./context/AuthProvider";
 import { AuthContext } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -114,6 +115,14 @@ function Content() {
               <AdminRoute>
                 <LogsPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/theme"
+            element={
+              <ProtectedRoute>
+                <ThemeSettings />
+              </ProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/tasks" />} />

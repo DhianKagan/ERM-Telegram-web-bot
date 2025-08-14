@@ -1,10 +1,10 @@
 // Роуты пользователей: список и создание
-// Модули: express, express-rate-limit, controllers/users
+// Модули: express, express-rate-limit, controllers/users, middleware/auth
 import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import container from '../di';
 import UsersController from '../users/users.controller';
-import { verifyToken } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
@@ -15,7 +15,7 @@ const router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const middlewares = [
   limiter,
-  verifyToken,
+  authMiddleware(),
   Roles(ACCESS_ADMIN),
   rolesGuard,
 ] as RequestHandler[];

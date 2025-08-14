@@ -1,9 +1,9 @@
 // Назначение: кастомный бекенд админки без базовой аутентификации
-// Модули: express, path
+// Модули: express, path, middleware/auth
 import path from 'path';
 import express, { Express, NextFunction, Response } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
-import { verifyToken } from '../api/middleware';
+import authMiddleware from '../middleware/auth';
 import type { RequestWithUser } from '../types/request';
 
 export default function initCustomAdmin(app: Express): void {
@@ -26,7 +26,7 @@ export default function initCustomAdmin(app: Express): void {
     next();
   });
 
-  router.use(verifyToken);
+  router.use(authMiddleware());
   router.use((req: RequestWithUser, res: Response, next: NextFunction) => {
     if (req.user?.role === 'admin') return next();
     res.sendFile(path.join(pub, 'admin-placeholder.html'));

@@ -38,6 +38,7 @@
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
+- Переменная `COOKIE_SECURE=false` отключает флаг `Secure` у cookie, используйте только локально.
 - Docker Compose содержит healthcheck для MongoDB.
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
 - Запросы OSRM кешируются на 10 минут, очищаются при изменении задач;

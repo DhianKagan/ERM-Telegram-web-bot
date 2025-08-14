@@ -40,6 +40,7 @@
 - Разделена защита от CSRF для Admin UI и Mini App: маршруты `/api/tma`
   исключены из проверки, ошибки возвращают тело `application/problem+json`.
 - Cookie сессии и CSRF-токенов имеют флаги `HttpOnly`, `Secure`, `SameSite=None`.
+- Флаг `Secure` у cookie включён всегда; переменная `COOKIE_SECURE=false` разрешает HTTP в разработке.
 - Добавлена документация `docs/security/cookies_csrf.md`.
 - Добавлен guard `tmaAuthGuard` с проверкой подписи и `auth_date`, маршрут `/api/auth/tma-login` выдаёт краткоживущий токен.
 - Логи HTTP и API содержат `trace-id` для отслеживания запросов.

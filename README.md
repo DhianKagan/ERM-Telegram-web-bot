@@ -103,7 +103,8 @@ node bot/dist/bot/bot.js
 - Валидация запросов через DTO и `class-validator`.
 - Защита от CSRF через токен из `/api/v1/csrf`.
   Админка использует защищённые cookie (`HttpOnly`, `Secure`, `SameSite=None`),
-  токен сохраняется в `localStorage` и подставляется в заголовок `X-XSRF-TOKEN`.
+  флаг `Secure` всегда активен и отключается только переменной `COOKIE_SECURE=false`.
+  Токен сохраняется в `localStorage` и подставляется в заголовок `X-XSRF-TOKEN`.
   Маршруты Mini App (`/api/tma`) и запросы с заголовком `Authorization`
   обходят проверку CSRF. При ошибке сервер возвращает 403 в формате
   `application/problem+json`. Переменная `DISABLE_CSRF=1` полностью

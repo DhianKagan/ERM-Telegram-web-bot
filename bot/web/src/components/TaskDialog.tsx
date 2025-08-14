@@ -469,147 +469,343 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   return (
-    <div
-      className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
-    >
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-          Задача - {requestId} {created}
-        </h3>
-        <div className="flex space-x-2">
-          {isEdit && !editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="p-1"
-              title="Редактировать"
-            >
-              ✎
-            </button>
-          )}
-          <button onClick={resetForm} className="p-1" title="Сбросить">
-            <ArrowPathIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-1"
-            title="Развернуть"
-          >
-            {expanded ? (
-              <ArrowsPointingInIcon className="h-5 w-5" />
-            ) : (
-              <ArrowsPointingOutIcon className="h-5 w-5" />
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
+      <div
+        className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Задача - {requestId} {created}
+          </h3>
+          <div className="flex space-x-2">
+            {isEdit && !editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="p-1"
+                title="Редактировать"
+              >
+                ✎
+              </button>
             )}
-          </button>
-          <button onClick={onClose} className="p-1" title="Закрыть">
-            <XMarkIcon className="h-5 w-5" />
-          </button>
+            <button onClick={resetForm} className="p-1" title="Сбросить">
+              <ArrowPathIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="p-1"
+              title="Развернуть"
+            >
+              {expanded ? (
+                <ArrowsPointingInIcon className="h-5 w-5" />
+              ) : (
+                <ArrowsPointingOutIcon className="h-5 w-5" />
+              )}
+            </button>
+            <button onClick={onClose} className="p-1" title="Закрыть">
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-      </div>
-      <>
-        <div>
-          <label className="block text-sm font-medium">Название задачи</label>
-          <input
-            {...register("title")}
-            placeholder="Название"
-            className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
-            disabled={!editing}
-          />
-          {errors.title && (
-            <p className="text-sm text-red-600">{errors.title.message}</p>
-          )}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <>
           <div>
-            <label className="block text-sm font-medium">Дата начала</label>
+            <label className="block text-sm font-medium">Название задачи</label>
             <input
-              type="datetime-local"
-              {...register("startDate")}
-              className="w-full rounded border px-2 py-1"
+              {...register("title")}
+              placeholder="Название"
+              className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
               disabled={!editing}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-600">{errors.title.message}</p>
+            )}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Дата начала</label>
+              <input
+                type="datetime-local"
+                {...register("startDate")}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                Срок выполнения
+              </label>
+              <input
+                type="datetime-local"
+                {...register("dueDate")}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Статус</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                {statuses.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Приоритет</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                {priorities.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Тип задачи</label>
+              <select
+                value={taskType}
+                onChange={(e) => setTaskType(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                {types.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Задачу создал</label>
+              <select
+                value={creator}
+                onChange={(e) => setCreator(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                <option value="">автор</option>
+                {users.map((u) => (
+                  <option key={u.telegram_id} value={u.telegram_id}>
+                    {u.name || u.telegram_username || u.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Controller
+              name="assignees"
+              control={control}
+              render={({ field }) => (
+                <MultiUserSelect
+                  label="Исполнител(и)ь"
+                  users={users}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={!editing}
+                />
+              )}
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Старт точка</label>
+              {startLink ? (
+                <div className="flex items-center space-x-2">
+                  <div className="flex flex-col">
+                    <a
+                      href={DOMPurify.sanitize(startLink)}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-accentPrimary underline"
+                    >
+                      {start || "ссылка"}
+                    </a>
+                    {startCoordinates && (
+                      <span className="text-xs text-gray-600">
+                        {startCoordinates.lat},{startCoordinates.lng}
+                      </span>
+                    )}
+                  </div>
+                  {editing && (
+                    <button
+                      type="button"
+                      onClick={() => handleStartLink("")}
+                      className="text-red-600"
+                    >
+                      ✖
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-1 flex space-x-2">
+                  <input
+                    value={startLink}
+                    onChange={(e) => handleStartLink(e.target.value)}
+                    placeholder="Ссылка из Google Maps"
+                    className="flex-1 rounded border px-2 py-1"
+                    disabled={!editing}
+                  />
+                  <a
+                    href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                    target="_blank"
+                    rel="noopener"
+                    className="btn-blue rounded-2xl px-3"
+                  >
+                    Карта
+                  </a>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                Финальная точка
+              </label>
+              {endLink ? (
+                <div className="flex items-center space-x-2">
+                  <div className="flex flex-col">
+                    <a
+                      href={DOMPurify.sanitize(endLink)}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-accentPrimary underline"
+                    >
+                      {end || "ссылка"}
+                    </a>
+                    {finishCoordinates && (
+                      <span className="text-xs text-gray-600">
+                        {finishCoordinates.lat},{finishCoordinates.lng}
+                      </span>
+                    )}
+                  </div>
+                  {editing && (
+                    <button
+                      type="button"
+                      onClick={() => handleEndLink("")}
+                      className="text-red-600"
+                    >
+                      ✖
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-1 flex space-x-2">
+                  <input
+                    value={endLink}
+                    onChange={(e) => handleEndLink(e.target.value)}
+                    placeholder="Ссылка из Google Maps"
+                    className="flex-1 rounded border px-2 py-1"
+                    disabled={!editing}
+                  />
+                  <a
+                    href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                    target="_blank"
+                    rel="noopener"
+                    className="btn-blue rounded-2xl px-3"
+                  >
+                    Карта
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">
+                Тип транспорта
+              </label>
+              <select
+                value={transportType}
+                onChange={(e) => setTransportType(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                {transports.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Способ оплаты</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                {payments.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {distanceKm !== null && (
+              <div>
+                <label className="block text-sm font-medium">Расстояние</label>
+                <p>{distanceKm} км</p>
+              </div>
+            )}
+            {routeLink && (
+              <div>
+                <label className="block text-sm font-medium">Маршрут</label>
+                <a
+                  href={routeLink}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-accentPrimary underline"
+                >
+                  ссылка
+                </a>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium">🔨 Задача</label>
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <RichTextEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  readOnly={!editing}
+                />
+              )}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">Срок выполнения</label>
-            <input
-              type="datetime-local"
-              {...register("dueDate")}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
+            <label className="block text-sm font-medium">Комментарий</label>
+            <RichTextEditor
+              value={comment}
+              onChange={setComment}
+              readOnly={!editing}
             />
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Статус</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              {statuses.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Приоритет</label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              {priorities.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Тип задачи</label>
-            <select
-              value={taskType}
-              onChange={(e) => setTaskType(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Задачу создал</label>
-            <select
-              value={creator}
-              onChange={(e) => setCreator(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              <option value="">автор</option>
-              {users.map((u) => (
-                <option key={u.telegram_id} value={u.telegram_id}>
-                  {u.name || u.telegram_username || u.username}
-                </option>
-              ))}
-            </select>
           </div>
           <Controller
-            name="assignees"
+            name="controllers"
             control={control}
             render={({ field }) => (
               <MultiUserSelect
-                label="Исполнител(и)ь"
+                label="Контролёр"
                 users={users}
                 value={field.value}
                 onChange={field.onChange}
@@ -617,268 +813,82 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               />
             )}
           />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Старт точка</label>
-            {startLink ? (
-              <div className="flex items-center space-x-2">
-                <div className="flex flex-col">
-                  <a
-                    href={DOMPurify.sanitize(startLink)}
-                    target="_blank"
-                    rel="noopener"
-                    className="text-accentPrimary underline"
-                  >
-                    {start || "ссылка"}
-                  </a>
-                  {startCoordinates && (
-                    <span className="text-xs text-gray-600">
-                      {startCoordinates.lat},{startCoordinates.lng}
-                    </span>
-                  )}
-                </div>
-                {editing && (
-                  <button
-                    type="button"
-                    onClick={() => handleStartLink("")}
-                    className="text-red-600"
-                  >
-                    ✖
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="mt-1 flex space-x-2">
-                <input
-                  value={startLink}
-                  onChange={(e) => handleStartLink(e.target.value)}
-                  placeholder="Ссылка из Google Maps"
-                  className="flex-1 rounded border px-2 py-1"
-                  disabled={!editing}
-                />
-                <a
-                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                  target="_blank"
-                  rel="noopener"
-                  className="btn-blue rounded-2xl px-3"
-                >
-                  Карта
-                </a>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Финальная точка</label>
-            {endLink ? (
-              <div className="flex items-center space-x-2">
-                <div className="flex flex-col">
-                  <a
-                    href={DOMPurify.sanitize(endLink)}
-                    target="_blank"
-                    rel="noopener"
-                    className="text-accentPrimary underline"
-                  >
-                    {end || "ссылка"}
-                  </a>
-                  {finishCoordinates && (
-                    <span className="text-xs text-gray-600">
-                      {finishCoordinates.lat},{finishCoordinates.lng}
-                    </span>
-                  )}
-                </div>
-                {editing && (
-                  <button
-                    type="button"
-                    onClick={() => handleEndLink("")}
-                    className="text-red-600"
-                  >
-                    ✖
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="mt-1 flex space-x-2">
-                <input
-                  value={endLink}
-                  onChange={(e) => handleEndLink(e.target.value)}
-                  placeholder="Ссылка из Google Maps"
-                  className="flex-1 rounded border px-2 py-1"
-                  disabled={!editing}
-                />
-                <a
-                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                  target="_blank"
-                  rel="noopener"
-                  className="btn-blue rounded-2xl px-3"
-                >
-                  Карта
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Тип транспорта</label>
-            <select
-              value={transportType}
-              onChange={(e) => setTransportType(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              {transports.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Способ оплаты</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full rounded border px-2 py-1"
-              disabled={!editing}
-            >
-              {payments.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {distanceKm !== null && (
+          {attachments.length > 0 && (
             <div>
-              <label className="block text-sm font-medium">Расстояние</label>
-              <p>{distanceKm} км</p>
+              <label className="block text-sm font-medium">Вложения</label>
+              <ul className="list-disc pl-4">
+                {attachments.map((a) => (
+                  <li key={a.url}>
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-accentPrimary underline"
+                    >
+                      {a.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-          {routeLink && (
-            <div>
-              <label className="block text-sm font-medium">Маршрут</label>
-              <a
-                href={routeLink}
-                target="_blank"
-                rel="noopener"
-                className="text-accentPrimary underline"
-              >
-                ссылка
-              </a>
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium">🔨 Задача</label>
-          <Controller
-            name="description"
-            control={control}
-            render={({ field }) => (
-              <RichTextEditor
-                value={field.value}
-                onChange={field.onChange}
-                readOnly={!editing}
-              />
-            )}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Комментарий</label>
-          <RichTextEditor
-            value={comment}
-            onChange={setComment}
-            readOnly={!editing}
-          />
-        </div>
-        <Controller
-          name="controllers"
-          control={control}
-          render={({ field }) => (
-            <MultiUserSelect
-              label="Контролёр"
-              users={users}
-              value={field.value}
-              onChange={field.onChange}
+          <div>
+            <label className="block text-sm font-medium">Прикрепить файл</label>
+            <input
+              type="file"
+              multiple
+              className="mt-1 w-full"
+              onChange={(e) => setFiles(e.target.files)}
               disabled={!editing}
             />
-          )}
-        />
-        {attachments.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium">Вложения</label>
-            <ul className="list-disc pl-4">
-              {attachments.map((a) => (
-                <li key={a.url}>
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noopener"
-                    className="text-accentPrimary underline"
-                  >
-                    {a.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
           </div>
-        )}
-        <div>
-          <label className="block text-sm font-medium">Прикрепить файл</label>
-          <input
-            type="file"
-            multiple
-            className="mt-1 w-full"
-            onChange={(e) => setFiles(e.target.files)}
-            disabled={!editing}
-          />
-        </div>
-        <div className="flex justify-end space-x-2">
-          {isEdit && isAdmin && editing && (
-            <button className="btn-red rounded-full" onClick={handleDelete}>
-              Удалить
-            </button>
-          )}
-          {editing && (
-            <button className="btn-blue rounded-full" onClick={submit}>
-              {isEdit ? "Сохранить" : "Создать"}
-            </button>
-          )}
-        </div>
-        {isEdit && !editing && (
-          <>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
-                onClick={acceptTask}
-              >
-                Принять
+          <div className="flex justify-end space-x-2">
+            {isEdit && isAdmin && editing && (
+              <button className="btn-red rounded-full" onClick={handleDelete}>
+                Удалить
               </button>
-              <button
-                className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
-                onClick={() => setShowDoneSelect((v) => !v)}
-              >
-                Выполнено
-              </button>
-            </div>
-            {showDoneSelect && (
-              <select
-                onChange={(e) => e.target.value && completeTask(e.target.value)}
-                className="mt-1 mb-2 w-full rounded border px-2 py-1"
-              >
-                <option value="">Выберите вариант</option>
-                {doneOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
             )}
-          </>
-        )}
-      </>
+            {editing && (
+              <button className="btn-blue rounded-full" onClick={submit}>
+                {isEdit ? "Сохранить" : "Создать"}
+              </button>
+            )}
+          </div>
+          {isEdit && !editing && (
+            <>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
+                  onClick={acceptTask}
+                >
+                  Принять
+                </button>
+                <button
+                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
+                  onClick={() => setShowDoneSelect((v) => !v)}
+                >
+                  Выполнено
+                </button>
+              </div>
+              {showDoneSelect && (
+                <select
+                  onChange={(e) =>
+                    e.target.value && completeTask(e.target.value)
+                  }
+                  className="mt-1 mb-2 w-full rounded border px-2 py-1"
+                >
+                  <option value="">Выберите вариант</option>
+                  {doneOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
+          )}
+        </>
+      </div>
     </div>
   );
 }

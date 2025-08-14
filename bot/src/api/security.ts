@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import type { HelmetOptions } from 'helmet';
 import crypto from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import config from '../config';
 
@@ -46,9 +47,11 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
   ];
 
+  type ResWithNonce = ServerResponse & { locals: { cspNonce: string } };
   const scriptSrc = [
     "'self'",
-    (_req: any, res: any) => `'nonce-${res.locals.cspNonce}'`,
+    (_req: IncomingMessage, res: ServerResponse) =>
+      `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
     "'strict-dynamic'",
     'https://telegram.org',
     ...parseList(process.env.CSP_SCRIPT_SRC_ALLOWLIST),

@@ -3,14 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Управление задачами через Telegram" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@100..900&family=Roboto:wght@100..900&display=swap" />
-  <title>agrmcs dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Управление задачами через Telegram" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@100..900&family=Roboto:wght@100..900&display=swap"
+    />
+    <title>agrmcs dashboard</title>
+    <script>
+      (function () {
+        var m = document.cookie.match(/theme=([^;]+)/);
+        var t = m ? decodeURIComponent(m[1]) : "light";
+        var tokens = document.cookie.match(/theme-tokens=([^;]+)/);
+        if (tokens) {
+          try {
+            var obj = JSON.parse(decodeURIComponent(tokens[1]));
+            for (var k in obj) {
+              document.documentElement.style.setProperty("--" + k, obj[k]);
+            }
+          } catch (e) {}
+        }
+        if (t === "dark") document.documentElement.classList.add("dark");
+      })();
+    </script>
   </head>
-  <body class="min-h-screen font-sans bg-white">
+  <body class="min-h-screen bg-white font-sans">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

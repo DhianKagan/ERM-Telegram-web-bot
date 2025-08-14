@@ -93,7 +93,7 @@ export default async function registerRoutes(
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
-  app.use(globalLimiter);
+  app.use('/api', globalLimiter);
 
   const taskStatusRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
@@ -150,7 +150,12 @@ export default async function registerRoutes(
     res.json({ csrfToken: req.csrfToken() });
   });
 
-  app.use(express.static(path.join(__dirname, '../../public')));
+  app.use(
+    express.static(path.join(__dirname, '../../public'), {
+      maxAge: '1y',
+      immutable: true,
+    }),
+  );
   const initAdmin = (await import('../admin/customAdmin')).default;
   initAdmin(app);
 

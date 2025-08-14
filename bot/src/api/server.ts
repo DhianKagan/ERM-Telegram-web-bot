@@ -71,9 +71,12 @@ export async function buildApp(): Promise<express.Express> {
     process.env.NODE_ENV === 'production'
       ? config.cookieDomain || new URL(config.appUrl).hostname
       : undefined;
+  const secureCookie = process.env.COOKIE_SECURE !== 'false';
   const cookieFlags: session.CookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // По умолчанию cookie передаются только по HTTPS;
+    // переменная COOKIE_SECURE=false включает HTTP для локальной отладки.
+    secure: secureCookie,
     sameSite: 'none',
     ...(domain ? { domain } : {}),
   };

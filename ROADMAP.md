@@ -17,6 +17,7 @@
 - ESLint запрещает файлы `.js` вне конфигурации
 - Разделена защита от CSRF: Mini App работает без cookie, Admin UI использует
   синхронизатор токенов и защищённые cookie
+- Флаг Secure у cookie включён всегда; переменная `COOKIE_SECURE=false` разрешает HTTP только локально
 - Внедрён единый middleware ошибок с форматом `application/problem+json`
 - Добавлен корневой `package.json` с зависимостями `eslint`, `jiti` и `reflect-metadata` для запуска `npx eslint bot/src`
 - Массовые действия над задачами позволяют выбирать все статусы и выделять все задачи.

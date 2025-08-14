@@ -17,7 +17,12 @@ export default function useGrid<T = any>(options: GridOptions<T> = {}) {
   );
 
   const gridOptions = React.useMemo<GridOptions<T>>(
-    () => ({ pagination: true, paginationPageSize: 25, ...options }),
+    () => ({
+      pagination: true,
+      paginationPageSize: 25,
+      paginationPageSizeSelector: [25, 50, 100],
+      ...options,
+    }),
     [options],
   );
 

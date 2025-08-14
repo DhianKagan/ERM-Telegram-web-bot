@@ -90,7 +90,11 @@ export default function TaskTable({
           rowData={tasks}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          rowSelection={selectable ? "multiple" : undefined}
+          rowSelection={
+            selectable
+              ? { mode: "multiRow", checkboxes: true, headerCheckbox: true }
+              : undefined
+          }
           onSelectionChanged={onSel}
           onGridReady={onGridReady}
           onSortChanged={updateData}

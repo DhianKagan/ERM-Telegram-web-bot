@@ -21,15 +21,13 @@ type Task = {
 };
 
 export default function taskColumns(
-  selectable: boolean,
+  _selectable: boolean,
   users: Record<number, any>,
 ): ColDef<Task>[] {
   return [
     {
       headerName: "Задача",
       field: "title",
-      checkboxSelection: selectable,
-      headerCheckboxSelection: selectable,
       valueGetter: (p) =>
         `${p.data.request_id || ""} ${p.data.createdAt?.slice(0, 10) || ""} ${
           p.data.title?.replace(/^ERM_\d+\s*/, "") || ""
@@ -43,18 +41,12 @@ export default function taskColumns(
     {
       headerName: "Старт",
       field: "startCoordinates",
-      valueGetter: (p) =>
-        p.data.startCoordinates
-          ? `${p.data.startCoordinates.lat}, ${p.data.startCoordinates.lng}`
-          : "",
+      valueFormatter: (p) => (p.value ? `${p.value.lat}, ${p.value.lng}` : ""),
     },
     {
       headerName: "Финиш",
       field: "finishCoordinates",
-      valueGetter: (p) =>
-        p.data.finishCoordinates
-          ? `${p.data.finishCoordinates.lat}, ${p.data.finishCoordinates.lng}`
-          : "",
+      valueFormatter: (p) => (p.value ? `${p.value.lat}, ${p.value.lng}` : ""),
     },
     { headerName: "Км", field: "route_distance_km" },
     {

@@ -12,7 +12,6 @@ import {
   deleteTask,
   updateTaskStatus,
 } from "../services/tasks";
-import { createLog } from "../services/logs";
 import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
@@ -40,7 +39,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useContext(AuthContext);
   const isAdmin = user?.role === "admin";
-  const [editing, setEditing] = React.useState(!isEdit);
+  const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);
   const initialRef = React.useRef<any>(null);
   const [requestId, setRequestId] = React.useState("");
@@ -117,26 +116,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     { value: "partial", label: "Задача выполнена частично" },
     { value: "changed", label: "Задача выполнена с изменениями" },
   ];
-  const cancelOptions = [
-    {
-      value: "technical",
-      label: "Задача не может быть выполнена по техническим причинам",
-    },
-    { value: "canceled", label: "Задача не выполнена по причине отмены" },
-    {
-      value: "declined",
-      label: "Задача не выполнена по причине отказа исполнителя",
-    },
-  ];
   const [showDoneSelect, setShowDoneSelect] = React.useState(false);
-  const [showCancelSelect, setShowCancelSelect] = React.useState(false);
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
-  // режим изменения статуса
-  const [editActionsOnly, setEditActionsOnly] = React.useState(false);
 
   React.useEffect(() => {
-    setEditing(!isEdit);
+    setEditing(true);
     if (isEdit && id) {
       authFetch(`/api/v1/tasks/${id}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -456,12 +441,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setDistanceKm(d.distanceKm);
   };
 
-  const startActionsEdit = async () => {
-    if (!id) return;
-    setEditActionsOnly(true);
-    await createLog(`Изменение статуса задачи ${id}`);
-  };
-
   const acceptTask = async () => {
     if (!id) return;
     const data = await updateTask(id, { status: "В работе" });
@@ -471,7 +450,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
     await updateTaskStatus(id, "В работе");
     setSelectedAction("accept");
-    setEditActionsOnly(false);
   };
 
   const completeTask = async (opt: string) => {
@@ -488,27 +466,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setShowDoneSelect(false);
     await updateTaskStatus(id, "Выполнена");
     setSelectedAction("done");
-    setEditActionsOnly(false);
-  };
-
-  const cancelTask = async (opt: string) => {
-    if (!id) return;
-    const data = await updateTask(id, {
-      status: "Отменена",
-      cancel_reason: opt,
-    });
-    if (data) {
-      setStatus("Отменена");
-      if (onSave) onSave(data);
-    }
-    setShowCancelSelect(false);
-    await updateTaskStatus(id, "Отменена");
-    setSelectedAction("cancel");
   };
 
   return (
     <div
-      className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto max-h-[90vh] space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-lg`}
+      className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">
@@ -885,7 +847,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </button>
           )}
         </div>
-        {isEdit && !editing && !editActionsOnly && (
+        {isEdit && !editing && (
           <>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button
@@ -899,18 +861,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 onClick={() => setShowDoneSelect((v) => !v)}
               >
                 Выполнено
-              </button>
-              <button
-                className="btn-blue rounded-lg"
-                onClick={startActionsEdit}
-              >
-                Изменить
-              </button>
-              <button
-                className={`btn-blue rounded-lg ${selectedAction === "cancel" ? "ring-accentPrimary ring-2" : ""}`}
-                onClick={() => setShowCancelSelect((v) => !v)}
-              >
-                Отменить
               </button>
             </div>
             {showDoneSelect && (
@@ -926,36 +876,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 ))}
               </select>
             )}
-            {showCancelSelect && (
-              <select
-                onChange={(e) => e.target.value && cancelTask(e.target.value)}
-                className="mt-1 mb-2 w-full rounded border px-2 py-1"
-              >
-                <option value="">Причина отмены</option>
-                {cancelOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            )}
           </>
-        )}
-        {isEdit && !editing && editActionsOnly && (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
-              onClick={acceptTask}
-            >
-              Принять
-            </button>
-            <button
-              className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
-              onClick={() => setShowDoneSelect((v) => !v)}
-            >
-              Выполнено
-            </button>
-          </div>
         )}
       </>
     </div>

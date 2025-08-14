@@ -4,7 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import type { HelmetOptions } from 'helmet';
 
-import config from './config';
+import config from '../config';
 
 type CSPConfig = NonNullable<
   Exclude<HelmetOptions['contentSecurityPolicy'], boolean>

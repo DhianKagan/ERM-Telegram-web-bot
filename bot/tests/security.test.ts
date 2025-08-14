@@ -7,7 +7,7 @@ process.env.APP_URL = 'https://localhost';
 
 const express = require('express');
 const request = require('supertest');
-const applySecurity = require('../src/security').default;
+const applySecurity = require('../src/api/security').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 

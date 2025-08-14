@@ -1,20 +1,14 @@
-// Назначение файла: HTTP API и мини-приложение.
-// Основные модули: express, express-rate-limit, сервисы, middleware
-import dotenv from 'dotenv';
-import config from '../config';
+// Назначение файла: настройка маршрутов HTTP API.
+// Основные модули: express, middleware, сервисы, роутеры
 import express, {
   Request,
   Response,
   NextFunction,
   RequestHandler,
 } from 'express';
-import createRateLimiter from '../utils/rateLimiter';
-import applySecurity from '../security';
+import type { CookieOptions } from 'express-session';
+import path from 'path';
 import cors from 'cors';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import MongoStore from 'connect-mongo';
 import lusca from 'lusca';
 import {
   body,
@@ -22,46 +16,32 @@ import {
   param,
   ValidationChain,
 } from 'express-validator';
-import path from 'path';
-import { promises as fs } from 'fs';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execAsync = promisify(exec);
-import { register } from '../metrics';
+import createRateLimiter from '../utils/rateLimiter';
 import { swaggerUi, specs } from './swagger';
+import { register } from '../metrics';
+import { verifyToken, asyncHandler, requestLogger } from './middleware';
+import errorMiddleware from '../middleware/errorMiddleware';
+import globalLimiter from '../middleware/globalLimiter';
 import tasksRouter from '../routes/tasks';
 import mapsRouter from '../routes/maps';
 import routeRouter from '../routes/route';
 import routesRouter from '../routes/routes';
 import optimizerRouter from '../routes/optimizer';
 import authUserRouter from '../routes/authUser';
+import usersRouter from '../routes/users';
+import rolesRouter from '../routes/roles';
+import logsRouter from '../routes/logs';
+import checkTaskAccess from '../middleware/taskAccess';
+import { sendProblem } from '../utils/problem';
 import {
   updateTaskStatus,
   writeLog,
   listMentionedTasks,
   getTask,
 } from '../services/service';
-import { verifyToken, asyncHandler, requestLogger } from './middleware';
-import errorMiddleware from '../middleware/errorMiddleware';
-import globalLimiter from '../middleware/globalLimiter';
-import { sendProblem } from '../utils/problem';
-import usersRouter from '../routes/users';
-import rolesRouter from '../routes/roles';
-import logsRouter from '../routes/logs';
-import checkTaskAccess from '../middleware/taskAccess';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
-
-dotenv.config();
-
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled rejection in API:', err);
-});
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception in API:', err);
-  process.exit(1);
-});
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -77,74 +57,12 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   },
 ];
 
-(async () => {
-  const { default: connect } = await import('../db/connection');
-  await connect();
-  await import('../db/model');
-
-  const app = express();
-  const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
-  const tmaAuthGuard = container.resolve<RequestHandler>(TOKENS.TmaAuthGuard);
-  const traceModule = await import('../middleware/trace' + ext);
-  const pinoLoggerModule = await import('../middleware/pinoLogger' + ext);
-  const metricsModule = await import('../middleware/metrics' + ext);
-  const trace = (traceModule.default || traceModule) as RequestHandler;
-  const pinoLogger = (pinoLoggerModule.default ||
-    pinoLoggerModule) as RequestHandler;
-  const metrics = (metricsModule.default || metricsModule) as RequestHandler;
-  applySecurity(app);
-  app.use(trace);
-  app.use(pinoLogger);
-  app.use(metrics);
-
-  const root = path.join(__dirname, '../..');
-  const pub = path.join(root, 'public');
-  const indexFile = path.join(pub, 'index.html');
-  let needBuild = false;
-  try {
-    const st = await fs.stat(indexFile);
-    if (st.size === 0) needBuild = true;
-  } catch {
-    needBuild = true;
-  }
-  if (needBuild) {
-    console.log('Сборка интерфейса...');
-    await execAsync('npm run build-client', { cwd: root });
-  }
-
-  app.set('trust proxy', 1);
-  app.use(express.json());
-  app.use(cookieParser());
-  app.use(compression());
-
-  const domain =
-    process.env.NODE_ENV === 'production'
-      ? config.cookieDomain || new URL(config.appUrl).hostname
-      : undefined;
-  const cookieFlags: session.CookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'none',
-    ...(domain ? { domain } : {}),
-  };
-  const sessionOpts: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || 'session_secret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },
-  };
-  if (process.env.NODE_ENV !== 'test') {
-    sessionOpts.store = MongoStore.create({
-      mongoUrl: config.mongoUrl,
-      collectionName: 'sessions',
-    });
-  }
-  app.use(session(sessionOpts));
-
-  const csrf = lusca.csrf({
-    angular: true,
-    cookie: { options: cookieFlags },
-  });
+export default async function registerRoutes(
+  app: express.Express,
+  cookieFlags: CookieOptions,
+  pub: string,
+): Promise<void> {
+  const csrf = lusca.csrf({ angular: true, cookie: { options: cookieFlags } });
   const csrfExclude = [
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
@@ -156,7 +74,6 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl.split('?')[0];
     if (process.env.DISABLE_CSRF === '1') {
-      // Используем каст, чтобы избежать обращения к несуществующему полю globalThis
       if (!(globalThis as Record<string, unknown>).csrfWarn) {
         console.warn('CSRF middleware disabled');
         (globalThis as Record<string, unknown>).csrfWarn = true;
@@ -192,12 +109,14 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     windowMs: 15 * 60 * 1000,
     max: 20,
     name: 'tma-login',
-  }); // 20 запросов за 15 минут
+  });
   const tmaTasksRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 50,
     name: 'tma-tasks',
   });
+
+  const tmaAuthGuard = container.resolve<RequestHandler>(TOKENS.TmaAuthGuard);
 
   /**
    * @openapi
@@ -232,7 +151,6 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   });
 
   app.use(express.static(path.join(__dirname, '../../public')));
-
   const initAdmin = (await import('../admin/customAdmin')).default;
   initAdmin(app);
 
@@ -346,12 +264,4 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
   });
 
   app.use(errorMiddleware);
-
-  const port: number = config.port;
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`API запущен на порту ${port}`);
-    console.log(
-      `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
-    );
-  });
-})();
+}

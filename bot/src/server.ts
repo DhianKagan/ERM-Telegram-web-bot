@@ -1,4 +1,15 @@
 // Назначение файла: стартовый скрипт API.
 // Основные модули: di, api
 import './di';
-import './api/api';
+import config from './config';
+import buildApp from './api/server';
+
+buildApp().then((app) => {
+  const port: number = config.port;
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`API запущен на порту ${port}`);
+    console.log(
+      `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
+    );
+  });
+});

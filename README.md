@@ -220,6 +220,9 @@ pnpm --dir bot start
 За стилем интерфейса следите по `docs/extended_tailadmin_guide.md`.
 План внедрения рекомендаций из анализа описан в `docs/apply_analysis_plan.md`.
 
+Мудборд интерфейса приведён в `docs/moodboard.md`.
+Схема экранов и маршрутов описана в `docs/ui-skeleton.md`.
+
 Для локального развёртывания можно собрать контейнер через Docker Compose:
 
 ```bash

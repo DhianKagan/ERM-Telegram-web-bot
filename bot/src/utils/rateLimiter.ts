@@ -17,7 +17,7 @@ interface RateLimitOptions {
 const drops = new client.Counter({
   name: 'rate_limit_drops_total',
   help: 'Количество отклонённых запросов лимитером',
-  labelNames: ['name'],
+  labelNames: ['name', 'key'],
 });
 
 export default function createRateLimiter({
@@ -34,19 +34,28 @@ export default function createRateLimiter({
     standardHeaders: true,
     legacyHeaders: true,
     handler: (req: RequestWithUser, res: Response) => {
-      drops.inc({ name });
+      const key = req.user?.id ?? req.ip;
+      drops.inc({ name, key });
       const reset = req.rateLimit?.resetTime;
       if (reset instanceof Date) {
         const retryAfter = Math.ceil((reset.getTime() - Date.now()) / 1000);
         res.setHeader('Retry-After', retryAfter.toString());
       }
-      const key = req.user?.id ?? req.ip;
       const limit = req.rateLimit?.limit;
       const remaining = req.rateLimit?.remaining;
       const resetTime =
         req.rateLimit?.resetTime instanceof Date
-          ? req.rateLimit.resetTime.getTime()
+          ? Math.ceil(req.rateLimit.resetTime.getTime() / 1000)
           : req.rateLimit?.resetTime;
+      if (limit !== undefined) {
+        res.setHeader('X-RateLimit-Limit', limit.toString());
+      }
+      if (remaining !== undefined) {
+        res.setHeader('X-RateLimit-Remaining', remaining.toString());
+      }
+      if (resetTime !== undefined) {
+        res.setHeader('X-RateLimit-Reset', resetTime.toString());
+      }
       writeLog(
         `Превышен лимит ${req.method} ${req.originalUrl} key:${key} ` +
           `limit:${limit} remaining:${remaining} reset:${resetTime}`,

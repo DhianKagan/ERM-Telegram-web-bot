@@ -23,6 +23,7 @@
 - Массовые действия над задачами позволяют выбирать все статусы и выделять все задачи.
 - Оптимизированы запросы задач: добавлен скрипт `ensureIndexes` с индексами `{assigneeId,status,dueAt}` и `createdAt`.
 - Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, метрика `rate_limit_drops_total` доступна в Prometheus
+- Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, лимитер отправляет `X-RateLimit-*`, метрика `rate_limit_drops_total` имеет метки `name` и `key`, настроен алерт p95 и панель дашборда
 - Добавлены гистограммы HTTP (method, route, status), метрики OSRM и поддержка traceparent.
 - Таблицы админки переведены на AG Grid с сервисом `useGrid` и модульными колонками.
 - Dependabot еженедельно обновляет npm-зависимости, CI запускает `audit-ci` с порогом `high`.

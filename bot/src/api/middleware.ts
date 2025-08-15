@@ -104,7 +104,7 @@ export function verifyToken(
 
   const preview = token ? String(token).slice(0, 8) : 'none';
   jwt.verify(
-    token,
+    token as string,
     secretKey,
     { algorithms: ['HS256'] },
     (

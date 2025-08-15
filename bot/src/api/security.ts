@@ -52,7 +52,6 @@ export default function applySecurity(app: express.Express): void {
     "'self'",
     (_req: IncomingMessage, res: ServerResponse) =>
       `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
-    "'strict-dynamic'",
     'https://telegram.org',
     ...parseList(process.env.CSP_SCRIPT_SRC_ALLOWLIST),
   ];

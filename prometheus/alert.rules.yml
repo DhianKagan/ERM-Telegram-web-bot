@@ -9,13 +9,21 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Бот недоступен"
-          description: "Экспортер метрик не отвечает более одной минуты"
+          summary: 'Бот недоступен'
+          description: 'Экспортер метрик не отвечает более одной минуты'
       - alert: CsrfErrors
         expr: rate(csrf_errors_total[5m]) > 5
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "Рост ошибок CSRF"
-          description: "Количество ошибок CSRF за 5 минут превысило порог"
+          summary: 'Рост ошибок CSRF'
+          description: 'Количество ошибок CSRF за 5 минут превысило порог'
+      - alert: HighHttpP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое p95 ответа'
+          description: '95-й перцентиль HTTP выше 0.5с более двух минут'

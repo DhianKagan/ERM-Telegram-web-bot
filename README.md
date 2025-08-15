@@ -91,7 +91,7 @@ node bot/dist/bot/bot.js
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.
 - Гистограммы HTTP (method, route, status) и отдельные метрики OSRM с таймерами и счётчиком ошибок.
 - Поддержка W3C Trace Context: заголовок `traceparent`, trace-id в логах и ответах проблем.
-- Лимиты запросов на `/api/v1/auth` и `/api/v1/route`, превышения фиксирует метрика `rate_limit_drops_total`.
+- Лимиты запросов на `/api/v1/auth` и `/api/v1/route`, лимитер отправляет `X-RateLimit-*`, превышения фиксирует метрика `rate_limit_drops_total` с метками `name` и `key`.
 - Подключение middleware логирования и метрик исправлено для корректного запуска API.
 - Исправлен маршрут `/api/v1/users`: убраны лишние аргументы обработчиков.
 - Исправлен импорт `rolesGuard` в маршрутах `users`, `roles` и `logs`.

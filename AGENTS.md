@@ -42,6 +42,7 @@
 - Переменная `COOKIE_SECURE=false` отключает флаг `Secure` у cookie, используйте только локально.
 - Docker Compose содержит healthcheck для MongoDB.
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
+- Лимитер отправляет заголовки `X-RateLimit-*`, метрика `rate_limit_drops_total` содержит метки `name` и `key`.
 - Запросы OSRM кешируются на 10 минут, очищаются при изменении задач;
   переменные `ROUTE_CACHE_ENABLED` и `ROUTE_CACHE_TTL` управляют кешом.
 - Ограничение `/table` контролируется переменными `ROUTE_TABLE_GUARD`,

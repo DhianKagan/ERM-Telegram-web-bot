@@ -1,6 +1,7 @@
 // Назначение: запросы к API задач
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
+import formSchema from "../../../src/form/taskForm.schema.json";
 
 export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true")
@@ -22,7 +23,10 @@ export const createTask = (data: Record<string, unknown>) =>
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      formVersion: (formSchema as any).formVersion,
+      ...data,
+    }),
   }).then(async (r) => {
     if (!r.ok) return null;
     const result = await r.json();

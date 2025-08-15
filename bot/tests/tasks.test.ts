@@ -56,7 +56,7 @@ jest
 
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
-    req.user = { role: 'admin', id: 1, access: 2 };
+    req.user = { role: 'admin', id: 1, telegram_id: 1, access: 2 };
     next();
   },
   asyncHandler: (fn) => fn,
@@ -82,6 +82,7 @@ test('создание задачи возвращает 201', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')
     .send({
+      formVersion: 1,
       title: 'T',
       start_location_link: 'https://maps.google.com',
       end_location_link: 'https://maps.google.com',
@@ -101,7 +102,16 @@ test('создание задачи возвращает 201', async () => {
 });
 
 test('создание задачи с неверными данными', async () => {
-  const res = await request(app).post('/api/v1/tasks').send({ title: 1 });
+  const res = await request(app)
+    .post('/api/v1/tasks')
+    .send({ formVersion: 1, title: 1 });
+  expect(res.status).toBe(400);
+});
+
+test('создание задачи с неизвестной версией формы', async () => {
+  const res = await request(app)
+    .post('/api/v1/tasks')
+    .send({ formVersion: 2, title: 'T' });
   expect(res.status).toBe(400);
 });
 

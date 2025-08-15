@@ -2,6 +2,7 @@
 import React from "react";
 import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
+import { createTask } from "../services/tasks";
 import Spinner from "../components/Spinner";
 import SkeletonCard from "../components/SkeletonCard";
 import Pagination from "../components/Pagination";
@@ -33,17 +34,11 @@ export default function Tasks() {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     setPosting(true);
-    const res = await authFetch("/api/v1/tasks", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ title: text, task_description: text }),
-    });
-    if (res.ok) {
+    const res = await createTask({ title: text, task_description: text });
+    if (res) {
       setText("");
       addToast("Задача создана");
-      setTasks(await res.json().then((t) => [...tasks, t]));
+      setTasks([...tasks, res]);
     }
     setPosting(false);
   };

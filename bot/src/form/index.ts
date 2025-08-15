@@ -12,12 +12,16 @@ export type Field = {
   options?: FieldOption[];
 };
 export type Section = { name: string; label: string; fields: Field[] };
-export type FormSchema = { sections: Section[] };
+export type FormSchema = { formVersion: number; sections: Section[] };
 
 export const formSchema: FormSchema = schemaJson as FormSchema;
 
 export const buildValidators = (schema: FormSchema): ValidationChain[] => {
-  const chains: ValidationChain[] = [];
+  const chains: ValidationChain[] = [
+    body('formVersion')
+      .equals(String(schema.formVersion))
+      .withMessage('Неизвестная версия формы'),
+  ];
   for (const section of schema.sections) {
     for (const field of section.fields) {
       let chain = body(field.name);

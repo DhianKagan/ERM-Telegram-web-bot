@@ -8,6 +8,7 @@ export const rateLimits = {
     max: test ? 2 : 50,
     adminMax: test ? 5 : 500,
     name: 'auth',
+    captcha: true,
   },
   route: {
     windowMs: test ? 200 : 60_000,

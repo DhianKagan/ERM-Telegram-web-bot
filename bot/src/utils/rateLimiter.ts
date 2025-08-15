@@ -12,6 +12,7 @@ interface RateLimitOptions {
   max: number;
   name: string;
   adminMax?: number;
+  captcha?: boolean;
 }
 
 const drops = new client.Counter({
@@ -25,16 +26,24 @@ export default function createRateLimiter({
   max,
   name,
   adminMax,
+  captcha,
 }: RateLimitOptions) {
   return rateLimit({
     windowMs,
     max: (req: RequestWithUser) =>
       req.user?.role === 'admin' && adminMax ? adminMax : max,
-    keyGenerator: (req: RequestWithUser) => `${name}:${req.user?.id ?? req.ip}`,
+    keyGenerator: (req: RequestWithUser) =>
+      `${name}:${req.user?.telegram_id ?? req.ip}`,
     standardHeaders: true,
     legacyHeaders: true,
+    skip: (req: RequestWithUser) =>
+      Boolean(
+        captcha &&
+          process.env.CAPTCHA_TOKEN &&
+          req.headers['x-captcha-token'] === process.env.CAPTCHA_TOKEN,
+      ),
     handler: (req: RequestWithUser, res: Response) => {
-      const key = req.user?.id ?? req.ip;
+      const key = req.user?.telegram_id ?? req.ip;
       drops.inc({ name, key });
       const reset = req.rateLimit?.resetTime;
       if (reset instanceof Date) {

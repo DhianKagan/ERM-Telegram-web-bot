@@ -104,7 +104,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(data);
+    onSubmit({ formVersion: (formSchema as any).formVersion, ...data });
   };
 
   return (

@@ -14,6 +14,7 @@ import {
   BulkStatusDto,
 } from '../dto/tasks.dto';
 import checkTaskAccess from '../middleware/taskAccess';
+import { taskFormValidators } from '../form';
 
 const router = Router();
 const ctrl = container.resolve(TasksController);
@@ -64,6 +65,7 @@ router.get(
 router.post(
   '/',
   authMiddleware(),
+  ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
 );

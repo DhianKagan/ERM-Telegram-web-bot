@@ -8,10 +8,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import sri from "vite-plugin-sri";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), sri()],
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
@@ -19,7 +20,7 @@ export default defineConfig({
   },
   build: {
     outDir: "../public",
-
+    manifest: true,
     chunkSizeWarningLimit: 1500,
     commonjsOptions: {
       include: [/shared/, /node_modules/],

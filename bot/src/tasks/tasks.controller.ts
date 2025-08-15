@@ -10,6 +10,7 @@ import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
 import type { TaskDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
+import { sendCached } from '../utils/sendCached';
 
 interface Task {
   assignees?: number[];
@@ -41,7 +42,7 @@ export default class TasksController {
       if (t.created_by) ids.add(t.created_by);
     });
     const users = await getUsersMap(Array.from(ids));
-    res.json({ tasks, users });
+    sendCached(req, res, { tasks, users });
   };
 
   detail = async (req: Request, res: Response) => {

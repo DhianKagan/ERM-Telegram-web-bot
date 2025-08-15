@@ -41,8 +41,15 @@ export default function createRateLimiter({
         res.setHeader('Retry-After', retryAfter.toString());
       }
       const key = req.user?.id ?? req.ip;
+      const limit = req.rateLimit?.limit;
+      const remaining = req.rateLimit?.remaining;
+      const resetTime =
+        req.rateLimit?.resetTime instanceof Date
+          ? req.rateLimit.resetTime.getTime()
+          : req.rateLimit?.resetTime;
       writeLog(
-        `Превышен лимит ${req.method} ${req.originalUrl} key:${key}`,
+        `Превышен лимит ${req.method} ${req.originalUrl} key:${key} ` +
+          `limit:${limit} remaining:${remaining} reset:${resetTime}`,
         'warn',
       ).catch(() => {});
       sendProblem(req, res, {

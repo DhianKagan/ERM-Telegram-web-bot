@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import * as service from '../services/routes';
 import { sendProblem } from '../utils/problem';
+import { sendCached } from '../utils/sendCached';
 
 export async function all(req: Request, res: Response): Promise<void> {
   const errors = validationResult(req);
@@ -21,5 +22,6 @@ export async function all(req: Request, res: Response): Promise<void> {
     to: req.query.to as string | undefined,
     status: typeof req.query.status === 'string' ? req.query.status : undefined,
   };
-  res.json(await service.list(filters));
+  const data = await service.list(filters);
+  sendCached(req, res, data);
 }

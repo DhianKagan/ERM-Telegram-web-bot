@@ -6,6 +6,7 @@ import { handleValidation } from '../utils/validate';
 import { TOKENS } from '../di/tokens';
 import type LogsService from './logs.service';
 import { ListLogParams } from '../services/wgLogEngine';
+import { sendCached } from '../utils/sendCached';
 
 @injectable()
 export default class LogsController {
@@ -15,7 +16,12 @@ export default class LogsController {
     req: Request<unknown, unknown, unknown, ListLogParams>,
     res: Response,
   ): Promise<void> => {
-    res.json(await this.service.list(req.query));
+    const data = await this.service.list(req.query);
+    sendCached(
+      req as Request<Record<string, unknown>, unknown, unknown, ListLogParams>,
+      res,
+      data,
+    );
   };
 
   create = [

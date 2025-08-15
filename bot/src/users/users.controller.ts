@@ -6,6 +6,7 @@ import { handleValidation } from '../utils/validate';
 import { TOKENS } from '../di/tokens';
 import type UsersService from './users.service';
 import formatUser from '../utils/formatUser';
+import { sendCached } from '../utils/sendCached';
 
 interface CreateUserBody {
   id: string;
@@ -17,9 +18,13 @@ interface CreateUserBody {
 export default class UsersController {
   constructor(@inject(TOKENS.UsersService) private service: UsersService) {}
 
-  list = async (_req: Request, res: Response): Promise<void> => {
+  list = async (req: Request, res: Response): Promise<void> => {
     const users = await this.service.list();
-    res.json(users.map((u) => formatUser(u)));
+    sendCached(
+      req,
+      res,
+      users.map((u) => formatUser(u)),
+    );
   };
 
   create = [

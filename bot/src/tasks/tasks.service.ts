@@ -2,6 +2,7 @@
 // Основные модули: db/queries, services/route, services/maps
 import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from '../services/maps';
+import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
 
@@ -45,6 +46,7 @@ class TasksService {
   }
 
   async create(data: Partial<TaskDocument>) {
+    applyIntakeRules(data);
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     await this.applyRouteInfo(data);
     const task = await this.repo.createTask(data);

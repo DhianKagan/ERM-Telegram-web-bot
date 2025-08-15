@@ -6,13 +6,14 @@ import { handleValidation } from '../utils/validate';
 import { TOKENS } from '../di/tokens';
 import type RolesService from './roles.service';
 import { sendProblem } from '../utils/problem';
+import { sendCached } from '../utils/sendCached';
 
 @injectable()
 export default class RolesController {
   constructor(@inject(TOKENS.RolesService) private service: RolesService) {}
 
-  list = async (_req: Request, res: Response) => {
-    res.json(await this.service.list());
+  list = async (req: Request, res: Response) => {
+    sendCached(req, res, await this.service.list());
   };
 
   update = [

@@ -37,7 +37,8 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
 export async function createTask(
   data: Partial<TaskDocument>,
 ): Promise<TaskDocument> {
-  return Task.create(data);
+  const entry = { changes: data, changed_at: new Date() };
+  return Task.create({ ...data, history: [entry] });
 }
 
 export async function getTask(id: string): Promise<TaskDocument | null> {
@@ -64,7 +65,14 @@ export async function updateTask(
   fields: Partial<TaskDocument>,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
-  return Task.findByIdAndUpdate(id, data, { new: true });
+  return Task.findByIdAndUpdate(
+    id,
+    {
+      $set: data,
+      $push: { history: { changes: data, changed_at: new Date() } },
+    },
+    { new: true },
+  );
 }
 
 export async function updateTaskStatus(
@@ -157,6 +165,10 @@ export async function addTime(
   const task = await Task.findById(id);
   if (!task) return null;
   task.time_spent = (task.time_spent || 0) + minutes;
+  task.history = [
+    ...(task.history || []),
+    { changes: { time_spent: task.time_spent }, changed_at: new Date() },
+  ];
   await task.save();
   return task;
 }
@@ -165,7 +177,13 @@ export async function bulkUpdate(
   ids: string[],
   data: Partial<TaskDocument>,
 ): Promise<void> {
-  await Task.updateMany({ _id: { $in: ids } }, data);
+  await Task.updateMany(
+    { _id: { $in: ids } },
+    {
+      $set: data,
+      $push: { history: { changes: data, changed_at: new Date() } },
+    },
+  );
 }
 
 export async function deleteTask(id: string): Promise<TaskDocument | null> {
@@ -175,6 +193,9 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   (data as unknown as Record<string, unknown>).request_id = `${
     (data as unknown as Record<string, unknown>).request_id
   }-DEL`;
+  (data as unknown as Record<string, unknown>).task_number = (
+    data as unknown as Record<string, unknown>
+  ).request_id;
   await Archive.create(data);
   return doc;
 }

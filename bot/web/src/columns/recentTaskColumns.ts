@@ -3,15 +3,13 @@
 import type { ColDef } from "ag-grid-community";
 
 const recentTaskColumns: ColDef[] = [
+  { headerName: "Номер", field: "task_number" },
   {
-    headerName: "Название",
-    field: "title",
-    valueGetter: (p) => {
-      const name = p.data.title?.replace(/^ERM_\d+\s*/, "") || "";
-      const date = p.data.createdAt?.slice(0, 10) || "";
-      return `${p.data.request_id || ""} ${date} ${name}`;
-    },
+    headerName: "Дата",
+    field: "createdAt",
+    valueFormatter: (p) => (p.value ? p.value.slice(0, 10) : ""),
   },
+  { headerName: "Название", field: "title" },
   { headerName: "Статус", field: "status" },
 ];
 

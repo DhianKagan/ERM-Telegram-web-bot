@@ -132,8 +132,22 @@ export interface Attachment {
   url: string;
 }
 
+export interface HistoryEntry {
+  changed_at: Date;
+  changes: Record<string, unknown>;
+}
+
+const historySchema = new Schema<HistoryEntry>(
+  {
+    changed_at: { type: Date, default: Date.now },
+    changes: Schema.Types.Mixed,
+  },
+  { _id: false },
+);
+
 export interface TaskAttrs {
   request_id?: string;
+  task_number?: string;
   submission_date?: Date;
   applicant?: Applicant;
   logistics_details?: Logistics;
@@ -179,6 +193,7 @@ export interface TaskAttrs {
   time_spent?: number;
   // Произвольные поля задачи
   custom?: Record<string, unknown>;
+  history?: HistoryEntry[];
 }
 
 export interface TaskDocument extends TaskAttrs, Document {}
@@ -186,6 +201,7 @@ export interface TaskDocument extends TaskAttrs, Document {}
 const taskSchema = new Schema<TaskDocument>(
   {
     request_id: String,
+    task_number: String,
     submission_date: Date,
     applicant: applicantSchema,
     logistics_details: logisticsSchema,
@@ -269,6 +285,7 @@ const taskSchema = new Schema<TaskDocument>(
     time_spent: { type: Number, default: 0 },
     // Произвольные поля хранятся как объект
     custom: Schema.Types.Mixed,
+    history: [historySchema],
   },
   { timestamps: true },
 );
@@ -281,9 +298,8 @@ taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
     const num = String(count + 1).padStart(6, '0');
     this.request_id = `ERM_${num}`;
   }
-  if (this.isNew && this.title) {
-    this.title = `${this.request_id} ${this.title}`;
-  } else if (!this.title) {
+  this.task_number = this.request_id;
+  if (!this.title) {
     this.title = this.request_id;
   }
   this.slug = slugify(this.title, { lower: true, strict: true });

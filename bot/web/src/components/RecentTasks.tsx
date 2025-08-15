@@ -10,7 +10,7 @@ interface Task {
   _id: string;
   title: string;
   status: string;
-  request_id: string;
+  task_number: string;
   createdAt: string;
 }
 
@@ -22,7 +22,10 @@ export default function RecentTasks() {
     authFetch("/api/v1/tasks?limit=5")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        setTasks(data);
+        const list = Array.isArray(data)
+          ? data
+          : data.tasks || data.items || [];
+        setTasks(list);
         setLoading(false);
       })
       .catch(() => {

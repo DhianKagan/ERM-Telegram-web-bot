@@ -11,12 +11,13 @@ app.use(express.json());
 interface Task {
   id: number;
   title: string;
+  custom?: Record<string, unknown>;
 }
 const tasks: Task[] = [];
 let counter = 1;
 
 app.post('/tasks', (req, res) => {
-  const task = { id: counter++, title: req.body.title };
+  const task: Task = { id: counter++, title: req.body.title, custom: req.body.custom };
   tasks.push(task);
   res.status(201).json(task);
 });
@@ -30,7 +31,8 @@ app.get('/tasks/:id', (req, res) => {
 app.patch('/tasks/:id', (req, res) => {
   const task = tasks.find((t) => t.id === Number(req.params.id));
   if (!task) return res.sendStatus(404);
-  task.title = req.body.title;
+  if (req.body.title) task.title = req.body.title;
+  if (req.body.custom) task.custom = req.body.custom;
   res.json(task);
 });
 
@@ -45,10 +47,13 @@ describe('CRUD задач', () => {
   let created: Task;
 
   test('создаёт задачу', async () => {
-    const res = await request(app).post('/tasks').send({ title: 'demo' });
+    const res = await request(app)
+      .post('/tasks')
+      .send({ title: 'demo', custom: { foo: 'bar' } });
     expect(res.status).toBe(201);
     created = res.body;
     expect(created.title).toBe('demo');
+    expect(created.custom).toEqual({ foo: 'bar' });
   });
 
   test('читает задачу', async () => {
@@ -60,9 +65,10 @@ describe('CRUD задач', () => {
   test('обновляет задачу', async () => {
     const res = await request(app)
       .patch(`/tasks/${created.id}`)
-      .send({ title: 'upd' });
+      .send({ title: 'upd', custom: { foo: 'baz' } });
     expect(res.status).toBe(200);
     expect(res.body.title).toBe('upd');
+    expect(res.body.custom).toEqual({ foo: 'baz' });
   });
 
   test('удаляет задачу', async () => {

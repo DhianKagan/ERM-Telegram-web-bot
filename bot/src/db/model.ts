@@ -177,7 +177,8 @@ export interface TaskAttrs {
   payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
   telegram_topic_id?: number;
   time_spent?: number;
-  custom_fields?: mongoose.Schema.Types.Mixed;
+  // Произвольные поля задачи
+  custom?: Record<string, unknown>;
 }
 
 export interface TaskDocument extends TaskAttrs, Document {}
@@ -266,7 +267,8 @@ const taskSchema = new Schema<TaskDocument>(
 
     telegram_topic_id: Number,
     time_spent: { type: Number, default: 0 },
-    custom_fields: Schema.Types.Mixed,
+    // Произвольные поля хранятся как объект
+    custom: Schema.Types.Mixed,
   },
   { timestamps: true },
 );

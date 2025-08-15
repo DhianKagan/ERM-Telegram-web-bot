@@ -8,6 +8,7 @@ export type TaskFormModernProps = {
   defaultValues?: Record<string, string>;
   onSubmit: (data: Record<string, string>) => void;
   onCancel: () => void;
+  customFields?: Field[];
 };
 
 const renderField = (
@@ -70,6 +71,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   defaultValues = {},
   onSubmit,
   onCancel,
+  customFields = [],
 }) => {
   const [data, setData] = useState<Record<string, string>>(defaultValues);
   const setField = (name: string, v: string) =>
@@ -95,6 +97,19 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
           ))}
         </div>
       ))}
+      {customFields.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Дополнительно</h2>
+          {customFields.map((field) => (
+            <div key={field.name} className="space-y-1">
+              <label className="block text-sm font-medium">{field.label}</label>
+              {renderField(field, data[field.name] ?? "", (v) =>
+                setField(field.name, v),
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2">
         <button
           type="button"

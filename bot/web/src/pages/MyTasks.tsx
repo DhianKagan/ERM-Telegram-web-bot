@@ -14,7 +14,7 @@ interface TaskItem {
   priority?: string;
   start_date?: string;
   due_date?: string;
-  request_id: string;
+  task_number: string;
   createdAt: string;
   assignees?: number[];
   assigned_user_id?: number;
@@ -185,7 +185,7 @@ export default function MyTasks() {
               {sorted.slice((page - 1) * perPage, page * perPage).map((t) => (
                 <tr key={t._id}>
                   <td className="px-4 py-2">
-                    {`${t.request_id} ${t.createdAt.slice(0, 10)} ${t.title.replace(/^ERM_\d+\s*/, "")}`}
+                    {`${t.task_number} ${t.createdAt.slice(0, 10)} ${t.title}`}
                   </td>
                   <td className="px-4 py-2 text-center">{t.status}</td>
                   <td className="px-4 py-2 text-center">{t.priority}</td>

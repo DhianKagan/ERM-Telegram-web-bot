@@ -4,7 +4,7 @@ import React from "react";
 interface Task {
   _id: string;
   title: string;
-  request_id: string;
+  task_number: string;
   createdAt: string;
 }
 
@@ -15,11 +15,10 @@ export default function TaskRangeList({ tasks }: { tasks: Task[] }) {
   return (
     <ul className="space-y-1 text-sm">
       {tasks.map((t) => {
-        const name = t.title.replace(/^ERM_\d+\s*/, "");
         const date = t.createdAt?.slice(0, 10);
         return (
           <li key={t._id} className="border-b pb-1 last:border-b-0">
-            {`${t.request_id} ${date} ${name}`}
+            {`${t.task_number} ${date} ${t.title}`}
           </li>
         );
       })}

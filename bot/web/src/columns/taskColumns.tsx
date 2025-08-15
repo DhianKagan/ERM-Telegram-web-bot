@@ -5,7 +5,7 @@ import userLink from "../utils/userLink";
 
 type Task = {
   _id: string;
-  request_id?: string;
+  task_number?: string;
   title: string;
   status?: string;
   priority?: string;
@@ -25,14 +25,13 @@ export default function taskColumns(
   users: Record<number, any>,
 ): ColDef<Task>[] {
   return [
+    { headerName: "Номер", field: "task_number" },
     {
-      headerName: "Задача",
-      field: "title",
-      valueGetter: (p) =>
-        `${p.data.request_id || ""} ${p.data.createdAt?.slice(0, 10) || ""} ${
-          p.data.title?.replace(/^ERM_\d+\s*/, "") || ""
-        }`,
+      headerName: "Дата создания",
+      field: "createdAt",
+      valueFormatter: (p) => (p.value ? p.value.slice(0, 10) : ""),
     },
+    { headerName: "Название", field: "title" },
     { headerName: "Статус", field: "status" },
     { headerName: "Приоритет", field: "priority" },
     { headerName: "Начало", field: "start_date" },

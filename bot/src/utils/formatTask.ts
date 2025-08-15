@@ -24,6 +24,7 @@ interface UsersIndex {
 
 interface TaskData {
   request_id?: string;
+  task_number?: string;
   title?: string;
   task_type?: string;
   due_date?: string | Date;
@@ -49,10 +50,7 @@ export default function formatTask(
   users: UsersIndex = {},
 ): string {
   const lines: string[] = [];
-  const idTitle = [
-    task.request_id,
-    task.title ? task.title.replace(/^ERM_\d+\s*/, '') : '',
-  ]
+  const idTitle = [task.task_number || task.request_id, task.title]
     .filter(Boolean)
     .join(' ');
   if (idTitle) lines.push(`📌 *Задача:* _${mdEscape(idTitle)}_`);

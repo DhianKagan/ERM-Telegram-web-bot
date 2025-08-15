@@ -44,6 +44,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const initialRef = React.useRef<any>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
+  const [history, setHistory] = React.useState<any[]>([]);
+  const [showHistory, setShowHistory] = React.useState(false);
   const taskSchema = z.object({
     title: z.string().min(1, "Название обязательно"),
     description: z.string().optional(),
@@ -136,11 +138,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             });
             return list;
           });
-          setRequestId(t.request_id);
+          setRequestId(t.task_number || t.request_id);
           setCreated(new Date(t.createdAt).toISOString().slice(0, 10));
+          setHistory(t.history || []);
         });
     } else {
       setCreated(new Date().toISOString().slice(0, 10));
+      setHistory([]);
       authFetch("/api/v1/tasks/report/summary")
         .then((r) => (r.ok ? r.json() : { count: 0 }))
         .then((s) => {
@@ -474,9 +478,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            Задача - {requestId} {created}
-          </h3>
+          <h3 className="text-lg font-semibold">Задача</h3>
           <div className="flex space-x-2">
             {isEdit && !editing && (
               <button
@@ -507,6 +509,33 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
         </div>
         <>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Номер задачи</label>
+              <input
+                value={requestId}
+                disabled
+                className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Дата создания</label>
+              <input
+                value={created}
+                disabled
+                className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+              />
+            </div>
+          </div>
+          {isEdit && history.length > 0 && (
+            <button
+              type="button"
+              className="btn-red mt-2 rounded-full"
+              onClick={() => setShowHistory(true)}
+            >
+              История изменений
+            </button>
+          )}
           <div>
             <label className="block text-sm font-medium">Название задачи</label>
             <input
@@ -889,6 +918,31 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           )}
         </>
       </div>
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">
+            <h4 className="mb-2 font-semibold">История изменений</h4>
+            <ul className="space-y-2 text-sm">
+              {history.map((h, i) => (
+                <li key={i}>
+                  <span className="font-medium">
+                    {new Date(h.changed_at).toLocaleString()}
+                  </span>
+                  <pre className="break-all whitespace-pre-wrap">
+                    {JSON.stringify(h.changes)}
+                  </pre>
+                </li>
+              ))}
+            </ul>
+            <button
+              className="btn-blue mt-2 rounded-lg"
+              onClick={() => setShowHistory(false)}
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

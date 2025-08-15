@@ -5,7 +5,7 @@ import authFetch from "../utils/authFetch";
 interface Task {
   _id: string;
   title: string;
-  request_id: string;
+  task_number: string;
   createdAt: string;
 }
 
@@ -15,7 +15,7 @@ export default function AttachmentMenu() {
   useEffect(() => {
     authFetch("/api/v1/tasks?limit=10")
       .then((r) => (r.ok ? r.json() : []))
-      .then(setTasks);
+      .then((data) => setTasks(Array.isArray(data) ? data : data.tasks || []));
   }, []);
 
   function select(id: string) {
@@ -34,7 +34,7 @@ export default function AttachmentMenu() {
               onClick={() => select(t._id)}
               className="text-blue-600 underline"
             >
-              {`${t.request_id} ${t.createdAt.slice(0, 10)} ${t.title.replace(/^ERM_\d+\s*/, "")}`}
+              {`${t.task_number} ${t.createdAt.slice(0, 10)} ${t.title}`}
             </button>
           </li>
         ))}

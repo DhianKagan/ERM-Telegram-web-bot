@@ -26,18 +26,28 @@ jest.mock('../src/db/model', () => ({
     create: jest.fn(async (d) => ({
       _id: '1',
       request_id: 'ERM_000001',
+      task_number: 'ERM_000001',
       ...d,
-      title: `ERM_000001 ${d.title}`,
+      title: d.title,
       status: 'Новая',
       time_spent: 0,
     })),
-    findByIdAndUpdate: jest.fn(async (_id, d) => ({ _id, ...d })),
-    findById: jest.fn(async () => ({ time_spent: 0, save: jest.fn() })),
+    findByIdAndUpdate: jest.fn(async (_id, d) => ({ _id, ...(d.$set || d) })),
+    findById: jest.fn(async () => ({
+      time_spent: 0,
+      save: jest.fn(),
+      history: [],
+    })),
     findByIdAndDelete: jest.fn(async () => ({
       _id: '1',
       request_id: 'ERM_000001',
+      task_number: 'ERM_000001',
       toObject() {
-        return { _id: '1', request_id: 'ERM_000001' };
+        return {
+          _id: '1',
+          request_id: 'ERM_000001',
+          task_number: 'ERM_000001',
+        };
       },
     })),
     updateMany: jest.fn(async () => null),
@@ -91,7 +101,8 @@ test('создание задачи возвращает 201', async () => {
       start_date: '2025-01-01T10:00',
     });
   expect(res.status).toBe(201);
-  expect(res.body.title).toBe('ERM_000001 T');
+  expect(res.body.title).toBe('T');
+  expect(res.body.task_number).toBe('ERM_000001');
   expect(Task.create).toHaveBeenCalledWith(
     expect.objectContaining({
       start_date: '2025-01-01T10:00',
@@ -168,7 +179,10 @@ test('удаление задачи', async () => {
   const res = await request(app).delete(`/api/v1/tasks/${id}`);
   expect(res.status).toBe(204);
   expect(Archive.create).toHaveBeenCalledWith(
-    expect.objectContaining({ request_id: 'ERM_000001-DEL' }),
+    expect.objectContaining({
+      request_id: 'ERM_000001-DEL',
+      task_number: 'ERM_000001-DEL',
+    }),
   );
 });
 

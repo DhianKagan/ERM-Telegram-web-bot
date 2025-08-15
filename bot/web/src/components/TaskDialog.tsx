@@ -2,7 +2,7 @@
 // Модули: React, DOMPurify, контексты, сервисы задач и логов
 import React, { useContext } from "react";
 import DOMPurify from "dompurify";
-import RichTextEditor from "./RichTextEditor";
+import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
 import fields from "../../../src/shared/taskFields";
@@ -81,6 +81,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const DEFAULT_PAYMENT =
     fields.find((f) => f.name === "payment_method")?.default || "";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
+
+  const makeDefaultDate = (h: number) => {
+    const d = new Date();
+    d.setHours(h, 0, 0, 0);
+    return d.toISOString().slice(0, 16);
+  };
+  const DEFAULT_START_DATE = makeDefaultDate(8);
+  const DEFAULT_DUE_DATE = makeDefaultDate(18);
 
   const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
   const [comment, setComment] = React.useState("");
@@ -166,8 +174,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startLink: "",
         end: "",
         endLink: "",
-        startDate: "",
-        dueDate: "",
+        startDate: DEFAULT_START_DATE,
+        dueDate: DEFAULT_DUE_DATE,
         controllers: [],
         attachments: [],
         distanceKm: null,
@@ -177,8 +185,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         description: "",
         assignees: [],
         controllers: [],
-        startDate: "",
-        dueDate: "",
+        startDate: DEFAULT_START_DATE,
+        dueDate: DEFAULT_DUE_DATE,
       });
     }
   }, [
@@ -190,6 +198,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_TRANSPORT,
     DEFAULT_PAYMENT,
     DEFAULT_STATUS,
+    DEFAULT_START_DATE,
+    DEFAULT_DUE_DATE,
     reset,
   ]);
 
@@ -364,9 +374,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       start_location_link: startLink,
       end_location: end,
       end_location_link: endLink,
-      start_date: formData.startDate || undefined,
-      due_date: formData.dueDate || undefined,
-      files: files ? Array.from(files).map((f) => f.name) : undefined,
+      start_date: formData.startDate || DEFAULT_START_DATE,
+      due_date: formData.dueDate || DEFAULT_DUE_DATE,
     };
     if (startCoordinates) payload.startCoordinates = startCoordinates;
     if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
@@ -374,9 +383,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (routeLink) payload.google_route_url = routeLink;
     let data;
     if (isEdit && id) {
-      data = await updateTask(id, payload);
+      data = await updateTask(id, payload, files || undefined);
     } else {
-      data = await createTask(payload);
+      data = await createTask(payload, files || undefined);
     }
     if (data && data._id) {
       authFetch(`/api/v1/tasks/${data._id}`)
@@ -408,6 +417,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           }
         });
     }
+    if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
     if (data && onSave) onSave(data);
   });
 
@@ -417,6 +427,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     await deleteTask(id);
     if (onSave) onSave(null);
     onClose();
+    window.alert("Задача удалена");
   };
 
   const resetForm = () => {
@@ -813,7 +824,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               name="description"
               control={control}
               render={({ field }) => (
-                <RichTextEditor
+                <CKEditorPopup
                   value={field.value}
                   onChange={field.onChange}
                   readOnly={!editing}
@@ -823,7 +834,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium">Комментарий</label>
-            <RichTextEditor
+            <CKEditorPopup
               value={comment}
               onChange={setComment}
               readOnly={!editing}
@@ -878,7 +889,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </button>
             )}
             {editing && (
-              <button className="btn-blue rounded-full" onClick={submit}>
+              <button
+                className="btn-blue rounded-full"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      isEdit ? "Сохранить изменения?" : "Создать задачу?",
+                    )
+                  ) {
+                    submit();
+                  }
+                }}
+              >
                 {isEdit ? "Сохранить" : "Создать"}
               </button>
             )}

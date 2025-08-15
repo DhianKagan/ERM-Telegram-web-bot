@@ -80,6 +80,18 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   const setField = (name: string, v: string) =>
     setData((d) => ({ ...d, [name]: v }));
   useEffect(() => {
+    const make = (h: number) => {
+      const d = new Date();
+      d.setHours(h, 0, 0, 0);
+      return d.toISOString().slice(0, 16);
+    };
+    setData((d) => ({
+      ...d,
+      startDate: d.startDate || make(8),
+      dueDate: d.dueDate || make(18),
+    }));
+  }, []);
+  useEffect(() => {
     fetch("/api/v1/task-templates")
       .then((r) => r.json())
       .then((t: Template[]) => setTemplates(t))

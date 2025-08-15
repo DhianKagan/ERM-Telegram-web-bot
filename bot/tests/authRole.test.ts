@@ -11,14 +11,18 @@ const request = require('supertest');
 const checkRole = require('../src/middleware/checkRole').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
-const { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } = require('../src/utils/accessMask');
+const {
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_USER,
+} = require('../src/utils/accessMask');
 
 function appWithRole(role) {
   const app = express();
   app.get(
     '/cp',
     (req, res, next) => {
-      req.user = { role, access: role === 'admin' ? 2 : 1 };
+      req.user = { role, access: role === 'admin' ? 2 : 1, telegram_id: 1 };
       next();
     },
     checkRole(ACCESS_ADMIN),
@@ -32,7 +36,7 @@ function appWithMask(mask) {
   app.get(
     '/mask',
     (req, res, next) => {
-      req.user = { role: 'user', access: mask };
+      req.user = { role: 'user', access: mask, telegram_id: 1 };
       next();
     },
     checkRole(ACCESS_MANAGER),
@@ -52,7 +56,9 @@ test('пользователь получает 403', async () => {
 });
 
 test('комбинированная маска даёт доступ к /mask', async () => {
-  const res = await request(appWithMask(ACCESS_USER | ACCESS_MANAGER)).get('/mask');
+  const res = await request(appWithMask(ACCESS_USER | ACCESS_MANAGER)).get(
+    '/mask',
+  );
   expect(res.status).toBe(200);
 });
 

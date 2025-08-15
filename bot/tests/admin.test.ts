@@ -25,6 +25,7 @@ jest.mock('../src/api/middleware', () => ({
     req.user = {
       role: req.headers['x-role'],
       access: Number(req.headers['x-access']) || 1,
+      telegram_id: 1,
     };
     next();
   },
@@ -107,7 +108,9 @@ test('получение логов доступно админу', async () => 
 
 test('фильтры логов передаются в сервис', async () => {
   await request(app)
-    .get('/api/v1/logs?level=error&message=t&from=2024-01-01&to=2024-01-02&sort=date_asc')
+    .get(
+      '/api/v1/logs?level=error&message=t&from=2024-01-01&to=2024-01-02&sort=date_asc',
+    )
     .set('x-role', 'admin')
     .set('x-access', '2');
   expect(listLogs).toHaveBeenCalledWith(

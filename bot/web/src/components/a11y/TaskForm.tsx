@@ -9,6 +9,11 @@ type TaskFormProps = { customFields?: Field[] };
 export function TaskForm({ customFields = [] }: TaskFormProps) {
   return (
     <form id="task-form" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <input
+        type="hidden"
+        name="formVersion"
+        value={(formSchema as any).formVersion}
+      />
       {formSchema.sections.map((section) =>
         section.fields.map((field) => (
           <FormField key={field.name} label={field.label}>
@@ -28,7 +33,9 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
 const renderField = (field: Field) => {
   switch (field.type) {
     case "text":
-      return <input className="input" name={field.name} required={field.required} />;
+      return (
+        <input className="input" name={field.name} required={field.required} />
+      );
     case "datetime":
       return (
         <input

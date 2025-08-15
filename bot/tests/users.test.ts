@@ -24,6 +24,7 @@ jest.mock('../src/api/middleware', () => ({
     req.user = {
       role: req.headers['x-role'],
       access: Number(req.headers['x-access']) || 1,
+      telegram_id: 1,
     };
     next();
   },

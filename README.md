@@ -38,6 +38,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 ```
 
 Форма `TaskFormModern` по адресу `/tasks/new?template=<id>` заполнит поля из шаблона.
+Все формы отправляют поле `formVersion`; сервер отклоняет неизвестные версии.
 
 ## Возможности
 
@@ -104,6 +105,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Гистограммы HTTP (method, route, status) и отдельные метрики OSRM с таймерами и счётчиком ошибок.
 - Поддержка W3C Trace Context: заголовок `traceparent`, trace-id в логах и ответах проблем.
 - Лимиты запросов на `/api/v1/auth` и `/api/v1/route`, лимитер отправляет `X-RateLimit-*`, превышения фиксирует метрика `rate_limit_drops_total` с метками `name` и `key`.
+- Лимитер учитывает `telegram_id` пользователя и допускает обход по капче через заголовок `X-Captcha-Token`.
 - Подключение middleware логирования и метрик исправлено для корректного запуска API.
 - Исправлен маршрут `/api/v1/users`: убраны лишние аргументы обработчиков.
 - Исправлен импорт `rolesGuard` в маршрутах `users`, `roles` и `logs`.

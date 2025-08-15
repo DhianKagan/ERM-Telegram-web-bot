@@ -135,6 +135,6 @@ test('полный цикл логина и создания задачи', asyn
     .post('/api/v1/tasks')
     .set('X-Forwarded-Proto', 'https')
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
-    .send({ title: 'T' });
+    .send({ formVersion: 1, title: 'T' });
   expect(res.status).toBe(201);
 });

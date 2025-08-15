@@ -5,6 +5,7 @@ import type { ParsedQs } from 'qs';
 
 export interface UserInfo {
   id?: number;
+  telegram_id?: number;
   username?: string;
   role?: string;
   access?: number;

@@ -70,15 +70,32 @@ afterAll(() => {
 
 test('лимитер auth возвращает 429 и затем 200', async () => {
   for (let i = 0; i < 2; i++) {
-    const r = await request(app).post('/api/v1/auth/send_code').send({ telegramId: 1 });
+    const r = await request(app)
+      .post('/api/v1/auth/send_code')
+      .send({ telegramId: 1 });
     expect(r.status).toBe(200);
   }
-  let res = await request(app).post('/api/v1/auth/send_code').send({ telegramId: 1 });
+  let res = await request(app)
+    .post('/api/v1/auth/send_code')
+    .send({ telegramId: 1 });
   expect(res.status).toBe(429);
   expect(res.body.title).toBe('Превышен лимит запросов');
   await new Promise((r) => setTimeout(r, 250));
-  res = await request(app).post('/api/v1/auth/send_code').send({ telegramId: 1 });
+  res = await request(app)
+    .post('/api/v1/auth/send_code')
+    .send({ telegramId: 1 });
   expect(res.status).toBe(200);
+});
+
+test('валидная капча пропускает лимитер auth', async () => {
+  process.env.CAPTCHA_TOKEN = 'ok';
+  for (let i = 0; i < 3; i++) {
+    const res = await request(app)
+      .post('/api/v1/auth/send_code')
+      .set('X-Captcha-Token', 'ok')
+      .send({ telegramId: 1 });
+    expect(res.status).toBe(200);
+  }
 });
 
 test('лимитер table возвращает 429 и затем 200', async () => {

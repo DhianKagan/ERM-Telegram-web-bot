@@ -20,7 +20,7 @@ jest.mock('../src/db/queries', () => ({
 const { listRoutes } = require('../src/db/queries');
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
-    req.user = { id: 1 };
+    req.user = { id: 1, telegram_id: 1 };
     next();
   },
   asyncHandler: (fn) => fn,

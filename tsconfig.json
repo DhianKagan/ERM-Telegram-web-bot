@@ -19,6 +19,6 @@
     "emitDecoratorMetadata": true,
     "typeRoots": ["./bot/node_modules/@types", "./node_modules/@types"]
   },
-  "include": ["bot/src/**/*"],
+  "include": ["bot/src/**/*.ts", "bot/src/**/*.d.ts"],
   "exclude": ["dist"]
 }

@@ -3,6 +3,7 @@
 export const TOKENS = {
   TasksRepository: Symbol('TasksRepository'),
   TasksService: Symbol('TasksService'),
+  TaskTemplatesService: Symbol('TaskTemplatesService'),
   UsersService: Symbol('UsersService'),
   RolesService: Symbol('RolesService'),
   LogsService: Symbol('LogsService'),

@@ -1,9 +1,10 @@
 // Современная форма задачи, генерируемая по схеме
 // Модули: React
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import formSchema from "../../../src/form/taskForm.schema.json";
 import type { Field } from "../../../src/form";
 
+type Template = { _id: string; name: string; data: Record<string, string> };
 export type TaskFormModernProps = {
   defaultValues?: Record<string, string>;
   onSubmit: (data: Record<string, string>) => void;
@@ -74,8 +75,32 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   customFields = [],
 }) => {
   const [data, setData] = useState<Record<string, string>>(defaultValues);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const setField = (name: string, v: string) =>
     setData((d) => ({ ...d, [name]: v }));
+  useEffect(() => {
+    fetch("/api/v1/task-templates")
+      .then((r) => r.json())
+      .then((t: Template[]) => setTemplates(t))
+      .catch(() => setTemplates([]));
+  }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tplId = params.get("template");
+    if (tplId) {
+      const tpl = templates.find((t) => t._id === tplId);
+      if (tpl) {
+        setSelectedTemplate(tplId);
+        setData({ ...defaultValues, ...tpl.data });
+      }
+    }
+  }, [templates, defaultValues]);
+  const handleTemplateChange = (id: string) => {
+    setSelectedTemplate(id);
+    const tpl = templates.find((t) => t._id === id);
+    setData(tpl ? { ...defaultValues, ...tpl.data } : defaultValues);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +109,23 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {templates.length > 0 && (
+        <div className="space-y-1">
+          <label className="block text-sm font-medium">Шаблон</label>
+          <select
+            className="h-10 w-full rounded border px-3"
+            value={selectedTemplate}
+            onChange={(e) => handleTemplateChange(e.target.value)}
+          >
+            <option value="">Без шаблона</option>
+            {templates.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {formSchema.sections.map((section) => (
         <div key={section.name} className="space-y-4">
           <h2 className="text-lg font-semibold">{section.label}</h2>

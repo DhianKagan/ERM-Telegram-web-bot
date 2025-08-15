@@ -29,10 +29,21 @@ pnpm --dir bot build
 node bot/dist/bot/bot.js
 ```
 
+## Пример шаблона задачи
+
+```bash
+curl -X POST http://localhost:3000/api/v1/task-templates \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Звонок","data":{"title":"Позвонить"}}'
+```
+
+Форма `TaskFormModern` по адресу `/tasks/new?template=<id>` заполнит поля из шаблона.
+
 ## Возможности
 
 - Создание и редактирование задач через чат и мини‑приложение.
 - Современная форма создания задач `TaskFormModern` на React и Tailwind.
+- API шаблонов задач `/api/v1/task-templates`, форма поддерживает `?template=`.
 - Поддержка произвольных полей задач через объект `custom`.
 - Веб‑панель администратора на базе TailAdmin.
 - Таблицы админки используют AG Grid с сервисом `useGrid` и модульными колонками.

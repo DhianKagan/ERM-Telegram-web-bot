@@ -387,3 +387,22 @@ export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
   'Log',
   logSchema,
 );
+// Шаблон задачи хранит предустановленные поля
+// Основные модули: mongoose
+export interface TaskTemplateAttrs {
+  name: string;
+  data: Record<string, unknown>;
+}
+
+export interface TaskTemplateDocument extends TaskTemplateAttrs, Document {}
+
+const taskTemplateSchema = new Schema<TaskTemplateDocument>(
+  {
+    name: { type: String, required: true },
+    data: Schema.Types.Mixed,
+  },
+  { timestamps: true },
+);
+
+export const TaskTemplate: Model<TaskTemplateDocument> =
+  mongoose.model<TaskTemplateDocument>('TaskTemplate', taskTemplateSchema);

@@ -11,6 +11,7 @@ import TasksService from '../tasks/tasks.service';
 import UsersService from '../users/users.service';
 import RolesService from '../roles/roles.service';
 import LogsService from '../logs/logs.service';
+import TaskTemplatesService from '../taskTemplates/taskTemplates.service';
 import queries from '../db/queries';
 import tmaAuthGuard from '../auth/tmaAuth.guard';
 
@@ -26,6 +27,10 @@ container.register(TOKENS.RolesService, {
 });
 container.register(TOKENS.LogsService, {
   useFactory: (c) => new LogsService(c.resolve(TOKENS.TasksRepository)),
+});
+container.register(TOKENS.TaskTemplatesService, {
+  useFactory: (c) =>
+    new TaskTemplatesService(c.resolve(TOKENS.TasksRepository)),
 });
 container.register(TOKENS.RoutesService, { useValue: routes });
 container.register(TOKENS.MapsService, { useValue: maps });

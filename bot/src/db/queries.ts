@@ -8,6 +8,8 @@ import {
   TaskDocument,
   UserDocument,
   RoleDocument,
+  TaskTemplate,
+  TaskTemplateDocument,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
@@ -309,6 +311,28 @@ export async function updateRole(
   );
 }
 
+export async function createTaskTemplate(
+  data: Partial<TaskTemplateDocument>,
+): Promise<TaskTemplateDocument> {
+  return TaskTemplate.create(data);
+}
+
+export async function getTaskTemplate(
+  id: string,
+): Promise<TaskTemplateDocument | null> {
+  return TaskTemplate.findById(id);
+}
+
+export async function listTaskTemplates(): Promise<TaskTemplateDocument[]> {
+  return TaskTemplate.find();
+}
+
+export async function deleteTaskTemplate(
+  id: string,
+): Promise<TaskTemplateDocument | null> {
+  return TaskTemplate.findByIdAndDelete(id);
+}
+
 export default {
   createTask,
   listMentionedTasks,
@@ -331,5 +355,9 @@ export default {
   writeLog: logEngine.writeLog,
   listLogs: logEngine.listLogs,
   searchTasks,
+  createTaskTemplate,
+  getTaskTemplate,
+  listTaskTemplates,
+  deleteTaskTemplate,
   listRoutes,
 };

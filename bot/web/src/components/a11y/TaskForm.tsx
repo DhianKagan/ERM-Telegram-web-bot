@@ -8,24 +8,44 @@ type TaskFormProps = { customFields?: Field[] };
 
 export function TaskForm({ customFields = [] }: TaskFormProps) {
   return (
-    <form id="task-form" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <form id="task-form" className="flex flex-col gap-6">
       <input
         type="hidden"
         name="formVersion"
         value={(formSchema as any).formVersion}
       />
-      {formSchema.sections.map((section) =>
-        section.fields.map((field) => (
-          <FormField key={field.name} label={field.label}>
-            {renderField(field)}
-          </FormField>
-        )),
-      )}
-      {customFields.map((field) => (
-        <FormField key={field.name} label={field.label}>
-          {renderField(field)}
-        </FormField>
+      {formSchema.sections.map((section) => (
+        <div
+          key={section.name}
+          className="grid grid-cols-1 gap-4 xsm:grid-cols-2"
+        >
+          <h2 className="col-span-full text-lg font-semibold">
+            {section.title}
+          </h2>
+          {section.fields.map((field) => (
+            <FormField
+              key={field.name}
+              label={field.label}
+              className={field.type === "textarea" ? "md:col-span-2" : ""}
+            >
+              {renderField(field)}
+            </FormField>
+          ))}
+        </div>
       ))}
+      {customFields.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 xsm:grid-cols-2">
+          {customFields.map((field) => (
+            <FormField
+              key={field.name}
+              label={field.label}
+              className={field.type === "textarea" ? "md:col-span-2" : ""}
+            >
+              {renderField(field)}
+            </FormField>
+          ))}
+        </div>
+      )}
     </form>
   );
 }

@@ -167,22 +167,22 @@ export default function TasksPage() {
       {loading && <div>Загрузка...</div>}
       <KPIOverview count={kpi.count} time={kpi.time} />
       <div className="flex items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {["all", "Новая", "В работе", "Выполнена"].map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-md px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600"}`}
+              className={`rounded-md xsm:w-full px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600"}`}
             >
               {s === "all" ? "Все" : s} ({counts[s]})
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <Link to="/tasks/kanban" className="btn-gray rounded px-3">
+        <div className="flex flex-wrap gap-2">
+          <Link to="/tasks/kanban" className="btn-gray xsm:w-full rounded px-3">
             Доска
           </Link>
-          <button onClick={refresh} className="btn-gray rounded px-3">
+          <button onClick={refresh} className="btn-gray xsm:w-full rounded px-3">
             Обновить
           </button>
           <button
@@ -190,13 +190,13 @@ export default function TasksPage() {
               params.set("newTask", "1");
               setParams(params);
             }}
-            className="btn btn-blue"
+            className="btn btn-blue xsm:w-full"
           >
             Новая задача
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
           value={search}
@@ -220,7 +220,7 @@ export default function TasksPage() {
             ))}
           </select>
         )}
-        <button onClick={saveView} className="btn-gray rounded px-3">
+        <button onClick={saveView} className="btn-gray xsm:w-full rounded px-3">
           Сохранить вид
         </button>
       </div>
@@ -236,7 +236,7 @@ export default function TasksPage() {
         }}
       />
       {selected.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={bulkStatus}
             onChange={(e) => setBulkStatus(e.target.value)}
@@ -248,7 +248,7 @@ export default function TasksPage() {
               </option>
             ))}
           </select>
-          <button onClick={changeStatus} className="btn-green">
+          <button onClick={changeStatus} className="btn-green xsm:w-full">
             Сменить статус
           </button>
         </div>

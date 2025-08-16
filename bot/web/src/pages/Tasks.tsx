@@ -51,7 +51,7 @@ export default function Tasks() {
         items={[{ label: "Задачи", href: "/tasks" }, { label: "Задачи" }]}
       />
       <h2 className="text-xl font-semibold">Задачи</h2>
-      <form onSubmit={add} className="flex gap-2">
+      <form onSubmit={add} className="flex flex-wrap gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -61,7 +61,7 @@ export default function Tasks() {
         />
         <button
           type="submit"
-          className="btn btn-blue flex items-center justify-center"
+          className="btn btn-blue xsm:w-full flex items-center justify-center"
         >
           {posting ? <Spinner /> : "Создать"}
         </button>

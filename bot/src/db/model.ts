@@ -403,6 +403,31 @@ export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
   'Log',
   logSchema,
 );
+
+// Коллекция загруженных файлов
+export interface UploadAttrs {
+  key: string;
+  mime: string;
+  size: number;
+  owner: number;
+}
+
+export interface UploadDocument extends UploadAttrs, Document {}
+
+const uploadSchema = new Schema<UploadDocument>(
+  {
+    key: { type: String, required: true, unique: true },
+    mime: { type: String, required: true },
+    size: { type: Number, required: true },
+    owner: { type: Number, required: true },
+  },
+  { timestamps: true },
+);
+
+export const Upload: Model<UploadDocument> = mongoose.model<UploadDocument>(
+  'Upload',
+  uploadSchema,
+);
 // Шаблон задачи хранит предустановленные поля
 // Основные модули: mongoose
 export interface TaskTemplateAttrs {

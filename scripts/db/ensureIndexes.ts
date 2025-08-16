@@ -1,4 +1,4 @@
-// Назначение файла: идемпотентное создание индексов задач
+// Назначение файла: идемпотентное создание индексов задач и загрузок
 // Модули: mongoose, dotenv
 try {
   require('dotenv/config');
@@ -46,6 +46,23 @@ export async function ensureTaskIndexes(conn?: mongoose.Connection) {
   if (!conn) await connection.close();
 }
 
+export async function ensureUploadIndexes(conn?: mongoose.Connection) {
+  const connection =
+    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!));
+  await connection.db.createCollection('uploads').catch(() => {});
+  const uploads = connection.db.collection('uploads');
+  const indexes = (await uploads.indexes()) as { key: IndexKey }[];
+  if (!indexes.some((i) => planKey(i.key, [['key', 1]]))) {
+    await uploads.createIndex({ key: 1 }, { name: 'key_unique', unique: true });
+  }
+  if (!indexes.some((i) => planKey(i.key, [['owner', 1]]))) {
+    await uploads.createIndex({ owner: 1 }, { name: 'owner_idx' });
+  }
+  if (!conn) await connection.close();
+}
+
 if (require.main === module) {
-  ensureTaskIndexes().finally(() => process.exit());
+  ensureTaskIndexes()
+    .then(() => ensureUploadIndexes())
+    .finally(() => process.exit());
 }

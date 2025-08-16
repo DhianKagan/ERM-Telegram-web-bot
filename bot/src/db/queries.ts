@@ -10,6 +10,8 @@ import {
   RoleDocument,
   TaskTemplate,
   TaskTemplateDocument,
+  Upload,
+  UploadDocument,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
@@ -354,6 +356,21 @@ export async function deleteTaskTemplate(
   return TaskTemplate.findByIdAndDelete(id);
 }
 
+export interface UploadData {
+  key: string;
+  mime: string;
+  size: number;
+  owner: number;
+}
+
+export async function createUpload(data: UploadData): Promise<UploadDocument> {
+  return Upload.create(data);
+}
+
+export async function getUpload(key: string): Promise<UploadDocument | null> {
+  return Upload.findOne({ key });
+}
+
 export default {
   createTask,
   listMentionedTasks,
@@ -381,4 +398,6 @@ export default {
   listTaskTemplates,
   deleteTaskTemplate,
   listRoutes,
+  createUpload,
+  getUpload,
 };

@@ -9,12 +9,11 @@ import {
   Navigate,
 } from "react-router-dom";
 const TasksPage = lazy(() => import("./pages/TasksPage"));
-const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const Reports = lazy(() => import("./pages/Reports"));
 const LogsPage = lazy(() => import("./pages/Logs"));
 const CpIndex = lazy(() => import("./pages/CpIndex"));
 const Profile = lazy(() => import("./pages/Profile"));
-const MyTasks = lazy(() => import("./pages/MyTasks"));
+const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
@@ -46,14 +45,6 @@ function Content() {
           <Route path="/login" element={<CodeLogin />} />
           <Route path="/menu" element={<AttachmentMenu />} />
           <Route
-            path="/profile/mytasks"
-            element={
-              <ProtectedRoute>
-                <MyTasks />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/profile"
             element={
               <ProtectedRoute>
@@ -70,11 +61,11 @@ function Content() {
             }
           />
           <Route
-            path="/tasks/kanban"
+            path="/cp/kanban"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <TaskKanban />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route

@@ -68,10 +68,20 @@ export default function TasksPage() {
     fetchTasks({}, Number((user as any)?.telegram_id))
       .then((data) => {
         const tasks = Array.isArray(data) ? data : data.tasks || [];
-        setAll(tasks);
-        const list = Array.isArray(data.users)
-          ? data.users
-          : Object.values(data.users || {});
+        const filteredTasks = isAdmin
+          ? tasks
+          : tasks.filter((t) => {
+              const assigned =
+                t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
+              return (
+                assigned.includes((user as any).telegram_id) ||
+                t.created_by === (user as any).telegram_id
+              );
+            });
+        setAll(filteredTasks);
+        const list = Array.isArray((data as any).users)
+          ? (data as any).users
+          : Object.values((data as any).users || {});
         setUsers(list);
       })
       .finally(() => setLoading(false));
@@ -132,10 +142,19 @@ export default function TasksPage() {
   const changeStatus = async () => {
     await authFetch("/api/v1/tasks/bulk", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: selected, status: bulkStatus }),
+    });
+    setSelected([]);
+    addToast("Статус обновлён");
+    load();
+  };
+
+  const changeStatusTo = async (s: string) => {
+    await authFetch("/api/v1/tasks/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selected, status: s }),
     });
     setSelected([]);
     addToast("Статус обновлён");
@@ -172,17 +191,22 @@ export default function TasksPage() {
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-md xsm:w-full px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600"}`}
+              className={`xsm:w-full rounded-md px-3 py-1 text-sm ${status === s ? "bg-accentPrimary text-white" : "bg-gray-100 text-gray-600"}`}
             >
               {s === "all" ? "Все" : s} ({counts[s]})
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/tasks/kanban" className="btn-gray xsm:w-full rounded px-3">
-            Доска
-          </Link>
-          <button onClick={refresh} className="btn-gray xsm:w-full rounded px-3">
+          {isAdmin && (
+            <Link to="/cp/kanban" className="btn-gray xsm:w-full rounded px-3">
+              Доска
+            </Link>
+          )}
+          <button
+            onClick={refresh}
+            className="btn-gray xsm:w-full rounded px-3"
+          >
             Обновить
           </button>
           <button
@@ -235,24 +259,40 @@ export default function TasksPage() {
           setParams(params);
         }}
       />
-      {selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={bulkStatus}
-            onChange={(e) => setBulkStatus(e.target.value)}
-            className="rounded border px-1"
-          >
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <button onClick={changeStatus} className="btn-green xsm:w-full">
-            Сменить статус
-          </button>
-        </div>
-      )}
+      {selected.length > 0 &&
+        (isAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+              className="rounded border px-1"
+            >
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <button onClick={changeStatus} className="btn-green xsm:w-full">
+              Сменить статус
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => changeStatusTo("В работе")}
+              className="btn-green xsm:w-full"
+            >
+              В работу
+            </button>
+            <button
+              onClick={() => changeStatusTo("Выполнена")}
+              className="btn-blue xsm:w-full"
+            >
+              Выполнена
+            </button>
+          </div>
+        ))}
     </div>
   );
 }

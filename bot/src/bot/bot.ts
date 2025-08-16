@@ -6,6 +6,7 @@ import { Telegraf, Markup, Context } from 'telegraf';
 import messages from '../messages';
 import { createUser, getUser } from '../services/service';
 import { startScheduler } from '../services/scheduler';
+import { startKeyRotation } from '../services/keyRotation';
 import '../db/model';
 
 if (process.env.NODE_ENV !== 'production') {
@@ -78,7 +79,10 @@ async function startBot(retry = 0): Promise<void> {
 }
 
 startBot().then(() => {
-  if (process.env.NODE_ENV !== 'test') startScheduler();
+  if (process.env.NODE_ENV !== 'test') {
+    startScheduler();
+    startKeyRotation();
+  }
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));

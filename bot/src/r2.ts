@@ -4,8 +4,14 @@ import { Router, Response } from 'express';
 import authMiddleware from './middleware/auth';
 import { createUpload, getUpload } from './db/queries';
 import type RequestWithUser from './types/request';
+import cors from 'cors';
 
 const router = Router();
+const origins = (process.env.R2_CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+router.use(origins.length ? cors({ origin: origins }) : cors());
 const keyRegex = /^[\w./-]+$/;
 const maxSize = Number(process.env.R2_MAX_SIZE || 20 * 1024 * 1024);
 

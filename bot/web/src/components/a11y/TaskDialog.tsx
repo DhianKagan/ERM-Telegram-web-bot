@@ -24,7 +24,7 @@ export function TaskDialog({
       className="fixed inset-0 z-50"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mx-auto mt-8 w-[min(100vw-1rem,56rem)] rounded-2xl bg-white shadow-xl md:mt-16">
+      <div className="relative mx-auto mt-0 w-screen rounded-2xl bg-white shadow-xl md:mt-16">
         <div className="flex items-center justify-between gap-4 border-b px-4 py-3 md:px-6">
           <h2
             id="task-dialog-title"
@@ -41,7 +41,7 @@ export function TaskDialog({
             <span aria-hidden>✕</span>
           </button>
         </div>
-        <div className="max-h-[80vh] overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="h-screen max-h-none overflow-y-auto px-4 py-4 md:px-6 md:py-6">
           {children}
         </div>
         <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t bg-white/90 px-4 py-3 backdrop-blur md:px-6">

@@ -1,6 +1,6 @@
 /* eslint-env browser */
-// Назначение: обёртка для fetch с CSRF-токеном
-// Основные модули: fetch, window.location, localStorage
+// Назначение: обёртка для запросов с CSRF-токеном и прогрессом загрузки
+// Основные модули: fetch, XMLHttpRequest, window.location, localStorage
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
 
 interface FetchOptions {
@@ -14,13 +14,54 @@ interface FetchOptions {
 
 interface AuthFetchOptions extends FetchOptions {
   noRedirect?: boolean;
+  onProgress?: (e: ProgressEvent) => void;
+}
+
+async function sendRequest(
+  url: string,
+  opts: FetchOptions,
+  onProgress?: (e: ProgressEvent) => void,
+): Promise<Response> {
+  if (onProgress && typeof XMLHttpRequest !== "undefined") {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(opts.method || "GET", url);
+      xhr.withCredentials = opts.credentials === "include";
+      Object.entries(opts.headers || {}).forEach(([k, v]) =>
+        xhr.setRequestHeader(k, v),
+      );
+      xhr.upload.onprogress = onProgress;
+      xhr.onload = () => {
+        const headers = new Headers();
+        xhr
+          .getAllResponseHeaders()
+          .trim()
+          .split(/\r?\n/)
+          .forEach((line) => {
+            const [key, val] = line.split(": ");
+            if (key) headers.append(key, val);
+          });
+        resolve(
+          new Response(xhr.response, {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            headers,
+          }),
+        );
+      };
+      xhr.onerror = () => reject(new TypeError("Network request failed"));
+      xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+      xhr.send(opts.body as any);
+    });
+  }
+  return fetch(url, opts);
 }
 
 export default async function authFetch(
   url: string,
   options: AuthFetchOptions = {},
 ): Promise<Response> {
-  const { noRedirect, ...fetchOpts } = options;
+  const { noRedirect, onProgress, ...fetchOpts } = options;
   const getToken = getCsrfToken;
   const saveToken = setCsrfToken;
   const headers: Record<string, string> = { ...(fetchOpts.headers || {}) };
@@ -41,7 +82,7 @@ export default async function authFetch(
   }
   if (token) headers["X-XSRF-TOKEN"] = token;
   const opts: FetchOptions = { ...fetchOpts, credentials: "include", headers };
-  let res = await fetch(url, opts);
+  let res = await sendRequest(url, opts, onProgress);
   if (res.status === 403) {
     if (opts.body) {
       try {
@@ -60,7 +101,7 @@ export default async function authFetch(
     } catch {
       /* ignore */
     }
-    res = await fetch(url, opts);
+    res = await sendRequest(url, opts, onProgress);
     if (res.ok && opts.body) {
       try {
         localStorage.removeItem("csrf_payload");

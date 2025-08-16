@@ -20,6 +20,7 @@ export const updateTaskStatus = (id: string, status: string) =>
 export const createTask = (
   data: Record<string, unknown>,
   files?: FileList | File[],
+  onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = new FormData();
   body.append("formVersion", String((formSchema as any).formVersion));
@@ -27,7 +28,7 @@ export const createTask = (
     if (v !== undefined && v !== null) body.append(k, String(v));
   });
   if (files) Array.from(files).forEach((f) => body.append("files", f));
-  return authFetch("/api/v1/tasks", { method: "POST", body }).then(
+  return authFetch("/api/v1/tasks", { method: "POST", body, onProgress }).then(
     async (r) => {
       if (!r.ok) return null;
       const result = await r.json();
@@ -49,13 +50,18 @@ export const updateTask = (
   id: string,
   data: Record<string, unknown>,
   files?: FileList | File[],
+  onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = new FormData();
   Object.entries(data).forEach(([k, v]) => {
     if (v !== undefined && v !== null) body.append(k, String(v));
   });
   if (files) Array.from(files).forEach((f) => body.append("files", f));
-  return authFetch(`/api/v1/tasks/${id}`, { method: "PATCH", body });
+  return authFetch(`/api/v1/tasks/${id}`, {
+    method: "PATCH",
+    body,
+    onProgress,
+  });
 };
 
 export const fetchMentioned = () =>

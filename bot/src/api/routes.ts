@@ -32,6 +32,7 @@ import usersRouter from '../routes/users';
 import rolesRouter from '../routes/roles';
 import logsRouter from '../routes/logs';
 import taskTemplatesRouter from '../routes/taskTemplates';
+import r2Router from '../r2';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -170,6 +171,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);
   app.use(`${prefix}/task-templates`, taskTemplatesRouter);
+  app.use('/r2', r2Router);
 
   app.get(
     '/api/tma/tasks',

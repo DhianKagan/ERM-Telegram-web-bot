@@ -34,8 +34,8 @@ export default function TaskBoard() {
   };
 
   return (
-    <div className="flex space-x-4 p-4">
-      <div className="mb-4 flex gap-2">
+    <div className="p-4">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row">
         <Link to="/tasks" className="btn-gray">
           Таблица
         </Link>
@@ -50,35 +50,37 @@ export default function TaskBoard() {
         </button>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        {columns.map((key, idx) => (
-          <Droppable droppableId={String(idx)} key={key}>
-            {(provided) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="w-64 rounded bg-gray-100 p-2"
-              >
-                <h3 className="mb-2 font-bold">{key.replace("_", " ")}</h3>
-                {tasks
-                  .filter((t) => t.status === key)
-                  .map((t, i) => (
-                    <Draggable key={t._id} draggableId={t._id} index={i}>
-                      {(prov) => (
-                        <div
-                          ref={prov.innerRef}
-                          {...prov.draggableProps}
-                          {...prov.dragHandleProps}
-                        >
-                          <TaskCard task={t} />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        ))}
+        <div className="flex space-x-4 overflow-x-auto">
+          {columns.map((key, idx) => (
+            <Droppable droppableId={String(idx)} key={key}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="w-64 rounded bg-gray-100 p-2"
+                >
+                  <h3 className="mb-2 font-bold">{key.replace("_", " ")}</h3>
+                  {tasks
+                    .filter((t) => t.status === key)
+                    .map((t, i) => (
+                      <Draggable key={t._id} draggableId={t._id} index={i}>
+                        {(prov) => (
+                          <div
+                            ref={prov.innerRef}
+                            {...prov.draggableProps}
+                            {...prov.dragHandleProps}
+                          >
+                            <TaskCard task={t} />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          ))}
+        </div>
       </DragDropContext>
       {open && (
         <TaskDialog

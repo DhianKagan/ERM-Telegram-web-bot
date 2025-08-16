@@ -1,6 +1,5 @@
 // Назначение: страница профиля пользователя; модули: React, React Router
 import { useContext, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { updateProfile } from "../services/auth";
@@ -26,11 +25,6 @@ export default function Profile() {
       />
       <div className="mx-auto max-w-xl rounded bg-white p-8 shadow">
         <h2 className="mb-4 text-2xl">Личный кабинет</h2>
-        <div className="mb-4">
-          <Link to="/profile/mytasks" className="btn btn-blue">
-            Мои задачи
-          </Link>
-        </div>
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="block text-sm font-medium">ФИО</label>

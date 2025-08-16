@@ -18,11 +18,11 @@ import {
 
 const baseItems = [
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
-  { to: "/tasks/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
 const adminExtra = [
+  { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
   { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },

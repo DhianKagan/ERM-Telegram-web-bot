@@ -17,39 +17,46 @@ export const updateTaskStatus = (id: string, status: string) =>
     body: JSON.stringify({ status }),
   });
 
-export const createTask = (data: Record<string, unknown>) =>
-  authFetch("/api/v1/tasks", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      formVersion: (formSchema as any).formVersion,
-      ...data,
-    }),
-  }).then(async (r) => {
-    if (!r.ok) return null;
-    const result = await r.json();
-    const id = (result as any)._id || (result as any).id;
-    if (id && (window as any).Telegram?.WebApp) {
-      (window as any).Telegram.WebApp.sendData(`task_created:${id}`);
-    }
-    return result;
+export const createTask = (
+  data: Record<string, unknown>,
+  files?: FileList | File[],
+) => {
+  const body = new FormData();
+  body.append("formVersion", String((formSchema as any).formVersion));
+  Object.entries(data).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) body.append(k, String(v));
   });
+  if (files) Array.from(files).forEach((f) => body.append("files", f));
+  return authFetch("/api/v1/tasks", { method: "POST", body }).then(
+    async (r) => {
+      if (!r.ok) return null;
+      const result = await r.json();
+      const id = (result as any)._id || (result as any).id;
+      if (id && (window as any).Telegram?.WebApp) {
+        (window as any).Telegram.WebApp.sendData(`task_created:${id}`);
+      }
+      return result;
+    },
+  );
+};
 
 export const deleteTask = (id: string) =>
   authFetch(`/api/v1/tasks/${id}`, {
     method: "DELETE",
   });
 
-export const updateTask = (id: string, data: Record<string, unknown>) =>
-  authFetch(`/api/v1/tasks/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
+export const updateTask = (
+  id: string,
+  data: Record<string, unknown>,
+  files?: FileList | File[],
+) => {
+  const body = new FormData();
+  Object.entries(data).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) body.append(k, String(v));
   });
+  if (files) Array.from(files).forEach((f) => body.append("files", f));
+  return authFetch(`/api/v1/tasks/${id}`, { method: "PATCH", body });
+};
 
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));

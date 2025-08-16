@@ -2,7 +2,10 @@
 // Модули: mongoose, mongodb-memory-server, ensureTaskIndexes.
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { ensureTaskIndexes } from '../../scripts/db/ensureIndexes';
+import {
+  ensureTaskIndexes,
+  ensureUploadIndexes,
+} from '../../scripts/db/ensureIndexes';
 
 interface Plan {
   stage?: string;
@@ -55,5 +58,28 @@ describe('индексы задач', () => {
       .sort({ createdAt: -1 });
     const exp = await cursor.explain('queryPlanner');
     expect(planHasStage(exp.queryPlanner.winningPlan, 'IXSCAN')).toBe(true);
+  });
+});
+
+describe('индексы загрузок', () => {
+  let mongod: MongoMemoryServer;
+
+  beforeAll(async () => {
+    mongod = await MongoMemoryServer.create();
+    await mongoose.connect(mongod.getUri());
+  });
+
+  afterAll(async () => {
+    await mongoose.disconnect();
+    await mongod.stop();
+  });
+
+  test('создаются индексы ключа и владельца', async () => {
+    await ensureUploadIndexes(mongoose.connection);
+    const indexes = await mongoose.connection.db
+      .collection('uploads')
+      .indexes();
+    expect(indexes.some((i) => i.name === 'key_unique')).toBe(true);
+    expect(indexes.some((i) => i.name === 'owner_idx')).toBe(true);
   });
 });

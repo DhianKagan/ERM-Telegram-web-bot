@@ -134,9 +134,21 @@ function Content() {
 
 function Layout() {
   const { user } = React.useContext(AuthContext);
+  const { open, toggle } = useSidebar();
   return (
     <>
       {user && <Sidebar />}
+      {user && open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          onClick={() => {
+            (document.activeElement as HTMLElement | null)?.blur();
+            toggle();
+          }}
+        />
+      )}
       {user && <Header />}
       <Toasts />
       <Content />

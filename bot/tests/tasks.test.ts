@@ -112,6 +112,16 @@ test('создание задачи возвращает 201', async () => {
   );
 });
 
+test('создание задачи через multipart', async () => {
+  const res = await request(app)
+    .post('/api/v1/tasks')
+    .field('formVersion', '1')
+    .field('title', 'T')
+    .field('assignees', '1')
+    .field('assignees', '2');
+  expect(res.status).toBe(201);
+});
+
 test('создание задачи с неверными данными', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')

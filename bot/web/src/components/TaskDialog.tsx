@@ -60,6 +60,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -119,6 +120,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [users, setUsers] = React.useState<any[]>([]);
   const [attachments, setAttachments] = React.useState<any[]>([]);
   const [files, setFiles] = React.useState<FileList | null>(null);
+  const [previews, setPreviews] = React.useState<string[]>([]);
   // прогресс и статус загрузки файлов
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [uploadDone, setUploadDone] = React.useState(false);
@@ -132,6 +134,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [showDoneSelect, setShowDoneSelect] = React.useState(false);
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
+  const titleValue = watch("title");
+  const handleUpload = () => {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files).map((f) => URL.createObjectURL(f));
+    setPreviews(list);
+  };
 
   React.useEffect(() => {
     setEditing(true);
@@ -440,6 +448,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setFiles(null);
     setUploadProgress(0);
     setUploadDone(false);
+    setPreviews([]);
   });
 
   const handleDelete = async () => {
@@ -877,31 +886,49 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           {attachments.length > 0 && (
             <div>
               <label className="block text-sm font-medium">Вложения</label>
-              <ul className="list-disc pl-4">
-                {attachments.map((a) => (
-                  <li key={a.url}>
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noopener"
-                      className="text-accentPrimary underline"
-                    >
-                      {a.name}
-                    </a>
-                  </li>
-                ))}
+              <ul className="flex flex-wrap gap-2">
+                {attachments.map((a) =>
+                  /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
+                    <li key={a.url}>
+                      <img src={a.url} alt={a.name} className="h-16 rounded" />
+                    </li>
+                  ) : (
+                    <li key={a.url}>
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-accentPrimary underline"
+                      >
+                        {a.name}
+                      </a>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           )}
           <div>
             <label className="block text-sm font-medium">Прикрепить файл</label>
-            <input
-              type="file"
-              multiple
-              className="mt-1 w-full"
-              onChange={(e) => setFiles(e.target.files)}
-              disabled={!editing}
-            />
+            <div className="mt-1 flex items-center space-x-2">
+              <input
+                type="file"
+                multiple
+                className="flex-1"
+                onChange={(e) => setFiles(e.target.files)}
+                disabled={!editing || !titleValue.trim()}
+              />
+              <button
+                type="button"
+                className="btn-blue rounded-full"
+                onClick={handleUpload}
+                disabled={
+                  !editing || !titleValue.trim() || !files || files.length === 0
+                }
+              >
+                Загрузить
+              </button>
+            </div>
             {uploadProgress > 0 && (
               <div className="mt-2">
                 <div className="h-2 w-full rounded bg-gray-200">
@@ -915,6 +942,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     ? "Файлы загружены"
                     : `Загрузка: ${uploadProgress}%`}
                 </p>
+              </div>
+            )}
+            {previews.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {previews.map((p, i) => (
+                  <img key={i} src={p} className="h-16 rounded" />
+                ))}
               </div>
             )}
           </div>

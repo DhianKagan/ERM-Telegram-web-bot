@@ -14,7 +14,7 @@ export interface TaskData {
   [key: string]: unknown;
 }
 
-async function applyRouteInfo(data: TaskData): Promise<void> {
+async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   if (data.startCoordinates && data.finishCoordinates) {
     data.google_route_url = generateRouteLink(
       data.startCoordinates,
@@ -32,7 +32,7 @@ async function applyRouteInfo(data: TaskData): Promise<void> {
   }
 }
 
-export const create = async (data: TaskData): Promise<unknown> => {
+export const create = async (data: TaskData = {}): Promise<unknown> => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
   await applyRouteInfo(data);
   return q.createTask(data);
@@ -46,7 +46,10 @@ export const get = (
 
 export const getById = (id: string): Promise<unknown> => q.getTask(id);
 
-export const update = async (id: string, data: TaskData): Promise<unknown> => {
+export const update = async (
+  id: string,
+  data: TaskData = {},
+): Promise<unknown> => {
   await applyRouteInfo(data);
   return q.updateTask(id, data);
 };
@@ -54,7 +57,7 @@ export const update = async (id: string, data: TaskData): Promise<unknown> => {
 export const addTime = (id: string, minutes: number): Promise<unknown> =>
   q.addTime(id, minutes);
 
-export const bulk = (ids: string[], data: TaskData): Promise<unknown> =>
+export const bulk = (ids: string[], data: TaskData = {}): Promise<unknown> =>
   q.bulkUpdate(ids, data);
 
 export const summary = (filters: Record<string, unknown>): Promise<unknown> =>

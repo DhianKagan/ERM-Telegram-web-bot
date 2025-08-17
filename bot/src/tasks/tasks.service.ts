@@ -45,7 +45,7 @@ class TasksService {
     }
   }
 
-  async create(data: Partial<TaskDocument>) {
+  async create(data: Partial<TaskDocument> = {}) {
     applyIntakeRules(data);
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     await this.applyRouteInfo(data);
@@ -62,14 +62,14 @@ class TasksService {
     return this.repo.getTask(id);
   }
 
-  async update(id: string, data: Partial<TaskDocument>) {
+  async update(id: string, data: Partial<TaskDocument> = {}) {
     await this.applyRouteInfo(data);
     const task = await this.repo.updateTask(id, data);
     await clearRouteCache();
     return task;
   }
 
-  async applyRouteInfo(data: Partial<TaskDocument>) {
+  async applyRouteInfo(data: Partial<TaskDocument> = {}) {
     if (data.startCoordinates && data.finishCoordinates) {
       data.google_route_url = generateRouteLink(
         data.startCoordinates,

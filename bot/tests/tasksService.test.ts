@@ -56,3 +56,19 @@ test('update пересчитывает ссылку и дистанцию', asy
   expect(task.google_route_url).toBe('url');
   expect(task.route_distance_km).toBe(5);
 });
+
+test('update не падает без данных', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  const task = await service.update('1', undefined as any);
+  expect(repo.updateTask).toHaveBeenCalledWith('1', {});
+  expect(task).toEqual({ _id: '1' });
+});
+
+test('create не падает без данных', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  const task = await service.create(undefined as any);
+  expect(repo.createTask).toHaveBeenCalledWith({});
+  expect(task).toEqual({ id: '1' });
+});

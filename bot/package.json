@@ -73,6 +73,7 @@
     "@types/express-session": "^1.18.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lusca": "^1.7.5",
+    "@types/multer": "^2.0.0",
     "@types/node": "^20.12.7",
     "@types/qs": "^6.9.11",
     "@types/swagger-jsdoc": "^6.0.4",

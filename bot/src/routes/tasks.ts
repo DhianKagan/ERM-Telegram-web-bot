@@ -15,9 +15,20 @@ import {
 } from '../dto/tasks.dto';
 import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
+import multer from 'multer';
 
 const router = Router();
 const ctrl = container.resolve(TasksController);
+const upload = multer();
+const normalizeArrays: RequestHandler = (req, _res, next) => {
+  ['assignees', 'controllers'].forEach((k) => {
+    const v = (req.body as Record<string, unknown>)[k];
+    if (v !== undefined && !Array.isArray(v)) {
+      (req.body as Record<string, unknown>)[k] = [v];
+    }
+  });
+  next();
+};
 
 const detailLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
@@ -65,6 +76,8 @@ router.get(
 router.post(
   '/',
   authMiddleware(),
+  upload.any(),
+  normalizeArrays,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
@@ -73,6 +86,8 @@ router.post(
 router.patch(
   '/:id',
   authMiddleware(),
+  upload.any(),
+  normalizeArrays,
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),

@@ -25,7 +25,15 @@ export const createTask = (
   const body = new FormData();
   body.append("formVersion", String((formSchema as any).formVersion));
   Object.entries(data).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) body.append(k, String(v));
+    if (v === undefined || v === null) return;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return;
+      v.forEach((val) => body.append(k, String(val)));
+    } else if (typeof v === "object") {
+      body.append(k, JSON.stringify(v));
+    } else {
+      body.append(k, String(v));
+    }
   });
   if (files) Array.from(files).forEach((f) => body.append("files", f));
   return authFetch("/api/v1/tasks", { method: "POST", body, onProgress }).then(
@@ -55,7 +63,15 @@ export const updateTask = (
   const body = new FormData();
   body.append("formVersion", String((formSchema as any).formVersion));
   Object.entries(data).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) body.append(k, String(v));
+    if (v === undefined || v === null) return;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return;
+      v.forEach((val) => body.append(k, String(val)));
+    } else if (typeof v === "object") {
+      body.append(k, JSON.stringify(v));
+    } else {
+      body.append(k, String(v));
+    }
   });
   if (files) Array.from(files).forEach((f) => body.append("files", f));
   return authFetch(`/api/v1/tasks/${id}`, {

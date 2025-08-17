@@ -119,6 +119,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [users, setUsers] = React.useState<any[]>([]);
   const [attachments, setAttachments] = React.useState<any[]>([]);
   const [files, setFiles] = React.useState<FileList | null>(null);
+  // прогресс и статус загрузки файлов
+  const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [uploadDone, setUploadDone] = React.useState(false);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const doneOptions = [
@@ -382,10 +385,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (distanceKm !== null) payload.route_distance_km = distanceKm;
     if (routeLink) payload.google_route_url = routeLink;
     let data;
+    const prog = (e: ProgressEvent) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(percent);
+        if (percent === 100) setUploadDone(true);
+      }
+    };
+    if (files && files.length > 0) {
+      setUploadProgress(0);
+      setUploadDone(false);
+    }
     if (isEdit && id) {
-      data = await updateTask(id, payload, files || undefined);
+      data = await updateTask(id, payload, files || undefined, prog);
     } else {
-      data = await createTask(payload, files || undefined);
+      data = await createTask(payload, files || undefined, prog);
+    }
+    if (files && files.length > 0) {
+      window.alert("Файлы загружены на сервер");
     }
     if (data && data._id) {
       authFetch(`/api/v1/tasks/${data._id}`)
@@ -406,6 +423,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 : "",
             });
             setCreator(String(t.created_by || ""));
+            setAttachments(t.attachments || []);
             setUsers((p) => {
               const list = [...p];
               Object.values(d.users || {}).forEach((u) => {
@@ -419,6 +437,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
     if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
     if (data && onSave) onSave(data);
+    setFiles(null);
+    setUploadProgress(0);
+    setUploadDone(false);
   });
 
   const handleDelete = async () => {
@@ -881,6 +902,21 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               onChange={(e) => setFiles(e.target.files)}
               disabled={!editing}
             />
+            {uploadProgress > 0 && (
+              <div className="mt-2">
+                <div className="h-2 w-full rounded bg-gray-200">
+                  <div
+                    className="bg-accentPrimary h-2 rounded"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-sm">
+                  {uploadDone
+                    ? "Файлы загружены"
+                    : `Загрузка: ${uploadProgress}%`}
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex justify-end space-x-2">
             {isEdit && isAdmin && editing && (

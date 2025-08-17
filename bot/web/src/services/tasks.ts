@@ -53,6 +53,7 @@ export const updateTask = (
   onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = new FormData();
+  body.append("formVersion", String((formSchema as any).formVersion));
   Object.entries(data).forEach(([k, v]) => {
     if (v !== undefined && v !== null) body.append(k, String(v));
   });

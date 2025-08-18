@@ -78,7 +78,7 @@
     "@types/qs": "^6.9.11",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.0",
     "babel-jest": "^30.0.2",
     "babel-plugin-transform-typescript-metadata": "^0.3.2",

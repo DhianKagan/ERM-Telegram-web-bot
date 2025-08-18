@@ -9,6 +9,7 @@ const config: Config = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testPathIgnorePatterns: ['<rootDir>/tests/e2e/', '<rootDir>/tests/api/'],
+  setupFiles: ['<rootDir>/tests/setupEnv.ts'],
   coverageDirectory: 'coverage',
 };
 

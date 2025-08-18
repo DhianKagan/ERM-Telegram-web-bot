@@ -18,7 +18,7 @@ export default function useGrid<T = any>(options: GridOptions<T> = {}) {
   const defaultColDef = React.useMemo<ColDef>(
     () => ({
       sortable: true,
-      filter: true,
+      filter: "agSetColumnFilter",
       resizable: true,
       floatingFilter: true,
       valueFormatter: objectFormatter,

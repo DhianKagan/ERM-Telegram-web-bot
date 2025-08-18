@@ -16,10 +16,32 @@ import {
 import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+
+export const uploadsDir = path.join(__dirname, '../../public/uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+interface BodyWithAttachments extends Record<string, unknown> {
+  attachments?: { name: string; url: string }[];
+}
+
+export const processUploads: RequestHandler = (req, _res, next) => {
+  const files = (req.files as Express.Multer.File[]) || [];
+  if (files.length > 0) {
+    const attachments = files.map((f) => {
+      const name = `${Date.now()}_${f.originalname}`;
+      fs.writeFileSync(path.join(uploadsDir, name), f.buffer);
+      return { name: f.originalname, url: `/uploads/${name}` };
+    });
+    (req.body as BodyWithAttachments).attachments = attachments;
+  }
+  next();
+};
 
 const router = Router();
 const ctrl = container.resolve(TasksController);
-const upload = multer();
+const upload = multer({ storage: multer.memoryStorage() });
 const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];
@@ -77,6 +99,7 @@ router.post(
   '/',
   authMiddleware(),
   upload.any(),
+  processUploads,
   normalizeArrays,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
@@ -87,6 +110,7 @@ router.patch(
   '/:id',
   authMiddleware(),
   upload.any(),
+  processUploads,
   normalizeArrays,
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,

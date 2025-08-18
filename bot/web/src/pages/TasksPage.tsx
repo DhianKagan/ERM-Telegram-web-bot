@@ -43,6 +43,8 @@ export default function TasksPage() {
   const { version, refresh } = useTasks();
   const { user } = useContext(AuthContext);
   const isAdmin = user?.role === "admin";
+  const [query, setQuery] = React.useState("");
+  const [search, setSearch] = React.useState("");
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -135,9 +137,24 @@ export default function TasksPage() {
           </button>
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск"
+          className="rounded border px-2 py-1"
+        />
+        <button
+          onClick={() => setSearch(query)}
+          className="btn btn-blue xsm:w-full hover:shadow-lg"
+        >
+          Искать
+        </button>
+      </div>
       <TaskTable
         tasks={tasks}
         users={userMap}
+        quickFilterText={search}
         selectable
         onSelectionChange={setSelected}
         onRowClick={(id) => {

@@ -3,6 +3,8 @@ node_modules/
 bot/public/*
 !bot/public/.gitkeep
 !bot/public/admin-placeholder.html
+!bot/public/uploads/
+!bot/public/uploads/.gitkeep
 
 # переменные окружения
 .env

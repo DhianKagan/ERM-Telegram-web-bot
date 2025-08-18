@@ -82,7 +82,10 @@ export default function TaskTable({
 
   return (
     <div className="space-y-2">
-      <button onClick={exportCsv} className="btn-gray rounded px-3">
+      <button
+        onClick={exportCsv}
+        className="btn btn-blue rounded px-3 hover:shadow-lg"
+      >
         Экспорт CSV
       </button>
       <div className="ag-theme-alpine" style={{ height: 500 }}>

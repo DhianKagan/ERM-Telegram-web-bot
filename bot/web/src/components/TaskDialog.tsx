@@ -119,10 +119,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<any[]>([]);
   const [attachments, setAttachments] = React.useState<any[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [files, setFiles] = React.useState<FileList | null>(null);
-  const [previews, setPreviews] = React.useState<string[]>([]);
-  // прогресс и статус загрузки файлов
-  const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [previews, setPreviews] = React.useState<
+    { url: string; name: string; isImage: boolean }[]
+  >([]);
   const [uploadDone, setUploadDone] = React.useState(false);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
@@ -135,10 +136,17 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
   const titleValue = watch("title");
-  const handleUpload = () => {
-    if (!files || files.length === 0) return;
-    const list = Array.from(files).map((f) => URL.createObjectURL(f));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fl = e.target.files;
+    if (!fl || fl.length === 0) return;
+    setFiles(fl);
+    const list = Array.from(fl).map((f) => ({
+      url: URL.createObjectURL(f),
+      name: f.name,
+      isImage: f.type.startsWith("image/"),
+    }));
     setPreviews(list);
+    setUploadDone(true);
   };
 
   React.useEffect(() => {
@@ -393,21 +401,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (distanceKm !== null) payload.route_distance_km = distanceKm;
     if (routeLink) payload.google_route_url = routeLink;
     let data;
-    const prog = (e: ProgressEvent) => {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        setUploadProgress(percent);
-        if (percent === 100) setUploadDone(true);
-      }
-    };
-    if (files && files.length > 0) {
-      setUploadProgress(0);
-      setUploadDone(false);
-    }
     if (isEdit && id) {
-      data = await updateTask(id, payload, files || undefined, prog);
+      data = await updateTask(id, payload, files || undefined);
     } else {
-      data = await createTask(payload, files || undefined, prog);
+      data = await createTask(payload, files || undefined);
     }
     if (files && files.length > 0) {
       window.alert("Файлы загружены на сервер");
@@ -446,7 +443,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
     if (data && onSave) onSave(data);
     setFiles(null);
-    setUploadProgress(0);
     setUploadDone(false);
     setPreviews([]);
   });
@@ -556,7 +552,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={requestId}
                 disabled
-                className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+                className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
               />
             </div>
             <div>
@@ -564,7 +560,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={created}
                 disabled
-                className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+                className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
               />
             </div>
           </div>
@@ -582,7 +578,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <input
               {...register("title")}
               placeholder="Название"
-              className="focus:border-accentPrimary focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+              className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
               disabled={!editing}
             />
             {errors.title && (
@@ -909,46 +905,46 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium">Прикрепить файл</label>
-            <div className="mt-1 flex items-center space-x-2">
-              <input
-                type="file"
-                multiple
-                className="flex-1"
-                onChange={(e) => setFiles(e.target.files)}
-                disabled={!editing || !titleValue.trim()}
-              />
-              <button
-                type="button"
-                className="btn-blue rounded-full"
-                onClick={handleUpload}
-                disabled={
-                  !editing || !titleValue.trim() || !files || files.length === 0
-                }
-              >
-                Загрузить
-              </button>
-            </div>
-            {uploadProgress > 0 && (
-              <div className="mt-2">
-                <div className="h-2 w-full rounded bg-gray-200">
-                  <div
-                    className="bg-accentPrimary h-2 rounded"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-                <p className="text-sm">
-                  {uploadDone
-                    ? "Файлы загружены"
-                    : `Загрузка: ${uploadProgress}%`}
-                </p>
-              </div>
+            <button
+              type="button"
+              className="btn-blue rounded-full"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!editing || !titleValue.trim()}
+            >
+              Прикрепить файл
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={!editing || !titleValue.trim()}
+            />
+            {uploadDone && (
+              <p className="mt-2 text-sm">
+                {previews.length > 1 ? "Файлы загружены" : "Файл загружен"}
+              </p>
             )}
             {previews.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {previews.map((p, i) => (
-                  <img key={i} src={p} className="h-16 rounded" />
-                ))}
+                {previews.map((p, i) =>
+                  p.isImage ? (
+                    <a key={i} href={p.url} target="_blank" rel="noopener">
+                      <img src={p.url} className="h-16 rounded" />
+                    </a>
+                  ) : (
+                    <a
+                      key={i}
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-accentPrimary underline"
+                    >
+                      {p.name}
+                    </a>
+                  ),
+                )}
               </div>
             )}
           </div>
@@ -979,13 +975,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
-                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
+                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-2 ring-accentPrimary" : ""}`}
                   onClick={acceptTask}
                 >
                   Принять
                 </button>
                 <button
-                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
+                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-2 ring-accentPrimary" : ""}`}
                   onClick={() => setShowDoneSelect((v) => !v)}
                 >
                   Выполнено
@@ -996,7 +992,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   onChange={(e) =>
                     e.target.value && completeTask(e.target.value)
                   }
-                  className="mt-1 mb-2 w-full rounded border px-2 py-1"
+                  className="mb-2 mt-1 w-full rounded border px-2 py-1"
                 >
                   <option value="">Выберите вариант</option>
                   {doneOptions.map((o) => (
@@ -1020,7 +1016,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <span className="font-medium">
                     {new Date(h.changed_at).toLocaleString()}
                   </span>
-                  <pre className="break-all whitespace-pre-wrap">
+                  <pre className="whitespace-pre-wrap break-all">
                     {JSON.stringify(h.changes)}
                   </pre>
                 </li>

@@ -34,6 +34,7 @@ export default function MultiUserSelect({
         isDisabled={disabled}
         options={options}
         value={selected}
+        placeholder="Выбрать"
         onChange={(vals) => onChange((vals as any[]).map((v) => v.value))}
         className="mt-1"
         classNamePrefix="select"

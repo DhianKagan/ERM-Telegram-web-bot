@@ -4,6 +4,17 @@
 import fs from 'fs';
 import path from 'path';
 
+function readEnv(file) {
+  if (!fs.existsSync(file)) return;
+  const env = fs.readFileSync(file, 'utf8');
+  env.split(/\r?\n/).forEach(line => {
+    const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) {
+      process.env[m[1]] = m[2].replace(/(^['"]|['"]$)/g, '');
+    }
+  });
+}
+
 try {
   const dotenv = await import('dotenv');
   dotenv.config();
@@ -11,18 +22,15 @@ try {
   if (e.code === 'ERR_MODULE_NOT_FOUND' || e.code === 'MODULE_NOT_FOUND') {
     console.warn('Модуль dotenv не найден, читаем .env вручную');
     const envPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '.env');
-    if (fs.existsSync(envPath)) {
-      const env = fs.readFileSync(envPath, 'utf8');
-      env.split(/\r?\n/).forEach(line => {
-        const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
-        if (m && !process.env[m[1]]) {
-          process.env[m[1]] = m[2].replace(/(^['"]|['"]$)/g, '');
-        }
-      });
-    }
+    readEnv(envPath);
   } else {
     throw e;
   }
+}
+
+if (!process.env.MONGO_DATABASE_URL && !process.env.MONGODB_URI && !process.env.DATABASE_URL) {
+  const examplePath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '.env.example');
+  readEnv(examplePath);
 }
 
 let mongoose;

@@ -552,7 +552,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={requestId}
                 disabled
-                className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
+                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
               />
             </div>
             <div>
@@ -560,7 +560,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={created}
                 disabled
-                className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
+                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
               />
             </div>
           </div>
@@ -578,7 +578,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <input
               {...register("title")}
               placeholder="Название"
-              className="focus:ring-brand-200 w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none focus:ring"
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
               disabled={!editing}
             />
             {errors.title && (
@@ -928,23 +928,34 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             )}
             {previews.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {previews.map((p, i) =>
-                  p.isImage ? (
-                    <a key={i} href={p.url} target="_blank" rel="noopener">
-                      <img src={p.url} className="h-16 rounded" />
-                    </a>
-                  ) : (
-                    <a
-                      key={i}
-                      href={p.url}
-                      target="_blank"
-                      rel="noopener"
-                      className="text-accentPrimary underline"
-                    >
-                      {p.name}
-                    </a>
-                  ),
-                )}
+                {
+                  // Санитизируем URL и имена файлов перед выводом
+                  previews.map((p, i) =>
+                    p.isImage ? (
+                      <a
+                        key={i}
+                        href={DOMPurify.sanitize(p.url)}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <img
+                          src={DOMPurify.sanitize(p.url)}
+                          className="h-16 rounded"
+                        />
+                      </a>
+                    ) : (
+                      <a
+                        key={i}
+                        href={DOMPurify.sanitize(p.url)}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-accentPrimary underline"
+                      >
+                        {DOMPurify.sanitize(p.name)}
+                      </a>
+                    ),
+                  )
+                }
               </div>
             )}
           </div>
@@ -975,13 +986,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
-                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-2 ring-accentPrimary" : ""}`}
+                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
                   onClick={acceptTask}
                 >
                   Принять
                 </button>
                 <button
-                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-2 ring-accentPrimary" : ""}`}
+                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
                   onClick={() => setShowDoneSelect((v) => !v)}
                 >
                   Выполнено
@@ -992,7 +1003,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   onChange={(e) =>
                     e.target.value && completeTask(e.target.value)
                   }
-                  className="mb-2 mt-1 w-full rounded border px-2 py-1"
+                  className="mt-1 mb-2 w-full rounded border px-2 py-1"
                 >
                   <option value="">Выберите вариант</option>
                   {doneOptions.map((o) => (
@@ -1016,7 +1027,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <span className="font-medium">
                     {new Date(h.changed_at).toLocaleString()}
                   </span>
-                  <pre className="whitespace-pre-wrap break-all">
+                  <pre className="break-all whitespace-pre-wrap">
                     {JSON.stringify(h.changes)}
                   </pre>
                 </li>

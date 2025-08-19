@@ -19,7 +19,8 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 
-export const uploadsDir = path.join(__dirname, '../../public/uploads');
+const baseDir = process.env.STORAGE_DIR || path.join(__dirname, '../../public');
+export const uploadsDir = path.join(baseDir, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 interface BodyWithAttachments extends Record<string, unknown> {

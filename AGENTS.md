@@ -43,6 +43,7 @@
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
+- Переменная `STORAGE_DIR` задаёт базовый каталог статических файлов и вложений (по умолчанию `bot/public`).
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
 - Переменная `COOKIE_SECURE=false` отключает флаг `Secure` у cookie, используйте только локально.

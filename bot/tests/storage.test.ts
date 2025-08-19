@@ -3,12 +3,14 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
 
-import express from 'express';
-import request from 'supertest';
-import fs from 'fs';
-import path from 'path';
-import router from '../src/routes/storage';
-import { uploadsDir } from '../src/routes/tasks';
+const express = require('express');
+const request = require('supertest');
+const fs = require('fs');
+const path = require('path');
+const router = require('../src/routes/storage').default;
+const { uploadsDir } = require('../src/routes/tasks');
+const { stopQueue } = require('../src/services/messageQueue');
+const { stopScheduler } = require('../src/services/scheduler');
 
 jest.mock(
   '../src/middleware/auth',
@@ -41,4 +43,9 @@ describe('storage routes', () => {
     await request(app).delete('/del.txt').expect(200);
     expect(fs.existsSync(f)).toBe(false);
   });
+});
+
+afterAll(() => {
+  stopScheduler();
+  stopQueue();
 });

@@ -22,7 +22,7 @@ import { register } from '../metrics';
 import { verifyToken, asyncHandler, requestLogger } from './middleware';
 import errorMiddleware from '../middleware/errorMiddleware';
 import globalLimiter from '../middleware/globalLimiter';
-import tasksRouter from '../routes/tasks';
+import tasksRouter, { uploadsDir } from '../routes/tasks';
 import mapsRouter from '../routes/maps';
 import routeRouter from '../routes/route';
 import routesRouter from '../routes/routes';
@@ -157,6 +157,10 @@ export default async function registerRoutes(
       maxAge: '1y',
       immutable: true,
     }),
+  );
+  app.use(
+    '/uploads',
+    express.static(uploadsDir, { maxAge: '1y', immutable: true }),
   );
   const initAdmin = (await import('../admin/customAdmin')).default;
   initAdmin(app);

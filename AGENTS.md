@@ -50,11 +50,9 @@
 - Docker Compose содержит healthcheck для MongoDB.
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
 - Лимитер отправляет заголовки `X-RateLimit-*`, метрика `rate_limit_drops_total` содержит метки `name` и `key`.
-- Маршрут `/r2/sign-upload` проверяет `key` по regex и ограничивает размер через `Content-Length`.
-- Коллекция `uploads` хранит `key`, `mime`, размер и владельца; `/r2/sign-get` проверяет владельца перед выдачей подписи.
+- Управление файлами выполняется через `/api/v1/storage`, раздел `/cp/storage` отображает список вложений.
 - Секреты загружаются из HashiCorp Vault или AWS Secrets Manager,
-  ключи пересоздаются по `KEY_ROTATION_CRON`, разрешённые Origin для
-  маршрутов R2 задаёт `R2_CORS_ORIGIN`.
+  ключи пересоздаются по `KEY_ROTATION_CRON`.
 - Ключ лимитера строится по `telegram_id`; верная капча в заголовке `X-Captcha-Token` обходится ограничение.
 - Запросы OSRM кешируются на 10 минут, очищаются при изменении задач;
   переменные `ROUTE_CACHE_ENABLED` и `ROUTE_CACHE_TTL` управляют кешом.

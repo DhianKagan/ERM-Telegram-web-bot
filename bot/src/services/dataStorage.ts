@@ -4,6 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import { uploadsDir } from '../routes/tasks';
 
+const uploadsDirAbs = path.resolve(uploadsDir);
+
 export interface StoredFile {
   name: string;
   size: number;
@@ -19,5 +21,10 @@ export async function listFiles(): Promise<StoredFile[]> {
 }
 
 export async function deleteFile(name: string): Promise<void> {
-  await fs.promises.unlink(path.join(uploadsDir, name));
+  // Предотвращаем выход за пределы каталога
+  const targetPath = path.resolve(uploadsDirAbs, name);
+  if (!targetPath.startsWith(uploadsDirAbs + path.sep)) {
+    throw new Error('Недопустимое имя файла');
+  }
+  await fs.promises.unlink(targetPath);
 }

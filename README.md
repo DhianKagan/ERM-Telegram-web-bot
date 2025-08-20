@@ -19,6 +19,14 @@ pnpm install
 pnpm --dir bot dev
 ```
 
+## Проверка доступности
+
+После выполнения `./scripts/setup_and_test.sh` можно проверить контрастность главной страницы:
+
+```bash
+pnpm a11y
+```
+
 ## Структура пакетов
 
 - `bot` — Telegram‑бот, REST API и мини‑приложение React.

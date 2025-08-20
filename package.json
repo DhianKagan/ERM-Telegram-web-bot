@@ -4,6 +4,7 @@
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
     "lint": "eslint bot/src",
+    "a11y": "npx @axe-core/cli file://$PWD/bot/public/index.html --tags color-contrast",
     "test:e2e": "playwright test tests/e2e",
     "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",
     "test:unit": "jest",

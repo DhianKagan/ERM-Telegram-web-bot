@@ -27,6 +27,9 @@ pnpm --dir bot dev
 pnpm a11y
 ```
 
+При прямом запуске `@axe-core/cli` указывайте путь с `file://`, иначе возможна ошибка `net::ERR_NAME_NOT_RESOLVED`.
+Пример: `npx @axe-core/cli file://$PWD/bot/public/index.html --tags color-contrast`.
+
 ## Структура пакетов
 
 - `bot` — Telegram‑бот, REST API и мини‑приложение React.

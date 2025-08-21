@@ -14,12 +14,22 @@ export interface StoredFile {
 
 export async function listFiles(): Promise<StoredFile[]> {
   try {
-    const names = await fs.promises.readdir(uploadsDir);
+    const entries = await fs.promises.readdir(uploadsDir, {
+      withFileTypes: true,
+    });
     const files = await Promise.all(
-      names.map(async (name) => {
-        const stat = await fs.promises.stat(path.join(uploadsDir, name));
-        return { name, size: stat.size, url: `/uploads/${name}` };
-      }),
+      entries
+        .filter((entry) => entry.isFile())
+        .map(async (entry) => {
+          const stat = await fs.promises.stat(
+            path.join(uploadsDir, entry.name),
+          );
+          return {
+            name: entry.name,
+            size: stat.size,
+            url: `/uploads/${entry.name}`,
+          };
+        }),
     );
     return files;
   } catch {

@@ -27,7 +27,7 @@ pnpm --dir bot dev
 pnpm a11y
 ```
 
-Команда запускает Chromium через Playwright и анализирует `bot/web/index.html` по правилу `color-contrast`.
+Команда собирает клиент, поднимает `vite preview` на `http://localhost:4173` и проверяет страницу через `@axe-core/cli` по правилу `color-contrast`.
 
 ## Структура пакетов
 

@@ -1,25 +1,86 @@
 /**
- * Назначение файла: проверка контраста страницы bot/web/index.html через Playwright.
- * Основные модули: @playwright/test, @axe-core/playwright, path.
+ * Назначение файла: проверка контраста bot/web/index.html через @axe-core/cli.
+ * Основные модули: child_process, http.
  */
-import { chromium } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
-import path from 'node:path';
+import { spawn } from 'node:child_process';
+import http from 'node:http';
+
+async function waitForServer(url: string, timeoutMs = 10000): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      http
+        .get(url, (res) => {
+          res.destroy();
+          resolve();
+        })
+        .on('error', () => {
+          if (Date.now() - start > timeoutMs) {
+            reject(new Error('Сервер не запустился'));
+            return;
+          }
+          setTimeout(check, 250);
+        });
+    };
+    check();
+  });
+}
 
 (async () => {
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  const filePath = path.resolve('bot/web/index.html');
-  await page.goto(`file://${filePath}`);
-  const results = await new AxeBuilder({ page })
-    .withTags(['color-contrast'])
-    .analyze();
-  await browser.close();
+  const build = spawn('pnpm', ['--dir', 'bot/web', 'build'], {
+    stdio: 'inherit',
+  });
+  const buildCode: number = await new Promise((resolve) =>
+    build.on('exit', resolve),
+  );
+  if (buildCode !== 0) {
+    process.exit(buildCode);
+  }
 
-  if (results.violations.length > 0) {
-    console.error('Найдены нарушения контраста:', results.violations);
+  const driver = spawn(
+    'npx',
+    ['-y', 'browser-driver-manager', 'install', 'chrome'],
+    {
+      stdio: 'inherit',
+    },
+  );
+  const driverCode: number = await new Promise((resolve) =>
+    driver.on('exit', resolve),
+  );
+  if (driverCode !== 0) {
+    process.exit(driverCode);
+  }
+
+  const server = spawn(
+    'pnpm',
+    ['--dir', 'bot/web', 'preview', '--port', '4173', '--strictPort'],
+    {
+      stdio: 'inherit',
+    },
+  );
+
+  try {
+    await waitForServer('http://localhost:4173');
+    const axe = spawn(
+      'npx',
+      [
+        '@axe-core/cli',
+        'http://localhost:4173/index.html',
+        '--tags',
+        'color-contrast',
+        '--chrome-options',
+        'no-sandbox,disable-dev-shm-usage',
+      ],
+      { stdio: 'inherit' },
+    );
+    const code: number = await new Promise((resolve) =>
+      axe.on('exit', resolve),
+    );
+    server.kill();
+    process.exit(code);
+  } catch (err) {
+    server.kill();
+    console.error(err);
     process.exit(1);
   }
-  console.log('Нарушения контраста не обнаружены.');
 })();

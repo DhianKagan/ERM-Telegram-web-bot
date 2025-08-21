@@ -33,4 +33,4 @@ jobs:
       - name: Сборка клиента
         run: npm --prefix bot run build-client
       - name: Проверка контраста
-        run: npx @axe-core/cli -p bot/public/index.html --tags color-contrast
+        run: pnpm a11y

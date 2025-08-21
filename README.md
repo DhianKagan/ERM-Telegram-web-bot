@@ -27,8 +27,7 @@ pnpm --dir bot dev
 pnpm a11y
 ```
 
-При прямом запуске `@axe-core/cli` указывайте путь с `file://`, иначе возможна ошибка `net::ERR_NAME_NOT_RESOLVED`.
-Пример: `npx @axe-core/cli file://$PWD/bot/public/index.html --tags color-contrast`.
+Команда запускает Chromium через Playwright и анализирует `bot/web/index.html` по правилу `color-contrast`.
 
 ## Структура пакетов
 

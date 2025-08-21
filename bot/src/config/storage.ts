@@ -2,5 +2,8 @@
 // Модули: path
 import path from 'path';
 
-export const uploadsDir =
-  process.env.STORAGE_DIR ?? path.join('bot', 'public', 'uploads');
+const defaultDir = path.resolve(__dirname, '..', '..', 'public', 'uploads');
+
+const envDir = process.env.STORAGE_DIR?.trim();
+
+export const uploadsDir = envDir ? path.resolve(envDir) : defaultDir;

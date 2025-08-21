@@ -18,9 +18,8 @@ import { taskFormValidators } from '../form';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { uploadsDir } from '../config/storage';
 
-const baseDir = process.env.STORAGE_DIR || path.join(__dirname, '../../public');
-export const uploadsDir = path.join(baseDir, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 interface BodyWithAttachments extends Record<string, unknown> {

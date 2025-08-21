@@ -7,8 +7,10 @@ const express = require('express');
 const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
+
+process.env.STORAGE_DIR = path.resolve(__dirname, '../public/uploads');
 const router = require('../src/routes/storage').default;
-const { uploadsDir } = require('../src/routes/tasks');
+const { uploadsDir } = require('../src/config/storage');
 const { stopQueue } = require('../src/services/messageQueue');
 const { stopScheduler } = require('../src/services/scheduler');
 

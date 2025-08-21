@@ -2,7 +2,7 @@
 // Модули: fs, path, маршруты задач
 import fs from 'fs';
 import path from 'path';
-import { uploadsDir } from '../routes/tasks';
+import { uploadsDir } from '../config/storage';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 

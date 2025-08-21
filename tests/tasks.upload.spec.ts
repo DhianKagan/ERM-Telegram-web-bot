@@ -8,7 +8,8 @@ import request from 'supertest';
 import multer from '../bot/node_modules/multer';
 import path from 'path';
 import fs from 'fs';
-import { processUploads, uploadsDir } from '../bot/src/routes/tasks';
+import { processUploads } from '../bot/src/routes/tasks';
+import { uploadsDir } from '../bot/src/config/storage';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();

@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Команда `pnpm a11y` переписана на Playwright и проверяет `bot/web/index.html` без установки Chrome.
 - Добавлена команда `pnpm a11y` для проверки контраста `bot/public/index.html` через `@axe-core/cli`.
 - Исправлен запуск `pnpm a11y`: путь к файлу задаётся через `file://` и `pwd`,
   что устраняет ошибку DNS `ERR_NAME_NOT_RESOLVED`.

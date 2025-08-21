@@ -33,7 +33,7 @@
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
-- Статическую страницу `bot/web/index.html` проверяйте на контраст командой `pnpm a11y` через Playwright.
+- Статическую страницу `bot/web/index.html` проверяйте на контраст командой `pnpm a11y` через `@axe-core/cli` и `vite preview`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.
 - Индексы MongoDB создавайте скриптом `scripts/db/ensureIndexes.ts`.
 - Для корректного разрешения модулей установлен `reflect-metadata` в корневых зависимостях.

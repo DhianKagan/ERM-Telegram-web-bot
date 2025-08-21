@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Команда `pnpm a11y` запускает `vite preview` и проверяет `http://localhost:4173/index.html` через `@axe-core/cli`.
 - Команда `pnpm a11y` переписана на Playwright и проверяет `bot/web/index.html` без установки Chrome.
 - Добавлена команда `pnpm a11y` для проверки контраста `bot/public/index.html` через `@axe-core/cli`.
 - Исправлен запуск `pnpm a11y`: путь к файлу задаётся через `file://` и `pwd`,

@@ -13,11 +13,18 @@ export interface StoredFile {
 }
 
 export async function listFiles(): Promise<StoredFile[]> {
-  const files = await fs.promises.readdir(uploadsDir);
-  return files.map((name) => {
-    const stat = fs.statSync(path.join(uploadsDir, name));
-    return { name, size: stat.size, url: `/uploads/${name}` };
-  });
+  try {
+    const names = await fs.promises.readdir(uploadsDir);
+    const files = await Promise.all(
+      names.map(async (name) => {
+        const stat = await fs.promises.stat(path.join(uploadsDir, name));
+        return { name, size: stat.size, url: `/uploads/${name}` };
+      }),
+    );
+    return files;
+  } catch {
+    return [];
+  }
 }
 
 export async function deleteFile(name: string): Promise<void> {

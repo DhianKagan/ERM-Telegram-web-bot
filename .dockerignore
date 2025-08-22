@@ -1,6 +1,7 @@
 # Назначение: исключить лишние файлы из контекста Docker
 .git
 node_modules
+**/node_modules
 docker-compose.yml
 # переменные окружения
 .env

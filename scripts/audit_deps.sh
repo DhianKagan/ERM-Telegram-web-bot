@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Назначение: аудит зависимостей и проверка конфликтов.
-# Модули: bash, npm, pnpm, audit-ci.
+# Модули: bash, pnpm, audit-ci.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 
@@ -16,7 +16,7 @@ if ! command -v pnpm >/dev/null; then
   fi
 fi
 
-npx --yes audit-ci --package-manager pnpm --audit-level high
-npm audit --prefix "$DIR/bot" --audit-level high
-npm audit --prefix "$DIR/bot/web" --audit-level high
-npm ls --prefix "$DIR/bot/web" >/dev/null
+npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --audit-level high
+npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/bot" --audit-level high
+npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/bot/web" --audit-level high
+pnpm ls --dir "$DIR/bot/web" >/dev/null

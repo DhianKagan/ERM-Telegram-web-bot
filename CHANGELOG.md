@@ -3,6 +3,7 @@
 # История изменений
 
 - `pre_pr_check.sh` запускает `audit_deps.sh`; в CI добавлен job `audit-deps` и документирован обход ложных срабатываний `audit-ci`.
+- `install_bot_deps.sh` использует pnpm и обеспечивает наличие pnpm в CI, `audit_deps.sh` проверяет все пакеты через `audit-ci`.
 - Удалён скрипт `postinstall` из `bot/package.json`, добавлена команда `npm run prepare-client` и сборка клиента вынесена в CI.
 - Обновлён шаг CI проверки контраста: используется `pnpm a11y`, удалён устаревший ключ `-p`.
 - Исправлена проверка контраста в CI: `@axe-core/cli` анализирует локальный файл `bot/public/index.html` через ключ `-p`.

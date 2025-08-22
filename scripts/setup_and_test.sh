@@ -9,7 +9,8 @@ if [ ! -f .env ]; then
   ./scripts/create_env_from_exports.sh
 fi
 
-# Устанавливаем зависимости бота и клиента
+# Устанавливаем зависимости корня, бота и клиента
+pnpm install --frozen-lockfile || pnpm install
 pnpm install --dir bot --frozen-lockfile || pnpm install --dir bot
 pnpm install --dir bot/web --frozen-lockfile || pnpm install --dir bot/web
 
@@ -17,7 +18,7 @@ pnpm install --dir bot/web --frozen-lockfile || pnpm install --dir bot/web
 ./scripts/check_no_js.sh
 
 # Запускаем тесты и линтеры
-pnpm --dir bot test -- --detectOpenHandles
+pnpm --dir bot test --detectOpenHandles
 pnpm --dir bot test tests/csrf.test.ts
 pnpm --dir bot run test:types
 pnpm --dir bot run lint

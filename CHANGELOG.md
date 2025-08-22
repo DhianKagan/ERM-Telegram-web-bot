@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Исправлен запуск тестов в `setup_and_test.sh`: удалён лишний `--`, из-за чего Jest не находил тесты.
 - `pre_pr_check.sh` запускает `audit_deps.sh`; в CI добавлен job `audit-deps` и документирован обход ложных срабатываний `audit-ci`.
 - `install_bot_deps.sh` использует pnpm и обеспечивает наличие pnpm в CI, `audit_deps.sh` проверяет все пакеты через `audit-ci`.
 - Удалён скрипт `postinstall` из `bot/package.json`, добавлена команда `npm run prepare-client` и сборка клиента вынесена в CI.

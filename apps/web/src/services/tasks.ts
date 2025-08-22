@@ -1,7 +1,7 @@
 // Назначение: запросы к API задач
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
-import formSchema from "../../../src/form/taskForm.schema.json";
+import formSchema from "../../../api/src/form/taskForm.schema.json";
 
 export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true")

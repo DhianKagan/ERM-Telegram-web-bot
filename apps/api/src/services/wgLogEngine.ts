@@ -1,7 +1,11 @@
 // Назначение: настройка WG Log Engine и вывод логов в разные каналы
 // Модули: @wgtechlabs/log-engine, mongoose, fetch
-import type { LogMode, EnhancedOutputTarget, LogEngine as EngineType } from '@wgtechlabs/log-engine';
-import type { LogDocument } from '../db/model';
+import { LogEngine, LogMode } from '@wgtechlabs/log-engine';
+import type {
+  EnhancedOutputTarget,
+  LogEngine as EngineType,
+} from '@wgtechlabs/log-engine';
+import { Log } from '../db/model';
 
 export interface ListLogParams {
   level?: string;
@@ -22,17 +26,10 @@ let writeLogFn: (
 let listLogsFn: (params?: ListLogParams) => Promise<unknown>;
 
 if (process.env.SUPPRESS_LOGS === '1') {
-  logger = (console as unknown) as EngineType;
+  logger = console as unknown as EngineType;
   writeLogFn = async () => {};
   listLogsFn = async () => [];
 } else {
-  const { Log }: { Log: import('mongoose').Model<LogDocument> } = require('../db/model');
-  const {
-    LogEngine,
-    LogMode,
-    EnhancedOutputTarget,
-  }: typeof import('@wgtechlabs/log-engine') = require('@wgtechlabs/log-engine');
-
   const mode = process.env.LOG_LEVEL || 'debug';
   const modes: Record<string, LogMode> = {
     debug: LogMode.DEBUG,
@@ -77,7 +74,10 @@ if (process.env.SUPPRESS_LOGS === '1') {
     });
   }
   logger = LogEngine;
-  LogEngine.configure({ mode: modes[mode] || LogMode.DEBUG, enhancedOutputs: outputs });
+  LogEngine.configure({
+    mode: modes[mode] || LogMode.DEBUG,
+    enhancedOutputs: outputs,
+  });
   LogEngine.configureRedaction({ customPatterns: [/\w{30,}/] });
   writeLogFn = async (
     message: string,

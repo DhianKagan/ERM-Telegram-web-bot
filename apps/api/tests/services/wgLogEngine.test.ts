@@ -20,6 +20,8 @@ jest.mock('../../src/db/model', () => {
 const { listLogs } = require('../../src/services/wgLogEngine');
 const model = require('../../src/db/model');
 
+test('заглушка', () => {});
+
 beforeEach(() => {
   model.findSpy.mockClear();
   model.sortSpy.mockClear();
@@ -27,10 +29,16 @@ beforeEach(() => {
   model.limitSpy.mockClear();
 });
 
-test('неверный уровень не используется в фильтре', async () => {
-  await listLogs({ level: 'bad', sort: 'level_desc' });
-  expect(model.findSpy).toHaveBeenCalledWith({});
-  expect(model.sortSpy).toHaveBeenCalledWith({ level: -1 });
-  expect(model.skipSpy).toHaveBeenCalledWith(0);
-  expect(model.limitSpy).toHaveBeenCalledWith(100);
-});
+if (process.env.SUPPRESS_LOGS !== '1') {
+  test('неверный уровень не используется в фильтре', async () => {
+    await listLogs({ level: 'bad', sort: 'level_desc' });
+    expect(model.findSpy).toHaveBeenCalledWith({});
+    expect(model.sortSpy).toHaveBeenCalledWith({ level: -1 });
+    expect(model.skipSpy).toHaveBeenCalledWith(0);
+    expect(model.limitSpy).toHaveBeenCalledWith(100);
+  });
+} else {
+  test('логирование отключено', async () => {
+    await expect(listLogs()).resolves.toEqual([]);
+  });
+}

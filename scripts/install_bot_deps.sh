@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
 # Назначение: установка корневых, серверных и клиентских зависимостей с автоматическим устранением уязвимостей.
-# Модули: bash, npm.
+# Модули: bash, pnpm, npm.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 
+# Проверяем наличие pnpm и устанавливаем через corepack при отсутствии
+if ! command -v pnpm >/dev/null; then
+  if command -v corepack >/dev/null; then
+    echo "Устанавливаем pnpm через corepack..."
+    corepack enable >/dev/null
+    corepack prepare pnpm@latest --activate >/dev/null
+  else
+    echo "Не найден pnpm и corepack; установите pnpm вручную." >&2
+    exit 1
+  fi
+fi
+
 # Устанавливаем корневые зависимости для линтера
-npm ci --prefix "$DIR" || npm --prefix "$DIR" install
+pnpm install --frozen-lockfile || pnpm install
 # Устанавливаем зависимости сервера
-npm ci --prefix "$DIR/bot" || npm --prefix "$DIR/bot" install
+pnpm install --dir "$DIR/bot" --frozen-lockfile || pnpm install --dir "$DIR/bot"
 # Устанавливаем зависимости веб-клиента
-npm ci --prefix "$DIR/bot/web" || npm --prefix "$DIR/bot/web" install
+pnpm install --dir "$DIR/bot/web" --frozen-lockfile || pnpm install --dir "$DIR/bot/web"
 # Слабые уязвимости не блокируют установку
-npm audit fix --prefix "$DIR/bot" || npm audit fix --force --prefix "$DIR/bot" || true
+pnpm audit --dir "$DIR/bot" --fix || true
 # Проверяем наличие серьёзных проблем
-npm audit --prefix "$DIR/bot" --audit-level high
+pnpm audit --dir "$DIR/bot" --audit-level high
 

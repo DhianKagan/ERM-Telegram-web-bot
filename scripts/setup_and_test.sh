@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Назначение: установка зависимостей и запуск тестов с линтерами.
-# Модули: bash, npm, docker.
+# Модули: bash, pnpm, docker.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,18 +10,18 @@ if [ ! -f .env ]; then
 fi
 
 # Устанавливаем зависимости бота и клиента
-npm ci --prefix bot || npm --prefix bot install
-npm ci --prefix bot/web || npm --prefix bot/web install
+pnpm install --dir bot --frozen-lockfile || pnpm install --dir bot
+pnpm install --dir bot/web --frozen-lockfile || pnpm install --dir bot/web
 
 # Проверяем отсутствие JavaScript-файлов
 ./scripts/check_no_js.sh
 
 # Запускаем тесты и линтеры
-npm test --prefix bot -- --detectOpenHandles
-npm test --prefix bot tests/csrf.test.ts
-npm run test:types --prefix bot
-node -r ./bot/node_modules/ts-node/register bot/node_modules/eslint/bin/eslint.js bot/src
-npm run lint --prefix bot/web
+pnpm --dir bot test -- --detectOpenHandles
+pnpm --dir bot test tests/csrf.test.ts
+pnpm --dir bot run test:types
+pnpm --dir bot run lint
+pnpm --dir bot/web run lint
 
 # Проверяем конфигурацию docker compose при наличии команды docker
 if command -v docker >/dev/null; then

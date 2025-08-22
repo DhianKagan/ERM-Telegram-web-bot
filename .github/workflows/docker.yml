@@ -1,11 +1,11 @@
 # Назначение файла: CI для проверки Docker и сборки образов
 # Модули: создание .env из Repository secrets, docker compose config и build
-name: "Docker"
+name: 'Docker'
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
   pull_request:
-    branches: ["main"]
+    branches: ['main']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,13 +56,13 @@ jobs:
         run: ./scripts/install_bot_deps.sh
 
       - name: Запуск линтера
-        run: npx eslint bot/src
+        run: pnpm lint
 
       - name: Тесты
-        run: npm --prefix bot test
+        run: pnpm --dir apps/api test
 
       - name: Проверка MongoDB
-        run: npm --prefix bot run check:mongo
+        run: pnpm --dir apps/api run check:mongo
 
       - name: Проверка docker-compose.yml
         run: docker compose config

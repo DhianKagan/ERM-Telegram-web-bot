@@ -69,7 +69,8 @@ const tasksLimiter = createRateLimiter({
   max: 100,
   name: 'tasks',
 });
-router.use(tasksLimiter);
+// Приводим лимитер к типу Express 5
+router.use(tasksLimiter as unknown as RequestHandler);
 
 router.get(
   '/',
@@ -97,7 +98,8 @@ router.get(
 router.get(
   '/:id',
   authMiddleware(),
-  detailLimiter,
+  // Приводим лимитер к типу Express 5
+  detailLimiter as unknown as RequestHandler,
   param('id').isMongoId(),
   ctrl.detail as RequestHandler,
 );

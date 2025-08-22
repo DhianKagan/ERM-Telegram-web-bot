@@ -1,6 +1,6 @@
 // Роуты управления файлами в хранилище
-// Модули: express, middleware/auth, auth/roles, services/dataStorage
-import { Router, RequestHandler } from 'express';
+// Модули: express, express-validator, middleware/auth, auth/roles, services/dataStorage
+import { Router, RequestHandler, NextFunction } from 'express';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
@@ -27,9 +27,18 @@ router.delete(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('name').isString() as unknown as RequestHandler,
-  async (req, res) => {
-    await deleteFile(req.params.name);
-    res.json({ ok: true });
+  async (req, res, next: NextFunction) => {
+    try {
+      await deleteFile(req.params.name);
+      res.json({ ok: true });
+    } catch (error: unknown) {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'ENOENT') {
+        res.status(404).json({ error: 'Файл не найден' });
+      } else {
+        next(error);
+      }
+    }
   },
 );
 

@@ -26,17 +26,24 @@ interface BodyWithAttachments extends Record<string, unknown> {
   attachments?: { name: string; url: string }[];
 }
 
-export const processUploads: RequestHandler = (req, _res, next) => {
-  const files = (req.files as Express.Multer.File[]) || [];
-  if (files.length > 0) {
-    const attachments = files.map((f) => {
-      const name = `${Date.now()}_${f.originalname}`;
-      fs.writeFileSync(path.join(uploadsDir, name), f.buffer);
-      return { name: f.originalname, url: `/uploads/${name}` };
-    });
-    (req.body as BodyWithAttachments).attachments = attachments;
+export const processUploads: RequestHandler = async (req, res, next) => {
+  try {
+    const files = (req.files as Express.Multer.File[]) || [];
+    if (files.length > 0) {
+      const attachments = await Promise.all(
+        files.map(async (f) => {
+          const original = path.basename(f.originalname);
+          const name = `${Date.now()}_${original}`;
+          await fs.promises.writeFile(path.join(uploadsDir, name), f.buffer);
+          return { name: original, url: `/uploads/${name}` };
+        }),
+      );
+      (req.body as BodyWithAttachments).attachments = attachments;
+    }
+    next();
+  } catch {
+    res.sendStatus(500);
   }
-  next();
 };
 
 const router = Router();

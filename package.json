@@ -44,5 +44,6 @@
   },
   "dependencies": {
     "reflect-metadata": "^0.1.14"
-  }
+  },
+  "packageManager": "pnpm@10.15.0"
 }

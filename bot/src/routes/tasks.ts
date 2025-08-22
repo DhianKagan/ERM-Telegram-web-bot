@@ -1,5 +1,8 @@
 // Роуты задач: CRUD, время, массовые действия
 // Модули: express, express-validator, controllers/tasks, middleware/auth
+import fs from 'fs';
+import path from 'path';
+import multer from 'multer';
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
@@ -15,9 +18,6 @@ import {
 } from '../dto/tasks.dto';
 import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
-import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
 import { uploadsDir } from '../config/storage';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });

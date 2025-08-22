@@ -44,5 +44,6 @@ export async function deleteFile(name: string): Promise<void> {
   if (!targetPath.startsWith(uploadsDirAbs + path.sep)) {
     throw new Error('Недопустимое имя файла');
   }
+  await fs.promises.access(targetPath);
   await fs.promises.unlink(targetPath);
 }

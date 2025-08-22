@@ -19,11 +19,10 @@ fi
 # Устанавливаем корневые зависимости для линтера
 pnpm install --frozen-lockfile || pnpm install
 # Устанавливаем зависимости сервера
-pnpm install --dir "$DIR/bot" --frozen-lockfile || pnpm install --dir "$DIR/bot"
+pnpm install --dir "$DIR/apps/api" --frozen-lockfile || pnpm install --dir "$DIR/apps/api"
 # Устанавливаем зависимости веб-клиента
-pnpm install --dir "$DIR/bot/web" --frozen-lockfile || pnpm install --dir "$DIR/bot/web"
+pnpm install --dir "$DIR/apps/web" --frozen-lockfile || pnpm install --dir "$DIR/apps/web"
 # Слабые уязвимости не блокируют установку
-pnpm audit --dir "$DIR/bot" --fix || true
+pnpm audit --dir "$DIR/apps/api" --fix || true
 # Проверяем наличие серьёзных проблем
-pnpm audit --dir "$DIR/bot" --audit-level high
-
+pnpm audit --dir "$DIR/apps/api" --audit-level high

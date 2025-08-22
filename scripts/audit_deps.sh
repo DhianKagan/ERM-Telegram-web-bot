@@ -17,6 +17,6 @@ if ! command -v pnpm >/dev/null; then
 fi
 
 npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --audit-level high
-npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/bot" --audit-level high
-npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/bot/web" --audit-level high
-pnpm ls --dir "$DIR/bot/web" >/dev/null
+npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/apps/api" --audit-level high
+npx --yes audit-ci --config "$DIR/audit-ci.json" --package-manager pnpm --path "$DIR/apps/web" --audit-level high
+pnpm ls --dir "$DIR/apps/web" >/dev/null

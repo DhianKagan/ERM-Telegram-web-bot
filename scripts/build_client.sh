@@ -3,8 +3,8 @@
 # Модули: npm, bash.
 set -e
 cd "$(dirname "$0")/.."
-if [ ! -d bot/web/node_modules ]; then
-  npm --prefix bot/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
+if [ ! -d apps/web/node_modules ]; then
+  npm --prefix apps/web install > /tmp/npm_install.log 2>&1 && tail -n 20 /tmp/npm_install.log
 fi
-npm --prefix bot run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
+npm --prefix apps/api run build-client > /tmp/npm_build.log 2>&1 && tail -n 20 /tmp/npm_build.log
 

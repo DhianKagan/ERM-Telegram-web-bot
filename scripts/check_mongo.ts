@@ -13,13 +13,11 @@ try {
 } catch (e: unknown) {
   const err = e as NodeJS.ErrnoException;
   if (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND') {
-
     console.warn('Модуль dotenv не найден, читаем .env вручную');
     const envPath = path.resolve(__dirname, '..', '.env');
     if (fs.existsSync(envPath)) {
       const env = fs.readFileSync(envPath, 'utf8');
-      env.split(/\r?\n/).forEach(line => {
-
+      env.split(/\r?\n/).forEach((line) => {
         const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
         if (m && !process.env[m[1]]) {
           process.env[m[1]] = m[2].replace(/(^['"]|['"]$)/g, '');
@@ -31,23 +29,28 @@ try {
   }
 }
 
-
 let mongoose: typeof import('mongoose');
 try {
   mongoose = await import('mongoose');
 } catch {
-  mongoose = await import('../bot/node_modules/mongoose');
+  mongoose = await import('../apps/api/node_modules/mongoose');
 }
 
-const url = (process.env.MONGO_DATABASE_URL || process.env.MONGODB_URI || process.env.DATABASE_URL || '').trim();
+const url = (
+  process.env.MONGO_DATABASE_URL ||
+  process.env.MONGODB_URI ||
+  process.env.DATABASE_URL ||
+  ''
+).trim();
 
 if (!url) {
   console.error('Не задан MONGO_DATABASE_URL');
   process.exit(1);
 }
 if (!/mongodb(?:\+srv)?:\/\/.+:.+@/.test(url)) {
-  console.warn('Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой');
-
+  console.warn(
+    'Строка подключения не содержит логин и пароль, проверка может завершиться ошибкой',
+  );
 }
 
 // Выводим домен и имя базы без логина и пароля
@@ -79,8 +82,9 @@ async function main() {
     const err = e as Error;
     console.error('Ошибка подключения к MongoDB:', err.message);
     if (/bad auth/i.test(err.message) && !/authSource/.test(url)) {
-
-      const alt = url.includes('?') ? `${url}&authSource=admin` : `${url}?authSource=admin`;
+      const alt = url.includes('?')
+        ? `${url}&authSource=admin`
+        : `${url}?authSource=admin`;
 
       console.log('Повторная попытка с authSource=admin');
       try {
@@ -101,4 +105,3 @@ async function main() {
 }
 
 await main();
-

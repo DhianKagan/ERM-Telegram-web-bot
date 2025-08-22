@@ -37,7 +37,7 @@ const config = [
   },
   {
     files: ['**/*.ts'],
-    ignores: ['bot/web/**'],
+    ignores: ['apps/web/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

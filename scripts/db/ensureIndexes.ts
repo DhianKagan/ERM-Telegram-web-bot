@@ -3,14 +3,14 @@
 try {
   require('dotenv/config');
 } catch {
-  require('../../bot/node_modules/dotenv/config');
+  require('../../apps/api/node_modules/dotenv/config');
 }
 
 let mongoose: typeof import('mongoose');
 try {
   mongoose = require('mongoose');
 } catch {
-  mongoose = require('../../bot/node_modules/mongoose');
+  mongoose = require('../../apps/api/node_modules/mongoose');
 }
 
 type IndexKey = Record<string, 1 | -1>;

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "rootDir": "bot/src",
+    "rootDir": "apps/api/src",
     "outDir": "dist",
     "allowJs": false,
     "moduleResolution": "node",
@@ -17,8 +17,8 @@
     "useDefineForClassFields": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "typeRoots": ["./bot/node_modules/@types", "./node_modules/@types"]
+    "typeRoots": ["./apps/api/node_modules/@types", "./node_modules/@types"]
   },
-  "include": ["bot/src/**/*.ts", "bot/src/**/*.d.ts"],
+  "include": ["apps/api/src/**/*.ts", "apps/api/src/**/*.d.ts"],
   "exclude": ["dist"]
 }

@@ -5,8 +5,8 @@
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';
-import { applyIntakeRules } from '../../bot/src/intake/rules';
-import type { TaskDocument } from '../../bot/src/db/model';
+import { applyIntakeRules } from '../../apps/api/src/intake/rules';
+import type { TaskDocument } from '../../apps/api/src/db/model';
 
 let server: Server;
 const base = 'http://localhost:3003';

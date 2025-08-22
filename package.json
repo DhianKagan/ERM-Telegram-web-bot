@@ -3,7 +3,7 @@
   "private": true,
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
-    "lint": "eslint bot/src",
+    "lint": "eslint apps/api/src",
     "a11y": "ts-node scripts/a11y.ts",
     "test:e2e": "playwright test tests/e2e",
     "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",

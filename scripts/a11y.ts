@@ -1,5 +1,5 @@
 /**
- * Назначение файла: проверка контраста bot/web/index.html через @axe-core/cli.
+ * Назначение файла: проверка контраста apps/web/index.html через @axe-core/cli.
  * Основные модули: child_process, http.
  */
 import { spawn } from 'node:child_process';
@@ -27,7 +27,7 @@ async function waitForServer(url: string, timeoutMs = 10000): Promise<void> {
 }
 
 (async () => {
-  const build = spawn('pnpm', ['--dir', 'bot/web', 'build'], {
+  const build = spawn('pnpm', ['--dir', 'apps/web', 'build'], {
     stdio: 'inherit',
   });
   const buildCode: number = await new Promise((resolve) =>
@@ -53,7 +53,7 @@ async function waitForServer(url: string, timeoutMs = 10000): Promise<void> {
 
   const server = spawn(
     'pnpm',
-    ['--dir', 'bot/web', 'preview', '--port', '4173', '--strictPort'],
+    ['--dir', 'apps/web', 'preview', '--port', '4173', '--strictPort'],
     {
       stdio: 'inherit',
     },

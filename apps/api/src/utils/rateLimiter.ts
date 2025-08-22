@@ -1,6 +1,8 @@
 // Назначение файла: создание rate limiter с логированием и метриками
 // Основные модули: express-rate-limit, prom-client, services/service
-import rateLimit from 'express-rate-limit';
+import rateLimit, {
+  type Options as RateLimitLibOptions,
+} from 'express-rate-limit';
 import type { Response } from 'express';
 import type { RequestWithUser } from '../types/request';
 import { writeLog } from '../services/service';
@@ -30,19 +32,21 @@ export default function createRateLimiter({
 }: RateLimitOptions) {
   return rateLimit({
     windowMs,
-    max: (req: RequestWithUser) =>
-      req.user?.role === 'admin' && adminMax ? adminMax : max,
-    keyGenerator: (req: RequestWithUser) =>
-      `${name}:${req.user?.telegram_id ?? req.ip}`,
+    max: ((req: RequestWithUser) =>
+      req.user?.role === 'admin' && adminMax
+        ? adminMax
+        : max) as unknown as RateLimitLibOptions['max'],
+    keyGenerator: ((req: RequestWithUser) =>
+      `${name}:${req.user?.telegram_id ?? req.ip}`) as unknown as RateLimitLibOptions['keyGenerator'],
     standardHeaders: true,
     legacyHeaders: true,
-    skip: (req: RequestWithUser) =>
+    skip: ((req: RequestWithUser) =>
       Boolean(
         captcha &&
           process.env.CAPTCHA_TOKEN &&
           req.headers['x-captcha-token'] === process.env.CAPTCHA_TOKEN,
-      ),
-    handler: (req: RequestWithUser, res: Response) => {
+      )) as unknown as RateLimitLibOptions['skip'],
+    handler: ((req: RequestWithUser, res: Response) => {
       const key = req.user?.telegram_id ?? req.ip;
       drops.inc({ name, key });
       const reset = req.rateLimit?.resetTime;
@@ -76,6 +80,6 @@ export default function createRateLimiter({
         status: 429,
         detail: 'Слишком много запросов, попробуйте позже.',
       });
-    },
+    }) as unknown as RateLimitLibOptions['handler'],
   });
 }

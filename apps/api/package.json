@@ -101,7 +101,10 @@
     ],
     "transform": {
       "^.+\\.[jt]sx?$": "babel-jest"
-    }
+    },
+    "setupFiles": [
+      "<rootDir>/../../tests/setupEnv.ts"
+    ]
   },
   "lint-staged": {
     "*.{js,ts}": [

@@ -1,8 +1,8 @@
 // Форма задачи с адаптивной сеткой, генерируемая по схеме
 // Модули: React
 import React from "react";
-import formSchema from "../../../src/form/taskForm.schema.json";
-import type { Field } from "../../../src/form";
+import formSchema from "../../../api/src/form/taskForm.schema.json";
+import type { Field } from "../../../api/src/form";
 
 type TaskFormProps = { customFields?: Field[] };
 

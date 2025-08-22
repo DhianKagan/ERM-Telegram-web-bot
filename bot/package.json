@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
     "build": "tsc -p ..",
-    "build-client": "npm --prefix web run build",
+    "build-client": "pnpm --dir web run build",
     "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",
     "check:mongo": "node ../scripts/check_mongo.mjs",
     "chaos": "ts-node ../../scripts/chaos.ts",
@@ -16,7 +16,7 @@
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
     "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\""
   },
-  "postinstall": "npm --prefix web install && npm run build-client && husky install",
+  "postinstall": "pnpm --dir web install && pnpm run build-client && husky install",
   "author": "",
   "license": "ISC",
   "description": "Бот задач с REST API, работающий под управлением pm2",

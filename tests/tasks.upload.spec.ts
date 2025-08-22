@@ -5,11 +5,11 @@
 import express, { RequestHandler } from 'express';
 import request from 'supertest';
 // @ts-ignore
-import multer from '../bot/node_modules/multer';
+import multer from '../apps/api/node_modules/multer';
 import path from 'path';
 import fs from 'fs';
-import { processUploads } from '../bot/src/routes/tasks';
-import { uploadsDir } from '../bot/src/config/storage';
+import { processUploads } from '../apps/api/src/routes/tasks';
+import { uploadsDir } from '../apps/api/src/config/storage';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();

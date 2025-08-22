@@ -1,9 +1,0 @@
-{
-  // Назначение файла: конфигурация TypeScript для проверки типов в подкаталоге bot
-  // Основные модули: typescript
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "src"
-  },
-  "include": ["src/**/*"]
-}

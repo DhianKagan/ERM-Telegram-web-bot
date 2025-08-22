@@ -9,11 +9,11 @@ let mongoose: typeof import('mongoose');
 try {
   mongoose = require('mongoose');
 } catch {
-  mongoose = require('../bot/node_modules/mongoose');
+  mongoose = require('../apps/api/node_modules/mongoose');
 }
 
-import { User } from '../bot/src/db/model';
-import config from '../bot/src/config';
+import { User } from '../apps/api/src/db/model';
+import config from '../apps/api/src/config';
 
 const [, , idArg, usernameArg] = process.argv;
 if (!idArg) {

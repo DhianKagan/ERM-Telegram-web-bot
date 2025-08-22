@@ -11,18 +11,18 @@ fi
 
 # Устанавливаем зависимости корня, бота и клиента
 pnpm install --frozen-lockfile || pnpm install
-pnpm install --dir bot --frozen-lockfile || pnpm install --dir bot
-pnpm install --dir bot/web --frozen-lockfile || pnpm install --dir bot/web
+pnpm install --dir apps/api --frozen-lockfile || pnpm install --dir apps/api
+pnpm install --dir apps/web --frozen-lockfile || pnpm install --dir apps/web
 
 # Проверяем отсутствие JavaScript-файлов
 ./scripts/check_no_js.sh
 
 # Запускаем тесты и линтеры
-pnpm --dir bot test --detectOpenHandles
-pnpm --dir bot test tests/csrf.test.ts
-pnpm --dir bot run test:types
-pnpm --dir bot run lint
-pnpm --dir bot/web run lint
+pnpm --dir apps/api test --detectOpenHandles
+pnpm --dir apps/api test tests/csrf.test.ts
+pnpm --dir apps/api run test:types
+pnpm --dir apps/api run lint
+pnpm --dir apps/web run lint
 
 # Проверяем конфигурацию docker compose при наличии команды docker
 if command -v docker >/dev/null; then

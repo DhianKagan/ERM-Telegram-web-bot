@@ -1,12 +1,12 @@
-<!-- Назначение файла: краткое описание возможностей проекта. Основные модули: bot, web. -->
+<!-- Назначение файла: краткое описание возможностей проекта. Основные модули: api, web. -->
 
 # Telegram Task Manager Bot + Mini App
 
-Проект предоставляет Telegram‑бота и веб‑клиент для учёта задач. Весь код находится в каталоге `bot`.
+Проект предоставляет Telegram‑бота и веб‑клиент для учёта задач. Сервер находится в `apps/api`, клиент — в `apps/web`.
 
 Номер задачи и дата создания отображаются отдельными полями, все изменения сохраняются в истории.
 Форма задачи позволяет прикреплять файлы с миниатюрами после загрузки.
-Вложения сохраняются в каталог, заданный переменной окружения `STORAGE_DIR` (по умолчанию `bot/public`).
+Вложения сохраняются в каталог, заданный переменной окружения `STORAGE_DIR` (по умолчанию `apps/api/public`).
 Панель администратора содержит раздел «Файлы» для просмотра и удаления вложений.
 Таблица задач поддерживает фильтрацию по значениям через чекбоксы и поиск.
 Веб‑клиент использует Tailwind с плагином `@tailwindcss/forms`, базовые компоненты `Button` и `Input` соблюдают контраст и 8‑pt ритм.
@@ -20,7 +20,7 @@
 ```bash
 pnpm install
 ./scripts/setup_and_test.sh
-pnpm --dir bot dev
+pnpm --dir apps/api dev
 ```
 
 ## Сборка клиента
@@ -42,8 +42,8 @@ pnpm a11y
 ## Структура пакетов
 
 - `bot` — Telegram‑бот, REST API и мини‑приложение React.
-- `api` — серверные обработчики в каталоге `bot/src/api`.
-- `shared` — общие утилиты и типы в `bot/src/shared`.
+- `api` — серверные обработчики в каталоге `apps/api/src/api`.
+- `shared` — общие утилиты и типы в `apps/api/src/shared`.
 
 ## Пример локального запуска
 
@@ -53,7 +53,7 @@ pnpm --dir bot dev
 
 # Отдельный бот после сборки
 pnpm --dir bot build
-node bot/dist/bot/bot.js
+node apps/api/dist/bot/bot.js
 ```
 
 ## Пример шаблона задачи
@@ -107,9 +107,9 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
   расширяются через `CSP_STYLE_SRC_ALLOWLIST` и `CSP_FONT_SRC_ALLOWLIST`.
 - В строгом режиме CSP добавляет `upgrade-insecure-requests` и отправляет отчёты
   на адрес из `CSP_REPORT_URI`.
-- Общие функции Google Maps находятся в `bot/src/shared/mapUtils.ts`.
+- Общие функции Google Maps находятся в `apps/api/src/shared/mapUtils.ts`.
 - Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
-- Текстовые ответы бота собраны в `bot/src/messages.ts`.
+- Текстовые ответы бота собраны в `apps/api/src/messages.ts`.
 - Сервис и контроллер карт переведены на TypeScript.
 - Контроллеры маршрутов и оптимизации, модуль `config.ts`, модель `AuthUser`
   и кастомный бекенд админки переписаны на TypeScript, дублирующие JS‑роуты
@@ -120,13 +120,13 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Развёртывание коротких ссылок Google Maps проверяет домен, протокол https, отсутствие userinfo и нестандартного порта.
 - Скрипт заполнения базы `scripts/db/seed.ts` написан на TypeScript.
 - Конфигурация TypeScript исключает `dist` для корректной сборки.
-- Исключение `bot/src/api/*.js` удалено, весь серверный код на TypeScript.
+- Исключение `apps/api/src/api/*.js` удалено, весь серверный код на TypeScript.
 - Сборка выполняется в строгом режиме TypeScript; включён флаг `noImplicitAny`; план миграции из JavaScript находится в `docs/typescript_migration_plan.md`.
 - Конфигурации Vite, Tailwind и PostCSS написаны на TypeScript, скрипт темы перенесён в исходники.
 - ESLint проверяет серверные файлы TypeScript; правило `no-explicit-any` включено,
   `ban-ts-comment` остаётся отключено.
 - ESLint запрещает файлы `.js` вне конфигурации.
-- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `pnpm exec eslint bot/src` работает без дополнительных флагов.
+- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `pnpm exec eslint apps/api/src` работает без дополнительных флагов.
 - Конфигурационные файлы переведены на TypeScript, скрипт `scripts/check_no_js.sh` предотвращает возврат к JavaScript.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
@@ -214,7 +214,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Маршрут `/api/v1/optimizer` не требует CSRF-токена.
 - Тест `routeCsrf.test.ts` проверяет CSRF при расчёте маршрута и использует самоподписанный сертификат,
   `taskFields.test.ts` контролирует состав полей формы.
-  Значения enum хранятся в `bot/src/shared/taskFields.ts` и используются сервером и клиентом.
+  Значения enum хранятся в `apps/api/src/shared/taskFields.ts` и используются сервером и клиентом.
 
 ### Auth Mini App
 
@@ -328,8 +328,8 @@ Dependabot еженедельно обновляет npm-зависимости 
 2. Разместите репозиторий на Railway и используйте `Procfile.railway`:
 
    ```Procfile
-   api: node bot/dist/server.js
-   bot: ./scripts/set_bot_commands.sh && node bot/dist/bot/bot.js
+   api: node apps/api/dist/server.js
+   bot: ./scripts/set_bot_commands.sh && node apps/api/dist/bot/bot.js
    ```
 
    Railway запустит оба процесса в одном сервисе.

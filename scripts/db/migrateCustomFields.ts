@@ -2,7 +2,7 @@
 // Модули: mongoose, dotenv, модели проекта
 import mongoose from 'mongoose';
 import 'dotenv/config';
-import '../../bot/src/db/model';
+import '../../apps/api/src/db/model';
 
 await mongoose.connection.db
   .collection('tasks')

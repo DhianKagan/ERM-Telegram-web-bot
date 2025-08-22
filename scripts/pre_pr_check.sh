@@ -9,20 +9,20 @@ cd "$(dirname "$0")/.."
 ./scripts/audit_deps.sh
 
 ./scripts/build_client.sh >/dev/null
-if [ ! -f bot/public/.vite/manifest.json ] || ! ls bot/public/assets/index*.js >/dev/null 2>&1; then
+if [ ! -f apps/api/public/.vite/manifest.json ] || ! ls apps/api/public/assets/index*.js >/dev/null 2>&1; then
   echo "Отсутствует собранный JS-бандл" >&2
   exit 1
 fi
 
-until npm --prefix bot run build; do
+until npm --prefix apps/api run build; do
   echo "Сборка не удалась, устанавливаем зависимости..."
-  npm --prefix bot install
+  npm --prefix apps/api install
 done
 
 attempt=1
 max_attempts=5
 while [ $attempt -le $max_attempts ]; do
-  if timeout 5s npm --prefix bot run start >/tmp/bot_start.log 2>&1; then
+  if timeout 5s npm --prefix apps/api run start >/tmp/apps/api_start.log 2>&1; then
     echo "Проверка сборки и запуска завершена."
     exit 0
   fi
@@ -32,7 +32,7 @@ while [ $attempt -le $max_attempts ]; do
     exit 0
   fi
   echo "Запуск не удался, пробуем ещё раз..."
-  npm --prefix bot run build || npm --prefix bot install
+  npm --prefix apps/api run build || npm --prefix apps/api install
   attempt=$((attempt + 1))
 done
 

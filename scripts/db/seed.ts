@@ -1,7 +1,7 @@
 // Заполнение тестовыми данными
 // Модули: db/model, config
-import { Task, Group, User, Log } from '../../bot/src/db/model';
-import config from '../../bot/src/config';
+import { Task, Group, User, Log } from '../../apps/api/src/db/model';
+import config from '../../apps/api/src/config';
 import 'dotenv/config';
 
 async function seed(): Promise<void> {

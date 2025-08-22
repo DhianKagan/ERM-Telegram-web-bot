@@ -1,11 +1,11 @@
 // Общая форма создания и редактирования задач
-// Модули: React, DOMPurify, контексты, сервисы задач и логов
+// Модули: React, DOMPurify, контексты, сервисы задач, shared и логов
 import React, { useContext } from "react";
 import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
 import { AuthContext } from "../context/AuthContext";
-import fields from "../../../src/shared/taskFields";
+import { taskFields as fields } from "shared";
 import {
   createTask,
   updateTask,

@@ -1,0 +1,14 @@
+{
+  // Назначение: конфигурация TypeScript для пакета shared
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "commonjs",
+    "rootDir": "src",
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "strict": true,
+    "declaration": true,
+    "types": []
+  },
+  "include": ["src/**/*"]
+}

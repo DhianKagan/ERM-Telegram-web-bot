@@ -6,7 +6,7 @@ export interface Coords {
   lng: number;
 }
 
-function extractCoords(url: string): Coords | null {
+export function extractCoords(url: string): Coords | null {
   const m =
     url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
     url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
@@ -16,7 +16,7 @@ function extractCoords(url: string): Coords | null {
   return null;
 }
 
-function generateRouteLink(
+export function generateRouteLink(
   start: Coords | null | undefined,
   end: Coords | null | undefined,
   mode: string = 'driving',
@@ -25,7 +25,7 @@ function generateRouteLink(
   return `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&travelmode=${mode}`;
 }
 
-function generateMultiRouteLink(
+export function generateMultiRouteLink(
   points: Coords[] = [],
   mode: string = 'driving',
 ): string {

@@ -43,7 +43,7 @@ pnpm a11y
 
 - `bot` — Telegram‑бот, REST API и мини‑приложение React.
 - `api` — серверные обработчики в каталоге `apps/api/src/api`.
-- `shared` — общие утилиты и типы в `apps/api/src/shared`.
+- `shared` — общие утилиты и типы в `packages/shared`.
 
 ## Пример локального запуска
 
@@ -107,8 +107,8 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
   расширяются через `CSP_STYLE_SRC_ALLOWLIST` и `CSP_FONT_SRC_ALLOWLIST`.
 - В строгом режиме CSP добавляет `upgrade-insecure-requests` и отправляет отчёты
   на адрес из `CSP_REPORT_URI`.
-- Общие функции Google Maps находятся в `apps/api/src/shared/mapUtils.ts`.
-- Веб‑клиент импортирует их как `import mapUtils from '../../../src/shared/mapUtils.ts'`.
+- Общие функции Google Maps находятся в `packages/shared/src/mapUtils.ts`.
+- Веб‑клиент импортирует их как `import { generateRouteLink } from 'shared'`.
 - Текстовые ответы бота собраны в `apps/api/src/messages.ts`.
 - Сервис и контроллер карт переведены на TypeScript.
 - Контроллеры маршрутов и оптимизации, модуль `config.ts`, модель `AuthUser`
@@ -214,7 +214,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Маршрут `/api/v1/optimizer` не требует CSRF-токена.
 - Тест `routeCsrf.test.ts` проверяет CSRF при расчёте маршрута и использует самоподписанный сертификат,
   `taskFields.test.ts` контролирует состав полей формы.
-  Значения enum хранятся в `apps/api/src/shared/taskFields.ts` и используются сервером и клиентом.
+  Значения enum хранятся в `packages/shared/src/taskFields.ts` и используются сервером и клиентом.
 
 ### Auth Mini App
 

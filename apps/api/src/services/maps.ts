@@ -1,24 +1,15 @@
 // Получение полной ссылки Google Maps и вспомогательные функции
-// Модули: node.js fetch, dns/promises, net, shared/mapUtils
+// Модули: node.js fetch, dns/promises, net, shared
 import { lookup } from 'dns/promises';
 import net from 'net';
-import mapUtils from '../shared/mapUtils';
+import {
+  extractCoords,
+  generateRouteLink,
+  generateMultiRouteLink,
+  type Coords as Coordinates,
+} from 'shared';
 
-export interface Coordinates {
-  lat: number;
-  lng: number;
-}
-
-export const { extractCoords, generateRouteLink, generateMultiRouteLink } =
-  mapUtils as {
-    extractCoords: (url: string) => Coordinates | null;
-    generateRouteLink: (
-      start: Coordinates | null,
-      end: Coordinates | null,
-      mode?: string,
-    ) => string;
-    generateMultiRouteLink: (points?: Coordinates[], mode?: string) => string;
-  };
+export type { Coordinates };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
   // Развёртывает короткий URL Google Maps с проверкой домена и протокола
@@ -105,3 +96,5 @@ const maps = {
 };
 
 export default maps;
+
+export { extractCoords, generateRouteLink, generateMultiRouteLink };

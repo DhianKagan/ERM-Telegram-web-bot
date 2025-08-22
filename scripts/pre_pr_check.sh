@@ -14,15 +14,15 @@ if [ ! -f apps/api/public/.vite/manifest.json ] || ! ls apps/api/public/assets/i
   exit 1
 fi
 
-until npm --prefix apps/api run build; do
+until pnpm --dir apps/api run build; do
   echo "Сборка не удалась, устанавливаем зависимости..."
-  npm --prefix apps/api install
+  pnpm --dir apps/api install
 done
 
 attempt=1
 max_attempts=5
 while [ $attempt -le $max_attempts ]; do
-  if timeout 5s npm --prefix apps/api run start >/tmp/apps/api_start.log 2>&1; then
+  if timeout 5s pnpm --dir apps/api run start >/tmp/apps/api_start.log 2>&1; then
     echo "Проверка сборки и запуска завершена."
     exit 0
   fi
@@ -32,7 +32,7 @@ while [ $attempt -le $max_attempts ]; do
     exit 0
   fi
   echo "Запуск не удался, пробуем ещё раз..."
-  npm --prefix apps/api run build || npm --prefix apps/api install
+  pnpm --dir apps/api run build || pnpm --dir apps/api install
   attempt=$((attempt + 1))
 done
 

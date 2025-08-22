@@ -1,11 +1,11 @@
 // Назначение: формирование ссылки маршрута Google Maps из координат.
-// Модули: shared/mapUtils
-import mapUtils, { Coords } from "../../../src/shared/mapUtils";
+// Модули: shared
+import { generateRouteLink, type Coords } from "shared";
 
 export default function createRouteLink(
   start: Coords | null,
   end: Coords | null,
   mode: string = "driving",
 ): string {
-  return mapUtils.generateRouteLink(start, end, mode);
+  return generateRouteLink(start, end, mode);
 }

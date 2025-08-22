@@ -4,6 +4,7 @@
 
 - Исправлен CI: `docker.yml` и шаблон PR используют команды `pnpm`, путь `bot/src` заменён на `apps/api/src`.
 - Переведено на монорепозиторий pnpm: сервер в `apps/api`, клиент в `apps/web`, общие модули в `packages/shared`.
+- Интерфейсы Task и User вынесены в пакет `shared`, добавлены константы и единая точка входа.
 - Исправлен запуск тестов в `setup_and_test.sh`: удалён лишний `--`, из-за чего Jest не находил тесты.
 - `pre_pr_check.sh` запускает `audit_deps.sh`; в CI добавлен job `audit-deps` и документирован обход ложных срабатываний `audit-ci`.
 - `install_bot_deps.sh` использует pnpm и обеспечивает наличие pnpm в CI, `audit_deps.sh` проверяет все пакеты через `audit-ci`.
@@ -113,7 +114,7 @@
   заголовка Authorization
 - Страница `/cp/logs` заменяет `/cp/admin` и показывает логи
 - Система логирования переведена на WG Log Engine
-- Общие функции Google Maps собраны в `bot/src/shared/mapUtils.ts`
+- Общие функции Google Maps собраны в `packages/shared/src/mapUtils.ts`
 - Развёртывание коротких ссылок Google Maps проверяет домен по белому списку
 - Проверяется протокол https, отсутствие userinfo и нестандартного порта у коротких ссылок Google Maps
 - Добавлена цветовая маркировка уровней и уведомления Telegram через движок
@@ -458,7 +459,7 @@
   дублирующие JS‑роуты
 - ESLint проверяет серверные файлы TypeScript, правила `no-explicit-any` и `ban-ts-comment` отключены
 - Модуль `taskFields` переименован в `taskFields.js`, исправлены типы оптимизатора и модели пользователя для успешной Docker-сборки
-- Файл `taskFields.js` перемещён в `bot/src/shared` для корректной Docker-сборки
+- Файл `taskFields.js` перемещён в `packages/shared/src` для корректной Docker-сборки
 - `taskFields.ts` заменил `taskFields.js`, поля типизированы интерфейсом
 - Скрипт `create_admin_user.ts` переписан на TypeScript
 - Устранена ошибка ESLint: `authFetch` использует локальный интерфейс `FetchOptions` вместо `RequestInit`

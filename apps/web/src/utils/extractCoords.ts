@@ -1,12 +1,9 @@
 // Назначение файла: извлечение координат из ссылок Google Maps
-// Основные модули: web utils
-import mapUtils from "../../../src/shared/mapUtils.js";
+// Основные модули: shared
+import { extractCoords as parseCoords, type Coords } from "shared";
 
-interface LatLng {
-  lat: number;
-  lng: number;
-}
+export type LatLng = Coords;
 
 export default function extractCoords(url: string): LatLng | null {
-  return mapUtils.extractCoords(url) as LatLng | null;
+  return parseCoords(url) as LatLng | null;
 }

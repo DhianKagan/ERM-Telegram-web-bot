@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if command -v rg >/dev/null; then
-  if rg --files -g '*.js' -g '!node_modules/**' -g '!dist/**' | grep -q '.'; then
+  if rg --files -g '*.js' -g '!node_modules/**' -g '!**/dist/**' | grep -q '.'; then
     echo 'Найдены файлы JavaScript. Используйте TypeScript.' >&2
     exit 1
   fi

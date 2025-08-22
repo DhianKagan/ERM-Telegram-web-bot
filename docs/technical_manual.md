@@ -300,7 +300,8 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
 - Тест `loginRouteFlow.test.js` проверяет получение CSRF-токена и вызов `/api/v1/route`.
 - Тесты `authService.test.js` и `tasksService.test.js` покрывают логику модулей авторизации и задач.
-- Для проверки зависимостей выполните `./scripts/audit_deps.sh`.
+- Для проверки зависимостей выполните `./scripts/audit_deps.sh`; `pre_pr_check.sh` вызывает его автоматически.
+- Обход ложных срабатываний описан в `docs/security/audit_ci_false_positives.md`.
 
 ### Быстрый старт
 

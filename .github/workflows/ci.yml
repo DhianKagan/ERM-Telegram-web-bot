@@ -9,8 +9,21 @@ on:
     branches: [main]
 
 jobs:
+  audit-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Установка зависимостей
+        run: ./scripts/install_bot_deps.sh
+      - name: Проверка зависимостей (audit-ci)
+        run: ./scripts/audit_deps.sh
+
   lint-test-build:
     runs-on: ubuntu-latest
+    needs: audit-deps
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4
@@ -20,8 +33,6 @@ jobs:
         run: ./scripts/install_bot_deps.sh
       - name: Установка браузеров Playwright
         run: npx playwright install --with-deps
-      - name: Проверка зависимостей (audit-ci)
-        run: ./scripts/audit_deps.sh
       - name: Тесты и линтеры
         run: ./scripts/setup_and_test.sh
       - name: Unit тесты с покрытием

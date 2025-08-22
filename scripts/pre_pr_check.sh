@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 
 ./scripts/create_env_from_exports.sh >/dev/null || true
 
+./scripts/audit_deps.sh
+
 ./scripts/build_client.sh >/dev/null
 if [ ! -f bot/public/.vite/manifest.json ] || ! ls bot/public/assets/index*.js >/dev/null 2>&1; then
   echo "Отсутствует собранный JS-бандл" >&2

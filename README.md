@@ -23,6 +23,12 @@ pnpm install
 pnpm --dir bot dev
 ```
 
+## Сборка клиента
+
+```bash
+npm run prepare-client
+```
+
 ## Проверка доступности
 
 После выполнения `./scripts/setup_and_test.sh` можно проверить контрастность главной страницы:

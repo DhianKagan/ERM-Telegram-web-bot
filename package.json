@@ -9,7 +9,8 @@
     "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",
     "test:unit": "jest",
     "format": "prettier --write .",
-    "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e"
+    "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
+    "prepare-client": "./scripts/build_client.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.2",

@@ -16,7 +16,6 @@
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
     "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\""
   },
-  "postinstall": "pnpm --dir web install && pnpm run build-client && husky install",
   "author": "",
   "license": "ISC",
   "description": "Бот задач с REST API, работающий под управлением pm2",

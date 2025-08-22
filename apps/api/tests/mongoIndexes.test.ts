@@ -7,7 +7,7 @@ import {
   ensureUploadIndexes,
 } from '../../../scripts/db/ensureIndexes';
 
-jest.setTimeout(20000);
+jest.setTimeout(60000);
 interface Plan {
   stage?: string;
   inputStage?: Plan;

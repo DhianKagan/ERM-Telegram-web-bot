@@ -4,6 +4,7 @@
   "main": "src/bot/bot.js",
   "types": "bot.d.ts",
   "scripts": {
+    "pretest": "pnpm --filter shared build",
     "test": "node -r ./node_modules/ts-node/register ./node_modules/jest/bin/jest.js --coverage",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
@@ -14,7 +15,7 @@
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd apps/api --project tsconfig.json --files tests/requestWithUser.test-d.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
-    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\""
+    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js ."
   },
   "author": "",
   "license": "ISC",

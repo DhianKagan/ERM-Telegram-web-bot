@@ -1,10 +1,9 @@
 // Назначение: настройка WG Log Engine и вывод логов в разные каналы
 // Модули: @wgtechlabs/log-engine, mongoose, fetch
 import { LogEngine, LogMode } from '@wgtechlabs/log-engine';
-import type {
-  EnhancedOutputTarget,
-  LogEngine as EngineType,
-} from '@wgtechlabs/log-engine';
+import type { EnhancedOutputTarget } from '@wgtechlabs/log-engine';
+
+type EngineType = typeof LogEngine;
 import { Log } from '../db/model';
 
 export interface ListLogParams {

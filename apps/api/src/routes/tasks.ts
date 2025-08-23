@@ -46,7 +46,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
   }
 };
 
-const router = Router();
+const router: Router = Router();
 const ctrl = container.resolve(TasksController);
 const upload = multer({ storage: multer.memoryStorage() });
 const normalizeArrays: RequestHandler = (req, _res, next) => {

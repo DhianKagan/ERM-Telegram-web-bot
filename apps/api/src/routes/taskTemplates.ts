@@ -6,7 +6,7 @@ import container from '../di';
 import TaskTemplatesController from '../taskTemplates/taskTemplates.controller';
 import authMiddleware from '../middleware/auth';
 
-const router = Router();
+const router: Router = Router();
 const ctrl = container.resolve(TaskTemplatesController);
 
 router.get('/', authMiddleware(), ctrl.list as RequestHandler);

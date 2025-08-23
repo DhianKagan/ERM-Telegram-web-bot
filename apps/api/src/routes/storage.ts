@@ -8,7 +8,7 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import { listFiles, deleteFile } from '../services/dataStorage';
 import { param } from 'express-validator';
 
-const router = Router();
+const router: Router = Router();
 
 router.get(
   '/',

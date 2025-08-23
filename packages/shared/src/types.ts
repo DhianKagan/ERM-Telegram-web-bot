@@ -4,7 +4,7 @@
 export interface Task {
   _id: string;
   title: string;
-  status: string;
+  status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
   assignees?: number[];
   [key: string]: unknown;
 }

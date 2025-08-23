@@ -31,7 +31,7 @@ export interface DistanceResponse {
   [key: string]: unknown;
 }
 
-const router = Router();
+const router: Router = Router();
 const routeLimiter = createRateLimiter(rateLimits.route);
 const tableLimiter = createRateLimiter(rateLimits.table);
 

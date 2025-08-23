@@ -17,7 +17,7 @@ export interface RoutesResponse {
   routes: unknown[];
 }
 
-const router = Router();
+const router: Router = Router();
 
 const validate = (v: ReturnType<typeof query>[]): RequestHandler[] => [
   ...v,

@@ -1,14 +1,17 @@
 // Назначение: глобальный лимитер запросов
 // Основные модули: express-rate-limit, express
 import rateLimit from 'express-rate-limit';
-import type { Request } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 
-const globalLimiter = rateLimit({
+const globalLimiter: RequestHandler = rateLimit({
   windowMs: 60_000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => req.path === '/api/v1/csrf',
-});
+  skip: (req: Request, res: Response) => {
+    void res;
+    return req.path === '/api/v1/csrf';
+  },
+}) as unknown as RequestHandler;
 
 export default globalLimiter;

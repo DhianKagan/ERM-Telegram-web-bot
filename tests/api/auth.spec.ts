@@ -2,8 +2,8 @@
  * Назначение файла: API-тесты Supertest для сценариев Auth/CRUD/CSRF.
  * Основные модули: express, supertest.
  */
-import express from 'express';
-import request from 'supertest';
+import express = require('express');
+import request = require('supertest');
 
 const app = express();
 app.use(express.json());

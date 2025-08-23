@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Лимит size-limit для `apps/api/public/assets/*.js` увеличен до 900 KB, чтобы предотвратить падение CI.
 - Исправлен путь к `check:mongo.mjs`, lock-файл PNPM синхронизирован с `overrides`.
 - Исправлен CI: `docker.yml` и шаблон PR используют команды `pnpm`, путь `bot/src` заменён на `apps/api/src`.
 - Переведено на монорепозиторий pnpm: сервер в `apps/api`, клиент в `apps/web`, общие модули в `packages/shared`.

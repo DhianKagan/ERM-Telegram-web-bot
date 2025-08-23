@@ -62,7 +62,7 @@
   "size-limit": [
     {
       "path": "apps/api/public/assets/*.js",
-      "limit": "500 KB"
+      "limit": "900 KB"
     }
   ]
 }

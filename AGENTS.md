@@ -34,6 +34,7 @@
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
+- Сборка клиента проверяется `pnpm size`; размер `apps/api/public/assets/*.js` не превышает 900 KB.
 - Статическую страницу `apps/web/index.html` проверяйте на контраст командой `pnpm a11y` через `@axe-core/cli` и `vite preview`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.
 - Индексы MongoDB создавайте скриптом `scripts/db/ensureIndexes.ts`.

@@ -1,4 +1,4 @@
-// Назначение: автотесты. Модули: jest, supertest.
+// Назначение: автотесты. Модули: jest, supertest, shared.
 // Тест маршрута /api/maps/expand
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -14,6 +14,9 @@ const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/services/maps', () => ({
   expandMapsUrl: jest.fn(async () => 'https://maps.google.com/full'),
+}));
+jest.mock('shared', () => ({
+  ...jest.requireActual('shared'),
   extractCoords: jest.fn(() => ({ lat: 1, lng: 2 })),
 }));
 

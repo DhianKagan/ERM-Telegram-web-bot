@@ -10,15 +10,11 @@ const request = require('supertest');
 const express = require('express');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
+const { generateRouteLink } = require('shared');
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 1000 })),
   clearRouteCache: jest.fn(),
-}));
-jest.mock('../src/services/maps', () => ({
-  generateRouteLink: jest.fn(() => 'g'),
-  expandMapsUrl: jest.fn(),
-  extractCoords: jest.fn(),
 }));
 
 jest.mock('../src/db/model', () => ({
@@ -103,10 +99,14 @@ test('создание задачи возвращает 201', async () => {
   expect(res.status).toBe(201);
   expect(res.body.title).toBe('T');
   expect(res.body.task_number).toBe('ERM_000001');
+  const expectedUrl = generateRouteLink(
+    { lat: 1, lng: 2 },
+    { lat: 3, lng: 4 },
+  );
   expect(Task.create).toHaveBeenCalledWith(
     expect.objectContaining({
       start_date: '2025-01-01T10:00',
-      google_route_url: 'g',
+      google_route_url: expectedUrl,
       route_distance_km: 1,
     }),
   );

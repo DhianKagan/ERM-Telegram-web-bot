@@ -7,14 +7,12 @@ import Spinner from "../components/Spinner";
 import SkeletonCard from "../components/SkeletonCard";
 import Pagination from "../components/Pagination";
 import Breadcrumbs from "../components/Breadcrumbs";
+import type { Task } from "shared";
 
-interface Task {
-  _id: string;
-  task_description: string;
-}
+type TaskWithDesc = Task & { task_description: string };
 
 export default function Tasks() {
-  const [tasks, setTasks] = React.useState<Task[]>([]);
+  const [tasks, setTasks] = React.useState<TaskWithDesc[]>([]);
   const [text, setText] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [posting, setPosting] = React.useState(false);

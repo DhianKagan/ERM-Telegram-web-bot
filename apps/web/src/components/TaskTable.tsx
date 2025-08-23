@@ -9,31 +9,15 @@ import type {
 } from "ag-grid-community";
 import useGrid from "../hooks/useGrid";
 import taskColumns from "../columns/taskColumns";
+import type { Task } from "shared";
 
-type Coords = { lat: number; lng: number };
-
-interface Task {
-  _id: string;
-  task_number?: string;
-  title: string;
-  status?: string;
-  priority?: string;
-  start_date?: string;
-  due_date?: string;
-  task_type?: string;
-  assignees?: number[];
-  assigned_user_id?: number;
-  startCoordinates?: Coords;
-  finishCoordinates?: Coords;
-  route_distance_km?: number;
-  createdAt?: string;
-}
+type TaskRow = Task & Record<string, any>;
 
 interface TaskTableProps {
-  tasks: Task[];
+  tasks: TaskRow[];
   users?: Record<number, any>;
   onSelectionChange?: (ids: string[]) => void;
-  onDataChange?: (rows: Task[]) => void;
+  onDataChange?: (rows: TaskRow[]) => void;
   quickFilterText?: string;
   selectable?: boolean;
   onRowClick?: (id: string) => void;
@@ -57,7 +41,7 @@ export default function TaskTable({
 
   const updateData = React.useCallback(() => {
     if (!apiRef.current || !onDataChange) return;
-    const rows: Task[] = [];
+    const rows: TaskRow[] = [];
     apiRef.current.forEachNodeAfterFilterAndSort((n) => rows.push(n.data));
     onDataChange(rows);
   }, [onDataChange]);
@@ -72,7 +56,7 @@ export default function TaskTable({
 
   const onSel = React.useCallback(() => {
     if (!apiRef.current || !onSelectionChange) return;
-    const ids = apiRef.current.getSelectedRows().map((r: Task) => r._id);
+    const ids = apiRef.current.getSelectedRows().map((r: TaskRow) => r._id);
     onSelectionChange(ids);
   }, [onSelectionChange]);
 

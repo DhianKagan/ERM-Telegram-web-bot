@@ -1,7 +1,8 @@
 // Розвёртывание коротких ссылок Google Maps
-// Модули: express, services/maps
+// Модули: express, services/maps, shared
 import { Request, Response } from 'express';
-import { expandMapsUrl, extractCoords } from '../services/maps';
+import { expandMapsUrl } from '../services/maps';
+import { extractCoords } from 'shared';
 import { sendProblem } from '../utils/problem';
 
 export async function expand(req: Request, res: Response): Promise<void> {

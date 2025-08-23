@@ -7,32 +7,13 @@ import { useToast } from "../context/useToast";
 import useTasks from "../context/useTasks";
 import { fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
-import { taskFields as fields } from "shared";
+import { taskFields as fields, type Task, type User } from "shared";
 import { AuthContext } from "../context/AuthContext";
 
-interface Task {
-  _id: string;
-  title: string;
-  status: string;
-  task_number: string;
-  createdAt: string;
-  start_date?: string;
-  due_date?: string;
-  priority?: string;
-  assigned_user_id?: number;
-  assignees?: number[];
-  attachments?: { name: string; url: string }[];
-}
-
-interface User {
-  telegram_id: number;
-  username: string;
-  name?: string;
-  phone?: string;
-}
+type TaskExtra = Task & Record<string, any>;
 
 export default function TasksPage() {
-  const [all, setAll] = React.useState<Task[]>([]);
+  const [all, setAll] = React.useState<TaskExtra[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [statuses, setStatuses] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<string[]>([]);
@@ -50,7 +31,9 @@ export default function TasksPage() {
     setLoading(true);
     fetchTasks({}, Number((user as any)?.telegram_id))
       .then((data) => {
-        const tasks = Array.isArray(data) ? data : data.tasks || [];
+        const tasks = (
+          Array.isArray(data) ? data : data.tasks || []
+        ) as TaskExtra[];
         const filteredTasks = isAdmin
           ? tasks
           : tasks.filter((t) => {
@@ -63,8 +46,8 @@ export default function TasksPage() {
             });
         setAll(filteredTasks);
         const list = Array.isArray((data as any).users)
-          ? (data as any).users
-          : Object.values((data as any).users || {});
+          ? ((data as any).users as User[])
+          : (Object.values((data as any).users || {}) as User[]);
         setUsers(list);
       })
       .finally(() => setLoading(false));

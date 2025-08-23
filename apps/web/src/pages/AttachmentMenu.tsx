@@ -1,21 +1,19 @@
 // Страница выбора задачи для Attachment Menu
 import React, { useEffect, useState } from "react";
 import authFetch from "../utils/authFetch";
+import type { Task } from "shared";
 
-interface Task {
-  _id: string;
-  title: string;
-  task_number: string;
-  createdAt: string;
-}
+type MenuTask = Task & { task_number: string; createdAt: string };
 
 export default function AttachmentMenu() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<MenuTask[]>([]);
 
   useEffect(() => {
     authFetch("/api/v1/tasks?limit=10")
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setTasks(Array.isArray(data) ? data : data.tasks || []));
+      .then((data) =>
+        setTasks((Array.isArray(data) ? data : data.tasks || []) as MenuTask[]),
+      );
   }, []);
 
   function select(id: string) {

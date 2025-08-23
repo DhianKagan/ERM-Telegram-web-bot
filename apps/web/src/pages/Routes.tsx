@@ -10,24 +10,13 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import type { Task } from "shared";
 
-interface Task {
-  _id: string;
-  title: string;
-  task_number: string;
-  createdAt: string;
-  status?: string;
-  priority?: string;
-  task_type?: string;
-  due_date?: string;
-  startCoordinates?: { lat: number; lng: number };
-  finishCoordinates?: { lat: number; lng: number };
-  route_distance_km?: number;
-}
+type RouteTask = Task & Record<string, any>;
 
 export default function RoutesPage() {
-  const [tasks, setTasks] = React.useState<Task[]>([]);
-  const [sorted, setSorted] = React.useState<Task[]>([]);
+  const [tasks, setTasks] = React.useState<RouteTask[]>([]);
+  const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState("angle");
   const [links, setLinks] = React.useState<string[]>([]);

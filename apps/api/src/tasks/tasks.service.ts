@@ -1,7 +1,7 @@
 // Сервис задач через репозиторий.
-// Основные модули: db/queries, services/route, services/maps
+// Основные модули: db/queries, services/route, shared
 import { getRouteDistance, clearRouteCache } from '../services/route';
-import { generateRouteLink } from '../services/maps';
+import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';

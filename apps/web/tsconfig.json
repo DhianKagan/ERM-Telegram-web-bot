@@ -1,4 +1,7 @@
 {
+  // Назначение файла: конфигурация TypeScript для веб-клиента
+  // Основные модули: typescript
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
@@ -16,9 +19,12 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "@/*": ["src/*"],
+      "shared": ["../../packages/shared/src"],
+      "shared/*": ["../../packages/shared/src/*"]
+    },
+    "composite": true
   },
   "include": ["src"],
-  "references": []
+  "references": [{ "path": "../../packages/shared" }]
 }

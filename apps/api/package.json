@@ -8,7 +8,7 @@
     "test": "node -r ./node_modules/ts-node/register ./node_modules/jest/bin/jest.js --coverage",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "build": "tsc -p ../..",
+    "build": "tsc -b",
     "build-client": "pnpm --dir ../web run build",
     "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",
     "check:mongo": "node ../../scripts/check_mongo.mjs",

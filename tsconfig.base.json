@@ -1,0 +1,13 @@
+{
+  // Назначение файла: базовая конфигурация TypeScript для пакетов монорепозитория
+  // Основные модули: typescript
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": true
+  }
+}

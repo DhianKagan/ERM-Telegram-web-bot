@@ -1,13 +1,14 @@
 {
   // Назначение: конфигурация TypeScript для пакета shared
+  // Основные модули: typescript
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2019",
     "module": "commonjs",
     "rootDir": "src",
     "outDir": "dist",
-    "esModuleInterop": true,
-    "strict": true,
     "declaration": true,
+    "composite": true,
     "types": []
   },
   "include": ["src/**/*"]

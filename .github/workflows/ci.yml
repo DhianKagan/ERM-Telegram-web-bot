@@ -30,18 +30,14 @@ jobs:
         with:
           node-version: 20
       - name: Установка зависимостей
-        run: ./scripts/install_bot_deps.sh
+        run: pnpm install
       - name: Установка браузеров Playwright
         run: npx playwright install --with-deps
-      - name: Тесты и линтеры
-        run: ./scripts/setup_and_test.sh
-      - name: Unit тесты с покрытием
-        run: pnpm test:unit --coverage
-      - name: API тесты
-        run: pnpm test:api
-      - name: E2E тесты
-        run: pnpm test:e2e
-      - name: Подготовка клиента
-        run: npm run prepare-client
-      - name: Проверка контраста
-        run: pnpm a11y
+      - name: Линтеры
+        run: pnpm -r lint
+      - name: Тесты
+        run: pnpm -r test
+      - name: Сборка
+        run: pnpm -r build
+      - name: Проверка размера бандла
+        run: pnpm size

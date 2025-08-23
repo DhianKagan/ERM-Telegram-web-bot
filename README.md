@@ -29,6 +29,14 @@ pnpm --dir apps/api dev
 npm run prepare-client
 ```
 
+## Контроль размера бандла
+
+```bash
+pnpm size
+```
+
+Команда убеждается, что файлы `apps/api/public/assets` остаются меньше 900 KB.
+
 ## Проверка доступности
 
 После выполнения `./scripts/setup_and_test.sh` можно проверить контрастность главной страницы:

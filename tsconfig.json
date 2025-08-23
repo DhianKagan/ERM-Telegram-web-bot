@@ -1,24 +1,10 @@
 {
-  // Назначение файла: конфигурация TypeScript для серверной части
-  "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
-    "rootDir": "apps/api/src",
-    "outDir": "dist",
-    "allowJs": false,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "useUnknownInCatchVariables": false,
-    "useDefineForClassFields": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "typeRoots": ["./apps/api/node_modules/@types", "./node_modules/@types"]
-  },
-  "include": ["apps/api/src/**/*.ts", "apps/api/src/**/*.d.ts"],
-  "exclude": ["dist"]
+  // Назначение файла: объединяющая конфигурация TypeScript для пакетов
+  // Основные модули: typescript
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./apps/api" },
+    { "path": "./apps/web" }
+  ]
 }

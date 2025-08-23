@@ -9,8 +9,11 @@ interface FetchOptions {
   body?: string;
 }
 
-export const getProfile = (options?: FetchOptions) =>
-  authFetch("/api/v1/auth/profile", options).then((r) => r.json());
+export const getProfile = async (options?: FetchOptions) => {
+  const res = await authFetch("/api/v1/auth/profile", options);
+  if (!res.ok) throw new Error("unauthorized");
+  return res.json();
+};
 
 interface ProfileData {
   name?: string;

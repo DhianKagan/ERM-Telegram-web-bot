@@ -4,9 +4,13 @@ FROM node:20 AS build
 WORKDIR /app/apps/api
 
 # Установка зависимостей
-COPY apps/api/package.json apps/api/pnpm-lock.yaml ./
-COPY apps/web/package.json apps/web/pnpm-lock.yaml ./web/
-RUN corepack enable && pnpm install --frozen-lockfile && pnpm --dir web install --frozen-lockfile
+COPY apps/api/package.json ./
+COPY apps/web/package.json ./web/
+COPY pnpm-lock.yaml ./pnpm-lock.yaml
+COPY pnpm-lock.yaml ./web/pnpm-lock.yaml
+COPY pnpm-workspace.yaml ../../
+RUN corepack enable && (pnpm install --frozen-lockfile || pnpm install) \
+    && (pnpm --dir web install --frozen-lockfile || pnpm --dir web install)
 
 # Копирование исходников, сборка сервера и клиента
 COPY apps/api/ ./

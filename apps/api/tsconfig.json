@@ -14,8 +14,8 @@
     "typeRoots": ["./node_modules/@types", "../../node_modules/@types"],
     "composite": true,
     "paths": {
-      "shared": ["../../packages/shared/src"],
-      "shared/*": ["../../packages/shared/src/*"]
+      "shared": ["../../packages/shared/dist"],
+      "shared/*": ["../../packages/shared/dist/*"]
     }
   },
   "include": ["src/**/*"],

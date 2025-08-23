@@ -10,12 +10,9 @@ jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 5000 })),
   clearRouteCache: jest.fn(),
 }));
-jest.mock('../src/services/maps', () => ({
-  generateRouteLink: jest.fn(() => 'url'),
-}));
 
 const route = require('../src/services/route');
-const maps = require('../src/services/maps');
+const { generateRouteLink } = require('shared');
 const TasksService = require('../src/tasks/tasks.service.ts').default;
 
 function createRepo() {
@@ -40,7 +37,11 @@ test('create заполняет ссылку и дистанцию', async () =>
     finishCoordinates: { lat: 1, lng: 1 },
   });
   expect(repo.createTask).toHaveBeenCalled();
-  expect(task.google_route_url).toBe('url');
+  const expectedUrl = generateRouteLink(
+    { lat: 0, lng: 0 },
+    { lat: 1, lng: 1 },
+  );
+  expect(task.google_route_url).toBe(expectedUrl);
   expect(task.route_distance_km).toBe(5);
   expect(route.getRouteDistance).toHaveBeenCalled();
 });
@@ -53,7 +54,11 @@ test('update пересчитывает ссылку и дистанцию', asy
     finishCoordinates: { lat: 1, lng: 1 },
   });
   expect(repo.updateTask).toHaveBeenCalledWith('1', expect.any(Object));
-  expect(task.google_route_url).toBe('url');
+  const expectedUrl = generateRouteLink(
+    { lat: 0, lng: 0 },
+    { lat: 1, lng: 1 },
+  );
+  expect(task.google_route_url).toBe(expectedUrl);
   expect(task.route_distance_km).toBe(5);
 });
 

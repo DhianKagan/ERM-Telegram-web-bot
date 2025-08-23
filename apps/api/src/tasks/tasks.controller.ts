@@ -27,9 +27,11 @@ export default class TasksController {
         filters,
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
-      )) as TaskEx[];
+      )) as unknown as TaskEx[];
     } else {
-      tasks = (await this.service.mentioned(String(req.user!.id))) as TaskEx[];
+      tasks = (await this.service.mentioned(
+        String(req.user!.id),
+      )) as unknown as TaskEx[];
     }
     const ids = new Set<number>();
     tasks.forEach((t) => {
@@ -42,7 +44,9 @@ export default class TasksController {
   };
 
   detail = async (req: Request, res: Response) => {
-    const task = (await this.service.getById(req.params.id)) as TaskEx | null;
+    const task = (await this.service.getById(
+      req.params.id,
+    )) as unknown as TaskEx | null;
     if (!task) {
       sendProblem(req, res, {
         type: 'about:blank',

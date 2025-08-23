@@ -12,7 +12,7 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { CreateLogDto } from '../dto/logs.dto';
 
-const router = Router();
+const router: Router = Router();
 const limiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -22,7 +22,7 @@ const ctrl = container.resolve(LogsController);
 
 router.get(
   '/',
-  limiter as RequestHandler,
+  limiter as unknown as RequestHandler,
   authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
@@ -33,7 +33,7 @@ router.get(
 
 router.post(
   '/',
-  limiter as RequestHandler,
+  limiter as unknown as RequestHandler,
   authMiddleware(),
   ...(validateDto(CreateLogDto) as RequestHandler[]),
   ctrl.create as unknown as RequestHandler,

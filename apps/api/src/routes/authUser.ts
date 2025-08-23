@@ -15,7 +15,7 @@ import {
   UpdateProfileDto,
 } from '../dto/auth.dto';
 
-const router = Router();
+const router: Router = Router();
 const authLimiter = createRateLimiter(rateLimits.auth);
 router.use(authLimiter as unknown as RequestHandler);
 

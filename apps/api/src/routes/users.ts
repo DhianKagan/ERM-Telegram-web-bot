@@ -11,7 +11,7 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { CreateUserDto } from '../dto/users.dto';
 
-const router = Router();
+const router: Router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const middlewares = [
   limiter,

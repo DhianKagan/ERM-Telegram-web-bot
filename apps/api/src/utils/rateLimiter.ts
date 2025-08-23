@@ -3,7 +3,7 @@
 import rateLimit, {
   type Options as RateLimitLibOptions,
 } from 'express-rate-limit';
-import type { Response } from 'express';
+import type { RequestHandler, Response } from 'express';
 import type { RequestWithUser } from '../types/request';
 import { writeLog } from '../services/service';
 import { sendProblem } from '../utils/problem';
@@ -47,28 +47,34 @@ export default function createRateLimiter({
           req.headers['x-captcha-token'] === process.env.CAPTCHA_TOKEN,
       )) as unknown as RateLimitLibOptions['skip'],
     handler: ((req: RequestWithUser, res: Response) => {
+      const info = (
+        req as unknown as {
+          rateLimit?: {
+            resetTime?: Date | number;
+            limit?: number;
+            remaining?: number;
+          };
+        }
+      ).rateLimit;
       const key = req.user?.telegram_id ?? req.ip;
       drops.inc({ name, key });
-      const reset = req.rateLimit?.resetTime;
+      const reset = info?.resetTime;
       if (reset instanceof Date) {
         const retryAfter = Math.ceil((reset.getTime() - Date.now()) / 1000);
         res.setHeader('Retry-After', retryAfter.toString());
       }
-      const limit = req.rateLimit?.limit;
-      const remaining = req.rateLimit?.remaining;
+      const limit = info?.limit;
+      const remaining = info?.remaining;
       const resetTime =
-        req.rateLimit?.resetTime instanceof Date
-          ? Math.ceil(req.rateLimit.resetTime.getTime() / 1000)
-          : req.rateLimit?.resetTime;
-      if (limit !== undefined) {
+        info?.resetTime instanceof Date
+          ? Math.ceil(info.resetTime.getTime() / 1000)
+          : info?.resetTime;
+      if (limit !== undefined)
         res.setHeader('X-RateLimit-Limit', limit.toString());
-      }
-      if (remaining !== undefined) {
+      if (remaining !== undefined)
         res.setHeader('X-RateLimit-Remaining', remaining.toString());
-      }
-      if (resetTime !== undefined) {
+      if (resetTime !== undefined)
         res.setHeader('X-RateLimit-Reset', resetTime.toString());
-      }
       writeLog(
         `Превышен лимит ${req.method} ${req.originalUrl} key:${key} ` +
           `limit:${limit} remaining:${remaining} reset:${resetTime}`,
@@ -81,5 +87,5 @@ export default function createRateLimiter({
         detail: 'Слишком много запросов, попробуйте позже.',
       });
     }) as unknown as RateLimitLibOptions['handler'],
-  });
+  }) as unknown as RequestHandler;
 }

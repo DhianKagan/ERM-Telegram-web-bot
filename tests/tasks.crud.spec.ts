@@ -2,8 +2,8 @@
  * Назначение файла: unit-тесты CRUD задач через Express и Supertest.
  * Основные модули: express, supertest.
  */
-import express from 'express';
-import request from 'supertest';
+import express = require('express');
+import request = require('supertest');
 
 const app = express();
 app.use(express.json());
@@ -17,7 +17,11 @@ const tasks: Task[] = [];
 let counter = 1;
 
 app.post('/tasks', (req, res) => {
-  const task: Task = { id: counter++, title: req.body.title, custom: req.body.custom };
+  const task: Task = {
+    id: counter++,
+    title: req.body.title,
+    custom: req.body.custom,
+  };
   tasks.push(task);
   res.status(201).json(task);
 });

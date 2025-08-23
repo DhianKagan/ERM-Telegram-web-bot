@@ -28,7 +28,7 @@ export interface UpdateRoleResponse {
   status: string;
 }
 
-const router = Router();
+const router: Router = Router();
 const limiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 50,

@@ -4,6 +4,7 @@ import path from 'path';
 import express, { Express, NextFunction, Response } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import authMiddleware from '../middleware/auth';
+import type { RequestHandler } from 'express';
 import type { RequestWithUser } from '../types/request';
 
 export default function initCustomAdmin(app: Express): void {
@@ -16,7 +17,7 @@ export default function initCustomAdmin(app: Express): void {
     name: 'admin',
   });
 
-  router.use(adminRateLimiter);
+  router.use(adminRateLimiter as unknown as RequestHandler);
   router.use(express.static(pub, { index: false }));
 
   router.use((req: RequestWithUser, _res: Response, next: NextFunction) => {

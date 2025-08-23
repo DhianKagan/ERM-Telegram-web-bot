@@ -2,12 +2,13 @@
  * Назначение файла: проверка загрузки и скачивания вложений задач.
  * Основные модули: express, supertest, multer.
  */
-import express, { RequestHandler } from 'express';
-import request from 'supertest';
+import express = require('express');
+import type { RequestHandler } from 'express';
+import request = require('supertest');
 // @ts-ignore
 import multer from '../apps/api/node_modules/multer';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { processUploads } from '../apps/api/src/routes/tasks';
 import { uploadsDir } from '../apps/api/src/config/storage';
 

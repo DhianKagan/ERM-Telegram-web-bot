@@ -7,7 +7,7 @@ import * as ctrl from '../controllers/optimizer';
 import { asyncHandler } from '../api/middleware';
 import authMiddleware from '../middleware/auth';
 
-const router = Router();
+const router: Router = Router();
 
 router.post(
   '/',

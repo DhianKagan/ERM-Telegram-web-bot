@@ -11,6 +11,9 @@ const config: Config = {
   testPathIgnorePatterns: ['<rootDir>/tests/e2e/', '<rootDir>/tests/api/'],
   setupFiles: ['<rootDir>/tests/setupEnv.ts'],
   coverageDirectory: 'coverage',
+  transform: {
+    '^.+\\.[jt]s$': ['ts-jest', { tsconfig: './apps/api/tsconfig.json' }],
+  },
 };
 
 export default config;

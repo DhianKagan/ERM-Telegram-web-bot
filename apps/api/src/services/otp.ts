@@ -2,7 +2,7 @@
 // Модули: telegramApi
 import { call } from './telegramApi';
 
-interface CodeEntry {
+export interface CodeEntry {
   code: string;
   ts: number;
 }

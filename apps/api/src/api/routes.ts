@@ -150,7 +150,9 @@ export default async function registerRoutes(
     res.end(await register.metrics());
   });
   app.get(`${prefix}/csrf`, csrf, (req: Request, res: Response) => {
-    res.json({ csrfToken: req.csrfToken() });
+    res.json({
+      csrfToken: (req as unknown as { csrfToken: () => string }).csrfToken(),
+    });
   });
 
   app.use(

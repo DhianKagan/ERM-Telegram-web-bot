@@ -11,11 +11,11 @@
     "build": "tsc -p ..",
     "build-client": "pnpm --dir ../web run build",
     "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",
-    "check:mongo": "node ../scripts/check_mongo.mjs",
+    "check:mongo": "node ../../scripts/check_mongo.mjs",
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd apps/api --project tsconfig.json --files tests/requestWithUser.test-d.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
-    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js ."
+    "lint": "node --loader ts-node/esm ./node_modules/eslint/bin/eslint.js ."
   },
   "author": "",
   "license": "ISC",

@@ -12,7 +12,8 @@
     "test:unit": "jest",
     "format": "prettier --write .",
     "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
-    "prepare-client": "./scripts/build_client.sh"
+    "prepare-client": "./scripts/build_client.sh",
+    "size": "size-limit"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.2",
@@ -42,7 +43,9 @@
     "typescript": "^5.6.3",
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
-    "ts-jest": "^29.2.2"
+    "ts-jest": "^29.2.2",
+    "size-limit": "^11.1.2",
+    "@size-limit/file": "^11.1.2"
   },
   "dependencies": {
     "reflect-metadata": "^0.1.14"
@@ -55,5 +58,11 @@
       "quill": "^2.0.3"
     }
   },
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "size-limit": [
+    {
+      "path": "apps/api/public/assets/*.js",
+      "limit": "500 KB"
+    }
+  ]
 }

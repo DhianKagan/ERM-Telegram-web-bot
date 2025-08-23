@@ -2,28 +2,14 @@
 // Модули: ag-grid, userLink
 import type { ColDef } from "ag-grid-community";
 import userLink from "../utils/userLink";
+import type { Task } from "shared";
 
-type Task = {
-  _id: string;
-  task_number?: string;
-  title: string;
-  status?: string;
-  priority?: string;
-  start_date?: string;
-  due_date?: string;
-  task_type?: string;
-  assignees?: number[];
-  assigned_user_id?: number;
-  startCoordinates?: { lat: number; lng: number };
-  finishCoordinates?: { lat: number; lng: number };
-  route_distance_km?: number;
-  createdAt?: string;
-};
+type TaskRow = Task & Record<string, any>;
 
 export default function taskColumns(
   _selectable: boolean,
   users: Record<number, any>,
-): ColDef<Task>[] {
+): ColDef<TaskRow>[] {
   return [
     { headerName: "Номер", field: "task_number" },
     {

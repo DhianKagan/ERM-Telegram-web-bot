@@ -1,13 +1,9 @@
 // Карточка задачи в канбане
 import React from "react";
-
-interface Task {
-  title: string;
-  dueDate?: string;
-}
+import type { Task } from "shared";
 
 interface TaskCardProps {
-  task: Task;
+  task: Task & { dueDate?: string };
 }
 
 export default function TaskCard({ task }: TaskCardProps) {

@@ -1,14 +1,10 @@
 // Список задач для выбранного диапазона дат
 import React from "react";
+import type { Task } from "shared";
 
-interface Task {
-  _id: string;
-  title: string;
-  task_number: string;
-  createdAt: string;
-}
+type RangeTask = Task & { task_number: string; createdAt: string };
 
-export default function TaskRangeList({ tasks }: { tasks: Task[] }) {
+export default function TaskRangeList({ tasks }: { tasks: RangeTask[] }) {
   if (!tasks.length) {
     return <p className="text-sm text-gray-500">Нет задач</p>;
   }

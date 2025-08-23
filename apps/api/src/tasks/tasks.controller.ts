@@ -11,13 +11,9 @@ import type { RequestWithUser } from '../types/request';
 import type { TaskDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
+import type { Task } from 'shared';
 
-interface Task {
-  assignees?: number[];
-  controllers?: number[];
-  created_by?: number;
-  _id?: string;
-}
+type TaskEx = Task & { controllers?: number[]; created_by?: number };
 
 @injectable()
 export default class TasksController {
@@ -25,15 +21,15 @@ export default class TasksController {
 
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;
-    let tasks: Task[];
+    let tasks: TaskEx[];
     if (req.user!.role === 'admin') {
       tasks = (await this.service.get(
         filters,
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
-      )) as Task[];
+      )) as TaskEx[];
     } else {
-      tasks = (await this.service.mentioned(String(req.user!.id))) as Task[];
+      tasks = (await this.service.mentioned(String(req.user!.id))) as TaskEx[];
     }
     const ids = new Set<number>();
     tasks.forEach((t) => {
@@ -46,7 +42,7 @@ export default class TasksController {
   };
 
   detail = async (req: Request, res: Response) => {
-    const task = (await this.service.getById(req.params.id)) as Task | null;
+    const task = (await this.service.getById(req.params.id)) as TaskEx | null;
     if (!task) {
       sendProblem(req, res, {
         type: 'about:blank',

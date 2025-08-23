@@ -17,15 +17,13 @@ function stripTags(html: unknown): string {
 }
 
 import userLink from './userLink';
+import type { Task, User } from 'shared';
 
-interface UsersIndex {
-  [id: string]: { name?: string; username?: string };
-}
+type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
-interface TaskData {
+type TaskData = Task & {
   request_id?: string;
   task_number?: string;
-  title?: string;
   task_type?: string;
   due_date?: string | Date;
   start_date?: string | Date;
@@ -38,12 +36,11 @@ interface TaskData {
   priority?: string;
   status?: string;
   route_distance_km?: number;
-  assignees?: number[];
   controllers?: number[];
   created_by?: number;
   comments?: { author_id?: number; text?: string }[];
   task_description?: string;
-}
+};
 
 export default function formatTask(
   task: TaskData,

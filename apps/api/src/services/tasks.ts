@@ -1,10 +1,10 @@
 // Сервисные функции задач используют общие запросы к MongoDB
-// Модули: db/queries, services/route, services/maps
+// Модули: db/queries, services/route, shared
 import * as q from '../db/queries';
 import { getRouteDistance, Point } from './route';
-import { generateRouteLink } from './maps';
+import { generateRouteLink, type Task } from 'shared';
 
-export interface TaskData {
+export type TaskData = Partial<Task> & {
   startCoordinates?: Point;
   finishCoordinates?: Point;
   google_route_url?: string;
@@ -12,7 +12,7 @@ export interface TaskData {
   due_date?: Date;
   remind_at?: Date;
   [key: string]: unknown;
-}
+};
 
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   if (data.startCoordinates && data.finishCoordinates) {

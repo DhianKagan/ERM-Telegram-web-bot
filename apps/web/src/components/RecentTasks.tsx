@@ -5,17 +5,16 @@ import { AgGridReact } from "ag-grid-react";
 import authFetch from "../utils/authFetch";
 import useGrid from "../hooks/useGrid";
 import recentTaskColumns from "../columns/recentTaskColumns";
+import type { Task } from "shared";
 
-interface Task {
-  _id: string;
-  title: string;
+type RecentTask = Task & {
   status: string;
   task_number: string;
   createdAt: string;
-}
+};
 
 export default function RecentTasks() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<RecentTask[]>([]);
   const [loading, setLoading] = useState(true);
   const { defaultColDef, gridOptions } = useGrid({ paginationPageSize: 5 });
   useEffect(() => {
@@ -25,7 +24,7 @@ export default function RecentTasks() {
         const list = Array.isArray(data)
           ? data
           : data.tasks || data.items || [];
-        setTasks(list);
+        setTasks(list as RecentTask[]);
         setLoading(false);
       })
       .catch(() => {

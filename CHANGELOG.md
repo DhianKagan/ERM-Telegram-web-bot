@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Исправлен скрипт `test:api`: добавлено подключение `tests/setupEnv.ts` и поиск тестов в подпапках; документирована текущая lazy-загрузка в `docs/lazy_loading.md`.
 - Сборка Vite очищает каталог вывода через `emptyOutDir`.
 - Исправлен catch-all маршрут SPA: Express отдаёт `/login` и другие пути через `app.get('*')`.
 - Лимит size-limit для `apps/api/public/assets/*.js` увеличен до 900 KB, чтобы предотвратить падение CI.

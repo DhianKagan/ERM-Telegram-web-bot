@@ -132,13 +132,25 @@ const upload = multer({
   },
   limits: { fileSize: 10 * 1024 * 1024 },
 });
-const normalizeArrays: RequestHandler = (req, _res, next) => {
+/**
+ * Нормализует массивы и парсит вложения из JSON-строк.
+ * Поддерживает поля исполнителей, контролёров и вложений.
+ */
+export const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];
     if (v !== undefined && !Array.isArray(v)) {
       (req.body as Record<string, unknown>)[k] = [v];
     }
   });
+  const at = (req.body as BodyWithAttachments).attachments;
+  if (typeof at === 'string') {
+    try {
+      (req.body as BodyWithAttachments).attachments = JSON.parse(at);
+    } catch {
+      (req.body as BodyWithAttachments).attachments = [];
+    }
+  }
   next();
 };
 

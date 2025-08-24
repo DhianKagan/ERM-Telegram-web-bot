@@ -38,7 +38,7 @@ export async function listFiles(
       type: f.type,
       size: f.size,
       uploadedAt: f.uploadedAt,
-      url: `/uploads/${f.path}`,
+      url: `/api/v1/files/${String(f._id)}`,
     }));
   } catch {
     return [];
@@ -64,8 +64,8 @@ export async function deleteFile(name: string): Promise<void> {
       { _id: file.taskId },
       {
         $pull: {
-          attachments: { url: `/uploads/${file.path}` },
-          files: `/uploads/${file.path}`,
+          attachments: { url: `/api/v1/files/${file._id}` },
+          files: `/api/v1/files/${file._id}`,
         },
       },
     ).exec();

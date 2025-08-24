@@ -23,6 +23,7 @@ import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
+import { File } from '../db/model';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -76,9 +77,17 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         files.map(async (f) => {
           const original = path.basename(f.originalname);
           const thumbRel = await createThumbnail(f, userId);
+          const doc = await File.create({
+            userId,
+            name: original,
+            path: `${userId}/${f.filename}`,
+            thumbnailPath: thumbRel,
+            type: f.mimetype,
+            size: f.size,
+          });
           return {
             name: original,
-            url: `/uploads/${userId}/${f.filename}`,
+            url: `/api/v1/files/${String(doc._id)}`,
             thumbnailUrl: thumbRel ? `/uploads/${thumbRel}` : undefined,
             uploadedBy: userId,
             uploadedAt: new Date(),

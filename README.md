@@ -134,7 +134,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - ESLint проверяет серверные файлы TypeScript; правило `no-explicit-any` включено,
   `ban-ts-comment` остаётся отключено.
 - ESLint запрещает файлы `.js` вне конфигурации.
-- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `pnpm exec eslint apps/api/src` работает без дополнительных флагов.
+- Корневой `package.json` содержит зависимости `eslint`, `jiti` и `reflect-metadata`, поэтому `pnpm lint` запускает линтер во всех пакетах.
 - Конфигурационные файлы переведены на TypeScript, скрипт `scripts/check_no_js.sh` предотвращает возврат к JavaScript.
 - Автотесты бота написаны на TypeScript и выполняются через Jest.
 - Утилиты `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress` переписаны на TypeScript.
@@ -205,8 +205,8 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Логи включают IP и User-Agent для каждого запроса.
 - Превышение лимитов запросов также записывается с IP и путём запроса.
 - Глобальный лимитер применяется только к маршрутам `/api`; статические файлы и `/api/v1/csrf` не ограничиваются и кешируются на год.
- - AuthProvider отслеживает загрузку профиля и предотвращает ложный редирект на `/login`.
- - Express отдаёт `index.html` для любых путей, включая `/login`, обеспечивая корректный переход при ответах 401/403.
+- AuthProvider отслеживает загрузку профиля и предотвращает ложный редирект на `/login`.
+- Express отдаёт `index.html` для любых путей, включая `/login`, обеспечивая корректный переход при ответах 401/403.
 - Cookie `token` использует `SameSite=Lax`. В продакшене домен берётся из переменной `COOKIE_DOMAIN` либо из `APP_URL`. В режиме разработки домен не задаётся, что исключает ошибку с localhost.
 - Значение `COOKIE_DOMAIN` может быть полным URL, при загрузке конфигурации берётся только его hostname. Неверный формат вызывает ошибку при запуске.
 - Сессия и cookie живут семь дней, совпадая со временем действия JWT.

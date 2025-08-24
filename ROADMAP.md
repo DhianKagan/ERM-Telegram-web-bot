@@ -30,7 +30,7 @@
   синхронизатор токенов и защищённые cookie
 - Флаг Secure у cookie включён всегда; переменная `COOKIE_SECURE=false` разрешает HTTP только локально
 - Внедрён единый middleware ошибок с форматом `application/problem+json`
-- Добавлен корневой `package.json` с зависимостями `eslint`, `jiti` и `reflect-metadata` для запуска `npx eslint apps/api/src`
+- Добавлен корневой `package.json` с зависимостями `eslint`, `jiti` и `reflect-metadata` для запуска линтера во всех пакетах командой `pnpm lint`
 - Массовые действия над задачами позволяют выбирать все статусы и выделять все задачи.
 - Оптимизированы запросы задач: добавлен скрипт `ensureIndexes` с индексами `{assigneeId,status,dueAt}` и `createdAt`.
 - Ограничены запросы к `/api/v1/auth` и `/api/v1/route`, отдельные лимиты для Mini App и Admin, метрика `rate_limit_drops_total` доступна в Prometheus

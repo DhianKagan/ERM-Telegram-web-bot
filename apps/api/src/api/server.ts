@@ -13,6 +13,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import applySecurity from './security';
 import registerRoutes from './routes';
+import { startDiskMonitor } from '../services/diskSpace';
 
 dotenv.config();
 
@@ -95,6 +96,8 @@ export async function buildApp(): Promise<express.Express> {
   app.use(session(sessionOpts));
 
   await registerRoutes(app, cookieFlags, pub);
+
+  startDiskMonitor();
 
   return app;
 }

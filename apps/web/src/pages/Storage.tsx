@@ -11,7 +11,7 @@ import {
   type FileArray,
   type FileData,
 } from "chonky";
-import "chonky/style/main.css";
+// Стили Chonky включены в пакет, отдельный CSS не подключается.
 
 import Breadcrumbs from "../components/Breadcrumbs";
 import Modal from "../components/Modal";

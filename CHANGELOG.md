@@ -18,6 +18,7 @@
 - Команда `pnpm a11y` запускает `vite preview` и проверяет `http://localhost:4173/index.html` через `@axe-core/cli`.
 - Команда `pnpm a11y` переписана на Playwright и проверяет `bot/web/index.html` без установки Chrome.
 - Добавлена команда `pnpm a11y` для проверки контраста `bot/public/index.html` через `@axe-core/cli`.
+- Локальные шрифты и фавиконы, внешние URL исключены из расчёта SRI.
 - Исправлен запуск `pnpm a11y`: путь к файлу задаётся через `file://` и `pwd`,
   что устраняет ошибку DNS `ERR_NAME_NOT_RESOLVED`.
 - Подключён плагин `@tailwindcss/forms`, добавлены унифицированные компоненты `Button` и `Input` с 8‑pt ритмом и проверкой контраста в CI.

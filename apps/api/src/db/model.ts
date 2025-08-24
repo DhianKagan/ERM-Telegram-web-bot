@@ -130,6 +130,7 @@ export interface Comment {
 export interface Attachment {
   name: string;
   url: string;
+  thumbnailUrl?: string;
   uploadedBy: number;
   uploadedAt: Date;
   type: string;
@@ -275,6 +276,7 @@ const taskSchema = new Schema<TaskDocument>(
       {
         name: String,
         url: String,
+        thumbnailUrl: String,
         uploadedBy: Number,
         uploadedAt: Date,
         type: String,
@@ -424,6 +426,7 @@ export interface FileAttrs {
   userId: number;
   name: string;
   path: string;
+  thumbnailPath?: string;
   type: string;
   size: number;
   uploadedAt: Date;
@@ -436,6 +439,7 @@ const fileSchema = new Schema<FileDocument>({
   userId: { type: Number, required: true },
   name: { type: String, required: true },
   path: { type: String, required: true },
+  thumbnailPath: String,
   type: { type: String, required: true },
   size: { type: Number, required: true },
   uploadedAt: { type: Date, default: Date.now },

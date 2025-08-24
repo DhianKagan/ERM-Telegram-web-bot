@@ -1,8 +1,11 @@
-// Роуты задач: CRUD, время, массовые действия
-// Модули: express, express-validator, controllers/tasks, middleware/auth
+// Роуты задач: CRUD, время, массовые действия, миниатюры вложений
+// Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
+import sharp from 'sharp';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
 import { Router, RequestHandler } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
@@ -22,11 +25,13 @@ import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 
 interface BodyWithAttachments extends Record<string, unknown> {
   attachments?: {
     name: string;
     url: string;
+    thumbnailUrl?: string;
     uploadedBy: number;
     uploadedAt: Date;
     type: string;
@@ -34,22 +39,54 @@ interface BodyWithAttachments extends Record<string, unknown> {
   }[];
 }
 
-export const processUploads: RequestHandler = (req, res, next) => {
+async function createThumbnail(
+  file: Express.Multer.File,
+  userId: number,
+): Promise<string | undefined> {
+  const filePath = path.join(file.destination, file.filename);
+  const thumbName = `thumb_${path.parse(file.filename).name}.jpg`;
+  const thumbPath = path.join(file.destination, thumbName);
+  if (file.mimetype.startsWith('image/')) {
+    await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
+    return `${userId}/${thumbName}`;
+  }
+  if (file.mimetype.startsWith('video/')) {
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(filePath)
+        .on('end', () => resolve())
+        .on('error', reject)
+        .screenshots({
+          count: 1,
+          filename: thumbName,
+          folder: file.destination,
+          size: '320x?',
+        });
+    });
+    return `${userId}/${thumbName}`;
+  }
+  return undefined;
+}
+
+export const processUploads: RequestHandler = async (req, res, next) => {
   try {
     const files = (req.files as Express.Multer.File[]) || [];
     if (files.length > 0) {
-      const userId = (req as RequestWithUser).user?.id;
-      const attachments = files.map((f) => {
-        const original = path.basename(f.originalname);
-        return {
-          name: original,
-          url: `/uploads/${userId}/${f.filename}`,
-          uploadedBy: userId as number,
-          uploadedAt: new Date(),
-          type: f.mimetype,
-          size: f.size,
-        };
-      });
+      const userId = (req as RequestWithUser).user?.id as number;
+      const attachments = await Promise.all(
+        files.map(async (f) => {
+          const original = path.basename(f.originalname);
+          const thumbRel = await createThumbnail(f, userId);
+          return {
+            name: original,
+            url: `/uploads/${userId}/${f.filename}`,
+            thumbnailUrl: thumbRel ? `/uploads/${thumbRel}` : undefined,
+            uploadedBy: userId,
+            uploadedAt: new Date(),
+            type: f.mimetype,
+            size: f.size,
+          };
+        }),
+      );
       (req.body as BodyWithAttachments).attachments = attachments;
     }
     next();
@@ -72,7 +109,20 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}_${original}`);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (
+      file.mimetype.startsWith('image/') ||
+      file.mimetype.startsWith('video/')
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Недопустимый тип файла'));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];

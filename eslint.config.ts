@@ -25,7 +25,14 @@ const config = [
           message: 'Используйте TypeScript вместо JavaScript',
         },
       ],
-      'no-restricted-imports': ['error', { paths: ['lodash', 'moment'] }],
+      // Запрещаем импорт модулей клиентского приложения
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['lodash', 'moment'],
+          patterns: ['apps/web/**'],
+        },
+      ],
     },
   },
   {
@@ -53,7 +60,14 @@ const config = [
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/ban-ts-comment': 'off',
       'no-undef': 'off',
-      'no-restricted-imports': ['error', { paths: ['lodash', 'moment'] }],
+      // Запрещаем импорт модулей клиентского приложения
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['lodash', 'moment'],
+          patterns: ['apps/web/**'],
+        },
+      ],
     },
   },
 ];

@@ -44,6 +44,13 @@ const config = [
         "warn",
         { allowConstantExport: true },
       ],
+      // Запрещаем импорт серверного кода
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: ["apps/api/**"],
+        },
+      ],
     },
   },
 ];

@@ -8,7 +8,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
-import sri from "vite-plugin-sri";
+import sri from "./plugins/sri";
 
 // https://vite.dev/config/
 export default defineConfig({

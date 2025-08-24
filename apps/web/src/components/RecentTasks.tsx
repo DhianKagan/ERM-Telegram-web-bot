@@ -1,7 +1,9 @@
 // Таблица последних задач на AG Grid
 // Модули: React, authFetch, ag-grid, useGrid
 import React, { useEffect, useState } from "react";
-import { AgGridReact } from "ag-grid-react";
+const AgGridReact = React.lazy(() =>
+  import("ag-grid-react").then((m) => ({ default: m.AgGridReact })),
+);
 import authFetch from "../utils/authFetch";
 import useGrid from "../hooks/useGrid";
 import recentTaskColumns from "../columns/recentTaskColumns";
@@ -48,12 +50,14 @@ export default function RecentTasks() {
 
   return (
     <div className="ag-theme-alpine" style={{ height: 200 }}>
-      <AgGridReact
-        rowData={tasks}
-        columnDefs={recentTaskColumns}
-        defaultColDef={defaultColDef}
-        {...gridOptions}
-      />
+      <React.Suspense fallback={<div>Загрузка...</div>}>
+        <AgGridReact
+          rowData={tasks}
+          columnDefs={recentTaskColumns}
+          defaultColDef={defaultColDef}
+          {...gridOptions}
+        />
+      </React.Suspense>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 // Компонент просмотра логов на AG Grid и экспортом
 // Модули: React, useLogsQuery, FiltersPanel, ag-grid, useGrid
 import React from "react";
-import { AgGridReact } from "ag-grid-react";
+const AgGridReact = React.lazy(() =>
+  import("ag-grid-react").then((m) => ({ default: m.AgGridReact })),
+);
 import useLogsQuery, { LogFilters } from "../hooks/useLogsQuery";
 import FiltersPanel from "./FiltersPanel";
 import useGrid from "../hooks/useGrid";
@@ -73,12 +75,14 @@ export default function LogViewer() {
       </div>
       <FiltersPanel filters={filters} onChange={setFilters} />
       <div className="ag-theme-alpine" style={{ height: 500 }}>
-        <AgGridReact
-          rowData={logs}
-          columnDefs={logColumns}
-          defaultColDef={defaultColDef}
-          {...gridOptions}
-        />
+        <React.Suspense fallback={<div>Загрузка...</div>}>
+          <AgGridReact
+            rowData={logs}
+            columnDefs={logColumns}
+            defaultColDef={defaultColDef}
+            {...gridOptions}
+          />
+        </React.Suspense>
       </div>
       <div className="flex justify-between text-sm">
         <button

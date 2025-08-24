@@ -13,9 +13,7 @@ RUN corepack enable && pnpm fetch
 # Копирование исходников, сборка сервера и клиента
 COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install \
-  && pnpm --filter web... build \
-  && pnpm --filter api... build \
-  && pnpm --dir apps/api run build-client \
+  && pnpm build \
   && pnpm prune --prod \
   && pnpm store prune
 

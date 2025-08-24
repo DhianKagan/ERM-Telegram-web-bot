@@ -50,6 +50,17 @@ pnpm a11y
 
 Команда собирает клиент, поднимает `vite preview` на `http://localhost:4173` и проверяет страницу через `@axe-core/cli` по правилу `color-contrast`.
 
+## Deploy на Railway
+
+```bash
+pnpm build
+```
+
+`Procfile` выполняет эту команду перед запуском `pm2-runtime`,
+после чего `./scripts/set_bot_commands.sh` синхронизирует команды.
+Если в логах появляется сообщение `Script not found: apps/api/dist/server.js`,
+значит сборка не выполнена.
+
 ## Структура пакетов
 
 - `bot` — Telegram‑бот, REST API и мини‑приложение React.

@@ -14,6 +14,7 @@ export interface StoredFile {
   userId: number;
   name: string;
   path: string;
+  thumbnailUrl?: string;
   type: string;
   size: number;
   uploadedAt: Date;
@@ -33,6 +34,7 @@ export async function listFiles(
       userId: f.userId,
       name: f.name,
       path: f.path,
+      thumbnailUrl: f.thumbnailPath ? `/uploads/${f.thumbnailPath}` : undefined,
       type: f.type,
       size: f.size,
       uploadedAt: f.uploadedAt,

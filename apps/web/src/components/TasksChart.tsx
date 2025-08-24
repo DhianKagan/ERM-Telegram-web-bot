@@ -1,8 +1,9 @@
 // График количества задач за период
+// Модули: React, react-apexcharts, next-themes, authFetch
 import React, { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
 import { useTheme } from "next-themes";
 import authFetch from "../utils/authFetch";
+const ReactApexChart = React.lazy(() => import("react-apexcharts"));
 
 interface ChartState {
   series: { data: number[] }[];
@@ -44,11 +45,13 @@ export default function TasksChart() {
   };
 
   return (
-    <ReactApexChart
-      series={series}
-      options={options}
-      type="line"
-      height={200}
-    />
+    <React.Suspense fallback={<div>Загрузка...</div>}>
+      <ReactApexChart
+        series={series}
+        options={options}
+        type="line"
+        height={200}
+      />
+    </React.Suspense>
   );
 }

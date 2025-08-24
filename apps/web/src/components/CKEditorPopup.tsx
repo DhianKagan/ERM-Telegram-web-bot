@@ -1,10 +1,19 @@
 // Поле редактирования текста в модальном окне CKEditor 5
 // Модули: React, CKEditor 5, DOMPurify, Modal
 import React, { useState } from "react";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 import DOMPurify from "dompurify";
 import Modal from "./Modal";
+
+const LazyCKEditor = React.lazy(async () => {
+  const [{ CKEditor }, { default: ClassicEditor }] = await Promise.all([
+    import("@ckeditor/ckeditor5-react"),
+    import("@ckeditor/ckeditor5-build-classic"),
+  ]);
+  type Props = React.ComponentProps<typeof CKEditor>;
+  return {
+    default: (props: Props) => <CKEditor editor={ClassicEditor} {...props} />,
+  };
+});
 
 interface Props {
   value: string;
@@ -41,11 +50,12 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
       />
       <Modal open={open} onClose={() => setOpen(false)}>
         <div className="space-y-4">
-          <CKEditor
-            editor={ClassicEditor}
-            data={draft}
-            onChange={(_e, editor) => setDraft(editor.getData())}
-          />
+          <React.Suspense fallback={<div>Загрузка...</div>}>
+            <LazyCKEditor
+              data={draft}
+              onChange={(_e, editor) => setDraft(editor.getData())}
+            />
+          </React.Suspense>
           <div className="flex justify-end gap-2">
             <button
               type="button"

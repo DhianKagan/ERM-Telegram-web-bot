@@ -1,7 +1,9 @@
 // Назначение файла: универсальная таблица задач на AG Grid
 // Модули: React, ag-grid, утилиты, useGrid
 import React from "react";
-import { AgGridReact } from "ag-grid-react";
+const AgGridReact = React.lazy(() =>
+  import("ag-grid-react").then((m) => ({ default: m.AgGridReact })),
+);
 import type {
   GridApi,
   GridReadyEvent,
@@ -73,23 +75,25 @@ export default function TaskTable({
         Экспорт CSV
       </button>
       <div className="ag-theme-alpine" style={{ height: 500 }}>
-        <AgGridReact
-          rowData={tasks}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          rowSelection={
-            selectable
-              ? { mode: "multiRow", checkboxes: true, headerCheckbox: true }
-              : undefined
-          }
-          onSelectionChanged={onSel}
-          onGridReady={onGridReady}
-          onSortChanged={updateData}
-          onFilterChanged={updateData}
-          onRowClicked={(e) => onRowClick && onRowClick(e.data._id)}
-          quickFilterText={quickFilterText}
-          {...gridOptions}
-        />
+        <React.Suspense fallback={<div>Загрузка...</div>}>
+          <AgGridReact
+            rowData={tasks}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            rowSelection={
+              selectable
+                ? { mode: "multiRow", checkboxes: true, headerCheckbox: true }
+                : undefined
+            }
+            onSelectionChanged={onSel}
+            onGridReady={onGridReady}
+            onSortChanged={updateData}
+            onFilterChanged={updateData}
+            onRowClicked={(e) => onRowClick && onRowClick(e.data._id)}
+            quickFilterText={quickFilterText}
+            {...gridOptions}
+          />
+        </React.Suspense>
       </div>
     </div>
   );

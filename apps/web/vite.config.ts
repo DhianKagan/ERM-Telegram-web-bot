@@ -20,6 +20,7 @@ export default defineConfig({
     },
   },
   build: {
+    emptyOutDir: true,
     outDir: "../api/public",
     manifest: true,
     chunkSizeWarningLimit: 1500,

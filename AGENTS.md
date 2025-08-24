@@ -9,7 +9,8 @@
 - Код делайте лаконичным и понятным.
 - Сборка TypeScript работает в строгом режиме; флаг `noImplicitAny` включён.
 - Сборка клиента Vite очищает каталог вывода через `emptyOutDir`.
-- Dockerfile кеширует зависимости через `pnpm fetch` и раздельно собирает пакеты `web` и `api`.
+- Dockerfile кеширует зависимости через `pnpm fetch` и собирает пакеты командой `pnpm build`.
+- Procfile запускает `pnpm build` перед `pm2-runtime`, `Procfile.railway` содержит шаг `release: pnpm build`.
 - Текстовые сообщения бота в `apps/api/src/messages.ts` должны быть на русском.
 - Контексты React держите в отдельных файлах, провайдеры экспортируйте из этих файлов.
 - Таблицы на AG Grid используют хук `useGrid`, а колонки описываются в `apps/web/src/columns`.

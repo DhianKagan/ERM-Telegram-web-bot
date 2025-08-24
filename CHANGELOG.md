@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Procfile выполняет `pnpm build` перед запуском PM2, упрощён Dockerfile и добавлен раздел деплоя на Railway в README.
 - Dockerfile кеширует зависимости через `pnpm fetch` и раздельно собирает пакеты `web` и `api`.
 - Исправлен скрипт `test:api`: добавлено подключение `tests/setupEnv.ts` и поиск тестов в подпапках; документирована текущая lazy-загрузка в `docs/lazy_loading.md`.
 - Сборка Vite очищает каталог вывода через `emptyOutDir`.

@@ -275,7 +275,7 @@ export default async function registerRoutes(
     res.sendFile(path.join(pub, 'index.html'));
   });
 
-  app.get('/*splat', spaRateLimiter, (_req: Request, res: Response) => {
+  app.get('*', spaRateLimiter, (_req: Request, res: Response) => {
     res.sendFile(path.join(pub, 'index.html'));
   });
 

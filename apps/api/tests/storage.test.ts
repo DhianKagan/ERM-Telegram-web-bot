@@ -8,9 +8,20 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 
+jest.mock('../src/db/model', () => ({
+  File: {
+    find: jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) })),
+    findOneAndDelete: jest.fn(() => ({
+      lean: jest.fn().mockResolvedValue(null),
+    })),
+  },
+  Task: { updateOne: jest.fn() },
+}));
+
 process.env.STORAGE_DIR = path.resolve(__dirname, '../public/uploads');
 const router = require('../src/routes/storage').default;
 const { uploadsDir } = require('../src/config/storage');
+const { File } = require('../src/db/model');
 const { stopQueue } = require('../src/services/messageQueue');
 const { stopScheduler } = require('../src/services/scheduler');
 
@@ -31,17 +42,30 @@ describe('storage routes', () => {
   app.use(router);
 
   test('list files', async () => {
-    const f = path.join(uploadsDir, 'test.txt');
-    fs.writeFileSync(f, 't');
+    (File.find as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue([
+        {
+          userId: 1,
+          name: 'test.txt',
+          path: 'test.txt',
+          type: 'text/plain',
+          size: 1,
+          uploadedAt: new Date(),
+        },
+      ]),
+    });
     const res = await request(app).get('/');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-    fs.unlinkSync(f);
+    expect(res.body[0].name).toBe('test.txt');
   });
 
   test('delete file', async () => {
     const f = path.join(uploadsDir, 'del.txt');
     fs.writeFileSync(f, 'd');
+    (File.findOneAndDelete as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue({ path: 'del.txt' }),
+    });
     await request(app).delete('/del.txt').expect(200);
     expect(fs.existsSync(f)).toBe(false);
   });

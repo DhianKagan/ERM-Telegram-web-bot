@@ -418,6 +418,34 @@ export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
 );
 
 // Коллекция загруженных файлов
+// Основные модули: mongoose
+export interface FileAttrs {
+  taskId?: Types.ObjectId;
+  userId: number;
+  name: string;
+  path: string;
+  type: string;
+  size: number;
+  uploadedAt: Date;
+}
+
+export interface FileDocument extends FileAttrs, Document {}
+
+const fileSchema = new Schema<FileDocument>({
+  taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
+  userId: { type: Number, required: true },
+  name: { type: String, required: true },
+  path: { type: String, required: true },
+  type: { type: String, required: true },
+  size: { type: Number, required: true },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
+export const File: Model<FileDocument> = mongoose.model<FileDocument>(
+  'File',
+  fileSchema,
+);
+
 // Шаблон задачи хранит предустановленные поля
 // Основные модули: mongoose
 export interface TaskTemplateAttrs {

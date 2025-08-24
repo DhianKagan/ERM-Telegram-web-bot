@@ -130,6 +130,10 @@ export interface Comment {
 export interface Attachment {
   name: string;
   url: string;
+  uploadedBy: number;
+  uploadedAt: Date;
+  type: string;
+  size: number;
 }
 
 export interface HistoryEntry {
@@ -267,7 +271,16 @@ const taskSchema = new Schema<TaskDocument>(
     checklist: [checklistItemSchema],
     comment: { type: String, maxlength: 4096 },
     files: [String],
-    attachments: [{ name: String, url: String }],
+    attachments: [
+      {
+        name: String,
+        url: String,
+        uploadedBy: Number,
+        uploadedAt: Date,
+        type: String,
+        size: Number,
+      },
+    ],
     transport_type: {
       type: String,
       enum: ['Пешком', 'Авто', 'Дрон'],

@@ -19,25 +19,37 @@ import {
 import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
+import type RequestWithUser from '../types/request';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 interface BodyWithAttachments extends Record<string, unknown> {
-  attachments?: { name: string; url: string }[];
+  attachments?: {
+    name: string;
+    url: string;
+    uploadedBy: number;
+    uploadedAt: Date;
+    type: string;
+    size: number;
+  }[];
 }
 
-export const processUploads: RequestHandler = async (req, res, next) => {
+export const processUploads: RequestHandler = (req, res, next) => {
   try {
     const files = (req.files as Express.Multer.File[]) || [];
     if (files.length > 0) {
-      const attachments = await Promise.all(
-        files.map(async (f) => {
-          const original = path.basename(f.originalname);
-          const name = `${Date.now()}_${original}`;
-          await fs.promises.writeFile(path.join(uploadsDir, name), f.buffer);
-          return { name: original, url: `/uploads/${name}` };
-        }),
-      );
+      const userId = (req as RequestWithUser).user?.id;
+      const attachments = files.map((f) => {
+        const original = path.basename(f.originalname);
+        return {
+          name: original,
+          url: `/uploads/${userId}/${f.filename}`,
+          uploadedBy: userId as number,
+          uploadedAt: new Date(),
+          type: f.mimetype,
+          size: f.size,
+        };
+      });
       (req.body as BodyWithAttachments).attachments = attachments;
     }
     next();
@@ -48,7 +60,19 @@ export const processUploads: RequestHandler = async (req, res, next) => {
 
 const router: Router = Router();
 const ctrl = container.resolve(TasksController);
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const userId = (req as RequestWithUser).user?.id;
+    const dest = path.join(uploadsDir, String(userId));
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
+  },
+  filename: (_req, file, cb) => {
+    const original = path.basename(file.originalname);
+    cb(null, `${Date.now()}_${original}`);
+  },
+});
+const upload = multer({ storage });
 const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];

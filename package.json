@@ -5,7 +5,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
-    "lint": "eslint apps/api/src",
+    "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",
     "test:e2e": "playwright test tests/e2e",
     "test:api": "mocha -r ts-node/register tests/api/*.spec.ts",

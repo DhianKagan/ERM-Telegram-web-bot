@@ -155,6 +155,7 @@ curl -X POST http://localhost:3000/api/v1/task-templates \
 - Значение `username` в токене по умолчанию пустое, что устраняет ошибку сборки.
 - Dockerfile копирует каталог `dist` в образ, чтобы pm2 нашёл собранный сервер.
 - Исправлены ошибки TypeScript, мешавшие сборке Docker.
+- Dockerfile кеширует зависимости через `pnpm fetch` и раздельно собирает пакеты `web` и `api`.
 - Примеры конфигурации Prometheus лежат в каталоге `prometheus`.
 - Метрики Prometheus по пути `/metrics`, middleware `metrics.ts` считает общее количество запросов и длительность.
 - Гистограммы HTTP (method, route, status) и отдельные метрики OSRM с таймерами и счётчиком ошибок.

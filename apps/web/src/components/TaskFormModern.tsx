@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import formSchema from "../../../api/src/form/taskForm.schema.json";
 import type { Field } from "../../../api/src/form";
+import authFetch from "../utils/authFetch";
 
 type Template = { _id: string; name: string; data: Record<string, string> };
 export type TaskFormModernProps = {
@@ -92,7 +93,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
     }));
   }, []);
   useEffect(() => {
-    fetch("/api/v1/task-templates")
+    authFetch("/api/v1/task-templates")
       .then((r) => r.json())
       .then((t: Template[]) => setTemplates(t))
       .catch(() => setTemplates([]));

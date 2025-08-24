@@ -62,6 +62,7 @@
 - Наблюдаемость: гистограммы HTTP, метрики OSRM и заголовок `traceparent` для трассировки.
 - Лимитер отправляет заголовки `X-RateLimit-*`, метрика `rate_limit_drops_total` содержит метки `name` и `key`.
 - Управление файлами выполняется через `/api/v1/storage`, раздел `/cp/storage` отображает список вложений.
+- Коллекция `File` хранит taskId, userId, name, path, type, size и uploadedAt; сервис `dataStorage` читает из MongoDB, фильтрует по `userId` и `type` и при удалении чистит задачу.
 - Секреты загружаются из HashiCorp Vault или AWS Secrets Manager,
   ключи пересоздаются по `KEY_ROTATION_CRON`.
 - Ключ лимитера строится по `telegram_id`; верная капча в заголовке `X-Captcha-Token` обходится ограничение.

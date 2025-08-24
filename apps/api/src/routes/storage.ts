@@ -1,12 +1,18 @@
 // Роуты управления файлами в хранилище
 // Модули: express, express-validator, middleware/auth, auth/roles, services/dataStorage
-import { Router, RequestHandler, NextFunction } from 'express';
+import {
+  Router,
+  RequestHandler,
+  NextFunction,
+  Request,
+  Response,
+} from 'express';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { listFiles, deleteFile } from '../services/dataStorage';
-import { param } from 'express-validator';
+import { param, query } from 'express-validator';
 
 const router: Router = Router();
 
@@ -15,8 +21,16 @@ router.get(
   authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
-  async (_req, res) => {
-    const files = await listFiles();
+  [
+    query('userId').optional().isInt(),
+    query('type').optional().isString(),
+  ] as unknown as RequestHandler[],
+  async (req: Request, res: Response) => {
+    const filters = {
+      userId: req.query.userId ? Number(req.query.userId) : undefined,
+      type: req.query.type as string | undefined,
+    };
+    const files = await listFiles(filters);
     res.json(files);
   },
 );

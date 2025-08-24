@@ -4,6 +4,7 @@ import { load } from "cheerio";
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { createHash } from "crypto";
+import type { Buffer } from "node:buffer";
 
 export default function sri(): Plugin {
   return {
@@ -12,7 +13,9 @@ export default function sri(): Plugin {
     enforce: "post",
     writeBundle(options, bundle) {
       Object.values(bundle)
-        .filter((item) => item.type === "asset" && item.fileName.endsWith(".html"))
+        .filter(
+          (item) => item.type === "asset" && item.fileName.endsWith(".html"),
+        )
         .forEach((htmlAsset) => {
           const $ = load((htmlAsset as any).source as string);
           $("script[src],link[href]").each((_, el) => {
@@ -30,7 +33,10 @@ export default function sri(): Plugin {
             el.attribs.integrity = `sha384-${hash}`;
             if (!el.attribs.crossorigin) el.attribs.crossorigin = "anonymous";
           });
-          writeFileSync(resolve(options.dir!, (htmlAsset as any).fileName), $.html());
+          writeFileSync(
+            resolve(options.dir!, (htmlAsset as any).fileName),
+            $.html(),
+          );
         });
     },
   };

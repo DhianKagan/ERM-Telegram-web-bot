@@ -8,11 +8,16 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-RUN corepack enable && (pnpm install --frozen-lockfile || pnpm install)
+RUN corepack enable && pnpm fetch
 
 # Копирование исходников, сборка сервера и клиента
 COPY . .
-RUN pnpm -r build && pnpm --dir apps/api run build-client && pnpm prune --prod
+RUN pnpm install --offline --frozen-lockfile || pnpm install \
+  && pnpm --filter web... build \
+  && pnpm --filter api... build \
+  && pnpm --dir apps/api run build-client \
+  && pnpm prune --prod \
+  && pnpm store prune
 
 FROM node:20-slim
 WORKDIR /app

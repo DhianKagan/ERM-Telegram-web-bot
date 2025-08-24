@@ -26,7 +26,7 @@ export async function listFiles(
   try {
     const query: FilterQuery<FileDocument> = {};
     if (filters.userId !== undefined) query.userId = filters.userId;
-    if (filters.type) query.type = filters.type;
+    if (typeof filters.type === 'string') query.type = { $eq: filters.type };
     const files = await File.find(query).lean();
     return files.map((f) => ({
       taskId: f.taskId ? String(f.taskId) : undefined,

@@ -29,6 +29,8 @@ pnpm --dir apps/api dev
 npm run prepare-client
 ```
 
+Сборка очищает каталог вывода благодаря параметру `emptyOutDir` в `apps/web/vite.config.ts`.
+
 ## Контроль размера бандла
 
 ```bash

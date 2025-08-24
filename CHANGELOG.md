@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Сборка Vite очищает каталог вывода через `emptyOutDir`.
 - Исправлен catch-all маршрут SPA: Express отдаёт `/login` и другие пути через `app.get('*')`.
 - Лимит size-limit для `apps/api/public/assets/*.js` увеличен до 900 KB, чтобы предотвратить падение CI.
 - Исправлен путь к `check:mongo.mjs`, lock-файл PNPM синхронизирован с `overrides`.

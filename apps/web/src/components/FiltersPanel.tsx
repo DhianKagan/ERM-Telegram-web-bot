@@ -9,6 +9,7 @@ interface Props {
 }
 
 export default function FiltersPanel({ filters, onChange }: Props) {
+  const noCsrfId = React.useId();
   return (
     <div className="flex flex-wrap gap-2">
       <select
@@ -68,14 +69,15 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         value={filters.to || ""}
         onChange={(e) => onChange({ ...filters, to: e.target.value })}
       />
-      <label className="flex items-center gap-1 text-sm">
+      <div className="flex items-center gap-1 text-sm">
         <input
+          id={noCsrfId}
           type="checkbox"
           checked={filters.noCsrf || false}
           onChange={(e) => onChange({ ...filters, noCsrf: e.target.checked })}
         />
-        no-csrf
-      </label>
+        <label htmlFor={noCsrfId}>no-csrf</label>
+      </div>
     </div>
   );
 }

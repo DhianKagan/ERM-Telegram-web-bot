@@ -1,9 +1,9 @@
 // Компонент просмотра логов на React Table
-// Модули: React, useLogsQuery, FiltersPanel, DataTable, logColumns
-import React from "react";
+// Модули: React, useLogsQuery, FiltersPanel, DataTable (лениво), logColumns
+import React, { lazy, Suspense } from "react";
 import useLogsQuery, { LogFilters } from "../hooks/useLogsQuery";
 import FiltersPanel from "./FiltersPanel";
-import DataTable from "./DataTable";
+const DataTable = lazy(() => import("./DataTable"));
 import logColumns from "../columns/logColumns";
 
 export default function LogViewer() {
@@ -36,13 +36,15 @@ export default function LogViewer() {
         </label>
       </div>
       <FiltersPanel filters={filters} onChange={setFilters} />
-      <DataTable
-        columns={logColumns}
-        data={logs}
-        pageIndex={page}
-        pageSize={50}
-        onPageChange={setPage}
-      />
+      <Suspense fallback={<div>Загрузка таблицы...</div>}>
+        <DataTable
+          columns={logColumns}
+          data={logs}
+          pageIndex={page}
+          pageSize={50}
+          onPageChange={setPage}
+        />
+      </Suspense>
     </div>
   );
 }

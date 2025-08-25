@@ -1,8 +1,8 @@
 // Таблица последних задач на React Table
-// Модули: React, authFetch, DataTable, recentTaskColumns
-import React, { useEffect, useState } from "react";
+// Модули: React, authFetch, DataTable (лениво), recentTaskColumns
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import authFetch from "../utils/authFetch";
-import DataTable from "./DataTable";
+const DataTable = lazy(() => import("./DataTable"));
 import recentTaskColumns from "../columns/recentTaskColumns";
 import type { Task } from "shared";
 
@@ -45,12 +45,14 @@ export default function RecentTasks() {
   }
 
   return (
-    <DataTable
-      columns={recentTaskColumns}
-      data={tasks}
-      pageIndex={0}
-      pageSize={5}
-      onPageChange={() => {}}
-    />
+    <Suspense fallback={<div>Загрузка таблицы...</div>}>
+      <DataTable
+        columns={recentTaskColumns}
+        data={tasks}
+        pageIndex={0}
+        pageSize={5}
+        onPageChange={() => {}}
+      />
+    </Suspense>
   );
 }

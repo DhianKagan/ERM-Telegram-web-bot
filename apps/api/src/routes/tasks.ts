@@ -1,5 +1,5 @@
 // Роуты задач: CRUD, время, массовые действия, миниатюры вложений, chunk-upload
-// Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg
+// Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg, clamscan, wgLogEngine
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
@@ -24,6 +24,10 @@ import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
 import { File } from '../db/model';
+import { scanFile } from '../services/antivirus';
+import { writeLog } from '../services/wgLogEngine';
+import { maxUserFiles, maxUserStorage } from '../config/limits';
+import { checkFile } from '../utils/fileCheck';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -73,6 +77,30 @@ export const processUploads: RequestHandler = async (req, res, next) => {
     const files = (req.files as Express.Multer.File[]) || [];
     if (files.length > 0) {
       const userId = (req as RequestWithUser).user?.id as number;
+      const agg = await File.aggregate([
+        { $match: { userId } },
+        { $group: { _id: null, count: { $sum: 1 }, size: { $sum: '$size' } } },
+      ]);
+      const cur = agg[0] || { count: 0, size: 0 };
+      const incoming = files.reduce((s, f) => s + f.size, 0);
+      if (
+        cur.count + files.length > maxUserFiles ||
+        cur.size + incoming > maxUserStorage
+      ) {
+        files.forEach((f) =>
+          fs.unlink(path.join(f.destination, f.filename), () => {}),
+        );
+        res.status(400).json({ error: 'Превышены лимиты вложений' });
+        return;
+      }
+      for (const f of files) {
+        const full = path.join(f.destination, f.filename);
+        if (!(await scanFile(full))) {
+          fs.unlink(full, () => {});
+          res.status(400).json({ error: 'Файл содержит вирус' });
+          return;
+        }
+      }
       const attachments = await Promise.all(
         files.map(async (f) => {
           const original = path.basename(f.originalname);
@@ -85,6 +113,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
             type: f.mimetype,
             size: f.size,
           });
+          await writeLog('Загружен файл', 'info', { userId, name: original });
           return {
             name: original,
             url: `/api/v1/files/${String(doc._id)}`,
@@ -121,14 +150,8 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (_req, file, cb) => {
-    if (
-      file.mimetype.startsWith('image/') ||
-      file.mimetype.startsWith('video/')
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error('Недопустимый тип файла'));
-    }
+    if (checkFile(file)) cb(null, true);
+    else cb(new Error('Недопустимый тип файла'));
   },
   limits: { fileSize: 10 * 1024 * 1024 },
 });

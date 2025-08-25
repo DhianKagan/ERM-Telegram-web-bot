@@ -1,5 +1,5 @@
 // Роут скачивания файлов с проверкой прав
-// Модули: express, middleware/auth, utils/accessMask, db/model, config/storage
+// Модули: express, middleware/auth, utils/accessMask, db/model, config/storage, wgLogEngine
 import { Router, RequestHandler } from 'express';
 import path from 'path';
 import { param } from 'express-validator';
@@ -9,6 +9,7 @@ import { File, Task } from '../db/model';
 import type { RequestWithUser } from '../types/request';
 import { uploadsDir } from '../config/storage';
 import { sendProblem } from '../utils/problem';
+import { writeLog } from '../services/wgLogEngine';
 
 const router: Router = Router();
 
@@ -69,6 +70,7 @@ router.get(
         });
         return;
       }
+      void writeLog('Скачан файл', 'info', { userId: uid, name: file.name });
       res.download(target, file.name);
     } catch (err) {
       next(err);

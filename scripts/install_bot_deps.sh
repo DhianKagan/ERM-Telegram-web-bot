@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Назначение: установка корневых, серверных и клиентских зависимостей с автоматическим устранением уязвимостей.
-# Модули: bash, pnpm, npm.
+# Модули: bash, pnpm, npm, corepack.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 
-# Проверяем наличие pnpm и устанавливаем через corepack при отсутствии
+# Проверяем наличие pnpm и устанавливаем при отсутствии
 if ! command -v pnpm >/dev/null; then
   if command -v corepack >/dev/null; then
     echo "Устанавливаем pnpm через corepack..."
-    corepack enable >/dev/null
-    corepack prepare pnpm@latest --activate >/dev/null
+    if ! (corepack enable >/dev/null && corepack prepare pnpm@latest --activate >/dev/null); then
+      echo "corepack не смог установить pnpm, пробуем npm..." >&2
+      npm install -g pnpm >/dev/null 2>&1 || { echo "Не удалось установить pnpm." >&2; exit 1; }
+    fi
   else
-    echo "Не найден pnpm и corepack; установите pnpm вручную." >&2
-    exit 1
+    echo "Не найден pnpm и corepack; устанавливаем pnpm через npm..." >&2
+    npm install -g pnpm >/dev/null 2>&1 || { echo "Не удалось установить pnpm." >&2; exit 1; }
   fi
 fi
 

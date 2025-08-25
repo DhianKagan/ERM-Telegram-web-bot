@@ -1,8 +1,7 @@
 // Назначение файла: общий тулбар таблицы с экспортом и настройкой колонок
-// Модули: React, @tanstack/react-table, xlsx, jspdf
+// Модули: React, @tanstack/react-table, jspdf
 import React from "react";
 import type { Table } from "@tanstack/react-table";
-import { utils, writeFile } from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -28,19 +27,6 @@ export default function TableToolbar<T>({ table }: Props<T>) {
     a.href = URL.createObjectURL(blob);
     a.download = "table.csv";
     a.click();
-  };
-
-  const exportXlsx = () => {
-    const headers = columns
-      .filter((c) => c.getIsVisible())
-      .map((c) => c.columnDef.header as string);
-    const rows = table
-      .getRowModel()
-      .rows.map((r) => r.getVisibleCells().map((c) => c.getValue()));
-    const sheet = utils.aoa_to_sheet([headers, ...rows]);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, sheet, "Sheet1");
-    writeFile(wb, "table.xlsx");
   };
 
   const exportPdf = () => {
@@ -77,9 +63,6 @@ export default function TableToolbar<T>({ table }: Props<T>) {
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <button onClick={exportCsv} className="rounded border px-2 py-1">
         CSV
-      </button>
-      <button onClick={exportXlsx} className="rounded border px-2 py-1">
-        XLSX
       </button>
       <button onClick={exportPdf} className="rounded border px-2 py-1">
         PDF

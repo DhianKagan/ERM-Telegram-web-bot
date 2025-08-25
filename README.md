@@ -28,6 +28,7 @@ pnpm --dir apps/api dev
 pnpm build       # сборка проекта
 pnpm size        # контроль размера бандла
 pnpm a11y        # проверка контрастности
+./scripts/pre_pr_check.sh  # проверка сборки и запуска перед PR
 ```
 
 Подробные инструкции см. в [docs/technical_manual.md](docs/technical_manual.md).

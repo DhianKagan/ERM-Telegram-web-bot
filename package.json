@@ -4,7 +4,7 @@
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm -r dev",
+    "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",
     "test:e2e": "playwright test tests/e2e",

@@ -8,6 +8,12 @@
 
 Проект состоит из сервера `apps/api` и клиентского мини‑приложения React в `apps/web`.
 
+## Скрипты зависимостей
+
+Для контроля `postinstall`‑скриптов используется `pnpm approve-builds`.
+Разрешены сборки `esbuild`, `ffmpeg-static`, `mongodb-memory-server`, `sharp`.
+Скрипты `@scarf/scarf`, `@tailwindcss/oxide`, `chromedriver`, `core-js`, `unrs-resolver` блокируются.
+
 - `apps/api/src/api` — Express API с подключением Swagger и лимитом запросов.
 - `apps/api/src/bot` — Telegram‑бот на Telegraf и планировщик напоминаний.
 - `apps/api/src/routes` — REST‑маршруты; `users`, `roles` и `logs` используют default‑импорт `rolesGuard`.

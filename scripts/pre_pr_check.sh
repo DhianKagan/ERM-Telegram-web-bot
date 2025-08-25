@@ -33,7 +33,10 @@ while [ $attempt -le $max_attempts ]; do
     exit 0
   fi
   echo "Запуск не удался, пробуем ещё раз..."
-  pnpm --dir apps/api run build || pnpm --dir apps/api install
+  if ! pnpm --dir apps/api run build; then
+    pnpm --dir apps/api install
+    pnpm --dir apps/api run build
+  fi
   attempt=$((attempt + 1))
 done
 

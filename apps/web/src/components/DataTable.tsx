@@ -78,7 +78,11 @@ export default function DataTable<T>({
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
               {hg.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead
+                  key={header.id}
+                  style={{ width: header.getSize() }}
+                  // фиксируем ширину ячейки заголовка
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -99,7 +103,11 @@ export default function DataTable<T>({
               className="cursor-pointer"
             >
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell
+                  key={cell.id}
+                  style={{ width: cell.column.getSize() }}
+                  // фиксируем ширину ячейки данных
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}

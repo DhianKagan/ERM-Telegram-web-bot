@@ -70,7 +70,15 @@ async function createThumbnail(
 
 export const processUploads: RequestHandler = async (req, res, next) => {
   try {
-    const files = (req.files as Express.Multer.File[]) || [];
+    const filesRaw = req.files;
+    const files = Array.isArray(filesRaw)
+      ? (filesRaw as Express.Multer.File[])
+      : [];
+    // Проверяем тип полученных файлов
+    if (!Array.isArray(filesRaw) && filesRaw !== undefined && filesRaw !== null) {
+      res.status(400).json({ error: 'Некорректный формат загрузки файлов' });
+      return;
+    }
     if (files.length > 0) {
       const userId = (req as RequestWithUser).user?.id as number;
       const attachments = await Promise.all(

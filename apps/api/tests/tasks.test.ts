@@ -99,10 +99,7 @@ test('создание задачи возвращает 201', async () => {
   expect(res.status).toBe(201);
   expect(res.body.title).toBe('T');
   expect(res.body.task_number).toBe('ERM_000001');
-  const expectedUrl = generateRouteLink(
-    { lat: 1, lng: 2 },
-    { lat: 3, lng: 4 },
-  );
+  const expectedUrl = generateRouteLink({ lat: 1, lng: 2 }, { lat: 3, lng: 4 });
   expect(Task.create).toHaveBeenCalledWith(
     expect.objectContaining({
       start_date: '2025-01-01T10:00',
@@ -163,12 +160,13 @@ test('bulk update статуса', async () => {
 });
 
 test('получение списка задач возвращает пользователей', async () => {
-  Task.find.mockResolvedValueOnce([
+  Task.find.mockReturnValueOnce([
     { _id: '1', assignees: [1], controllers: [], created_by: 1 },
   ]);
   const res = await request(app).get('/api/v1/tasks');
   expect(res.body.users['1'].name).toBe('User');
   expect(Array.isArray(res.body.tasks)).toBe(true);
+  expect(res.body.total).toBe(1);
 });
 
 test('summary report возвращает метрики', async () => {

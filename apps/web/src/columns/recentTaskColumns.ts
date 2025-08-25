@@ -1,16 +1,24 @@
-// Колонки для таблицы последних задач
-// Модули: ag-grid
-import type { ColDef } from "ag-grid-community";
+// Колонки для таблицы последних задач на React Table
+// Модули: @tanstack/react-table
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Task } from "shared";
 
-const recentTaskColumns: ColDef[] = [
-  { headerName: "Номер", field: "task_number" },
+type RecentTask = Task & {
+  status: string;
+  task_number: string;
+  createdAt: string;
+};
+
+const recentTaskColumns: ColumnDef<RecentTask>[] = [
+  { header: "Номер", accessorKey: "task_number" },
   {
-    headerName: "Дата",
-    field: "createdAt",
-    valueFormatter: (p) => (p.value ? p.value.slice(0, 10) : ""),
+    header: "Дата",
+    accessorKey: "createdAt",
+    cell: (p) =>
+      p.getValue<string>() ? p.getValue<string>().slice(0, 10) : "",
   },
-  { headerName: "Название", field: "title" },
-  { headerName: "Статус", field: "status" },
+  { header: "Название", accessorKey: "title" },
+  { header: "Статус", accessorKey: "status" },
 ];
 
 export default recentTaskColumns;

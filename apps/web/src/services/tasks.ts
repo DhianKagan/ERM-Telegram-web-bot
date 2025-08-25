@@ -89,7 +89,7 @@ export const fetchTasks = (
   userId?: number,
 ) => {
   const filtered = Object.fromEntries(
-    Object.entries(params).filter(([, v]) => v),
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null),
   );
   const q = new URLSearchParams(filtered as Record<string, string>).toString();
   const url = "/api/v1/tasks" + (q ? `?${q}` : "");
@@ -105,7 +105,7 @@ export const fetchTasks = (
     return Promise.resolve(cached.data);
   }
   return authFetch(url)
-    .then((r) => (r.ok ? r.json() : { tasks: [], users: [] }))
+    .then((r) => (r.ok ? r.json() : { tasks: [], users: [], total: 0 }))
     .then((d) => {
       localStorage.setItem(key, JSON.stringify({ time: Date.now(), data: d }));
       return d;

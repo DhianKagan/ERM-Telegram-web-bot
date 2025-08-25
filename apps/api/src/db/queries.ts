@@ -94,15 +94,17 @@ export async function getTasks(
   filters: TaskFilters = {},
   page?: number,
   limit?: number,
-): Promise<TaskDocument[]> {
+): Promise<{ tasks: TaskDocument[]; total: number }> {
   const isQuery = (v: unknown): v is Query<TaskDocument[], TaskDocument> =>
     typeof v === 'object' && v !== null && 'exec' in v;
   if (filters.kanban) {
     const res = Task.find({}) as unknown;
     if (isQuery(res)) {
-      return res.sort('-createdAt').exec();
+      const list = await res.sort('-createdAt').exec();
+      return { tasks: list, total: list.length };
     }
-    return res as TaskDocument[];
+    const list = res as TaskDocument[];
+    return { tasks: list, total: list.length };
   }
   const q: Record<string, unknown> = {};
   if (filters.status) q.status = { $eq: filters.status };
@@ -119,14 +121,17 @@ export async function getTasks(
   const res = Task.find(q) as unknown;
   if (isQuery(res)) {
     let query = res.sort('-createdAt');
+    const count = await Task.countDocuments(q);
     if (limit) {
       const p = Number(page) || 1;
       const l = Number(limit) || 20;
       query = query.skip((p - 1) * l).limit(l);
     }
-    return query.exec();
+    const list = await query.exec();
+    return { tasks: list, total: count };
   }
-  return res as TaskDocument[];
+  const list = res as TaskDocument[];
+  return { tasks: list, total: list.length };
 }
 
 export interface RoutesFilters {

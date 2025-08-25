@@ -31,7 +31,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
-          "ag-grid": ["ag-grid-react", "ag-grid-community"],
           ckeditor: [
             "@ckeditor/ckeditor5-react",
             "@ckeditor/ckeditor5-build-classic",

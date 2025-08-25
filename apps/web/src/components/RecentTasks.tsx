@@ -1,11 +1,8 @@
-// Таблица последних задач на AG Grid
-// Модули: React, authFetch, ag-grid, useGrid
+// Таблица последних задач на React Table
+// Модули: React, authFetch, DataTable, recentTaskColumns
 import React, { useEffect, useState } from "react";
-const AgGridReact = React.lazy(() =>
-  import("ag-grid-react").then((m) => ({ default: m.AgGridReact })),
-);
 import authFetch from "../utils/authFetch";
-import useGrid from "../hooks/useGrid";
+import DataTable from "./DataTable";
 import recentTaskColumns from "../columns/recentTaskColumns";
 import type { Task } from "shared";
 
@@ -18,7 +15,6 @@ type RecentTask = Task & {
 export default function RecentTasks() {
   const [tasks, setTasks] = useState<RecentTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const { defaultColDef, gridOptions } = useGrid({ paginationPageSize: 5 });
   useEffect(() => {
     authFetch("/api/v1/tasks?limit=5")
       .then((r) => (r.ok ? r.json() : []))
@@ -49,15 +45,12 @@ export default function RecentTasks() {
   }
 
   return (
-    <div className="ag-theme-alpine" style={{ height: 200 }}>
-      <React.Suspense fallback={<div>Загрузка...</div>}>
-        <AgGridReact
-          rowData={tasks}
-          columnDefs={recentTaskColumns}
-          defaultColDef={defaultColDef}
-          {...gridOptions}
-        />
-      </React.Suspense>
-    </div>
+    <DataTable
+      columns={recentTaskColumns}
+      data={tasks}
+      pageIndex={0}
+      pageSize={5}
+      onPageChange={() => {}}
+    />
   );
 }

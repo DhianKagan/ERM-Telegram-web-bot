@@ -22,16 +22,20 @@ export default class TasksController {
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;
     let tasks: TaskEx[];
+    let total = 0;
     if (req.user!.role === 'admin') {
-      tasks = (await this.service.get(
+      const res = await this.service.get(
         filters,
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
-      )) as unknown as TaskEx[];
+      );
+      tasks = res.tasks as unknown as TaskEx[];
+      total = res.total;
     } else {
       tasks = (await this.service.mentioned(
         String(req.user!.id),
       )) as unknown as TaskEx[];
+      total = tasks.length;
     }
     const ids = new Set<number>();
     tasks.forEach((t) => {
@@ -40,7 +44,7 @@ export default class TasksController {
       if (t.created_by) ids.add(t.created_by);
     });
     const users = await getUsersMap(Array.from(ids));
-    sendCached(req, res, { tasks, users });
+    sendCached(req, res, { tasks, users, total });
   };
 
   detail = async (req: Request, res: Response) => {

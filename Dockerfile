@@ -8,7 +8,10 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-RUN corepack enable && pnpm fetch
+RUN corepack enable \
+  && pnpm config set network-concurrency 1 \
+  && pnpm config set fetch-retries 5 \
+  && pnpm fetch
 
 # Копирование исходников, сборка сервера и клиента
 COPY . .

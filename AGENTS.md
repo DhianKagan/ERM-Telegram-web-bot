@@ -42,6 +42,7 @@
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
 - Сборка клиента проверяется `pnpm size`; размер `apps/api/public/assets/*.js` не превышает 900 KB.
+- Скрипты зависимостей проверяются `pnpm approve-builds`, CI падает при появлении новых скриптов.
 - Статическую страницу `apps/web/index.html` проверяйте на контраст командой `pnpm a11y` через `@axe-core/cli` и `vite preview`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.
 - Индексы MongoDB создавайте скриптом `scripts/db/ensureIndexes.ts`.

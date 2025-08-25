@@ -28,6 +28,7 @@ pnpm --dir apps/api dev
 pnpm build       # сборка проекта
 pnpm size        # контроль размера бандла
 pnpm a11y        # проверка контрастности
+pnpm approve-builds  # контроль скриптов зависимостей
 ./scripts/pre_pr_check.sh  # проверка сборки и запуска перед PR
 ```
 

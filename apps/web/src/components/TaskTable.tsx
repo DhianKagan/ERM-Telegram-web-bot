@@ -1,27 +1,17 @@
-// Назначение файла: универсальная таблица задач на AG Grid
-// Модули: React, ag-grid, утилиты, useGrid
+// Назначение файла: таблица задач на основе DataTable
+// Модули: React, DataTable, taskColumns, useTasks
 import React from "react";
-const AgGridReact = React.lazy(() =>
-  import("ag-grid-react").then((m) => ({ default: m.AgGridReact })),
-);
-import type {
-  GridApi,
-  GridReadyEvent,
-  SelectionChangedEvent,
-} from "ag-grid-community";
-import useGrid from "../hooks/useGrid";
-import taskColumns from "../columns/taskColumns";
-import type { Task } from "shared";
+import DataTable from "./DataTable";
+import taskColumns, { TaskRow } from "../columns/taskColumns";
 import useTasks from "../context/useTasks";
-
-type TaskRow = Task & Record<string, any>;
 
 interface TaskTableProps {
   tasks: TaskRow[];
   users?: Record<number, any>;
   onSelectionChange?: (ids: string[]) => void;
-  onDataChange?: (rows: TaskRow[]) => void;
-  selectable?: boolean;
+  page: number;
+  pageCount?: number;
+  onPageChange: (p: number) => void;
   onRowClick?: (id: string) => void;
 }
 
@@ -29,72 +19,30 @@ export default function TaskTable({
   tasks,
   users = {},
   onSelectionChange,
-  onDataChange,
-  selectable = false,
+  page,
+  pageCount,
+  onPageChange,
   onRowClick,
 }: TaskTableProps) {
-  const apiRef = React.useRef<GridApi | null>(null);
   const { query } = useTasks();
-  const columnDefs = React.useMemo(
-    () => taskColumns(selectable, users),
-    [selectable, users],
-  );
-  const { defaultColDef, gridOptions } = useGrid();
-
-  const updateData = React.useCallback(() => {
-    if (!apiRef.current || !onDataChange) return;
-    const rows: TaskRow[] = [];
-    apiRef.current.forEachNodeAfterFilterAndSort((n) => rows.push(n.data));
-    onDataChange(rows);
-  }, [onDataChange]);
-
-  const onGridReady = React.useCallback(
-    (e: GridReadyEvent) => {
-      apiRef.current = e.api;
-      updateData();
-    },
-    [updateData],
-  );
-
-  const onSel = React.useCallback(() => {
-    if (!apiRef.current || !onSelectionChange) return;
-    const ids = apiRef.current.getSelectedRows().map((r: TaskRow) => r._id);
-    onSelectionChange(ids);
-  }, [onSelectionChange]);
-
-  const exportCsv = React.useCallback(() => {
-    apiRef.current?.exportDataAsCsv();
-  }, []);
+  const columns = React.useMemo(() => taskColumns(true, users), [users]);
 
   return (
-    <div className="space-y-2">
-      <button
-        onClick={exportCsv}
-        className="btn btn-blue rounded px-3 hover:shadow-lg"
-      >
-        Экспорт CSV
-      </button>
-      <div className="ag-theme-alpine" style={{ height: 500 }}>
-        <React.Suspense fallback={<div>Загрузка...</div>}>
-          <AgGridReact
-            rowData={tasks}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            rowSelection={
-              selectable
-                ? { mode: "multiRow", checkboxes: true, headerCheckbox: true }
-                : undefined
-            }
-            onSelectionChanged={onSel}
-            onGridReady={onGridReady}
-            onSortChanged={updateData}
-            onFilterChanged={updateData}
-            onRowClicked={(e) => onRowClick && onRowClick(e.data._id)}
-            quickFilterText={query}
-            {...gridOptions}
-          />
-        </React.Suspense>
-      </div>
-    </div>
+    <DataTable
+      columns={columns}
+      data={tasks.filter((t) =>
+        query
+          ? JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
+          : true,
+      )}
+      pageIndex={page}
+      pageSize={25}
+      pageCount={pageCount}
+      onPageChange={onPageChange}
+      onSelectionChange={(rows) =>
+        onSelectionChange?.((rows as TaskRow[]).map((r) => r._id))
+      }
+      onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
+    />
   );
 }

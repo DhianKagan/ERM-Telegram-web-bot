@@ -14,6 +14,8 @@ type TaskExtra = Task & Record<string, any>;
 
 export default function TasksPage() {
   const [all, setAll] = React.useState<TaskExtra[]>([]);
+  const [page, setPage] = React.useState(0);
+  const [total, setTotal] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
   const [statuses, setStatuses] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<string[]>([]);
@@ -27,7 +29,10 @@ export default function TasksPage() {
 
   const load = React.useCallback(() => {
     setLoading(true);
-    fetchTasks({}, Number((user as any)?.telegram_id))
+    fetchTasks(
+      { page: page + 1, limit: 25 },
+      Number((user as any)?.telegram_id),
+    )
       .then((data) => {
         const tasks = (
           Array.isArray(data) ? data : data.tasks || []
@@ -43,6 +48,7 @@ export default function TasksPage() {
               );
             });
         setAll(filteredTasks);
+        setTotal((data as any).total || filteredTasks.length);
         const list = Array.isArray((data as any).users)
           ? ((data as any).users as User[])
           : (Object.values((data as any).users || {}) as User[]);
@@ -57,9 +63,9 @@ export default function TasksPage() {
         );
     }
     setStatuses(fields.find((f) => f.name === "status")?.options || []);
-  }, [isAdmin, user]);
+  }, [isAdmin, user, page]);
 
-  React.useEffect(load, [load, version]);
+  React.useEffect(load, [load, version, page]);
   const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {
@@ -121,8 +127,10 @@ export default function TasksPage() {
       <TaskTable
         tasks={tasks}
         users={userMap}
-        selectable
         onSelectionChange={setSelected}
+        page={page}
+        pageCount={Math.ceil(total / 25)}
+        onPageChange={setPage}
         onRowClick={(id) => {
           params.set("task", id);
           setParams(params);

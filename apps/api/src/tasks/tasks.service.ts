@@ -12,7 +12,7 @@ interface TasksRepository {
     filters: TaskFilters,
     page?: number,
     limit?: number,
-  ): Promise<TaskDocument[]>;
+  ): Promise<{ tasks: TaskDocument[]; total: number }>;
   getTask(id: string): Promise<TaskDocument | null>;
   updateTask(
     id: string,

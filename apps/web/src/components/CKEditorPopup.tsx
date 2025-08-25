@@ -48,35 +48,38 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
             : "<p class='text-gray-500'>Нажмите для редактирования</p>",
         }}
       />
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <div className="space-y-4">
-          <React.Suspense fallback={<div>Загрузка...</div>}>
-            <LazyCKEditor
-              data={draft}
-              onChange={(_e, editor) => setDraft(editor.getData())}
-            />
-          </React.Suspense>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded bg-slate-200 px-4 py-2"
-              onClick={() => setOpen(false)}
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              className="rounded bg-indigo-600 px-4 py-2 text-white"
-              onClick={() => {
-                onChange?.(draft);
-                setOpen(false);
-              }}
-            >
-              Сохранить
-            </button>
+      {open && (
+        // Модальное окно рендерится только при открытии, что откладывает загрузку CKEditor
+        <Modal open onClose={() => setOpen(false)}>
+          <div className="space-y-4">
+            <React.Suspense fallback={<div>Загрузка...</div>}>
+              <LazyCKEditor
+                data={draft}
+                onChange={(_e, editor) => setDraft(editor.getData())}
+              />
+            </React.Suspense>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded bg-slate-200 px-4 py-2"
+                onClick={() => setOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="rounded bg-indigo-600 px-4 py-2 text-white"
+                onClick={() => {
+                  onChange?.(draft);
+                  setOpen(false);
+                }}
+              >
+                Сохранить
+              </button>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </>
   );
 }

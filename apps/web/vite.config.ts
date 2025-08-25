@@ -35,7 +35,7 @@ export default defineConfig({
             "@ckeditor/ckeditor5-react",
             "@ckeditor/ckeditor5-build-classic",
           ],
-          charts: ["react-apexcharts", "apexcharts"],
+          // чанк charts удалён: react-apexcharts загружается динамически
         },
       },
     },

@@ -28,6 +28,7 @@ import createRouteLink from "../utils/createRouteLink";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import FileUploader from "./FileUploader";
 
 interface Props {
   onClose: () => void;
@@ -119,12 +120,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<any[]>([]);
   const [attachments, setAttachments] = React.useState<any[]>([]);
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [files, setFiles] = React.useState<FileList | null>(null);
-  const [previews, setPreviews] = React.useState<
-    { url: string; name: string; isImage: boolean }[]
-  >([]);
-  const [uploadDone, setUploadDone] = React.useState(false);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const doneOptions = [
@@ -136,17 +131,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
   const titleValue = watch("title");
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fl = e.target.files;
-    if (!fl || fl.length === 0) return;
-    setFiles(fl);
-    const list = Array.from(fl).map((f) => ({
-      url: URL.createObjectURL(f),
-      name: f.name,
-      isImage: f.type.startsWith("image/"),
-    }));
-    setPreviews(list);
-    setUploadDone(true);
+  const removeAttachment = (a: any) => {
+    setAttachments((prev) => prev.filter((p) => p.url !== a.url));
   };
 
   React.useEffect(() => {
@@ -401,13 +387,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (distanceKm !== null) payload.route_distance_km = distanceKm;
     if (routeLink) payload.google_route_url = routeLink;
     let data;
+    const sendPayload = { ...payload, attachments };
     if (isEdit && id) {
-      data = await updateTask(id, payload, files || undefined);
+      data = await updateTask(id, sendPayload);
     } else {
-      data = await createTask(payload, files || undefined);
-    }
-    if (files && files.length > 0) {
-      window.alert("Файлы загружены на сервер");
+      data = await createTask(sendPayload);
     }
     if (data && data._id) {
       authFetch(`/api/v1/tasks/${data._id}`)
@@ -442,9 +426,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
     if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
     if (data && onSave) onSave(data);
-    setFiles(null);
-    setUploadDone(false);
-    setPreviews([]);
+    setAttachments([]);
   });
 
   const handleDelete = async () => {
@@ -883,13 +865,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <div>
               <label className="block text-sm font-medium">Вложения</label>
               <ul className="flex flex-wrap gap-2">
-                {attachments.map((a) =>
-                  /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
-                    <li key={a.url}>
+                {attachments.map((a) => (
+                  <li key={a.url} className="flex items-center gap-2">
+                    {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
                       <img src={a.url} alt={a.name} className="h-16 rounded" />
-                    </li>
-                  ) : (
-                    <li key={a.url}>
+                    ) : (
                       <a
                         href={a.url}
                         target="_blank"
@@ -898,67 +878,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       >
                         {a.name}
                       </a>
-                    </li>
-                  ),
-                )}
+                    )}
+                    <button
+                      type="button"
+                      className="text-red-500"
+                      onClick={() => removeAttachment(a)}
+                    >
+                      Удалить
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
-          <div>
-            <button
-              type="button"
-              className="btn-blue rounded-full"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={!editing || !titleValue.trim()}
-            >
-              Прикрепить файл
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={!editing || !titleValue.trim()}
-            />
-            {uploadDone && (
-              <p className="mt-2 text-sm">
-                {previews.length > 1 ? "Файлы загружены" : "Файл загружен"}
-              </p>
-            )}
-            {previews.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {
-                  // Санитизируем URL и имена файлов перед выводом
-                  previews.map((p, i) =>
-                    p.isImage ? (
-                      <a
-                        key={i}
-                        href={DOMPurify.sanitize(p.url)}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        <img
-                          src={DOMPurify.sanitize(p.url)}
-                          className="h-16 rounded"
-                        />
-                      </a>
-                    ) : (
-                      <a
-                        key={i}
-                        href={DOMPurify.sanitize(p.url)}
-                        target="_blank"
-                        rel="noopener"
-                        className="text-accentPrimary underline"
-                      >
-                        {DOMPurify.sanitize(p.name)}
-                      </a>
-                    ),
-                  )
-                }
-              </div>
-            )}
-          </div>
+          <FileUploader
+            disabled={!editing || !titleValue.trim()}
+            onUploaded={(a) => setAttachments((p) => [...p, a])}
+            onRemove={(a) => removeAttachment(a)}
+          />
           <div className="flex justify-end space-x-2">
             {isEdit && isAdmin && editing && (
               <button className="btn-red rounded-full" onClick={handleDelete}>

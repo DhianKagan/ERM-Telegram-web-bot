@@ -141,24 +141,60 @@ const handleChunks: RequestHandler = async (req, res) => {
       string,
       string
     >;
+    // Проверяем допустимость идентификатора файла
+    if (typeof fileId !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(fileId)) {
+      res.status(400).json({ error: 'Недопустимый идентификатор файла' });
+      return;
+    }
     const file = req.file as Express.Multer.File;
     const idx = Number(chunkIndex);
     const total = Number(totalChunks);
+    // Проверяем индексы чанков
+    if (
+      !Number.isInteger(idx) ||
+      !Number.isInteger(total) ||
+      idx < 0 ||
+      total <= 0 ||
+      idx >= total
+    ) {
+      res.status(400).json({ error: 'Недопустимый индекс' });
+      return;
+    }
     const userId = (req as RequestWithUser).user?.id as number;
-    const dir = path.join(uploadsDir, String(userId), fileId);
+    const baseDir = path.resolve(uploadsDir, String(userId));
+    const dir = path.resolve(baseDir, fileId);
+    // Не допускаем выход за пределы каталога пользователя
+    if (!dir.startsWith(baseDir + path.sep)) {
+      res.status(400).json({ error: 'Недопустимый путь' });
+      return;
+    }
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, String(idx)), file.buffer);
+    const chunkPath = path.resolve(dir, String(idx));
+    if (!chunkPath.startsWith(dir + path.sep)) {
+      res.status(400).json({ error: 'Недопустимый путь части' });
+      return;
+    }
+    fs.writeFileSync(chunkPath, file.buffer);
     if (idx + 1 === total) {
-      const final = path.join(dir, file.originalname);
+      const final = path.resolve(dir, path.basename(file.originalname));
+      if (!final.startsWith(dir + path.sep)) {
+        res.status(400).json({ error: 'Недопустимое имя файла' });
+        return;
+      }
       for (let i = 0; i < total; i++) {
-        const part = fs.readFileSync(path.join(dir, String(i)));
+        const partPath = path.resolve(dir, String(i));
+        if (!partPath.startsWith(dir + path.sep)) {
+          res.status(400).json({ error: 'Недопустимый путь части' });
+          return;
+        }
+        const part = fs.readFileSync(partPath);
         fs.appendFileSync(final, part);
-        fs.unlinkSync(path.join(dir, String(i)));
+        fs.unlinkSync(partPath);
       }
       const diskFile: Express.Multer.File = {
         ...file,
         destination: dir,
-        filename: file.originalname,
+        filename: path.basename(file.originalname),
         path: final,
         size: fs.statSync(final).size,
         buffer: Buffer.alloc(0),

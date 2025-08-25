@@ -19,6 +19,7 @@ until pnpm --dir apps/api run build; do
   pnpm --dir apps/api install
 done
 
+mkdir -p /tmp/apps
 attempt=1
 max_attempts=5
 while [ $attempt -le $max_attempts ]; do

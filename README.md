@@ -19,7 +19,7 @@ Telegram‑бот и веб‑клиент для учёта задач. Сер�
 ```bash
 pnpm install
 ./scripts/setup_and_test.sh
-pnpm --dir apps/api dev
+pnpm run dev # запуск api и web без таймаута PNPM
 ```
 
 ## Сборка и проверки

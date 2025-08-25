@@ -36,6 +36,7 @@
 - `install_bot_deps.sh` скачивает pnpm через curl при сбоях corepack и npm.
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха, запускает аудит зависимостей и записывает лог в `/tmp/apps/api_start.log`.
+- `pnpm run dev` устанавливает `PNPM_SCRIPT_TIMEOUT=0`, чтобы серверы не завершались через 10 минут.
 - При необходимости проверяйте зависимости вручную командой `./scripts/audit_deps.sh` (использует `audit-ci` и пропускает слабые уязвимости `--audit-level high`).
 - Dependabot еженедельно обновляет npm-зависимости, для PR по безопасности используйте шаблон `Security Update`.
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`.

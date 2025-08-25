@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Отключён таймаут PNPM для `pnpm run dev`, сервер работает без завершения.
 - В Dockerfile ограничена параллельность `pnpm fetch`, чтобы избежать ошибок 429 при сборке.
 - `install_bot_deps.sh` скачивает pnpm через curl при сбое corepack и npm.
 - Скрипт `install_bot_deps.sh` корректно устанавливает pnpm через corepack с резервом на npm.

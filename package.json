@@ -3,6 +3,10 @@
   "private": true,
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
+    "pretest": "pnpm --filter shared build",
+    "pretest:unit": "pnpm --filter shared build",
+    "pretest:api": "pnpm --filter shared build",
+    "pretest:e2e": "pnpm --filter shared build",
     "build": "pnpm -r build",
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",

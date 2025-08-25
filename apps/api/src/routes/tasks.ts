@@ -1,4 +1,4 @@
-// Роуты задач: CRUD, время, массовые действия, миниатюры вложений
+// Роуты задач: CRUD, время, массовые действия, миниатюры вложений, chunk-upload
 // Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg
 import fs from 'fs';
 import path from 'path';
@@ -132,6 +132,55 @@ const upload = multer({
   },
   limits: { fileSize: 10 * 1024 * 1024 },
 });
+
+const chunkUpload = multer({ storage: multer.memoryStorage() });
+
+const handleChunks: RequestHandler = async (req, res) => {
+  try {
+    const { fileId, chunkIndex, totalChunks } = req.body as Record<
+      string,
+      string
+    >;
+    const file = req.file as Express.Multer.File;
+    const idx = Number(chunkIndex);
+    const total = Number(totalChunks);
+    const userId = (req as RequestWithUser).user?.id as number;
+    const dir = path.join(uploadsDir, String(userId), fileId);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, String(idx)), file.buffer);
+    if (idx + 1 === total) {
+      const final = path.join(dir, file.originalname);
+      for (let i = 0; i < total; i++) {
+        const part = fs.readFileSync(path.join(dir, String(i)));
+        fs.appendFileSync(final, part);
+        fs.unlinkSync(path.join(dir, String(i)));
+      }
+      const diskFile: Express.Multer.File = {
+        ...file,
+        destination: dir,
+        filename: file.originalname,
+        path: final,
+        size: fs.statSync(final).size,
+        buffer: Buffer.alloc(0),
+      };
+      (req.files as Express.Multer.File[]) = [diskFile];
+      await processUploads(req, res, () => {});
+      fs.rmSync(dir, { recursive: true, force: true });
+      res.json((req.body as BodyWithAttachments).attachments?.[0]);
+      return;
+    }
+    res.json({ received: idx });
+  } catch {
+    res.sendStatus(500);
+  }
+};
+
+router.post(
+  '/upload-chunk',
+  authMiddleware(),
+  chunkUpload.single('file'),
+  handleChunks,
+);
 /**
  * Нормализует массивы и парсит вложения из JSON-строк.
  * Поддерживает поля исполнителей, контролёров и вложений.

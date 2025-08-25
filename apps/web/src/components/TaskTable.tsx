@@ -12,6 +12,7 @@ import type {
 import useGrid from "../hooks/useGrid";
 import taskColumns from "../columns/taskColumns";
 import type { Task } from "shared";
+import useTasks from "../context/useTasks";
 
 type TaskRow = Task & Record<string, any>;
 
@@ -20,7 +21,6 @@ interface TaskTableProps {
   users?: Record<number, any>;
   onSelectionChange?: (ids: string[]) => void;
   onDataChange?: (rows: TaskRow[]) => void;
-  quickFilterText?: string;
   selectable?: boolean;
   onRowClick?: (id: string) => void;
 }
@@ -30,11 +30,11 @@ export default function TaskTable({
   users = {},
   onSelectionChange,
   onDataChange,
-  quickFilterText,
   selectable = false,
   onRowClick,
 }: TaskTableProps) {
   const apiRef = React.useRef<GridApi | null>(null);
+  const { query } = useTasks();
   const columnDefs = React.useMemo(
     () => taskColumns(selectable, users),
     [selectable, users],
@@ -90,7 +90,7 @@ export default function TaskTable({
             onSortChanged={updateData}
             onFilterChanged={updateData}
             onRowClicked={(e) => onRowClick && onRowClick(e.data._id)}
-            quickFilterText={quickFilterText}
+            quickFilterText={query}
             {...gridOptions}
           />
         </React.Suspense>

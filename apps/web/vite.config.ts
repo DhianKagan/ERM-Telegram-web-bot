@@ -49,7 +49,10 @@ export default defineConfig(() => ({
               ? `${pkgPath[0]}/${pkgPath[1]}`
               : pkgPath[0];
             if (pkg.includes("@ckeditor")) return "ckeditor";
-            if (pkg.startsWith("react")) return "react";
+            // Объединяем зависимости React и use-callback-ref в один чанк,
+            // чтобы избежать циклической загрузки и ошибок useLayoutEffect.
+            if (pkg.startsWith("react") || pkg.includes("use-callback-ref"))
+              return "react";
             return pkg.replace("@", "").replace("/", "-");
           }
         },

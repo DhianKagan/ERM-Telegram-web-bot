@@ -9,10 +9,22 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import sri from "./plugins/sri";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), sri()],
+export default defineConfig(() => ({
+  plugins: [
+    react(),
+    sri(),
+    process.env.ANALYZE
+      ? visualizer({
+          filename: "bundle-report.html",
+          template: "treemap",
+          gzipSize: true,
+          brotliSize: true,
+        })
+      : undefined,
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
@@ -29,15 +41,19 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
-          ckeditor: [
-            "@ckeditor/ckeditor5-react",
-            "@ckeditor/ckeditor5-build-classic",
-          ],
-          // чанк charts удалён: react-apexcharts загружается динамически
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            const parts = id.toString().split("node_modules/");
+            const pkgPath = parts[parts.length - 1].split("/");
+            const pkg = pkgPath[0].startsWith("@")
+              ? `${pkgPath[0]}/${pkgPath[1]}`
+              : pkgPath[0];
+            if (pkg.includes("@ckeditor")) return "ckeditor";
+            if (pkg.startsWith("react")) return "react";
+            return pkg.replace("@", "").replace("/", "-");
+          }
         },
       },
     },
   },
-});
+}));

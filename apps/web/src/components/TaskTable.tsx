@@ -1,7 +1,7 @@
 // Назначение файла: таблица задач на основе DataTable
-// Модули: React, DataTable, taskColumns, useTasks
-import React from "react";
-import DataTable from "./DataTable";
+// Модули: React, DataTable (лениво), taskColumns, useTasks
+import React, { lazy, Suspense } from "react";
+const DataTable = lazy(() => import("./DataTable"));
 import taskColumns, { TaskRow } from "../columns/taskColumns";
 import useTasks from "../context/useTasks";
 
@@ -28,21 +28,23 @@ export default function TaskTable({
   const columns = React.useMemo(() => taskColumns(true, users), [users]);
 
   return (
-    <DataTable
-      columns={columns}
-      data={tasks.filter((t) =>
-        query
-          ? JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
-          : true,
-      )}
-      pageIndex={page}
-      pageSize={25}
-      pageCount={pageCount}
-      onPageChange={onPageChange}
-      onSelectionChange={(rows) =>
-        onSelectionChange?.((rows as TaskRow[]).map((r) => r._id))
-      }
-      onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
-    />
+    <Suspense fallback={<div>Загрузка таблицы...</div>}>
+      <DataTable
+        columns={columns}
+        data={tasks.filter((t) =>
+          query
+            ? JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
+            : true,
+        )}
+        pageIndex={page}
+        pageSize={25}
+        pageCount={pageCount}
+        onPageChange={onPageChange}
+        onSelectionChange={(rows) =>
+          onSelectionChange?.((rows as TaskRow[]).map((r) => r._id))
+        }
+        onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
+      />
+    </Suspense>
   );
 }

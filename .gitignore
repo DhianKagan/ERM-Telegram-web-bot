@@ -27,3 +27,4 @@ coverage/
 .DS_Store
 .vscode/
 free-react-tailwind-admin-dashboard-main.zip
+apps/web/bundle-report.html

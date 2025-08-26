@@ -5,16 +5,38 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const tailwind = `https://cdn.tailwindcss.com?plugins=forms`;
-const markup = `<!DOCTYPE html><html><head>
-<script src="${tailwind}"></script>
-</head><body class="p-4">
-<button class="bg-blue-600 text-white rounded-md px-4 py-2 focus-visible:ring-2 focus-visible:ring-offset-2">
-Кнопка
-</button>
-<div class="mt-4">
-<label for="input" class="mb-1 block">Введите</label>
-<input id="input" class="w-full rounded-md border border-gray-300 px-4 py-2 focus-visible:ring-2 focus-visible:ring-blue-500" />
+const markup = `<!DOCTYPE html><html><head><style>
+body { padding: 1rem; }
+button {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+}
+button:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+input {
+  width: 100%;
+  border: 1px solid #d1d5dd;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+}
+input:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+.spacer { margin-top: 1rem; }
+</style></head><body>
+<button>Кнопка</button>
+<div class="spacer">
+<label for="input">Введите</label>
+<input id="input" />
 </div>
 </body></html>`;
 

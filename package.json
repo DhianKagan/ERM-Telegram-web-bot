@@ -80,7 +80,10 @@
       "chromedriver",
       "core-js",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "jspdf": "patches/jspdf.patch"
+    }
   },
   "packageManager": "pnpm@10.15.0",
   "size-limit": [

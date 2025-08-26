@@ -2,6 +2,8 @@
 
 # История изменений
 
+- Удалён пакет `react-jss` из lockfile, зафиксированы `react-is` 18.3.1 и
+  `hoist-non-react-statics` 3.3.2, устраняя ошибку запуска клиента.
 - Dockerfile копирует каталог `patches` перед `pnpm fetch`, устраняя ошибку отсутствующего патча.
 
 - Зафиксирована версия `react-is` 18.2.0 в `pnpm.overrides`,

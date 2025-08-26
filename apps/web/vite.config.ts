@@ -49,11 +49,12 @@ export default defineConfig(() => ({
               ? `${pkgPath[0]}/${pkgPath[1]}`
               : pkgPath[0];
             if (pkg.includes("@ckeditor")) return "ckeditor";
-            // Объединяем зависимости React, react-is и hoist-non-react-statics
-            // в один чанк, чтобы избежать циклической загрузки и ошибок
-            // `ContextConsumer`.
+            // Объединяем зависимости React и @emotion, а также react-is и
+            // hoist-non-react-statics в один чанк, чтобы избежать циклической
+            // загрузки и ошибок `ContextConsumer`.
             if (
               pkg.startsWith("react") ||
+              pkg.startsWith("@emotion") ||
               pkg.includes("use-callback-ref") ||
               pkg === "hoist-non-react-statics" ||
               pkg === "react-is"

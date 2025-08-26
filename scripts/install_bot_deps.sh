@@ -12,7 +12,9 @@ if ! command -v pnpm >/dev/null; then
       echo "corepack не смог установить pnpm, пробуем npm..." >&2
       if ! npm install -g pnpm >/dev/null 2>&1; then
         echo "npm не смог установить pnpm, скачиваем скрипт..." >&2
-        curl -fsSL https://get.pnpm.io/install.sh | sh - >/dev/null 2>&1
+        if ! curl -fsSL --retry 5 --retry-delay 1 https://get.pnpm.io/install.sh | sh - >/dev/null 2>&1; then
+          echo "Не удалось скачать скрипт установки pnpm." >&2
+        fi
         export PNPM_HOME="$HOME/.local/share/pnpm"
         export PATH="$PNPM_HOME:$PATH"
       fi
@@ -21,7 +23,9 @@ if ! command -v pnpm >/dev/null; then
     echo "Не найден pnpm и corepack; устанавливаем pnpm через npm..." >&2
     if ! npm install -g pnpm >/dev/null 2>&1; then
       echo "npm не смог установить pnpm, скачиваем скрипт..." >&2
-      curl -fsSL https://get.pnpm.io/install.sh | sh - >/dev/null 2>&1
+      if ! curl -fsSL --retry 5 --retry-delay 1 https://get.pnpm.io/install.sh | sh - >/dev/null 2>&1; then
+        echo "Не удалось скачать скрипт установки pnpm." >&2
+      fi
       export PNPM_HOME="$HOME/.local/share/pnpm"
       export PATH="$PNPM_HOME:$PATH"
     fi

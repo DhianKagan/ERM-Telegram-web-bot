@@ -2,6 +2,8 @@
 
 # История изменений
 
+- Dockerfile копирует каталог `patches` перед `pnpm fetch`, устраняя ошибку отсутствующего патча.
+
 - Зафиксирована версия `react-is` 18.2.0 в `pnpm.overrides`,
   устраняя ошибку «Cannot set properties of undefined (setting 'AsyncMode')»
   в production-сборке.

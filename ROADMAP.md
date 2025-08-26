@@ -380,3 +380,4 @@
 281. Утилита verifyInitData использует @telegram-apps/init-data-node, guard tmaAuthGuard отдаёт распарсенные данные
 282. Лимитер считает запросы по telegram_id и поддерживает капчу через `X-Captcha-Token`
 283. Схема задач и формы содержат `formVersion`, сервер отвергает неизвестные версии
+284. Dockerfile копирует каталог `patches` перед `pnpm fetch`, исключая ошибку отсутствующего патча.

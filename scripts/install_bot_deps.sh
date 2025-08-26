@@ -48,6 +48,10 @@ if ! command -v pnpm >/dev/null; then
   command -v pnpm >/dev/null || { echo "Не удалось установить pnpm." >&2; exit 1; }
 fi
 
+# Гарантируем использование реестра npmjs.org для scope @jsr
+pnpm config set @jsr:registry https://registry.npmjs.org/ >/dev/null
+npm config set @jsr:registry https://registry.npmjs.org/ >/dev/null 2>&1 || true
+
 # Устанавливаем корневые зависимости для линтера
 pnpm install --frozen-lockfile || pnpm install
 # Устанавливаем зависимости сервера

@@ -7,6 +7,7 @@
 - Procfile выполняет `pnpm build` перед запуском, раздел деплоя на Railway добавлен в документацию.
 - Скрипт `pre_pr_check.sh` сохраняет лог запуска в `/tmp/apps`.
 - `install_bot_deps.sh` при недоступности npm берёт pnpm из GitHub.
+- `.npmrc` фиксирует registry npmjs.org для scope `@jsr`.
 - Оптимизировать Docker-сборку: кеш зависимостей через `pnpm fetch`, раздельная сборка `web` и `api`.
 - Сборка клиента Vite очищает каталог вывода через `emptyOutDir`.
 - Оптимизировать размер клиентского бандла; текущий лимит size-limit увеличен до 900 KB.

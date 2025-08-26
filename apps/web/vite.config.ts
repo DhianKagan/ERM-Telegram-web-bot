@@ -49,9 +49,15 @@ export default defineConfig(() => ({
               ? `${pkgPath[0]}/${pkgPath[1]}`
               : pkgPath[0];
             if (pkg.includes("@ckeditor")) return "ckeditor";
-            // Объединяем зависимости React и use-callback-ref в один чанк,
-            // чтобы избежать циклической загрузки и ошибок useLayoutEffect.
-            if (pkg.startsWith("react") || pkg.includes("use-callback-ref"))
+            // Объединяем зависимости React, react-is и hoist-non-react-statics
+            // в один чанк, чтобы избежать циклической загрузки и ошибок
+            // `ContextConsumer`.
+            if (
+              pkg.startsWith("react") ||
+              pkg.includes("use-callback-ref") ||
+              pkg === "hoist-non-react-statics" ||
+              pkg === "react-is"
+            )
               return "react";
             return pkg.replace("@", "").replace("/", "-");
           }

@@ -4,9 +4,9 @@
 
 - Dockerfile копирует каталог `patches` перед `pnpm fetch`, устраняя ошибку отсутствующего патча.
 
-- Зафиксирована версия `react-is` 18.2.0 в `pnpm.overrides`,
-  устраняя ошибку «Cannot set properties of undefined (setting 'AsyncMode')»
-  в production-сборке.
+- Зафиксированы версии `react-is` 18.3.1 и `hoist-non-react-statics` 3.3.2
+  в `pnpm.overrides`, что устраняет зависимость старых пакетов и
+  предотвращает сбой клиента.
 - Исправлена ошибка разделения чанков: `use-callback-ref` включён в `react`,
   что устраняет сбой `useLayoutEffect`.
 - Отключён таймаут PNPM для `pnpm run dev`, сервер работает без завершения.

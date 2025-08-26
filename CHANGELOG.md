@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Скрипт `install_bot_deps.sh` скачивает бинарный pnpm из GitHub при недоступности npm и corepack.
 - Удалён пакет `react-jss` из lockfile, зафиксированы `react-is` 18.3.1 и
   `hoist-non-react-statics` 3.3.2, устраняя ошибку запуска клиента.
 - Dockerfile копирует каталог `patches` перед `pnpm fetch`, устраняя ошибку отсутствующего патча.

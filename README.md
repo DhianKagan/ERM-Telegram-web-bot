@@ -30,7 +30,7 @@ pnpm size        # контроль размера бандла
 pnpm a11y        # проверка контрастности
 pnpm approve-builds  # контроль скриптов зависимостей
 ./scripts/pre_pr_check.sh  # проверка сборки и запуска перед PR
-./scripts/install_bot_deps.sh  # установка зависимостей и pnpm при необходимости
+./scripts/install_bot_deps.sh  # установка зависимостей; при сбоях скачивает pnpm из GitHub
 ```
 
 Dockerfile копирует каталог `patches` перед установкой зависимостей для применения патчей.

@@ -17,6 +17,11 @@ overrides:
   react-dom: 18.2.0
   react-is: 18.2.0
 
+patchedDependencies:
+  jspdf:
+    hash: 6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898
+    path: patches/jspdf.patch
+
 importers:
 
   .:
@@ -403,10 +408,10 @@ importers:
         version: 25.4.0(typescript@5.9.2)
       jspdf:
         specifier: ^3.0.1
-        version: 3.0.1
+        version: 3.0.1(patch_hash=6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898)
       jspdf-autotable:
         specifier: ^3.8.2
-        version: 3.8.4(jspdf@3.0.1)
+        version: 3.8.4(jspdf@3.0.1(patch_hash=6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898))
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -443,6 +448,9 @@ importers:
       react-i18next:
         specifier: ^15.6.1
         version: 15.7.1(i18next@25.4.0(typescript@5.9.2))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.9.2)
+      react-jss:
+        specifier: ^10.10.0
+        version: 10.10.0(react@18.2.0)
       react-quill:
         specifier: ^2.0.0
         version: 2.0.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -9676,6 +9684,8 @@ snapshots:
   '@ckeditor/ckeditor5-adapter-ckfinder@41.4.2':
     dependencies:
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-adapter-ckfinder@46.0.2':
     dependencies:
@@ -9792,8 +9802,6 @@ snapshots:
       blurhash: 2.0.5
       ckeditor5: 46.0.2
       lodash-es: 4.17.21
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-ckbox@46.0.2':
     dependencies:
@@ -9898,6 +9906,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-classic@41.4.2':
     dependencies:
@@ -9923,6 +9933,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-inline@46.0.2':
     dependencies:
@@ -10003,6 +10015,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.2':
     dependencies:
@@ -10061,6 +10075,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-html-embed@46.0.2':
     dependencies:
@@ -10223,8 +10239,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-mention@46.0.2':
     dependencies:
@@ -10244,8 +10258,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-page-break@46.0.2':
     dependencies:
@@ -10255,8 +10267,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-paragraph@41.4.2':
     dependencies:
@@ -10282,8 +10292,6 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.2
       '@ckeditor/ckeditor5-engine': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-react@6.3.0(@ckeditor/ckeditor5-core@46.0.2)(@ckeditor/ckeditor5-editor-multi-root@46.0.2)(@ckeditor/ckeditor5-engine@46.0.2)(@ckeditor/ckeditor5-utils@46.0.2)(@ckeditor/ckeditor5-watchdog@46.0.2)(react@18.2.0)':
     dependencies:
@@ -10327,8 +10335,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-source-editing@46.0.2':
     dependencies:
@@ -10359,8 +10365,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-table@41.4.2':
     dependencies:
@@ -10379,8 +10383,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-theme-lark@46.0.2':
     dependencies:
@@ -15550,11 +15552,11 @@ snapshots:
       ms: 2.1.3
       semver: 7.7.2
 
-  jspdf-autotable@3.8.4(jspdf@3.0.1):
+  jspdf-autotable@3.8.4(jspdf@3.0.1(patch_hash=6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898)):
     dependencies:
-      jspdf: 3.0.1
+      jspdf: 3.0.1(patch_hash=6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898)
 
-  jspdf@3.0.1:
+  jspdf@3.0.1(patch_hash=6cb60a2438408e005f292829bfc232b845fac902521b09f91ec65d740ab37898):
     dependencies:
       '@babel/runtime': 7.28.3
       atob: 2.1.2

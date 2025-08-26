@@ -59,13 +59,11 @@ export default function applySecurity(app: express.Express): void {
   const styleSrc = [
     "'self'",
     "'unsafe-inline'",
-    'https://fonts.googleapis.com',
     ...parseList(process.env.CSP_STYLE_SRC_ALLOWLIST),
   ];
 
   const fontSrc = [
     "'self'",
-    'https://fonts.gstatic.com',
     ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
   ];
 

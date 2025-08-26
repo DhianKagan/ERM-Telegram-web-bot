@@ -48,8 +48,10 @@ if ! command -v pnpm >/dev/null; then
   command -v pnpm >/dev/null || { echo "Не удалось установить pnpm." >&2; exit 1; }
 fi
 
-# Гарантируем использование реестра npmjs.org для scope @jsr
+# Гарантируем использование реестра npmjs.org для всех пакетов и scope @jsr
+pnpm config set registry https://registry.npmjs.org/ >/dev/null
 pnpm config set @jsr:registry https://registry.npmjs.org/ >/dev/null
+npm config set registry https://registry.npmjs.org/ >/dev/null 2>&1 || true
 npm config set @jsr:registry https://registry.npmjs.org/ >/dev/null 2>&1 || true
 
 # Устанавливаем корневые зависимости для линтера

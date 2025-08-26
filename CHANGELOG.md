@@ -5,6 +5,8 @@
 - Обновлён пакет `react-is` до версии 18.3.1, что устраняет
   ошибку «Cannot set properties of undefined (setting 'AsyncMode')»
   в production-сборке.
+- Зафиксирована версия `react-is` 18.3.1 в `pnpm.overrides`,
+  исключая появление устаревших копий.
 - Исправлена ошибка разделения чанков: `use-callback-ref` включён в `react`,
   что устраняет сбой `useLayoutEffect`.
 - Отключён таймаут PNPM для `pnpm run dev`, сервер работает без завершения.

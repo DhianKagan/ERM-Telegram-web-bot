@@ -4,13 +4,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getProfile } from "../services/auth";
 import { AuthContext } from "./AuthContext";
 import { setCsrfToken } from "../utils/csrfToken";
+import type { User } from "../types/user";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const loadCsrf = async () => {

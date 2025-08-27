@@ -1,6 +1,5 @@
 // Назначение файла: сборка HTTP API.
 // Основные модули: express, security, routes
-import dotenv from 'dotenv';
 import config from '../config';
 import express from 'express';
 import compression from 'compression';
@@ -14,8 +13,6 @@ import { promisify } from 'util';
 import applySecurity from './security';
 import registerRoutes from './routes';
 import { startDiskMonitor } from '../services/diskSpace';
-
-dotenv.config();
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in API:', err);

@@ -1,4 +1,4 @@
-// Контекст аутентификации, запрашивает профиль и CSRF-токен
+// Контекст аутентификации, запрашивает профиль и CSRF-токен, JWT не хранится
 // Модули: React, services/auth, AuthContext
 import { useEffect, useState, type ReactNode } from "react";
 import { getProfile } from "../services/auth";
@@ -49,9 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   };
   return (
-    <AuthContext.Provider
-      value={{ token: null, user, logout, setUser, loading }}
-    >
+    <AuthContext.Provider value={{ user, logout, setUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

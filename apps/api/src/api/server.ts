@@ -84,7 +84,7 @@ export async function buildApp(): Promise<express.Express> {
   const sessionOpts: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'session_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },
   };
   if (process.env.NODE_ENV !== 'test') {

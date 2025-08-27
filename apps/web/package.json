@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "shadcn": "shadcn",
-    "bundle-report": "ANALYZE=true vite build"
+    "bundle-report": "ANALYZE=true vite build",
+    "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts"
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",

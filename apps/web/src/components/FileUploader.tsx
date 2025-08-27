@@ -1,15 +1,8 @@
 // Компонент загрузки файлов с drag-and-drop и прогрессом
-// Основные модули: React, authFetch
+// Основные модули: React, authFetch, типы задач
 import React from "react";
 import authFetch from "../utils/authFetch";
-
-interface Attachment {
-  name: string;
-  url: string;
-  thumbnailUrl?: string;
-  type: string;
-  size: number;
-}
+import type { Attachment } from "../types/task";
 
 interface UploadItem {
   file: File;

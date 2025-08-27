@@ -32,8 +32,14 @@ export async function checkDiskSpace(): Promise<void> {
       );
     }
     if (free >= THRESHOLD) warned = false;
-  } catch {
-    /* пропускаем ошибки */
+  } catch (e) {
+    console.error('diskSpace', e);
+    await enqueue(() =>
+      call('sendMessage', {
+        chat_id: chatId,
+        text: 'Не удалось проверить свободное место на диске',
+      }),
+    );
   }
 }
 

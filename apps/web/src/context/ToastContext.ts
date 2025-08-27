@@ -16,4 +16,4 @@ export interface ToastState {
 export const ToastContext = createContext<ToastState | undefined>(undefined);
 
 // Экспорт провайдера из соседнего файла
-export { ToastProvider } from "./ToastContext.tsx";
+export { ToastProvider } from "./ToastProvider";

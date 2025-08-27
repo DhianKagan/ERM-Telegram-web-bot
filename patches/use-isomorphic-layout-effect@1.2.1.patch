@@ -1,0 +1,53 @@
+diff --git a/dist/use-isomorphic-layout-effect.browser.cjs.js b/dist/use-isomorphic-layout-effect.browser.cjs.js
+index 5316dd7..3fb7ba9 100644
+--- a/dist/use-isomorphic-layout-effect.browser.cjs.js
++++ b/dist/use-isomorphic-layout-effect.browser.cjs.js
+@@ -4,6 +4,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+ var react = require('react');
+ 
+-var index = react.useLayoutEffect ;
++var noop = function noop() {};
++var index = react && react.useLayoutEffect ? react.useLayoutEffect : noop;
+ 
+ exports["default"] = index;
+diff --git a/dist/use-isomorphic-layout-effect.browser.esm.js b/dist/use-isomorphic-layout-effect.browser.esm.js
+index 30974e9..f94a2a5 100644
+--- a/dist/use-isomorphic-layout-effect.browser.esm.js
++++ b/dist/use-isomorphic-layout-effect.browser.esm.js
+@@ -1,5 +1,6 @@
+-import { useLayoutEffect } from 'react';
++import * as React from 'react';
+ 
+-var index = useLayoutEffect ;
++var noop = function noop() {};
++var index = React && React.useLayoutEffect ? React.useLayoutEffect : noop;
+ 
+ export { index as default };
+diff --git a/dist/use-isomorphic-layout-effect.cjs.js b/dist/use-isomorphic-layout-effect.cjs.js
+index 0d71298..12fc32f 100644
+--- a/dist/use-isomorphic-layout-effect.cjs.js
++++ b/dist/use-isomorphic-layout-effect.cjs.js
+@@ -7,6 +7,6 @@ var react = require('react');
+ var isClient = typeof document !== 'undefined';
+ 
+ var noop = function noop() {};
+-var index = isClient ? react.useLayoutEffect : noop;
++var index = isClient && react && react.useLayoutEffect ? react.useLayoutEffect : noop;
+ 
+ exports["default"] = index;
+diff --git a/dist/use-isomorphic-layout-effect.esm.js b/dist/use-isomorphic-layout-effect.esm.js
+index 0dac19e..019d23f 100644
+--- a/dist/use-isomorphic-layout-effect.esm.js
++++ b/dist/use-isomorphic-layout-effect.esm.js
+@@ -1,8 +1,8 @@
+-import { useLayoutEffect } from 'react';
++import * as React from 'react';
+ 
+ var isClient = typeof document !== 'undefined';
+ 
+ var noop = function noop() {};
+-var index = isClient ? useLayoutEffect : noop;
++var index = isClient && React && React.useLayoutEffect ? React.useLayoutEffect : noop;
+ 
+ export { index as default };

@@ -60,7 +60,7 @@ export async function buildApp(): Promise<express.Express> {
   }
   if (needBuild) {
     console.log('Сборка интерфейса...');
-    await execAsync('npm run build-client', { cwd: root });
+    await execAsync('pnpm run build-client', { cwd: root });
   }
 
   app.set('trust proxy', 1);

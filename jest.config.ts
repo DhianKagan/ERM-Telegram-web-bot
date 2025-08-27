@@ -12,7 +12,7 @@ const config: Config = {
   setupFiles: ['<rootDir>/tests/setupEnv.ts'],
   coverageDirectory: 'coverage',
   transform: {
-    '^.+\\.[jt]s$': ['ts-jest', { tsconfig: './apps/api/tsconfig.json' }],
+    '^.+\\.[jt]sx?$': ['ts-jest', { tsconfig: './tests/tsconfig.json' }],
   },
 };
 

@@ -29,6 +29,7 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileUploader from "./FileUploader";
+import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 
 interface Props {
   onClose: () => void;
@@ -45,7 +46,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const initialRef = React.useRef<any>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
-  const [history, setHistory] = React.useState<any[]>([]);
+  const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = React.useState(false);
   const taskSchema = z.object({
     title: z.string().min(1, "Название обязательно"),
@@ -118,8 +119,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const payments =
     fields.find((f) => f.name === "payment_method")?.options || [];
   const statuses = fields.find((f) => f.name === "status")?.options || [];
-  const [users, setUsers] = React.useState<any[]>([]);
-  const [attachments, setAttachments] = React.useState<any[]>([]);
+  const [users, setUsers] = React.useState<UserBrief[]>([]);
+  const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const doneOptions = [
@@ -131,7 +132,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
   const titleValue = watch("title");
-  const removeAttachment = (a: any) => {
+  const removeAttachment = (a: Attachment) => {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
   };
 
@@ -145,7 +146,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           const t = d.task || d;
           setUsers((p) => {
             const list = [...p];
-            Object.values(d.users || {}).forEach((u) => {
+            const uMap = (d.users || {}) as Record<string, UserBrief>;
+            Object.values(uMap).forEach((u) => {
               if (!list.some((v) => v.telegram_id === u.telegram_id))
                 list.push(u);
             });
@@ -153,7 +155,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           });
           setRequestId(t.task_number || t.request_id);
           setCreated(new Date(t.createdAt).toISOString().slice(0, 10));
-          setHistory(t.history || []);
+          setHistory((t.history as HistoryItem[]) || []);
         });
     } else {
       setCreated(new Date().toISOString().slice(0, 10));
@@ -213,12 +215,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
         .then((list) => {
-          setUsers(list);
-          if (user) setCreator((user as any).telegram_id);
+          setUsers(list as UserBrief[]);
+          if (user) setCreator(String((user as UserBrief).telegram_id));
         });
     } else if (user) {
-      setCreator((user as any).telegram_id);
-      setUsers([user as any]);
+      setCreator(String((user as UserBrief).telegram_id));
+      setUsers([user as UserBrief]);
     }
   }, [user, isAdmin]);
 
@@ -258,7 +260,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         setStartLink(t.start_location_link || "");
         setEnd(t.end_location || "");
         setEndLink(t.end_location_link || "");
-        setAttachments(t.attachments || []);
+        setAttachments((t.attachments as Attachment[]) || []);
         setUsers((p) => {
           const list = [...p];
           Object.values(d.users || {}).forEach((u) => {
@@ -412,7 +414,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 : "",
             });
             setCreator(String(t.created_by || ""));
-            setAttachments(t.attachments || []);
+            setAttachments((t.attachments as Attachment[]) || []);
             setUsers((p) => {
               const list = [...p];
               Object.values(d.users || {}).forEach((u) => {
@@ -460,7 +462,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setStartLink(d.startLink);
     setEnd(d.end);
     setEndLink(d.endLink);
-    setAttachments(d.attachments);
+    setAttachments(d.attachments as Attachment[]);
     setDistanceKm(d.distanceKm);
   };
 

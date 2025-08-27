@@ -1,53 +1,52 @@
 diff --git a/dist/use-isomorphic-layout-effect.browser.cjs.js b/dist/use-isomorphic-layout-effect.browser.cjs.js
-index 5316dd7..3fb7ba9 100644
+index 5316dd767ae45296beb5d15e98291c5d8f2333c7..e9036f0fab0269d7d3a725c5856a26cccb7d1df9 100644
 --- a/dist/use-isomorphic-layout-effect.browser.cjs.js
 +++ b/dist/use-isomorphic-layout-effect.browser.cjs.js
-@@ -4,6 +4,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
+@@ -4,6 +4,6 @@ Object.defineProperty(exports, '__esModule', { value: true });
  
  var react = require('react');
  
 -var index = react.useLayoutEffect ;
-+var noop = function noop() {};
-+var index = react && react.useLayoutEffect ? react.useLayoutEffect : noop;
++var index = react.useLayoutEffect;
  
  exports["default"] = index;
 diff --git a/dist/use-isomorphic-layout-effect.browser.esm.js b/dist/use-isomorphic-layout-effect.browser.esm.js
-index 30974e9..f94a2a5 100644
+index 30974e958cce15fc4e6bd262b12c27f586c43731..c610e7733a7b334a2648e9ba63e7ca19bc97c769 100644
 --- a/dist/use-isomorphic-layout-effect.browser.esm.js
 +++ b/dist/use-isomorphic-layout-effect.browser.esm.js
-@@ -1,5 +1,6 @@
--import { useLayoutEffect } from 'react';
-+import * as React from 'react';
+@@ -1,5 +1,5 @@
+ import { useLayoutEffect } from 'react';
  
 -var index = useLayoutEffect ;
-+var noop = function noop() {};
-+var index = React && React.useLayoutEffect ? React.useLayoutEffect : noop;
++var index = useLayoutEffect;
  
  export { index as default };
 diff --git a/dist/use-isomorphic-layout-effect.cjs.js b/dist/use-isomorphic-layout-effect.cjs.js
-index 0d71298..12fc32f 100644
+index 0d71298d897d996996daaa9f895a2fc0e916274a..e9036f0fab0269d7d3a725c5856a26cccb7d1df9 100644
 --- a/dist/use-isomorphic-layout-effect.cjs.js
 +++ b/dist/use-isomorphic-layout-effect.cjs.js
-@@ -7,6 +7,6 @@ var react = require('react');
- var isClient = typeof document !== 'undefined';
+@@ -4,9 +4,6 @@ Object.defineProperty(exports, '__esModule', { value: true });
  
- var noop = function noop() {};
+ var react = require('react');
+ 
+-var isClient = typeof document !== 'undefined';
+-
+-var noop = function noop() {};
 -var index = isClient ? react.useLayoutEffect : noop;
-+var index = isClient && react && react.useLayoutEffect ? react.useLayoutEffect : noop;
++var index = react.useLayoutEffect;
  
  exports["default"] = index;
 diff --git a/dist/use-isomorphic-layout-effect.esm.js b/dist/use-isomorphic-layout-effect.esm.js
-index 0dac19e..019d23f 100644
+index 0dac19eaa2a83b3964572fa8be35f4ad2c6ccbb9..c610e7733a7b334a2648e9ba63e7ca19bc97c769 100644
 --- a/dist/use-isomorphic-layout-effect.esm.js
 +++ b/dist/use-isomorphic-layout-effect.esm.js
-@@ -1,8 +1,8 @@
--import { useLayoutEffect } from 'react';
-+import * as React from 'react';
+@@ -1,8 +1,5 @@
+ import { useLayoutEffect } from 'react';
  
- var isClient = typeof document !== 'undefined';
- 
- var noop = function noop() {};
+-var isClient = typeof document !== 'undefined';
+-
+-var noop = function noop() {};
 -var index = isClient ? useLayoutEffect : noop;
-+var index = isClient && React && React.useLayoutEffect ? React.useLayoutEffect : noop;
++var index = useLayoutEffect;
  
  export { index as default };

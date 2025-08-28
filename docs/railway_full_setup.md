@@ -12,7 +12,7 @@
 1. Нажмите **New Service → Deploy from GitHub** и выберите этот репозиторий.
 2. В разделе **Variables** задайте:
    - `BOT_TOKEN` — токен от BotFather.
-   - `MONGO_DATABASE_URL` — значение из `DATABASE_URL` плагина MongoDB.
+   - `MONGO_DATABASE_URL` — строка подключения к MongoDB. На Railway используйте значение из `DATABASE_URL` плагина MongoDB; в локальной проверке `scripts/pre_pr_check.sh` запускает MongoDB в памяти, а в CI проверка пропускается.
    - `APP_URL` — домен проекта вида `https://<имя>.up.railway.app`.
    - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага.
    - `VITE_ROUTING_URL` — тот же адрес для клиентской части.

@@ -4,6 +4,11 @@
 import fs from 'fs';
 import path from 'path';
 
+if (process.env.CI) {
+  console.log('CI: пропускаем проверку MongoDB');
+  process.exit(0);
+}
+
 function readEnv(file) {
   if (!fs.existsSync(file)) return;
   const env = fs.readFileSync(file, 'utf8');

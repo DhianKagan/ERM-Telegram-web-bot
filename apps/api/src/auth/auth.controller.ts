@@ -5,7 +5,8 @@ import formatUser from '../utils/formatUser';
 import { writeLog } from '../services/service';
 import setTokenCookie from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
-import { Request, Response } from 'express';
+import { Request, Response, CookieOptions } from 'express';
+import config from '../config';
 import type { UserDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 
@@ -91,6 +92,16 @@ export const updateProfile = async (
   }
   await writeLog(`Профиль ${req.user!.id}/${req.user!.username} изменён`);
   res.json(formatUser(user));
+};
+
+export const logout = (_req: Request, res: Response) => {
+  const secure = process.env.NODE_ENV === 'production';
+  const opts: CookieOptions = { httpOnly: true, secure, sameSite: 'lax' };
+  if (secure) {
+    opts.domain = config.cookieDomain || new URL(config.appUrl).hostname;
+  }
+  res.clearCookie('token', opts);
+  res.json({ status: 'ok' });
 };
 
 export const codes = service.codes;

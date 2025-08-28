@@ -21,9 +21,13 @@ done
 ./scripts/create_env_from_exports.sh >/dev/null || true
 
 # Проверяем наличие SESSION_SECRET
-if ! grep -q '^SESSION_SECRET=' .env || \
-  [ -z "$(grep '^SESSION_SECRET=' .env | cut -d= -f2-)" ]; then
+secret=$(grep '^SESSION_SECRET=' .env | cut -d= -f2-)
+if [ -z "$secret" ]; then
   echo "SESSION_SECRET не задан" >&2
+  exit 1
+fi
+if [ ${#secret} -lt 64 ]; then
+  echo "SESSION_SECRET короче 64 символов" >&2
   exit 1
 fi
 

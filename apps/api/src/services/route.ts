@@ -6,10 +6,26 @@ import { getTrace } from '../utils/trace';
 import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
 
 const tableGuard = process.env.ROUTE_TABLE_GUARD !== '0';
-const tableMaxPoints = Number(process.env.ROUTE_TABLE_MAX_POINTS || '100');
-const tableMinInterval = Number(
-  process.env.ROUTE_TABLE_MIN_INTERVAL_MS || '200',
+const defaultTableMaxPoints = 100;
+let tableMaxPoints = Number(
+  process.env.ROUTE_TABLE_MAX_POINTS || defaultTableMaxPoints,
 );
+if (!Number.isFinite(tableMaxPoints) || tableMaxPoints <= 0) {
+  console.warn(
+    `ROUTE_TABLE_MAX_POINTS должен быть положительным. Используется значение по умолчанию ${defaultTableMaxPoints}`,
+  );
+  tableMaxPoints = defaultTableMaxPoints;
+}
+const defaultTableMinInterval = 200;
+let tableMinInterval = Number(
+  process.env.ROUTE_TABLE_MIN_INTERVAL_MS || defaultTableMinInterval,
+);
+if (!Number.isFinite(tableMinInterval) || tableMinInterval <= 0) {
+  console.warn(
+    `ROUTE_TABLE_MIN_INTERVAL_MS должен быть положительным. Используется значение по умолчанию ${defaultTableMinInterval}`,
+  );
+  tableMinInterval = defaultTableMinInterval;
+}
 let tableLastCall = 0;
 
 const base = routingUrl.replace(/\/route$/, '');

@@ -18,6 +18,7 @@ jest.mock('../src/auth/auth.controller.ts', () => ({
   verifyInitData: jest.fn((_req, res) => res.json({ ok: true })),
   profile: jest.fn((_req, res) => res.json({ ok: true })),
   updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
+  logout: jest.fn((_req, res) => res.json({ status: 'ok' })),
 }));
 
 jest.mock('../src/api/middleware', () => ({

@@ -11,7 +11,7 @@ import { AuthContext } from '../apps/web/src/context/AuthContext';
 const value = {
   user: null,
   loading: true,
-  logout: jest.fn(),
+  logout: jest.fn().mockResolvedValue(undefined),
   setUser: jest.fn(),
 };
 

@@ -30,3 +30,6 @@ export const updateProfile = (data: ProfileData) =>
     },
     body: JSON.stringify(data),
   }).then((r) => r.json());
+
+export const logout = () =>
+  authFetch("/api/v1/auth/logout", { method: "POST" }).then(() => undefined);

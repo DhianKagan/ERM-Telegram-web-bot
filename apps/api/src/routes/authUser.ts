@@ -37,6 +37,8 @@ router.post(
   asyncHandler(authCtrl.verifyInitData),
 );
 
+router.post('/logout', authCtrl.logout as unknown as RequestHandler);
+
 router.get(
   '/profile',
   authMiddleware(),

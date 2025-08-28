@@ -6,6 +6,15 @@ cd "$(dirname "$0")/.."
 
 ./scripts/create_env_from_exports.sh >/dev/null || true
 
+# Проверяем наличие SESSION_SECRET
+if ! grep -q '^SESSION_SECRET=' .env || \
+  [ -z "$(grep '^SESSION_SECRET=' .env | cut -d= -f2-)" ]; then
+  echo "SESSION_SECRET не задан" >&2
+  exit 1
+fi
+
+cp .env apps/.env
+
 ./scripts/audit_deps.sh
 
 ./scripts/build_client.sh >/dev/null

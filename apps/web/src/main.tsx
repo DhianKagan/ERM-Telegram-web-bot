@@ -1,6 +1,7 @@
 // Точка входа: выбирает режим приложения (браузер или Telegram)
 import React from "react";
 import * as ReactDOM from "react-dom/client";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./index.css";
 
 const root = document.getElementById("root");
@@ -16,7 +17,9 @@ const isBrowser = forcedBrowser || !hasTelegram;
 function render(Component: React.ComponentType) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <Component />
+      <ErrorBoundary fallback={<div>Что-то пошло не так</div>}>
+        <Component />
+      </ErrorBoundary>
     </React.StrictMode>,
   );
 }

@@ -24,6 +24,11 @@ process.on('uncaughtException', (err) => {
 
 const execAsync = promisify(exec);
 
+const sessionSecret = process.env.SESSION_SECRET ?? '';
+if (!sessionSecret) {
+  throw new Error('Переменная SESSION_SECRET не задана');
+}
+
 export async function buildApp(): Promise<express.Express> {
   const { default: connect } = await import('../db/connection');
   await connect();
@@ -79,7 +84,7 @@ export async function buildApp(): Promise<express.Express> {
     ...(domain ? { domain } : {}),
   };
   const sessionOpts: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || 'session_secret',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },

@@ -160,6 +160,12 @@ export default async function registerRoutes(
     express.static(path.join(__dirname, '../../public'), {
       maxAge: '1y',
       immutable: true,
+      // Для HTML отключаем кэш, чтобы браузер получал свежий index.html
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
     }),
   );
   app.use(
@@ -277,7 +283,12 @@ export default async function registerRoutes(
     res.sendFile(path.join(pub, 'index.html'));
   });
 
-  app.get('*', spaRateLimiter, (_req: Request, res: Response) => {
+  app.get('*', spaRateLimiter, (req: Request, res: Response) => {
+    // Не отдаём index.html для запросов статических файлов
+    if (req.path.includes('.')) {
+      res.status(404).end();
+      return;
+    }
     res.sendFile(path.join(pub, 'index.html'));
   });
 

@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       try {
         return JSON.parse(saved) as ThemeTokens;
       } catch {
-        /* ignore */
+        /* игнорируем */
       }
     }
     return (presets as Record<string, ThemeTokens>)[theme] || presets.light;

@@ -22,7 +22,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setCsrfToken(data.csrfToken);
         }
       } catch {
-        /* ignore */
+        /* игнорируем */
       }
     };
     loadCsrf();

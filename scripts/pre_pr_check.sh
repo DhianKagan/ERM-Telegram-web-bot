@@ -20,16 +20,18 @@ done
 
 ./scripts/create_env_from_exports.sh >/dev/null || true
 
-# Проверяем наличие SESSION_SECRET
-secret=$(grep '^SESSION_SECRET=' .env | cut -d= -f2-)
-if [ -z "$secret" ]; then
-  echo "SESSION_SECRET не задан" >&2
-  exit 1
-fi
-if [ ${#secret} -lt 64 ]; then
-  echo "SESSION_SECRET короче 64 символов" >&2
-  exit 1
-fi
+# Проверяем обязательные переменные окружения
+for var in BOT_TOKEN JWT_SECRET SESSION_SECRET MONGO_DATABASE_URL APP_URL; do
+  value=$(grep "^${var}=" .env | cut -d= -f2-)
+  if [ -z "$value" ]; then
+    echo "${var} не задан" >&2
+    exit 1
+  fi
+  if [ "$var" = SESSION_SECRET ] && [ ${#value} -lt 64 ]; then
+    echo "SESSION_SECRET короче 64 символов" >&2
+    exit 1
+  fi
+done
 
 cp .env apps/.env
 

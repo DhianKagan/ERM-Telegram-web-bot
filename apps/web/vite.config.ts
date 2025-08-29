@@ -14,20 +14,22 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 /**
  * Плагин сохраняет `index.html` с уведомлением, чтобы Vite не удалял файл при
- * очистке каталога.
+ * очистке каталога. В продакшн-сборке не восстанавливает файл, если переменная
+ * `RESTORE_PLACEHOLDER` не равна `1`.
  */
 function preserveIndexHtml() {
   const indexPath = resolve(__dirname, "../api/public/index.html");
+  const restore = process.env.RESTORE_PLACEHOLDER === "1";
   let original = "";
   return {
     name: "preserve-index-html",
     buildStart() {
-      if (existsSync(indexPath)) {
+      if (restore && existsSync(indexPath)) {
         original = readFileSync(indexPath, "utf8");
       }
     },
     closeBundle() {
-      if (original) {
+      if (restore && original) {
         writeFileSync(indexPath, original);
       }
     },

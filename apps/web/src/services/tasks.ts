@@ -1,7 +1,7 @@
 // Назначение: запросы к API задач
-// Основные модули: authFetch
+// Основные модули: authFetch, buildTaskFormData
 import authFetch from "../utils/authFetch";
-import formSchema from "../../../api/src/form/taskForm.schema.json";
+import { buildTaskFormData } from "./buildTaskFormData";
 
 export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true")
@@ -22,20 +22,7 @@ export const createTask = (
   files?: FileList | File[],
   onProgress?: (e: ProgressEvent) => void,
 ) => {
-  const body = new FormData();
-  body.append("formVersion", String((formSchema as any).formVersion));
-  Object.entries(data).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (Array.isArray(v)) {
-      if (v.length === 0) return;
-      v.forEach((val) => body.append(k, String(val)));
-    } else if (typeof v === "object") {
-      body.append(k, JSON.stringify(v));
-    } else {
-      body.append(k, String(v));
-    }
-  });
-  if (files) Array.from(files).forEach((f) => body.append("files", f));
+  const body = buildTaskFormData(data, files);
   return authFetch("/api/v1/tasks", { method: "POST", body, onProgress }).then(
     async (r) => {
       if (!r.ok) return null;
@@ -60,20 +47,7 @@ export const updateTask = (
   files?: FileList | File[],
   onProgress?: (e: ProgressEvent) => void,
 ) => {
-  const body = new FormData();
-  body.append("formVersion", String((formSchema as any).formVersion));
-  Object.entries(data).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (Array.isArray(v)) {
-      if (v.length === 0) return;
-      v.forEach((val) => body.append(k, String(val)));
-    } else if (typeof v === "object") {
-      body.append(k, JSON.stringify(v));
-    } else {
-      body.append(k, String(v));
-    }
-  });
-  if (files) Array.from(files).forEach((f) => body.append("files", f));
+  const body = buildTaskFormData(data, files);
   return authFetch(`/api/v1/tasks/${id}`, {
     method: "PATCH",
     body,

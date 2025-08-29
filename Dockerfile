@@ -18,6 +18,7 @@ RUN corepack enable \
 COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install \
   && pnpm build \
+  && cp -r apps/web/dist/* apps/api/public/ \
   && pnpm prune --prod \
   && pnpm store prune
 

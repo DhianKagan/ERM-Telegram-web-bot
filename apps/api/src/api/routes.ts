@@ -156,8 +156,17 @@ export default async function registerRoutes(
     });
   });
 
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.includes('..')) {
+      res.status(404).end();
+      return;
+    }
+    next();
+  });
+
   app.use(
     express.static(path.join(__dirname, '../../public'), {
+      dotfiles: 'deny',
       maxAge: '1y',
       immutable: true,
       // Для HTML отключаем кэш, чтобы браузер получал свежий index.html
@@ -170,7 +179,11 @@ export default async function registerRoutes(
   );
   app.use(
     '/uploads',
-    express.static(uploadsDir, { maxAge: '1y', immutable: true }),
+    express.static(uploadsDir, {
+      maxAge: '1y',
+      immutable: true,
+      dotfiles: 'deny',
+    }),
   );
   const initAdmin = (await import('../admin/customAdmin')).default;
   initAdmin(app);

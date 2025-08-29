@@ -12,8 +12,8 @@ function bootstrap() {
 
   const params = new URLSearchParams(window.location.search);
   const forcedBrowser = params.get("browser") === "1";
-  const hasTelegram = typeof window.Telegram?.WebApp !== "undefined";
-  const isBrowser = forcedBrowser || !hasTelegram;
+  const canTranslate = Boolean(window.Telegram?.WebApp?.translate);
+  const isBrowser = forcedBrowser || !canTranslate;
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(
@@ -26,6 +26,9 @@ function bootstrap() {
   }
 
   if (isBrowser) {
+    if (!forcedBrowser) {
+      alert("Пожалуйста, откройте приложение внутри Telegram");
+    }
     import("./App").then(({ default: App }) => render(App));
   } else {
     import("./TelegramApp").then(({ default: TelegramApp }) =>

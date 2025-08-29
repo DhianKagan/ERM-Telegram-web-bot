@@ -26,10 +26,10 @@ export const createTask = (
   return authFetch("/api/v1/tasks", { method: "POST", body, onProgress }).then(
     async (r) => {
       if (!r.ok) return null;
-      const result = await r.json();
-      const id = (result as any)._id || (result as any).id;
-      if (id && (window as any).Telegram?.WebApp) {
-        (window as any).Telegram.WebApp.sendData(`task_created:${id}`);
+      const result = (await r.json()) as { _id?: string; id?: string };
+      const id = result._id || result.id;
+      if (id && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.sendData(`task_created:${id}`);
       }
       return result;
     },

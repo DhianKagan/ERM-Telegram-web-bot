@@ -24,7 +24,8 @@
       "shared": ["../../packages/shared/src"],
       "shared/*": ["../../packages/shared/src/*"]
     },
-    "composite": true
+    "composite": true,
+    "types": ["vite/client", "./src/types/telegram"]
   },
   "include": ["src"],
   "references": [{ "path": "../../packages/shared" }]

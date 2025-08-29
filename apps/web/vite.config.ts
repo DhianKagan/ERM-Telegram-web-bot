@@ -8,8 +8,31 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import sri from "./plugins/sri";
 import { visualizer } from "rollup-plugin-visualizer";
+
+/**
+ * Плагин сохраняет `index.html` с уведомлением, чтобы Vite не удалял файл при
+ * очистке каталога.
+ */
+function preserveIndexHtml() {
+  const indexPath = resolve(__dirname, "../api/public/index.html");
+  let original = "";
+  return {
+    name: "preserve-index-html",
+    buildStart() {
+      if (existsSync(indexPath)) {
+        original = readFileSync(indexPath, "utf8");
+      }
+    },
+    closeBundle() {
+      if (original) {
+        writeFileSync(indexPath, original);
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
@@ -24,6 +47,7 @@ export default defineConfig(() => ({
           brotliSize: true,
         })
       : undefined,
+    preserveIndexHtml(),
   ].filter(Boolean),
   resolve: {
     alias: {

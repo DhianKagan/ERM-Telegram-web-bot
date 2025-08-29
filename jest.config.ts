@@ -7,8 +7,12 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests'],
-  testPathIgnorePatterns: ['<rootDir>/tests/e2e/', '<rootDir>/tests/api/'],
+  roots: ['<rootDir>/tests', '<rootDir>/apps/web/src'],
+  testPathIgnorePatterns: [
+    '<rootDir>/tests/e2e/',
+    '<rootDir>/tests/api/',
+    '<rootDir>/apps/web/src/types/',
+  ],
   setupFiles: ['<rootDir>/tests/setupEnv.ts'],
   coverageDirectory: 'coverage',
   transform: {

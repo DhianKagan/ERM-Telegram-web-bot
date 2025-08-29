@@ -1,3 +1,5 @@
+// Компоненты диалога, обёртка над Radix UI
+// Модули: React, @radix-ui/react-dialog, lucide-react, @/lib/utils
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";

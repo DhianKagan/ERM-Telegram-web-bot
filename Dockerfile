@@ -14,10 +14,11 @@ RUN corepack enable \
   && pnpm config set fetch-retries 5 \
   && pnpm fetch
 
-# Копирование исходников, сборка сервера и клиента
+# Копирование исходников, сборка сервера и клиента, перенос фронтенда в public API
 COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install \
   && pnpm build \
+  && cp -r apps/web/dist/* apps/api/public/ \
   && pnpm prune --prod \
   && pnpm store prune
 

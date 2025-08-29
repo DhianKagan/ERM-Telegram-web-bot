@@ -77,7 +77,7 @@ export default async function authFetch(
         saveToken(token);
       }
     } catch {
-      /* ignore */
+      /* игнорируем */
     }
   }
   if (token) headers["X-XSRF-TOKEN"] = token;
@@ -99,7 +99,7 @@ export default async function authFetch(
         headers["X-XSRF-TOKEN"] = d.csrfToken;
       }
     } catch {
-      /* ignore */
+      /* игнорируем */
     }
     res = await sendRequest(url, opts, onProgress);
     if (res.ok && opts.body) {

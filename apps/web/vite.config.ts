@@ -63,6 +63,9 @@ export default defineConfig(() => ({
     emptyOutDir: true,
     outDir: "../api/public",
     manifest: true,
+    // Временные настройки для отладки
+    sourcemap: true,
+    minify: false,
     chunkSizeWarningLimit: 1500,
     commonjsOptions: {
       include: [/shared/, /node_modules/],

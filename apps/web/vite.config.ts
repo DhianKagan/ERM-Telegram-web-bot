@@ -60,6 +60,7 @@ export default defineConfig(() => {
       },
       // Устранение дублирования React в пакете
       dedupe: ["react", "react-dom", "use-sync-external-store"],
+
     },
     build: {
       emptyOutDir: true,

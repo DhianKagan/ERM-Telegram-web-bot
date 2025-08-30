@@ -86,7 +86,14 @@ export default async function authFetch(
   if (res.status === 403) {
     if (opts.body) {
       try {
-        localStorage.setItem("csrf_payload", String(opts.body));
+        if (
+          typeof opts.body === "string" ||
+          (typeof opts.body === "object" &&
+            opts.body !== null &&
+            !(opts.body instanceof FormData))
+        ) {
+          localStorage.setItem("csrf_payload", JSON.stringify(opts.body));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -102,7 +109,7 @@ export default async function authFetch(
       /* ignore */
     }
     res = await sendRequest(url, opts, onProgress);
-    if (res.ok && opts.body) {
+    if (res.ok) {
       try {
         localStorage.removeItem("csrf_payload");
       } catch (e) {

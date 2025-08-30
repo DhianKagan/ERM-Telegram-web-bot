@@ -5,6 +5,7 @@
 import express = require('express');
 import type { Request, RequestHandler } from 'express';
 import request = require('supertest');
+import rateLimit = require('express-rate-limit');
 // @ts-ignore
 import multer from '../apps/api/node_modules/multer';
 import * as path from 'path';
@@ -36,9 +37,11 @@ const setUser: RequestHandler = (req, _res, next) => {
   (req as any).user = { id: 1 };
   next();
 };
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 50 });
 app.post(
   '/tasks',
   setUser,
+  limiter,
   upload.any() as any,
   processUploads as unknown as RequestHandler,
   (req, res) => {

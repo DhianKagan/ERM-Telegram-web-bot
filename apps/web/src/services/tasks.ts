@@ -81,7 +81,14 @@ export const fetchTasks = (
   return authFetch(url)
     .then((r) => (r.ok ? r.json() : { tasks: [], users: [], total: 0 }))
     .then((d) => {
-      localStorage.setItem(key, JSON.stringify({ time: Date.now(), data: d }));
+      try {
+        localStorage.setItem(
+          key,
+          JSON.stringify({ time: Date.now(), data: d }),
+        );
+      } catch {
+        // игнорируем переполнение
+      }
       return d;
     });
 };

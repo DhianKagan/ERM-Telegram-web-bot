@@ -37,61 +37,67 @@ function preserveIndexHtml() {
 }
 
 // https://vite.dev/config/
-export default defineConfig(() => ({
-  plugins: [
-    react(),
-    sri(),
-    process.env.ANALYZE
-      ? visualizer({
-          filename: "bundle-report.html",
-          template: "treemap",
-          gzipSize: true,
-          brotliSize: true,
-        })
-      : undefined,
-    preserveIndexHtml(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": resolve(__dirname, "src"),
-      shared: resolve(__dirname, "../../packages/shared/src"),
+export default defineConfig(() => {
+  const isCi = Boolean(process.env.CI);
+  return {
+    plugins: [
+      react(),
+      sri(),
+      process.env.ANALYZE
+        ? visualizer({
+            filename: "bundle-report.html",
+            template: "treemap",
+            gzipSize: true,
+            brotliSize: true,
+          })
+        : undefined,
+      preserveIndexHtml(),
+    ].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": resolve(__dirname, "src"),
+        shared: resolve(__dirname, "../../packages/shared/src"),
+      },
+      // Устранение дублирования React в пакете
+      dedupe: ["react", "react-dom", "use-sync-external-store"],
     },
-    // Устранение дублирования React в пакете
-    dedupe: ["react", "react-dom", "use-sync-external-store"],
-  },
-  build: {
-    emptyOutDir: true,
-    outDir: "../api/public",
-    manifest: true,
-    chunkSizeWarningLimit: 1500,
-    commonjsOptions: {
-      include: [/shared/, /node_modules/],
-    },
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            const parts = id.toString().split("node_modules/");
-            const pkgPath = parts[parts.length - 1].split("/");
-            const pkg = pkgPath[0].startsWith("@")
-              ? `${pkgPath[0]}/${pkgPath[1]}`
-              : pkgPath[0];
-            if (pkg.includes("@ckeditor")) return "ckeditor";
-            // Объединяем зависимости React и @emotion, а также react-is и
-            // hoist-non-react-statics в один чанк, чтобы избежать циклической
-            // загрузки и ошибок `ContextConsumer`.
-            if (
-              pkg.startsWith("react") ||
-              pkg.startsWith("@emotion") ||
-              pkg.includes("use-callback-ref") ||
-              pkg === "hoist-non-react-statics" ||
-              pkg === "react-is"
-            )
-              return "react";
-            return pkg.replace("@", "").replace("/", "-");
-          }
+    build: {
+      emptyOutDir: true,
+      outDir: "../api/public",
+      manifest: true,
+      // Временные настройки для отладки (отключены в CI)
+      sourcemap: !isCi,
+      minify: isCi ? "esbuild" : false,
+      chunkSizeWarningLimit: 1500,
+      commonjsOptions: {
+        include: [/shared/, /node_modules/],
+      },
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              const parts = id.toString().split("node_modules/");
+              const pkgPath = parts[parts.length - 1].split("/");
+              const pkg = pkgPath[0].startsWith("@")
+                ? `${pkgPath[0]}/${pkgPath[1]}`
+                : pkgPath[0];
+              if (pkg.includes("@ckeditor")) return "ckeditor";
+              // Объединяем зависимости React и @emotion, а также react-is и
+              // hoist-non-react-statics в один чанк, чтобы избежать циклической
+              // загрузки и ошибок `ContextConsumer`.
+              if (
+                pkg.startsWith("react") ||
+                pkg.startsWith("@emotion") ||
+                pkg.includes("use-callback-ref") ||
+                pkg === "hoist-non-react-statics" ||
+                pkg === "react-is"
+              )
+                return "react";
+              return pkg.replace("@", "").replace("/", "-");
+            }
+          },
         },
       },
     },
-  },
-}));
+  };
+});

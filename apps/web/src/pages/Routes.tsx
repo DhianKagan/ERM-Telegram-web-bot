@@ -47,7 +47,6 @@ export default function RoutesPage() {
         _id: t._id ?? t.id,
         ...t,
       }));
-      console.log("rows", list.length, list[0]);
       setTasks(list);
       setSorted(list);
     });

@@ -2,6 +2,7 @@
 
 # История изменений
 
+- В корневые devDependencies добавлен `express-rate-limit`, исправлен сбой теста `tasks.upload.spec.ts`.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку при `CI=true`, обновлена документация переменной `MONGO_DATABASE_URL`.
 - `SESSION_SECRET` в `.env.example` пуст, добавлена команда генерации и предупреждение о коммите.
 - Исправлен запуск клиента: инициализация откладывается до `DOMContentLoaded`,

@@ -1,13 +1,14 @@
-// Выпадающий список уведомлений
+// Назначение: выпадающий список уведомлений.
+// Основные модули: React, react-i18next, shadcn/ui.
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "./ui/dropdown-menu";
 
 export default function NotificationDropdown({
   notifications,

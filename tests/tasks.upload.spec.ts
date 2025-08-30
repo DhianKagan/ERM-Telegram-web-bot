@@ -5,7 +5,7 @@
 import express = require('express');
 import type { Request, RequestHandler } from 'express';
 import request = require('supertest');
-import rateLimit = require('express-rate-limit');
+import rateLimit from 'express-rate-limit';
 // @ts-ignore
 import multer from '../apps/api/node_modules/multer';
 import * as path from 'path';

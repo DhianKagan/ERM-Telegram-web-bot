@@ -1,5 +1,5 @@
 // Страница отображения маршрутов на карте с фильтрами
-import React, { useContext } from "react";
+import React from "react";
 import Breadcrumbs from "../components/Breadcrumbs";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -9,7 +9,7 @@ import createMultiRouteLink from "../utils/createMultiRouteLink";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import type { Task } from "shared";
 
 type RouteTask = Task & Record<string, any>;
@@ -26,7 +26,7 @@ export default function RoutesPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const hasDialog = params.has("task") || params.has("newTask");
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
   const openTask = React.useCallback(
     (id: string) => {

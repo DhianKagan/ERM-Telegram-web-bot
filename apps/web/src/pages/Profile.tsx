@@ -1,11 +1,11 @@
 // Назначение: страница профиля пользователя; модули: React, React Router
-import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/useAuth";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { updateProfile } from "../services/auth";
 
 export default function Profile() {
-  const { user, setUser } = useContext(AuthContext);
+  const { user, setUser } = useAuth();
   const [name, setName] = useState("");
   const [mobNumber, setMobNumber] = useState("");
 

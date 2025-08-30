@@ -1,6 +1,6 @@
 // Назначение файла: список задач с таблицей AG Grid
 // Модули: React, контексты, сервисы задач, shared
-import React, { useContext } from "react";
+import React from "react";
 import { useSearchParams } from "react-router-dom";
 import TaskTable from "../components/TaskTable";
 import { useToast } from "../context/useToast";
@@ -8,7 +8,7 @@ import useTasks from "../context/useTasks";
 import { fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import { taskFields as fields, type Task, type User } from "shared";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 type TaskExtra = Task & Record<string, any>;
 
@@ -24,7 +24,7 @@ export default function TasksPage() {
   const [params, setParams] = useSearchParams();
   const { addToast } = useToast();
   const { version, refresh } = useTasks();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const load = React.useCallback(() => {

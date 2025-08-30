@@ -25,7 +25,7 @@ import { SidebarProvider } from "./context/SidebarContext";
 import { useSidebar } from "./context/useSidebar";
 import { ThemeProvider } from "./context/ThemeProvider";
 import { AuthProvider } from "./context/AuthProvider";
-import { AuthContext } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import { ToastProvider } from "./context/ToastContext";
 import { TasksProvider } from "./context/TasksContext";
 import Toasts from "./components/Toasts";
@@ -124,7 +124,7 @@ function Content() {
 }
 
 function Layout() {
-  const { user } = React.useContext(AuthContext);
+  const { user } = useAuth();
   const { open, toggle } = useSidebar();
   return (
     <>

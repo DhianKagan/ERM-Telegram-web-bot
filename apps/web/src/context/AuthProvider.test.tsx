@@ -1,10 +1,9 @@
 /** @jest-environment jsdom */
 // Назначение файла: проверяет, что AuthProvider передаёт объект контекста и сбрасывает пользователя при logout.
-// Основные модули: React, @testing-library/react, AuthProvider, AuthContext.
-import { useContext } from "react";
+// Основные модули: React, @testing-library/react, AuthProvider, useAuth.
 import { render, act } from "@testing-library/react";
 import { AuthProvider } from "./AuthProvider";
-import { AuthContext } from "./AuthContext";
+import { useAuth } from "./useAuth";
 
 jest.mock("../services/auth", () => ({
   getProfile: jest.fn().mockResolvedValue(null),
@@ -19,7 +18,7 @@ describe("AuthProvider", () => {
   it("возвращает объект контекста", () => {
     let value: any;
     function Child() {
-      value = useContext(AuthContext);
+      value = useAuth();
       return null;
     }
     render(
@@ -34,7 +33,7 @@ describe("AuthProvider", () => {
   it("logout сбрасывает user", async () => {
     let value: any;
     function Child() {
-      value = useContext(AuthContext);
+      value = useAuth();
       return null;
     }
     render(

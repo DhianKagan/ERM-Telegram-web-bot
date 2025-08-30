@@ -1,10 +1,10 @@
 // Общая форма создания и редактирования задач
 // Модули: React, DOMPurify, контексты, сервисы задач, shared и логов
-import React, { useContext } from "react";
+import React from "react";
 import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { taskFields as fields } from "shared";
 import {
   createTask,
@@ -39,7 +39,7 @@ interface Props {
 
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);

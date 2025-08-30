@@ -1,8 +1,8 @@
 // Шапка приложения с кнопкой темы и бургером меню
 // Верхняя панель навигации
-import React, { useContext } from "react";
+import React from "react";
 import { useSidebar } from "../context/useSidebar";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import NotificationDropdown from "../components/NotificationDropdown";
 import ThemeToggle from "../components/ThemeToggle";
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 
 export default function Header() {
   const { toggle, collapsed, open } = useSidebar();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const { t, i18n } = useTranslation();
   return (
     <header

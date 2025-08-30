@@ -7,20 +7,22 @@ import { render } from '@testing-library/react';
 import ProtectedRoute from '../apps/web/src/components/ProtectedRoute';
 import AdminRoute from '../apps/web/src/components/AdminRoute';
 import { AuthContext } from '../apps/web/src/context/AuthContext';
+import { AuthActionsContext } from '../apps/web/src/context/AuthActionsContext';
 
-const value = {
-  user: null,
-  loading: true,
+const state = { user: null, loading: true };
+const actions = {
   logout: jest.fn().mockResolvedValue(undefined),
   setUser: jest.fn(),
 };
 
 test('ProtectedRoute показывает индикатор при загрузке', () => {
   const { getByTestId } = render(
-    <AuthContext.Provider value={value}>
-      <ProtectedRoute>
-        <div>child</div>
-      </ProtectedRoute>
+    <AuthContext.Provider value={state}>
+      <AuthActionsContext.Provider value={actions}>
+        <ProtectedRoute>
+          <div>child</div>
+        </ProtectedRoute>
+      </AuthActionsContext.Provider>
     </AuthContext.Provider>,
   );
   expect(getByTestId('loader')).toBeInTheDocument();
@@ -28,10 +30,12 @@ test('ProtectedRoute показывает индикатор при загруз
 
 test('AdminRoute показывает индикатор при загрузке', () => {
   const { getByTestId } = render(
-    <AuthContext.Provider value={value}>
-      <AdminRoute>
-        <div>child</div>
-      </AdminRoute>
+    <AuthContext.Provider value={state}>
+      <AuthActionsContext.Provider value={actions}>
+        <AdminRoute>
+          <div>child</div>
+        </AdminRoute>
+      </AuthActionsContext.Provider>
     </AuthContext.Provider>,
   );
   expect(getByTestId('loader')).toBeInTheDocument();

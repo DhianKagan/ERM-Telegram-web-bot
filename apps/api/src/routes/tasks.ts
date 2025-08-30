@@ -79,7 +79,11 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       ? (filesRaw as Express.Multer.File[])
       : [];
     // Проверяем тип полученных файлов
-    if (!Array.isArray(filesRaw) && filesRaw !== undefined && filesRaw !== null) {
+    if (
+      !Array.isArray(filesRaw) &&
+      filesRaw !== undefined &&
+      filesRaw !== null
+    ) {
       res.status(400).json({ error: 'Некорректный формат загрузки файлов' });
       return;
     }
@@ -95,16 +99,35 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         cur.count + files.length > maxUserFiles ||
         cur.size + incoming > maxUserStorage
       ) {
-        files.forEach((f) =>
-          fs.unlink(path.join(f.destination, f.filename), () => {}),
-        );
+        for (const f of files) {
+          const p = path.join(f.destination, f.filename);
+          try {
+            await fs.promises.unlink(p);
+          } catch (e) {
+            await writeLog('Не удалось удалить файл', 'error', {
+              path: p,
+              error: (e as Error).message,
+            });
+            res.sendStatus(500);
+            return;
+          }
+        }
         res.status(400).json({ error: 'Превышены лимиты вложений' });
         return;
       }
       for (const f of files) {
         const full = path.join(f.destination, f.filename);
         if (!(await scanFile(full))) {
-          fs.unlink(full, () => {});
+          try {
+            await fs.promises.unlink(full);
+          } catch (e) {
+            await writeLog('Не удалось удалить файл', 'error', {
+              path: full,
+              error: (e as Error).message,
+            });
+            res.sendStatus(500);
+            return;
+          }
           res.status(400).json({ error: 'Файл содержит вирус' });
           return;
         }

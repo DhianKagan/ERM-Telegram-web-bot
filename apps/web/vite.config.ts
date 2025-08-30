@@ -56,6 +56,8 @@ export default defineConfig(() => ({
       "@": resolve(__dirname, "src"),
       shared: resolve(__dirname, "../../packages/shared/src"),
     },
+    // Устранение дублирования React в пакете
+    dedupe: ["react", "react-dom", "use-sync-external-store"],
   },
   build: {
     emptyOutDir: true,

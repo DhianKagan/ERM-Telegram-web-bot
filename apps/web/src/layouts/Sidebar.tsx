@@ -1,8 +1,8 @@
 // Боковое меню с навигацией по разделам
-import React, { useContext } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/useSidebar";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import {
   HomeIcon,
   ClipboardDocumentListIcon,
@@ -33,7 +33,7 @@ const adminExtra = [
 export default function Sidebar() {
   const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
   const { pathname } = useLocation();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const role = user?.role || "user";
   const items = React.useMemo(() => {
     return role === "admin" ? [...baseItems, ...adminExtra] : baseItems;

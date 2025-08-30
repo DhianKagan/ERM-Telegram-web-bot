@@ -1,11 +1,12 @@
 // Маршрут только для админа
-import { useContext, type ReactElement } from "react";
+// Модули: React Router, хук useAuth
+import { type ReactElement } from "react";
 import { Navigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import Loader from "./Loader";
 
 export default function AdminRoute({ children }: { children: ReactElement }) {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading } = useAuth();
   if (loading) return <Loader />;
   if (!user) return <Navigate to="/login" />;
   if (user.role !== "admin") return <Navigate to="/tasks" />;

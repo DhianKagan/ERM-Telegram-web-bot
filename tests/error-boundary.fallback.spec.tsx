@@ -14,7 +14,9 @@ describe('ErrorBoundary', () => {
     };
     render(
       <ErrorBoundary fallback={<div role="alert">Ошибка</div>}>
-        <Problem />
+        <React.StrictMode>
+          <Problem />
+        </React.StrictMode>
       </ErrorBoundary>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Ошибка');

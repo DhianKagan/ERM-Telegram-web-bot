@@ -12,7 +12,14 @@
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
     "allowJs": true,
-    "types": ["node", "jest", "@testing-library/jest-dom", "express", "multer"],
+    "types": [
+      "node",
+      "jest",
+      "@testing-library/jest-dom",
+      "express",
+      "multer",
+      "../apps/web/src/types/telegram"
+    ],
     "typeRoots": ["../node_modules/@types", "../apps/api/src/types"]
   }
 }

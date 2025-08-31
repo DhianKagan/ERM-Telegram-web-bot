@@ -17,11 +17,11 @@ function bootstrap() {
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(
-      <React.StrictMode>
-        <ErrorBoundary fallback={<div>Что-то пошло не так</div>}>
+      <ErrorBoundary fallback={<div>Что-то пошло не так</div>}>
+        <React.StrictMode>
           <Component />
-        </ErrorBoundary>
-      </React.StrictMode>,
+        </React.StrictMode>
+      </ErrorBoundary>,
     );
   }
 

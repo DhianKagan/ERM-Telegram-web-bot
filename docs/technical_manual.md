@@ -21,6 +21,7 @@
 - `apps/api/src/models`, `apps/api/src/db` — схемы Mongoose и подключение к базе.
 - Файлы `connection.ts`, `model.ts` и `queries.ts` написаны на TypeScript.
 - `apps/web` — клиентская часть React с собственными контекстами.
+- `apps/web/src/main.tsx` оборачивает `<React.StrictMode>` в `<ErrorBoundary>` для перехвата ошибок.
 - Контейнер собирается через `Dockerfile` в корне репозитория.
 - В образ копируется `tsconfig.json`, чтобы `pnpm --dir apps/api build` нашёл конфигурацию
 

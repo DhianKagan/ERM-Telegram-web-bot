@@ -7,7 +7,7 @@
     "pretest:unit": "pnpm --filter shared build",
     "pretest:api": "pnpm --filter shared build",
     "pretest:e2e": "pnpm --filter shared build",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter packages/shared build && pnpm -r --filter '!packages/shared' build",
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",

@@ -6,5 +6,6 @@
   "adminPanel": "Admin panel",
   "language": "Language",
   "noNotifications": "No notifications",
-  "notifications": "Notifications"
+  "notifications": "Notifications",
+  "errorFallback": "Something went wrong. Reload the page (Ctrl+R or ⌘+R)."
 }

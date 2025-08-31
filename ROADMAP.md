@@ -2,13 +2,13 @@
 
 # Дорожная карта проекта
 
+- Скрипт `start_api_with_memdb.sh` запускает API с MongoDB в памяти.
 - Команда `pnpm run dev` запускает api и web без таймаута PNPM.
 - AuthContext хранит только профиль и флаг загрузки, JWT на клиенте не используется.
 - README упрощён, устаревшие разделы удалены.
 - Procfile выполняет `pnpm build` перед запуском, раздел деплоя на Railway добавлен в документацию.
 - Скрипт `pre_pr_check.sh` сохраняет лог запуска в `/tmp/apps`.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку в CI.
-- Добавлен `start_api_with_memdb.sh` для запуска API с MongoDB в памяти.
 - `install_bot_deps.sh` при недоступности npm берёт pnpm из GitHub.
 - `.npmrc` фиксирует registry npmjs.org для scope `@jsr`.
 - Оптимизировать Docker-сборку: кеш зависимостей через `pnpm fetch`, раздельная сборка `web` и `api`.

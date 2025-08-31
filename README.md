@@ -25,6 +25,14 @@ pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 
+## Локальный запуск API с MongoDB в памяти
+
+```bash
+./scripts/start_api_with_memdb.sh
+```
+
+Скрипт поднимает MongoDB в памяти через MongoMemoryServer и устанавливает переменную `MONGO_DATABASE_URL`, после чего запускает API.
+
 Сгенерированные значения запишите в `.env` и не коммитьте этот файл.
 
 ## Сборка и проверки

@@ -5,7 +5,7 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "rootDir": ".",
+    "rootDir": "./src",
     "outDir": "dist",
     "useUnknownInCatchVariables": false,
     "useDefineForClassFields": false,
@@ -24,7 +24,7 @@
     }
   },
   "include": [
-    "src/**/*",
+    "src",
     "src/form/taskForm.schema.json",
     "../../packages/shared/src/**/*"
   ],

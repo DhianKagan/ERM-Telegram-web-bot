@@ -1,5 +1,7 @@
 // Страница выбора задачи для Attachment Menu
+// Модули: React, useToast, authFetch, shared
 import React, { useEffect, useState } from "react";
+import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
 import type { Task } from "shared";
 
@@ -7,14 +9,21 @@ type MenuTask = Task & { task_number: string; createdAt: string };
 
 export default function AttachmentMenu() {
   const [tasks, setTasks] = useState<MenuTask[]>([]);
+  const { addToast } = useToast();
 
   useEffect(() => {
-    authFetch("/api/v1/tasks?limit=10")
-      .then((r) => (r.ok ? r.json() : []))
+    authFetch("/api/v1/tasks?limit=10", { noRedirect: true })
+      .then((r) => {
+        if (r.status === 401) {
+          addToast("Сессия истекла, войдите снова", "error");
+          return [];
+        }
+        return r.ok ? r.json() : [];
+      })
       .then((data) =>
         setTasks((Array.isArray(data) ? data : data.tasks || []) as MenuTask[]),
       );
-  }, []);
+  }, [addToast]);
 
   function select(id: string) {
     if (window.Telegram?.WebApp?.sendData) {

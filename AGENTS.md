@@ -43,6 +43,7 @@
 - При необходимости проверяйте зависимости вручную командой `./scripts/audit_deps.sh` (использует `audit-ci` и пропускает слабые уязвимости `--audit-level high`).
 - Dependabot еженедельно обновляет npm-зависимости, для PR по безопасности используйте шаблон `Security Update`.
 - При отсутствии `.env` используйте `./scripts/create_env_from_exports.sh`.
+- Для локального запуска API с MongoDB в памяти используйте `./scripts/start_api_with_memdb.sh`.
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
@@ -62,7 +63,7 @@
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
-- `SESSION_SECRET` в `.env.example` пуст; генерируйте его командой `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` и не коммитьте `.env`.
+- `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.
 - Переменная `STORAGE_DIR` задаёт базовый каталог статических файлов и вложений (по умолчанию `apps/api/public`).
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.

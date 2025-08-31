@@ -313,7 +313,8 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 ```bash
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
-pnpm --dir bot dev
+pnpm --dir bot dev # запуск api и web
+./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 
 Пошаговое развертывание на Railway:

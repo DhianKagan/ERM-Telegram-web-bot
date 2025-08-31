@@ -7,11 +7,7 @@ jest.mock("../utils/authFetch", () => ({
   default: jest.fn(),
 }));
 
-declare global {
-  interface Window {
-    Telegram?: any;
-  }
-}
+import type {} from "../types/telegram";
 
 import authFetch from "../utils/authFetch";
 import { fetchTasks } from "./tasks";

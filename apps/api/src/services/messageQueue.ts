@@ -1,5 +1,7 @@
-// Очередь вызовов Telegram API с ограничением объёма
-// Модули: Promise, setInterval
+/**
+ * Назначение файла: очередь вызовов Telegram API с ограничением объёма.
+ * Основные модули: Promise, setInterval.
+ */
 
 interface QueueItem<T> {
   fn: () => Promise<T> | T;
@@ -12,7 +14,7 @@ export const MAX_QUEUE_SIZE = 100;
 let tokens = 30;
 let timer: NodeJS.Timeout | undefined;
 
-function process(): void {
+function processQueue(): void {
   while (tokens > 0 && queue.length) {
     tokens--;
     const { fn, resolve, reject } = queue.shift()!;
@@ -26,15 +28,18 @@ function process(): void {
   }
 }
 
-function start(): void {
+export function startQueue(): void {
   if (!timer) {
     timer = setInterval(() => {
       tokens = 30;
-      process();
+      processQueue();
     }, 1000);
   }
 }
-start();
+
+if (process.env.NODE_ENV !== 'test') {
+  startQueue();
+}
 
 export function stopQueue(): void {
   if (timer) {
@@ -55,6 +60,6 @@ export function enqueue<T>(fn: () => Promise<T> | T): Promise<T> {
       resolve: resolve as unknown as (value: unknown) => void,
       reject,
     });
-    process();
+    processQueue();
   });
 }

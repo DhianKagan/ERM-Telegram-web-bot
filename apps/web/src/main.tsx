@@ -2,6 +2,7 @@
 import React from "react";
 import * as ReactDOM from "react-dom/client";
 import ErrorBoundary from "./components/ErrorBoundary";
+import i18n from "./i18n";
 import "./index.css";
 
 function bootstrap() {
@@ -17,7 +18,7 @@ function bootstrap() {
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(
-      <ErrorBoundary fallback={<div>Что-то пошло не так</div>}>
+      <ErrorBoundary fallback={<div>{i18n.t("errorFallback")}</div>}>
         <React.StrictMode>
           <Component />
         </React.StrictMode>

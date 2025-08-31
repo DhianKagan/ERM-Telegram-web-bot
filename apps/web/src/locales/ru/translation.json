@@ -6,5 +6,6 @@
   "adminPanel": "Админка",
   "language": "Язык",
   "noNotifications": "Нет уведомлений",
-  "notifications": "Уведомления"
+  "notifications": "Уведомления",
+  "errorFallback": "Что-то пошло не так. Перезагрузите страницу (Ctrl+R или ⌘+R)."
 }

@@ -35,7 +35,7 @@ export async function buildApp(): Promise<express.Express> {
   await import('../db/model');
 
   const app = express();
-  const ext = process.env.NODE_ENV === 'test' ? '.ts' : '.js';
+  const ext = process.env.NODE_ENV === 'production' ? '.js' : '.ts';
   const traceModule = await import('../middleware/trace' + ext);
   const pinoLoggerModule = await import('../middleware/pinoLogger' + ext);
   const metricsModule = await import('../middleware/metrics' + ext);

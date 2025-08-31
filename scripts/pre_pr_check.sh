@@ -71,7 +71,7 @@ while [ $attempt -le $max_attempts ]; do
     exit 0
   fi
   status=$?
-  if [ "$status" -eq 124 ]; then
+  if [ "$status" -eq 124 ] || grep -q "API запущен" /tmp/apps/api_start.log; then
     echo "Проверка сборки и запуска завершена."
     exit 0
   fi

@@ -3,12 +3,9 @@
 // Основные модули: fetch, XMLHttpRequest, window.location, localStorage
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
 
-interface FetchOptions {
-  method?: string;
+interface FetchOptions extends globalThis.RequestInit {
   headers?: Record<string, string>;
-  body?: unknown;
-  credentials?: string;
-  redirect?: string;
+  body?: globalThis.BodyInit | null;
   [key: string]: unknown;
 }
 

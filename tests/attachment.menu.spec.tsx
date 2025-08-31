@@ -1,4 +1,5 @@
 /** @jest-environment jsdom */
+/// <reference path="../apps/web/src/types/telegram.d.ts" />
 // Назначение файла: проверяет отсутствие перезагрузки при 401 в AttachmentMenu.
 // Основные модули: React, @testing-library/react.
 import '@testing-library/jest-dom';
@@ -13,9 +14,7 @@ test('не перезагружает страницу при 401', async () => 
   const removeToast = jest.fn();
   const originalHref = window.location.href;
   const originalFetch = global.fetch;
-  global.fetch = jest
-    .fn()
-    .mockResolvedValue(new Response(null, { status: 401 })) as any;
+  global.fetch = jest.fn().mockResolvedValue({ status: 401 } as Response);
   render(
     <ToastContext.Provider value={{ toasts: [], addToast, removeToast }}>
       <AttachmentMenu />

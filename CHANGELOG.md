@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Реализован скрипт `start_api_with_memdb.sh` для запуска API с MongoDB в памяти, инструкция в README.
 - Быстрый старт использует `./scripts/create_env_from_exports.sh`, добавлен `start_api_with_memdb.sh`.
 - В корневые devDependencies добавлен `express-rate-limit`, исправлен сбой теста `tasks.upload.spec.ts`.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку при `CI=true`, обновлена документация переменной `MONGO_DATABASE_URL`.

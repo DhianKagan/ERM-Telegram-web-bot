@@ -8,6 +8,7 @@ import ErrorBoundary from '../apps/web/src/components/ErrorBoundary';
 
 describe('ErrorBoundary', () => {
   it('отображает fallback при ошибке', () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const Problem: React.FC = () => {
       throw new Error('boom');
     };
@@ -17,5 +18,6 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Ошибка');
+    spy.mockRestore();
   });
 });

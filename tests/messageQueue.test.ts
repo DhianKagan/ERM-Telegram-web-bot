@@ -1,20 +1,27 @@
-// Назначение: автотесты. Модули: jest, supertest.
+/**
+ * Назначение файла: проверяет работу очереди Telegram API.
+ * Основные модули: messageQueue.
+ */
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
 
-const {
+import {
   enqueue,
   queue,
   stopQueue,
+  startQueue,
   MAX_QUEUE_SIZE,
-} = require('../src/services/messageQueue');
+} from '../apps/api/src/services/messageQueue';
+
+beforeAll(() => startQueue());
+afterAll(() => stopQueue());
 
 test('очередь замедляет отправку при большом числе задач', async () => {
   const start = Date.now();
-  const jobs = [];
+  const jobs: Promise<unknown>[] = [];
   for (let i = 0; i < 60; i++) {
     jobs.push(enqueue(() => Promise.resolve()));
   }
@@ -32,5 +39,3 @@ test('enqueue отклоняет переполнение', async () => {
     'queue overflow',
   );
 });
-
-afterAll(() => stopQueue());

@@ -18,7 +18,16 @@ function bootstrap() {
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(
-      <ErrorBoundary fallback={<div>{i18n.t("errorFallback")}</div>}>
+      <ErrorBoundary
+        fallback={
+          <div>
+            {i18n.t(
+              "errorFallback",
+              "Что-то пошло не так. Перезагрузите страницу (Ctrl+R или ⌘+R).",
+            )}
+          </div>
+        }
+      >
         <React.StrictMode>
           <Component />
         </React.StrictMode>

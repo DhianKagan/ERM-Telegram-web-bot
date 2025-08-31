@@ -20,6 +20,20 @@ done
 
 ./scripts/create_env_from_exports.sh >/dev/null || true
 
+# Проверяем наличие SESSION_SECRET и при необходимости генерируем
+current_secret=$(grep '^SESSION_SECRET=' .env | cut -d= -f2- || true)
+if [ -z "${SESSION_SECRET:-$current_secret}" ]; then
+  new_secret=$(openssl rand -hex 64)
+  if grep -q '^SESSION_SECRET=' .env; then
+    sed -i "s/^SESSION_SECRET=.*/SESSION_SECRET=$new_secret/" .env
+  else
+    echo "SESSION_SECRET=$new_secret" >> .env
+  fi
+  export SESSION_SECRET="$new_secret"
+else
+  export SESSION_SECRET="${SESSION_SECRET:-$current_secret}"
+fi
+
 # Проверяем обязательные переменные окружения
 for var in BOT_TOKEN JWT_SECRET SESSION_SECRET MONGO_DATABASE_URL APP_URL; do
   value=$(grep "^${var}=" .env | cut -d= -f2-)

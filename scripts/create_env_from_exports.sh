@@ -20,6 +20,7 @@ declare -A DEFAULTS=(
   [BOT_TOKEN]="$(openssl rand -hex 16)"
   [CHAT_ID]="$(shuf -i 100000000-999999999 -n 1)"
   [JWT_SECRET]="$(openssl rand -hex 32)"
+  [SESSION_SECRET]="$(openssl rand -hex 64)"
   [APP_URL]="https://localhost:3000"
   [MONGO_DATABASE_URL]="mongodb://admin:admin@localhost:27017/ermdb?authSource=admin"
 )

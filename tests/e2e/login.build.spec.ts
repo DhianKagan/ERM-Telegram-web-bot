@@ -34,7 +34,7 @@ test.skip('страница /login отображается без ошибок 
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text());
   });
-  await page.goto('/login?browser=1');
+  await page.goto('/login');
   await expect(page.locator('form')).toBeVisible();
   expect(errors).toEqual([]);
 });

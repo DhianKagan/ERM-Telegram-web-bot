@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Веб‑клиент автоматически работает в браузере без флага `?browser=1`, предупреждение о Telegram удалено.
 - Реализован скрипт `start_api_with_memdb.sh` для запуска API с MongoDB в памяти, инструкция в README.
 - Быстрый старт использует `./scripts/create_env_from_exports.sh`, добавлен `start_api_with_memdb.sh`.
 - В корневые devDependencies добавлен `express-rate-limit`, исправлен сбой теста `tasks.upload.spec.ts`.

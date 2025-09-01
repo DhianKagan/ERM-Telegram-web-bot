@@ -1,5 +1,5 @@
 // Назначение: фильтрация запросов для записи логов.
-// Модули: express
+// Основные модули: express
 import { Request } from 'express';
 
 const patterns: { regex: RegExp; methods: string[] }[] = [

@@ -1,5 +1,5 @@
 // Назначение файла: таблица задач на основе DataTable
-// Модули: React, DataTable (лениво), taskColumns, useTasks
+// Основные модули: React, DataTable (лениво), taskColumns, useTasks
 import React, { lazy, Suspense } from "react";
 const DataTable = lazy(() => import("./DataTable"));
 import taskColumns, { TaskRow } from "../columns/taskColumns";

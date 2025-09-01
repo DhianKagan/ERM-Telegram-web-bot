@@ -1,5 +1,5 @@
 // Назначение: контроллер маршрутов: список с фильтрами
-// Модули: express-validator, services/routes
+// Основные модули: express-validator, services/routes
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import * as service from '../services/routes';

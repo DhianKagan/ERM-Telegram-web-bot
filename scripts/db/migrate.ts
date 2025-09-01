@@ -15,6 +15,7 @@ await mongoose.connection.db.collection('tasks').createIndex({ group_id: 1 });
 await mongoose.connection.db
   .collection('tasks')
   .createIndex({ assigned_user_id: 1 });
+await mongoose.connection.db.collection('tasks').createIndex({ project: 1 });
 await mongoose.connection.db.collection('tasks').createIndex({ remind_at: 1 });
 const users = mongoose.connection.db.collection('users');
 const list = await users.indexes();

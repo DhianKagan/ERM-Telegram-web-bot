@@ -180,6 +180,7 @@ export interface TaskAttrs {
   controller_user_id?: number;
   controllers?: number[];
   assignees?: number[];
+  project?: string;
   priority?: 'Срочно' | 'В течение дня' | 'Бессрочно';
   priority_id?: number;
   created_by?: number;
@@ -240,7 +241,8 @@ const taskSchema = new Schema<TaskDocument>(
     controller_user_id: Number,
     controllers: [Number],
     assignees: [Number],
-    // Поля проектов и отделов удалены
+    // Принадлежность задачи проекту
+    project: String,
     priority: {
       type: String,
       enum: ['Срочно', 'В течение дня', 'Бессрочно'],

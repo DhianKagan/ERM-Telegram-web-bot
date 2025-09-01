@@ -39,11 +39,17 @@ function bootstrap() {
     if (!forcedBrowser) {
       alert("Пожалуйста, откройте приложение внутри Telegram");
     }
-    import("./App").then(({ default: App }) => render(App));
+    import("./App")
+      .then((mod) => {
+        const App = (mod as any).default ?? (mod as any);
+        console.log("App module keys:", Object.keys(mod as any));
+        render(App);
+      })
+      .catch((e) => console.error("Failed to load App", e));
   } else {
-    import("./TelegramApp").then(({ default: TelegramApp }) =>
-      render(TelegramApp),
-    );
+    import("./TelegramApp")
+      .then((mod) => render((mod as any).default ?? (mod as any)))
+      .catch((e) => console.error("Failed to load TelegramApp", e));
   }
 }
 

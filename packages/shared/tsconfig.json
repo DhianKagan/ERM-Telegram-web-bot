@@ -11,5 +11,5 @@
     "composite": true,
     "types": []
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "src/taskForm.schema.json"]
 }

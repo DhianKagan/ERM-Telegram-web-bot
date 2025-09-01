@@ -1,7 +1,7 @@
 // Современная форма задачи, генерируемая по схеме
-// Модули: React
+// Модули: React, shared
 import React, { useState, useEffect } from "react";
-import formSchema from "../../../api/src/form/taskForm.schema.json";
+import { taskFormSchema as formSchema } from "shared";
 import type { Field } from "../../../api/src/form";
 import authFetch from "../utils/authFetch";
 

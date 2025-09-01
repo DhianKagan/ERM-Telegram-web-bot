@@ -58,9 +58,6 @@ export default defineConfig(() => {
         "@": resolve(__dirname, "src"),
         shared: resolve(__dirname, "../../packages/shared/src"),
       },
-      // Устранение дублирования React в пакете
-      dedupe: ["react", "react-dom", "use-sync-external-store"],
-
     },
     build: {
       emptyOutDir: true,
@@ -83,17 +80,6 @@ export default defineConfig(() => {
                 ? `${pkgPath[0]}/${pkgPath[1]}`
                 : pkgPath[0];
               if (pkg.includes("@ckeditor")) return "ckeditor";
-              // Объединяем зависимости React и @emotion, а также react-is и
-              // hoist-non-react-statics в один чанк, чтобы избежать циклической
-              // загрузки и ошибок `ContextConsumer`.
-              if (
-                pkg.startsWith("react") ||
-                pkg.startsWith("@emotion") ||
-                pkg.includes("use-callback-ref") ||
-                pkg === "hoist-non-react-statics" ||
-                pkg === "react-is"
-              )
-                return "react";
               return pkg.replace("@", "").replace("/", "-");
             }
           },

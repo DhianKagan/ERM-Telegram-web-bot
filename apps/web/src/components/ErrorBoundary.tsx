@@ -18,8 +18,12 @@ export default class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown, info: unknown) {
-    console.error(error, info);
+  componentDidCatch(error: unknown) {
+    const msg =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
+    console.error("Ошибка приложения:", msg);
   }
 
   render() {

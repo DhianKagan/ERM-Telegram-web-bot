@@ -13,12 +13,13 @@ import { promisify } from 'util';
 import applySecurity from './security';
 import registerRoutes from './routes';
 import { startDiskMonitor } from '../services/diskSpace';
+import sanitizeError from '../utils/sanitizeError';
 
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled rejection in API:', err);
+  console.error('Unhandled rejection in API:', sanitizeError(err));
 });
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception in API:', err);
+  console.error('Uncaught exception in API:', sanitizeError(err));
   process.exit(1);
 });
 

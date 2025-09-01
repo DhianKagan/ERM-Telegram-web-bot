@@ -3,6 +3,7 @@
 import React from "react";
 import formSchema from "../../../api/src/form/taskForm.schema.json";
 import type { Field } from "../../../api/src/form";
+import { FormField } from "./FormField";
 
 type TaskFormProps = { customFields?: Field[] };
 
@@ -85,29 +86,5 @@ const renderField = (field: Field) => {
       return null;
   }
 };
-
-type FieldProps = {
-  label: string;
-  children: React.ReactNode;
-  hint?: string;
-  className?: string;
-};
-
-// Поле формы с уникальным идентификатором
-// Модули: React
-function FormField({ label, children, hint, className = "" }: FieldProps) {
-  const id = React.useId();
-  return (
-    <div className={`flex flex-col gap-1 ${className}`}>
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {React.isValidElement(children)
-        ? React.cloneElement(children, { id })
-        : children}
-      {hint && <span className="text-xs text-gray-500">{hint}</span>}
-    </div>
-  );
-}
 
 export default TaskForm;

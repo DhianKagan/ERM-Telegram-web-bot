@@ -17,16 +17,8 @@
       "../../node_modules/@types",
       "./src/types"
     ],
-    "composite": true,
-    "paths": {
-      "shared": ["../../packages/shared/src"],
-      "shared/*": ["../../packages/shared/src/*"]
-    }
+    "composite": true
   },
-  "include": [
-    "src",
-    "src/form/taskForm.schema.json",
-    "../../packages/shared/src/**/*"
-  ],
+  "include": ["src"],
   "references": [{ "path": "../../packages/shared" }]
 }

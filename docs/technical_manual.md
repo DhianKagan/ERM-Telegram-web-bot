@@ -386,7 +386,7 @@ Content Security Policy и расширение списков разрешён�
 
 ## DSL форм
 
-Схемы форм описываются в `apps/api/src/form/taskForm.schema.json`.
+Схемы форм описываются в `packages/shared/src/taskForm.schema.json`.
 Структура:
 
 ```

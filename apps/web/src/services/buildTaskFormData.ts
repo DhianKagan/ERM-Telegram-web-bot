@@ -1,6 +1,6 @@
 // Назначение: создание FormData для задач
-// Основные модули: FormSchema
-import formSchemaJson from "../../../api/src/form/taskForm.schema.json";
+// Основные модули: FormSchema, shared
+import { taskFormSchema as formSchemaJson } from "shared";
 import type { FormSchema } from "../../../api/src/form";
 
 const formSchema = formSchemaJson as FormSchema;

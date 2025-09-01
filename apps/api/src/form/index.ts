@@ -1,7 +1,7 @@
 // Модуль форм. Назначение: загрузка схемы формы и серверная валидация.
-// Модули: fs, express-validator
+// Модули: express-validator, shared
 import { body, ValidationChain } from 'express-validator';
-import schemaJson from './taskForm.schema.json';
+import { taskFormSchema } from 'shared';
 
 export type FieldOption = { value: string; label: string };
 export type Field = {
@@ -14,7 +14,7 @@ export type Field = {
 export type Section = { name: string; label: string; fields: Field[] };
 export type FormSchema = { formVersion: number; sections: Section[] };
 
-export const formSchema: FormSchema = schemaJson as FormSchema;
+export const formSchema: FormSchema = taskFormSchema as FormSchema;
 
 export const buildValidators = (schema: FormSchema): ValidationChain[] => {
   const chains: ValidationChain[] = [

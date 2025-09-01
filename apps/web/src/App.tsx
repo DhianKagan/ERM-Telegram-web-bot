@@ -32,6 +32,7 @@ import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 function Content() {
   const { collapsed, open } = useSidebar();
@@ -156,9 +157,11 @@ export default function App() {
           <ToastProvider>
             <SidebarProvider>
               <TasksProvider>
-                <Router>
-                  <Layout />
-                </Router>
+                <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+                  <Router>
+                    <Layout />
+                  </Router>
+                </ErrorBoundary>
               </TasksProvider>
             </SidebarProvider>
           </ToastProvider>

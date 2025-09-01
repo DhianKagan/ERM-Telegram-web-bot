@@ -8,6 +8,7 @@ import type { RequestWithUser } from '../types/request';
 import { sendProblem } from '../utils/problem';
 import { ProblemDetails } from '../types/problem';
 import { apiErrors } from '../api/middleware';
+import sanitizeError from '../utils/sanitizeError';
 
 const csrfErrors = new client.Counter({
   name: 'csrf_errors_total',
@@ -70,9 +71,10 @@ export default function errorMiddleware(
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
     return;
   }
-  console.error(error);
+  const clean = sanitizeError(error);
+  console.error('API error:', clean);
   writeLog(
-    `Ошибка ${error.message} path:${req.originalUrl} ip:${req.ip} trace:${traceId} instance:${traceId}`,
+    `Ошибка ${clean} path:${req.originalUrl} ip:${req.ip} trace:${traceId} instance:${traceId}`,
     'error',
   ).catch(() => {});
   const status = res.statusCode >= 400 ? res.statusCode : 500;

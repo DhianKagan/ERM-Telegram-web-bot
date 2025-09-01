@@ -1,5 +1,5 @@
 // Назначение: контроллер оптимизации маршрутов
-// Модули: express-validator, services/optimizer
+// Основные модули: express-validator, services/optimizer
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import * as service from '../services/optimizer';

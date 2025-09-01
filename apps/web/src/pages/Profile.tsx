@@ -1,4 +1,5 @@
-// Назначение: страница профиля пользователя; модули: React, React Router
+// Назначение: страница профиля пользователя
+// Основные модули: React, React Router
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import Breadcrumbs from "../components/Breadcrumbs";

@@ -12,9 +12,8 @@ function bootstrap() {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const forcedBrowser = params.get("browser") === "1";
-  const canTranslate = Boolean(window.Telegram?.WebApp?.translate);
-  const isBrowser = forcedBrowser || !canTranslate;
+  const forceBrowser = params.get("browser") === "1";
+  const isTelegram = !forceBrowser && Boolean(window.Telegram?.WebApp);
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(
@@ -35,10 +34,11 @@ function bootstrap() {
     );
   }
 
-  if (isBrowser) {
-    if (!forcedBrowser) {
-      alert("Пожалуйста, откройте приложение внутри Telegram");
-    }
+  if (isTelegram) {
+    import("./TelegramApp")
+      .then((mod) => render((mod as any).default ?? (mod as any)))
+      .catch((e) => console.error("Failed to load TelegramApp", e));
+  } else {
     import("./App")
       .then((mod) => {
         const App = (mod as any).default ?? (mod as any);
@@ -46,10 +46,6 @@ function bootstrap() {
         render(App);
       })
       .catch((e) => console.error("Failed to load App", e));
-  } else {
-    import("./TelegramApp")
-      .then((mod) => render((mod as any).default ?? (mod as any)))
-      .catch((e) => console.error("Failed to load TelegramApp", e));
   }
 }
 

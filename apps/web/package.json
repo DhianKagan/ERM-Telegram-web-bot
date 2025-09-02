@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "node ../../scripts/generate_hero_images.mjs",
     "build": "vite build",
+    "prebuild": "node ../../scripts/generate_hero_images.mjs",
     "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js .",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",

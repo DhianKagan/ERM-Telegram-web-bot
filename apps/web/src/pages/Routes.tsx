@@ -138,6 +138,20 @@ export default function RoutesPage() {
     };
   }, [sorted, openTask, hasDialog]);
 
+  React.useEffect(() => {
+    // Наблюдение за LCP тайла карты
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      const last = entries[entries.length - 1] as any;
+      const el = last.element as Element | null;
+      if (el?.classList.contains("leaflet-tile")) {
+        console.log("LCP тайл:", last.startTime);
+      }
+    });
+    observer.observe({ type: "largest-contentful-paint", buffered: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="space-y-4">
       <Breadcrumbs

@@ -18,7 +18,6 @@ export default function GlobalSearch() {
         variant="ghost"
         size="icon"
         aria-label={t("search")}
-        className="size-12"
       >
         <MagnifyingGlassIcon className="size-5" />
       </Button>
@@ -31,16 +30,11 @@ export default function GlobalSearch() {
             className="w-full max-w-md rounded bg-white p-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <label htmlFor="global-search" className="sr-only">
-              {t("search")}
-            </label>
             <Input
-              id="global-search"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search")}
-              className="h-12"
             />
           </div>
         </div>

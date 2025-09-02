@@ -151,13 +151,7 @@ export default function StoragePage() {
       </FileBrowser>
       <Modal open={!!preview} onClose={() => setPreview(null)}>
         {preview?.type === "image" && (
-          <img
-            srcSet={`${preview.url} 1x, ${preview.url} 2x`}
-            sizes="(max-width: 800px) 100vw, 800px"
-            src={preview.url}
-            alt=""
-            className="max-h-[80vh]"
-          />
+          <img src={preview.url} alt="" className="max-h-[80vh]" />
         )}
         {preview?.type === "video" && (
           <video src={preview.url} controls className="max-h-[80vh]" />

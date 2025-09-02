@@ -1,7 +1,8 @@
 // Назначение: канбан-доска задач с перетаскиванием
-// Основные модули: React, @hello-pangea/dnd (ленивый импорт), сервис задач
+// Основные модули: React, @hello-pangea/dnd, сервис задач
 import React, { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import TaskCard from "./components/TaskCard";
 import TaskDialog from "./components/TaskDialog";
 import { fetchKanban, updateTaskStatus } from "./services/tasks";
@@ -18,11 +19,6 @@ export default function TaskBoard() {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [params, setParams] = useSearchParams();
   const open = params.get("newTask") !== null;
-  const [dnd, setDnd] = useState<any>(null);
-
-  useEffect(() => {
-    import("@hello-pangea/dnd").then(setDnd);
-  }, []);
 
   useEffect(() => {
     fetchKanban().then(setTasks);
@@ -36,9 +32,6 @@ export default function TaskBoard() {
       ts.map((t) => (t._id === draggableId ? { ...t, status } : t)),
     );
   };
-
-  if (!dnd) return <div className="p-4">Загрузка...</div>;
-  const { DragDropContext, Droppable, Draggable } = dnd;
 
   return (
     <div className="p-4">

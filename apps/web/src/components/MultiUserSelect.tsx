@@ -1,6 +1,6 @@
-// Компонент выбора нескольких пользователей с ленивой загрузкой react-select
+// Компонент выбора нескольких пользователей на базе react-select
 import React from "react";
-const Select = React.lazy(() => import("react-select"));
+import Select from "react-select";
 
 interface Props {
   label: string;
@@ -29,18 +29,16 @@ export default function MultiUserSelect({
   return (
     <div>
       <label className="block text-sm font-medium">{label}</label>
-      <React.Suspense fallback={<div>Загрузка...</div>}>
-        <Select
-          isMulti
-          isDisabled={disabled}
-          options={options}
-          value={selected}
-          placeholder="Выбрать"
-          onChange={(vals) => onChange((vals as any[]).map((v) => v.value))}
-          className="mt-1"
-          classNamePrefix="select"
-        />
-      </React.Suspense>
+      <Select
+        isMulti
+        isDisabled={disabled}
+        options={options}
+        value={selected}
+        placeholder="Выбрать"
+        onChange={(vals) => onChange((vals as any[]).map((v) => v.value))}
+        className="mt-1"
+        classNamePrefix="select"
+      />
     </div>
   );
 }

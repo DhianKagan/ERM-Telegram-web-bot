@@ -8,13 +8,7 @@ export default function ThemeToggle() {
   const { theme, setTheme } = useContext(ThemeContext);
   const toggle = () => setTheme(theme === "dark" ? "light" : "dark");
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggle}
-      aria-label="Тема"
-      className="size-12"
-    >
+    <Button variant="ghost" size="icon" onClick={toggle} aria-label="Тема">
       {theme === "dark" ? "🌙" : "☀️"}
     </Button>
   );

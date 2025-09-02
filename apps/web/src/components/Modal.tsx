@@ -10,7 +10,7 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, children }: ModalProps) {
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[1000]" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />

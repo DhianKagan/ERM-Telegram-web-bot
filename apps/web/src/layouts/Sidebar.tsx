@@ -43,12 +43,16 @@ export default function Sidebar() {
       className={`fixed top-0 left-0 z-50 h-full ${collapsed ? "w-20" : "w-60"} border-stroke border-r bg-white p-4 transition-all ${open ? "translate-x-0" : "-translate-x-full"}`}
     >
       <div className="flex items-center justify-between">
-        <button onClick={toggle} className="p-1" aria-label="Закрыть меню">
+        <button
+          onClick={toggle}
+          className="flex h-12 w-12 items-center justify-center"
+          aria-label="Закрыть меню"
+        >
           <XMarkIcon className="h-5 w-5" />
         </button>
         <button
           onClick={toggleCollapsed}
-          className="hover:text-accentPrimary hidden p-1 lg:block"
+          className="hover:text-accentPrimary hidden h-12 w-12 items-center justify-center lg:flex"
           title="Свернуть меню"
           aria-label="Свернуть меню"
         >
@@ -64,7 +68,10 @@ export default function Sidebar() {
           <Link
             key={i.to}
             to={i.to}
-            className={`flex items-center gap-2 rounded-lg px-2 py-2 text-gray-700 hover:bg-gray-100 ${pathname === i.to ? "bg-gray-100 font-semibold" : ""}`}
+            aria-label={i.label}
+            className={`flex h-12 items-center gap-2 rounded-lg px-2 text-gray-700 hover:bg-gray-100 ${
+              pathname === i.to ? "bg-gray-100 font-semibold" : ""
+            }`}
           >
             <i.icon className="h-5 w-5" />
             {!collapsed && <span>{i.label}</span>}

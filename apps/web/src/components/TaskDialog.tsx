@@ -504,19 +504,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             {isEdit && !editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="p-1"
+                className="flex h-12 w-12 items-center justify-center"
                 title="Редактировать"
+                aria-label="Редактировать"
               >
                 ✎
               </button>
             )}
-            <button onClick={resetForm} className="p-1" title="Сбросить">
+            <button
+              onClick={resetForm}
+              className="flex h-12 w-12 items-center justify-center"
+              title="Сбросить"
+              aria-label="Сбросить"
+            >
               <ArrowPathIcon className="h-5 w-5" />
             </button>
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-1"
+              className="flex h-12 w-12 items-center justify-center"
               title="Развернуть"
+              aria-label="Развернуть"
             >
               {expanded ? (
                 <ArrowsPointingInIcon className="h-5 w-5" />
@@ -524,7 +531,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 <ArrowsPointingOutIcon className="h-5 w-5" />
               )}
             </button>
-            <button onClick={onClose} className="p-1" title="Закрыть">
+            <button
+              onClick={onClose}
+              className="flex h-12 w-12 items-center justify-center"
+              title="Закрыть"
+              aria-label="Закрыть"
+            >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>

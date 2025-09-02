@@ -36,15 +36,11 @@ function bootstrap() {
 
   if (isTelegram) {
     import("./TelegramApp")
-      .then((mod) => render((mod as any).default ?? (mod as any)))
+      .then(({ default: TelegramApp }) => render(TelegramApp))
       .catch((e) => console.error("Failed to load TelegramApp", e));
   } else {
     import("./App")
-      .then((mod) => {
-        const App = (mod as any).default ?? (mod as any);
-        console.log("App module keys:", Object.keys(mod as any));
-        render(App);
-      })
+      .then(({ default: App }) => render(App))
       .catch((e) => console.error("Failed to load App", e));
   }
 }

@@ -21,12 +21,7 @@ export default function NotificationDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t("notifications")}
-          className="size-12"
-        >
+        <Button variant="ghost" size="icon" aria-label={t("notifications")}>
           {children}
         </Button>
       </DropdownMenuTrigger>

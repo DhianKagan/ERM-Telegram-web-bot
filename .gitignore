@@ -28,9 +28,3 @@ coverage/
 .vscode/
 free-react-tailwind-admin-dashboard-main.zip
 apps/web/bundle-report.html
-
-# геро-изображения генерируются скриптом
-apps/web/public/vite.webp
-apps/web/public/vite.avif
-apps/web/src/assets/react.webp
-apps/web/src/assets/react.avif

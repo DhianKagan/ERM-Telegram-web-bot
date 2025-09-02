@@ -38,6 +38,7 @@ function preserveIndexHtml() {
 
 // https://vite.dev/config/
 export default defineConfig(() => {
+  const isCi = Boolean(process.env.CI);
   return {
     plugins: [
       react(),
@@ -62,15 +63,14 @@ export default defineConfig(() => {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
-      // Карты исходников включены для всех окружений
-      sourcemap: true,
-      minify: "esbuild",
+      // Временные настройки для отладки (отключены в CI)
+      sourcemap: !isCi,
+      minify: isCi ? "esbuild" : false,
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
         include: [/shared/, /node_modules/],
       },
       rollupOptions: {
-        treeshake: true,
         output: {
           manualChunks(id) {
             if (id.includes("node_modules")) {

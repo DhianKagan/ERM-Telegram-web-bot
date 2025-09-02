@@ -65,12 +65,13 @@ export default defineConfig(() => {
       manifest: true,
       // Временные настройки для отладки (отключены в CI)
       sourcemap: !isCi,
-      minify: isCi ? "esbuild" : false,
+      minify: "esbuild",
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
         include: [/shared/, /node_modules/],
       },
       rollupOptions: {
+        treeshake: true,
         output: {
           manualChunks(id) {
             if (id.includes("node_modules")) {

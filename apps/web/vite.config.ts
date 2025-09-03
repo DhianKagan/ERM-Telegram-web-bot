@@ -57,6 +57,7 @@ export default defineConfig(() => {
       alias: {
         "@": resolve(__dirname, "src"),
         shared: resolve(__dirname, "../../packages/shared/src"),
+        "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
       },
     },
     build: {

@@ -882,7 +882,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {attachments.map((a) => (
                   <li key={a.url} className="flex items-center gap-2">
                     {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
-                      <img src={a.url} alt={a.name} className="h-16 rounded" />
+                      <img
+                        srcSet={`${a.url} 1x, ${a.url} 2x`}
+                        sizes="64px"
+                        src={a.url}
+                        alt={a.name}
+                        className="h-16 rounded"
+                      />
                     ) : (
                       <a
                         href={a.url}

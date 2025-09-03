@@ -18,15 +18,23 @@ export default function Header() {
       className={`border-stroke sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-white px-4 transition-all ${open ? (collapsed ? "lg:ml-20" : "lg:ml-60") : "lg:ml-0"}`}
     >
       <div className="flex items-center gap-2">
-        <button onClick={toggle} className="block" aria-label={t("menu")}>
+        <button
+          onClick={toggle}
+          className="flex h-12 w-12 items-center justify-center"
+          aria-label={t("menu")}
+        >
           <Bars3Icon className="h-6 w-6" />
         </button>
         <h1 className="font-bold">agrmcs</h1>
       </div>
       <div className="flex items-center gap-4">
         <GlobalSearch />
+        <label htmlFor="lang-select" className="sr-only">
+          {t("language")}
+        </label>
         <select
-          className="rounded border p-1 text-sm"
+          id="lang-select"
+          className="h-12 rounded border px-2 text-sm"
           value={i18n.language}
           onChange={(e) => i18n.changeLanguage(e.target.value)}
           aria-label={t("language")}

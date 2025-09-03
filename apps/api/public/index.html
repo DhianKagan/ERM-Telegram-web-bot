@@ -1,66 +1,29 @@
-<!DOCTYPE html><html lang="ru"><head>
+<!-- Назначение файла: корневая HTML-страница веб-клиента. --><!DOCTYPE html><html lang="ru"><head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" integrity="sha384-T5snEHEhVDqemDVAYPOBGqNM+kggyOgc6XE/i4jHs89negEomEOAYGo+UCsyTG6d" crossorigin="anonymous">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" integrity="sha384-LejSz5JHJjnUkcfyBtkpGYBYWdPUqvvb88OuB9TVebjXJaZSiYOAuW0OGNvM3fUf" crossorigin="anonymous">
     <link rel="icon" type="image/png" href="/favicon.png" integrity="sha384-L0ceLh/XSv6XyKiq9kiiDNDxu+Ne5vEZyeOYgfZzwhNwu9Px89G/yy47RCHiWGCk" crossorigin="anonymous">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Управление задачами">
+    <meta property="og:image" content="/hero/index.png">
     <link rel="stylesheet" href="/fonts/fonts.css" integrity="sha384-bjTg4N7TnsipMatz5mxrxao/pM/V7CpDOtVSwYMZCZoBIB9UU7R9kKlUUoBsczFU" crossorigin="anonymous">
     <title>ERM Web App</title>
-    <script type="module" crossorigin="anonymous" src="/assets/index-CHryRKfN.js" integrity="sha384-A3XPoYfVxG4hXugUOWhDEZ95RdVDMJ0cxavmAxvwZC9Ss1mF01BDMhly4EYcfX1k"></script>
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/tslib-DoCH2PxV.js" integrity="sha384-mgCnT4ImfNx2EMMo97lrODgrzFmB+I56oSVEcjHUM2qevXvcj7Amp8K1Zsti2iYq">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/use-sidecar-CDI7hJk0.js" integrity="sha384-ImUtpezTvqwy86FTmH04vz1mIuys4n/7GcCXIGwcQxYwPpCXTHQh9AsFrDP31LKn">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/get-nonce-DiSj3EHl.js" integrity="sha384-vOK2LF/zFFT6MJ9jzmEB+rbUnYdqNGs67dHFXWlv+VQZC7M+/4/mOLAf3lswnGie">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/remix-run-router-BBdLHI9r.js" integrity="sha384-d7lYJYR4N5QM5/krxmh3wBYwC18UnhKYm2rkWiiJosktUFnogcCOgYcAo5R6m2A+">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/babel-runtime-DY38Ppx8.js" integrity="sha384-QN3smQykJxIUMxF5292kKD/X/ZlQWSeKoR6zpR54+MlDfAzvcTOfQy1Nu7Wgx+6l">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/stylis-D9YrC2ro.js" integrity="sha384-ZF6qwaXbRzm91bz0JT+5kDGbKJ6Ag38+aHc9waBNLCldhs56wKqm3ym4YfidBrlp">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/floating-ui-utils-CGNwmCGM.js" integrity="sha384-7MF9YMswa9APPriBjQwI+maLbTnj4Vz/eiiUuBMgRJ1b7Fwfa/MWd4yqMQZAPiDS">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/floating-ui-core-CmCkKucb.js" integrity="sha384-ktviY1QHZ9nQ9j6/3ymvHvTHHBJBoN9T5yViOpu+eaCaECf6ffvCbB843iSYteD9">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/floating-ui-dom-D_8-YgKB.js" integrity="sha384-JD4i7yGf8adt8rtTidQkeR3Vn6TPLVPj1oHPpUEaTnOyJA5wIJL11/VL8QQjirCR">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/memoize-one-LYl7igMA.js" integrity="sha384-HLAyX7oY8mmpBZzMcNwsBvHb+IktqfYrBRlxCVgTwiaLPBTG24xLeGVq87nZK1Sr">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/use-sync-external-store-B-z6q9NE.js" integrity="sha384-AFLMO5DNR99UEMQHw9gpsg2YnqWRPTtfVTFy2M4MAUPLGtpKZF76ZtTbngic+ly8">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-dnd-invariant-Scw3OB1p.js" integrity="sha384-wf5gKv3JnUA4dXDYYQR/Xzn0cODyC4tvUCzzxB/BNbJX34UHieaPXAN1/AVOtBN6">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-dnd-shallowequal-ofuHHVEf.js" integrity="sha384-+iUFu2cPjpt8HeQB3BcddAT/jhLEJBiagrgYforgQ5dQXxCBmRjXcMiQxZZkGLt/">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/redux-C190IOjK.js" integrity="sha384-kKOZI+LpYleQgxKd/rUyuDl4OFEwIiXl/pde/YDfsc6ruVTIeEspHueBAtgTo97P">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-dnd-asap-D826OWuJ.js" integrity="sha384-Iev6OhmnkJFj3/W0o09N9qi/A/ARqQGE98BkW8mM21QiaEDc249O7nGy0ZFhr6TT">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/dnd-core-DCa0FYU3.js" integrity="sha384-fGJYaGygIDaXYGzcs+O7m15UE3/bH0Fzi/KCno5pmle9qOVYK1Hp23mC4G3erC1d">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/formatjs-fast-memoize-D29LgL9q.js" integrity="sha384-NJK+oVSQDw2Sk4lqCqJVBTLvMjnF0qtSBYf9mKmWbIAn4lNHSpAhsYFDBiAkA87V">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/formatjs-icu-skeleton-parser-CY6Geo4_.js" integrity="sha384-TnqhwRh4pNGBwIpgsgbWYs/cdc07JAY6wfg9WxYRKd5jP4ytx621XUy1GL/S/tHd">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/formatjs-icu-messageformat-parser-BWq-WGfq.js" integrity="sha384-tNNotzn/XR39/gnDbuoBb+XhudaUcOPYUkU2eSl/Q6tUfbx5dhn9f2VGczs45TNZ">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/intl-messageformat-BNDWkAM2.js" integrity="sha384-e9U0b/R1qvdfuZBGsvyf85RMC1Q61JJM8t4jDMGFH8PJimRNvxeXJ+cJzGOX82eI">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/formatjs-ecma402-abstract-Cj3H0B5F.js" integrity="sha384-HpYQT2fDRLkIta4ph7qbeTAcF9eaE7b0Qk6g0hbGDG3t177QImC+bNfkKlu/xkEZ">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/formatjs-intl-BiTNe3RU.js" integrity="sha384-l+CP4oXSCNt64X+jsF4y81FOc+x+G8/M/raJf2k4G8hRpu3FepXI8D9WSes8DrJf">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/theming-BqYEnfSk.js" integrity="sha384-7+o+67ca2L7nVmI69rhgFCnXDKR/J2vxLbab8JLp7i0XRLWlsaRZStmDe4f8Ux/8">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/is-in-browser-DN_HVnfz.js" integrity="sha384-D+2zYVqcOgViC7n0s6so1gbqSTpzhPDQBW0Y4j9ESabcSi1gfMNXHX2KvCz0HyRy">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-GU0pfgeE.js" integrity="sha384-o8arNPLtSdoVBgfkVe0c8F3VTGR1rxHr/zhHd9wiE+n5Jrg4Y3JMpgzq71iTPvpK">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-rule-value-function-CFeoCeJA.js" integrity="sha384-CcFr3GdHhkg253qbrfDt26B4SHflGwB7OEcNK1IWvbdk/+S0hj9TT3U7t9eIncKr">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/symbol-observable-UhIZHTpx.js" integrity="sha384-Yv49UUrA9fiFdj8mKS4lqzUdZilDvkYJgGPhObGHSlk2GkrAFh8lWt38Q+paTg00">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-rule-value-observable-tC_6Dd7s.js" integrity="sha384-02SyNpqoe0Y48tXxrTuEbHl32vHPeWjFNArZecPVU4Y3V3HogAEGopwzhC0rSdco">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-template-DpEjIOZm.js" integrity="sha384-0TkQ+WFC3ltttsx2afiKKEKq0XXSlUvSLikTFvK/L0PlFFdXsXlOECefU37Qmmv9">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-global-qfi0Y8Ff.js" integrity="sha384-iroaN7ZV4yzqe9RE4EJn2D46TVSelTdavhrrm0/pRNXu/3nJ5D6pSDkhzV3FgQuc">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-extend-w_aGmozQ.js" integrity="sha384-18SkeWzsLA50JNcfMdnPZruuk/0MpseUATuheUJTJFPG6245xTnXru9/YWlMoet+">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-nested-WbQlO3Et.js" integrity="sha384-jGbfMYVKiT1PEe9nsVjglaye9hySMNGEt6mf6bgtPvP76/09aq3c4zV2rWubhejM">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-compose-VeuVZ_sO.js" integrity="sha384-FyBZoZMK0cLyWXslYGGT1+94BDMwyNhzYz+jx2NMLD5bYXnyvLY0ifl8/DPhox2X">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/hyphenate-style-name-D1wJwj98.js" integrity="sha384-CFOoCgaD6oTdIoifs0bZQB8mnRECigjGKm+17+5jyWuhVCs0kTTkwExo/3x6WnT7">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-camel-case-CHbGwnLR.js" integrity="sha384-IVtR/GtvlSZJET2kGpbsKyixypb+chZCVToADUG3VzDluJlZsEIKLSng9mCKmlA7">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-default-unit-CoHjh_CA.js" integrity="sha384-z2VHDs3zJQMR/Fw3DrCR0P2BMZEtsdB37ijLvbTifbKozpNtmEB2eRpEK90mEO3d">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-expand-CRlkUh3v.js" integrity="sha384-htfhRxfB+koSABpZK2vBzaogNHIcoYo3R/YZd0CRgmoLbEfe9mGKV7zTtKyYSwqu">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/css-vendor-DhSwkmLJ.js" integrity="sha384-q7boWwuum4YOHwNDZ91/bNkxz90f3/l7auTCeN8/YPtUByazQl+CnyzFWYp+Otw6">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-vendor-prefixer-COax8HTV.js" integrity="sha384-DoGNfwXMezfqHmOduRziixQPH/xFpA6/ExIpPMZ0MPq1c6VeElDRagnvFzIw7rci">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-plugin-props-sort-C-QWdNzf.js" integrity="sha384-3KPlqgkEzqAV65mb4WuavlkogLHGcsf8qXAtYRDtNWBVj2MfNJAdv9ssPQMSPIRH">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jss-preset-default-CRodZMsB.js" integrity="sha384-5JkpOiJCf2fWUtCG9piZZWuJ7wrgZL4gMlC8ZnabYexmBo16dqbdAaktNWy6PPYX">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/scheduler-Ku_GYTBs.js" integrity="sha384-oDww7yPcgRbtm5vwuHFzFvc0QIFTttQqjmWcbu9DZwGQzGZ7hpIbc848UoLKUONW">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-DZFzIkyO.js" integrity="sha384-YI0V6I28PUyMgbTO7ylDW6nSkzUSvVE6tjeIkgjZYYsF4in99RLxSB44crPnyAIk">
+    <script type="module" crossorigin="anonymous" src="/assets/index-BwBCMwkb.js" integrity="sha384-q33lv6hD2g5oYxWYP4+cHAAkJVNfzNSTTAwGC+fj6vlYMJ/9G4vVub5ayp8mFm3L"></script>
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-BLz26m8n.js" integrity="sha384-wB/5YtR5iGWq2beHb1jLD84P5A6JDAUrA/984kWz+/mY3iBTEquWE7sOlNqqeNnU">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/prop-types-hJkCq8t9.js" integrity="sha384-6ETDRj7gRXkIhKe7/g1DuvUw8o3wyRV3m8YIV+Tmi+DLVM36vD6DU9PNqBKZR9DM">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/es-toolkit-BMsToPQI.js" integrity="sha384-+LHIMD6HKqb/NurCnVLYtIZ+aN3bC5AqWctxnK8If9SKSLhc4xn/jdqJPa2QfDF/">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/ckeditor-Bn95rd0k.js" integrity="sha384-ajpUXkfyXbjt6W8ld8oxXeTicOP1DoR8OsusvbKIPoEMi+YvB9F1sgF2wnssDJiH">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/ckeditor-BjxAisVk.js" integrity="sha384-Dz1PV07SZiShLdV8CyA0L+k6z9G31WpfgWOdVdvwB1V1mOS4nuiZROa4faTTrkBZ">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/babel-runtime-DY38Ppx8.js" integrity="sha384-QN3smQykJxIUMxF5292kKD/X/ZlQWSeKoR6zpR54+MlDfAzvcTOfQy1Nu7Wgx+6l">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/fflate-Ciu_BGOl.js" integrity="sha384-Om6J8ACu4etwL8+MBq9u5uoHO+xij9yQZLcLBBFYdQDAwl0+6lw5VLbJDMwYECly">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/iobuffer-BhNq81w-.js" integrity="sha384-9+cL8N/+zhV7cFlOgRDWSKWGVLDmvmTlrn/rMgtx+vhs4FIeJ3BDjhlFKNJ+CVZv">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/pako-D7zkOqXM.js" integrity="sha384-aeuxxCAZcvVO9o53WD163tlrxUgZ5wSR4zPt2Nxs5O3fBaNaSRLpbpLRaCMLRm+5">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/fast-png-Bdjteh3E.js" integrity="sha384-n85n9wBZyRTLHgzG8A6HkcRBAF5IFv5ZcJkF1GorNRLNG5yTyi/V2HXacUM0cwHM">
-    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jspdf-DkFWh9HC.js" integrity="sha384-zpwBWegLeVulu4zSyPZ0K4YMUoJEOEMOPs/RySRWSo84+LrmsTimiFLyNY2E5V3o">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/jspdf-DFQv1l1k.js" integrity="sha384-LTHTwkjxrrxAocNwFwyDcLtu85w65BHtZBZCRW3sEvibM9jilm0Hl+sj3D3WB2RW">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/scheduler-Ku_GYTBs.js" integrity="sha384-oDww7yPcgRbtm5vwuHFzFvc0QIFTttQqjmWcbu9DZwGQzGZ7hpIbc848UoLKUONW">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-dom-DZsQPQwq.js" integrity="sha384-YA57x32LiAcBx78F4TlFBO4xg/noDT4ZhrTsuDtZTrcSV5a7gzf23nVdptQWv62F">
     <link rel="modulepreload" crossorigin="anonymous" href="/assets/i18next-CayiEvry.js" integrity="sha384-7RpT4FkaU+g7ZlViwANtQ7KIkZ3SWM14qszgcvbRaL1cvXo4lhuZYoMq8htrPFoS">
-    <link rel="stylesheet" crossorigin="anonymous" href="/assets/index-DeA6WBWt.css" integrity="sha384-vgmbzz0OUM/+1fNKC38YiTnyvy/EQEQRluo7fkgZnz9T/Syc9ucUav4aIDbjRfpU">
+    <link rel="modulepreload" crossorigin="anonymous" href="/assets/react-i18next-BE61C8Xx.js" integrity="sha384-oFGoeyQYhqcFOu98Ne6ykgr/AZmTKG398/UwbK95nRThQtivLLc2vSzVvlhzf5zg">
+    <link rel="stylesheet" crossorigin="anonymous" href="/assets/index-08lgup74.css" integrity="sha384-buzRDXCaBkWqvyYKWFFZqtmPiIAyPIDAsQVpIL3KG17VxopJdrotZojavSr7ND5e">
   </head>
   <body class="min-h-screen bg-white font-sans">
     <div id="root"></div>

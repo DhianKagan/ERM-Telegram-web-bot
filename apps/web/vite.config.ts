@@ -63,14 +63,14 @@ export default defineConfig(() => {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
+      // Временные настройки для отладки (отключены в CI)
       sourcemap: !isCi,
-      minify: "esbuild",
+      minify: isCi ? "esbuild" : false,
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
         include: [/shared/, /node_modules/],
       },
       rollupOptions: {
-        treeshake: true,
         output: {
           manualChunks(id) {
             if (id.includes("node_modules")) {

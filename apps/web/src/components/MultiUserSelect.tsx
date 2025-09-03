@@ -1,15 +1,10 @@
 // Компонент выбора нескольких пользователей на базе react-select
-import { useMemo } from "react";
+import React from "react";
 import Select from "react-select";
 
 interface Props {
   label: string;
-  users: {
-    telegram_id: number;
-    name?: string;
-    username?: string;
-    telegram_username?: string;
-  }[];
+  users: { telegram_id: number; name?: string; username?: string }[];
   value: string[];
   onChange: (v: string[]) => void;
   disabled?: boolean;
@@ -22,7 +17,7 @@ export default function MultiUserSelect({
   onChange,
   disabled,
 }: Props) {
-  const options = useMemo(
+  const options = React.useMemo(
     () =>
       users.map((u) => ({
         value: String(u.telegram_id),

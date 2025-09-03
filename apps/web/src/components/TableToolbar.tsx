@@ -1,6 +1,9 @@
 // Назначение файла: общий тулбар таблицы с экспортом и настройкой колонок
-// Модули: React, @tanstack/react-table
+// Модули: React, @tanstack/react-table, jspdf
+import React from "react";
 import type { Table } from "@tanstack/react-table";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 interface Props<T> {
   table: Table<T>;
@@ -26,6 +29,20 @@ export default function TableToolbar<T>({ table }: Props<T>) {
     a.click();
   };
 
+  const exportPdf = () => {
+    const headers = columns
+      .filter((c) => c.getIsVisible())
+      .map((c) => c.columnDef.header as string);
+    const rows = table
+      .getRowModel()
+      .rows.map((r) =>
+        r.getVisibleCells().map((c) => String(c.getValue() ?? "")),
+      );
+    const doc = new jsPDF();
+    (doc as any).autoTable({ head: [headers], body: rows });
+    doc.save("table.pdf");
+  };
+
   const toggleColumn = (id: string) => {
     const col = table.getColumn(id);
     if (col) col.toggleVisibility();
@@ -46,6 +63,9 @@ export default function TableToolbar<T>({ table }: Props<T>) {
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <button onClick={exportCsv} className="rounded border px-2 py-1">
         CSV
+      </button>
+      <button onClick={exportPdf} className="rounded border px-2 py-1">
+        PDF
       </button>
       <details className="relative">
         <summary className="cursor-pointer rounded border px-2 py-1 select-none">

@@ -1,6 +1,6 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, @hello-pangea/dnd, сервис задач
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import TaskCard from "./components/TaskCard";

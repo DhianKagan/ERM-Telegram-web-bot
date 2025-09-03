@@ -119,6 +119,8 @@ export default function FileUploader({
             <li key={i} className="flex items-center gap-2">
               {it.isImage && (
                 <img
+                  srcSet={`${it.url} 1x, ${it.url} 2x`}
+                  sizes="48px"
                   src={it.url}
                   alt={it.name}
                   className="h-12 w-12 rounded object-cover"

@@ -28,6 +28,19 @@ export default function RoutesPage() {
   const hasDialog = params.has("task") || params.has("newTask");
   const { user } = useAuth();
 
+  React.useEffect(() => {
+    const content = "/hero/routes.png";
+    let meta = document.querySelector('meta[property="og:image"]');
+    if (meta) {
+      meta.setAttribute("content", content);
+    } else {
+      meta = document.createElement("meta");
+      meta.setAttribute("property", "og:image");
+      meta.setAttribute("content", content);
+      document.head.appendChild(meta);
+    }
+  }, []);
+
   const openTask = React.useCallback(
     (id: string) => {
       const params = new URLSearchParams(location.search);

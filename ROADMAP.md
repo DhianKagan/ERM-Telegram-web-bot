@@ -2,6 +2,7 @@
 
 # Дорожная карта проекта
 
+- Скрипт `generate_hero_images.mjs` создаёт hero-изображения и подключается как шаг `prebuild`.
 - Скрипт `start_api_with_memdb.sh` запускает API с MongoDB в памяти.
 - Команда `pnpm run dev` запускает api и web без таймаута PNPM.
 - AuthContext хранит только профиль и флаг загрузки, JWT на клиенте не используется.

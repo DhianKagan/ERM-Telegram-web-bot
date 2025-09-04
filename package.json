@@ -93,7 +93,6 @@
       "unrs-resolver"
     ],
     "patchedDependencies": {
-      "jspdf@3.0.2": "patches/jspdf@3.0.2.patch",
       "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch"
     }
   },

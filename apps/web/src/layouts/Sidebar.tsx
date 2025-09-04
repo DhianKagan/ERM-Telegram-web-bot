@@ -69,7 +69,9 @@ export default function Sidebar() {
             key={i.to}
             to={i.to}
             aria-label={i.label}
-            className={`flex h-12 items-center gap-2 rounded-lg px-2 text-gray-700 hover:bg-gray-100 ${pathname === i.to ? "bg-gray-100 font-semibold" : ""}`}
+            className={`flex h-12 items-center gap-2 rounded-lg px-2 text-gray-700 hover:bg-gray-100 ${
+              pathname === i.to ? "bg-gray-100 font-semibold" : ""
+            }`}
           >
             <i.icon className="h-5 w-5" />
             {!collapsed && <span>{i.label}</span>}

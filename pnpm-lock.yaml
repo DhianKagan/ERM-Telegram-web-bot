@@ -225,8 +225,8 @@ importers:
         specifier: ^10.5.0
         version: 10.5.0
       pm2:
-        specifier: ^6.0.8
-        version: 6.0.8
+        specifier: ^6.0.9
+        version: 6.0.9
       prom-client:
         specifier: ^14.2.0
         version: 14.2.0
@@ -4254,8 +4254,8 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
-  chromedriver@139.0.3:
-    resolution: {integrity: sha512-NrSqRL2QWXsGk1/EXk5xf9q07mEUMsIA7szr9nxSOzENSdFOi+ZvEYq4H8P3tqQL61EKS0tS9m9TnVCJoQHn2Q==}
+  chromedriver@140.0.0:
+    resolution: {integrity: sha512-mv41C2fi4YX27muRMWP035HJUnKatu7gMJqBcVD1tSmufWDxDy0m38YaieKG3pa2aAIYNVhlXqiOnHkvnqNMcw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -4548,8 +4548,8 @@ packages:
   date-fns@4.1.0:
     resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
 
-  dayjs@1.11.13:
-    resolution: {integrity: sha512-oaMBel6gjolK862uaPQOVTA7q3TZhuSvuMQAAglQDOWYO9A91IrAOUJEyKVlqJlHE0vq5p5UXxzdPfMH/x6xNg==}
+  dayjs@1.11.18:
+    resolution: {integrity: sha512-zFBQ7WFRvVRhKcWoUh+ZA1g2HVgUbsZm9sbddh8EC5iv93sui8DVVz1Npvz+r6meo9VKfa8NyLWBsQK1VvIKPA==}
 
   dayjs@1.8.36:
     resolution: {integrity: sha512-3VmRXEtw7RZKAf+4Tv1Ym9AGeo8r8+CjDi26x+7SYQil1UqtqdaokhzoEJohqlzt0m5kacJSDhJQkG/LWhpRBw==}
@@ -4572,6 +4572,15 @@ packages:
 
   debug@4.3.1:
     resolution: {integrity: sha512-doEwdvm4PCeK4K3RQN2ZC2BYUBaxwLARCqZmMjtF8a51J2Rb0xpVloFRnCODwqjpwnAoao4pelN8l3RJdv3gRQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  debug@4.3.7:
+    resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -7020,8 +7029,8 @@ packages:
   pm2-sysmonit@1.2.8:
     resolution: {integrity: sha512-ACOhlONEXdCTVwKieBIQLSi2tQZ8eKinhcr9JpZSUAL8Qy0ajIgRtsLxG/lwPOW3JEKqPyw/UaHmTWhUzpP4kA==}
 
-  pm2@6.0.8:
-    resolution: {integrity: sha512-y7sO+UuGjfESK/ChRN+efJKAsHrBd95GY2p1GQfjVTtOfFtUfiW0NOuUhP5dN5QTF2F0EWcepgkLqbF32j90Iw==}
+  pm2@6.0.9:
+    resolution: {integrity: sha512-OyXwuqOjH4LpaA7mQtqCgAp1fWrnjL7Qwz3NjBJEnc9UMXUEoUrv447X8XoFiyw1JUJfM6IqXSSy2MlIxISvTg==}
     engines: {node: '>=16.0.0'}
     hasBin: true
 
@@ -8044,8 +8053,8 @@ packages:
     resolution: {integrity: sha512-MeQTA1r0litLUf0Rp/iisCaL8761lKAZHaimlbGK4j0HysC4PLfqygQj9srcs0m2RdtDYnF8UuYyKpbjHYp7Jw==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  systeminformation@5.27.7:
-    resolution: {integrity: sha512-saaqOoVEEFaux4v0K8Q7caiauRwjXC4XbD2eH60dxHXbpKxQ8kH9Rf7Jh+nryKpOUSEFxtCdBlSUx0/lO6rwRg==}
+  systeminformation@5.27.8:
+    resolution: {integrity: sha512-d3Z0gaQO1MlUxzDUKsmXz5y4TOBCMZ8IyijzaYOykV3AcNOTQ7mT+tpndUOXYNSxzLK3la8G32xiUFvZ0/s6PA==}
     engines: {node: '>=8.0.0'}
     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
     hasBin: true
@@ -9112,7 +9121,7 @@ snapshots:
     dependencies:
       '@axe-core/webdriverjs': 4.10.2(selenium-webdriver@4.22.0)
       axe-core: 4.10.3
-      chromedriver: 139.0.3
+      chromedriver: 140.0.0
       colors: 1.4.0
       commander: 9.5.0
       dotenv: 16.6.1
@@ -9986,16 +9995,12 @@ snapshots:
   '@ckeditor/ckeditor5-adapter-ckfinder@41.4.2':
     dependencies:
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-adapter-ckfinder@46.0.2':
     dependencies:
       '@ckeditor/ckeditor5-core': 46.0.2
       '@ckeditor/ckeditor5-upload': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-alignment@46.0.2':
     dependencies:
@@ -10104,6 +10109,8 @@ snapshots:
       blurhash: 2.0.5
       ckeditor5: 46.0.2
       lodash-es: 4.17.21
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-ckbox@46.0.2':
     dependencies:
@@ -10208,8 +10215,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-classic@41.4.2':
     dependencies:
@@ -10235,8 +10240,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-inline@46.0.2':
     dependencies:
@@ -10246,8 +10249,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-multi-root@46.0.2':
     dependencies:
@@ -10317,8 +10318,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.2':
     dependencies:
@@ -10377,8 +10376,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-html-embed@46.0.2':
     dependencies:
@@ -10541,6 +10538,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-mention@46.0.2':
     dependencies:
@@ -10560,6 +10559,8 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-page-break@46.0.2':
     dependencies:
@@ -10569,6 +10570,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-paragraph@41.4.2':
     dependencies:
@@ -10612,6 +10615,8 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-restricted-editing@46.0.2':
     dependencies:
@@ -10637,6 +10642,8 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-source-editing@46.0.2':
     dependencies:
@@ -10667,6 +10674,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-table@41.4.2':
     dependencies:
@@ -10685,6 +10694,8 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-theme-lark@46.0.2':
     dependencies:
@@ -10780,6 +10791,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -11726,7 +11739,7 @@ snapshots:
       async: 3.2.6
       chalk: 3.0.0
       dayjs: 1.8.36
-      debug: 4.3.1
+      debug: 4.3.7
       eventemitter2: 5.0.1
       fast-json-patch: 3.1.1
       fclone: 1.0.11
@@ -11743,7 +11756,7 @@ snapshots:
   '@pm2/io@6.1.0':
     dependencies:
       async: 2.6.4
-      debug: 4.3.1
+      debug: 4.3.7
       eventemitter2: 6.4.9
       require-in-the-middle: 5.2.0
       semver: 7.5.4
@@ -11756,9 +11769,9 @@ snapshots:
   '@pm2/js-api@0.8.0':
     dependencies:
       async: 2.6.4
-      debug: 4.3.1
+      debug: 4.3.7
       eventemitter2: 6.4.9
-      extrareqp2: 1.0.0(debug@4.3.1)
+      extrareqp2: 1.0.0(debug@4.3.7)
       ws: 7.5.10
     transitivePeerDependencies:
       - bufferutil
@@ -13789,7 +13802,7 @@ snapshots:
 
   chownr@3.0.0: {}
 
-  chromedriver@139.0.3:
+  chromedriver@140.0.0:
     dependencies:
       '@testim/chrome-version': 1.1.4
       axios: 1.11.0
@@ -14149,7 +14162,7 @@ snapshots:
 
   date-fns@4.1.0: {}
 
-  dayjs@1.11.13: {}
+  dayjs@1.11.18: {}
 
   dayjs@1.8.36: {}
 
@@ -14164,6 +14177,10 @@ snapshots:
   debug@4.3.1:
     dependencies:
       ms: 2.1.2
+
+  debug@4.3.7:
+    dependencies:
+      ms: 2.1.3
 
   debug@4.4.1:
     dependencies:
@@ -14681,9 +14698,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  extrareqp2@1.0.0(debug@4.3.1):
+  extrareqp2@1.0.0(debug@4.3.7):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.3.1)
+      follow-redirects: 1.15.11(debug@4.3.7)
     transitivePeerDependencies:
       - debug
 
@@ -14810,9 +14827,9 @@ snapshots:
 
   follow-redirects@1.15.11: {}
 
-  follow-redirects@1.15.11(debug@4.3.1):
+  follow-redirects@1.15.11(debug@4.3.7):
     optionalDependencies:
-      debug: 4.3.1
+      debug: 4.3.7
 
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
@@ -17379,13 +17396,13 @@ snapshots:
       async: 3.2.6
       debug: 4.4.1
       pidusage: 2.0.21
-      systeminformation: 5.27.7
+      systeminformation: 5.27.8
       tx2: 1.0.5
     transitivePeerDependencies:
       - supports-color
     optional: true
 
-  pm2@6.0.8:
+  pm2@6.0.9:
     dependencies:
       '@pm2/agent': 2.1.1
       '@pm2/io': 6.1.0
@@ -17398,7 +17415,7 @@ snapshots:
       cli-tableau: 2.0.1
       commander: 2.15.1
       croner: 4.1.97
-      dayjs: 1.11.13
+      dayjs: 1.11.18
       debug: 4.4.1
       enquirer: 2.3.6
       eventemitter2: 5.0.1
@@ -18605,7 +18622,7 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.2.9
 
-  systeminformation@5.27.7:
+  systeminformation@5.27.8:
     optional: true
 
   tabbable@6.2.0: {}

@@ -52,6 +52,8 @@ jobs:
             test-results
       - name: Сборка
         run: pnpm -r build
+      - name: Аудит Lighthouse CI
+        run: pnpm lhci autorun --budget-path=budgets.json
       - name: Загрузка артефактов сборки
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

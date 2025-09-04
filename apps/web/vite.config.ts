@@ -57,16 +57,19 @@ export default defineConfig(() => {
       alias: {
         "@": resolve(__dirname, "src"),
         shared: resolve(__dirname, "../../packages/shared/src"),
+        "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
       },
     },
     build: {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
+      
       // Отладочные sourcemap отключены в CI
       sourcemap: !isCi,
       minify: "esbuild",
       treeshake: true,
+
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
         include: [/shared/, /node_modules/],

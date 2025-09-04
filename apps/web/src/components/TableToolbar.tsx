@@ -1,9 +1,6 @@
 // Назначение файла: общий тулбар таблицы с экспортом и настройкой колонок
 // Модули: React, @tanstack/react-table, jspdf
-import React from "react";
 import type { Table } from "@tanstack/react-table";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
 interface Props<T> {
   table: Table<T>;
@@ -29,7 +26,9 @@ export default function TableToolbar<T>({ table }: Props<T>) {
     a.click();
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    await import("jspdf-autotable");
     const headers = columns
       .filter((c) => c.getIsVisible())
       .map((c) => c.columnDef.header as string);
@@ -64,7 +63,10 @@ export default function TableToolbar<T>({ table }: Props<T>) {
       <button onClick={exportCsv} className="rounded border px-2 py-1">
         CSV
       </button>
-      <button onClick={exportPdf} className="rounded border px-2 py-1">
+      <button
+        onClick={() => void exportPdf()}
+        className="rounded border px-2 py-1"
+      >
         PDF
       </button>
       <details className="relative">

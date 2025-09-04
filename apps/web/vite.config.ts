@@ -64,9 +64,12 @@ export default defineConfig(() => {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
-      // Карты исходников включены для всех окружений
-      sourcemap: true,
-      minify: isCi ? "esbuild" : false,
+      
+      // Отладочные sourcemap отключены в CI
+      sourcemap: !isCi,
+      minify: "esbuild",
+      treeshake: true,
+
       chunkSizeWarningLimit: 1500,
       commonjsOptions: {
         include: [/shared/, /node_modules/],

@@ -24,12 +24,14 @@ interface StoredFile {
   name: string;
   type: string;
   url: string;
+  thumbnailUrl?: string;
 }
 
 interface FsEntry extends FileData {
   url?: string;
   type?: string;
   parentId?: string;
+  thumbnailUrl?: string;
 }
 
 export default function StoragePage() {
@@ -41,6 +43,7 @@ export default function StoragePage() {
   const [sortAsc, setSortAsc] = React.useState(true);
   const [preview, setPreview] = React.useState<{
     url: string;
+    thumbnailUrl?: string;
     type: "image" | "video";
   } | null>(null);
 
@@ -65,6 +68,7 @@ export default function StoragePage() {
           parentId: folderId,
           url: f.url,
           type: f.type,
+          thumbnailUrl: f.thumbnailUrl,
         };
       });
       setFileMap(map);
@@ -102,7 +106,7 @@ export default function StoragePage() {
     }
     if (!file.url || !file.type) return;
     if (file.type.startsWith("image/")) {
-      setPreview({ url: file.url, type: "image" });
+      setPreview({ url: file.url, thumbnailUrl: file.thumbnailUrl, type: "image" });
     } else if (file.type.startsWith("video/")) {
       setPreview({ url: file.url, type: "video" });
     } else {
@@ -152,9 +156,9 @@ export default function StoragePage() {
       <Modal open={!!preview} onClose={() => setPreview(null)}>
         {preview?.type === "image" && (
           <img
-            srcSet={`${preview.url} 1x, ${preview.url} 2x`}
+            srcSet={`${(preview.thumbnailUrl || preview.url)} 1x, ${preview.url} 2x`}
             sizes="(max-width: 800px) 100vw, 800px"
-            src={preview.url}
+            src={preview.thumbnailUrl || preview.url}
             alt=""
             className="max-h-[80vh]"
           />

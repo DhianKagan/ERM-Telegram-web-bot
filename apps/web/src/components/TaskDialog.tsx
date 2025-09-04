@@ -883,9 +883,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <li key={a.url} className="flex items-center gap-2">
                     {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
                       <img
-                        srcSet={`${a.url} 1x, ${a.url} 2x`}
+                        srcSet={`${(a.thumbnailUrl || a.url)} 1x, ${a.url} 2x`}
                         sizes="64px"
-                        src={a.url}
+                        src={a.thumbnailUrl || a.url}
                         alt={a.name}
                         className="h-16 rounded"
                       />

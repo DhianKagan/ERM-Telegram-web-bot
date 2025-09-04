@@ -38,7 +38,6 @@ function preserveIndexHtml() {
 
 // https://vite.dev/config/
 export default defineConfig(() => {
-  const isCi = Boolean(process.env.CI);
   return {
     plugins: [
       react(),
@@ -65,8 +64,8 @@ export default defineConfig(() => {
       outDir: "../api/public",
       manifest: true,
       
-      // Отладочные sourcemap отключены в CI
-      sourcemap: !isCi,
+      // Sourcemap включены для всех сборок
+      sourcemap: true,
       minify: "esbuild",
       treeshake: true,
 

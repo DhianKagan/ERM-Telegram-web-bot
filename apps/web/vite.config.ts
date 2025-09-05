@@ -11,6 +11,7 @@ import { resolve } from "path";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import sri from "./plugins/sri";
 import { visualizer } from "rollup-plugin-visualizer";
+import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 
 /**
  * Плагин сохраняет `index.html` с уведомлением, чтобы Vite не удалял файл при
@@ -42,6 +43,7 @@ export default defineConfig(() => {
     plugins: [
       react(),
       sri(),
+      ViteImageOptimizer(),
       process.env.ANALYZE
         ? visualizer({
             filename: "bundle-report.html",
@@ -68,6 +70,7 @@ export default defineConfig(() => {
       // Sourcemap включены для всех сборок
       sourcemap: true,
       minify: "esbuild",
+      cssMinify: "lightningcss",
       treeshake: true,
 
       chunkSizeWarningLimit: 1500,

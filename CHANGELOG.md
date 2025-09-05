@@ -2,6 +2,7 @@
 
 # История изменений
 
+- В Tailwind подключены плагины daisyui и @tailwindcss/typography.
 - Конфигурация Lighthouse CI запускает предпросмотр клиента через `pnpm --dir apps/web preview`, предотвращая сбои CI.
 - Включены sourcemap в Vite, превью файлов используют `srcset`, артефакты сборки загружаются в CI.
 - Добавлен скрипт `generate_hero_images.mjs`, meta‑теги `og:image` и шаг `prebuild`.

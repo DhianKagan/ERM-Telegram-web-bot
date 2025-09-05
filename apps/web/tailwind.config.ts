@@ -1,10 +1,12 @@
 /**
  * Назначение файла: полная конфигурация Tailwind из шаблона TailAdmin.
- * Основные модули: tailwindcss/defaultTheme, tailwindcss/colors.
+ * Основные модули: tailwindcss/defaultTheme, tailwindcss/colors, @tailwindcss/forms, @tailwindcss/typography, daisyui.
  */
 import defaultTheme from "tailwindcss/defaultTheme";
 import colors from "tailwindcss/colors";
 import forms from "@tailwindcss/forms";
+import typography from "@tailwindcss/typography";
+import daisyui from "daisyui";
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -330,5 +332,5 @@ export default {
       },
     },
   },
-  plugins: [forms],
+  plugins: [forms, typography, daisyui],
 } satisfies import("tailwindcss").Config;

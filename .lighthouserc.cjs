@@ -4,7 +4,7 @@
 module.exports = {
   ci: {
     collect: {
-      startServerCommand: 'pnpm --filter apps/web preview',
+      startServerCommand: 'pnpm --dir apps/web preview',
       url: ['http://localhost:4173'],
       numberOfRuns: 1,
     },

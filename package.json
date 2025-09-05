@@ -103,6 +103,10 @@
     {
       "path": "apps/api/public/assets/*.js",
       "limit": "900 KB"
+    },
+    {
+      "path": "apps/web/dist/assets/*.js",
+      "limit": "900 KB"
     }
   ]
 }

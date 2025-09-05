@@ -46,6 +46,7 @@ export default defineConfig(() => {
         ? visualizer({
             filename: "bundle-report.html",
             template: "treemap",
+            open: true,
             gzipSize: true,
             brotliSize: true,
           })
@@ -63,7 +64,7 @@ export default defineConfig(() => {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
-      
+
       // Sourcemap включены для всех сборок
       sourcemap: true,
       minify: "esbuild",
@@ -75,6 +76,7 @@ export default defineConfig(() => {
       },
       rollupOptions: {
         output: {
+          // Разбиваем node_modules на отдельные чанки по именам пакетов
           manualChunks(id) {
             if (id.includes("node_modules")) {
               const parts = id.toString().split("node_modules/");

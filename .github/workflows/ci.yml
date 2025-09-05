@@ -62,8 +62,8 @@ jobs:
           path: apps/api/public
       - name: E2E тесты
         run: pnpm test:e2e
-      - name: Проверка размера бандла
-        run: pnpm size
+      - name: Проверка размеров бандлов
+        run: mkdir -p apps/web/dist && cp -r apps/api/public/assets apps/web/dist/ && pnpm size
       - name: Загрузка sourcemap
         if: github.ref == 'refs/heads/staging'
         uses: actions/upload-artifact@v4

@@ -6,6 +6,7 @@ import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "../context/useAuth";
+import { useTranslation } from "react-i18next";
 import { taskFields as fields } from "shared";
 import {
   createTask,
@@ -43,6 +44,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);
   const initialRef = React.useRef<any>(null);
@@ -961,7 +963,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       className="text-red-500"
                       onClick={() => removeAttachment(a)}
                     >
-                      Удалить
+                      {t("delete")}
                     </button>
                   </li>
                 ))}
@@ -979,7 +981,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 className="btn-red rounded-full"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                Удалить
+                {t("delete")}
               </button>
             </div>
           )}
@@ -1005,9 +1007,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           )}
           <ConfirmDialog
             open={showDeleteConfirm}
-            message="Удалить задачу?"
-            confirmText="Удалить"
-            cancelText="Отмена"
+            message={t("deleteTaskQuestion")}
+            confirmText={t("delete")}
+            cancelText={t("cancel")}
             onConfirm={() => {
               setShowDeleteConfirm(false);
               handleDelete();

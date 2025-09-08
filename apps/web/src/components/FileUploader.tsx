@@ -1,6 +1,7 @@
 // Компонент загрузки файлов с drag-and-drop и прогрессом
 // Основные модули: React, authFetch, типы задач
 import React from "react";
+import { useTranslation } from "react-i18next";
 import authFetch from "../utils/authFetch";
 import type { Attachment } from "../types/task";
 
@@ -26,6 +27,7 @@ export default function FileUploader({
   onRemove,
 }: Props) {
   const [items, setItems] = React.useState<UploadItem[]>([]);
+  const { t } = useTranslation();
 
   const handleFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
@@ -86,7 +88,7 @@ export default function FileUploader({
         method: "POST",
         body: fd,
       });
-      if (!res.ok) throw new Error("upload failed");
+      if (!res.ok) throw new Error(t("uploadFailed"));
       if (i === total - 1) attachment = (await res.json()) as Attachment;
       onProgress(Math.round(((i + 1) / total) * 100));
     }
@@ -105,7 +107,7 @@ export default function FileUploader({
         onDrop={onDrop}
         className={`mt-2 flex flex-col items-center justify-center rounded border-2 border-dashed p-4 text-sm ${disabled ? "opacity-50" : ""}`}
       >
-        <p>Перетащите файлы сюда или выберите</p>
+        <p>{t("dragFilesOrSelect")}</p>
         <input
           type="file"
           multiple
@@ -119,7 +121,7 @@ export default function FileUploader({
             <li key={i} className="flex items-center gap-2">
               {it.isImage && (
                 <img
-                  srcSet={`${(it.attachment?.thumbnailUrl || it.url)} 1x, ${(it.attachment?.url || it.url)} 2x`}
+                  srcSet={`${it.attachment?.thumbnailUrl || it.url} 1x, ${it.attachment?.url || it.url} 2x`}
                   sizes="48px"
                   src={it.attachment?.thumbnailUrl || it.url}
                   alt={it.name}
@@ -142,7 +144,7 @@ export default function FileUploader({
                 className="text-red-500"
                 onClick={() => removeItem(it)}
               >
-                Удалить
+                {t("delete")}
               </button>
             </li>
           ))}

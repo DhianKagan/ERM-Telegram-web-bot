@@ -5,6 +5,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import userLink from "../utils/userLink";
 import type { Task } from "shared";
 
+// Цвета статусов задач для соответствия WCAG контрасту ≥4.5:1
+const statusColorMap: Record<Task["status"], string> = {
+  Новая: "text-gray-600",
+  "В работе": "text-blue-600",
+  Выполнена: "text-green-600",
+};
+
 export type TaskRow = Task & Record<string, any>;
 
 export default function taskColumns(
@@ -37,7 +44,14 @@ export default function taskColumns(
         return <span title={v}>{v}</span>;
       },
     },
-    { header: "Статус", accessorKey: "status" },
+    {
+      header: "Статус",
+      accessorKey: "status",
+      cell: (p) => {
+        const value = p.getValue<string>() || "";
+        return <span className={statusColorMap[value] || ""}>{value}</span>;
+      },
+    },
     { header: "Приоритет", accessorKey: "priority" },
     { header: "Начало", accessorKey: "start_date" },
     { header: "Срок", accessorKey: "due_date" },

@@ -130,7 +130,7 @@ export default function FileUploader({
               )}
               <div className="flex-1">
                 <p className="text-sm">
-                  {it.name} ({(it.size / 1024 / 1024).toFixed(1)} МБ)
+                  {it.name} ({(it.size / 1024 / 1024).toFixed(1)} {t("mb")})
                 </p>
                 <div className="h-2 rounded bg-gray-200">
                   <div

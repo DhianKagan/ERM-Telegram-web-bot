@@ -1,5 +1,6 @@
 // Конфигурация колонок задач для React Table
-// Модули: @tanstack/react-table, userLink
+// Модули: React, @tanstack/react-table, userLink
+import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import userLink from "../utils/userLink";
 import type { Task } from "shared";
@@ -18,10 +19,24 @@ export default function taskColumns(
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      cell: (p) =>
-        p.getValue<string>() ? p.getValue<string>().slice(0, 10) : "",
+      cell: (p) => {
+        const v = p.getValue<string>();
+        return v
+          ? new Date(v).toLocaleString("ru-RU", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })
+          : "";
+      },
     },
-    { header: "Название", accessorKey: "title" },
+    {
+      header: "Название",
+      accessorKey: "title",
+      cell: (p) => {
+        const v = p.getValue<string>() || "";
+        return <span title={v}>{v}</span>;
+      },
+    },
     { header: "Статус", accessorKey: "status" },
     { header: "Приоритет", accessorKey: "priority" },
     { header: "Начало", accessorKey: "start_date" },
@@ -32,7 +47,8 @@ export default function taskColumns(
       accessorKey: "startCoordinates",
       cell: (p) => {
         const v = p.getValue<any>();
-        return v ? `${v.lat}, ${v.lng}` : "";
+        const text = v ? `${v.lat}, ${v.lng}` : "";
+        return <span title={text}>{text}</span>;
       },
     },
     {
@@ -40,7 +56,8 @@ export default function taskColumns(
       accessorKey: "finishCoordinates",
       cell: (p) => {
         const v = p.getValue<any>();
-        return v ? `${v.lat}, ${v.lng}` : "";
+        const text = v ? `${v.lat}, ${v.lng}` : "";
+        return <span title={text}>{text}</span>;
       },
     },
     { header: "Км", accessorKey: "route_distance_km" },

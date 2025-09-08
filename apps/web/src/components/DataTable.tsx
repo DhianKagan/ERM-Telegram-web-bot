@@ -81,6 +81,7 @@ export default function DataTable<T>({
                 <TableHead
                   key={header.id}
                   style={{ width: header.getSize() }}
+                  className="max-w-[20rem] min-w-[4rem] overflow-hidden text-ellipsis whitespace-nowrap"
                   // фиксируем ширину ячейки заголовка
                 >
                   {header.isPlaceholder
@@ -106,6 +107,7 @@ export default function DataTable<T>({
                 <TableCell
                   key={cell.id}
                   style={{ width: cell.column.getSize() }}
+                  className="max-w-[20rem] min-w-[4rem] overflow-hidden text-ellipsis whitespace-nowrap"
                   // фиксируем ширину ячейки данных
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

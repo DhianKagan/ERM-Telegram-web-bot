@@ -1,6 +1,7 @@
 // Модальное окно задачи с a11y-атрибутами
 // Модули: React
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 type TaskDialogProps = {
   open: boolean;
@@ -15,6 +16,7 @@ export function TaskDialog({
   children,
   title,
 }: TaskDialogProps) {
+  const { t } = useTranslation();
   if (!open) return null;
   return (
     <div
@@ -35,7 +37,7 @@ export function TaskDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t("close")}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <span aria-hidden>✕</span>
@@ -46,10 +48,10 @@ export function TaskDialog({
         </div>
         <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t bg-white/90 px-4 py-3 backdrop-blur md:px-6">
           <button type="button" onClick={onClose} className="btn btn-ghost">
-            Отмена
+            {t("cancel")}
           </button>
           <button form="task-form" type="submit" className="btn btn-primary">
-            Создать
+            {t("create")}
           </button>
         </div>
       </div>

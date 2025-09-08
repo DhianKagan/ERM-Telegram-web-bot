@@ -24,18 +24,33 @@ export default function TaskTable({
   onPageChange,
   onRowClick,
 }: TaskTableProps) {
-  const { query } = useTasks();
+  const { query, filters } = useTasks();
   const columns = React.useMemo(() => taskColumns(true, users), [users]);
 
   return (
     <Suspense fallback={<div>Загрузка таблицы...</div>}>
       <DataTable
         columns={columns}
-        data={tasks.filter((t) =>
-          query
-            ? JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
-            : true,
-        )}
+        data={tasks.filter((t) => {
+          if (
+            query &&
+            !JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
+          )
+            return false;
+          if (filters.status.length && !filters.status.includes(t.status))
+            return false;
+          if (
+            filters.priority.length &&
+            !filters.priority.includes(t.priority as string)
+          )
+            return false;
+          const created = t.createdAt ? new Date(t.createdAt) : null;
+          if (filters.from && created && created < new Date(filters.from))
+            return false;
+          if (filters.to && created && created > new Date(filters.to))
+            return false;
+          return true;
+        })}
         pageIndex={page}
         pageSize={25}
         pageCount={pageCount}

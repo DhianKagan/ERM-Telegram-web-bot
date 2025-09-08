@@ -48,14 +48,25 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [created, setCreated] = React.useState("");
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = React.useState(false);
-  const taskSchema = z.object({
-    title: z.string().min(1, "Название обязательно"),
-    description: z.string().optional(),
-    controllers: z.array(z.string()).default([]),
-    assignees: z.array(z.string()).default([]),
-    startDate: z.string().optional(),
-    dueDate: z.string().optional(),
-  });
+  const taskSchema = z
+    .object({
+      title: z.string().min(1, "Название обязательно"),
+      description: z.string().optional(),
+      controllers: z.array(z.string()).default([]),
+      assignees: z.array(z.string()).default([]),
+      startDate: z.string().optional(),
+      dueDate: z.string().optional(),
+    })
+    .refine(
+      (d) =>
+        !d.startDate ||
+        !d.dueDate ||
+        new Date(d.dueDate) >= new Date(d.startDate),
+      {
+        message: "Срок не может быть раньше начала",
+        path: ["dueDate"],
+      },
+    );
   type TaskFormValues = z.infer<typeof taskSchema>;
   const {
     register,
@@ -63,6 +74,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -91,7 +103,34 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     return d.toISOString().slice(0, 16);
   };
   const DEFAULT_START_DATE = makeDefaultDate(8);
-  const DEFAULT_DUE_DATE = makeDefaultDate(18);
+  const DEFAULT_DUE_DATE = new Date(
+    new Date(DEFAULT_START_DATE).getTime() + 24 * 60 * 60 * 1000,
+  )
+    .toISOString()
+    .slice(0, 16);
+
+  const [dueOffset, setDueOffset] = React.useState(24 * 60 * 60 * 1000);
+  const startDateValue = watch("startDate");
+
+  // При изменении даты начала автоматически пересчитываем срок
+  React.useEffect(() => {
+    if (!startDateValue) return;
+    const newDue = new Date(new Date(startDateValue).getTime() + dueOffset)
+      .toISOString()
+      .slice(0, 16);
+    setValue("dueDate", newDue);
+  }, [startDateValue, dueOffset, setValue]);
+
+  // Позволяет вручную редактировать срок и запоминает смещение
+  const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setValue("dueDate", value);
+    if (startDateValue) {
+      setDueOffset(
+        new Date(value).getTime() - new Date(startDateValue).getTime(),
+      );
+    }
+  };
 
   const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
   const [comment, setComment] = React.useState("");
@@ -195,6 +234,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startDate: DEFAULT_START_DATE,
         dueDate: DEFAULT_DUE_DATE,
       });
+      setDueOffset(24 * 60 * 60 * 1000);
     }
   }, [
     id,
@@ -248,6 +288,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             ? new Date(t.due_date).toISOString().slice(0, 16)
             : "",
         };
+        const diff =
+          formValues.startDate && formValues.dueDate
+            ? new Date(formValues.dueDate).getTime() -
+              new Date(formValues.startDate).getTime()
+            : 24 * 60 * 60 * 1000;
+        setDueOffset(diff);
         reset(formValues);
         setTaskType(curTaskType);
         setComment(t.comment || "");
@@ -597,7 +643,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </label>
               <input
                 type="datetime-local"
-                {...register("dueDate")}
+                {...register("dueDate", { onChange: handleDueDateChange })}
                 className="w-full rounded border px-2 py-1"
                 disabled={!editing}
               />
@@ -883,7 +929,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <li key={a.url} className="flex items-center gap-2">
                     {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
                       <img
-                        srcSet={`${(a.thumbnailUrl || a.url)} 1x, ${a.url} 2x`}
+                        srcSet={`${a.thumbnailUrl || a.url} 1x, ${a.url} 2x`}
                         sizes="64px"
                         src={a.thumbnailUrl || a.url}
                         alt={a.name}

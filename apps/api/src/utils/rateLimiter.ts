@@ -1,6 +1,7 @@
 // Назначение файла: создание rate limiter с логированием и метриками
 // Основные модули: express-rate-limit, prom-client, services/service
 import rateLimit, {
+  ipKeyGenerator,
   type Options as RateLimitLibOptions,
 } from 'express-rate-limit';
 import type { RequestHandler, Response } from 'express';
@@ -37,7 +38,9 @@ export default function createRateLimiter({
         ? adminMax
         : max) as unknown as RateLimitLibOptions['max'],
     keyGenerator: ((req: RequestWithUser) =>
-      `${name}:${req.user?.telegram_id ?? req.ip}`) as unknown as RateLimitLibOptions['keyGenerator'],
+      `${name}:${
+        req.user?.telegram_id ?? ipKeyGenerator(req.ip as string)
+      }`) as unknown as RateLimitLibOptions['keyGenerator'],
     standardHeaders: true,
     legacyHeaders: true,
     skip: ((req: RequestWithUser) =>
@@ -56,7 +59,7 @@ export default function createRateLimiter({
           };
         }
       ).rateLimit;
-      const key = req.user?.telegram_id ?? req.ip;
+      const key = req.user?.telegram_id ?? ipKeyGenerator(req.ip as string);
       drops.inc({ name, key });
       const reset = info?.resetTime;
       if (reset instanceof Date) {

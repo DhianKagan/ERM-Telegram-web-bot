@@ -30,6 +30,7 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileUploader from "./FileUploader";
+import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 
 interface Props {
@@ -171,6 +172,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [showDoneSelect, setShowDoneSelect] = React.useState(false);
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const titleValue = watch("title");
   const removeAttachment = (a: Attachment) => {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
@@ -412,70 +414,77 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [startCoordinates, finishCoordinates]);
 
   const submit = handleSubmit(async (formData) => {
-    const payload: { [key: string]: any } = {
-      title: formData.title,
-      task_type: taskType,
-      task_description: formData.description,
-      comment,
-      priority,
-      transport_type: transportType,
-      payment_method: paymentMethod,
-      status,
-      created_by: creator,
-      assignees: formData.assignees,
-      controllers: formData.controllers,
-      start_location: start,
-      start_location_link: startLink,
-      end_location: end,
-      end_location_link: endLink,
-      start_date: formData.startDate || DEFAULT_START_DATE,
-      due_date: formData.dueDate || DEFAULT_DUE_DATE,
-    };
-    if (startCoordinates) payload.startCoordinates = startCoordinates;
-    if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
-    if (distanceKm !== null) payload.route_distance_km = distanceKm;
-    if (routeLink) payload.google_route_url = routeLink;
-    let data;
-    const sendPayload = { ...payload, attachments };
-    if (isEdit && id) {
-      data = await updateTask(id, sendPayload);
-    } else {
-      data = await createTask(sendPayload);
-    }
-    if (data && data._id) {
-      authFetch(`/api/v1/tasks/${data._id}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (d) {
-            const t = d.task || d;
-            reset({
-              title: t.title || "",
-              description: t.task_description || "",
-              assignees: t.assignees || [],
-              controllers: t.controllers || [],
-              startDate: t.start_date
-                ? new Date(t.start_date).toISOString().slice(0, 16)
-                : "",
-              dueDate: t.due_date
-                ? new Date(t.due_date).toISOString().slice(0, 16)
-                : "",
-            });
-            setCreator(String(t.created_by || ""));
-            setAttachments((t.attachments as Attachment[]) || []);
-            setUsers((p) => {
-              const list = [...p];
-              Object.values(d.users || {}).forEach((u) => {
-                if (!list.some((v) => v.telegram_id === u.telegram_id))
-                  list.push(u);
+    try {
+      const payload: { [key: string]: any } = {
+        title: formData.title,
+        task_type: taskType,
+        task_description: formData.description,
+        comment,
+        priority,
+        transport_type: transportType,
+        payment_method: paymentMethod,
+        status,
+        created_by: creator,
+        assignees: formData.assignees,
+        controllers: formData.controllers,
+        start_location: start,
+        start_location_link: startLink,
+        end_location: end,
+        end_location_link: endLink,
+        start_date: formData.startDate || DEFAULT_START_DATE,
+        due_date: formData.dueDate || DEFAULT_DUE_DATE,
+      };
+      if (startCoordinates) payload.startCoordinates = startCoordinates;
+      if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+      if (distanceKm !== null) payload.route_distance_km = distanceKm;
+      if (routeLink) payload.google_route_url = routeLink;
+      let data;
+      const sendPayload = { ...payload, attachments };
+      if (isEdit && id) {
+        data = await updateTask(id, sendPayload);
+      } else {
+        data = await createTask(sendPayload);
+      }
+      if (data && data._id) {
+        authFetch(`/api/v1/tasks/${data._id}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (d) {
+              const t = d.task || d;
+              reset({
+                title: t.title || "",
+                description: t.task_description || "",
+                assignees: t.assignees || [],
+                controllers: t.controllers || [],
+                startDate: t.start_date
+                  ? new Date(t.start_date).toISOString().slice(0, 16)
+                  : "",
+                dueDate: t.due_date
+                  ? new Date(t.due_date).toISOString().slice(0, 16)
+                  : "",
               });
-              return list;
-            });
-          }
-        });
+              setCreator(String(t.created_by || ""));
+              setAttachments((t.attachments as Attachment[]) || []);
+              setUsers((p) => {
+                const list = [...p];
+                Object.values(d.users || {}).forEach((u) => {
+                  if (!list.some((v) => v.telegram_id === u.telegram_id))
+                    list.push(u);
+                });
+                return list;
+              });
+            }
+          });
+      }
+      if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
+      if (data && onSave) onSave(data);
+      setAttachments([]);
+    } catch (e) {
+      console.error(e);
+      window.alert("Не удалось сохранить задачу");
+    } finally {
+      setIsSubmitting(false);
     }
-    if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
-    if (data && onSave) onSave(data);
-    setAttachments([]);
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
@@ -977,18 +986,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           {editing && (
             <div className="mt-2 flex justify-end">
               <button
-                className="btn-blue rounded-full"
+                className="btn-blue flex items-center justify-center rounded-full"
+                disabled={isSubmitting}
                 onClick={() => {
                   if (
                     window.confirm(
                       isEdit ? "Сохранить изменения?" : "Создать задачу?",
                     )
                   ) {
+                    setIsSubmitting(true);
                     submit();
                   }
                 }}
               >
-                {isEdit ? "Сохранить" : "Создать"}
+                {isSubmitting ? <Spinner /> : isEdit ? "Сохранить" : "Создать"}
               </button>
             </div>
           )}

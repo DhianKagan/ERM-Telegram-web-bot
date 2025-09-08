@@ -35,6 +35,9 @@ import logsRouter from '../routes/logs';
 import taskTemplatesRouter from '../routes/taskTemplates';
 import storageRouter from '../routes/storage';
 import filesRouter from '../routes/files';
+import fleetsRouter from '../routes/fleets';
+import departmentsRouter from '../routes/departments';
+import employeesRouter from '../routes/employees';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -187,6 +190,9 @@ export default async function registerRoutes(
   app.use(`${prefix}/task-templates`, taskTemplatesRouter);
   app.use(`${prefix}/storage`, storageRouter);
   app.use(`${prefix}/files`, filesRouter);
+  app.use(`${prefix}/fleets`, fleetsRouter);
+  app.use(`${prefix}/departments`, departmentsRouter);
+  app.use(`${prefix}/employees`, employeesRouter);
 
   app.get(
     '/api/tma/tasks',

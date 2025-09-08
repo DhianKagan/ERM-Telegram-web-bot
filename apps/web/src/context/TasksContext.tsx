@@ -1,15 +1,23 @@
-// Провайдер контекста задач и глобального поиска
+// Провайдер контекста задач, поиска и фильтров
 import React, { useState } from "react";
-import { TasksContext } from "./TasksContext";
+import { TasksContext, type TaskFilters } from "./TasksContext";
 
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [version, setVersion] = useState(0);
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<TaskFilters>({
+    status: [],
+    priority: [],
+    from: "",
+    to: "",
+  });
   const refresh = () => setVersion((v) => v + 1);
   return (
-    <TasksContext.Provider value={{ version, refresh, query, setQuery }}>
+    <TasksContext.Provider
+      value={{ version, refresh, query, setQuery, filters, setFilters }}
+    >
       {children}
     </TasksContext.Provider>
   );

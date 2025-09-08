@@ -1,6 +1,8 @@
-// Назначение файла: общий тулбар таблицы с экспортом и настройкой колонок
+// Назначение файла: общий тулбар таблицы с экспортом, поиском и фильтрацией
 // Модули: React, @tanstack/react-table, jspdf
 import type { Table } from "@tanstack/react-table";
+import GlobalSearch from "./GlobalSearch";
+import SearchFilters from "./SearchFilters";
 
 interface Props<T> {
   table: Table<T>;
@@ -60,6 +62,8 @@ export default function TableToolbar<T>({ table }: Props<T>) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
+      <GlobalSearch />
+      <SearchFilters />
       <button onClick={exportCsv} className="rounded border px-2 py-1">
         CSV
       </button>

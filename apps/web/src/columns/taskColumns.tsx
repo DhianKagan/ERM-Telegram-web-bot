@@ -12,18 +12,6 @@ const statusColorMap: Record<Task["status"], string> = {
   Выполнена: "text-green-600",
 };
 
-const dateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-const formatDate = (v?: string) =>
-  v ? dateTimeFmt.format(new Date(v)).replace(", ", " ") : "";
-
 export type TaskRow = Task & Record<string, any>;
 
 export default function taskColumns(
@@ -34,18 +22,23 @@ export default function taskColumns(
     {
       header: "Номер",
       accessorKey: "task_number",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
     },
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
+      cell: (p) => {
+        const v = p.getValue<string>();
+        return v
+          ? new Date(v).toLocaleString("ru-RU", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })
+          : "";
+      },
     },
     {
       header: "Название",
       accessorKey: "title",
-      meta: { minWidth: "12rem", maxWidth: "24rem" },
       cell: (p) => {
         const v = p.getValue<string>() || "";
         return <span title={v}>{v}</span>;
@@ -54,38 +47,18 @@ export default function taskColumns(
     {
       header: "Статус",
       accessorKey: "status",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         return <span className={statusColorMap[value] || ""}>{value}</span>;
       },
     },
-    {
-      header: "Приоритет",
-      accessorKey: "priority",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
-    },
-    {
-      header: "Начало",
-      accessorKey: "start_date",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
-    },
-    {
-      header: "Срок",
-      accessorKey: "due_date",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
-    },
-    {
-      header: "Тип",
-      accessorKey: "task_type",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
-    },
+    { header: "Приоритет", accessorKey: "priority" },
+    { header: "Начало", accessorKey: "start_date" },
+    { header: "Срок", accessorKey: "due_date" },
+    { header: "Тип", accessorKey: "task_type" },
     {
       header: "Старт",
       accessorKey: "startCoordinates",
-      meta: { minWidth: "12rem", maxWidth: "16rem" },
       cell: (p) => {
         const v = p.getValue<any>();
         const text = v ? `${v.lat}, ${v.lng}` : "";
@@ -95,22 +68,16 @@ export default function taskColumns(
     {
       header: "Финиш",
       accessorKey: "finishCoordinates",
-      meta: { minWidth: "12rem", maxWidth: "16rem" },
       cell: (p) => {
         const v = p.getValue<any>();
         const text = v ? `${v.lat}, ${v.lng}` : "";
         return <span title={text}>{text}</span>;
       },
     },
-    {
-      header: "Км",
-      accessorKey: "route_distance_km",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
-    },
+    { header: "Км", accessorKey: "route_distance_km" },
     {
       header: "Исполнители",
       accessorKey: "assignees",
-      meta: { minWidth: "12rem", maxWidth: "20rem" },
       cell: ({ row }) => {
         const ids: number[] =
           row.original.assignees ||

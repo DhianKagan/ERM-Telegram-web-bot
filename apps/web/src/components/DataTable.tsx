@@ -30,11 +30,6 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-interface ColumnMeta {
-  minWidth?: string;
-  maxWidth?: string;
-}
-
 export default function DataTable<T>({
   columns,
   data,
@@ -82,30 +77,21 @@ export default function DataTable<T>({
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
-              {hg.headers.map((header) => {
-                const meta =
-                  (header.column.columnDef.meta as ColumnMeta | undefined) ||
-                  {};
-                return (
-                  <TableHead
-                    key={header.id}
-                    style={{
-                      width: header.getSize(),
-                      minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "20rem",
-                    }}
-                    className="break-words whitespace-normal"
-                    // фиксируем ширину ячейки заголовка
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                );
-              })}
+              {hg.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  style={{ width: header.getSize() }}
+                  className="max-w-[20rem] min-w-[4rem] overflow-hidden text-ellipsis whitespace-nowrap"
+                  // фиксируем ширину ячейки заголовка
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                </TableHead>
+              ))}
             </TableRow>
           ))}
         </TableHeader>
@@ -117,24 +103,16 @@ export default function DataTable<T>({
               onClick={() => onRowClick?.(row.original)}
               className="cursor-pointer"
             >
-              {row.getVisibleCells().map((cell) => {
-                const meta =
-                  (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
-                return (
-                  <TableCell
-                    key={cell.id}
-                    style={{
-                      width: cell.column.getSize(),
-                      minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "20rem",
-                    }}
-                    className="break-words whitespace-normal"
-                    // фиксируем ширину ячейки данных
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                );
-              })}
+              {row.getVisibleCells().map((cell) => (
+                <TableCell
+                  key={cell.id}
+                  style={{ width: cell.column.getSize() }}
+                  className="max-w-[20rem] min-w-[4rem] overflow-hidden text-ellipsis whitespace-nowrap"
+                  // фиксируем ширину ячейки данных
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
             </TableRow>
           ))}
         </TableBody>

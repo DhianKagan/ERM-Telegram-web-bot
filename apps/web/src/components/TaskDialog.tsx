@@ -54,7 +54,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [showHistory, setShowHistory] = React.useState(false);
   const taskSchema = z
     .object({
-      title: z.string().min(1, "Название обязательно"),
+      title: z.string().min(1, t("titleRequired")),
       description: z.string().optional(),
       controllers: z.array(z.string()).default([]),
       assignees: z.array(z.string()).default([]),
@@ -67,7 +67,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         !d.dueDate ||
         new Date(d.dueDate) >= new Date(d.startDate),
       {
-        message: "Срок не может быть раньше начала",
+        message: t("dueBeforeStart"),
         path: ["dueDate"],
       },
     );
@@ -167,9 +167,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const doneOptions = [
-    { value: "full", label: "Задача выполнена полностью" },
-    { value: "partial", label: "Задача выполнена частично" },
-    { value: "changed", label: "Задача выполнена с изменениями" },
+    { value: "full", label: t("doneFull") },
+    { value: "partial", label: t("donePartial") },
+    { value: "changed", label: t("doneChanged") },
   ];
   const [showDoneSelect, setShowDoneSelect] = React.useState(false);
   // выбранная кнопка действия
@@ -478,12 +478,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             }
           });
       }
-      if (data) window.alert(isEdit ? "Задача обновлена" : "Задача создана");
+      if (data) window.alert(isEdit ? t("taskUpdated") : t("taskCreated"));
       if (data && onSave) onSave(data);
       setAttachments([]);
     } catch (e) {
       console.error(e);
-      window.alert("Не удалось сохранить задачу");
+      window.alert(t("taskSaveFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -496,7 +496,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     await deleteTask(id);
     if (onSave) onSave(null);
     onClose();
-    window.alert("Задача удалена");
+    window.alert(t("taskDeleted"));
   };
 
   const resetForm = () => {
@@ -558,14 +558,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Задача</h3>
+          <h3 className="text-lg font-semibold">{t("task")}</h3>
           <div className="flex space-x-2">
             {isEdit && !editing && (
               <button
                 onClick={() => setEditing(true)}
                 className="flex h-12 w-12 items-center justify-center"
-                title="Редактировать"
-                aria-label="Редактировать"
+                title={t("edit")}
+                aria-label={t("edit")}
               >
                 ✎
               </button>
@@ -573,16 +573,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <button
               onClick={resetForm}
               className="flex h-12 w-12 items-center justify-center"
-              title="Сбросить"
-              aria-label="Сбросить"
+              title={t("reset")}
+              aria-label={t("reset")}
             >
               <ArrowPathIcon className="h-5 w-5" />
             </button>
             <button
               onClick={() => setExpanded(!expanded)}
               className="flex h-12 w-12 items-center justify-center"
-              title="Развернуть"
-              aria-label="Развернуть"
+              title={expanded ? t("collapse") : t("expand")}
+              aria-label={expanded ? t("collapse") : t("expand")}
             >
               {expanded ? (
                 <ArrowsPointingInIcon className="h-5 w-5" />
@@ -593,8 +593,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <button
               onClick={onClose}
               className="flex h-12 w-12 items-center justify-center"
-              title="Закрыть"
-              aria-label="Закрыть"
+              title={t("close")}
+              aria-label={t("close")}
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
@@ -603,7 +603,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Номер задачи</label>
+              <label className="block text-sm font-medium">
+                {t("taskNumber")}
+              </label>
               <input
                 value={requestId}
                 disabled
@@ -611,7 +613,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Дата создания</label>
+              <label className="block text-sm font-medium">
+                {t("createdDate")}
+              </label>
               <input
                 value={created}
                 disabled
@@ -625,14 +629,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               className="btn-red mt-2 rounded-full"
               onClick={() => setShowHistory(true)}
             >
-              История изменений
+              {t("history")}
             </button>
           )}
           <div>
-            <label className="block text-sm font-medium">Название задачи</label>
+            <label className="block text-sm font-medium">
+              {t("taskTitle")}
+            </label>
             <input
               {...register("title")}
-              placeholder="Название"
+              placeholder={t("title")}
               className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
               disabled={!editing}
             />
@@ -642,7 +648,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Дата начала</label>
+              <label className="block text-sm font-medium">
+                {t("startDate")}
+              </label>
               <input
                 type="datetime-local"
                 {...register("startDate")}
@@ -652,7 +660,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium">
-                Срок выполнения
+                {t("dueDate")}
               </label>
               <input
                 type="datetime-local"
@@ -664,7 +672,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Статус</label>
+              <label className="block text-sm font-medium">{t("status")}</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -679,7 +687,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium">Приоритет</label>
+              <label className="block text-sm font-medium">
+                {t("priority")}
+              </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
@@ -696,7 +706,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Тип задачи</label>
+              <label className="block text-sm font-medium">
+                {t("taskType")}
+              </label>
               <select
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
@@ -713,14 +725,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Задачу создал</label>
+              <label className="block text-sm font-medium">
+                {t("creator")}
+              </label>
               <select
                 value={creator}
                 onChange={(e) => setCreator(e.target.value)}
                 className="w-full rounded border px-2 py-1"
                 disabled={!editing}
               >
-                <option value="">автор</option>
+                <option value="">{t("author")}</option>
                 {users.map((u) => (
                   <option key={u.telegram_id} value={u.telegram_id}>
                     {u.name || u.telegram_username || u.username}
@@ -733,7 +747,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               control={control}
               render={({ field }) => (
                 <MultiUserSelect
-                  label="Исполнител(и)ь"
+                  label={t("assignees")}
                   users={users}
                   value={field.value}
                   onChange={field.onChange}
@@ -744,7 +758,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium">Старт точка</label>
+              <label className="block text-sm font-medium">
+                {t("startPoint")}
+              </label>
               {startLink ? (
                 <div className="flex items-center space-x-2">
                   <div className="flex flex-col">
@@ -754,7 +770,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       rel="noopener"
                       className="text-accentPrimary underline"
                     >
-                      {start || "ссылка"}
+                      {start || t("link")}
                     </a>
                     {startCoordinates && (
                       <span className="text-xs text-gray-600">
@@ -777,7 +793,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <input
                     value={startLink}
                     onChange={(e) => handleStartLink(e.target.value)}
-                    placeholder="Ссылка из Google Maps"
+                    placeholder={t("googleMapsLink")}
                     className="flex-1 rounded border px-2 py-1"
                     disabled={!editing}
                   />
@@ -787,14 +803,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     rel="noopener"
                     className="btn-blue rounded-2xl px-3"
                   >
-                    Карта
+                    {t("map")}
                   </a>
                 </div>
               )}
             </div>
             <div>
               <label className="block text-sm font-medium">
-                Финальная точка
+                {t("endPoint")}
               </label>
               {endLink ? (
                 <div className="flex items-center space-x-2">
@@ -805,7 +821,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       rel="noopener"
                       className="text-accentPrimary underline"
                     >
-                      {end || "ссылка"}
+                      {end || t("link")}
                     </a>
                     {finishCoordinates && (
                       <span className="text-xs text-gray-600">
@@ -828,7 +844,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   <input
                     value={endLink}
                     onChange={(e) => handleEndLink(e.target.value)}
-                    placeholder="Ссылка из Google Maps"
+                    placeholder={t("googleMapsLink")}
                     className="flex-1 rounded border px-2 py-1"
                     disabled={!editing}
                   />
@@ -838,7 +854,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     rel="noopener"
                     className="btn-blue rounded-2xl px-3"
                   >
-                    Карта
+                    {t("map")}
                   </a>
                 </div>
               )}
@@ -847,7 +863,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium">
-                Тип транспорта
+                {t("transportType")}
               </label>
               <select
                 value={transportType}
@@ -863,7 +879,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium">Способ оплаты</label>
+              <label className="block text-sm font-medium">
+                {t("paymentMethod")}
+              </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
@@ -881,26 +899,34 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           <div className="grid gap-4 md:grid-cols-2">
             {distanceKm !== null && (
               <div>
-                <label className="block text-sm font-medium">Расстояние</label>
-                <p>{distanceKm} км</p>
+                <label className="block text-sm font-medium">
+                  {t("distance")}
+                </label>
+                <p>
+                  {distanceKm} {t("km")}
+                </p>
               </div>
             )}
             {routeLink && (
               <div>
-                <label className="block text-sm font-medium">Маршрут</label>
+                <label className="block text-sm font-medium">
+                  {t("route")}
+                </label>
                 <a
                   href={routeLink}
                   target="_blank"
                   rel="noopener"
                   className="text-accentPrimary underline"
                 >
-                  ссылка
+                  {t("link")}
                 </a>
               </div>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium">🔨 Задача</label>
+            <label className="block text-sm font-medium">
+              {t("taskSection")}
+            </label>
             <Controller
               name="description"
               control={control}
@@ -914,7 +940,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">Комментарий</label>
+            <label className="block text-sm font-medium">{t("comment")}</label>
             <CKEditorPopup
               value={comment}
               onChange={setComment}
@@ -926,7 +952,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             control={control}
             render={({ field }) => (
               <MultiUserSelect
-                label="Контролёр"
+                label={t("controller")}
                 users={users}
                 value={field.value}
                 onChange={field.onChange}
@@ -936,7 +962,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           />
           {attachments.length > 0 && (
             <div>
-              <label className="block text-sm font-medium">Вложения</label>
+              <label className="block text-sm font-medium">
+                {t("attachments")}
+              </label>
               <ul className="flex flex-wrap gap-2">
                 {attachments.map((a) => (
                   <li key={a.url} className="flex items-center gap-2">
@@ -993,7 +1021,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 onClick={() => {
                   if (
                     window.confirm(
-                      isEdit ? "Сохранить изменения?" : "Создать задачу?",
+                      isEdit
+                        ? t("saveChangesQuestion")
+                        : t("createTaskQuestion"),
                     )
                   ) {
                     setIsSubmitting(true);
@@ -1001,7 +1031,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   }
                 }}
               >
-                {isSubmitting ? <Spinner /> : isEdit ? "Сохранить" : "Создать"}
+                {isSubmitting ? <Spinner /> : isEdit ? t("save") : t("create")}
               </button>
             </div>
           )}
@@ -1023,13 +1053,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
                   onClick={acceptTask}
                 >
-                  Принять
+                  {t("accept")}
                 </button>
                 <button
                   className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
                   onClick={() => setShowDoneSelect((v) => !v)}
                 >
-                  Выполнено
+                  {t("done")}
                 </button>
               </div>
               {showDoneSelect && (
@@ -1039,7 +1069,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   }
                   className="mt-1 mb-2 w-full rounded border px-2 py-1"
                 >
-                  <option value="">Выберите вариант</option>
+                  <option value="">{t("selectOption")}</option>
                   {doneOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -1054,7 +1084,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">
-            <h4 className="mb-2 font-semibold">История изменений</h4>
+            <h4 className="mb-2 font-semibold">{t("history")}</h4>
             <ul className="space-y-2 text-sm">
               {history.map((h, i) => (
                 <li key={i}>
@@ -1071,7 +1101,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               className="btn-blue mt-2 rounded-lg"
               onClick={() => setShowHistory(false)}
             >
-              Закрыть
+              {t("close")}
             </button>
           </div>
         </div>

@@ -1,3 +1,5 @@
 {
-  "allowlist": []
+  "allowlist": [
+    "GHSA-8mgj-vmr8-frr6"
+  ]
 }

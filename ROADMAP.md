@@ -12,6 +12,7 @@
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку в CI.
 - `install_bot_deps.sh` при недоступности npm берёт pnpm из GitHub.
 - `.npmrc` фиксирует registry npmjs.org для scope `@jsr`.
+- Аудит зависимостей игнорирует ложное срабатывание `debug` (GHSA-8mgj-vmr8-frr6).
 - Оптимизировать Docker-сборку: кеш зависимостей через `pnpm fetch`, раздельная сборка `web` и `api`.
 - Сборка клиента Vite очищает каталог вывода через `emptyOutDir`.
 - Оптимизировать размер клиентского бандла; текущий лимит size-limit увеличен до 900 KB.

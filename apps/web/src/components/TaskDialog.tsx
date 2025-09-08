@@ -4,6 +4,7 @@ import React from "react";
 import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
+import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "../context/useAuth";
 import { taskFields as fields } from "shared";
 import {
@@ -477,9 +478,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setAttachments([]);
   });
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+
   const handleDelete = async () => {
     if (!id) return;
-    if (!window.confirm("Вы точно хотите удалить задачу?")) return;
     await deleteTask(id);
     if (onSave) onSave(null);
     onClose();
@@ -962,13 +964,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             onUploaded={(a) => setAttachments((p) => [...p, a])}
             onRemove={(a) => removeAttachment(a)}
           />
-          <div className="flex justify-end space-x-2">
-            {isEdit && isAdmin && editing && (
-              <button className="btn-red rounded-full" onClick={handleDelete}>
+          {isEdit && isAdmin && editing && (
+            <div className="mt-2 flex justify-start">
+              <button
+                className="btn-red rounded-full"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
                 Удалить
               </button>
-            )}
-            {editing && (
+            </div>
+          )}
+          {editing && (
+            <div className="mt-2 flex justify-end">
               <button
                 className="btn-blue rounded-full"
                 onClick={() => {
@@ -983,8 +990,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               >
                 {isEdit ? "Сохранить" : "Создать"}
               </button>
-            )}
-          </div>
+            </div>
+          )}
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            message="Удалить задачу?"
+            confirmText="Удалить"
+            cancelText="Отмена"
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              handleDelete();
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />
           {isEdit && !editing && (
             <>
               <div className="mt-2 grid grid-cols-2 gap-2">

@@ -28,7 +28,7 @@
     "@tanstack/react-table": "^8.20.4",
     "@telegram-apps/sdk-react": "^3.3.6",
     "@telegram-apps/telegram-ui": "^2.1.8",
-    "apexcharts": "^4.7.0",
+    "apexcharts": "^5.3.5",
     "chart.js": "^4.5.0",
     "chonky": "2.3.2",
     "class-variance-authority": "^0.7.1",

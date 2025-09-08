@@ -385,8 +385,8 @@ importers:
         specifier: ^41.4.2
         version: 41.4.2
       '@ckeditor/ckeditor5-react':
-        specifier: ^6.2.0
-        version: 6.3.0(@ckeditor/ckeditor5-core@46.0.3)(@ckeditor/ckeditor5-editor-multi-root@46.0.3)(@ckeditor/ckeditor5-engine@46.0.3)(@ckeditor/ckeditor5-utils@46.0.3)(@ckeditor/ckeditor5-watchdog@46.0.3)(react@18.2.0)
+        specifier: ^11.0.0
+        version: 11.0.0(ckeditor5@46.0.3)(react@18.2.0)
       '@hello-pangea/dnd':
         specifier: ^18.0.1
         version: 18.0.1(@types/react@18.3.24)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -1661,6 +1661,12 @@ packages:
   '@ckeditor/ckeditor5-indent@46.0.3':
     resolution: {integrity: sha512-XLdlp94Bitkki027adnOqL642kCSJphMoZZDYYpTNHQkKhJq6TDp8u66EFlo2/q1quVDgb1qlezDuShouYd1tQ==}
 
+  '@ckeditor/ckeditor5-integrations-common@2.2.3':
+    resolution: {integrity: sha512-92kQWQj1wiABF7bY1+J79Ze+WHr7pwVBufn1eeJLWcTXbPQq4sAolfKv8Y8Ka9g69mdyE9+GPWmGFYDeQJVPDg==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      ckeditor5: '>=43.1.1'
+
   '@ckeditor/ckeditor5-language@46.0.2':
     resolution: {integrity: sha512-eYwRnEkoWGabEZ4PVtSobORa+vnUQFuRetInuhDrkBwyMv9IjVUukS46AWHEjkPBO/rlI++O9SK1oOFyzOARCg==}
 
@@ -1736,15 +1742,10 @@ packages:
   '@ckeditor/ckeditor5-paste-from-office@46.0.3':
     resolution: {integrity: sha512-pgqBTqP3oIFbmHvk1ddICDmyvBvFE9d+jO0busPXl5oWIqTLaaumwWaredEEUJpYmu02POSrK+WPGS0Qis6mdg==}
 
-  '@ckeditor/ckeditor5-react@6.3.0':
-    resolution: {integrity: sha512-yfVc8L+o1U63qljyOJVSV+O+2C2+hOjNAf7Qabi8AF4gvsPib82efVDlmvnNJB4Ka11owysQ5MAHpP8I0c7lIA==}
-    engines: {node: '>=18.0.0'}
+  '@ckeditor/ckeditor5-react@11.0.0':
+    resolution: {integrity: sha512-ObspEdZzKjjUH+CyrOYMyy/NAcMzGESxKGiBYkTzI6vHCzMdR0mQYOXKcLADPEZ6dk1jvKdoeD1l6l31zKK/1w==}
     peerDependencies:
-      '@ckeditor/ckeditor5-core': '>=41.3.1'
-      '@ckeditor/ckeditor5-editor-multi-root': '>=41.3.1'
-      '@ckeditor/ckeditor5-engine': '>=41.3.1'
-      '@ckeditor/ckeditor5-utils': '>=41.3.1'
-      '@ckeditor/ckeditor5-watchdog': '>=41.3.1'
+      ckeditor5: '>=46.0.3'
       react: 18.2.0
 
   '@ckeditor/ckeditor5-remove-format@46.0.2':
@@ -11343,8 +11344,6 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-code-block@46.0.2':
     dependencies:
@@ -11462,8 +11461,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-decoupled@46.0.2':
     dependencies:
@@ -11511,8 +11508,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-multi-root@46.0.3':
     dependencies:
@@ -11565,6 +11560,8 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-utils': 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-enter@46.0.2':
     dependencies:
@@ -11634,8 +11631,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.3':
     dependencies:
@@ -11768,8 +11763,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-html-support@46.0.3':
     dependencies:
@@ -11848,8 +11841,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-indent@46.0.3':
     dependencies:
@@ -11863,6 +11854,10 @@ snapshots:
       ckeditor5: 46.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@ckeditor/ckeditor5-integrations-common@2.2.3(ckeditor5@46.0.3)':
+    dependencies:
+      ckeditor5: 46.0.3
 
   '@ckeditor/ckeditor5-language@46.0.2':
     dependencies:
@@ -11936,8 +11931,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@46.0.3':
     dependencies:
@@ -12137,14 +12130,10 @@ snapshots:
       '@ckeditor/ckeditor5-engine': 46.0.3
       ckeditor5: 46.0.3
 
-  '@ckeditor/ckeditor5-react@6.3.0(@ckeditor/ckeditor5-core@46.0.3)(@ckeditor/ckeditor5-editor-multi-root@46.0.3)(@ckeditor/ckeditor5-engine@46.0.3)(@ckeditor/ckeditor5-utils@46.0.3)(@ckeditor/ckeditor5-watchdog@46.0.3)(react@18.2.0)':
+  '@ckeditor/ckeditor5-react@11.0.0(ckeditor5@46.0.3)(react@18.2.0)':
     dependencies:
-      '@ckeditor/ckeditor5-core': 46.0.3
-      '@ckeditor/ckeditor5-editor-multi-root': 46.0.3
-      '@ckeditor/ckeditor5-engine': 46.0.3
-      '@ckeditor/ckeditor5-utils': 46.0.3
-      '@ckeditor/ckeditor5-watchdog': 46.0.3
-      prop-types: 15.8.1
+      '@ckeditor/ckeditor5-integrations-common': 2.2.3(ckeditor5@46.0.3)
+      ckeditor5: 46.0.3
       react: 18.2.0
 
   '@ckeditor/ckeditor5-remove-format@46.0.2':
@@ -12264,8 +12253,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-style@46.0.3':
     dependencies:
@@ -12430,8 +12417,6 @@ snapshots:
       '@ckeditor/ckeditor5-engine': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-watchdog@46.0.3':
     dependencies:

@@ -7,5 +7,10 @@
   "language": "Language",
   "noNotifications": "No notifications",
   "notifications": "Notifications",
-  "errorFallback": "Something went wrong. Reload the page (Ctrl+R or ⌘+R)."
+  "errorFallback": "Something went wrong. Reload the page (Ctrl+R or ⌘+R).",
+  "dragFilesOrSelect": "Drag files here or select",
+  "delete": "Delete",
+  "uploadFailed": "Upload failed",
+  "deleteTaskQuestion": "Delete task?",
+  "cancel": "Cancel"
 }

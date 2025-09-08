@@ -7,5 +7,10 @@
   "language": "Язык",
   "noNotifications": "Нет уведомлений",
   "notifications": "Уведомления",
-  "errorFallback": "Что-то пошло не так. Перезагрузите страницу (Ctrl+R или ⌘+R)."
+  "errorFallback": "Что-то пошло не так. Перезагрузите страницу (Ctrl+R или ⌘+R).",
+  "dragFilesOrSelect": "Перетащите файлы сюда или выберите",
+  "delete": "Удалить",
+  "uploadFailed": "Ошибка загрузки",
+  "deleteTaskQuestion": "Удалить задачу?",
+  "cancel": "Отмена"
 }

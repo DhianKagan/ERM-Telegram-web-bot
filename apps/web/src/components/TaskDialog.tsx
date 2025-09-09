@@ -188,7 +188,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   React.useEffect(() => {
-    authFetch("/api/v1/collections/departments")
+    authFetch("/api/collections/departments")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setDepartments(d));
   }, []);

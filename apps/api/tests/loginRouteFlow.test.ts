@@ -21,7 +21,7 @@ jest.mock('../src/services/userInfoService', () => ({
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => null),
   createUser: jest.fn(async () => ({ username: 'u' })),
-  updateUser: jest.fn(async () => ({})),
+  updateUser: jest.fn(async (_id, _roleId, _data) => ({})),
 }));
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),

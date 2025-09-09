@@ -39,7 +39,7 @@ jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => null),
   createUser: jest.fn(async () => ({ username: 'u' })),
-  updateUser: jest.fn(async () => ({})),
+  updateUser: jest.fn(async (_id, _roleId, _data) => ({})),
 }));
 
 const authRouter = require('../src/routes/authUser').default;

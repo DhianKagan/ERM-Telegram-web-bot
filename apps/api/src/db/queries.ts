@@ -263,6 +263,11 @@ export async function createUser(
       rId = (dbRole._id as Types.ObjectId).toString();
     }
   }
+  const access = role === 'admin' ? 2 : role === 'manager' ? 4 : 1;
+  const safeExtra = { ...extra };
+  delete (safeExtra as Partial<UserDocument>).role;
+  delete (safeExtra as Partial<UserDocument>).roleId;
+  delete (safeExtra as Partial<UserDocument>).access;
   return User.create({
     telegram_id: telegramId,
     username,
@@ -270,8 +275,8 @@ export async function createUser(
     name: username,
     role,
     roleId: rId as unknown as Types.ObjectId,
-    access: extra.access || 1,
-    ...extra,
+    access,
+    ...safeExtra,
   });
 }
 
@@ -301,11 +306,31 @@ export async function getUsersMap(
 
 export async function updateUser(
   id: string | number,
-  data: Partial<UserDocument>,
+  roleId?: string,
+  data: Partial<UserDocument> = {},
 ): Promise<UserDocument | null> {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) return null;
   const sanitized = sanitizeUpdate(data);
+  delete (sanitized as Partial<UserDocument>).role;
+  delete (sanitized as Partial<UserDocument>).access;
+  delete (sanitized as Partial<UserDocument>).roleId;
+  let role = 'user';
+  let rId = roleId;
+  if (rId) {
+    if (!Types.ObjectId.isValid(rId)) throw new Error('Invalid roleId');
+    const dbRole = await Role.findById(rId);
+    if (dbRole) {
+      role = dbRole.name || 'user';
+      rId = (dbRole._id as Types.ObjectId).toString();
+    }
+    const access = role === 'admin' ? 2 : role === 'manager' ? 4 : 1;
+    return User.findOneAndUpdate(
+      { telegram_id: { $eq: telegramId } },
+      { ...sanitized, role, roleId: rId as unknown as Types.ObjectId, access },
+      { new: true },
+    );
+  }
   return User.findOneAndUpdate(
     { telegram_id: { $eq: telegramId } },
     sanitized,

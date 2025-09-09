@@ -6,7 +6,6 @@ import { getUser, createUser, updateUser } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config';
-import { Types } from 'mongoose';
 import type { UserDocument } from '../db/model';
 
 async function sendCode(telegramId: number | string) {
@@ -33,11 +32,7 @@ async function verifyCode(
   if (roleId === config.adminRoleId || otp.adminCodes.has(telegramId)) {
     verified = otp.verifyAdminCode({ telegramId: Number(telegramId), code });
     if (verified && user && roleId !== config.adminRoleId) {
-      user = await updateUser(telegramId, {
-        roleId: new Types.ObjectId(config.adminRoleId),
-        role: 'admin',
-        access: 2,
-      });
+      user = await updateUser(telegramId, config.adminRoleId, {});
       await writeLog(`Пользователь ${telegramId} повышен до администратора`);
       roleId = config.adminRoleId;
     }
@@ -56,14 +51,7 @@ async function verifyCode(
   }
   let u = user;
   if (!u)
-    u = await createUser(telegramId, username, roleId || config.userRoleId, {
-      access:
-        roleId === config.adminRoleId
-          ? 2
-          : roleId === config.managerRoleId
-            ? 4
-            : 1,
-    });
+    u = await createUser(telegramId, username, roleId || config.userRoleId);
   const role =
     roleId === config.adminRoleId
       ? 'admin'
@@ -95,14 +83,12 @@ async function verifyInitData(initData: string) {
   const telegramId = String(userData.id);
   if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
-  if (!user) {
+  if (!user)
     user = await createUser(
       telegramId,
       userData.username || '',
       config.userRoleId,
-      { access: 1 },
     );
-  }
   const role = user.role || 'user';
   const access = user.access || 1;
   const token = generateToken({
@@ -121,14 +107,12 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
   const telegramId = String(userData.id);
   if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
-  if (!user) {
+  if (!user)
     user = await createUser(
       telegramId,
       userData.username || '',
       config.userRoleId,
-      { access: 1 },
     );
-  }
   const role = user.role || 'user';
   const access = user.access || 1;
   const token = generateShortToken({
@@ -147,7 +131,7 @@ async function getProfile(id: string | number) {
 }
 
 async function updateProfile(id: string | number, data: Partial<UserDocument>) {
-  const user = await updateUser(id, data);
+  const user = await updateUser(id, undefined, data);
   return user || null;
 }
 

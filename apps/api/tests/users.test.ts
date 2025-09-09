@@ -17,7 +17,10 @@ const { ACCESS_ADMIN } = require('../src/utils/accessMask');
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
-  updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
+  updateUser: jest.fn(async (_id, _roleId, _data) => ({
+    telegram_id: 1,
+    username: 'new',
+  })),
 }));
 
 jest.mock('../src/api/middleware', () => ({
@@ -80,7 +83,8 @@ app.patch(
   checkRole(ACCESS_ADMIN),
   ...validateDto(UpdateUserDto),
   asyncHandler(async (req, res) => {
-    res.json(await updateUser(req.params.id, req.body));
+    const { roleId, ...rest } = req.body;
+    res.json(await updateUser(req.params.id, roleId, rest));
   }),
 );
 

@@ -15,7 +15,9 @@ interface CreateUserBody {
   roleId?: string;
 }
 
-type UpdateUserBody = Partial<UserDocument>;
+interface UpdateUserBody extends Partial<UserDocument> {
+  roleId?: string;
+}
 
 @injectable()
 export default class UsersController {
@@ -51,7 +53,8 @@ export default class UsersController {
       req: Request<{ id: string }, unknown, UpdateUserBody>,
       res: Response,
     ): Promise<void> => {
-      const user = await this.service.update(req.params.id, req.body);
+      const { roleId, ...rest } = req.body;
+      const user = await this.service.update(req.params.id, rest, roleId);
       res.json(formatUser(user));
     },
   ];

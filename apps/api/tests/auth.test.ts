@@ -15,7 +15,7 @@ jest.mock('../src/db/queries', () => ({
     return null;
   }),
   createUser: jest.fn(async () => ({ username: 'u' })),
-  updateUser: jest.fn(async () => ({
+  updateUser: jest.fn(async (_id, _roleId, _data) => ({
     roleId: '686591126cc86a6bd16c18af',
     role: 'admin',
   })),

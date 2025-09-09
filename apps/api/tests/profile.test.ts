@@ -13,7 +13,7 @@ const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
-  updateUser: jest.fn(async (_id, d) => ({
+  updateUser: jest.fn(async (_id, _roleId, d) => ({
     telegram_id: 1,
     username: 'test',
     ...d,

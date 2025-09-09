@@ -13,7 +13,8 @@ interface UsersRepo {
   getUser(id: string | number): Promise<UserDocument | null>;
   updateUser(
     id: string | number,
-    data: Partial<UserDocument>,
+    roleId?: string,
+    data?: Partial<UserDocument>,
   ): Promise<UserDocument | null>;
 }
 
@@ -41,8 +42,8 @@ class UsersService {
     return this.repo.getUser(id);
   }
 
-  update(id: string | number, data: Partial<UserDocument>) {
-    return this.repo.updateUser(id, data);
+  update(id: string | number, data: Partial<UserDocument>, roleId?: string) {
+    return this.repo.updateUser(id, roleId, data);
   }
 }
 

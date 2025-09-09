@@ -35,8 +35,6 @@ async function verifyCode(
     if (verified && user && roleId !== config.adminRoleId) {
       user = await updateUser(telegramId, {
         roleId: new Types.ObjectId(config.adminRoleId),
-        role: 'admin',
-        access: 2,
       });
       await writeLog(`Пользователь ${telegramId} повышен до администратора`);
       roleId = config.adminRoleId;
@@ -56,14 +54,7 @@ async function verifyCode(
   }
   let u = user;
   if (!u)
-    u = await createUser(telegramId, username, roleId || config.userRoleId, {
-      access:
-        roleId === config.adminRoleId
-          ? 2
-          : roleId === config.managerRoleId
-            ? 4
-            : 1,
-    });
+    u = await createUser(telegramId, username, roleId || config.userRoleId);
   const role =
     roleId === config.adminRoleId
       ? 'admin'
@@ -100,7 +91,6 @@ async function verifyInitData(initData: string) {
       telegramId,
       userData.username || '',
       config.userRoleId,
-      { access: 1 },
     );
   }
   const role = user.role || 'user';
@@ -126,7 +116,6 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
       telegramId,
       userData.username || '',
       config.userRoleId,
-      { access: 1 },
     );
   }
   const role = user.role || 'user';
@@ -146,7 +135,10 @@ async function getProfile(id: string | number) {
   return user || null;
 }
 
-async function updateProfile(id: string | number, data: Partial<UserDocument>) {
+async function updateProfile(
+  id: string | number,
+  data: Omit<Partial<UserDocument>, 'access'>,
+) {
   const user = await updateUser(id, data);
   return user || null;
 }

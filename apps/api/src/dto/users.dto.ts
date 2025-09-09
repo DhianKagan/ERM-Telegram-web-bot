@@ -12,4 +12,20 @@ export class CreateUserDto {
   }
 }
 
-export default { CreateUserDto };
+export class UpdateUserDto {
+  static rules() {
+    return [
+      body('username').optional().isString(),
+      body('name').optional().isString(),
+      body('phone').optional().isString(),
+      body('mobNumber').optional().isString(),
+      body('email').optional().isEmail(),
+      body('role').optional().isIn(['user', 'admin']),
+      body('access').optional().isInt(),
+      body('roleId').optional().isMongoId(),
+      body('receive_reminders').optional().isBoolean(),
+      body('verified_at').optional().isISO8601(),
+    ];
+  }
+}
+export default { CreateUserDto, UpdateUserDto };

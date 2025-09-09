@@ -9,7 +9,7 @@ import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
-import { CreateUserDto } from '../dto/users.dto';
+import { CreateUserDto, UpdateUserDto } from '../dto/users.dto';
 
 const router: Router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
@@ -27,6 +27,12 @@ router.post(
   ...middlewares,
   ...(validateDto(CreateUserDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
+);
+router.patch(
+  '/:id',
+  ...middlewares,
+  ...(validateDto(UpdateUserDto) as RequestHandler[]),
+  ...(ctrl.update as RequestHandler[]),
 );
 
 export default router;

@@ -1,4 +1,4 @@
-// Назначение: форма элемента коллекции с подтверждением удаления
+// Назначение: форма элемента коллекции с подтверждением действий
 // Основные модули: React, ConfirmDialog
 import React from "react";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -24,11 +24,12 @@ export default function CollectionForm({
   onDelete,
   onReset,
 }: Props) {
-  const [confirm, setConfirm] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [confirmSave, setConfirmSave] = React.useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit();
+    setConfirmSave(true);
   };
 
   return (
@@ -59,7 +60,7 @@ export default function CollectionForm({
           <button
             type="button"
             className="btn btn-red rounded"
-            onClick={() => setConfirm(true)}
+            onClick={() => setConfirmDelete(true)}
           >
             Удалить
           </button>
@@ -74,13 +75,23 @@ export default function CollectionForm({
         )}
       </div>
       <ConfirmDialog
-        open={confirm}
+        open={confirmSave}
+        message="Сохранить изменения?"
+        onConfirm={() => {
+          setConfirmSave(false);
+          onSubmit();
+        }}
+        onCancel={() => setConfirmSave(false)}
+        confirmText="Сохранить"
+      />
+      <ConfirmDialog
+        open={confirmDelete}
         message="Удалить элемент?"
         onConfirm={() => {
-          setConfirm(false);
+          setConfirmDelete(false);
           onDelete();
         }}
-        onCancel={() => setConfirm(false)}
+        onCancel={() => setConfirmDelete(false)}
       />
     </form>
   );

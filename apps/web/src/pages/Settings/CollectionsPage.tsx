@@ -19,10 +19,11 @@ import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
 
 const types = [
-  { key: "employees", label: "Сотрудники" },
-  { key: "departments", label: "Департаменты" },
-  { key: "fleets", label: "Флоты" },
-  { key: "roles", label: "Роли" },
+  { key: "departments", label: "Департамент" },
+  { key: "divisions", label: "Отдел" },
+  { key: "roles", label: "Должность" },
+  { key: "employees", label: "Сотрудник" },
+  { key: "fleets", label: "Автопарк" },
 ];
 
 interface ItemForm {
@@ -32,7 +33,7 @@ interface ItemForm {
 }
 
 export default function CollectionsPage() {
-  const [active, setActive] = useState("employees");
+  const [active, setActive] = useState("departments");
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

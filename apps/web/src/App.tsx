@@ -1,4 +1,4 @@
-// Корневой компонент мини‑приложения agrmcs
+// Корневой компонент мини‑приложения ERM
 import React, { Suspense, lazy } from "react";
 import { useTranslation, I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
@@ -16,10 +16,9 @@ const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const CodeLogin = lazy(() => import("./pages/CodeLogin"));
 const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
 const RoutesPage = lazy(() => import("./pages/Routes"));
-const RolesPage = lazy(() => import("./pages/Roles"));
+const SettingsPage = lazy(() => import("./pages/Settings"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
-const CollectionsPage = lazy(() => import("./pages/Collections"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -87,10 +86,10 @@ function Content() {
             }
           />
           <Route
-            path="/cp/roles"
+            path="/cp/settings"
             element={
               <AdminRoute>
-                <RolesPage />
+                <SettingsPage />
               </AdminRoute>
             }
           />
@@ -107,14 +106,6 @@ function Content() {
             element={
               <AdminRoute>
                 <StoragePage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/collections"
-            element={
-              <AdminRoute>
-                <CollectionsPage />
               </AdminRoute>
             }
           />

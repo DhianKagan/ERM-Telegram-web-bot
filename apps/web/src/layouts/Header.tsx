@@ -6,7 +6,6 @@ import { useAuth } from "../context/useAuth";
 import NotificationDropdown from "../components/NotificationDropdown";
 import ThemeToggle from "../components/ThemeToggle";
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
-import GlobalSearch from "../components/GlobalSearch";
 import { useTranslation } from "react-i18next";
 
 export default function Header() {
@@ -25,10 +24,9 @@ export default function Header() {
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <h1 className="font-bold">agrmcs</h1>
+        <h1 className="font-bold">ERM</h1>
       </div>
       <div className="flex items-center gap-4">
-        <GlobalSearch />
         <label htmlFor="lang-select" className="sr-only">
           {t("language")}
         </label>

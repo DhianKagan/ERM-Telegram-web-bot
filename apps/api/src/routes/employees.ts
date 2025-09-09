@@ -24,8 +24,17 @@ const middlewares = [
   rolesGuard as unknown as RequestHandler,
 ];
 
-router.get('/', ...middlewares, async (_req, res) => {
-  const employees = await Employee.find();
+router.get('/', ...middlewares, async (req, res) => {
+  const fields =
+    typeof req.query.fields === 'string'
+      ? req.query.fields.split(',').join(' ')
+      : undefined;
+
+  const employees = await Employee.find({}, fields).populate([
+    { path: 'departmentId', select: 'name' },
+    { path: 'divisionId', select: 'name' },
+    { path: 'positionId', select: 'name' },
+  ]);
   res.json(employees);
 });
 

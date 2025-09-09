@@ -10,12 +10,12 @@ services:
       - .env
     environment:
       - BOT_API_URL=${BOT_API_URL}
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/agrmcs?authSource=admin
+      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
     restart: always
     depends_on:
       - mongo_db
     ports:
-      - "${HOST_PORT:-3000}:${PORT:-3000}"
+      - '${HOST_PORT:-3000}:${PORT:-3000}'
   mongo_db:
     container_name: task-bot-mongo
     image: mongo
@@ -24,13 +24,25 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=admin
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo_db_example_app:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "admin", "-p", "admin", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '-u',
+          'admin',
+          '-p',
+          'admin',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
 volumes:
-    mongo_db_example_app:
+  mongo_db_example_app:

@@ -39,7 +39,15 @@ export const updateCollectionItem = (
     body: JSON.stringify(data),
   }).then((r) => r.json());
 
-export const removeCollectionItem = (id: string) =>
-  authFetch(`/api/v1/collections/${id}`, { method: "DELETE" }).then((r) =>
-    r.json(),
-  );
+export const removeCollectionItem = async (id: string) => {
+  const r = await authFetch(`/api/v1/collections/${id}`, { method: "DELETE" });
+  if (!r.ok) {
+    try {
+      const data = await r.json();
+      throw new Error(data.error || "Не удалось удалить элемент");
+    } catch {
+      throw new Error("Не удалось удалить элемент");
+    }
+  }
+  return r.json();
+};

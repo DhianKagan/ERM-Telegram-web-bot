@@ -35,6 +35,7 @@ export default function Settings() {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
   const [showConfirm, setShowConfirm] = useState(false);
+  const [hint, setHint] = useState("");
   const limit = 10;
 
   const load = useCallback(() => {
@@ -78,10 +79,17 @@ export default function Settings() {
 
   const confirmDelete = async () => {
     if (!form._id) return;
-    await removeCollectionItem(form._id);
-    setShowConfirm(false);
-    setForm({ name: "", value: "" });
-    load();
+    try {
+      await removeCollectionItem(form._id);
+      setHint("");
+      setShowConfirm(false);
+      setForm({ name: "", value: "" });
+      load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setHint(msg);
+      setShowConfirm(false);
+    }
   };
 
   const totalPages = Math.ceil(total / limit) || 1;
@@ -91,6 +99,7 @@ export default function Settings() {
       <Breadcrumbs
         items={[{ label: "Задачи", href: "/tasks" }, { label: "Настройки" }]}
       />
+      {hint && <div className="text-sm text-red-600">{hint}</div>}
       <Tabs
         value={active}
         onValueChange={(v) => {

@@ -67,6 +67,7 @@
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.
+- Переменная `VITE_COLLECTIONS_READY=1` включает пункт «Коллекции» в боковом меню.
 - Переменная `STORAGE_DIR` задаёт базовый каталог статических файлов и вложений (по умолчанию `apps/api/public`).
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.

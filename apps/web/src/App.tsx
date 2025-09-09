@@ -19,6 +19,7 @@ const RoutesPage = lazy(() => import("./pages/Routes"));
 const RolesPage = lazy(() => import("./pages/Roles"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
+const CollectionsPage = lazy(() => import("./pages/Collections"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -106,6 +107,14 @@ function Content() {
             element={
               <AdminRoute>
                 <StoragePage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/cp/collections"
+            element={
+              <AdminRoute>
+                <CollectionsPage />
               </AdminRoute>
             }
           />

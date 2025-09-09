@@ -14,6 +14,7 @@ import {
   XMarkIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 
 const baseItems = [
@@ -21,23 +22,37 @@ const baseItems = [
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
-const adminExtra = [
-  { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
-  { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },
-  { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
-  { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
-];
+function getAdminExtra(collectionsReady: boolean) {
+  const items = [
+    { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
+    { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
+    { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
+    { to: "/cp/roles", label: "Роли", icon: Cog6ToothIcon },
+    { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
+    { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
+  ];
+  if (collectionsReady) {
+    items.push({
+      to: "/cp/collections",
+      label: "Коллекции",
+      icon: Squares2X2Icon,
+    });
+  }
+  return items;
+}
 
 export default function Sidebar() {
   const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
   const { pathname } = useLocation();
   const { user } = useAuth();
   const role = user?.role || "user";
+  const collectionsReady =
+    import.meta.env.VITE_COLLECTIONS_READY === "1" ||
+    import.meta.env.VITE_COLLECTIONS_READY === "true";
   const items = React.useMemo(() => {
-    return role === "admin" ? [...baseItems, ...adminExtra] : baseItems;
-  }, [role]);
+    const extra = getAdminExtra(collectionsReady);
+    return role === "admin" ? [...baseItems, ...extra] : baseItems;
+  }, [role, collectionsReady]);
   return (
     <aside
       className={`fixed top-0 left-0 z-50 h-full ${collapsed ? "w-20" : "w-60"} border-stroke border-r bg-white p-4 transition-all ${open ? "translate-x-0" : "-translate-x-full"}`}

@@ -8,12 +8,12 @@ interface UsersRepo {
     id: string | number,
     username?: string,
     roleId?: string,
-    data?: Partial<UserDocument>,
+    data?: Omit<Partial<UserDocument>, 'access' | 'role'>,
   ): Promise<UserDocument>;
   getUser(id: string | number): Promise<UserDocument | null>;
   updateUser(
     id: string | number,
-    data: Partial<UserDocument>,
+    data: Omit<Partial<UserDocument>, 'access'>,
   ): Promise<UserDocument | null>;
 }
 
@@ -32,7 +32,7 @@ class UsersService {
     id: string | number,
     username?: string,
     roleId?: string,
-    data: Partial<UserDocument> = {},
+    data: Omit<Partial<UserDocument>, 'access' | 'role'> = {},
   ) {
     return this.repo.createUser(id, username, roleId, data);
   }
@@ -41,7 +41,7 @@ class UsersService {
     return this.repo.getUser(id);
   }
 
-  update(id: string | number, data: Partial<UserDocument>) {
+  update(id: string | number, data: Omit<Partial<UserDocument>, 'access'>) {
     return this.repo.updateUser(id, data);
   }
 }

@@ -14,6 +14,7 @@ import {
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
 import { Types, PipelineStage, Query } from 'mongoose';
+import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -32,6 +33,18 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
     });
   }
   return res;
+}
+
+// Возвращает уровень доступа по имени роли
+export function accessByRole(role: string): number {
+  switch (role) {
+    case 'admin':
+      return ACCESS_ADMIN;
+    case 'manager':
+      return ACCESS_MANAGER;
+    default:
+      return ACCESS_USER;
+  }
 }
 
 export async function createTask(
@@ -246,7 +259,7 @@ export async function createUser(
   id: string | number,
   username?: string,
   roleId?: string,
-  extra: Partial<UserDocument> = {},
+  extra: Omit<Partial<UserDocument>, 'access' | 'role'> = {},
 ): Promise<UserDocument> {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id');
@@ -263,6 +276,7 @@ export async function createUser(
       rId = (dbRole._id as Types.ObjectId).toString();
     }
   }
+  const access = accessByRole(role);
   return User.create({
     telegram_id: telegramId,
     username,
@@ -270,7 +284,7 @@ export async function createUser(
     name: username,
     role,
     roleId: rId as unknown as Types.ObjectId,
-    access: extra.access || 1,
+    access,
     ...extra,
   });
 }
@@ -301,11 +315,25 @@ export async function getUsersMap(
 
 export async function updateUser(
   id: string | number,
-  data: Partial<UserDocument>,
+  data: Omit<Partial<UserDocument>, 'access'>,
 ): Promise<UserDocument | null> {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) return null;
-  const sanitized = sanitizeUpdate(data);
+  const sanitized = sanitizeUpdate(data) as Partial<UserDocument>;
+  delete sanitized.access;
+  if (sanitized.roleId) {
+    const rId = String(sanitized.roleId);
+    if (!Types.ObjectId.isValid(rId)) throw new Error('Invalid roleId');
+    const dbRole = await Role.findById(rId);
+    if (dbRole) {
+      const r = (dbRole.name as UserDocument['role']) || 'user';
+      sanitized.role = r;
+      sanitized.roleId = dbRole._id as Types.ObjectId;
+      sanitized.access = accessByRole(r);
+    }
+  } else if (sanitized.role) {
+    sanitized.access = accessByRole(sanitized.role);
+  }
   return User.findOneAndUpdate(
     { telegram_id: { $eq: telegramId } },
     sanitized,

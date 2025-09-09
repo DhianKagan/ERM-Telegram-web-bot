@@ -15,7 +15,7 @@ interface CreateUserBody {
   roleId?: string;
 }
 
-type UpdateUserBody = Partial<UserDocument>;
+type UpdateUserBody = Omit<Partial<UserDocument>, 'access' | 'role'>;
 
 @injectable()
 export default class UsersController {

@@ -29,13 +29,21 @@ const adminItems = [
   { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
 ];
 
+const managerItems = [
+  { to: "/mg/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
+  { to: "/mg/reports", label: "Отчёты", icon: ChartPieIcon },
+  { to: "/mg/routes", label: "Маршруты", icon: MapIcon },
+];
+
 export default function Sidebar() {
   const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
   const { pathname } = useLocation();
   const { user } = useAuth();
   const role = user?.role || "user";
   const items = React.useMemo(() => {
-    return role === "admin" ? [...baseItems, ...adminItems] : baseItems;
+    if (role === "admin") return [...baseItems, ...adminItems];
+    if (role === "manager") return [...baseItems, ...managerItems];
+    return baseItems;
   }, [role]);
   return (
     <aside

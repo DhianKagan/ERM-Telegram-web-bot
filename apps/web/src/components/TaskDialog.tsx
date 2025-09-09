@@ -33,21 +33,46 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import FileUploader from "./FileUploader";
 import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
+import type { Task } from "shared";
 
 interface Props {
   onClose: () => void;
-  onSave?: (data: any) => void;
+  onSave?: (data: Task | null) => void;
   id?: string;
+}
+
+interface InitialValues {
+  title: string;
+  taskType: string;
+  description: string;
+  comment: string;
+  priority: string;
+  transportType: string;
+  paymentMethod: string;
+  status: string;
+  creator: string;
+  department: string;
+  assignees: string[];
+  controllers: string[];
+  start: string;
+  startLink: string;
+  end: string;
+  endLink: string;
+  startDate: string;
+  dueDate: string;
+  attachments: Attachment[];
+  distanceKm: number | null;
 }
 
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const canEditAll = isAdmin || user?.role === "manager";
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);
-  const initialRef = React.useRef<any>(null);
+  const initialRef = React.useRef<InitialValues | null>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
@@ -271,7 +296,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   ]);
 
   React.useEffect(() => {
-    if (isAdmin) {
+    if (canEditAll) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
         .then((list) => {
@@ -282,7 +307,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCreator(String((user as UserBrief).telegram_id));
       setUsers([user as UserBrief]);
     }
-  }, [user, isAdmin]);
+  }, [user, canEditAll]);
 
   React.useEffect(() => {
     if (!isEdit || !id) return;
@@ -434,7 +459,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const submit = handleSubmit(async (formData) => {
     try {
-      const payload: { [key: string]: any } = {
+      const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: taskType,
         task_description: formData.description,

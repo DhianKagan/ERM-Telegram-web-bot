@@ -2,6 +2,7 @@
 // Основные модули: authFetch, buildTaskFormData
 import authFetch from "../utils/authFetch";
 import { buildTaskFormData } from "./buildTaskFormData";
+import type { Task, User } from "shared";
 
 export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true")
@@ -58,29 +59,37 @@ export const updateTask = (
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));
 
+export interface TasksResponse {
+  tasks: Task[];
+  users: User[] | Record<string, User>;
+  total: number;
+}
+
 export const fetchTasks = (
   params: Record<string, unknown> = {},
   userId?: number,
-) => {
+): Promise<TasksResponse> => {
   const filtered = Object.fromEntries(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null),
   );
   const q = new URLSearchParams(filtered as Record<string, string>).toString();
   const url = "/api/v1/tasks" + (q ? `?${q}` : "");
   const key = `tasks_${userId ?? "anon"}_${q}`;
-  let cached: { time?: number; data?: unknown };
+  let cached: { time?: number; data?: TasksResponse } = {};
   try {
     cached = JSON.parse(localStorage.getItem(key) || "");
   } catch {
     // игнорируем ошибку парсинга
     cached = {};
   }
-  if (cached.time && Date.now() - cached.time < 60000) {
+  if (cached.time && Date.now() - cached.time < 60000 && cached.data) {
     return Promise.resolve(cached.data);
   }
   return authFetch(url)
-    .then((r) => (r.ok ? r.json() : { tasks: [], users: [], total: 0 }))
-    .then((d) => {
+    .then((r) =>
+      r.ok ? r.json() : ({ tasks: [], users: [], total: 0 } as TasksResponse),
+    )
+    .then((d: TasksResponse) => {
       try {
         localStorage.setItem(
           key,

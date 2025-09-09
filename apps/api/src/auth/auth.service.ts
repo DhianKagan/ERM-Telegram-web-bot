@@ -57,10 +57,20 @@ async function verifyCode(
   let u = user;
   if (!u)
     u = await createUser(telegramId, username, roleId || config.userRoleId, {
-      access: roleId === config.adminRoleId ? 2 : 1,
+      access:
+        roleId === config.adminRoleId
+          ? 2
+          : roleId === config.managerRoleId
+            ? 4
+            : 1,
     });
-  const role = roleId === config.adminRoleId ? 'admin' : 'user';
-  const access = role === 'admin' ? 2 : 1;
+  const role =
+    roleId === config.adminRoleId
+      ? 'admin'
+      : roleId === config.managerRoleId
+        ? 'manager'
+        : 'user';
+  const access = role === 'admin' ? 2 : role === 'manager' ? 4 : 1;
   const token = generateToken({
     id: telegramId,
     username: u.username || '',

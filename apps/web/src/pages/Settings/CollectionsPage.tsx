@@ -34,6 +34,19 @@ const types = [
   { key: "users", label: "Пользователь" },
 ];
 
+const emptyUser: UserFormData = {
+  telegram_id: undefined,
+  username: "",
+  name: "",
+  phone: "",
+  mobNumber: "",
+  email: "",
+  role: "user",
+  access: 1,
+  roleId: "",
+  receive_reminders: true,
+};
+
 interface ItemForm {
   _id?: string;
   name: string;
@@ -52,18 +65,6 @@ export default function CollectionsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
-  const emptyUser: UserFormData = {
-    telegram_id: undefined,
-    username: "",
-    name: "",
-    phone: "",
-    mobNumber: "",
-    email: "",
-    role: "user",
-    access: 1,
-    roleId: "",
-    receive_reminders: true,
-  };
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
 
   const load = useCallback(() => {
@@ -146,7 +147,7 @@ export default function CollectionsPage() {
     if (!users.find((u) => u.telegram_id === id)) {
       await createUserApi(id, userForm.username, userForm.roleId);
     }
-    const { telegram_id, ...data } = userForm;
+    const { telegram_id: _telegramId, ...data } = userForm;
     await updateUserApi(id, data);
     setUserForm(emptyUser);
     loadUsers();

@@ -5,6 +5,7 @@ import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
 import { TOKENS } from '../di/tokens';
 import type UsersService from './users.service';
+import type { UserDocument } from '../db/model';
 import formatUser from '../utils/formatUser';
 import { sendCached } from '../utils/sendCached';
 
@@ -13,6 +14,8 @@ interface CreateUserBody {
   username?: string;
   roleId?: string;
 }
+
+type UpdateUserBody = Partial<UserDocument>;
 
 @injectable()
 export default class UsersController {
@@ -39,6 +42,17 @@ export default class UsersController {
         req.body.roleId,
       );
       res.status(201).json(formatUser(user));
+    },
+  ];
+
+  update = [
+    handleValidation,
+    async (
+      req: Request<{ id: string }, unknown, UpdateUserBody>,
+      res: Response,
+    ): Promise<void> => {
+      const user = await this.service.update(req.params.id, req.body);
+      res.json(formatUser(user));
     },
   ];
 }

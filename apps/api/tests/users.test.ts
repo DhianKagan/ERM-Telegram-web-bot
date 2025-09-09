@@ -17,6 +17,7 @@ const { ACCESS_ADMIN } = require('../src/utils/accessMask');
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
+  updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
 }));
 
 jest.mock('../src/api/middleware', () => ({
@@ -39,14 +40,14 @@ jest.mock('../src/api/middleware', () => ({
     res.status(500).json({ error: err.message }),
 }));
 
-const { listUsers, createUser } = require('../src/db/queries');
+const { listUsers, createUser, updateUser } = require('../src/db/queries');
 const {
   verifyToken,
   checkRole,
   asyncHandler,
 } = require('../src/api/middleware');
 const validateDto = require('../src/middleware/validateDto.ts').default;
-const { CreateUserDto } = require('../src/dto/users.dto.ts');
+const { CreateUserDto, UpdateUserDto } = require('../src/dto/users.dto.ts');
 
 const app = express();
 app.use(express.json());
@@ -70,6 +71,16 @@ app.post(
   ...validateDto(CreateUserDto),
   asyncHandler(async (req, res) => {
     res.json(await createUser(req.body.id, req.body.username, req.body.roleId));
+  }),
+);
+app.patch(
+  '/api/v1/users/:id',
+  usersRateLimiter,
+  verifyToken,
+  checkRole(ACCESS_ADMIN),
+  ...validateDto(UpdateUserDto),
+  asyncHandler(async (req, res) => {
+    res.json(await updateUser(req.params.id, req.body));
   }),
 );
 
@@ -102,4 +113,14 @@ test('создание пользователя с ошибкой данных',
     .set('x-access', '2')
     .send({ username: 'a' });
   expect(res.status).toBe(400);
+});
+
+test('обновление пользователя', async () => {
+  const res = await request(app)
+    .patch('/api/v1/users/1')
+    .set('x-role', 'admin')
+    .set('x-access', '2')
+    .send({ username: 'new' });
+  expect(res.status).toBe(200);
+  expect(updateUser).toHaveBeenCalled();
 });

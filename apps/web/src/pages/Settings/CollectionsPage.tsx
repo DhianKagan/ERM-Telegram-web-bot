@@ -17,6 +17,13 @@ import {
 } from "../../services/collections";
 import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
+import {
+  fetchUsers,
+  createUser as createUserApi,
+  updateUser as updateUserApi,
+} from "../../services/users";
+import UserForm, { UserFormData } from "./UserForm";
+import type { User } from "shared";
 
 const types = [
   { key: "departments", label: "Департамент" },
@@ -24,6 +31,7 @@ const types = [
   { key: "roles", label: "Должность" },
   { key: "employees", label: "Сотрудник" },
   { key: "fleets", label: "Автопарк" },
+  { key: "users", label: "Пользователь" },
 ];
 
 interface ItemForm {
@@ -41,26 +49,66 @@ export default function CollectionsPage() {
   const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
   const [hint, setHint] = useState("");
   const limit = 10;
+  const [users, setUsers] = useState<User[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const [userQuery, setUserQuery] = useState("");
+  const emptyUser: UserFormData = {
+    telegram_id: undefined,
+    username: "",
+    name: "",
+    phone: "",
+    mobNumber: "",
+    email: "",
+    role: "user",
+    access: 1,
+    roleId: "",
+    receive_reminders: true,
+  };
+  const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
 
   const load = useCallback(() => {
+    if (active === "users") return;
     fetchCollectionItems(active, query, page, limit).then((d) => {
       setItems(d.items);
       setTotal(d.total);
     });
   }, [active, query, page]);
 
+  const loadUsers = useCallback(() => {
+    fetchUsers().then((list) => setUsers(list));
+  }, []);
+
   useEffect(() => {
-    load();
-    setForm({ name: "", value: "" });
-  }, [load]);
+    if (active !== "users") {
+      load();
+      setForm({ name: "", value: "" });
+    }
+  }, [load, active]);
+
+  useEffect(() => {
+    if (active === "users") {
+      loadUsers();
+      setUserForm(emptyUser);
+    }
+  }, [active, loadUsers]);
 
   const selectItem = (item: CollectionItem) => {
     setForm({ _id: item._id, name: item.name, value: item.value });
   };
 
+  const selectUser = (item: CollectionItem) => {
+    const u = users.find((x) => String(x.telegram_id) === item._id);
+    if (u) setUserForm({ ...u });
+  };
+
   const handleSearch = (text: string) => {
     setPage(1);
     setQuery(text);
+  };
+
+  const handleUserSearch = (text: string) => {
+    setUserPage(1);
+    setUserQuery(text);
   };
 
   const submit = async () => {
@@ -92,7 +140,35 @@ export default function CollectionsPage() {
     }
   };
 
+  const submitUser = async () => {
+    if (!userForm.telegram_id) return;
+    const id = userForm.telegram_id;
+    if (!users.find((u) => u.telegram_id === id)) {
+      await createUserApi(id, userForm.username, userForm.roleId);
+    }
+    const { telegram_id, ...data } = userForm;
+    await updateUserApi(id, data);
+    setUserForm(emptyUser);
+    loadUsers();
+  };
+
   const totalPages = Math.ceil(total / limit) || 1;
+  const filteredUsers = users.filter((u) => {
+    const q = userQuery.toLowerCase();
+    return (
+      !q ||
+      u.username?.toLowerCase().includes(q) ||
+      u.name?.toLowerCase().includes(q)
+    );
+  });
+  const userTotalPages = Math.ceil(filteredUsers.length / limit) || 1;
+  const userItems = filteredUsers
+    .slice((userPage - 1) * limit, userPage * limit)
+    .map((u) => ({
+      _id: String(u.telegram_id),
+      name: u.name || "",
+      value: u.username || "",
+    }));
 
   return (
     <div className="space-y-6 p-4">
@@ -116,28 +192,56 @@ export default function CollectionsPage() {
         </TabsList>
         {types.map((t) => (
           <TabsContent key={t.key} value={t.key}>
-            <div className="flex flex-col gap-4 md:flex-row">
-              <div className="md:w-1/2">
-                <CollectionList
-                  items={items}
-                  selectedId={form._id}
-                  totalPages={totalPages}
-                  page={page}
-                  onSelect={selectItem}
-                  onSearch={handleSearch}
-                  onPageChange={setPage}
-                />
+            {t.key === "users" ? (
+              <div className="flex flex-col gap-4 md:flex-row">
+                <div className="md:w-1/2">
+                  <CollectionList
+                    items={userItems}
+                    selectedId={
+                      userForm.telegram_id
+                        ? String(userForm.telegram_id)
+                        : undefined
+                    }
+                    totalPages={userTotalPages}
+                    page={userPage}
+                    onSelect={selectUser}
+                    onSearch={handleUserSearch}
+                    onPageChange={setUserPage}
+                  />
+                </div>
+                <div className="md:w-1/2">
+                  <UserForm
+                    form={userForm}
+                    onChange={setUserForm}
+                    onSubmit={submitUser}
+                    onReset={() => setUserForm(emptyUser)}
+                  />
+                </div>
               </div>
-              <div className="md:w-1/2">
-                <CollectionForm
-                  form={form}
-                  onChange={setForm}
-                  onSubmit={submit}
-                  onDelete={remove}
-                  onReset={() => setForm({ name: "", value: "" })}
-                />
+            ) : (
+              <div className="flex flex-col gap-4 md:flex-row">
+                <div className="md:w-1/2">
+                  <CollectionList
+                    items={items}
+                    selectedId={form._id}
+                    totalPages={totalPages}
+                    page={page}
+                    onSelect={selectItem}
+                    onSearch={handleSearch}
+                    onPageChange={setPage}
+                  />
+                </div>
+                <div className="md:w-1/2">
+                  <CollectionForm
+                    form={form}
+                    onChange={setForm}
+                    onSubmit={submit}
+                    onDelete={remove}
+                    onReset={() => setForm({ name: "", value: "" })}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </TabsContent>
         ))}
       </Tabs>

@@ -100,6 +100,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const DEFAULT_PAYMENT =
     fields.find((f) => f.name === "payment_method")?.default || "";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
+  const [departments, setDepartments] = React.useState<
+    {
+      _id: string;
+      name: string;
+    }[]
+  >([]);
+  const [department, setDepartment] = React.useState("");
 
   const makeDefaultDate = (h: number) => {
     const d = new Date();
@@ -181,6 +188,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   React.useEffect(() => {
+    authFetch("/api/v1/collections/departments")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setDepartments(d));
+  }, []);
+
+  React.useEffect(() => {
     setEditing(true);
     if (isEdit && id) {
       authFetch(`/api/v1/tasks/${id}`)
@@ -220,6 +233,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         paymentMethod: DEFAULT_PAYMENT,
         status: DEFAULT_STATUS,
         creator: user ? String(user.telegram_id) : "",
+        department: "",
         assignees: [],
         start: "",
         startLink: "",
@@ -239,6 +253,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startDate: DEFAULT_START_DATE,
         dueDate: DEFAULT_DUE_DATE,
       });
+      setDepartment("");
       setDueOffset(24 * 60 * 60 * 1000);
     }
   }, [
@@ -312,6 +327,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         setEnd(t.end_location || "");
         setEndLink(t.end_location_link || "");
         setAttachments((t.attachments as Attachment[]) || []);
+        setDepartment(String(t.department || ""));
         setUsers((p) => {
           const list = [...p];
           Object.values(d.users || {}).forEach((u) => {
@@ -333,6 +349,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           paymentMethod: curPayment,
           status: curStatus,
           creator: String(t.created_by || ""),
+          department: String(t.department || ""),
           assignees: formValues.assignees,
           start: t.start_location || "",
           startLink: t.start_location_link || "",
@@ -423,6 +440,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         task_description: formData.description,
         comment,
         priority,
+        department,
         transport_type: transportType,
         payment_method: paymentMethod,
         status,
@@ -466,6 +484,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   : "",
               });
               setCreator(String(t.created_by || ""));
+              setDepartment(String(t.department || ""));
               setAttachments((t.attachments as Attachment[]) || []);
               setUsers((p) => {
                 const list = [...p];
@@ -517,6 +536,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setPaymentMethod(d.paymentMethod);
     setStatus(d.status);
     setCreator(d.creator);
+    setDepartment(d.department);
     setStart(d.start);
     setStartLink(d.startLink);
     setEnd(d.end);
@@ -718,6 +738,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {types.map((t) => (
                   <option key={t} value={t}>
                     {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("department")}
+              </label>
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full rounded border px-2 py-1"
+                disabled={!editing}
+              >
+                <option value="">{t("selectOption")}</option>
+                {departments.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.name}
                   </option>
                 ))}
               </select>

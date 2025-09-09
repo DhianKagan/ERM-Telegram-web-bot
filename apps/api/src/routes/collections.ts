@@ -6,7 +6,12 @@ import createRateLimiter from '../utils/rateLimiter';
 import authMiddleware from '../middleware/auth';
 import requireRole from '../middleware/requireRole';
 import * as repo from '../db/repos/collectionRepo';
-import { CollectionItemAttrs } from '../db/models/CollectionItem';
+import {
+  CollectionItem,
+  CollectionItemAttrs,
+} from '../db/models/CollectionItem';
+import { Employee } from '../db/models/employee';
+import { Task } from '../db/model';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -31,6 +36,12 @@ router.get('/', ...base, async (req, res) => {
     Number(limit),
   );
   res.json({ items, total });
+});
+
+router.get('/:type', ...base, async (req, res) => {
+  const { type } = req.params;
+  const { items } = await repo.list({ type }, 1, 1000);
+  res.json(items);
 });
 
 router.post('/', ...base, requireRole('admin'), async (req, res) => {
@@ -62,11 +73,25 @@ router.delete(
   requireRole('admin'),
   param('id').isMongoId(),
   async (req, res) => {
-    const item = await repo.remove(req.params.id);
+    const item = await CollectionItem.findById(req.params.id);
     if (!item) {
       res.sendStatus(404);
       return;
     }
+    if (item.type === 'departments') {
+      const hasTasks = await Task.exists({
+        department: item._id,
+      } as Record<string, unknown>);
+      const hasEmployees = await Employee.exists({ departmentId: item._id });
+      if (hasTasks || hasEmployees) {
+        res.status(409).json({
+          error:
+            'Нельзя удалить департамент: есть связанные задачи или сотрудники',
+        });
+        return;
+      }
+    }
+    await item.deleteOne();
     res.json({ status: 'ok' });
   },
 );

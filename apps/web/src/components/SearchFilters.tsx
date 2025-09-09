@@ -22,7 +22,7 @@ export default function SearchFilters() {
       <summary className="cursor-pointer rounded border px-2 py-1 select-none">
         Фильтры
       </summary>
-      <div className="absolute z-10 mt-1 flex w-64 flex-col gap-2 rounded border bg-white p-2 shadow">
+      <div className="absolute z-10 mt-1 flex w-56 flex-col gap-2 rounded border bg-white p-2 shadow">
         <div>
           <span className="block text-sm font-medium">Статус</span>
           {TASK_STATUSES.map((s) => (

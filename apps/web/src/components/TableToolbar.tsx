@@ -1,14 +1,16 @@
 // Назначение файла: общий тулбар таблицы с экспортом, поиском и фильтрацией
 // Модули: React, @tanstack/react-table, jspdf
+import React from "react";
 import type { Table } from "@tanstack/react-table";
 import GlobalSearch from "./GlobalSearch";
 import SearchFilters from "./SearchFilters";
 
 interface Props<T> {
   table: Table<T>;
+  children?: React.ReactNode;
 }
 
-export default function TableToolbar<T>({ table }: Props<T>) {
+export default function TableToolbar<T>({ table, children }: Props<T>) {
   const columns = table.getAllLeafColumns();
 
   const exportCsv = () => {
@@ -109,6 +111,7 @@ export default function TableToolbar<T>({ table }: Props<T>) {
           ))}
         </div>
       </details>
+      {children}
     </div>
   );
 }

@@ -26,8 +26,8 @@ interface DataTableProps<T> {
   pageCount?: number;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
-  onSelectionChange?: (rows: T[]) => void;
   onRowClick?: (row: T) => void;
+  toolbarChildren?: React.ReactNode;
 }
 
 interface ColumnMeta {
@@ -43,10 +43,9 @@ export default function DataTable<T>({
   pageCount,
   onPageChange,
   onPageSizeChange,
-  onSelectionChange,
   onRowClick,
+  toolbarChildren,
 }: DataTableProps<T>) {
-  const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
 
@@ -54,13 +53,10 @@ export default function DataTable<T>({
     data,
     columns,
     state: {
-      rowSelection,
       columnVisibility,
       columnOrder,
       pagination: { pageIndex, pageSize },
     },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
@@ -68,16 +64,11 @@ export default function DataTable<T>({
     pageCount,
   });
 
-  React.useEffect(() => {
-    if (onSelectionChange) {
-      const selected = table.getSelectedRowModel().rows.map((r) => r.original);
-      onSelectionChange(selected as T[]);
-    }
-  }, [rowSelection, table, onSelectionChange]);
-
   return (
     <div className="space-y-2">
-      <TableToolbar table={table as TableType<T>} />
+      <TableToolbar table={table as TableType<T>}>
+        {toolbarChildren}
+      </TableToolbar>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
@@ -92,7 +83,7 @@ export default function DataTable<T>({
                     style={{
                       width: header.getSize(),
                       minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "20rem",
+                      maxWidth: meta.maxWidth ?? "16rem",
                     }}
                     className="break-words whitespace-normal"
                     // фиксируем ширину ячейки заголовка
@@ -113,7 +104,6 @@ export default function DataTable<T>({
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              data-state={row.getIsSelected() ? "selected" : undefined}
               onClick={() => onRowClick?.(row.original)}
               className="cursor-pointer"
             >
@@ -126,7 +116,7 @@ export default function DataTable<T>({
                     style={{
                       width: cell.column.getSize(),
                       minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "20rem",
+                      maxWidth: meta.maxWidth ?? "16rem",
                     }}
                     className="break-words whitespace-normal"
                     // фиксируем ширину ячейки данных

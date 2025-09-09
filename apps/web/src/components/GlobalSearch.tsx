@@ -34,7 +34,7 @@ export default function GlobalSearch() {
         onKeyDown={onKey}
         placeholder={t("search")}
         aria-label={t("search")}
-        className="h-9 w-64 pr-8 pl-8"
+        className="h-8 w-52 pr-8 pl-8"
       />
       {query && (
         <button

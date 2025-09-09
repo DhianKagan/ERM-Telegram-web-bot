@@ -8,24 +8,24 @@ import useTasks from "../context/useTasks";
 interface TaskTableProps {
   tasks: TaskRow[];
   users?: Record<number, any>;
-  onSelectionChange?: (ids: string[]) => void;
   page: number;
   pageCount?: number;
   onPageChange: (p: number) => void;
   onRowClick?: (id: string) => void;
+  toolbarChildren?: React.ReactNode;
 }
 
 export default function TaskTable({
   tasks,
   users = {},
-  onSelectionChange,
   page,
   pageCount,
   onPageChange,
   onRowClick,
+  toolbarChildren,
 }: TaskTableProps) {
   const { query, filters } = useTasks();
-  const columns = React.useMemo(() => taskColumns(true, users), [users]);
+  const columns = React.useMemo(() => taskColumns(users), [users]);
 
   return (
     <Suspense fallback={<div>Загрузка таблицы...</div>}>
@@ -55,10 +55,8 @@ export default function TaskTable({
         pageSize={25}
         pageCount={pageCount}
         onPageChange={onPageChange}
-        onSelectionChange={(rows) =>
-          onSelectionChange?.((rows as TaskRow[]).map((r) => r._id))
-        }
         onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
+        toolbarChildren={toolbarChildren}
       />
     </Suspense>
   );

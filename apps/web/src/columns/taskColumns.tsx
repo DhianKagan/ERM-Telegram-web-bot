@@ -27,25 +27,24 @@ const formatDate = (v?: string) =>
 export type TaskRow = Task & Record<string, any>;
 
 export default function taskColumns(
-  selectable: boolean,
   users: Record<number, any>,
 ): ColumnDef<TaskRow, any>[] {
   const cols: ColumnDef<TaskRow, any>[] = [
     {
       header: "Номер",
       accessorKey: "task_number",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      meta: { minWidth: "4rem", maxWidth: "6rem" },
     },
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
+      meta: { minWidth: "10rem", maxWidth: "12rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Название",
       accessorKey: "title",
-      meta: { minWidth: "12rem", maxWidth: "24rem" },
+      meta: { minWidth: "10rem", maxWidth: "20rem" },
       cell: (p) => {
         const v = p.getValue<string>() || "";
         return <span title={v}>{v}</span>;
@@ -54,7 +53,7 @@ export default function taskColumns(
     {
       header: "Статус",
       accessorKey: "status",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
+      meta: { minWidth: "6rem", maxWidth: "8rem" },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         return <span className={statusColorMap[value] || ""}>{value}</span>;
@@ -63,29 +62,29 @@ export default function taskColumns(
     {
       header: "Приоритет",
       accessorKey: "priority",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
+      meta: { minWidth: "6rem", maxWidth: "8rem" },
     },
     {
       header: "Начало",
       accessorKey: "start_date",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
+      meta: { minWidth: "10rem", maxWidth: "12rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Срок",
       accessorKey: "due_date",
-      meta: { minWidth: "12rem", maxWidth: "14rem" },
+      meta: { minWidth: "10rem", maxWidth: "12rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Тип",
       accessorKey: "task_type",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
+      meta: { minWidth: "6rem", maxWidth: "8rem" },
     },
     {
       header: "Старт",
       accessorKey: "startCoordinates",
-      meta: { minWidth: "12rem", maxWidth: "16rem" },
+      meta: { minWidth: "10rem", maxWidth: "14rem" },
       cell: (p) => {
         const v = p.getValue<any>();
         const text = v ? `${v.lat}, ${v.lng}` : "";
@@ -95,7 +94,7 @@ export default function taskColumns(
     {
       header: "Финиш",
       accessorKey: "finishCoordinates",
-      meta: { minWidth: "12rem", maxWidth: "16rem" },
+      meta: { minWidth: "10rem", maxWidth: "14rem" },
       cell: (p) => {
         const v = p.getValue<any>();
         const text = v ? `${v.lat}, ${v.lng}` : "";
@@ -105,12 +104,12 @@ export default function taskColumns(
     {
       header: "Км",
       accessorKey: "route_distance_km",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      meta: { minWidth: "4rem", maxWidth: "6rem" },
     },
     {
       header: "Исполнители",
       accessorKey: "assignees",
-      meta: { minWidth: "12rem", maxWidth: "20rem" },
+      meta: { minWidth: "10rem", maxWidth: "16rem" },
       cell: ({ row }) => {
         const ids: number[] =
           row.original.assignees ||
@@ -139,26 +138,5 @@ export default function taskColumns(
       },
     },
   ];
-  if (selectable) {
-    cols.unshift({
-      id: "select",
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          checked={table.getIsAllPageRowsSelected()}
-          onChange={(e) => table.toggleAllPageRowsSelected(e.target.checked)}
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          checked={row.getIsSelected()}
-          onChange={(e) => row.toggleSelected(e.target.checked)}
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    });
-  }
   return cols;
 }

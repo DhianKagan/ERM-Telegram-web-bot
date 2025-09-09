@@ -5,6 +5,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import {
   ensureTaskIndexes,
   ensureUploadIndexes,
+  ensureCollectionItemIndexes,
 } from '../../../scripts/db/ensureIndexes';
 
 jest.setTimeout(60000);
@@ -82,5 +83,28 @@ describe('индексы загрузок', () => {
       .indexes();
     expect(indexes.some((i) => i.name === 'key_unique')).toBe(true);
     expect(indexes.some((i) => i.name === 'owner_idx')).toBe(true);
+  });
+});
+
+describe('индексы коллекции', () => {
+  let mongod: MongoMemoryServer;
+
+  beforeAll(async () => {
+    mongod = await MongoMemoryServer.create();
+    await mongoose.connect(mongod.getUri());
+  });
+
+  afterAll(async () => {
+    await mongoose.disconnect();
+    await mongod.stop();
+  });
+
+  test('создаются уникальный и текстовый индексы', async () => {
+    await ensureCollectionItemIndexes(mongoose.connection);
+    const indexes = await mongoose.connection.db
+      .collection('collectionitems')
+      .indexes();
+    expect(indexes.some((i) => i.name === 'type_name_unique')).toBe(true);
+    expect(indexes.some((i) => i.name === 'search_text')).toBe(true);
   });
 });

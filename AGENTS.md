@@ -68,7 +68,7 @@
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.
-- Страница «Настройки» объединяет управление ролями и коллекциями;
+- Страница «Настройки» содержит вкладки employees, departments, fleets и roles; слева список с поиском и пагинацией, справа форма {name,value};
   переменная `VITE_COLLECTIONS_READY` больше не используется.
 - Переменная `STORAGE_DIR` задаёт базовый каталог статических файлов и вложений (по умолчанию `apps/api/public`).
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.

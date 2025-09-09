@@ -33,6 +33,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ManagerRoute from "./components/ManagerRoute";
 
 function Content() {
   const { collapsed, open } = useSidebar();
@@ -70,6 +71,14 @@ function Content() {
             }
           />
           <Route
+            path="/mg/kanban"
+            element={
+              <ManagerRoute>
+                <TaskKanban />
+              </ManagerRoute>
+            }
+          />
+          <Route
             path="/cp/reports"
             element={
               <AdminRoute>
@@ -78,11 +87,27 @@ function Content() {
             }
           />
           <Route
+            path="/mg/reports"
+            element={
+              <ManagerRoute>
+                <Reports />
+              </ManagerRoute>
+            }
+          />
+          <Route
             path="/cp/routes"
             element={
               <AdminRoute>
                 <RoutesPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/mg/routes"
+            element={
+              <ManagerRoute>
+                <RoutesPage />
+              </ManagerRoute>
             }
           />
           <Route

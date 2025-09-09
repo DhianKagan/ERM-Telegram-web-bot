@@ -28,6 +28,9 @@ import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
 import { maxUserFiles, maxUserStorage } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
+import { Roles } from '../auth/roles.decorator';
+import rolesGuard from '../auth/roles.guard';
+import { ACCESS_ADMIN } from '../utils/accessMask';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -373,6 +376,8 @@ router.patch(
 router.delete(
   '/:id',
   authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ctrl.remove as RequestHandler,

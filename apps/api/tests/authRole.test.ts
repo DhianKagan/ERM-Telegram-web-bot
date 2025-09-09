@@ -22,7 +22,11 @@ function appWithRole(role) {
   app.get(
     '/cp',
     (req, res, next) => {
-      req.user = { role, access: role === 'admin' ? 2 : 1, telegram_id: 1 };
+      req.user = {
+        role,
+        access: role === 'admin' ? 2 : role === 'manager' ? 4 : 1,
+        telegram_id: 1,
+      };
       next();
     },
     checkRole(ACCESS_ADMIN),

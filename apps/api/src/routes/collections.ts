@@ -11,7 +11,7 @@ import {
   CollectionItemAttrs,
 } from '../db/models/CollectionItem';
 import { Employee } from '../db/models/employee';
-import { Task } from '../db/model';
+import { Task, User } from '../db/model';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -83,10 +83,33 @@ router.delete(
         department: item._id,
       } as Record<string, unknown>);
       const hasEmployees = await Employee.exists({ departmentId: item._id });
-      if (hasTasks || hasEmployees) {
+      const hasUsers = await User.exists({ departmentId: item._id });
+      if (hasTasks || hasEmployees || hasUsers) {
         res.status(409).json({
           error:
-            'Нельзя удалить департамент: есть связанные задачи или сотрудники',
+            'Нельзя удалить департамент: есть связанные задачи, сотрудники или пользователи',
+        });
+        return;
+      }
+    }
+    if (item.type === 'divisions') {
+      const hasEmployees = await Employee.exists({ divisionId: item._id });
+      const hasUsers = await User.exists({ divisionId: item._id });
+      if (hasEmployees || hasUsers) {
+        res.status(409).json({
+          error:
+            'Нельзя удалить отдел: есть связанные сотрудники или пользователи',
+        });
+        return;
+      }
+    }
+    if (item.type === 'roles') {
+      const hasEmployees = await Employee.exists({ positionId: item._id });
+      const hasUsers = await User.exists({ positionId: item._id });
+      if (hasEmployees || hasUsers) {
+        res.status(409).json({
+          error:
+            'Нельзя удалить должность: есть связанные сотрудники или пользователи',
         });
         return;
       }

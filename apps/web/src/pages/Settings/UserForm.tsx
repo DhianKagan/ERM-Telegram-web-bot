@@ -11,19 +11,30 @@ export interface UserFormData {
   mobNumber?: string;
   email?: string;
   role?: string;
-  access?: number;
-  roleId?: string;
-  receive_reminders?: boolean;
+  departmentId?: string;
+  divisionId?: string;
+  positionId?: string;
 }
 
 interface Props {
   form: UserFormData;
+  departments: { _id: string; name: string }[];
+  divisions: { _id: string; name: string }[];
+  positions: { _id: string; name: string }[];
   onChange: (form: UserFormData) => void;
   onSubmit: () => void;
   onReset: () => void;
 }
 
-export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
+export default function UserForm({
+  form,
+  departments,
+  divisions,
+  positions,
+  onChange,
+  onSubmit,
+  onReset,
+}: Props) {
   const [confirmSave, setConfirmSave] = React.useState(false);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +47,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <input
           className="h-10 w-full rounded border px-3"
           value={form.telegram_id ?? ""}
+          disabled={Boolean(form.telegram_id)}
           onChange={(e) =>
             onChange({ ...form, telegram_id: Number(e.target.value) })
           }
@@ -47,6 +59,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <input
           className="h-10 w-full rounded border px-3"
           value={form.username || ""}
+          disabled={Boolean(form.telegram_id)}
           onChange={(e) => onChange({ ...form, username: e.target.value })}
         />
       </div>
@@ -91,36 +104,53 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         >
           <option value="user">user</option>
           <option value="admin">admin</option>
+          <option value="manager">manager</option>
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium">Доступ</label>
-        <input
-          type="number"
+        <label className="block text-sm font-medium">Департамент</label>
+        <select
           className="h-10 w-full rounded border px-3"
-          value={form.access ?? 1}
-          onChange={(e) =>
-            onChange({ ...form, access: Number(e.target.value) })
-          }
-        />
+          value={form.departmentId || ""}
+          onChange={(e) => onChange({ ...form, departmentId: e.target.value })}
+        >
+          <option value="">—</option>
+          {departments.map((d) => (
+            <option key={d._id} value={d._id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
-        <label className="block text-sm font-medium">roleId</label>
-        <input
+        <label className="block text-sm font-medium">Отдел</label>
+        <select
           className="h-10 w-full rounded border px-3"
-          value={form.roleId || ""}
-          onChange={(e) => onChange({ ...form, roleId: e.target.value })}
-        />
+          value={form.divisionId || ""}
+          onChange={(e) => onChange({ ...form, divisionId: e.target.value })}
+        >
+          <option value="">—</option>
+          {divisions.map((d) => (
+            <option key={d._id} value={d._id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.receive_reminders ?? true}
-          onChange={(e) =>
-            onChange({ ...form, receive_reminders: e.target.checked })
-          }
-        />
-        <span className="text-sm">Напоминания</span>
+      <div>
+        <label className="block text-sm font-medium">Должность</label>
+        <select
+          className="h-10 w-full rounded border px-3"
+          value={form.positionId || ""}
+          onChange={(e) => onChange({ ...form, positionId: e.target.value })}
+        >
+          <option value="">—</option>
+          {positions.map((p) => (
+            <option key={p._id} value={p._id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="flex gap-2">
         <button type="submit" className="btn btn-blue rounded">

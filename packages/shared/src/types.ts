@@ -15,4 +15,7 @@ export interface User {
   name?: string;
   phone?: string;
   role?: string;
+  departmentId?: string;
+  divisionId?: string;
+  positionId?: string;
 }

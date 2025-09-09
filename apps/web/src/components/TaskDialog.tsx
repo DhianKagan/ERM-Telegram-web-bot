@@ -43,7 +43,7 @@ interface Props {
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "manager";
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);
@@ -1041,7 +1041,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             onUploaded={(a) => setAttachments((p) => [...p, a])}
             onRemove={(a) => removeAttachment(a)}
           />
-          {isEdit && isAdmin && editing && (
+          {isEdit && user?.role === "admin" && editing && (
             <div className="mt-2 flex justify-start">
               <button
                 className="btn-red rounded-full"

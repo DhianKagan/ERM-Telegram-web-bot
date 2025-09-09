@@ -70,7 +70,7 @@ export const profile = async (
     });
     return;
   }
-  res.json(formatUser(user));
+  res.json(formatUser(user as any));
 };
 
 export const updateProfile = async (
@@ -91,7 +91,7 @@ export const updateProfile = async (
     return;
   }
   await writeLog(`Профиль ${req.user!.id}/${req.user!.username} изменён`);
-  res.json(formatUser(user));
+  res.json(formatUser(user as any));
 };
 
 export const logout = (_req: Request, res: Response) => {

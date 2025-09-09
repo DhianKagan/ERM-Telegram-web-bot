@@ -12,6 +12,12 @@ import type { TaskDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import type { Task } from 'shared';
+import {
+  hasAccess,
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_USER,
+} from '../utils/accessMask';
 
 type TaskEx = Task & { controllers?: number[]; created_by?: number };
 
@@ -23,7 +29,7 @@ export default class TasksController {
     const { page, limit, ...filters } = req.query;
     let tasks: TaskEx[];
     let total = 0;
-    if (req.user!.role === 'admin') {
+    if (hasAccess(req.user?.access ?? ACCESS_USER, ACCESS_ADMIN | ACCESS_MANAGER)) {
       const res = await this.service.get(
         filters,
         page ? Number(page) : undefined,

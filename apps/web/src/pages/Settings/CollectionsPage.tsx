@@ -42,9 +42,9 @@ const emptyUser: UserFormData = {
   mobNumber: "",
   email: "",
   role: "user",
-  access: 1,
-  roleId: "",
-  receive_reminders: true,
+  departmentId: "",
+  divisionId: "",
+  positionId: "",
 };
 
 interface ItemForm {
@@ -66,6 +66,9 @@ export default function CollectionsPage() {
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
+  const [departments, setDepartments] = useState<CollectionItem[]>([]);
+  const [divisions, setDivisions] = useState<CollectionItem[]>([]);
+  const [positions, setPositions] = useState<CollectionItem[]>([]);
 
   const load = useCallback(() => {
     if (active === "users") return;
@@ -90,6 +93,15 @@ export default function CollectionsPage() {
     if (active === "users") {
       loadUsers();
       setUserForm(emptyUser);
+      fetchCollectionItems("departments", "", 1, 1000).then((d) =>
+        setDepartments(d.items),
+      );
+      fetchCollectionItems("divisions", "", 1, 1000).then((d) =>
+        setDivisions(d.items),
+      );
+      fetchCollectionItems("roles", "", 1, 1000).then((d) =>
+        setPositions(d.items),
+      );
     }
   }, [active, loadUsers]);
 
@@ -145,7 +157,7 @@ export default function CollectionsPage() {
     if (!userForm.telegram_id) return;
     const id = userForm.telegram_id;
     if (!users.find((u) => u.telegram_id === id)) {
-      await createUserApi(id, userForm.username, userForm.roleId);
+      await createUserApi(id, userForm.username);
     }
     const { telegram_id: _telegramId, ...data } = userForm;
     await updateUserApi(id, data);
@@ -213,6 +225,9 @@ export default function CollectionsPage() {
                 <div className="md:w-1/2">
                   <UserForm
                     form={userForm}
+                    departments={departments}
+                    divisions={divisions}
+                    positions={positions}
                     onChange={setUserForm}
                     onSubmit={submitUser}
                     onReset={() => setUserForm(emptyUser)}

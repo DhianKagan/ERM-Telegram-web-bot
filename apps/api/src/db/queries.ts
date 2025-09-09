@@ -14,6 +14,7 @@ import {
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
 import { Types, PipelineStage, Query } from 'mongoose';
+import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -305,7 +306,25 @@ export async function updateUser(
 ): Promise<UserDocument | null> {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) return null;
-  const sanitized = sanitizeUpdate(data);
+  const rest = { ...(data || {}) } as Record<string, unknown>;
+  delete rest.username;
+  delete rest.telegram_id;
+  delete rest.roleId;
+  delete rest.access;
+  delete (rest as Record<string, unknown>).receive_reminders;
+  const sanitized = sanitizeUpdate(rest);
+  if (sanitized.role) {
+    if (sanitized.role === 'admin') {
+      sanitized.access = ACCESS_ADMIN;
+      sanitized.roleId = new Types.ObjectId(config.adminRoleId);
+    } else if (sanitized.role === 'manager') {
+      sanitized.access = ACCESS_MANAGER;
+      sanitized.roleId = new Types.ObjectId(config.managerRoleId);
+    } else {
+      sanitized.access = ACCESS_USER;
+      sanitized.roleId = new Types.ObjectId(config.userRoleId);
+    }
+  }
   return User.findOneAndUpdate(
     { telegram_id: { $eq: telegramId } },
     sanitized,

@@ -7,7 +7,6 @@ interface UsersRepo {
   createUser(
     id: string | number,
     username?: string,
-    roleId?: string,
     data?: Partial<UserDocument>,
   ): Promise<UserDocument>;
   getUser(id: string | number): Promise<UserDocument | null>;
@@ -31,10 +30,9 @@ class UsersService {
   create(
     id: string | number,
     username?: string,
-    roleId?: string,
     data: Partial<UserDocument> = {},
   ) {
-    return this.repo.createUser(id, username, roleId, data);
+    return this.repo.createUser(id, username, data);
   }
 
   get(id: string | number) {

@@ -15,15 +15,14 @@ export class CreateUserDto {
 export class UpdateUserDto {
   static rules() {
     return [
-      body('username').optional().isString(),
       body('name').optional().isString(),
       body('phone').optional().isString(),
       body('mobNumber').optional().isString(),
       body('email').optional().isEmail(),
-      body('role').optional().isIn(['user', 'admin']),
-      body('access').optional().isInt(),
-      body('roleId').optional().isMongoId(),
-      body('receive_reminders').optional().isBoolean(),
+      body('role').optional().isIn(['user', 'admin', 'manager']),
+      body('departmentId').optional().isMongoId(),
+      body('divisionId').optional().isMongoId(),
+      body('positionId').optional().isMongoId(),
       body('verified_at').optional().isISO8601(),
     ];
   }

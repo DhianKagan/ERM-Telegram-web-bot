@@ -70,7 +70,7 @@ app.post(
   checkRole(ACCESS_ADMIN),
   ...validateDto(CreateUserDto),
   asyncHandler(async (req, res) => {
-    res.json(await createUser(req.body.id, req.body.username, req.body.roleId));
+    res.json(await createUser(req.body.id, req.body.username));
   }),
 );
 app.patch(

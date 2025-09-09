@@ -20,4 +20,7 @@ export interface User {
   role?: string;
   /** Уровень доступа */
   access?: number;
+  departmentId?: string;
+  divisionId?: string;
+  positionId?: string;
 }

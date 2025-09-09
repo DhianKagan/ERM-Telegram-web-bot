@@ -40,7 +40,9 @@ export class Collection<T extends BaseItem> {
 }
 
 export function validateCollectionType(type: string): type is CollectionType {
-  return ['fleets', 'departments', 'employees'].includes(type);
+  return ['fleets', 'departments', 'divisions', 'roles', 'employees'].includes(
+    type,
+  );
 }
 
 export function validateBaseItem(item: BaseItem): boolean {

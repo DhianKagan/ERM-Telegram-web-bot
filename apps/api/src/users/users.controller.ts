@@ -12,7 +12,6 @@ import { sendCached } from '../utils/sendCached';
 interface CreateUserBody {
   id: string;
   username?: string;
-  roleId?: string;
 }
 
 type UpdateUserBody = Partial<UserDocument>;
@@ -23,11 +22,11 @@ export default class UsersController {
 
   list = async (req: Request, res: Response): Promise<void> => {
     const users = await this.service.list();
-    sendCached(
-      req,
-      res,
-      users.map((u) => formatUser(u)),
-    );
+      sendCached(
+        req,
+        res,
+        users.map((u) => formatUser(u as any)),
+      );
   };
 
   create = [
@@ -36,12 +35,8 @@ export default class UsersController {
       req: Request<unknown, unknown, CreateUserBody>,
       res: Response,
     ): Promise<void> => {
-      const user = await this.service.create(
-        req.body.id,
-        req.body.username,
-        req.body.roleId,
-      );
-      res.status(201).json(formatUser(user));
+      const user = await this.service.create(req.body.id, req.body.username);
+      res.status(201).json(formatUser(user as any));
     },
   ];
 
@@ -52,7 +47,7 @@ export default class UsersController {
       res: Response,
     ): Promise<void> => {
       const user = await this.service.update(req.params.id, req.body);
-      res.json(formatUser(user));
+      res.json(formatUser(user as any));
     },
   ];
 }

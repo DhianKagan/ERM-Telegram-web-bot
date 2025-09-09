@@ -21,12 +21,7 @@ export interface ITasksService {
 
 export interface IUsersService {
   list(): Promise<unknown[]>;
-  create(
-    id: string,
-    username?: string,
-    roleId?: string,
-    data?: unknown,
-  ): Promise<unknown>;
+  create(id: string, username?: string, data?: unknown): Promise<unknown>;
   update(id: string, data: unknown): Promise<unknown | null>;
 }
 

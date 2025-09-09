@@ -20,7 +20,7 @@ export default function TasksPage() {
   const [params, setParams] = useSearchParams();
   const { version, refresh } = useTasks();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "manager";
 
   const load = React.useCallback(() => {
     setLoading(true);

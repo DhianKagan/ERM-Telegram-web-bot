@@ -6,15 +6,11 @@ import type { User } from "shared";
 export const fetchUsers = () =>
   authFetch("/api/v1/users").then((r) => (r.ok ? r.json() : []));
 
-export const createUser = (
-  id: number | string,
-  username?: string,
-  roleId?: string,
-) =>
+export const createUser = (id: number | string, username?: string) =>
   authFetch("/api/v1/users", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, username, roleId }),
+    body: JSON.stringify({ id, username }),
   }).then((r) => r.json());
 
 export const updateUser = (id: number | string, data: Partial<User>) =>

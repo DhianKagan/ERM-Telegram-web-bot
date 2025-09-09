@@ -1,7 +1,12 @@
 // Назначение: типы и перечисления универсальной коллекции.
 // Основные модули: CollectionType, BaseItem, Employee.
 
-export type CollectionType = 'fleets' | 'departments' | 'employees';
+export type CollectionType =
+  | 'fleets'
+  | 'departments'
+  | 'divisions'
+  | 'roles'
+  | 'employees';
 
 export interface BaseItem {
   id: string;
@@ -16,4 +21,6 @@ export interface Department extends BaseItem {
 
 export interface Employee extends BaseItem {
   departmentId: string;
+  divisionId?: string;
+  positionId?: string;
 }

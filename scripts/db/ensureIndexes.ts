@@ -61,8 +61,44 @@ export async function ensureUploadIndexes(conn?: mongoose.Connection) {
   if (!conn) await connection.close();
 }
 
+export async function ensureCollectionItemIndexes(conn?: mongoose.Connection) {
+  const connection =
+    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!));
+  await connection.db.createCollection('collectionitems').catch(() => {});
+  const items = connection.db.collection('collectionitems');
+  const indexes = (await items.indexes()) as {
+    key: Record<string, unknown>;
+    name?: string;
+  }[];
+  if (
+    !indexes.some((i) =>
+      planKey(i.key as IndexKey, [
+        ['type', 1],
+        ['name', 1],
+      ]),
+    )
+  ) {
+    await items.createIndex(
+      { type: 1, name: 1 },
+      { name: 'type_name_unique', unique: true },
+    );
+  }
+  const hasText = indexes.some(
+    (i) =>
+      i.key.type === 'text' && i.key.name === 'text' && i.key.value === 'text',
+  );
+  if (!hasText) {
+    await items.createIndex(
+      { type: 'text', name: 'text', value: 'text' },
+      { name: 'search_text' },
+    );
+  }
+  if (!conn) await connection.close();
+}
+
 if (require.main === module) {
   ensureTaskIndexes()
     .then(() => ensureUploadIndexes())
+    .then(() => ensureCollectionItemIndexes())
     .finally(() => process.exit());
 }

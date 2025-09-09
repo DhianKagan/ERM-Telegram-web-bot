@@ -20,9 +20,12 @@ export class UpdateUserDto {
       body('phone').optional().isString(),
       body('mobNumber').optional().isString(),
       body('email').optional().isEmail(),
-      body('role').optional().isIn(['user', 'admin']),
+      body('role').optional().isIn(['user', 'admin', 'manager']),
       body('access').optional().isInt(),
       body('roleId').optional().isMongoId(),
+      body('departmentId').optional().isMongoId(),
+      body('divisionId').optional().isMongoId(),
+      body('positionId').optional().isMongoId(),
       body('receive_reminders').optional().isBoolean(),
       body('verified_at').optional().isISO8601(),
     ];

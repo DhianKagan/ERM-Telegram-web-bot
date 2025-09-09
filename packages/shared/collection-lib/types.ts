@@ -16,4 +16,6 @@ export interface Department extends BaseItem {
 
 export interface Employee extends BaseItem {
   departmentId: string;
+  divisionId?: string;
+  positionId?: string;
 }

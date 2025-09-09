@@ -31,6 +31,7 @@ import { TasksProvider } from "./context/TasksContext";
 import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import ManagerRoute from "./components/ManagerRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -59,6 +60,30 @@ function Content() {
               <ProtectedRoute>
                 <TasksPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mg/kanban"
+            element={
+              <ManagerRoute>
+                <TaskKanban />
+              </ManagerRoute>
+            }
+          />
+          <Route
+            path="/mg/reports"
+            element={
+              <ManagerRoute>
+                <Reports />
+              </ManagerRoute>
+            }
+          />
+          <Route
+            path="/mg/routes"
+            element={
+              <ManagerRoute>
+                <RoutesPage />
+              </ManagerRoute>
             }
           />
           <Route

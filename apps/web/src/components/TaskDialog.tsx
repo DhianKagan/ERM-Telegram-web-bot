@@ -44,6 +44,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const canEditAll = isAdmin || user?.role === "manager";
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const [expanded, setExpanded] = React.useState(false);
@@ -271,7 +272,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   ]);
 
   React.useEffect(() => {
-    if (isAdmin) {
+    if (canEditAll) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
         .then((list) => {
@@ -282,7 +283,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCreator(String((user as UserBrief).telegram_id));
       setUsers([user as UserBrief]);
     }
-  }, [user, isAdmin]);
+  }, [user, canEditAll]);
 
   React.useEffect(() => {
     if (!isEdit || !id) return;

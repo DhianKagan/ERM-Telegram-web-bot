@@ -44,7 +44,9 @@ const emptyUser: UserFormData = {
   role: "user",
   access: 1,
   roleId: "",
-  receive_reminders: true,
+  departmentId: "",
+  divisionId: "",
+  positionId: "",
 };
 
 interface ItemForm {

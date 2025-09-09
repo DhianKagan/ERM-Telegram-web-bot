@@ -21,6 +21,8 @@ export default function TasksPage() {
   const { version, refresh } = useTasks();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
+  const isPrivileged = isAdmin || isManager;
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -32,7 +34,7 @@ export default function TasksPage() {
         const tasks = (
           Array.isArray(data) ? data : data.tasks || []
         ) as TaskExtra[];
-        const filteredTasks = isAdmin
+        const filteredTasks = isPrivileged
           ? tasks
           : tasks.filter((t) => {
               const assigned =
@@ -50,14 +52,14 @@ export default function TasksPage() {
         setUsers(list);
       })
       .finally(() => setLoading(false));
-    if (isAdmin) {
+    if (isPrivileged) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
         .then((list) =>
           setUsers(Array.isArray(list) ? list : Object.values(list || {})),
         );
     }
-  }, [isAdmin, user, page]);
+  }, [isPrivileged, user, page]);
 
   React.useEffect(load, [load, version, page]);
   const tasks = React.useMemo(() => all, [all]);

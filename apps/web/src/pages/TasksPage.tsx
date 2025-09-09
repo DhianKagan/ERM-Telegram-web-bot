@@ -9,7 +9,10 @@ import authFetch from "../utils/authFetch";
 import { type Task, type User } from "shared";
 import { useAuth } from "../context/useAuth";
 
-type TaskExtra = Task & Record<string, any>;
+type TaskExtra = Task & {
+  assigned_user_id?: number;
+  [key: string]: unknown;
+};
 
 export default function TasksPage() {
   const [all, setAll] = React.useState<TaskExtra[]>([]);
@@ -21,43 +24,38 @@ export default function TasksPage() {
   const { version, refresh } = useTasks();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
+  const isPrivileged = isAdmin || isManager;
 
   const load = React.useCallback(() => {
     setLoading(true);
-    fetchTasks(
-      { page: page + 1, limit: 25 },
-      Number((user as any)?.telegram_id),
-    )
+    fetchTasks({ page: page + 1, limit: 25 }, user?.telegram_id)
       .then((data) => {
-        const tasks = (
-          Array.isArray(data) ? data : data.tasks || []
-        ) as TaskExtra[];
-        const filteredTasks = isAdmin
+        const tasks = data.tasks as TaskExtra[];
+        const filteredTasks = isPrivileged
           ? tasks
           : tasks.filter((t) => {
               const assigned =
                 t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
-              return (
-                assigned.includes((user as any).telegram_id) ||
-                t.created_by === (user as any).telegram_id
-              );
+              const uid = user?.telegram_id ?? 0;
+              return assigned.includes(uid) || t.created_by === uid;
             });
         setAll(filteredTasks);
-        setTotal((data as any).total || filteredTasks.length);
-        const list = Array.isArray((data as any).users)
-          ? ((data as any).users as User[])
-          : (Object.values((data as any).users || {}) as User[]);
+        setTotal(data.total || filteredTasks.length);
+        const list = Array.isArray(data.users)
+          ? (data.users as User[])
+          : (Object.values(data.users || {}) as User[]);
         setUsers(list);
       })
       .finally(() => setLoading(false));
-    if (isAdmin) {
+    if (isPrivileged) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
         .then((list) =>
           setUsers(Array.isArray(list) ? list : Object.values(list || {})),
         );
     }
-  }, [isAdmin, user, page]);
+  }, [isPrivileged, user, page]);
 
   React.useEffect(load, [load, version, page]);
   const tasks = React.useMemo(() => all, [all]);

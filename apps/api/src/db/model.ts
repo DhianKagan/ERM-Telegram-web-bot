@@ -341,11 +341,14 @@ export interface UserAttrs {
   phone?: string;
   mobNumber?: string;
   email: string;
-  role?: 'user' | 'admin';
+  role?: 'user' | 'admin' | 'manager';
   access: number;
   roleId?: Types.ObjectId;
   receive_reminders?: boolean;
   verified_at?: Date;
+  departmentId?: Types.ObjectId;
+  divisionId?: Types.ObjectId;
+  positionId?: Types.ObjectId;
 }
 
 export interface UserDocument extends UserAttrs, Document {}
@@ -363,10 +366,13 @@ const userSchema = new Schema<UserDocument>({
   // Сохраняем уникальное значение на основе telegram_id.
   email: { type: String, unique: true },
   // Роль пользователя хранится строкой, по умолчанию обычный пользователь
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  // Маска доступа: 1 - пользователь, 2 - администратор
+  role: { type: String, enum: ['user', 'admin', 'manager'], default: 'user' },
+  // Маска доступа: 1 - пользователь, 2 - администратор, 4 - менеджер
   access: { type: Number, default: 1 },
   roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
+  departmentId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
+  divisionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
+  positionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
   // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
   // Дата прохождения верификации через Bot API

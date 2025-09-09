@@ -4,6 +4,8 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 export interface EmployeeAttrs {
   departmentId: Types.ObjectId;
+  divisionId?: Types.ObjectId;
+  positionId?: Types.ObjectId;
   name: string;
 }
 
@@ -15,6 +17,8 @@ const employeeSchema = new Schema<EmployeeDocument>({
     ref: 'Department',
     required: true,
   },
+  divisionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
+  positionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
   name: { type: String, required: true },
 });
 

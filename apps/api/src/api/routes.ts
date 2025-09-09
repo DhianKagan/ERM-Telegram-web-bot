@@ -38,6 +38,7 @@ import filesRouter from '../routes/files';
 import fleetsRouter from '../routes/fleets';
 import departmentsRouter from '../routes/departments';
 import employeesRouter from '../routes/employees';
+import collectionsRouter from '../routes/collections';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -193,6 +194,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/fleets`, fleetsRouter);
   app.use(`${prefix}/departments`, departmentsRouter);
   app.use(`${prefix}/employees`, employeesRouter);
+  app.use(`${prefix}/collections`, collectionsRouter);
 
   app.get(
     '/api/tma/tasks',

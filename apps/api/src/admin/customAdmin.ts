@@ -29,7 +29,8 @@ export default function initCustomAdmin(app: Express): void {
 
   router.use(authMiddleware());
   router.use((req: RequestWithUser, res: Response, next: NextFunction) => {
-    if (req.user?.role === 'admin') return next();
+    if (req.user?.role === 'manager' || req.user?.role === 'admin')
+      return next();
     res.sendFile(path.join(pub, 'admin-placeholder.html'));
   });
 
@@ -37,5 +38,5 @@ export default function initCustomAdmin(app: Express): void {
     res.sendFile(path.join(pub, 'index.html'));
   });
 
-  app.use('/cp', router);
+  app.use(['/cp', '/mg'], router);
 }

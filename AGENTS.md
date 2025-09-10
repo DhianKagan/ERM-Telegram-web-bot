@@ -42,7 +42,7 @@
 - `.npmrc` перенаправляет scope `@jsr` на npmjs.org, чтобы установка зависимостей не требовала токена.
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха, запускает аудит зависимостей и записывает лог в `/tmp/apps/api_start.log`.
-- Для Lighthouse CI получите build‑token через `npx lhci wizard`, значение храните в секрете GitHub Actions `LHCI_TOKEN` и при необходимости добавляйте в `.env`.
+- Lighthouse CI использует GitHub App, токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты размещаются во временном публичном хранилище.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти; `scripts/check_mongo.mjs` пропускает проверку при `CI=true`.
 - `pnpm run dev` устанавливает `PNPM_SCRIPT_TIMEOUT=0`, чтобы серверы не завершались через 10 минут.
 - При необходимости проверяйте зависимости вручную командой `./scripts/audit_deps.sh` (использует `audit-ci` и пропускает слабые уязвимости `--audit-level high`).

@@ -24,6 +24,10 @@ jobs:
   lint-test-build:
     runs-on: ubuntu-latest
     needs: audit-deps
+    permissions:
+      statuses: write # Разрешение на запись статусов
+    env:
+      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }} # Токен Lighthouse CI
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4

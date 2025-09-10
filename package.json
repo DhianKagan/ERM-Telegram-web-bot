@@ -98,7 +98,9 @@
       "unrs-resolver"
     ],
     "patchedDependencies": {
-      "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch"
+      "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch",
+      "core-js@3.45.1": "patches/core-js@3.45.1.patch",
+      "jss@10.10.0": "patches/jss@10.10.0.patch"
     }
   },
   "packageManager": "pnpm@10.15.0",

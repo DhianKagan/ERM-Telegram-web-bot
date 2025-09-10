@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // Назначение файла: стартовый скрипт API.
 // Основные модули: di, api
 import './di';

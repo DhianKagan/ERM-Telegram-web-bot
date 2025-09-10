@@ -20,19 +20,16 @@ const baseItems = [
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 
-const adminItems = [
-  { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
-  { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/cp/settings", label: "Настройки", icon: Cog6ToothIcon },
-  { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
-  { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
-];
-
 const managerItems = [
   { to: "/mg/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/mg/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/mg/routes", label: "Маршруты", icon: MapIcon },
+];
+
+const adminItems = [
+  { to: "/cp/settings", label: "Настройки", icon: Cog6ToothIcon },
+  { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
+  { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
 ];
 
 export default function Sidebar() {
@@ -41,7 +38,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const role = user?.role || "user";
   const items = React.useMemo(() => {
-    if (role === "admin") return [...baseItems, ...adminItems, ...managerItems];
+    if (role === "admin") return [...baseItems, ...managerItems, ...adminItems];
     if (role === "manager") return [...baseItems, ...managerItems];
     return baseItems;
   }, [role]);

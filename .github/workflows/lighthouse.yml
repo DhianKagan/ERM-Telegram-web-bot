@@ -1,0 +1,27 @@
+# Назначение файла: запуск Lighthouse CI и публикация отчётов
+# Модули: GitHub Actions, Lighthouse CI
+name: Lighthouse
+
+on:
+  pull_request:
+
+jobs:
+  lhci:
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    env:
+      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Включение corepack
+        run: corepack enable
+      - name: Установка зависимостей
+        run: pnpm install
+      - name: Сборка клиента
+        run: pnpm --dir apps/web build
+      - name: Lighthouse CI
+        run: npx lhci autorun

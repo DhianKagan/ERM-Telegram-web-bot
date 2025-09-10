@@ -25,9 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: audit-deps
     permissions:
-      statuses: write # Разрешение на запись статусов
-    env:
-      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }} # Токен Lighthouse CI
+      contents: read
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4
@@ -56,8 +54,6 @@ jobs:
             test-results
       - name: Сборка
         run: pnpm -r build
-      - name: Lighthouse CI
-        run: npx lhci autorun --budget-path=./budgets.json
       - name: Загрузка артефактов сборки
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

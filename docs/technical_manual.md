@@ -79,9 +79,7 @@
 
 ## Lighthouse CI
 
-1. Запустите `npx lhci wizard` и получите build‑token.
-2. В GitHub → Settings → Secrets and variables → Actions создайте секрет `LHCI_TOKEN` с этим значением.
-3. Для локальной отладки добавьте `LHCI_TOKEN` в файл `.env`.
+Отчёты публикуются во временном публичном хранилище, статусы в PR выставляет GitHub App. Токен приложения хранится в секрете `LHCI_GITHUB_APP_TOKEN`.
 
 ## Настройка Telegram-бота
 

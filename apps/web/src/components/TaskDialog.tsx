@@ -1098,17 +1098,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </button>
             </div>
           )}
-          <ConfirmDialog
-            open={showDeleteConfirm}
-            message={t("deleteTaskQuestion")}
-            confirmText={t("delete")}
-            cancelText={t("cancel")}
-            onConfirm={() => {
-              setShowDeleteConfirm(false);
-              handleDelete();
-            }}
-            onCancel={() => setShowDeleteConfirm(false)}
-          />
+          {isAdmin && (
+            <ConfirmDialog
+              open={showDeleteConfirm}
+              message={t("deleteTaskQuestion")}
+              confirmText={t("delete")}
+              cancelText={t("cancel")}
+              onConfirm={() => {
+                setShowDeleteConfirm(false);
+                handleDelete();
+              }}
+              onCancel={() => setShowDeleteConfirm(false)}
+            />
+          )}
           {isEdit && !editing && (
             <>
               <div className="mt-2 grid grid-cols-2 gap-2">

@@ -11,7 +11,6 @@ import {
 } from 'express';
 import config from '../config';
 import type { RequestWithUser } from '../types/request';
-import { sendProblem } from '../utils/problem';
 import shouldLog from '../utils/shouldLog';
 
 import client from 'prom-client';
@@ -62,12 +61,7 @@ export function verifyToken(
           path: req.originalUrl,
           status: 403,
         });
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Ошибка авторизации',
-          status: 403,
-          detail: 'Неверный формат токена авторизации',
-        });
+        res.redirect('/login');
         return;
       }
       fromHeader = true;
@@ -75,12 +69,7 @@ export function verifyToken(
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-      sendProblem(req, res, {
-        type: 'about:blank',
-        title: 'Ошибка авторизации',
-        status: 403,
-        detail: 'Неверный формат токена авторизации',
-      });
+      res.redirect('/login');
       return;
     } else {
       token = auth;
@@ -93,12 +82,7 @@ export function verifyToken(
       `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
     ).catch(() => {});
     apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-    sendProblem(req, res, {
-      type: 'about:blank',
-      title: 'Ошибка авторизации',
-      status: 403,
-      detail: 'Токен авторизации отсутствует. Выполните вход заново.',
-    });
+    res.redirect('/login');
     return;
   }
 
@@ -118,12 +102,7 @@ export function verifyToken(
           path: req.originalUrl,
           status: 401,
         });
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Ошибка авторизации',
-          status: 401,
-          detail: 'Недействительный токен. Выполните вход заново.',
-        });
+        res.redirect('/login');
         return;
       }
       req.user = decoded as RequestWithUser['user'];

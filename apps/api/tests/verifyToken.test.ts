@@ -36,9 +36,10 @@ beforeAll(() => {
   app.get('/secure', verifyToken, (_req, res) => res.send('OK'));
 });
 
-test('без токена возвращает 403', async () => {
+test('без токена перенаправляет на /login', async () => {
   const res = await request(app).get('/secure');
-  expect(res.status).toBe(403);
+  expect(res.status).toBe(302);
+  expect(res.headers.location).toBe('/login');
 });
 
 test('с валидным токеном 200', async () => {
@@ -48,12 +49,13 @@ test('с валидным токеном 200', async () => {
   expect(res.headers['set-cookie']).toBeDefined();
 });
 
-test('токен с другим алгоритмом отклоняется', async () => {
+test('токен с другим алгоритмом перенаправляет на /login', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET, {
     algorithm: 'HS512',
   });
   const res = await request(app).get('/secure').set('Cookie', `token=${token}`);
-  expect(res.status).toBe(401);
+  expect(res.status).toBe(302);
+  expect(res.headers.location).toBe('/login');
 });
 
 afterAll(() => {

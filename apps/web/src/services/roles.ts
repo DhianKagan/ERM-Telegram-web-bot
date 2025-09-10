@@ -2,7 +2,13 @@
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
 
-export const fetchRoles = () =>
+export interface Role {
+  _id: string;
+  name: string;
+  access: number;
+}
+
+export const fetchRoles = (): Promise<Role[]> =>
   authFetch("/api/v1/roles").then((r) => (r.ok ? r.json() : []));
 
 export const updateRole = (id: string, permissions: number) =>

@@ -1,5 +1,5 @@
 // Компонент управления сотрудником, содержит форму с селекторами
-// Модули: React
+// Модули: React, services/collections
 import React from "react";
 import {
   fetchCollectionItems,
@@ -42,7 +42,7 @@ const EmployeeManager: EmployeeManagerComponent = ({ onSubmit }) => {
     fetchCollectionItems("divisions", "", 1, 100).then((d) =>
       setDivisions(d.items),
     );
-    fetchCollectionItems("roles", "", 1, 100).then((d) =>
+    fetchCollectionItems("positions", "", 1, 100).then((d) =>
       setPositions(d.items),
     );
   }, []);

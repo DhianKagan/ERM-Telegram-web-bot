@@ -30,11 +30,9 @@ router.get('/', ...middlewares, async (req, res) => {
       ? req.query.fields.split(',').join(' ')
       : undefined;
 
-  const employees = await Employee.find({}, fields).populate([
-    { path: 'departmentId', select: 'name' },
-    { path: 'divisionId', select: 'name' },
-    { path: 'positionId', select: 'name' },
-  ]);
+  const employees = await Employee.find({}, fields).populate(
+    'departmentId divisionId positionId',
+  );
   res.json(employees);
 });
 
@@ -44,6 +42,7 @@ router.post(
   ...(validateDto(CreateEmployeeDto) as RequestHandler[]),
   async (req, res) => {
     const employee = await Employee.create(req.body);
+    await employee.populate('departmentId divisionId positionId');
     res.status(201).json(employee);
   },
 );
@@ -61,6 +60,7 @@ router.put(
       res.sendStatus(404);
       return;
     }
+    await employee.populate('departmentId divisionId positionId');
     res.json(employee);
   },
 );

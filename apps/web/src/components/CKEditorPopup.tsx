@@ -1,5 +1,6 @@
 // Поле редактирования текста в модальном окне CKEditor 5
 // Модули: React, CKEditor 5, DOMPurify, Modal
+// DOMPurify очищает HTML, исключая скрипты и вызовы new Function
 import React, { useState } from "react";
 import DOMPurify from "dompurify";
 import Modal from "./Modal";
@@ -28,7 +29,7 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
   if (readOnly) {
     return (
       <div
-        className="ql-snow"
+        className="ck-content"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
       />
     );

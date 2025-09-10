@@ -1,5 +1,5 @@
 // Назначение файла: общий тулбар таблицы с экспортом, поиском и фильтрацией
-// Модули: React, @tanstack/react-table, jspdf
+// Модули: React, @tanstack/react-table, pdf-lib
 import React from "react";
 import type { Table } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
@@ -33,8 +33,7 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
   };
 
   const exportPdf = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    await import("jspdf-autotable");
+    const { PDFDocument, StandardFonts } = await import("pdf-lib");
     const headers = columns
       .filter((c) => c.getIsVisible())
       .map((c) => c.columnDef.header as string);
@@ -43,9 +42,26 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
       .rows.map((r) =>
         r.getVisibleCells().map((c) => String(c.getValue() ?? "")),
       );
-    const doc = new jsPDF();
-    (doc as any).autoTable({ head: [headers], body: rows });
-    doc.save("table.pdf");
+    const pdf = await PDFDocument.create();
+    let page = pdf.addPage();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+    const lineHeight = fontSize + 2;
+    let y = page.getHeight() - lineHeight;
+    const lines = [headers.join(" | "), ...rows.map((r) => r.join(" | "))];
+    for (const line of lines) {
+      page.drawText(line, { x: 40, y, size: fontSize, font });
+      y -= lineHeight;
+      if (y < 40) {
+        page = pdf.addPage();
+        y = page.getHeight() - lineHeight;
+      }
+    }
+    const blob = new Blob([await pdf.save()], { type: "application/pdf" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "table.pdf";
+    a.click();
   };
 
   const toggleColumn = (id: string) => {

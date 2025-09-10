@@ -41,7 +41,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const role = user?.role || "user";
   const items = React.useMemo(() => {
-    if (role === "admin") return [...baseItems, ...adminItems];
+    if (role === "admin") return [...baseItems, ...adminItems, ...managerItems];
     if (role === "manager") return [...baseItems, ...managerItems];
     return baseItems;
   }, [role]);

@@ -1,4 +1,4 @@
-// Назначение: кастомный бекенд админки без базовой аутентификации
+// Назначение: кастомный бекенд админки без базовой аутентификации для путей /cp и /mg
 // Модули: express, path, middleware/auth
 import path from 'path';
 import express, { Express, NextFunction, Response } from 'express';
@@ -10,6 +10,7 @@ import type { RequestWithUser } from '../types/request';
 export default function initCustomAdmin(app: Express): void {
   const router = express.Router();
   const pub = path.join(__dirname, '../../public');
+  const spaPaths = ['/cp', '/mg'];
 
   const adminRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
@@ -38,5 +39,5 @@ export default function initCustomAdmin(app: Express): void {
     res.sendFile(path.join(pub, 'index.html'));
   });
 
-  app.use(['/cp', '/mg'], router);
+  app.use(spaPaths, router);
 }

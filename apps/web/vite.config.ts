@@ -43,7 +43,10 @@ export default defineConfig(() => {
     plugins: [
       react(),
       sri(),
-      ViteImageOptimizer(),
+      ViteImageOptimizer({
+        // Исключаем SVG из оптимизации
+        test: /\.(jpe?g|png|gif|tiff|webp|avif)$/i,
+      }),
       process.env.ANALYZE
         ? visualizer({
             filename: "bundle-report.html",

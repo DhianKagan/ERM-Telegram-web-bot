@@ -377,7 +377,7 @@ router.delete(
   '/:id',
   authMiddleware(),
   param('id').isMongoId(),
-  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler, // только админам
   rolesGuard as unknown as RequestHandler,
   checkTaskAccess as unknown as RequestHandler,
   ctrl.remove as RequestHandler,

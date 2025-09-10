@@ -66,6 +66,7 @@
 - README упрощён; подробные сведения перенесены в docs/technical_manual.md.
 - Документация по модулям находится в `docs/architecture.md`.
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
+- Swagger‑документация генерируется скриптом `pnpm --filter ./apps/api build:swagger` и хранится в `docs/api`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.

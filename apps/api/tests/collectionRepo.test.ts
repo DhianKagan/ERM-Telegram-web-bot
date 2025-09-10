@@ -3,6 +3,7 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { create, list } from '../src/db/repos/collectionRepo';
+import { ensureCollectionItemIndexes } from '../../../scripts/db/ensureIndexes';
 
 jest.setTimeout(30000);
 
@@ -12,6 +13,7 @@ describe('collectionRepo', () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
     await mongoose.connect(mongod.getUri());
+    await ensureCollectionItemIndexes(mongoose.connection);
   });
 
   afterAll(async () => {

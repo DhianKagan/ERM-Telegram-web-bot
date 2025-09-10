@@ -77,6 +77,12 @@
 Диаграмма зависимостей и связи компонентов приведена в файле
 `docs/architecture.md` и демонстрирует взаимодействие API, бота и клиента.
 
+## Lighthouse CI
+
+1. Запустите `npx lhci wizard` и получите build‑token.
+2. В GitHub → Settings → Secrets and variables → Actions создайте секрет `LHCI_TOKEN` с этим значением.
+3. Для локальной отладки добавьте `LHCI_TOKEN` в файл `.env`.
+
 ## Настройка Telegram-бота
 
 Основной файл бота `apps/api/src/bot/bot.ts` использует библиотеку Telegraf и

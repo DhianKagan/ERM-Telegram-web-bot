@@ -8,6 +8,7 @@ import {
   TaskDocument,
   UserDocument,
   RoleDocument,
+  RoleAttrs,
   TaskTemplate,
   TaskTemplateDocument,
 } from './model';
@@ -341,8 +342,16 @@ export async function updateUser(
   );
 }
 
-export async function listRoles(): Promise<RoleDocument[]> {
-  return Role.find();
+// Возвращает роли с вычисленным уровнем доступа
+export interface RoleWithAccess extends RoleAttrs {
+  _id: Types.ObjectId;
+  access: number;
+}
+
+export async function listRoles(): Promise<RoleWithAccess[]> {
+  const roles =
+    await Role.find().lean<(RoleAttrs & { _id: Types.ObjectId })[]>();
+  return roles.map((r) => ({ ...r, access: accessByRole(r.name || '') }));
 }
 
 export async function getRole(id: string): Promise<RoleDocument | null> {

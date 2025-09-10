@@ -16,7 +16,7 @@ const { ACCESS_ADMIN } = require('../src/utils/accessMask');
 jest.mock('../src/services/service', () => ({
   listLogs: jest.fn(async () => [{ _id: '1', message: 'log' }]),
   writeLog: jest.fn(async () => ({})),
-  listRoles: jest.fn(async () => [{ _id: 'r1', name: 'admin' }]),
+  listRoles: jest.fn(async () => [{ _id: 'r1', name: 'admin', access: 2 }]),
   updateRole: jest.fn(async (id, p) => ({ _id: id, permissions: p })),
 }));
 

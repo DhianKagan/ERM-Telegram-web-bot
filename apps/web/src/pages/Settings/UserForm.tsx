@@ -33,6 +33,7 @@ interface Props {
 interface Role {
   _id: string;
   name: string;
+  access: number;
 }
 
 export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
@@ -57,8 +58,12 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
 
   const handleRoleChange = (value: string) => {
     const r = roles.find((x) => x.name === value);
-    const access = value === "admin" ? 2 : value === "manager" ? 4 : 1;
-    onChange({ ...form, role: value, roleId: r?._id, access });
+    onChange({
+      ...form,
+      role: value,
+      roleId: r?._id,
+      access: r?.access ?? 1,
+    });
   };
 
   const submit = (e: React.FormEvent) => {

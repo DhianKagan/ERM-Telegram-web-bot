@@ -9,6 +9,7 @@ import { Request, Response, CookieOptions } from 'express';
 import config from '../config';
 import type { UserDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
+import { refreshToken } from './auth';
 
 export const sendCode = async (req: Request, res: Response) => {
   const { telegramId } = req.body;
@@ -102,6 +103,17 @@ export const logout = (_req: Request, res: Response) => {
   }
   res.clearCookie('token', opts);
   res.json({ status: 'ok' });
+};
+
+export const refresh = (req: RequestWithUser, res: Response) => {
+  const old = (req.cookies as Record<string, string> | undefined)?.token;
+  if (!old || !req.user) {
+    res.sendStatus(401);
+    return;
+  }
+  const token = refreshToken(old);
+  setTokenCookie(res, token);
+  res.json({ token });
 };
 
 export const codes = service.codes;

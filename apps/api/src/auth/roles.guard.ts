@@ -27,4 +27,5 @@ export default function rolesGuard(
     status: 403,
     detail: 'Forbidden',
   });
+  return;
 }

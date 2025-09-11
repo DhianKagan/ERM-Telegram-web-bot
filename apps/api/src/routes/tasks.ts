@@ -30,7 +30,7 @@ import { maxUserFiles, maxUserStorage } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
-import { ACCESS_ADMIN } from '../utils/accessMask';
+import { ACCESS_ADMIN, ACCESS_MANAGER } from '../utils/accessMask';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -347,6 +347,8 @@ router.post(
   upload.any(),
   processUploads,
   normalizeArrays,
+  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
@@ -358,6 +360,8 @@ router.patch(
   upload.any(),
   processUploads,
   normalizeArrays,
+  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),
@@ -367,6 +371,8 @@ router.patch(
 router.patch(
   '/:id/time',
   authMiddleware(),
+  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),
   ...(validateDto(AddTimeDto) as RequestHandler[]),
   checkTaskAccess as unknown as RequestHandler,
@@ -386,6 +392,8 @@ router.delete(
 router.post(
   '/bulk',
   authMiddleware(),
+  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
   ...(validateDto(BulkStatusDto) as RequestHandler[]),
   ...(ctrl.bulk as RequestHandler[]),
 );

@@ -7,6 +7,7 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
+process.env.MANAGER_ROLE_ID = 'm';
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -37,8 +38,8 @@ jest.mock('../src/services/tasks', () => ({
 jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => null),
-  createUser: jest.fn(async () => ({ username: 'u' })),
+  getUser: jest.fn(async () => ({ roleId: 'm' })),
+  createUser: jest.fn(async () => ({ username: 'u', role: 'manager' })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
 }));

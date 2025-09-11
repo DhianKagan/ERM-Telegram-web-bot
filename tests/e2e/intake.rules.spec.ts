@@ -5,11 +5,12 @@
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';
+import type { AddressInfo } from 'net';
 import { applyIntakeRules } from '../../apps/api/src/intake/rules';
 import type { TaskDocument } from '../../apps/api/src/db/model';
 
 let server: Server;
-const base = 'http://localhost:3003';
+let base: string;
 
 const app = express();
 app.use(express.json());
@@ -23,7 +24,9 @@ app.post('/tasks', (req, res) => {
 });
 
 test.beforeAll(() => {
-  server = app.listen(3003);
+  server = app.listen(0);
+  const { port } = server.address() as AddressInfo;
+  base = `http://localhost:${port}`;
 });
 
 test.afterAll(() => {

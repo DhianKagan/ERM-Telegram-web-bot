@@ -13,6 +13,7 @@ process.env.JWT_SECRET = 'secret';
 process.env.APP_URL = 'https://example.org';
 process.env.MONGO_DATABASE_URL =
   'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
+process.env.NODE_ENV = 'test';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { logout } =

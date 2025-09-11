@@ -110,13 +110,26 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
 
 ## Маски доступа
 
-Роль пользователя описывается числовой маской в поле `access`:
+Роль пользователя задаётся числовой маской из `apps/api/src/utils/accessMask.ts`:
 
-- `1` — обычный пользователь.
-- `2` — администратор.
+- `ACCESS_USER = 1` — обычный пользователь.
+- `ACCESS_ADMIN = 2` — администратор.
+- `ACCESS_MANAGER = 4` — менеджер или промежуточная роль.
 
-Функция `hasAccess` из `apps/api/src/utils/accessMask.ts` проверяет права. Для маршрутов введены `Roles` и `rolesGuard`,
-которые задают и проверяют маску доступа пользователя.
+Функция `hasAccess(mask, required)` проверяет наличие прав, а `accessByRole(name)` из `apps/api/src/db/queries.ts` вычисляет маску по названию роли. Коллекция `roles` хранит документы с полями `name` и списком `permissions`, определяющим доступные области.
+
+Для маршрутов используется декоратор `Roles` совместно с `rolesGuard`:
+
+```ts
+router.get('/roles',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN),
+  rolesGuard,
+  ctrl.list,
+);
+```
+
+Дополнительные примеры приведены в [permissions.md](permissions.md).
 
 ## Основные маршруты API
 

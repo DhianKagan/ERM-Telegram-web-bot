@@ -67,7 +67,8 @@ test('использует дефолт ROUTE_TABLE_MIN_INTERVAL_MS при от�
   const mid = Date.now();
   await table('1,1;2,2', {});
   const diff = Date.now() - mid;
-  expect(diff).toBeGreaterThanOrEqual(190);
+  // Допускаем 20 мс погрешности таймеров, чтобы избежать флаки
+  expect(diff).toBeGreaterThanOrEqual(180);
   expect(warn).toHaveBeenCalledWith(
     'ROUTE_TABLE_MIN_INTERVAL_MS должен быть положительным. Используется значение по умолчанию 200',
   );

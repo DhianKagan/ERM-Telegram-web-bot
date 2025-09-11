@@ -44,3 +44,13 @@ export function generateShortToken(user: Payload): string {
     },
   );
 }
+
+export function refreshToken(token: string): string {
+  const payload = jwt.verify(token, secretKey) as jwt.JwtPayload & Payload;
+  return generateToken({
+    id: payload.id,
+    username: payload.username,
+    role: payload.role,
+    access: payload.access,
+  });
+}

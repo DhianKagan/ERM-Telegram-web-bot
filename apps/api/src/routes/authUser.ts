@@ -38,6 +38,11 @@ router.post(
 );
 
 router.post('/logout', authCtrl.logout as unknown as RequestHandler);
+router.post(
+  '/refresh',
+  authMiddleware(),
+  authCtrl.refresh as unknown as RequestHandler,
+);
 
 router.get(
   '/profile',

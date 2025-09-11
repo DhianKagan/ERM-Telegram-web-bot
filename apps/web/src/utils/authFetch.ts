@@ -114,6 +114,19 @@ export default async function authFetch(
       }
     }
   }
+  if (res.status === 401) {
+    try {
+      const r = await fetch("/api/v1/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) {
+        res = await sendRequest(url, opts, onProgress);
+      }
+    } catch {
+      /* игнорируем */
+    }
+  }
   if ((res.status === 401 || res.status === 403) && !noRedirect) {
     window.location.href = "/login?expired=1";
   }

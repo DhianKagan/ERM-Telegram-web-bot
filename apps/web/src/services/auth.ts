@@ -34,3 +34,9 @@ export const updateProfile = (data: ProfileData) =>
 
 export const logout = () =>
   authFetch("/api/v1/auth/logout", { method: "POST" }).then(() => undefined);
+
+export const refresh = () =>
+  authFetch("/api/v1/auth/refresh", {
+    method: "POST",
+    noRedirect: true,
+  }).then(() => undefined);

@@ -19,6 +19,7 @@ jest.mock('../src/auth/auth.controller.ts', () => ({
   profile: jest.fn((_req, res) => res.json({ ok: true })),
   updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
   logout: jest.fn((_req, res) => res.json({ status: 'ok' })),
+  refresh: jest.fn((_req, res) => res.json({ token: 't' })),
 }));
 
 const authRouter = require('../src/routes/authUser').default;

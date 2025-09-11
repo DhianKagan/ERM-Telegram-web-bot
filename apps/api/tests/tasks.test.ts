@@ -62,7 +62,8 @@ jest
 
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
-    req.user = { role: 'admin', id: 1, telegram_id: 1, access: 2 };
+    const access = Number(req.headers['x-access'] || 6);
+    req.user = { role: 'admin', id: 1, telegram_id: 1, access };
     next();
   },
   asyncHandler: (fn) => fn,
@@ -108,6 +109,7 @@ test('создание задачи возвращает 201', async () => {
     }),
   );
 });
+
 
 test('создание задачи через multipart', async () => {
   const res = await request(app)

@@ -5,6 +5,11 @@ import React, { useState } from "react";
 import DOMPurify from "dompurify";
 import Modal from "./Modal";
 
+// CKEditor 5 ожидает глобальную переменную React, задаём её вручную
+if (typeof window !== "undefined" && !(window as any).React) {
+  (window as any).React = React;
+}
+
 const LazyCKEditor = React.lazy(async () => {
   const [{ CKEditor }, { default: ClassicEditor }] = await Promise.all([
     import("@ckeditor/ckeditor5-react"),

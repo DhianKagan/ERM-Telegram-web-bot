@@ -17,6 +17,7 @@ import {
   ValidationChain,
 } from 'express-validator';
 import createRateLimiter from '../utils/rateLimiter';
+import { swaggerUi, specs } from './swagger';
 import { register } from '../metrics';
 import { verifyToken, asyncHandler, requestLogger } from './middleware';
 import errorMiddleware from '../middleware/errorMiddleware';
@@ -98,6 +99,7 @@ export default async function registerRoutes(
 
   app.use(cors());
   const prefix = '/api/v1';
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
   app.use('/api', globalLimiter);
 

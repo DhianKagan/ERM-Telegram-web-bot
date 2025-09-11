@@ -28,7 +28,7 @@
 - Контраст интерфейса не ниже 4.5:1, проверка реализована тестом `tests/e2e/contrast.spec.ts`.
 - К файлам в форме можно добавить миниатюры; загрузка доступна только при заполненном названии.
 - Вложения загружаются через drag-and-drop компонент, сервер поддерживает chunk-upload.
-- Канбан-доска находится в `/mg/kanban` и доступна менеджерам и администраторам; дубли `/cp/kanban`, `/cp/reports` и `/cp/routes` удалены.
+- Канбан-доска находится в `/cp/kanban` и доступна только администраторам; страница «Мои задачи» удалена, пользователи видят только доступные им задачи и могут менять статус на «В работе» или «Выполнена».
 - SPA обслуживается маршрутами `app.get('/')` и `app.get('*')`, обеспечивая корректный переход на `/login`.
 - Веб‑клиент работает и в браузере, и в Telegram; отсутствие Telegram не вызывает предупреждений.
 - Шрифты хранятся локально в `apps/web/public/fonts`, загрузка через `scripts/download-fonts.sh`.
@@ -66,7 +66,6 @@
 - README упрощён; подробные сведения перенесены в docs/technical_manual.md.
 - Документация по модулям находится в `docs/architecture.md`.
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
-- Swagger‑документация генерируется скриптом `pnpm --filter ./apps/api build:swagger` и хранится в `docs/api`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.

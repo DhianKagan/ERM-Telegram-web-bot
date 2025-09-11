@@ -1,14 +1,8 @@
 // Поле редактирования текста в модальном окне CKEditor 5
 // Модули: React, CKEditor 5, DOMPurify, Modal
-// DOMPurify очищает HTML, исключая скрипты и вызовы new Function
 import React, { useState } from "react";
 import DOMPurify from "dompurify";
 import Modal from "./Modal";
-
-// CKEditor 5 ожидает глобальную переменную React, задаём её вручную
-if (typeof window !== "undefined" && !(window as any).React) {
-  (window as any).React = React;
-}
 
 const LazyCKEditor = React.lazy(async () => {
   const [{ CKEditor }, { default: ClassicEditor }] = await Promise.all([
@@ -34,7 +28,7 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
   if (readOnly) {
     return (
       <div
-        className="ck-content"
+        className="ql-snow"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
       />
     );

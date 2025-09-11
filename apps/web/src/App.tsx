@@ -87,6 +87,30 @@ function Content() {
             }
           />
           <Route
+            path="/cp/kanban"
+            element={
+              <AdminRoute>
+                <TaskKanban />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/cp/reports"
+            element={
+              <AdminRoute>
+                <Reports />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/cp/routes"
+            element={
+              <AdminRoute>
+                <RoutesPage />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/cp/settings"
             element={
               <AdminRoute>

@@ -70,6 +70,8 @@
       "glob": "^7.2.3",
       "rimraf": "^6.0.1",
       "uuid": "^9.0.0",
+      "quill": "^2.0.3",
+      "jspdf@<=3.0.1": ">=3.0.2",
       "@ckeditor/ckeditor5-clipboard@>=40.0.0 <43.1.1": ">=43.1.1",
       "ckeditor5@>=40.0.0 <43.1.1": ">=43.1.1",
       "dompurify@<3.2.4": ">=3.2.4",
@@ -96,8 +98,7 @@
       "unrs-resolver"
     ],
     "patchedDependencies": {
-      "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch",
-      "jss@10.10.0": "patches/jss@10.10.0.patch"
+      "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch"
     }
   },
   "packageManager": "pnpm@10.15.0",

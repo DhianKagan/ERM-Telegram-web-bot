@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "apps/api/public",
+      "staticDistDir": "apps/web/dist",
       "numberOfRuns": 1
     },
     "upload": {

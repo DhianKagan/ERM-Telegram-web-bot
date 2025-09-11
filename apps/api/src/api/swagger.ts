@@ -1,5 +1,6 @@
-// Назначение: генерация спецификации OpenAPI.
-// Основные модули: swagger-jsdoc
+// Генерация документации Swagger/OpenAPI
+// Модули: swagger-ui-express, swagger-jsdoc
+import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 
 const options: swaggerJsdoc.Options = {
@@ -43,4 +44,4 @@ const options: swaggerJsdoc.Options = {
 
 const specs = swaggerJsdoc(options);
 
-export { specs };
+export { swaggerUi, specs };

@@ -2,6 +2,8 @@
 
 # История изменений
 
+- Главный скрипт создаёт `#root`, если он отсутствует,
+  устраняя ошибку `Cannot set properties of undefined`.
 - Маршрут `/api-docs` удалён; документация Swagger собирается статически в `docs/api`.
 - Удалены зависимости `quill` и `react-quill`; компонент CKEditor очищает HTML через DOMPurify.
 - Экспорт PDF выполняется библиотекой `pdf-lib`, зависимость `jspdf` удалена; политика CSP не требует `unsafe-eval`.

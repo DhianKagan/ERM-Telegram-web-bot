@@ -6,9 +6,12 @@ import i18n from "./i18n";
 import "./index.css";
 
 function bootstrap() {
-  const root = document.getElementById("root");
+  // гарантируем наличие корневого элемента
+  let root = document.getElementById("root");
   if (!root) {
-    throw new Error("Element #root not found");
+    root = document.createElement("div");
+    root.id = "root";
+    document.body.appendChild(root);
   }
 
   const params = new URLSearchParams(window.location.search);

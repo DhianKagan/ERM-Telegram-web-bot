@@ -7,6 +7,7 @@ import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config';
 import { Types } from 'mongoose';
+import jwt from 'jsonwebtoken';
 import type { UserDocument } from '../db/model';
 
 async function sendCode(telegramId: number | string) {
@@ -143,6 +144,28 @@ async function updateProfile(
   return user || null;
 }
 
+async function refreshToken(oldToken: string) {
+  let payload: jwt.JwtPayload;
+  try {
+    payload = jwt.verify(oldToken, config.jwtSecret!, {
+      algorithms: ['HS256'],
+      ignoreExpiration: true,
+    }) as jwt.JwtPayload;
+  } catch {
+    throw new Error('invalid token');
+  }
+  const user = await getUser(String(payload.id));
+  if (!user) throw new Error('user not found');
+  const role = user.role || 'user';
+  const access = user.access || 1;
+  return generateToken({
+    id: String(payload.id),
+    username: user.username || '',
+    role,
+    access,
+  });
+}
+
 export default {
   sendCode,
   verifyCode,
@@ -150,6 +173,7 @@ export default {
   verifyTmaLogin,
   getProfile,
   updateProfile,
+  refreshToken,
   codes: otp.codes,
   adminCodes: otp.adminCodes,
 };

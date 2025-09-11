@@ -94,6 +94,36 @@ export const updateProfile = async (
   res.json(formatUser(user));
 };
 
+export const refresh = async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'];
+  const fromHeader = auth && auth.startsWith('Bearer ')
+    ? auth.slice(7).trim()
+    : undefined;
+  const token =
+    fromHeader || ((req.cookies as Record<string, string>).token as string | undefined);
+  if (!token) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Токен не найден',
+      status: 401,
+      detail: 'Unauthorized',
+    });
+    return;
+  }
+  try {
+    const newToken = await service.refreshToken(token);
+    setTokenCookie(res, newToken);
+    res.json({ token: newToken });
+  } catch (e) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка обновления токена',
+      status: 401,
+      detail: String((e as Error).message),
+    });
+  }
+};
+
 export const logout = (_req: Request, res: Response) => {
   const secure = process.env.NODE_ENV === 'production';
   const opts: CookieOptions = { httpOnly: true, secure, sameSite: 'lax' };

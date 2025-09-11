@@ -14,6 +14,20 @@ interface AuthFetchOptions extends FetchOptions {
   onProgress?: (e: ProgressEvent) => void;
 }
 
+let refreshPromise: Promise<Response> | null = null;
+
+async function refreshToken() {
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    }).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 async function sendRequest(
   url: string,
   opts: FetchOptions,
@@ -80,6 +94,16 @@ export default async function authFetch(
   if (token) headers["X-XSRF-TOKEN"] = token;
   const opts: FetchOptions = { ...fetchOpts, credentials: "include", headers };
   let res = await sendRequest(url, opts, onProgress);
+  if (res.status === 401) {
+    try {
+      const r = await refreshToken();
+      if (r.ok) {
+        res = await sendRequest(url, opts, onProgress);
+      }
+    } catch {
+      /* игнорируем */
+    }
+  }
   if (res.status === 403) {
     if (opts.body) {
       try {

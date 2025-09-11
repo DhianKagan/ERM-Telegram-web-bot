@@ -39,7 +39,8 @@ export function generateShortToken(user: Payload): string {
     },
     secretKey,
     {
-      expiresIn: '5m',
+      // короткий токен продлевается каждый запрос, поэтому увеличиваем TTL
+      expiresIn: '15m',
       algorithm: 'HS256',
     },
   );

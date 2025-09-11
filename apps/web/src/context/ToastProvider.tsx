@@ -27,6 +27,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [],
   );
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { message, type } = (
+        e as CustomEvent<{ message: string; type?: "success" | "error" }>
+      ).detail;
+      addToast(message, type);
+    };
+    window.addEventListener("toast", handler);
+    return () => window.removeEventListener("toast", handler);
+  }, [addToast]);
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}

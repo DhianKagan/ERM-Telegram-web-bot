@@ -60,9 +60,10 @@ export default function TasksPage() {
   }, [isPrivileged, user, page]);
 
   React.useEffect(() => {
-    if (!canView) return;
+    if (authLoading || !canView) return;
     load();
-  }, [load, version, page, canView]);
+    // после загрузки профиля инициируем загрузку задач
+  }, [authLoading, load, version, page, canView, user?.access]);
   const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {

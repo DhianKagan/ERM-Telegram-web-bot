@@ -13,7 +13,32 @@ function bootstrap() {
 
   const params = new URLSearchParams(window.location.search);
   const forceBrowser = params.get("browser") === "1";
-  const isTelegram = !forceBrowser && Boolean(window.Telegram?.WebApp);
+
+  const webApp = window.Telegram?.WebApp;
+  const supportedPlatforms = ["android", "ios", "web", "macos", "tdesktop"];
+  const minVersion = "6.0";
+
+  function versionAtLeast(current: string, min: string) {
+    const a = current.split(".").map(Number);
+    const b = min.split(".").map(Number);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const x = a[i] || 0;
+      const y = b[i] || 0;
+      if (x > y) return true;
+      if (x < y) return false;
+    }
+    return true;
+  }
+
+  let isTelegram = false;
+  if (!forceBrowser && webApp) {
+    isTelegram =
+      supportedPlatforms.includes(webApp.platform) &&
+      versionAtLeast(webApp.version, minVersion);
+    if (!isTelegram) {
+      alert("Требуется обновление Telegram. Загружается браузерная версия.");
+    }
+  }
 
   function render(Component: React.ComponentType) {
     ReactDOM.createRoot(root).render(

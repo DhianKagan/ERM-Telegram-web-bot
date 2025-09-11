@@ -6,7 +6,7 @@ interface AuthUser {
   name: string;
   email: string;
   passwordHash: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'manager';
 }
 
 export type AuthUserDocument = AuthUser & Document;
@@ -16,7 +16,7 @@ const UserSchema = new Schema<AuthUserDocument>(
     name: { type: String, required: true },
     email: { type: String, unique: true, required: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin', 'manager'], default: 'user' },
   },
   { timestamps: true },
 );

@@ -2,7 +2,7 @@
 // Основные модули: otp, queries, userInfoService, writeLog
 import * as otp from '../services/otp';
 import { generateToken, generateShortToken } from './auth';
-import { getUser, createUser, updateUser } from '../db/queries';
+import { getUser, createUser, updateUser, accessByRole } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import config from '../config';
@@ -61,7 +61,7 @@ async function verifyCode(
       : roleId === config.managerRoleId
         ? 'manager'
         : 'user';
-  const access = role === 'admin' ? 2 : role === 'manager' ? 4 : 1;
+  const access = accessByRole(role);
   const token = generateToken({
     id: telegramId,
     username: u.username || '',

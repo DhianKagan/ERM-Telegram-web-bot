@@ -19,6 +19,7 @@ jest.mock('../src/db/queries', () => ({
     roleId: '686591126cc86a6bd16c18af',
     role: 'admin',
   })),
+  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
 }));
 jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
 jest.useFakeTimers().setSystemTime(0);

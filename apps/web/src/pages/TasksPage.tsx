@@ -22,10 +22,12 @@ export default function TasksPage() {
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const { version, refresh } = useTasks();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
+  const hasPermission = user?.permissions?.includes("tasks");
   const isPrivileged = isAdmin || isManager;
+  const canView = isPrivileged || hasPermission;
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -57,7 +59,10 @@ export default function TasksPage() {
     }
   }, [isPrivileged, user, page]);
 
-  React.useEffect(load, [load, version, page]);
+  React.useEffect(() => {
+    if (!canView) return;
+    load();
+  }, [load, version, page, canView]);
   const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {
@@ -68,6 +73,9 @@ export default function TasksPage() {
     return map;
   }, [users]);
 
+  if (authLoading) return <div>Загрузка...</div>;
+  if (!canView)
+    return <div className="p-4">У вас нет прав для просмотра задач</div>;
   return (
     <div className="space-y-6">
       {loading && <div>Загрузка...</div>}

@@ -2,6 +2,7 @@
 // Назначение: обёртка для запросов с CSRF-токеном и прогрессом загрузки
 // Основные модули: fetch, XMLHttpRequest, window.location, localStorage
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
+import { showToast } from "./toast";
 
 interface FetchOptions extends globalThis.RequestInit {
   headers?: Record<string, string>;
@@ -127,7 +128,10 @@ export default async function authFetch(
       /* игнорируем */
     }
   }
-  if ((res.status === 401 || res.status === 403) && !noRedirect) {
+  if (res.status === 403) {
+    showToast("Недостаточно прав", "error");
+  }
+  if (res.status === 401 && !noRedirect) {
     window.location.href = "/login?expired=1";
   }
   return res;

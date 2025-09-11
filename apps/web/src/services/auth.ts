@@ -4,12 +4,7 @@
 import authFetch from "../utils/authFetch";
 import type { User } from "../types/user";
 
-interface FetchOptions {
-  method?: string;
-  headers?: Record<string, string>;
-  body?: string;
-  noRedirect?: boolean;
-}
+type FetchOptions = Parameters<typeof authFetch>[1];
 
 export const getProfile = async (options?: FetchOptions): Promise<User> => {
   const res = await authFetch("/api/v1/auth/profile", options);

@@ -23,5 +23,7 @@ jobs:
         run: pnpm install
       - name: Сборка клиента
         run: pnpm --dir apps/web build
+      - name: Установка Chrome
+        uses: browser-actions/setup-chrome@v1
       - name: Lighthouse CI
         run: npx lhci autorun

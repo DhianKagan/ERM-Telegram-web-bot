@@ -18,6 +18,7 @@ jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
   updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
+  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
 }));
 
 jest.mock('../src/api/middleware', () => ({

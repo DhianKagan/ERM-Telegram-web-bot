@@ -15,6 +15,7 @@ const { stopQueue } = require('../src/services/messageQueue');
 jest.mock('../src/db/queries', () => ({
   listRoutes: jest.fn(async () => [{ _id: '1' }]),
   getUser: jest.fn(async () => ({})),
+  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
 }));
 
 const { listRoutes } = require('../src/db/queries');

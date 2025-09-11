@@ -20,4 +20,6 @@ export interface User {
   role?: string;
   /** Уровень доступа */
   access?: number;
+  /** Список разрешений пользователя */
+  permissions?: string[];
 }

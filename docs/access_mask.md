@@ -4,8 +4,8 @@
 
 Роли пользователя дополнены числовыми масками в поле `access`.
 
-- `1` — обычный пользователь
-- `2` — администратор
-- `4` — менеджер или иная промежуточная роль
+- `ACCESS_USER = 1` — обычный пользователь
+- `ACCESS_ADMIN = 2` — администратор
+- `ACCESS_MANAGER = 4` — менеджер или иная промежуточная роль
 
-Файл `apps/api/src/utils/accessMask.ts` содержит константы и функцию `hasAccess`. Middleware `checkRole` умеет принимать как строку роли, так и числовую маску.
+Коллекция `roles` хранит документы `{ name, permissions }`, маска вычисляется функцией `accessByRole(name)` из `apps/api/src/db/queries.ts`. Файл `apps/api/src/utils/accessMask.ts` содержит константы и функцию `hasAccess`. Middleware `checkRole` умеет принимать как строку роли, так и числовую маску. Примеры использования декоратора `Roles` приведены в `docs/permissions.md`.

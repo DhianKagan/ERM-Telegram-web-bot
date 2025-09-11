@@ -12,7 +12,7 @@
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",
-    "test:e2e": "playwright test tests/e2e",
+    "test:e2e": "playwright test",
     "test:api": "mocha -r ts-node/register -r tests/setupEnv.ts tests/api/**/*.spec.ts",
     "test:unit": "jest",
     "format": "prettier --write .",

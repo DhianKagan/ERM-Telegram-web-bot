@@ -94,6 +94,17 @@ export const updateProfile = async (
   res.json(formatUser(user));
 };
 
+export const refresh = (req: RequestWithUser, res: Response) => {
+  const token = service.refresh({
+    id: req.user!.id!,
+    username: req.user!.username || '',
+    role: req.user!.role!,
+    access: req.user!.access!,
+  });
+  setTokenCookie(res, token);
+  res.json({ token });
+};
+
 export const logout = (_req: Request, res: Response) => {
   const secure = process.env.NODE_ENV === 'production';
   const opts: CookieOptions = { httpOnly: true, secure, sameSite: 'lax' };

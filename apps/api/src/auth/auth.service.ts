@@ -1,7 +1,12 @@
 // Сервис авторизации: отправка и проверка кодов входа
 // Основные модули: otp, queries, userInfoService, writeLog
 import * as otp from '../services/otp';
-import { generateToken, generateShortToken } from './auth';
+import {
+  generateToken,
+  generateShortToken,
+  refreshToken,
+  type Payload,
+} from './auth';
 import { getUser, createUser, updateUser, accessByRole } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
@@ -130,6 +135,10 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
   return token;
 }
 
+function refresh(user: Payload) {
+  return refreshToken(user);
+}
+
 async function getProfile(id: string | number) {
   const user = await getUser(id);
   return user || null;
@@ -148,6 +157,7 @@ export default {
   verifyCode,
   verifyInitData,
   verifyTmaLogin,
+  refresh,
   getProfile,
   updateProfile,
   codes: otp.codes,

@@ -5,7 +5,7 @@ import config from '../config';
 
 const secretKey: string = config.jwtSecret!; // переменная гарантирована в config
 
-interface Payload {
+export interface Payload {
   id: string | number;
   username: string;
   role: string;
@@ -43,4 +43,9 @@ export function generateShortToken(user: Payload): string {
       algorithm: 'HS256',
     },
   );
+}
+
+// Обновляет JWT без изменения полезной нагрузки
+export function refreshToken(user: Payload): string {
+  return generateToken(user);
 }

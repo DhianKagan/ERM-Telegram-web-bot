@@ -11,6 +11,13 @@ const express = require('express');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 const { generateRouteLink } = require('shared');
+const {
+  ACCESS_USER,
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+} = require('../src/utils/accessMask');
+
+let currentAccess = ACCESS_ADMIN | ACCESS_MANAGER;
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 1000 })),
@@ -62,7 +69,7 @@ jest
 
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
-    req.user = { role: 'admin', id: 1, telegram_id: 1, access: 2 };
+    req.user = { role: 'admin', id: 1, telegram_id: 1, access: currentAccess };
     next();
   },
   asyncHandler: (fn) => fn,
@@ -107,6 +114,23 @@ test('создание задачи возвращает 201', async () => {
       route_distance_km: 1,
     }),
   );
+});
+
+test('пользователь без прав менеджера получает 403', async () => {
+  currentAccess = ACCESS_USER;
+  const res = await request(app)
+    .post('/api/v1/tasks')
+    .send({
+      formVersion: 1,
+      title: 'T',
+      start_location_link: 'https://maps.google.com',
+      end_location_link: 'https://maps.google.com',
+      startCoordinates: { lat: 1, lng: 2 },
+      finishCoordinates: { lat: 3, lng: 4 },
+      start_date: '2025-01-01T10:00',
+    });
+  expect(res.status).toBe(403);
+  currentAccess = ACCESS_ADMIN | ACCESS_MANAGER;
 });
 
 test('создание задачи через multipart', async () => {

@@ -32,6 +32,8 @@
 - Реализован скрипт `start_api_with_memdb.sh` для запуска API с MongoDB в памяти, инструкция в README.
 - Быстрый старт использует `./scripts/create_env_from_exports.sh`, добавлен `start_api_with_memdb.sh`.
 - В корневые devDependencies добавлен `express-rate-limit`, исправлен сбой теста `tasks.upload.spec.ts`.
+- Сборка перед e2e-тестами выполняется скриптом `build_with_tmp.sh`,
+  создающим уникальный TMPDIR и блокирующим параллельные процессы.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку при `CI=true`, обновлена документация переменной `MONGO_DATABASE_URL`.
 - `SESSION_SECRET` в `.env.example` пуст, добавлена команда генерации и предупреждение о коммите.
 - Исправлен запуск клиента: инициализация откладывается до `DOMContentLoaded`,

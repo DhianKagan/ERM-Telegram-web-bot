@@ -7,7 +7,7 @@
     "pretest": "pnpm --filter shared build",
     "pretest:unit": "pnpm --filter shared build",
     "pretest:api": "pnpm --filter shared build",
-    "pretest:e2e": "pnpm build",
+    "pretest:e2e": "./scripts/build_with_tmp.sh",
     "build": "pnpm --filter packages/shared build && pnpm -r --filter '!packages/shared' build",
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",

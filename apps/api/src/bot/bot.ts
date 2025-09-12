@@ -58,32 +58,36 @@ bot.start(async (ctx) => {
 bot.command('register', checkAndRegister);
 bot.hears('Регистрация', checkAndRegister);
 
-async function startBot(retry = 0): Promise<void> {
+const MAX_RETRIES = 5;
+
+export async function startBot(retry = 0): Promise<void> {
   try {
     await bot.telegram.deleteWebhook();
     await bot.launch({ dropPendingUpdates: true });
     console.log('Бот запущен');
   } catch (err: unknown) {
     const e = err as { response?: { error_code?: number } };
-    if (e.response?.error_code === 409 && retry < 5) {
-      console.error('Конфликт polling, повторная попытка запуска');
-      await new Promise((res) => setTimeout(res, 3000));
+    const code = e.response?.error_code;
+    if ([409, 502, 504].includes(code ?? 0) && retry < MAX_RETRIES) {
+      console.error('Ошибка Telegram, повторная попытка запуска');
+      const delay = 1000 * 2 ** retry;
+      await new Promise((res) => setTimeout(res, delay));
       return startBot(retry + 1);
     }
     console.error('Не удалось запустить бота:', err);
-    process.exit(1);
+    throw err;
   }
   console.log(
     `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
   );
 }
 
-startBot().then(() => {
-  if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test') {
+  startBot().then(() => {
     startScheduler();
     startKeyRotation();
-  }
-});
+  });
+}
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

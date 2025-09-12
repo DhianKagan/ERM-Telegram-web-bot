@@ -1,5 +1,5 @@
 /**
- * Назначение файла: проверка fetchTasks при переполненном localStorage.
+ * Назначение файла: проверка fetchTasks при переполненном localStorage и загрузке после профиля.
  * Основные модули: fetchTasks.
  */
 jest.mock("../utils/authFetch", () => ({
@@ -43,5 +43,25 @@ describe("fetchTasks", () => {
     expect(res).toEqual(data);
     expect(getItem).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
+  });
+  test("перезагружает данные после загрузки профиля", async () => {
+    jest.clearAllMocks();
+    const anonData = { tasks: [], users: [], total: 0 };
+    const userData = { tasks: [{ id: 1 }], users: [], total: 1 } as any;
+    (authFetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: async () => anonData })
+      .mockResolvedValueOnce({ ok: true, json: async () => userData });
+    const store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => store[k],
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
+    };
+    const resAnon = await fetchTasks();
+    const resUser = await fetchTasks({}, 1);
+    expect(resAnon).toEqual(anonData);
+    expect(resUser).toEqual(userData);
+    expect(authFetch).toHaveBeenCalledTimes(2);
   });
 });

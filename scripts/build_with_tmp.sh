@@ -10,5 +10,5 @@ cleanup() {
 trap cleanup EXIT
 (
   flock -x 9
-  TMPDIR="$TMP_DIR" pnpm build --workspace-concurrency=1
+  TMPDIR="$TMP_DIR" pnpm --workspace-concurrency=1 build
 ) 9>/tmp/pnpm_build.lock

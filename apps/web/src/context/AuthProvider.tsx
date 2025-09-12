@@ -2,6 +2,7 @@
 // Модули: React, services/auth, AuthContext, AuthActionsContext, utils/csrfToken
 import { useEffect, useState, type ReactNode } from "react";
 import { getProfile, logout as apiLogout } from "../services/auth";
+import { clearAnonTasksCache } from "../services/tasks";
 import { AuthContext } from "./AuthContext";
 import { AuthActionsContext } from "./AuthActionsContext";
 import { setCsrfToken } from "../utils/csrfToken";
@@ -12,7 +13,11 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
+  const setUser = (u: User | null) => {
+    setUserState(u);
+    if (u) clearAnonTasksCache();
+  };
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const loadCsrf = async () => {
@@ -48,7 +53,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
   const logout = async () => {
     await apiLogout();
-    setUser(null);
+    setUserState(null);
+    clearAnonTasksCache();
   };
   return (
     <AuthContext.Provider value={{ user, loading }}>

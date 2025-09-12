@@ -30,15 +30,17 @@ async function sendRequest(
       );
       xhr.upload.onprogress = onProgress;
       xhr.onload = () => {
+        const raw = xhr.getAllResponseHeaders();
         const headers = new Headers();
-        xhr
-          .getAllResponseHeaders()
-          .trim()
-          .split(/\r?\n/)
-          .forEach((line) => {
-            const [key, val] = line.split(": ");
-            if (key) headers.append(key, val);
-          });
+        if (typeof raw === "string" && raw.trim()) {
+          raw
+            .trim()
+            .split(/\r?\n/)
+            .forEach((line) => {
+              const [key, val] = line.split(": ");
+              if (key) headers.append(key, val);
+            });
+        }
         resolve(
           new Response(xhr.response, {
             status: xhr.status,

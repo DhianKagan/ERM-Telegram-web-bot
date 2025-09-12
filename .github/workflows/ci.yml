@@ -38,7 +38,7 @@ jobs:
       - name: Проверка build-скриптов
         run: pnpm approve-builds
       - name: Установка браузеров Playwright
-        run: npx playwright install --with-deps
+        run: sudo env "PATH=$PATH" npx playwright install --with-deps
       - name: Линтеры
         run: pnpm lint
       - name: Юнит и API тесты
@@ -85,7 +85,7 @@ jobs:
       - name: Установка зависимостей
         run: pnpm install
       - name: Установка браузеров Playwright
-        run: npx playwright install --with-deps
+        run: sudo env "PATH=$PATH" npx playwright install --with-deps
       - name: E2E тесты
         run: pnpm test:e2e -- --project="${{ matrix.project }}"
       - name: Сохранение артефактов

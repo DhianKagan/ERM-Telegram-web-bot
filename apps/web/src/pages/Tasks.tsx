@@ -1,4 +1,5 @@
-// Страница списка задач
+// Назначение: страница списка задач
+// Основные модули: React, контексты аутентификации и уведомлений
 import React from "react";
 import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
@@ -7,6 +8,7 @@ import Spinner from "../components/Spinner";
 import SkeletonCard from "../components/SkeletonCard";
 import Pagination from "../components/Pagination";
 import Breadcrumbs from "../components/Breadcrumbs";
+import { useAuth } from "../context/useAuth";
 import type { Task } from "shared";
 
 type TaskWithDesc = Task & { task_description: string };
@@ -19,6 +21,8 @@ export default function Tasks() {
   const [page, setPage] = React.useState(1);
   const perPage = 10;
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const isManager = user?.role === "manager" || user?.role === "admin";
 
   React.useEffect(() => {
     authFetch("/api/v1/tasks")
@@ -49,6 +53,12 @@ export default function Tasks() {
         items={[{ label: "Задачи", href: "/tasks" }, { label: "Задачи" }]}
       />
       <h2 className="text-xl font-semibold">Задачи</h2>
+      {!isManager && (
+        <p className="text-sm text-gray-600">
+          Для создания задач необходима роль manager. Обратитесь к
+          администратору.
+        </p>
+      )}
       <form onSubmit={add} className="flex flex-wrap gap-2">
         <input
           value={text}

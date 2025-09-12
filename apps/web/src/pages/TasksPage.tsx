@@ -21,6 +21,7 @@ export default function TasksPage() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
+  const [mine, setMine] = React.useState(params.get("mine") === "1");
   const { version, refresh } = useTasks();
   const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -31,7 +32,10 @@ export default function TasksPage() {
 
   const load = React.useCallback(() => {
     setLoading(true);
-    fetchTasks({ page: page + 1, limit: 25 }, user?.telegram_id)
+    fetchTasks(
+      { page: page + 1, limit: 25, mine: mine ? 1 : undefined },
+      user?.telegram_id,
+    )
       .then((data) => {
         const tasks = data.tasks as TaskExtra[];
         const filteredTasks = isPrivileged
@@ -57,13 +61,13 @@ export default function TasksPage() {
           setUsers(Array.isArray(list) ? list : Object.values(list || {})),
         );
     }
-  }, [isPrivileged, user, page]);
+  }, [isPrivileged, user, page, mine]);
 
   React.useEffect(() => {
     if (authLoading || !canView) return;
     load();
     // после загрузки профиля инициируем загрузку задач
-  }, [authLoading, load, version, page, canView, user?.access]);
+  }, [authLoading, load, version, page, mine, canView, user?.access]);
   const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {
@@ -85,7 +89,14 @@ export default function TasksPage() {
         users={userMap}
         page={page}
         pageCount={Math.ceil(total / 25)}
+        mine={mine}
         onPageChange={setPage}
+        onMineChange={(v) => {
+          setMine(v);
+          if (v) params.set("mine", "1");
+          else params.delete("mine");
+          setParams(params);
+        }}
         onRowClick={(id) => {
           params.set("task", id);
           setParams(params);

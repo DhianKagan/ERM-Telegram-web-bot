@@ -10,7 +10,9 @@ interface TaskTableProps {
   users?: Record<number, any>;
   page: number;
   pageCount?: number;
+  mine?: boolean;
   onPageChange: (p: number) => void;
+  onMineChange?: (v: boolean) => void;
   onRowClick?: (id: string) => void;
   toolbarChildren?: React.ReactNode;
 }
@@ -20,7 +22,9 @@ export default function TaskTable({
   users = {},
   page,
   pageCount,
+  mine = false,
   onPageChange,
+  onMineChange,
   onRowClick,
   toolbarChildren,
 }: TaskTableProps) {
@@ -56,7 +60,21 @@ export default function TaskTable({
         pageCount={pageCount}
         onPageChange={onPageChange}
         onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
-        toolbarChildren={toolbarChildren}
+        toolbarChildren={
+          <>
+            {typeof onMineChange === "function" && (
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={mine}
+                  onChange={(e) => onMineChange(e.target.checked)}
+                />
+                Мои
+              </label>
+            )}
+            {toolbarChildren}
+          </>
+        }
       />
     </Suspense>
   );

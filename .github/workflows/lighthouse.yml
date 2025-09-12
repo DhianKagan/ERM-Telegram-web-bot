@@ -23,6 +23,8 @@ jobs:
         run: pnpm install
       - name: Сборка клиента
         run: pnpm --dir apps/web build
+      - name: Проверка существования каталога сборки
+        run: test -d apps/api/public
       - name: Установка Chrome
         uses: browser-actions/setup-chrome@v1
       - name: Lighthouse CI

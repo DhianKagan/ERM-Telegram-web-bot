@@ -1,8 +1,9 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "apps/web/dist",
-      "numberOfRuns": 1
+      "staticDistDir": "apps/api/public",
+      "numberOfRuns": 1,
+      "chromeFlags": "--no-sandbox"
     },
     "upload": {
       "target": "temporary-public-storage"

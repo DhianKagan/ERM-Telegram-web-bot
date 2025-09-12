@@ -30,4 +30,18 @@ describe("fetchTasks", () => {
     expect(res).toEqual(data);
     expect(setItem).toHaveBeenCalled();
   });
+  test("skipCache отключает чтение и запись", async () => {
+    const data = { tasks: [], users: [], total: 0 };
+    (authFetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => data,
+    });
+    const getItem = jest.fn(() => JSON.stringify({ time: Date.now(), data }));
+    const setItem = jest.fn();
+    (globalThis as any).localStorage = { getItem, setItem };
+    const res = await fetchTasks({}, undefined, true);
+    expect(res).toEqual(data);
+    expect(getItem).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+  });
 });

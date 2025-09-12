@@ -62,8 +62,9 @@ jest
 
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
+    const role = String(req.headers['x-role'] || 'admin');
     const access = Number(req.headers['x-access'] || 6);
-    req.user = { role: 'admin', id: 1, telegram_id: 1, access };
+    req.user = { role, id: 1, telegram_id: 1, access };
     next();
   },
   asyncHandler: (fn) => fn,
@@ -109,7 +110,6 @@ test('создание задачи возвращает 201', async () => {
     }),
   );
 });
-
 
 test('создание задачи через multipart', async () => {
   const res = await request(app)
@@ -168,6 +168,14 @@ test('получение списка задач возвращает польз
   const res = await request(app).get('/api/v1/tasks');
   expect(res.body.users['1'].name).toBe('User');
   expect(Array.isArray(res.body.tasks)).toBe(true);
+  expect(res.body.total).toBe(1);
+});
+
+test('получение всех задач для роли manager', async () => {
+  Task.find.mockReturnValueOnce([
+    { _id: '1', assignees: [1], controllers: [], created_by: 1 },
+  ]);
+  const res = await request(app).get('/api/v1/tasks').set('x-role', 'manager');
   expect(res.body.total).toBe(1);
 });
 

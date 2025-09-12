@@ -6,11 +6,11 @@
 
 В `apps/api/src/utils/accessMask.ts` определены константы масок:
 
-| Константа     | Значение | Описание                      |
-| ------------- | -------- | ----------------------------- |
-| `ACCESS_USER` | `1`      | Обычный пользователь          |
-| `ACCESS_ADMIN`| `2`      | Администратор                |
-| `ACCESS_MANAGER` | `4`   | Менеджер или промежуточная роль |
+| Константа        | Значение | Описание                        |
+| ---------------- | -------- | ------------------------------- |
+| `ACCESS_USER`    | `1`      | Обычный пользователь            |
+| `ACCESS_ADMIN`   | `2`      | Администратор                   |
+| `ACCESS_MANAGER` | `4`      | Менеджер или промежуточная роль |
 
 Функция `hasAccess(mask, required)` проверяет наличие прав, а `accessByRole(name)` из `apps/api/src/db/queries.ts` вычисляет маску по названию роли.
 
@@ -27,11 +27,15 @@
 
 Поле `permissions` содержит список разрешённых действий или областей системы. Маска доступа не хранится и определяется по полю `name`.
 
+Роли `admin` и `manager` получают полный список задач без фильтров.
+
 ## Примеры использования декоратора `Roles`
 
 ### Обычный пользователь
+
 ```ts
-router.get('/profile',
+router.get(
+  '/profile',
   authMiddleware(),
   Roles(ACCESS_USER),
   rolesGuard,
@@ -40,8 +44,10 @@ router.get('/profile',
 ```
 
 ### Администратор
+
 ```ts
-router.get('/roles',
+router.get(
+  '/roles',
   authMiddleware(),
   Roles(ACCESS_ADMIN),
   rolesGuard,
@@ -50,8 +56,10 @@ router.get('/roles',
 ```
 
 ### Менеджер
+
 ```ts
-router.post('/tasks',
+router.post(
+  '/tasks',
   authMiddleware(),
   Roles(ACCESS_MANAGER),
   rolesGuard,

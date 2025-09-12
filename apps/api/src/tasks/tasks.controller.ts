@@ -23,7 +23,7 @@ export default class TasksController {
     const { page, limit, ...filters } = req.query;
     let tasks: TaskEx[];
     let total = 0;
-    if (req.user!.access === 2) {
+    if (['admin', 'manager'].includes(req.user!.role || '')) {
       const res = await this.service.get(
         filters,
         page ? Number(page) : undefined,

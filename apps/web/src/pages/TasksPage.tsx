@@ -64,7 +64,7 @@ export default function TasksPage() {
   }, [isPrivileged, user, page, mine]);
 
   React.useEffect(() => {
-    if (authLoading || !canView) return;
+    if (authLoading || !canView || !user?.access) return;
     load();
     // после загрузки профиля инициируем загрузку задач
   }, [authLoading, load, version, page, mine, canView, user?.access]);

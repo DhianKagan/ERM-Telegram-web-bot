@@ -64,10 +64,11 @@ export default function TasksPage() {
   }, [isPrivileged, user, page, mine]);
 
   React.useEffect(() => {
-    if (authLoading || !canView || !user?.access) return;
+    if (authLoading) return;
+    if (!canView || !user?.access) return;
     load();
     // после загрузки профиля инициируем загрузку задач
-  }, [authLoading, load, version, page, mine, canView, user?.access]);
+  }, [authLoading, user, load, version, page, mine, canView]);
   const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {

@@ -3,10 +3,11 @@
 
 /**
  * Назначение файла: конфигурация Vite для мини-приложения.
- * Основные модули: vite, @vitejs/plugin-react.
+ * Основные модули: vite, @vitejs/plugin-react, @vitejs/plugin-legacy.
  */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import legacy from "@vitejs/plugin-legacy";
 import { resolve } from "path";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import sri from "./plugins/sri";
@@ -42,6 +43,7 @@ export default defineConfig(() => {
   return {
     plugins: [
       react(),
+      legacy(),
       sri(),
       ViteImageOptimizer(),
       process.env.ANALYZE

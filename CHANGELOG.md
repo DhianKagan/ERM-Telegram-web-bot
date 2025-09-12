@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Size-limit проверяет только `index-*.js` в `apps/api/public/assets` и `apps/web/dist/assets`, что предотвращает ложные срабатывания.
 - Добавлена зависимость `svgo` и отключена песочница Chrome в Lighthouse CI.
 - Исправлен путь сборки в Lighthouse CI; отчёт собирается из `apps/api/public`.
 - Добавлена документация по маскам доступа, коллекции `roles` и декоратору `Roles`.

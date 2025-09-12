@@ -11,6 +11,7 @@ const config: Config = {
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',
     '<rootDir>/tests/api/',
+    '<rootDir>/tests/playwright/',
     '<rootDir>/apps/web/src/types/',
   ],
   setupFiles: ['<rootDir>/tests/setupEnv.ts'],

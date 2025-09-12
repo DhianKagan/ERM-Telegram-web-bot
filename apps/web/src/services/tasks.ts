@@ -1,5 +1,7 @@
 // Назначение: запросы к API задач
 // Основные модули: authFetch, buildTaskFormData
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+/// <reference path="../types/telegram.d.ts" />
 import authFetch from "../utils/authFetch";
 import { buildTaskFormData } from "./buildTaskFormData";
 import type { Task, User } from "shared";

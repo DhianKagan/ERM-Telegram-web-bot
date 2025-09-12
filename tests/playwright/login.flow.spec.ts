@@ -2,6 +2,7 @@
  * Назначение файла: сценарий входа с эмуляцией Telegram initData.
  * Основные модули: @playwright/test, express.
  */
+/// <reference path="../../apps/web/src/types/telegram.d.ts" />
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';

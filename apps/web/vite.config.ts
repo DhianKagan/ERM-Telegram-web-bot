@@ -68,6 +68,8 @@ export default defineConfig(() => {
       emptyOutDir: true,
       outDir: "../api/public",
       manifest: true,
+      // JS-файлы сохраняем в каталоге js
+      assetsDir: "js",
 
       // Sourcemap включены для всех сборок
       sourcemap: true,

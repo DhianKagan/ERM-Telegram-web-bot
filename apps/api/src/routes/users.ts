@@ -13,30 +13,29 @@ import { CreateUserDto, UpdateUserDto } from '../dto/users.dto';
 
 const router: Router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const adminMiddlewares = [
-  limiter,
-  authMiddleware(),
-  Roles(ACCESS_ADMIN),
-  rolesGuard,
-] as RequestHandler[];
-const managerMiddlewares = [
-  limiter,
-  authMiddleware(),
-  Roles(ACCESS_MANAGER),
-  rolesGuard,
-] as RequestHandler[];
+const base = [limiter, authMiddleware()] as RequestHandler[];
 const ctrl = container.resolve(UsersController);
 
-router.get('/', ...managerMiddlewares, ctrl.list as RequestHandler);
+router.get(
+  '/',
+  ...base,
+  Roles(ACCESS_MANAGER),
+  rolesGuard,
+  ctrl.list as RequestHandler,
+);
 router.post(
   '/',
-  ...adminMiddlewares,
+  ...base,
+  Roles(ACCESS_ADMIN),
+  rolesGuard,
   ...(validateDto(CreateUserDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
 );
 router.patch(
   '/:id',
-  ...adminMiddlewares,
+  ...base,
+  Roles(ACCESS_ADMIN),
+  rolesGuard,
   ...(validateDto(UpdateUserDto) as RequestHandler[]),
   ...(ctrl.update as RequestHandler[]),
 );

@@ -41,7 +41,7 @@ jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ roleId: 'm' })),
   createUser: jest.fn(async () => ({ username: 'u', role: 'manager' })),
   updateUser: jest.fn(async () => ({})),
-  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
+  accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 
 const authRouter = require('../src/routes/authUser').default;

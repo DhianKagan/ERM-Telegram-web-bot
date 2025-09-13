@@ -19,7 +19,7 @@ jest.mock('../src/db/queries', () => ({
     roleId: '686591126cc86a6bd16c18af',
     role: 'admin',
   })),
-  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
+  accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
 jest.useFakeTimers().setSystemTime(0);
@@ -46,7 +46,7 @@ test('generateToken returns valid jwt', () => {
     id: 5,
     username: 'a',
     role: 'admin',
-    access: 2,
+    access: 6,
   });
   const data = jwt.decode(token);
   expect(data.id).toBe(5);

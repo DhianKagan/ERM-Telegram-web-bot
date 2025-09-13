@@ -18,7 +18,7 @@ jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
   updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
-  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
+  accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 
 jest.mock('../src/api/middleware', () => ({
@@ -97,6 +97,14 @@ test('админ получает список пользователей', asyn
     .set('x-access', '2');
   expect(res.status).toBe(200);
   expect(res.body[0].username).toBe('test');
+});
+
+test('менеджер получает 403', async () => {
+  const res = await request(app)
+    .get('/api/v1/users')
+    .set('x-role', 'manager')
+    .set('x-access', '4');
+  expect(res.status).toBe(403);
 });
 
 test('обычный пользователь получает 403', async () => {

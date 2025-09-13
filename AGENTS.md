@@ -41,8 +41,8 @@
 - `install_bot_deps.sh` скачивает pnpm через curl или GitHub при сбоях corepack и npm.
 - `.npmrc` перенаправляет scope `@jsr` на npmjs.org, чтобы установка зависимостей не требовала токена.
 - Перед коммитом запускайте `./scripts/setup_and_test.sh`.
-- Для e2e-тестов сборку выполняйте через `scripts/build_with_tmp.sh`,
-  чтобы процессы не делили `apps/api/public/assets`.
+  - Для e2e-тестов сборку выполняйте через `scripts/build_with_tmp.sh`,
+      чтобы процессы не делили `apps/api/public/js`.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха, запускает аудит зависимостей и записывает лог в `/tmp/apps/api_start.log`.
 - Lighthouse CI использует GitHub App, токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты размещаются во временном публичном хранилище.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти; `scripts/check_mongo.mjs` пропускает проверку при `CI=true`.
@@ -54,7 +54,7 @@
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
-- Сборка клиента проверяется `pnpm size`; файлы `index-*.js` в `apps/api/public/assets` и `apps/web/dist/assets` меньше 900 KB.
+  - Сборка клиента проверяется `pnpm size`; файлы `index-*.js` в `apps/api/public/js` меньше 900 KB.
 - Скрипты зависимостей проверяются `pnpm approve-builds`, CI падает при появлении новых скриптов.
 - Статическую страницу `apps/web/index.html` проверяйте на контраст командой `pnpm a11y` через `@axe-core/cli` и `vite preview`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.

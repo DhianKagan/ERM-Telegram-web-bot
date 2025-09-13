@@ -104,11 +104,7 @@
   "packageManager": "pnpm@10.15.0",
   "size-limit": [
     {
-      "path": "apps/api/public/assets/index-*.js",
-      "limit": "900 KB"
-    },
-    {
-      "path": "apps/web/dist/assets/index-*.js",
+      "path": "apps/api/public/js/index-*.js",
       "limit": "900 KB"
     }
   ]

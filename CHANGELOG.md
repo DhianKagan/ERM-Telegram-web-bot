@@ -2,6 +2,8 @@
 
 # История изменений
 
+- Документация Swagger очищена от инлайновых скриптов,
+  CSP разрешает `swagger-ui-bundle.js` по SHA-256.
 - Уточнены `docs/access_mask.md` и `docs/permissions.md`: admin = `ACCESS_ADMIN | ACCESS_MANAGER (6)` и наследует права менеджера.
 - Роль admin наследует права manager через объединение масок.
 - Устаревшие документы перенесены в `docs/archive`, документация обновлена.

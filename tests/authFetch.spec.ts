@@ -8,13 +8,18 @@ jest.mock('../apps/web/src/utils/csrfToken', () => ({
   setCsrfToken: () => undefined,
 }));
 
-function makeResponse(status: number, body: any = null): Response {
+function makeResponse(
+  status: number,
+  body: any = null,
+  jsonFn?: jest.Mock,
+): Response {
+  const json = jsonFn || jest.fn().mockResolvedValue(body);
   return {
     status,
     ok: status >= 200 && status < 300,
-    json: async () => body,
+    json,
     text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as Response;
+  } as unknown as Response;
 }
 
 describe('authFetch', () => {
@@ -53,5 +58,25 @@ describe('authFetch', () => {
     await authFetch('/foo');
     expect(handler).toHaveBeenCalled();
     expect(window.location.href).toBe('http://localhost/');
+  });
+
+  test('не парсит JSON при ошибках', async () => {
+    const json403 = jest.fn().mockResolvedValue({});
+    const jsonCsrf = jest.fn().mockResolvedValue({ csrfToken: 't2' });
+    const jsonFinal = jest.fn().mockResolvedValue({});
+    const mockFetch = jest
+      .fn()
+      .mockResolvedValueOnce(makeResponse(403, {}, json403))
+      .mockResolvedValueOnce(makeResponse(500, {}, jsonCsrf))
+      .mockResolvedValueOnce(makeResponse(403, {}, jsonFinal));
+    // @ts-ignore
+    global.fetch = mockFetch;
+    const handler = jest.fn();
+    window.addEventListener('toast', handler as EventListener);
+    await authFetch('/bar');
+    expect(json403).not.toHaveBeenCalled();
+    expect(jsonCsrf).not.toHaveBeenCalled();
+    expect(jsonFinal).not.toHaveBeenCalled();
+    expect(handler).toHaveBeenCalled();
   });
 });

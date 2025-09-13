@@ -69,12 +69,14 @@ export default async function authFetch(
   if (!token) {
     try {
       const res = await fetch("/api/v1/csrf", { credentials: "include" });
-      const data = (await res.json().catch(() => ({}))) as {
-        csrfToken?: string;
-      };
-      if (data.csrfToken) {
-        token = data.csrfToken;
-        saveToken(token);
+      if (res.ok) {
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as { csrfToken?: string };
+        if (data.csrfToken) {
+          token = data.csrfToken;
+          saveToken(token);
+        }
       }
     } catch {
       /* игнорируем */
@@ -100,10 +102,14 @@ export default async function authFetch(
     }
     try {
       const r = await fetch("/api/v1/csrf", { credentials: "include" });
-      const d = (await r.json().catch(() => ({}))) as { csrfToken?: string };
-      if (d.csrfToken) {
-        saveToken(d.csrfToken);
-        headers["X-XSRF-TOKEN"] = d.csrfToken;
+      if (r.ok) {
+        const d = (await r
+          .json()
+          .catch(() => ({}))) as { csrfToken?: string };
+        if (d.csrfToken) {
+          saveToken(d.csrfToken);
+          headers["X-XSRF-TOKEN"] = d.csrfToken;
+        }
       }
     } catch {
       /* игнорируем */

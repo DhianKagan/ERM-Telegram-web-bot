@@ -12,7 +12,7 @@ const rateLimit = require('express-rate-limit');
 const request = require('supertest');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
-const { ACCESS_ADMIN } = require('../src/utils/accessMask');
+const { ACCESS_ADMIN, ACCESS_MANAGER } = require('../src/utils/accessMask');
 
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
@@ -32,7 +32,9 @@ jest.mock('../src/api/middleware', () => ({
   },
   checkRole: (expected) => (req, res, next) => {
     if (typeof expected === 'number') {
-      return req.user.access === expected ? next() : res.sendStatus(403);
+      return (req.user.access & expected) === expected
+        ? next()
+        : res.sendStatus(403);
     }
     return req.user.role === expected ? next() : res.sendStatus(403);
   },
@@ -94,7 +96,7 @@ test('админ получает список пользователей', asyn
   const res = await request(app)
     .get('/api/v1/users')
     .set('x-role', 'admin')
-    .set('x-access', '2');
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
   expect(res.status).toBe(200);
   expect(res.body[0].username).toBe('test');
 });
@@ -119,7 +121,7 @@ test('создание пользователя с ошибкой данных',
   const res = await request(app)
     .post('/api/v1/users')
     .set('x-role', 'admin')
-    .set('x-access', '2')
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
     .send({ username: 'a' });
   expect(res.status).toBe(400);
 });
@@ -128,7 +130,7 @@ test('обновление пользователя', async () => {
   const res = await request(app)
     .patch('/api/v1/users/1')
     .set('x-role', 'admin')
-    .set('x-access', '2')
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
     .send({ username: 'new' });
   expect(res.status).toBe(200);
   expect(updateUser).toHaveBeenCalled();

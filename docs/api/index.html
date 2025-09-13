@@ -1,3 +1,4 @@
+<!-- Назначение файла: статическая документация Swagger. -->
 <!doctype html>
 <html lang="ru">
   <head>
@@ -11,10 +12,6 @@
   <body>
     <div id="swagger-ui"></div>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script>
-      window.onload = () => {
-        SwaggerUIBundle({ url: 'openapi.json', dom_id: '#swagger-ui' });
-      };
-    </script>
+    <script src="swagger-ui-init.js" integrity="sha384-bJBi6jmVwd002O1ILI2+RHJvQ/MB6n8VJtV/XsNlPZV3jccDNBKheXkMqIooR7a4"></script>
   </body>
 </html>

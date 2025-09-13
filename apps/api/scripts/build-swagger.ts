@@ -1,7 +1,8 @@
 // Назначение: генерация статической документации Swagger.
-// Основные модули: fs/promises, path, swagger-jsdoc
-import { mkdir, writeFile } from 'fs/promises';
+// Основные модули: fs/promises, path, swagger-jsdoc, crypto
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import { createHash } from 'node:crypto';
 import { specs } from '../src/api/swagger';
 
 async function build(): Promise<void> {
@@ -11,6 +12,11 @@ async function build(): Promise<void> {
     path.join(outDir, 'openapi.json'),
     JSON.stringify(specs, null, 2),
   );
+
+  const initSrc = path.join(outDir, 'swagger-ui-init.ts');
+  const initScript = await readFile(initSrc, 'utf8');
+  await writeFile(path.join(outDir, 'swagger-ui-init.js'), initScript);
+  const initHash = createHash('sha384').update(initScript).digest('base64');
 
   const html = `<!DOCTYPE html>
 <html lang="ru">
@@ -22,11 +28,7 @@ async function build(): Promise<void> {
 <body>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-  <script>
-    window.onload = () => {
-      SwaggerUIBundle({ url: 'openapi.json', dom_id: '#swagger-ui' });
-    };
-  </script>
+  <script src="swagger-ui-init.js" integrity="sha384-${initHash}"></script>
 </body>
 </html>`;
   await writeFile(path.join(outDir, 'index.html'), html);

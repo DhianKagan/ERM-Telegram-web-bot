@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Устаревшие документы перенесены в `docs/archive`, документация обновлена.
 - На странице задач добавлена подсказка о необходимости роли manager,
   документация и FAQ расширены инструкцией по её получению.
 - В CI установка браузеров Playwright выполняется через `sudo env "PATH=$PATH"`, что устраняет ошибку `node: not found`.
@@ -192,7 +193,7 @@
 - Модуль `shared/mapUtils` и утилиты веб-клиента переписаны на TypeScript.
 
 - Документация сведена в `docs/technical_manual.md`, README сокращён
-- Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `extended_tailadmin_guide.md`
+- Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Советы по стилю находятся в `docs/archive/extended_tailadmin_guide.md`
 - Админка принимает токен в параметре `?token=` и статику можно загружать без
   заголовка Authorization
 - Страница `/cp/logs` заменяет `/cp/admin` и показывает логи

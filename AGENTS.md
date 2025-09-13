@@ -70,6 +70,7 @@
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - Документация по маскам доступа и ролям — в `docs/permissions.md`.
 - FAQ для саппорта — в `docs/support_faq.md`.
+- Устаревшие материалы перенесены в `docs/archive`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.
 - `.env.example` использует подключение `mongodb://admin:admin@localhost:27017/ermdb?authSource=admin`.
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.

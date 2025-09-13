@@ -64,3 +64,4 @@ Dockerfile копирует каталог `patches` перед установк
 Подробные инструкции см. в [docs/technical_manual.md](docs/technical_manual.md).
 Описание масок доступа и ролей: [docs/permissions.md](docs/permissions.md).
 FAQ для саппорта: [docs/support_faq.md](docs/support_faq.md).
+Архив устаревших материалов: [docs/archive](docs/archive).

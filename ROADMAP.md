@@ -14,6 +14,7 @@
 - Команда `pnpm run dev` запускает api и web без таймаута PNPM.
 - AuthContext хранит только профиль и флаг загрузки, JWT на клиенте не используется.
 - README упрощён, устаревшие разделы удалены.
+- Устаревшие документы перенесены в `docs/archive`.
 - Procfile выполняет `pnpm build` перед запуском, раздел деплоя на Railway добавлен в документацию.
 - Скрипт `pre_pr_check.sh` сохраняет лог запуска в `/tmp/apps`.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти, `check_mongo.mjs` пропускает проверку в CI.
@@ -286,7 +287,7 @@
 183. Workflow CI выполняет линт, тесты и сборку клиента
 184. В `CHANGELOG.md` описан процесс релизов и семантического версионирования
 185. `docs/stress_plan.md` дополнен чек-листом отказоустойчивости
-186. Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Основной гайд по стилю — `docs/extended_tailadmin_guide.md`
+186. Удалены устаревшие файлы `dashboard_tailadmin.md`, `tailadmin_figma_design.md` и `TailAdminDesign.fig`. Основной гайд по стилю — `docs/archive/extended_tailadmin_guide.md`
 187. Docker Compose собирает образ из корня проекта; Dockerfile включён в контекст
 188. Маршрут `/api/v1/maps/expand` не требует CSRF-токена
 189. Страница `/cp/logs` получила фильтр по уровню, тексту и дате и сортировку

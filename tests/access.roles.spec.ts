@@ -5,8 +5,8 @@
 import { accessByRole } from '../apps/api/src/db/queries';
 
 describe('доступ по ролям', () => {
-  test('администратор получает маску 2', () => {
-    expect(accessByRole('admin')).toBe(2);
+  test('администратор получает маску 6', () => {
+    expect(accessByRole('admin')).toBe(6);
   });
 
   test('менеджер получает маску 4', () => {

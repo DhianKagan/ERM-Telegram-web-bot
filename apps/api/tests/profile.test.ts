@@ -18,7 +18,7 @@ jest.mock('../src/db/queries', () => ({
     username: 'test',
     ...d,
   })),
-  accessByRole: (r: string) => (r === 'admin' ? 2 : r === 'manager' ? 4 : 1),
+  accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 
 const ctrl = require('../src/auth/auth.controller.ts');

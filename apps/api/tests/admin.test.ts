@@ -11,14 +11,19 @@ const express = require('express');
 const request = require('supertest');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
-const { ACCESS_ADMIN } = require('../src/utils/accessMask');
+const { ACCESS_ADMIN, ACCESS_MANAGER } = require('../src/utils/accessMask');
 
-jest.mock('../src/services/service', () => ({
-  listLogs: jest.fn(async () => [{ _id: '1', message: 'log' }]),
-  writeLog: jest.fn(async () => ({})),
-  listRoles: jest.fn(async () => [{ _id: 'r1', name: 'admin', access: 2 }]),
-  updateRole: jest.fn(async (id, p) => ({ _id: id, permissions: p })),
-}));
+jest.mock('../src/services/service', () => {
+  const { ACCESS_ADMIN, ACCESS_MANAGER } = require('../src/utils/accessMask');
+  return {
+    listLogs: jest.fn(async () => [{ _id: '1', message: 'log' }]),
+    writeLog: jest.fn(async () => ({})),
+    listRoles: jest.fn(async () => [
+      { _id: 'r1', name: 'admin', access: ACCESS_ADMIN | ACCESS_MANAGER },
+    ]),
+    updateRole: jest.fn(async (id, p) => ({ _id: id, permissions: p })),
+  };
+});
 
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (req, _res, next) => {
@@ -31,7 +36,9 @@ jest.mock('../src/api/middleware', () => ({
   },
   checkRole: (expected) => (req, res, next) => {
     if (typeof expected === 'number') {
-      return req.user.access === expected ? next() : res.sendStatus(403);
+      return (req.user.access & expected) === expected
+        ? next()
+        : res.sendStatus(403);
     }
     return req.user.role === expected ? next() : res.sendStatus(403);
   },
@@ -101,7 +108,7 @@ test('получение логов доступно админу', async () => 
   const res = await request(app)
     .get('/api/v1/logs')
     .set('x-role', 'admin')
-    .set('x-access', '2');
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
   expect(res.body[0].message).toBe('log');
   expect(listLogs).toHaveBeenCalledWith({});
 });
@@ -112,7 +119,7 @@ test('фильтры логов передаются в сервис', async () 
       '/api/v1/logs?level=error&message=t&from=2024-01-01&to=2024-01-02&sort=date_asc',
     )
     .set('x-role', 'admin')
-    .set('x-access', '2');
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
   expect(listLogs).toHaveBeenCalledWith(
     expect.objectContaining({
       level: 'error',
@@ -128,7 +135,7 @@ test('некорректный уровень логов игнорируетс�
   await request(app)
     .get('/api/v1/logs?level=bad')
     .set('x-role', 'admin')
-    .set('x-access', '2');
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
   expect(listLogs).toHaveBeenCalledWith({ level: undefined });
 });
 
@@ -144,7 +151,7 @@ test('запись лога вызывает writeLog', async () => {
   await request(app)
     .post('/api/v1/logs')
     .set('x-role', 'admin')
-    .set('x-access', '2')
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
     .send({ message: 'm' });
   expect(writeLog).toHaveBeenCalledWith('m');
 });
@@ -153,7 +160,7 @@ test('получение ролей', async () => {
   const res = await request(app)
     .get('/api/v1/roles')
     .set('x-role', 'admin')
-    .set('x-access', '2');
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
   expect(res.body[0].name).toBe('admin');
 });
 
@@ -161,7 +168,7 @@ test('обновление роли', async () => {
   const res = await request(app)
     .patch('/api/v1/roles/1')
     .set('x-role', 'admin')
-    .set('x-access', '2')
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
     .send({ permissions: ['tasks'] });
   expect(res.body.permissions).toEqual(['tasks']);
 });

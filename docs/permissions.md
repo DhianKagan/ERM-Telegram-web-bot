@@ -13,6 +13,7 @@
 | `ACCESS_MANAGER` | `4`      | Менеджер или промежуточная роль |
 
 Функция `hasAccess(mask, required)` проверяет наличие прав, а `accessByRole(name)` из `apps/api/src/db/queries.ts` вычисляет маску по названию роли.
+Роль `admin` объединяет `ACCESS_ADMIN` и `ACCESS_MANAGER`, наследуя права менеджера.
 
 ## Коллекция `roles`
 

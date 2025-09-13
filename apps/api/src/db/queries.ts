@@ -40,7 +40,7 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
 export function accessByRole(role: string): number {
   switch (role) {
     case 'admin':
-      return ACCESS_ADMIN;
+      return ACCESS_ADMIN | ACCESS_MANAGER;
     case 'manager':
       return ACCESS_MANAGER;
     default:

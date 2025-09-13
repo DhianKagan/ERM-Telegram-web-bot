@@ -1,5 +1,11 @@
-// Извлекает короткий адрес из ссылки Google Maps
+/**
+ * Назначение файла: извлекает короткий адрес из ссылки Google Maps.
+ * Основные модули: parseGoogleAddress.
+ */
 export default function parseGoogleAddress(url: string): string {
+  if (!url) {
+    return url;
+  }
   try {
     const place = url.match(/\/place\/([^/]+)/);
     if (place) {

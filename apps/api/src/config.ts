@@ -7,8 +7,11 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 
 const required = ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'] as const;
-for (const k of required) {
-  if (!process.env[k]) throw new Error(`Переменная ${k} не задана`);
+// Пропускаем проверку при сборке без токена
+if (process.env.NODE_ENV !== 'production-build') {
+  for (const k of required) {
+    if (!process.env[k]) throw new Error(`Переменная ${k} не задана`);
+  }
 }
 
 const mongoUrlEnv = (

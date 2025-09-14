@@ -34,6 +34,7 @@ export const createTask = (
       if (id && window.Telegram?.WebApp) {
         window.Telegram.WebApp.sendData(`task_created:${id}`);
       }
+      clearTasksCache();
       return result;
     },
   );
@@ -55,6 +56,9 @@ export const updateTask = (
     method: "PATCH",
     body,
     onProgress,
+  }).then((r) => {
+    if (r.ok) clearTasksCache();
+    return r;
   });
 };
 
@@ -66,6 +70,13 @@ export interface TasksResponse {
   users: User[] | Record<string, User>;
   total: number;
 }
+
+export const clearTasksCache = () => {
+  // Удаляем все ключи кеша задач
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith("tasks_"))
+    .forEach((k) => localStorage.removeItem(k));
+};
 
 export const clearAnonTasksCache = () => {
   Object.keys(localStorage)

@@ -29,6 +29,8 @@ pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 
+Во время сборки скрипт `scripts/db/ensureDefaults.ts` проверяет наличие ролей `admin`, `manager` и `user` и добавляет их в базу при отсутствии.
+
 ## Локальный запуск API с MongoDB в памяти
 
 ```bash

@@ -71,6 +71,7 @@
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - Документация по маскам доступа и ролям — в `docs/permissions.md`.
 - Миграция `scripts/db/addManagerRole.ts` добавляет роль manager в существующие базы;
+- скрипт `scripts/db/ensureDefaults.ts` при сборке проверяет наличие базовых ролей и создаёт недостающие записи.
   запуск описан в `docs/permissions.md`.
 - FAQ для саппорта — в `docs/support_faq.md`.
 - Устаревшие материалы перенесены в `docs/archive`.

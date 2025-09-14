@@ -3,7 +3,7 @@
   "private": true,
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
-    "prebuild": "node scripts/generate_hero_images.mjs",
+    "prebuild": "ts-node -P apps/api/tsconfig.json scripts/db/ensureDefaults.ts && node scripts/generate_hero_images.mjs",
     "pretest": "pnpm --filter shared build",
     "pretest:unit": "pnpm --filter shared build",
     "pretest:api": "pnpm --filter shared build",

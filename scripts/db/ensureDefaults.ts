@@ -1,6 +1,11 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, Role, config
-import mongoose from 'mongoose';
+let mongoose: typeof import('mongoose');
+try {
+  mongoose = require('mongoose');
+} catch {
+  mongoose = require('../../apps/api/node_modules/mongoose');
+}
 import { Role } from '../../apps/api/src/db/model';
 import config from '../../apps/api/src/config';
 

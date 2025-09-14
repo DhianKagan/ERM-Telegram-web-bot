@@ -44,10 +44,12 @@
 
 ### Миграция роли manager
 
-Для существующих баз данных выполните:
+Скрипт `scripts/db/ensureDefaults.ts` проверяет наличие обязательных ролей и
+добавляет отсутствующие. Он выполняется автоматически во время `pnpm build`,
+при необходимости его можно запустить вручную:
 
 ```bash
-pnpm ts-node scripts/db/addManagerRole.ts
+pnpm ts-node scripts/db/ensureDefaults.ts
 ```
 
 ### Синхронизация ролей пользователей

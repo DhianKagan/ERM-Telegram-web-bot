@@ -62,6 +62,9 @@ async function verifyCode(
         ? 'manager'
         : 'user';
   const access = accessByRole(role);
+  if (u.access !== access) {
+    await updateUser(telegramId, { role });
+  }
   const token = generateToken({
     id: telegramId,
     username: u.username || '',
@@ -94,7 +97,10 @@ async function verifyInitData(initData: string) {
     );
   }
   const role = user.role || 'user';
-  const access = user.access || 1;
+  const access = accessByRole(role);
+  if (user.access !== access) {
+    await updateUser(telegramId, { role });
+  }
   const token = generateToken({
     id: telegramId,
     username: user.username || '',
@@ -119,7 +125,10 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
     );
   }
   const role = user.role || 'user';
-  const access = user.access || 1;
+  const access = accessByRole(role);
+  if (user.access !== access) {
+    await updateUser(telegramId, { role });
+  }
   const token = generateShortToken({
     id: telegramId,
     username: user.username || '',

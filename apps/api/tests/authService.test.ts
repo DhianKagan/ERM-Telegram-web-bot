@@ -33,6 +33,7 @@ const queries = require('../src/db/queries');
 const otp = require('../src/services/otp');
 const verifyInit = require('../src/utils/verifyInitData');
 const { writeLog } = require('../src/services/service');
+const jwt = require('jsonwebtoken');
 
 beforeEach(() => {
   otp.codes.clear();
@@ -77,4 +78,20 @@ test('verifyInitData выбрасывает ошибку при неверных
   await expect(service.verifyInitData('bad')).rejects.toThrow(
     'invalid initData',
   );
+});
+
+test('verifyInitData обновляет access менеджера', async () => {
+  queries.getUser.mockResolvedValueOnce({
+    username: 'm',
+    role: 'manager',
+    access: 1,
+  });
+  verifyInit.mockReturnValueOnce({ user: { id: 4, username: 'm' } });
+  await service.verifyInitData('init');
+  expect(jwt.sign).toHaveBeenCalledWith(
+    expect.objectContaining({ access: 4, role: 'manager' }),
+    expect.anything(),
+    expect.anything(),
+  );
+  expect(queries.updateUser).toHaveBeenCalledWith('4', { role: 'manager' });
 });

@@ -28,6 +28,20 @@ describe('authFetch', () => {
     window.location.href = 'http://localhost/';
   });
 
+  test('отправляет токен и куки', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeResponse(200));
+    // @ts-ignore
+    global.fetch = mockFetch;
+    await authFetch('/foo', { noRedirect: true });
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/foo',
+      expect.objectContaining({
+        credentials: 'include',
+        headers: expect.objectContaining({ 'X-XSRF-TOKEN': 'token' }),
+      }),
+    );
+  });
+
   test('refreshes on 401', async () => {
     const mockFetch = jest
       .fn()

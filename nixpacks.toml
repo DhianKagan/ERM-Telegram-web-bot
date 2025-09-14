@@ -1,0 +1,18 @@
+# Назначение файла: настройка Nixpacks для деплоя на Railway.
+# Модули: установка зависимостей, сборка, запуск через pm2.
+
+[phases.setup]
+cmds = [
+  "corepack enable",
+  "pnpm config set network-concurrency 1",
+  "pnpm config set fetch-retries 5"
+]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm build"]
+
+[start]
+cmd = "npx pm2-runtime apps/api/ecosystem.config.cjs"

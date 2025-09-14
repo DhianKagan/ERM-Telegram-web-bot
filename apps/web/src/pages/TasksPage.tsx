@@ -35,6 +35,7 @@ export default function TasksPage() {
     fetchTasks(
       { page: page + 1, limit: 25, mine: mine ? 1 : undefined },
       user?.telegram_id,
+      true,
     )
       .then((data) => {
         const tasks = data.tasks as TaskExtra[];

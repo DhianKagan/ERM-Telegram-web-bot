@@ -25,6 +25,18 @@
 - Контейнер собирается через `Dockerfile` в корне репозитория.
 - В образ копируется `tsconfig.json`, чтобы `pnpm --dir apps/api build` нашёл конфигурацию
 
+## Миграции базы данных
+
+Скрипты миграций находятся в `scripts/db`. Для добавления роли менеджера
+в существующую базу данных выполните:
+
+```bash
+pnpm ts-node scripts/db/addManagerRole.ts
+```
+
+Идентификаторы ролей задаются переменными `ADMIN_ROLE_ID`, `USER_ROLE_ID` и
+`MANAGER_ROLE_ID`; подробнее см. `docs/permissions.md`.
+
 ### Лимиты запросов
 
 | Группа   | Эндпойнты             | Лимит и окно             |
@@ -121,7 +133,8 @@ BOT_TOKEN=123 scripts/set_bot_commands.sh
 Для маршрутов используется декоратор `Roles` совместно с `rolesGuard`:
 
 ```ts
-router.get('/roles',
+router.get(
+  '/roles',
   authMiddleware(),
   Roles(ACCESS_ADMIN),
   rolesGuard,

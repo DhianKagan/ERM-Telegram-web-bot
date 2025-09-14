@@ -1,10 +1,11 @@
 // Заполнение тестовыми данными
 // Модули: db/model, config
-import { Task, Group, User, Log } from '../../apps/api/src/db/model';
+import { Task, Group, User, Log, Role } from '../../apps/api/src/db/model';
 import config from '../../apps/api/src/config';
 import 'dotenv/config';
 
 async function seed(): Promise<void> {
+  await Role.create({ _id: config.managerRoleId, name: 'manager' });
   const group = await Group.create({ name: 'Default' });
   const user = await User.create({
     telegram_id: 1,

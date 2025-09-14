@@ -8,7 +8,7 @@
     "pretest:unit": "pnpm --filter shared build",
     "pretest:api": "pnpm --filter shared build",
     "pretest:e2e": "./scripts/build_with_tmp.sh",
-    "build": "pnpm --filter shared build && pnpm -r --filter '!shared' build",
+    "build": "pnpm --filter shared build && pnpm -r --filter '!shared' build && pnpm ts-node -P apps/api/tsconfig.json scripts/db/ensureDefaults.ts",
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",

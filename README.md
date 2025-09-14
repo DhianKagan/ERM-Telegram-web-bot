@@ -63,6 +63,12 @@ pnpm approve-builds  # контроль скриптов зависимосте�
 pnpm ts-node scripts/db/addManagerRole.ts
 ```
 
+Для синхронизации ролей пользователей выполните:
+
+```bash
+pnpm ts-node scripts/db/syncUserRoles.ts
+```
+
 ## Hero-изображения
 
 Скрипт `scripts/generate_hero_images.mjs` создаёт изображения `apps/web/public/hero/index.png`

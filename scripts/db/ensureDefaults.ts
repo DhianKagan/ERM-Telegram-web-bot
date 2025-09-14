@@ -1,6 +1,6 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, dotenv, path
-import path from 'path';
+import * as path from 'path'; // модуль для работы с путями
 
 const dotenv: any = (() => {
   try {

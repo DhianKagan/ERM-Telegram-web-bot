@@ -50,6 +50,7 @@ export default function applySecurity(app: express.Express): void {
   type ResWithNonce = ServerResponse & { locals: { cspNonce: string } };
   const scriptSrc = [
     "'self'",
+    "'unsafe-inline'",
     (_req: IncomingMessage, res: ServerResponse) =>
       `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
     "'sha256-2/O23rVGzYb9aZ8tq1s0n2ikD9CzHyqf5NS+VJWXcDI='",
@@ -59,13 +60,13 @@ export default function applySecurity(app: express.Express): void {
 
   const styleSrc = [
     "'self'",
+    "'unsafe-inline'",
+    (_req: IncomingMessage, res: ServerResponse) =>
+      `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
     ...parseList(process.env.CSP_STYLE_SRC_ALLOWLIST),
   ];
 
-  const fontSrc = [
-    "'self'",
-    ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST),
-  ];
+  const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
 
   const directives: NonNullable<CSPConfig['directives']> = {
     'frame-src': ["'self'", 'https://oauth.telegram.org'],

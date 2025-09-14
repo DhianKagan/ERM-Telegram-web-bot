@@ -1,3 +1,7 @@
 // Назначение: поддельная реализация jsonwebtoken для тестов. Модули: jest.
-const jwtMock = { sign: () => 'token', decode: () => ({ id: 5 }) };
+const jwtMock = {
+  sign: jest.fn(() => 'token'),
+  verify: jest.fn(() => ({})),
+  decode: jest.fn(() => ({ id: 5 })),
+};
 export = jwtMock;

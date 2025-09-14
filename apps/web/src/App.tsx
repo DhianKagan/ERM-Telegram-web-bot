@@ -34,6 +34,7 @@ import AdminRoute from "./components/AdminRoute";
 import ManagerRoute from "./components/ManagerRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import AlertDialog from "./components/AlertDialog";
 
 function Content() {
   const { collapsed, open } = useSidebar();
@@ -175,6 +176,11 @@ function Layout() {
 }
 
 export default function App() {
+  const [initialAlert, setInitialAlert] = React.useState<string | null>(
+    typeof window !== "undefined"
+      ? (window as any).__ALERT_MESSAGE__ || null
+      : null,
+  );
   return (
     <I18nextProvider i18n={i18n}>
       <AuthProvider>
@@ -186,6 +192,12 @@ export default function App() {
                   <Router>
                     <Layout />
                   </Router>
+                  <AlertDialog
+                    open={!!initialAlert}
+                    message={initialAlert || ""}
+                    onClose={() => setInitialAlert(null)}
+                    closeText={i18n.t("close")}
+                  />
                 </ErrorBoundary>
               </TasksProvider>
             </SidebarProvider>

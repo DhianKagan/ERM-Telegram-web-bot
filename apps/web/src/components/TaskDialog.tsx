@@ -5,6 +5,7 @@ import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
 import ConfirmDialog from "./ConfirmDialog";
+import AlertDialog from "./AlertDialog";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
 import { taskFields as fields } from "shared";
@@ -522,25 +523,30 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             }
           });
       }
-      if (data) window.alert(isEdit ? t("taskUpdated") : t("taskCreated"));
+      if (data) setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
       if (data && onSave) onSave(data);
       setAttachments([]);
     } catch (e) {
       console.error(e);
-      window.alert(t("taskSaveFailed"));
+      setAlertMsg(t("taskSaveFailed"));
     } finally {
       setIsSubmitting(false);
     }
   });
 
+  const [alertMsg, setAlertMsg] = React.useState<string | null>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
+  const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
+  const [pendingDoneOption, setPendingDoneOption] = React.useState("");
 
   const handleDelete = async () => {
     if (!id) return;
     await deleteTask(id);
     if (onSave) onSave(null);
     onClose();
-    window.alert(t("taskDeleted"));
+    setAlertMsg(t("taskDeleted"));
   };
 
   const resetForm = () => {
@@ -572,28 +578,42 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const acceptTask = async () => {
     if (!id) return;
-    const data = await updateTask(id, { status: "В работе" });
+    const prev = status;
+    setStatus("В работе");
+    const [data] = await Promise.all([
+      updateTask(id, { status: "В работе" }).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      updateTaskStatus(id, "В работе"),
+    ]);
     if (data) {
-      setStatus("В работе");
       if (onSave) onSave(data);
+    } else {
+      setStatus(prev);
+      setAlertMsg(t("taskSaveFailed"));
     }
-    await updateTaskStatus(id, "В работе");
     setSelectedAction("accept");
   };
 
   const completeTask = async (opt: string) => {
     if (!id) return;
-    const data = await updateTask(id, {
-      status: "Выполнена",
-      completed_at: new Date().toISOString(),
-      completion_result: opt,
-    });
+    const prev = status;
+    setStatus("Выполнена");
+    const [data] = await Promise.all([
+      updateTask(id, {
+        status: "Выполнена",
+        completed_at: new Date().toISOString(),
+        completion_result: opt,
+      }).then((r) => (r.ok ? r.json() : null)),
+      updateTaskStatus(id, "Выполнена"),
+    ]);
     if (data) {
-      setStatus("Выполнена");
       if (onSave) onSave(data);
+    } else {
+      setStatus(prev);
+      setAlertMsg(t("taskSaveFailed"));
     }
     setShowDoneSelect(false);
-    await updateTaskStatus(id, "Выполнена");
     setSelectedAction("done");
   };
 
@@ -1081,21 +1101,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <button
                 className="btn-blue flex items-center justify-center rounded-full"
                 disabled={isSubmitting}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      isEdit
-                        ? t("saveChangesQuestion")
-                        : t("createTaskQuestion"),
-                    )
-                  ) {
-                    setIsSubmitting(true);
-                    submit();
-                  }
-                }}
+                onClick={() => setShowSaveConfirm(true)}
               >
                 {isSubmitting ? <Spinner /> : isEdit ? t("save") : t("create")}
               </button>
+              <ConfirmDialog
+                open={showSaveConfirm}
+                message={
+                  isEdit ? t("saveChangesQuestion") : t("createTaskQuestion")
+                }
+                confirmText={isEdit ? t("save") : t("create")}
+                cancelText={t("cancel")}
+                onConfirm={() => {
+                  setShowSaveConfirm(false);
+                  setIsSubmitting(true);
+                  submit();
+                }}
+                onCancel={() => setShowSaveConfirm(false)}
+              />
             </div>
           )}
           {isAdmin && (
@@ -1116,7 +1139,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
-                  onClick={acceptTask}
+                  onClick={() => setShowAcceptConfirm(true)}
                 >
                   {t("accept")}
                 </button>
@@ -1128,20 +1151,48 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 </button>
               </div>
               {showDoneSelect && (
-                <select
-                  onChange={(e) =>
-                    e.target.value && completeTask(e.target.value)
-                  }
-                  className="mt-1 mb-2 w-full rounded border px-2 py-1"
-                >
-                  <option value="">{t("selectOption")}</option>
-                  {doneOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v) {
+                        setPendingDoneOption(v);
+                        setShowDoneConfirm(true);
+                      }
+                    }}
+                    className="mt-1 mb-2 w-full rounded border px-2 py-1"
+                  >
+                    <option value="">{t("selectOption")}</option>
+                    {doneOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </>
               )}
+              <ConfirmDialog
+                open={showAcceptConfirm}
+                message={t("acceptTaskQuestion")}
+                confirmText={t("accept")}
+                cancelText={t("cancel")}
+                onConfirm={() => {
+                  setShowAcceptConfirm(false);
+                  acceptTask();
+                }}
+                onCancel={() => setShowAcceptConfirm(false)}
+              />
+              <ConfirmDialog
+                open={showDoneConfirm}
+                message={t("completeTaskQuestion")}
+                confirmText={t("done")}
+                cancelText={t("cancel")}
+                onConfirm={() => {
+                  setShowDoneConfirm(false);
+                  completeTask(pendingDoneOption);
+                }}
+                onCancel={() => setShowDoneConfirm(false)}
+              />
             </>
           )}
         </>
@@ -1171,6 +1222,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
         </div>
       )}
+      <AlertDialog
+        open={alertMsg !== null}
+        message={alertMsg || ""}
+        onClose={() => setAlertMsg(null)}
+        closeText={t("close")}
+      />
     </div>
   );
 }

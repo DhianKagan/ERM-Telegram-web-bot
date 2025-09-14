@@ -16,6 +16,8 @@
   "department": "Отдел",
   "delete": "Удалить",
   "deleteTaskQuestion": "Удалить задачу?",
+  "acceptTaskQuestion": "Принять задачу?",
+  "completeTaskQuestion": "Завершить задачу?",
   "distance": "Расстояние",
   "done": "Выполнено",
   "doneChanged": "Задача выполнена с изменениями",

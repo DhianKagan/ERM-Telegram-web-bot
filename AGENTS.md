@@ -70,6 +70,8 @@
 - Документация по модулям находится в `docs/architecture.md`.
 - Документация по безопасности — в `docs/security/cookies_csrf.md`.
 - Документация по маскам доступа и ролям — в `docs/permissions.md`.
+- Миграция `scripts/db/addManagerRole.ts` добавляет роль manager в существующие базы;
+  запуск описан в `docs/permissions.md`.
 - FAQ для саппорта — в `docs/support_faq.md`.
 - Устаревшие материалы перенесены в `docs/archive`.
 - При изменениях обновляйте `README.md`, `CHANGELOG.md`, `ROADMAP.md` и `AGENTS.md`.

@@ -17,7 +17,9 @@ RUN corepack enable \
 # Копирование исходников, сборка сервера и клиента, перенос фронтенда в public API при наличии dist
 COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install \
-  && pnpm build \
+  && pnpm --filter shared build \
+  && pnpm -r --filter '!shared' build \
+  && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist \
   && if [ -d apps/web/dist ]; then cp -r apps/web/dist/* apps/api/public/; fi \
   && pnpm prune --prod \
   && pnpm store prune
@@ -26,6 +28,5 @@ FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app .
-WORKDIR /app/apps/api
 EXPOSE 3000
-CMD ["npx", "pm2-runtime", "ecosystem.config.cjs"]
+CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && npx pm2-runtime ecosystem.config.cjs"]

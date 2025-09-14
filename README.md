@@ -78,6 +78,7 @@ pnpm ts-node scripts/db/syncUserRoles.ts
 чтобы установка зависимостей не требовала токена.
 
 Dockerfile копирует каталог `patches` перед установкой зависимостей для применения патчей.
+Файл `nixpacks.toml` настраивает сборку на Railway через Nixpacks и выполняет установку зависимостей без режима offline.
 
 Подробные инструкции см. в [docs/technical_manual.md](docs/technical_manual.md).
 Описание масок доступа и ролей: [docs/permissions.md](docs/permissions.md).

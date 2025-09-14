@@ -10,6 +10,7 @@
 - Сборка TypeScript работает в строгом режиме; флаг `noImplicitAny` включён.
 - Сборка клиента Vite очищает каталог вывода через `emptyOutDir`.
 - Dockerfile кеширует зависимости через `pnpm fetch` и собирает пакеты командой `pnpm build`; перед `pnpm fetch` копируется каталог `patches`.
+- При запуске образа Docker `ensureDefaults` выполняется в `CMD`, токен `BOT_TOKEN` передаётся через переменную окружения.
 - Railway использует Nixpacks с `nixpacks.toml`, установка зависимостей выполняется без режима offline.
 - Procfile запускает `pnpm build` перед `pm2-runtime`, `Procfile.railway` содержит шаг `release: pnpm build`.
 - Текстовые сообщения бота в `apps/api/src/messages.ts` должны быть на русском.

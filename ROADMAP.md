@@ -404,3 +404,5 @@
 285. updateUser обновляет roleId по названию роли, добавлен скрипт `syncUserRoles.ts`
 
 - Пример `.env` содержит пустой `SESSION_SECRET`; генерация через `crypto.randomBytes(64)`.
+
+286. Dockerfile запускает `ensureDefaults` при старте контейнера, `BOT_TOKEN` задаётся при запуске.

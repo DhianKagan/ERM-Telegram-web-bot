@@ -80,6 +80,15 @@ pnpm ts-node scripts/db/syncUserRoles.ts
 Dockerfile копирует каталог `patches` перед установкой зависимостей для применения патчей.
 Файл `nixpacks.toml` настраивает сборку на Railway через Nixpacks и выполняет установку зависимостей без режима offline.
 
+## Docker
+
+```bash
+docker build -t erm-bot .
+docker run -e BOT_TOKEN=123 erm-bot
+```
+
+Токен бота передаётся контейнеру через переменную окружения `BOT_TOKEN`.
+
 Подробные инструкции см. в [docs/technical_manual.md](docs/technical_manual.md).
 Описание масок доступа и ролей: [docs/permissions.md](docs/permissions.md).
 FAQ для саппорта: [docs/support_faq.md](docs/support_faq.md).

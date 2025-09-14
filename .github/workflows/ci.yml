@@ -87,7 +87,7 @@ jobs:
       - name: Установка браузеров Playwright
         run: sudo env "PATH=$PATH" npx playwright install --with-deps
       - name: E2E тесты
-        run: pnpm test:e2e -- --project="${{ matrix.project }}"
+        run: pnpm run test:e2e --project="${{ matrix.project }}"
       - name: Сохранение артефактов
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

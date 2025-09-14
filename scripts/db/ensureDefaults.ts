@@ -1,18 +1,52 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
-// Модули: mongoose, Role, config
-let mongoose: typeof import('mongoose');
-try {
-  mongoose = require('mongoose');
-} catch {
-  mongoose = require('../../apps/api/node_modules/mongoose');
+// Модули: mongoose, dotenv, path
+import path from 'path';
+
+const dotenv: any = (() => {
+  try {
+    return require('dotenv');
+  } catch {
+    return require('../../apps/api/node_modules/dotenv');
+  }
+})();
+
+const mongoose: any = (() => {
+  try {
+    return require('mongoose');
+  } catch {
+    return require('../../apps/api/node_modules/mongoose');
+  }
+})();
+
+// Загружаем переменные окружения, не обращаясь к config
+dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+
+const mongoUrl = (
+  process.env.MONGO_DATABASE_URL ||
+  process.env.MONGODB_URI ||
+  process.env.DATABASE_URL ||
+  ''
+).trim();
+if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
+  throw new Error(
+    'MONGO_DATABASE_URL должен начинаться с mongodb:// или mongodb+srv://',
+  );
 }
-import { Role } from '../../apps/api/src/db/model';
-import config from '../../apps/api/src/config';
+
+const adminRoleId = process.env.ADMIN_ROLE_ID || '686591126cc86a6bd16c18af';
+const userRoleId = process.env.USER_ROLE_ID || '686633fdf6896f1ad3fa063e';
+const managerRoleId = process.env.MANAGER_ROLE_ID || '686633fdf6896f1ad3fa063f';
+
+const roleSchema = new mongoose.Schema({
+  name: String,
+  permissions: [String],
+});
+const Role = mongoose.model('Role', roleSchema);
 
 async function ensureDefaults(): Promise<void> {
   const timeout = 5000;
   try {
-    await mongoose.connect(config.mongoUrl, {
+    await mongoose.connect(mongoUrl, {
       serverSelectionTimeoutMS: timeout,
     });
     const db = mongoose.connection.db;
@@ -29,9 +63,9 @@ async function ensureDefaults(): Promise<void> {
   }
 
   const ids: Record<string, string> = {
-    ADMIN_ROLE_ID: config.adminRoleId,
-    USER_ROLE_ID: config.userRoleId,
-    MANAGER_ROLE_ID: config.managerRoleId,
+    ADMIN_ROLE_ID: adminRoleId,
+    USER_ROLE_ID: userRoleId,
+    MANAGER_ROLE_ID: managerRoleId,
   };
   for (const [key, value] of Object.entries(ids)) {
     if (!process.env[key]) {
@@ -42,9 +76,9 @@ async function ensureDefaults(): Promise<void> {
   }
 
   const roles = [
-    { _id: config.userRoleId, name: 'user' },
-    { _id: config.adminRoleId, name: 'admin' },
-    { _id: config.managerRoleId, name: 'manager' },
+    { _id: userRoleId, name: 'user' },
+    { _id: adminRoleId, name: 'admin' },
+    { _id: managerRoleId, name: 'manager' },
   ];
 
   for (const r of roles) {

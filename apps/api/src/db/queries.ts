@@ -334,6 +334,10 @@ export async function updateUser(
     }
   } else if (sanitized.role) {
     sanitized.access = accessByRole(sanitized.role);
+    const dbRole = await Role.findOne({ name: sanitized.role });
+    if (dbRole) {
+      sanitized.roleId = dbRole._id as Types.ObjectId;
+    }
   }
   return User.findOneAndUpdate(
     { telegram_id: { $eq: telegramId } },

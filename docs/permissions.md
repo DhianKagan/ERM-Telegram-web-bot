@@ -50,6 +50,14 @@
 pnpm ts-node scripts/db/addManagerRole.ts
 ```
 
+### Синхронизация ролей пользователей
+
+Для обновления полей `role`, `roleId` и `access` выполните:
+
+```bash
+pnpm ts-node scripts/db/syncUserRoles.ts
+```
+
 ## Создание задач
 
 Создавать задачи могут только пользователи с ролью `manager` или `admin`

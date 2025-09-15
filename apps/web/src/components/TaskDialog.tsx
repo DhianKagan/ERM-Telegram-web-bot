@@ -325,8 +325,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         const formValues = {
           title: t.title || "",
           description: t.task_description || "",
-          assignees: t.assignees || [],
-          controllers: t.controllers || [],
+          assignees: (t.assignees || []).map(String),
+          controllers: (t.controllers || []).map(String),
           startDate: t.start_date
             ? new Date(t.start_date).toISOString().slice(0, 16)
             : "",
@@ -356,7 +356,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         setDepartment(String(t.department || ""));
         setUsers((p) => {
           const list = [...p];
-          Object.values(d.users || {}).forEach((u) => {
+          const uMap = (d.users || {}) as Record<string, UserBrief>;
+          Object.values(uMap).forEach((u) => {
             if (!list.some((v) => v.telegram_id === u.telegram_id))
               list.push(u);
           });
@@ -484,7 +485,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
       if (distanceKm !== null) payload.route_distance_km = distanceKm;
       if (routeLink) payload.google_route_url = routeLink;
-      let data;
+      let data: any;
       const sendPayload = { ...payload, attachments };
       if (isEdit && id) {
         data = await updateTask(id, sendPayload);
@@ -497,34 +498,84 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           .then((d) => {
             if (d) {
               const t = d.task || d;
+              const curTaskType = t.task_type || DEFAULT_TASK_TYPE;
+              const curPriority = t.priority || DEFAULT_PRIORITY;
+              const curTransport = t.transport_type || DEFAULT_TRANSPORT;
+              const curPayment = t.payment_method || DEFAULT_PAYMENT;
+              const curStatus = t.status || DEFAULT_STATUS;
+              const assignees = (t.assignees || []).map(String);
+              const controllers = (t.controllers || []).map(String);
+              const startDate = t.start_date
+                ? new Date(t.start_date).toISOString().slice(0, 16)
+                : "";
+              const dueDate = t.due_date
+                ? new Date(t.due_date).toISOString().slice(0, 16)
+                : "";
               reset({
                 title: t.title || "",
                 description: t.task_description || "",
-                assignees: t.assignees || [],
-                controllers: t.controllers || [],
-                startDate: t.start_date
-                  ? new Date(t.start_date).toISOString().slice(0, 16)
-                  : "",
-                dueDate: t.due_date
-                  ? new Date(t.due_date).toISOString().slice(0, 16)
-                  : "",
+                assignees,
+                controllers,
+                startDate,
+                dueDate,
               });
+              setTaskType(curTaskType);
+              setComment(t.comment || "");
+              setPriority(curPriority);
+              setTransportType(curTransport);
+              setPaymentMethod(curPayment);
+              setStatus(curStatus);
               setCreator(String(t.created_by || ""));
               setDepartment(String(t.department || ""));
+              setStart(t.start_location || "");
+              setStartLink(t.start_location_link || "");
+              setEnd(t.end_location || "");
+              setEndLink(t.end_location_link || "");
               setAttachments((t.attachments as Attachment[]) || []);
               setUsers((p) => {
                 const list = [...p];
-                Object.values(d.users || {}).forEach((u) => {
+                const uMap = (d.users || {}) as Record<string, UserBrief>;
+                Object.values(uMap).forEach((u) => {
                   if (!list.some((v) => v.telegram_id === u.telegram_id))
                     list.push(u);
                 });
                 return list;
               });
+              setDistanceKm(
+                typeof t.route_distance_km === "number"
+                  ? t.route_distance_km
+                  : null,
+              );
+              initialRef.current = {
+                title: t.title || "",
+                taskType: curTaskType,
+                description: t.task_description || "",
+                comment: t.comment || "",
+                priority: curPriority,
+                transportType: curTransport,
+                paymentMethod: curPayment,
+                status: curStatus,
+                creator: String(t.created_by || ""),
+                department: String(t.department || ""),
+                assignees,
+                start: t.start_location || "",
+                startLink: t.start_location_link || "",
+                end: t.end_location || "",
+                endLink: t.end_location_link || "",
+                startDate,
+                dueDate,
+                controllers,
+                attachments: (t.attachments as Attachment[]) || [],
+                distanceKm:
+                  typeof t.route_distance_km === "number"
+                    ? t.route_distance_km
+                    : null,
+              };
             }
           });
       }
       if (data) setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
-      if (data && onSave) onSave(data);
+      if (data && onSave) onSave(data as Task);
       setAttachments([]);
     } catch (e) {
       console.error(e);
@@ -832,8 +883,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 <MultiUserSelect
                   label={t("assignees")}
                   users={users}
-                  value={field.value}
-                  onChange={field.onChange}
+                  value={(field.value || []).map(String)}
+                  onChange={(v) => field.onChange(v.map(String))}
                   disabled={!editing}
                 />
               )}
@@ -1015,7 +1066,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               control={control}
               render={({ field }) => (
                 <CKEditorPopup
-                  value={field.value}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   readOnly={!editing}
                 />
@@ -1037,8 +1088,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <MultiUserSelect
                 label={t("controller")}
                 users={users}
-                value={field.value}
-                onChange={field.onChange}
+                value={(field.value || []).map(String)}
+                onChange={(v) => field.onChange(v.map(String))}
                 disabled={!editing}
               />
             )}

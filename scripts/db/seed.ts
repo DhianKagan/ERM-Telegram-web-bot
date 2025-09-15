@@ -5,22 +5,41 @@ import config from '../../apps/api/src/config';
 import 'dotenv/config';
 
 async function seed(): Promise<void> {
-  await Role.create({ _id: config.managerRoleId, name: 'manager' });
-  const group = await Group.create({ name: 'Default' });
-  const user = await User.create({
-    telegram_id: 1,
-    username: 'admin',
-    role: 'admin',
-    roleId: config.adminRoleId,
-    access: 2,
-  });
-  await Task.create({
+  const roleExists = await Role.exists({ _id: config.managerRoleId });
+  if (!roleExists) {
+    await Role.create({ _id: config.managerRoleId, name: 'manager' });
+  }
+
+  let group = await Group.findOne({ name: 'Default' });
+  if (!group) {
+    group = await Group.create({ name: 'Default' });
+  }
+
+  let user = await User.findOne({ telegram_id: 1 });
+  if (!user) {
+    user = await User.create({
+      telegram_id: 1,
+      username: 'admin',
+      role: 'admin',
+      roleId: config.adminRoleId,
+      access: 2,
+    });
+  }
+
+  const taskExists = await Task.exists({
     title: 'Тестовая задача',
-    task_description: 'Пример',
-    priority: 'Срочно',
-    group_id: group._id,
     assigned_user_id: user.telegram_id,
   });
+  if (!taskExists) {
+    await Task.create({
+      title: 'Тестовая задача',
+      task_description: 'Пример',
+      priority: 'Срочно',
+      group_id: group._id,
+      assigned_user_id: user.telegram_id,
+    });
+  }
+
   await Log.create({ message: 'База заполнена' });
 }
 

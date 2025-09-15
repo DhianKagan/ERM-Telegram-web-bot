@@ -16,7 +16,7 @@ RUN corepack enable \
 
 # Копирование исходников, сборка сервера и клиента, перенос фронтенда в public API при наличии dist
 COPY . .
-RUN pnpm install --offline --frozen-lockfile || pnpm install \
+RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfile \
   && pnpm --filter shared build \
   && pnpm -r --filter '!shared' build \
   && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist --types node \

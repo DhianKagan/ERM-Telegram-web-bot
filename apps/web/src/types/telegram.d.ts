@@ -11,6 +11,7 @@ declare namespace Telegram {
     initData: string;
     initDataUnsafe: Record<string, unknown>;
     sendData(data: string): void;
+    close(): void;
     translate?(key: string): string;
   }
 }

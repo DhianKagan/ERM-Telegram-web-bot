@@ -42,7 +42,7 @@ pnpm run dev # запуск api и web без таймаута PNPM
 ## Сборка и проверки
 
 ```bash
-pnpm build       # сборка проекта
+pnpm build       # сборка проекта и компиляция ensureDefaults
 pnpm size        # контроль размера бандла
 pnpm a11y        # проверка контрастности
 pnpm approve-builds  # контроль скриптов зависимостей

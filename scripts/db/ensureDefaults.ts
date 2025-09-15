@@ -6,7 +6,7 @@ const dotenv: any = (() => {
   try {
     return require('dotenv');
   } catch {
-    return require('../../apps/api/node_modules/dotenv');
+    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv'));
   }
 })();
 
@@ -14,7 +14,7 @@ const mongoose: any = (() => {
   try {
     return require('mongoose');
   } catch {
-    return require('../../apps/api/node_modules/mongoose');
+    return require(path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'));
   }
 })();
 

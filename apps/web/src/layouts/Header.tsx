@@ -3,9 +3,9 @@
 import React from "react";
 import { useSidebar } from "../context/useSidebar";
 import { useAuth } from "../context/useAuth";
-import NotificationDropdown from "../components/NotificationDropdown";
+import ProfileDropdown from "../components/ProfileDropdown";
 import ThemeToggle from "../components/ThemeToggle";
-import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
 export default function Header() {
@@ -43,9 +43,9 @@ export default function Header() {
         {user && (
           <>
             <ThemeToggle />
-            <NotificationDropdown notifications={[t("newMessage")]}>
-              <BellIcon className="h-5 w-5" />
-            </NotificationDropdown>
+            <ProfileDropdown>
+              <UserCircleIcon className="h-5 w-5" />
+            </ProfileDropdown>
           </>
         )}
       </div>

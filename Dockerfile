@@ -19,7 +19,7 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfile \
   && pnpm --filter shared build \
   && pnpm -r --filter '!shared' build \
-  && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist --types node \
+  && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist --rootDir . --types node \
   && if [ -d apps/web/dist ]; then cp -r apps/web/dist/* apps/api/public/; fi \
   && pnpm prune --prod \
   && pnpm store prune

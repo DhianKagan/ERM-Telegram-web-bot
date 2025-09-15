@@ -83,28 +83,46 @@ export default function taskColumns(
     },
     {
       header: "Старт",
-      accessorKey: "startCoordinates",
+      accessorKey: "start_location",
       meta: { minWidth: "10rem", maxWidth: "14rem" },
-      cell: (p) => {
-        const v = p.getValue<any>();
-        const text =
-          v && typeof v.lat === "number" && typeof v.lng === "number"
-            ? `${v.lat}, ${v.lng}`
-            : "";
-        return <span title={text}>{text}</span>;
+      cell: ({ row }) => {
+        const name = row.original.start_location || "";
+        const link = row.original.start_location_link;
+        return link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+            title={name}
+          >
+            {name}
+          </a>
+        ) : (
+          <span title={name}>{name}</span>
+        );
       },
     },
     {
       header: "Финиш",
-      accessorKey: "finishCoordinates",
+      accessorKey: "end_location",
       meta: { minWidth: "10rem", maxWidth: "14rem" },
-      cell: (p) => {
-        const v = p.getValue<any>();
-        const text =
-          v && typeof v.lat === "number" && typeof v.lng === "number"
-            ? `${v.lat}, ${v.lng}`
-            : "";
-        return <span title={text}>{text}</span>;
+      cell: ({ row }) => {
+        const name = row.original.end_location || "";
+        const link = row.original.end_location_link;
+        return link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+            title={name}
+          >
+            {name}
+          </a>
+        ) : (
+          <span title={name}>{name}</span>
+        );
       },
     },
     {

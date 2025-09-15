@@ -51,10 +51,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+  // logout полностью очищает кеш и закрывает мини-приложение
   const logout = async () => {
     await apiLogout();
     setUserState(null);
-    clearAnonTasksCache();
+    try {
+      clearAnonTasksCache();
+      localStorage.clear();
+      sessionStorage.clear();
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      document.cookie.split(";").forEach((c) => {
+        const eq = c.indexOf("=");
+        const name = (eq > -1 ? c.slice(0, eq) : c).trim();
+        if (name)
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+      });
+    } catch {
+      /* игнорируем очистку */
+    }
+    if (window.Telegram?.WebApp) window.Telegram.WebApp.close();
   };
   return (
     <AuthContext.Provider value={{ user, loading }}>

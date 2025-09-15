@@ -72,7 +72,7 @@ app.patch(
     if (!ids.includes(Number(user.id))) {
       return res.status(403).json({ error: 'forbidden' });
     }
-    await updateTaskStatus(req.params.id, req.body.status);
+    await updateTaskStatus(req.params.id, req.body.status, user.id);
     res.json({ status: 'ok' });
   }),
 );
@@ -94,5 +94,5 @@ test('обновляет статус задачи', async () => {
     .set('Authorization', `tma ${initData}`)
     .send({ status: 'В работе' });
   expect(res.body.status).toBe('ok');
-  expect(updateTaskStatus).toHaveBeenCalledWith('1', 'В работе');
+  expect(updateTaskStatus).toHaveBeenCalledWith('1', 'В работе', 123);
 });

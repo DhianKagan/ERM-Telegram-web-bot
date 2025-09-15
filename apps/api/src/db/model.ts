@@ -139,13 +139,21 @@ export interface Attachment {
 
 export interface HistoryEntry {
   changed_at: Date;
-  changes: Record<string, unknown>;
+  changed_by: number;
+  changes: {
+    from: Record<string, unknown>;
+    to: Record<string, unknown>;
+  };
 }
 
 const historySchema = new Schema<HistoryEntry>(
   {
     changed_at: { type: Date, default: Date.now },
-    changes: Schema.Types.Mixed,
+    changed_by: { type: Number, required: true },
+    changes: {
+      from: Schema.Types.Mixed,
+      to: Schema.Types.Mixed,
+    },
   },
   { _id: false },
 );

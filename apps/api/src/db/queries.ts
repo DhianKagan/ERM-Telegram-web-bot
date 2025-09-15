@@ -51,7 +51,11 @@ export function accessByRole(role: string): number {
 export async function createTask(
   data: Partial<TaskDocument>,
 ): Promise<TaskDocument> {
-  const entry = { changes: data, changed_at: new Date() };
+  const entry = {
+    changed_at: new Date(),
+    changed_by: data.created_by || 0,
+    changes: { from: {}, to: data },
+  };
   return Task.create({ ...data, history: [entry] });
 }
 
@@ -77,13 +81,30 @@ export async function listMentionedTasks(
 export async function updateTask(
   id: string,
   fields: Partial<TaskDocument>,
+  userId: number,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  const prev = await Task.findById(id);
+  if (!prev) return null;
+  const from: Record<string, unknown> = {};
+  const to: Record<string, unknown> = {};
+  Object.entries(data).forEach(([k, v]) => {
+    const oldVal = (prev as unknown as Record<string, unknown>)[k];
+    if (oldVal !== v) {
+      from[k] = oldVal;
+      to[k] = v as unknown;
+    }
+  });
+  const entry = {
+    changed_at: new Date(),
+    changed_by: userId,
+    changes: { from, to },
+  };
   return Task.findByIdAndUpdate(
     id,
     {
       $set: data,
-      $push: { history: { changes: data, changed_at: new Date() } },
+      $push: { history: entry },
     },
     { new: true },
   );
@@ -92,8 +113,9 @@ export async function updateTask(
 export async function updateTaskStatus(
   id: string,
   status: string,
+  userId: number,
 ): Promise<TaskDocument | null> {
-  return updateTask(id, { status } as Partial<TaskDocument>);
+  return updateTask(id, { status } as Partial<TaskDocument>, userId);
 }
 
 export interface TaskFilters {
@@ -180,13 +202,22 @@ export async function searchTasks(text: string): Promise<TaskDocument[]> {
 export async function addTime(
   id: string,
   minutes: number,
+  userId = 0,
 ): Promise<TaskDocument | null> {
   const task = await Task.findById(id);
   if (!task) return null;
-  task.time_spent = (task.time_spent || 0) + minutes;
+  const before = task.time_spent || 0;
+  task.time_spent = before + minutes;
   task.history = [
     ...(task.history || []),
-    { changes: { time_spent: task.time_spent }, changed_at: new Date() },
+    {
+      changed_at: new Date(),
+      changed_by: userId,
+      changes: {
+        from: { time_spent: before },
+        to: { time_spent: task.time_spent },
+      },
+    },
   ];
   await task.save();
   return task;
@@ -200,7 +231,13 @@ export async function bulkUpdate(
     { _id: { $in: ids } },
     {
       $set: data,
-      $push: { history: { changes: data, changed_at: new Date() } },
+      $push: {
+        history: {
+          changed_at: new Date(),
+          changed_by: 0,
+          changes: { from: {}, to: data },
+        },
+      },
     },
   );
 }

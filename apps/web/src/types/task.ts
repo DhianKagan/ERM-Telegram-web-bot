@@ -4,8 +4,13 @@
 export interface HistoryItem {
   /** Время изменения */
   changed_at: string;
-  /** Объект изменений */
-  changes: Record<string, unknown>;
+  /** Кто изменил */
+  changed_by: number;
+  /** Состояния до и после */
+  changes: {
+    from: Record<string, unknown>;
+    to: Record<string, unknown>;
+  };
 }
 
 export interface UserBrief {

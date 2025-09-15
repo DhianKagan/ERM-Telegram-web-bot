@@ -18,6 +18,9 @@ jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
   updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
+  getUser: jest.fn(async (id: string) =>
+    id === '1' ? { telegram_id: 1, username: 'test' } : null,
+  ),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 
@@ -43,7 +46,7 @@ jest.mock('../src/api/middleware', () => ({
     res.status(500).json({ error: err.message }),
 }));
 
-const { listUsers, createUser, updateUser } = require('../src/db/queries');
+const { listUsers, createUser, updateUser, getUser } = require('../src/db/queries');
 const {
   verifyToken,
   checkRole,
@@ -62,6 +65,19 @@ app.get(
   checkRole(ACCESS_ADMIN),
   asyncHandler(async (_req, res) => {
     res.json(await listUsers());
+  }),
+);
+app.get(
+  '/api/v1/users/:id',
+  usersRateLimiter,
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const user = await getUser(req.params.id);
+    if (!user) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json({ ...user, username: String(user.telegram_id) });
   }),
 );
 app.post(
@@ -134,4 +150,22 @@ test('обновление пользователя', async () => {
     .send({ username: 'new' });
   expect(res.status).toBe(200);
   expect(updateUser).toHaveBeenCalled();
+});
+
+test('пользователь получает карточку сотрудника', async () => {
+  const res = await request(app)
+    .get('/api/v1/users/1')
+    .set('x-role', 'user')
+    .set('x-access', '1');
+  expect(res.status).toBe(200);
+  expect(getUser).toHaveBeenCalledWith('1');
+  expect(res.body.username).toBe('1');
+});
+
+test('карточка сотрудника не найдена', async () => {
+  const res = await request(app)
+    .get('/api/v1/users/2')
+    .set('x-role', 'user')
+    .set('x-access', '1');
+  expect(res.status).toBe(404);
 });

@@ -19,6 +19,7 @@ const RoutesPage = lazy(() => import("./pages/Routes"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
+const EmployeeCard = lazy(() => import("./pages/EmployeeCard"));
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -52,6 +53,14 @@ function Content() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employees/:id"
+            element={
+              <ProtectedRoute>
+                <EmployeeCard />
               </ProtectedRoute>
             }
           />

@@ -27,6 +27,7 @@ export interface IUsersService {
     roleId?: string,
     data?: unknown,
   ): Promise<unknown>;
+  get(id: string | number): Promise<unknown | null>;
   update(id: string, data: unknown): Promise<unknown | null>;
 }
 

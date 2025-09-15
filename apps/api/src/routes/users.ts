@@ -23,6 +23,11 @@ router.get(
   rolesGuard,
   ctrl.list as RequestHandler,
 );
+router.get(
+  '/:id',
+  ...base,
+  ctrl.get as RequestHandler,
+);
 router.post(
   '/',
   ...base,

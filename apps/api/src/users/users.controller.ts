@@ -8,6 +8,7 @@ import type UsersService from './users.service';
 import type { UserDocument } from '../db/model';
 import formatUser from '../utils/formatUser';
 import { sendCached } from '../utils/sendCached';
+import { sendProblem } from '../utils/problem';
 
 interface CreateUserBody {
   id: string;
@@ -28,6 +29,20 @@ export default class UsersController {
       res,
       users.map((u) => formatUser(u)),
     );
+  };
+
+  get = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+    const user = await this.service.get(req.params.id);
+    if (!user) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Пользователь не найден',
+        status: 404,
+        detail: 'Not Found',
+      });
+      return;
+    }
+    res.json(formatUser(user));
   };
 
   create = [

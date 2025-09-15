@@ -87,7 +87,10 @@ export default function taskColumns(
       meta: { minWidth: "10rem", maxWidth: "14rem" },
       cell: (p) => {
         const v = p.getValue<any>();
-        const text = v ? `${v.lat}, ${v.lng}` : "";
+        const text =
+          v && typeof v.lat === "number" && typeof v.lng === "number"
+            ? `${v.lat}, ${v.lng}`
+            : "";
         return <span title={text}>{text}</span>;
       },
     },
@@ -97,7 +100,10 @@ export default function taskColumns(
       meta: { minWidth: "10rem", maxWidth: "14rem" },
       cell: (p) => {
         const v = p.getValue<any>();
-        const text = v ? `${v.lat}, ${v.lng}` : "";
+        const text =
+          v && typeof v.lat === "number" && typeof v.lng === "number"
+            ? `${v.lat}, ${v.lng}`
+            : "";
         return <span title={text}>{text}</span>;
       },
     },

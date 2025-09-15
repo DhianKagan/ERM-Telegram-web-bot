@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Команда сборки компилирует `ensureDefaults` в `dist`, чтобы стартовый скрипт находился в Docker и на Railway.
 - Добавлен `nixpacks.toml` для сборки на Railway без режима offline.
 - Функция updateUser синхронизирует roleId по названию роли; добавлен скрипт `syncUserRoles.ts`.
 - Скрипт seed добавляет документ роли manager, миграция `addManagerRole.ts`

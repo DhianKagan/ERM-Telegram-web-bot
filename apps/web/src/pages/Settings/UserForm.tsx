@@ -50,7 +50,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
     fetchCollectionItems("divisions", "", 1, 100).then((d) =>
       setDivisions(d.items),
     );
-    fetchCollectionItems("roles", "", 1, 100).then((d) =>
+    fetchCollectionItems("positions", "", 1, 100).then((d) =>
       setPositions(d.items),
     );
     fetchRoles().then((r) => setRoles(r));
@@ -78,7 +78,10 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           className="h-10 w-full rounded border px-3"
           value={form.telegram_id ?? ""}
           onChange={(e) =>
-            onChange({ ...form, telegram_id: Number(e.target.value) })
+            onChange({
+              ...form,
+              telegram_id: e.target.value ? Number(e.target.value) : undefined,
+            })
           }
           readOnly={!!form.telegram_id}
           required

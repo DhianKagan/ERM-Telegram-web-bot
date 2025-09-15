@@ -17,6 +17,7 @@ import {
 } from "../../services/collections";
 import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
+import EmployeeCardForm from "../../components/EmployeeCardForm";
 import {
   fetchUsers,
   createUser as createUserApi,
@@ -68,6 +69,9 @@ export default function CollectionsPage() {
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(
+    undefined,
+  );
 
   const load = useCallback(() => {
     if (active === "users") return;
@@ -92,6 +96,11 @@ export default function CollectionsPage() {
     if (active === "users") {
       loadUsers();
       setUserForm(emptyUser);
+      setSelectedEmployeeId(undefined);
+    }
+    if (active === "employees") {
+      loadUsers();
+      setSelectedEmployeeId(undefined);
     }
   }, [active, loadUsers]);
 
@@ -104,6 +113,10 @@ export default function CollectionsPage() {
     if (u) setUserForm({ ...u });
   };
 
+  const selectEmployee = (item: CollectionItem) => {
+    setSelectedEmployeeId(item._id);
+  };
+
   const handleSearch = (text: string) => {
     setPage(1);
     setQuery(text);
@@ -112,6 +125,7 @@ export default function CollectionsPage() {
   const handleUserSearch = (text: string) => {
     setUserPage(1);
     setUserQuery(text);
+    setSelectedEmployeeId(undefined);
   };
 
   const submit = async () => {
@@ -218,6 +232,38 @@ export default function CollectionsPage() {
                     onChange={setUserForm}
                     onSubmit={submitUser}
                     onReset={() => setUserForm(emptyUser)}
+                  />
+                </div>
+              </div>
+            ) : t.key === "employees" ? (
+              <div className="flex flex-col gap-4 md:flex-row">
+                <div className="md:w-1/2 space-y-2">
+                  <CollectionList
+                    items={userItems}
+                    selectedId={selectedEmployeeId}
+                    totalPages={userTotalPages}
+                    page={userPage}
+                    onSelect={selectEmployee}
+                    onSearch={handleUserSearch}
+                    onPageChange={setUserPage}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-gray w-full rounded"
+                    onClick={() => setSelectedEmployeeId(undefined)}
+                  >
+                    Новый сотрудник
+                  </button>
+                </div>
+                <div className="md:w-1/2">
+                  <EmployeeCardForm
+                    telegramId={selectedEmployeeId}
+                    allowCreate
+                    onSaved={(updated) => {
+                      loadUsers();
+                      if (updated.telegram_id)
+                        setSelectedEmployeeId(String(updated.telegram_id));
+                    }}
                   />
                 </div>
               </div>

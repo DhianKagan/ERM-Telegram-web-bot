@@ -26,7 +26,7 @@ process.on('uncaughtException', (err) => {
 async function showMainMenu(ctx: Context): Promise<void> {
   await ctx.reply(
     messages.menuPrompt,
-    Markup.keyboard([['Регистрация']]).resize(),
+    Markup.keyboard([['Регистрация', 'ERM']]).resize(),
   );
 }
 
@@ -57,6 +57,9 @@ bot.start(async (ctx) => {
 
 bot.command('register', checkAndRegister);
 bot.hears('Регистрация', checkAndRegister);
+bot.hears('ERM', async (ctx) => {
+  await ctx.reply(messages.ermLink);
+});
 
 const MAX_RETRIES = 5;
 

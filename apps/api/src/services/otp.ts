@@ -46,6 +46,18 @@ export async function sendCode({ telegramId }: SendCodePayload): Promise<void> {
   await call('sendMessage', { chat_id: telegramId, text });
 }
 
+export async function sendManagerCode({
+  telegramId,
+}: SendCodePayload): Promise<void> {
+  clean();
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const text = `Код входа для менеджера: ${code}`;
+  const key = String(telegramId);
+  codes.set(key, { code, ts: Date.now() });
+  attempts.delete(key);
+  await call('sendMessage', { chat_id: telegramId, text });
+}
+
 export async function sendAdminCode({
   telegramId,
 }: SendCodePayload): Promise<void> {

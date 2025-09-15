@@ -15,6 +15,8 @@ async function sendCode(telegramId: number | string) {
   const roleId = user?.roleId?.toString();
   if (roleId === config.adminRoleId) {
     await otp.sendAdminCode({ telegramId: Number(telegramId) });
+  } else if (roleId === config.managerRoleId) {
+    await otp.sendManagerCode({ telegramId: Number(telegramId) });
   } else {
     await otp.sendCode({ telegramId: Number(telegramId) });
   }

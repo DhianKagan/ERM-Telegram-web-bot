@@ -8,6 +8,7 @@ process.env.APP_URL = 'https://localhost';
 
 jest.mock('../src/services/otp', () => ({
   sendCode: jest.fn(),
+  sendManagerCode: jest.fn(),
   sendAdminCode: jest.fn(),
   verifyCode: jest.fn(() => true),
   verifyAdminCode: jest.fn(() => true),
@@ -47,6 +48,14 @@ test('sendCode использует adminCodes для админа', async () =>
   });
   await service.sendCode('1');
   expect(otp.sendAdminCode).toHaveBeenCalledWith({ telegramId: 1 });
+});
+
+test('sendCode использует sendManagerCode для менеджера', async () => {
+  queries.getUser.mockResolvedValueOnce({
+    roleId: require('../src/config').managerRoleId,
+  });
+  await service.sendCode('3');
+  expect(otp.sendManagerCode).toHaveBeenCalledWith({ telegramId: 3 });
 });
 
 test('sendCode вызывает sendCode для обычного пользователя', async () => {

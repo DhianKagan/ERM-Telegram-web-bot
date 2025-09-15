@@ -14,7 +14,9 @@ const mongoose: any = (() => {
   try {
     return require('mongoose');
   } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'));
+    return require(
+      path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'),
+    );
   }
 })();
 
@@ -24,14 +26,11 @@ dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 const mongoUrl = (
   process.env.MONGO_DATABASE_URL ||
   process.env.MONGODB_URI ||
+  process.env.MONGO_URL ||
+  process.env.MONGODB_URL ||
   process.env.DATABASE_URL ||
   ''
 ).trim();
-if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
-  throw new Error(
-    'MONGO_DATABASE_URL должен начинаться с mongodb:// или mongodb+srv://',
-  );
-}
 
 const adminRoleId = process.env.ADMIN_ROLE_ID || '686591126cc86a6bd16c18af';
 const userRoleId = process.env.USER_ROLE_ID || '686633fdf6896f1ad3fa063e';
@@ -44,6 +43,11 @@ const roleSchema = new mongoose.Schema({
 const Role = mongoose.model('Role', roleSchema);
 
 async function ensureDefaults(): Promise<void> {
+  if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
+    console.warn('Не задан MONGO_DATABASE_URL, пропускаем инициализацию');
+    return;
+  }
+
   const timeout = 5000;
   try {
     await mongoose.connect(mongoUrl, {

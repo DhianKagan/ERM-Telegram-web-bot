@@ -52,6 +52,10 @@
 pnpm ts-node scripts/db/ensureDefaults.ts
 ```
 
+Если строка подключения к MongoDB не задана в переменных `MONGO_DATABASE_URL`,
+`MONGODB_URI`, `MONGO_URL` или `MONGODB_URL`, скрипт лишь напишет предупреждение
+и завершится без ошибок.
+
 ### Синхронизация ролей пользователей
 
 Для обновления полей `role`, `roleId` и `access` выполните:

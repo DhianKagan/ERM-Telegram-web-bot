@@ -18,7 +18,9 @@
       "@testing-library/jest-dom",
       "express",
       "multer",
-      "../apps/web/src/types/telegram"
+      "../apps/web/src/types/telegram",
+      "mongodb-memory-server",
+      "mongoose"
     ],
     "typeRoots": ["../node_modules/@types", "../apps/api/src/types"]
   }

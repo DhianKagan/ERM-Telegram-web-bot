@@ -341,6 +341,7 @@ const roleSchema = new Schema<RoleDocument>({
   name: String,
   permissions: [String],
 });
+roleSchema.index({ name: 1 }, { name: 'role_name_unique', unique: true });
 
 export interface UserAttrs {
   telegram_id: number;

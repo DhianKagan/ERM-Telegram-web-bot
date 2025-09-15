@@ -5,7 +5,12 @@ import Select from "react-select";
 
 interface Props {
   label: string;
-  users: { telegram_id: number; name?: string; username?: string }[];
+  users: {
+    telegram_id: number;
+    name?: string;
+    username?: string;
+    telegram_username?: string | null;
+  }[];
   value: string[];
   onChange: (v: string[]) => void;
   disabled?: boolean;

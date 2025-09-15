@@ -13,7 +13,11 @@ import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import type { Task } from 'shared';
 
-type TaskEx = Task & { controllers?: number[]; created_by?: number };
+type TaskEx = Task & {
+  controllers?: number[];
+  created_by?: number;
+  history?: { changed_by: number }[];
+};
 
 @injectable()
 export default class TasksController {
@@ -42,6 +46,7 @@ export default class TasksController {
       (t.assignees || []).forEach((id: number) => ids.add(id));
       (t.controllers || []).forEach((id: number) => ids.add(id));
       if (t.created_by) ids.add(t.created_by);
+      (t.history || []).forEach((h) => ids.add(h.changed_by));
     });
     const users = await getUsersMap(Array.from(ids));
     sendCached(req, res, { tasks, users, total });
@@ -64,6 +69,7 @@ export default class TasksController {
     (task.assignees || []).forEach((id: number) => ids.add(id));
     (task.controllers || []).forEach((id: number) => ids.add(id));
     if (task.created_by) ids.add(task.created_by);
+    (task.history || []).forEach((h) => ids.add(h.changed_by));
     const users = await getUsersMap(Array.from(ids));
     res.json({ task, users });
   };
@@ -85,6 +91,7 @@ export default class TasksController {
       const task = await this.service.update(
         req.params.id,
         req.body as Partial<TaskDocument>,
+        req.user!.id as number,
       );
       if (!task) {
         sendProblem(req, res, {

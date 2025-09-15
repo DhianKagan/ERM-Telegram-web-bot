@@ -38,6 +38,7 @@ import filesRouter from '../routes/files';
 import fleetsRouter from '../routes/fleets';
 import departmentsRouter from '../routes/departments';
 import employeesRouter from '../routes/employees';
+import type { RequestWithUser } from '../types/request';
 import collectionsRouter from '../routes/collections';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
@@ -263,7 +264,7 @@ export default async function registerRoutes(
         });
         return;
       }
-      await updateTaskStatus(req.params.id, req.body.status);
+      await updateTaskStatus(req.params.id, req.body.status, userId);
       await writeLog(
         `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${userId}`,
       );
@@ -281,7 +282,11 @@ export default async function registerRoutes(
       body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
-      await updateTaskStatus(req.params.id, req.body.status);
+      await updateTaskStatus(
+        req.params.id,
+        req.body.status,
+        Number((req as RequestWithUser).user!.id),
+      );
       await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
       res.json({ status: 'ok' });
     }),

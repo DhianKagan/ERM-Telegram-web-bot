@@ -1257,10 +1257,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 <li key={i}>
                   <span className="font-medium">
                     {new Date(h.changed_at).toLocaleString()}
-                  </span>
-                  <pre className="break-all whitespace-pre-wrap">
-                    {JSON.stringify(h.changes)}
-                  </pre>
+                  </span>{" "}
+                  {h.changes.from.status && h.changes.to.status ? (
+                    <span>
+                      {users.find((u) => u.telegram_id === h.changed_by)
+                        ?.username ||
+                        users.find((u) => u.telegram_id === h.changed_by)
+                          ?.name ||
+                        h.changed_by}{" "}
+                      изменил статус с {String(h.changes.from.status)} на{" "}
+                      {String(h.changes.to.status)}
+                    </span>
+                  ) : (
+                    <pre className="break-all whitespace-pre-wrap">
+                      {JSON.stringify(h.changes)}
+                    </pre>
+                  )}
                 </li>
               ))}
             </ul>

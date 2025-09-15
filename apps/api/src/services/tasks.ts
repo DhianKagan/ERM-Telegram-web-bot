@@ -49,13 +49,17 @@ export const getById = (id: string): Promise<unknown> => q.getTask(id);
 export const update = async (
   id: string,
   data: TaskData = {},
+  userId = 0,
 ): Promise<unknown> => {
   await applyRouteInfo(data);
-  return q.updateTask(id, data);
+  return q.updateTask(id, data, userId);
 };
 
-export const addTime = (id: string, minutes: number): Promise<unknown> =>
-  q.addTime(id, minutes);
+export const addTime = (
+  id: string,
+  minutes: number,
+  userId = 0,
+): Promise<unknown> => q.addTime(id, minutes, userId);
 
 export const bulk = (ids: string[], data: TaskData = {}): Promise<unknown> =>
   q.bulkUpdate(ids, data);

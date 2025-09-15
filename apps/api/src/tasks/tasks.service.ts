@@ -17,6 +17,7 @@ interface TasksRepository {
   updateTask(
     id: string,
     data: Partial<TaskDocument>,
+    userId: number,
   ): Promise<TaskDocument | null>;
   addTime(id: string, minutes: number): Promise<TaskDocument | null>;
   bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
@@ -62,9 +63,9 @@ class TasksService {
     return this.repo.getTask(id);
   }
 
-  async update(id: string, data: Partial<TaskDocument> = {}) {
+  async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
     await this.applyRouteInfo(data);
-    const task = await this.repo.updateTask(id, data);
+    const task = await this.repo.updateTask(id, data, userId);
     await clearRouteCache();
     return task;
   }

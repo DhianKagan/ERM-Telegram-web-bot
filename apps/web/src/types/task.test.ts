@@ -3,7 +3,14 @@
 import type { HistoryItem, UserBrief, Attachment } from "./task";
 
 const history: HistoryItem[] = [
-  { changed_at: "2024-01-01T00:00:00Z", changes: { a: 1 } },
+  {
+    changed_at: "2024-01-01T00:00:00Z",
+    changed_by: 1,
+    changes: {
+      from: { status: "Новая" },
+      to: { status: "В работе" },
+    },
+  },
 ];
 
 const users: UserBrief[] = [{ telegram_id: 1, name: "Иван" }];

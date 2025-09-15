@@ -86,9 +86,12 @@ async function ensureDefaults(): Promise<void> {
   ];
 
   for (const r of roles) {
-    const exists = await Role.exists({ _id: r._id });
-    if (!exists) {
-      await Role.create(r);
+    const res = await Role.updateOne(
+      { _id: r._id },
+      { $setOnInsert: r },
+      { upsert: true },
+    );
+    if (res.upsertedCount) {
       console.log(`Добавлена роль ${r.name}`);
     }
   }

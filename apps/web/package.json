@@ -72,7 +72,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "autoprefixer": "^10.4.21",
     "cheerio": "^1.0.0",
-    "daisyui": "^5.1.7",
+    "daisyui": "^5.1.12",
     "eslint": "^9.25.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.2.0",

@@ -1,6 +1,12 @@
 // Назначение: форма карточки сотрудника для создания и редактирования пользователей.
 // Основные модули: React, services/users, services/collections, services/roles.
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import clsx from "clsx";
 import ConfirmDialog from "./ConfirmDialog";
 import {
@@ -11,7 +17,9 @@ import { fetchRoles, type Role } from "../services/roles";
 import {
   createUser,
   fetchUser,
+  previewUserCredentials,
   updateUser,
+  type GeneratedUserCredentials,
   type UserDetails,
 } from "../services/users";
 import { useAuth } from "../context/useAuth";
@@ -86,6 +94,7 @@ export default function EmployeeCardForm({
   const [saving, setSaving] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
 
   const isCreateMode = resolvedMode === "create";
   const canEdit = user?.role === "admin";
@@ -103,6 +112,27 @@ export default function EmployeeCardForm({
     fetchRoles().then((list) => setRoles(list));
   }, []);
 
+  const applyGeneratedCredentials = useCallback(
+    (credentials: GeneratedUserCredentials) => {
+      setForm((prev) => ({
+        ...prev,
+        telegram_id: credentials.telegram_id,
+        username: credentials.username,
+      }));
+      setInitialForm((prev) => ({
+        ...prev,
+        telegram_id: credentials.telegram_id,
+        username: credentials.username,
+      }));
+    },
+    [],
+  );
+
+  const requestGeneratedCredentials = useCallback(
+    () => previewUserCredentials(),
+    [],
+  );
+
   useEffect(() => {
     setSuccessMessage(null);
     if (isCreateMode) {
@@ -110,8 +140,27 @@ export default function EmployeeCardForm({
       setError(null);
       setForm({ ...emptyForm });
       setInitialForm({ ...emptyForm });
-      return;
+      let active = true;
+      requestGeneratedCredentials()
+        .then((generated) => {
+          if (!active) return;
+          applyGeneratedCredentials(generated);
+          setPrefillError(null);
+        })
+        .catch((error) => {
+          if (!active) return;
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Не удалось подготовить данные";
+          setPrefillError(message);
+          showToast(message, "error");
+        });
+      return () => {
+        active = false;
+      };
     }
+    setPrefillError(null);
     if (!telegramId) {
       setLoading(false);
       setError(null);
@@ -140,7 +189,12 @@ export default function EmployeeCardForm({
         setInitialForm({ ...emptyForm });
       })
       .finally(() => setLoading(false));
-  }, [telegramId, isCreateMode]);
+  }, [
+    telegramId,
+    isCreateMode,
+    applyGeneratedCredentials,
+    requestGeneratedCredentials,
+  ]);
 
   const isDirty = useMemo(() => {
     if (!canEdit) return false;
@@ -174,6 +228,20 @@ export default function EmployeeCardForm({
     if (isCreateMode) {
       setSuccessMessage(null);
       setForm({ ...emptyForm });
+      setInitialForm({ ...emptyForm });
+      requestGeneratedCredentials()
+        .then((generated) => {
+          applyGeneratedCredentials(generated);
+          setPrefillError(null);
+        })
+        .catch((error) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Не удалось подготовить данные";
+          setPrefillError(message);
+          showToast(message, "error");
+        });
       return;
     }
     setSuccessMessage(null);
@@ -274,6 +342,11 @@ export default function EmployeeCardForm({
         )}
       </div>
       {loading && <div>Загрузка...</div>}
+      {!loading && isCreateMode && prefillError && (
+        <div className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+          {prefillError}
+        </div>
+      )}
       {!loading && error && <div className="text-red-600">{error}</div>}
       {!loading && !error && (
         <form

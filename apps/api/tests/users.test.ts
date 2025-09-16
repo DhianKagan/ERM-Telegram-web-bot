@@ -16,6 +16,13 @@ const { ACCESS_ADMIN, ACCESS_MANAGER } = require('../src/utils/accessMask');
 
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
+  generateUserCredentials: jest.fn(async (id?: string | number, username?: string) => ({
+    telegramId:
+      id !== undefined && id !== null && String(id) !== ''
+        ? Number(id)
+        : 2,
+    username: username && username.trim() ? username : 'generated_user',
+  })),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
   updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
   getUser: jest.fn(async (id: string) =>
@@ -46,7 +53,13 @@ jest.mock('../src/api/middleware', () => ({
     res.status(500).json({ error: err.message }),
 }));
 
-const { listUsers, createUser, updateUser, getUser } = require('../src/db/queries');
+const {
+  listUsers,
+  createUser,
+  updateUser,
+  getUser,
+  generateUserCredentials,
+} = require('../src/db/queries');
 const {
   verifyToken,
   checkRole,
@@ -108,6 +121,10 @@ afterAll(() => {
   stopQueue();
 });
 
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 test('админ получает список пользователей', async () => {
   const res = await request(app)
     .get('/api/v1/users')
@@ -133,13 +150,26 @@ test('обычный пользователь получает 403', async () =>
   expect(res.status).toBe(403);
 });
 
-test('создание пользователя с ошибкой данных', async () => {
+test('создание пользователя без id вызывает генератор', async () => {
   const res = await request(app)
     .post('/api/v1/users')
     .set('x-role', 'admin')
     .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
-    .send({ username: 'a' });
-  expect(res.status).toBe(400);
+    .send({});
+  expect(res.status).toBe(201);
+  expect(generateUserCredentials).toHaveBeenCalledWith(undefined, undefined);
+  expect(createUser).toHaveBeenCalledWith(2, 'generated_user', undefined);
+});
+
+test('предпросмотр возвращает сгенерированные данные', async () => {
+  const res = await request(app)
+    .post('/api/v1/users?preview=1')
+    .set('x-role', 'admin')
+    .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER))
+    .send({});
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ telegram_id: 2, username: 'generated_user' });
+  expect(createUser).not.toHaveBeenCalled();
 });
 
 test('обновление пользователя', async () => {

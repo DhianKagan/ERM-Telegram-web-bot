@@ -11,7 +11,7 @@ import { sendCached } from '../utils/sendCached';
 import { sendProblem } from '../utils/problem';
 
 interface CreateUserBody {
-  id: string;
+  id?: string | number;
   username?: string;
   roleId?: string;
 }
@@ -51,10 +51,41 @@ export default class UsersController {
       req: Request<unknown, unknown, CreateUserBody>,
       res: Response,
     ): Promise<void> => {
+      const rawId = req.body.id;
+      const rawUsername = req.body.username;
+      const normalizedId =
+        typeof rawId === 'string'
+          ? rawId.trim() || undefined
+          : rawId !== undefined
+          ? rawId
+          : undefined;
+      const normalizedUsername =
+        typeof rawUsername === 'string'
+          ? rawUsername.trim() || undefined
+          : rawUsername !== undefined
+          ? String(rawUsername)
+          : undefined;
+      const normalizedRoleId =
+        typeof req.body.roleId === 'string'
+          ? req.body.roleId.trim() || undefined
+          : req.body.roleId;
+
+      if (req.query.preview === 'true' || req.query.preview === '1') {
+        const generated = await this.service.generate(
+          normalizedId,
+          normalizedUsername,
+        );
+        res.json({
+          telegram_id: generated.telegramId,
+          username: generated.username,
+        });
+        return;
+      }
+
       const user = await this.service.create(
-        req.body.id,
-        req.body.username,
-        req.body.roleId,
+        normalizedId,
+        normalizedUsername,
+        normalizedRoleId,
       );
       res.status(201).json(formatUser(user));
     },

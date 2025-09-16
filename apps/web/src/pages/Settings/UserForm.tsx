@@ -46,13 +46,13 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
   React.useEffect(() => {
     fetchCollectionItems("departments", "", 1, 100).then((d) =>
       setDepartments(d.items),
-    );
+    ).catch(() => setDepartments([]));
     fetchCollectionItems("divisions", "", 1, 100).then((d) =>
       setDivisions(d.items),
-    );
+    ).catch(() => setDivisions([]));
     fetchCollectionItems("positions", "", 1, 100).then((d) =>
       setPositions(d.items),
-    );
+    ).catch(() => setPositions([]));
     fetchRoles().then((r) => setRoles(r));
   }, []);
 

@@ -100,6 +100,25 @@ test('валидная капча пропускает лимитер auth', asy
   }
 });
 
+test('подтверждённый запрос обходит лимитер auth', async () => {
+  delete process.env.CAPTCHA_TOKEN;
+  for (let i = 0; i < 2; i++) {
+    const r = await request(app)
+      .post('/api/v1/auth/send_code')
+      .send({ telegramId: 2 });
+    expect(r.status).toBe(200);
+  }
+  const limited = await request(app)
+    .post('/api/v1/auth/send_code')
+    .send({ telegramId: 2 });
+  expect(limited.status).toBe(429);
+  const confirmed = await request(app)
+    .post('/api/v1/auth/send_code')
+    .set('X-Confirmed-Action', 'true')
+    .send({ telegramId: 2 });
+  expect(confirmed.status).toBe(200);
+});
+
 test('лимитер table возвращает 429 и затем 200', async () => {
   let res = await request(app).get('/api/v1/route/table?points=1,1;2,2');
   expect(res.status).toBe(200);

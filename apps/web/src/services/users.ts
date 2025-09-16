@@ -32,9 +32,29 @@ export const createUser = (
 ) =>
   authFetch("/api/v1/users", {
     method: "POST",
+    confirmed: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, username, roleId }),
-  }).then((r) => r.json());
+  }).then(async (r) => {
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      let message = "Не удалось создать пользователя";
+      if (body) {
+        try {
+          const data = JSON.parse(body) as {
+            error?: string;
+            message?: string;
+            detail?: string;
+          };
+          message = data.error || data.detail || data.message || message;
+        } catch {
+          message = body;
+        }
+      }
+      throw new Error(message);
+    }
+    return r.json();
+  });
 
 export const updateUser = (
   id: number | string,
@@ -42,6 +62,26 @@ export const updateUser = (
 ): Promise<UserDetails | null> =>
   authFetch(`/api/v1/users/${id}`, {
     method: "PATCH",
+    confirmed: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  }).then((r) => (r.ok ? r.json() : null));
+  }).then(async (r) => {
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      let message = "Не удалось обновить пользователя";
+      if (body) {
+        try {
+          const parsed = JSON.parse(body) as {
+            error?: string;
+            detail?: string;
+            message?: string;
+          };
+          message = parsed.error || parsed.detail || parsed.message || message;
+        } catch {
+          message = body;
+        }
+      }
+      throw new Error(message);
+    }
+    return r.json();
+  });

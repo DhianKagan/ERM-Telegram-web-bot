@@ -24,6 +24,17 @@ const drops = new client.Counter({
   labelNames: ['name', 'key'],
 });
 
+const confirmedTokens = new Set(['1', 'true', 'yes']);
+
+const isConfirmedValue = (value: string) =>
+  confirmedTokens.has(value.trim().toLowerCase());
+
+const hasConfirmedHeader = (value?: string | string[]) => {
+  if (!value) return false;
+  if (Array.isArray(value)) return value.some((item) => isConfirmedValue(item));
+  return isConfirmedValue(value);
+};
+
 export default function createRateLimiter({
   windowMs,
   max,
@@ -44,6 +55,7 @@ export default function createRateLimiter({
     standardHeaders: true,
     legacyHeaders: true,
     skip: ((req: RequestWithUser) =>
+      hasConfirmedHeader(req.headers['x-confirmed-action']) ||
       Boolean(
         captcha &&
           process.env.CAPTCHA_TOKEN &&

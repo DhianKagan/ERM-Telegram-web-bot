@@ -1,8 +1,8 @@
 // Конфигурация колонок задач для React Table
-// Модули: React, @tanstack/react-table, userLink
+// Модули: React, @tanstack/react-table, react-router-dom
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import userLink from "../utils/userLink";
+import { Link } from "react-router-dom";
 import type { Task } from "shared";
 
 // Цвета статусов задач для соответствия WCAG контрасту ≥4.5:1
@@ -141,23 +141,25 @@ export default function taskColumns(
             ? [row.original.assigned_user_id]
             : []);
         return (
-          <>
-            {ids.map((id) => (
-              <span
-                key={id}
-                dangerouslySetInnerHTML={{
-                  __html: userLink(
-                    id,
-                    users[id]?.name ||
-                      users[id]?.telegram_username ||
-                      users[id]?.username ||
-                      String(id),
-                  ),
-                }}
-                className="mr-1"
-              />
-            ))}
-          </>
+          <div className="flex flex-wrap gap-1">
+            {ids.map((id) => {
+              const label =
+                users[id]?.name ||
+                users[id]?.telegram_username ||
+                users[id]?.username ||
+                String(id);
+              return (
+                <Link
+                  key={id}
+                  to={`/employees/${id}`}
+                  className="text-blue-600 underline"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
         );
       },
     },

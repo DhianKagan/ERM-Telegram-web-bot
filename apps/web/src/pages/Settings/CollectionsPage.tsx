@@ -37,6 +37,17 @@ const types = [
   { key: "users", label: "Пользователь" },
 ];
 
+type CollectionKey = (typeof types)[number]["key"];
+
+const createInitialQueries = (): Record<CollectionKey, string> =>
+  types.reduce(
+    (acc, type) => {
+      acc[type.key as CollectionKey] = "";
+      return acc;
+    },
+    {} as Record<CollectionKey, string>,
+  );
+
 const emptyUser: UserFormData = {
   telegram_id: undefined,
   username: "",
@@ -65,11 +76,13 @@ const parseIds = (value: string) =>
     .filter(Boolean);
 
 export default function CollectionsPage() {
-  const [active, setActive] = useState("departments");
+  const [active, setActive] = useState<CollectionKey>("departments");
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [query, setQuery] = useState("");
+  const [queries, setQueries] = useState<Record<CollectionKey, string>>(() =>
+    createInitialQueries(),
+  );
   const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
   const [hint, setHint] = useState("");
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
@@ -79,18 +92,20 @@ export default function CollectionsPage() {
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(
-    undefined,
-  );
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<
+    string | undefined
+  >(undefined);
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
     "create",
   );
 
+  const currentQuery = queries[active] ?? "";
+
   const load = useCallback(async () => {
     if (active === "users") return;
     try {
-      const d = await fetchCollectionItems(active, query, page, limit);
+      const d = await fetchCollectionItems(active, currentQuery, page, limit);
       setItems(d.items);
       setTotal(d.total);
       if (active === "departments") setAllDepartments(d.items);
@@ -103,7 +118,7 @@ export default function CollectionsPage() {
           : "Не удалось загрузить элементы";
       setHint(message);
     }
-  }, [active, query, page]);
+  }, [active, currentQuery, page]);
 
   const loadUsers = useCallback(() => {
     fetchUsers().then((list) => setUsers(list));
@@ -123,7 +138,9 @@ export default function CollectionsPage() {
       .then((d) => setAllDivisions(d.items))
       .catch((error) => {
         const message =
-          error instanceof Error ? error.message : "Не удалось загрузить отделы";
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить отделы";
         setHint((prev) => prev || message);
       });
   }, []);
@@ -171,7 +188,7 @@ export default function CollectionsPage() {
 
   const handleSearch = (text: string) => {
     setPage(1);
-    setQuery(text);
+    setQueries((prev) => ({ ...prev, [active]: text }));
   };
 
   const handleUserSearch = (text: string) => {
@@ -288,10 +305,7 @@ export default function CollectionsPage() {
   );
 
   const renderDepartmentValueField = useCallback(
-    (
-      currentForm: ItemForm,
-      handleChange: (next: ItemForm) => void,
-    ) => {
+    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => {
       const selected = parseIds(currentForm.value);
       const handleSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const values = Array.from(event.target.selectedOptions).map(
@@ -327,10 +341,7 @@ export default function CollectionsPage() {
   );
 
   const renderDivisionValueField = useCallback(
-    (
-      currentForm: ItemForm,
-      handleChange: (next: ItemForm) => void,
-    ) => (
+    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
       <select
         className="h-10 w-full rounded border px-3"
         value={currentForm.value}
@@ -353,10 +364,7 @@ export default function CollectionsPage() {
   );
 
   const renderPositionValueField = useCallback(
-    (
-      currentForm: ItemForm,
-      handleChange: (next: ItemForm) => void,
-    ) => (
+    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
       <select
         className="h-10 w-full rounded border px-3"
         value={currentForm.value}
@@ -392,6 +400,7 @@ export default function CollectionsPage() {
     .slice((userPage - 1) * limit, userPage * limit)
     .map((u) => ({
       _id: String(u.telegram_id),
+      type: "users",
       name: u.name || "",
       value: u.username || "",
     }));
@@ -405,7 +414,7 @@ export default function CollectionsPage() {
       <Tabs
         value={active}
         onValueChange={(v) => {
-          setActive(v);
+          setActive(v as CollectionKey);
           setPage(1);
         }}
       >
@@ -447,92 +456,97 @@ export default function CollectionsPage() {
                     <CollectionList
                       items={userItems}
                       selectedId={
-                      userForm.telegram_id
-                        ? String(userForm.telegram_id)
-                        : undefined
-                    }
-                    totalPages={userTotalPages}
-                    page={userPage}
-                    onSelect={selectUser}
-                    onSearch={handleUserSearch}
-                    onPageChange={setUserPage}
-                  />
-                </div>
-                <div className="md:w-1/2">
-                  <UserForm
-                    form={userForm}
-                    onChange={setUserForm}
-                    onSubmit={submitUser}
-                    onReset={() => setUserForm(emptyUser)}
-                  />
-                </div>
-              </div>
-            ) : t.key === "employees" ? (
-              <>
-                <div className="flex flex-col gap-4 md:flex-row">
-                  <div className="md:w-1/2 space-y-2">
-                    <CollectionList
-                      items={userItems}
-                      selectedId={selectedEmployeeId}
+                        userForm.telegram_id
+                          ? String(userForm.telegram_id)
+                          : undefined
+                      }
                       totalPages={userTotalPages}
                       page={userPage}
-                      onSelect={selectEmployee}
+                      onSelect={selectUser}
                       onSearch={handleUserSearch}
                       onPageChange={setUserPage}
+                      searchValue={userQuery}
                     />
-                    <button
-                      type="button"
-                      className="btn btn-gray w-full rounded"
-                      onClick={() => {
-                        setSelectedEmployeeId(undefined);
-                        setEmployeeFormMode("create");
-                        setIsEmployeeModalOpen(true);
-                      }}
-                    >
-                      Новый сотрудник
-                    </button>
+                  </div>
+                  <div className="md:w-1/2">
+                    <UserForm
+                      form={userForm}
+                      onChange={setUserForm}
+                      onSubmit={submitUser}
+                      onReset={() => setUserForm(emptyUser)}
+                    />
                   </div>
                 </div>
-                <Modal
-                  open={isEmployeeModalOpen}
-                  onClose={() => setIsEmployeeModalOpen(false)}
-                >
-                  <EmployeeCardForm
-                    telegramId={
-                      employeeFormMode === "update" ? selectedEmployeeId : undefined
-                    }
-                    mode={employeeFormMode}
+              ) : t.key === "employees" ? (
+                <>
+                  <div className="flex flex-col gap-4 md:flex-row">
+                    <div className="space-y-2 md:w-1/2">
+                      <CollectionList
+                        items={userItems}
+                        selectedId={selectedEmployeeId}
+                        totalPages={userTotalPages}
+                        page={userPage}
+                        onSelect={selectEmployee}
+                        onSearch={handleUserSearch}
+                        onPageChange={setUserPage}
+                        searchValue={userQuery}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-gray w-full rounded"
+                        onClick={() => {
+                          setSelectedEmployeeId(undefined);
+                          setEmployeeFormMode("create");
+                          setIsEmployeeModalOpen(true);
+                        }}
+                      >
+                        Новый сотрудник
+                      </button>
+                    </div>
+                  </div>
+                  <Modal
+                    open={isEmployeeModalOpen}
                     onClose={() => setIsEmployeeModalOpen(false)}
-                    onSaved={handleEmployeeSaved}
-                  />
-                </Modal>
-              </>
-            ) : (
-              <div className="flex flex-col gap-4 md:flex-row">
-                <div className="md:w-1/2">
-                  <CollectionList
-                    items={items}
-                    selectedId={form._id}
-                    totalPages={totalPages}
-                    page={page}
-                    onSelect={selectItem}
-                    onSearch={handleSearch}
-                    onPageChange={setPage}
-                    renderValue={valueRenderer}
-                  />
+                  >
+                    <EmployeeCardForm
+                      telegramId={
+                        employeeFormMode === "update"
+                          ? selectedEmployeeId
+                          : undefined
+                      }
+                      mode={employeeFormMode}
+                      onClose={() => setIsEmployeeModalOpen(false)}
+                      onSaved={handleEmployeeSaved}
+                    />
+                  </Modal>
+                </>
+              ) : (
+                <div className="flex flex-col gap-4 md:flex-row">
+                  <div className="md:w-1/2">
+                    <CollectionList
+                      items={items}
+                      selectedId={form._id}
+                      totalPages={totalPages}
+                      page={page}
+                      onSelect={selectItem}
+                      onSearch={handleSearch}
+                      onPageChange={setPage}
+                      renderValue={valueRenderer}
+                      searchValue={currentQuery}
+                    />
+                  </div>
+                  <div className="md:w-1/2">
+                    <CollectionForm
+                      form={form}
+                      onChange={setForm}
+                      onSubmit={submit}
+                      onDelete={remove}
+                      onReset={() => setForm({ name: "", value: "" })}
+                      valueLabel={valueLabel}
+                      renderValueField={valueFieldRenderer}
+                    />
+                  </div>
                 </div>
-                <div className="md:w-1/2">
-                  <CollectionForm
-                    form={form}
-                    onChange={setForm}
-                    onSubmit={submit}
-                    onDelete={remove}
-                    onReset={() => setForm({ name: "", value: "" })}
-                    valueLabel={valueLabel}
-                    renderValueField={valueFieldRenderer}
-                  />
-                </div>
-              </div>
               )}
             </TabsContent>
           );

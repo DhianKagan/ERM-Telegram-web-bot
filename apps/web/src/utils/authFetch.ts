@@ -13,6 +13,7 @@ interface FetchOptions extends globalThis.RequestInit {
 interface AuthFetchOptions extends FetchOptions {
   noRedirect?: boolean;
   onProgress?: (e: ProgressEvent) => void;
+  confirmed?: boolean;
 }
 
 async function sendRequest(
@@ -61,10 +62,13 @@ export default async function authFetch(
   url: string,
   options: AuthFetchOptions = {},
 ): Promise<Response> {
-  const { noRedirect, onProgress, ...fetchOpts } = options;
+  const { noRedirect, onProgress, confirmed, ...fetchOpts } = options;
   const getToken = getCsrfToken;
   const saveToken = setCsrfToken;
   const headers: Record<string, string> = { ...(fetchOpts.headers || {}) };
+  if (confirmed && !headers["X-Confirmed-Action"]) {
+    headers["X-Confirmed-Action"] = "true";
+  }
   let token = getToken();
   if (!token) {
     try {

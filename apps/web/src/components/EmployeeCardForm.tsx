@@ -21,7 +21,8 @@ import type { UserFormData } from "../pages/Settings/UserForm";
 interface EmployeeCardFormProps {
   telegramId?: string;
   className?: string;
-  allowCreate?: boolean;
+  mode?: "create" | "update";
+  onClose?: () => void;
   onSaved?: (user: UserDetails) => void;
 }
 
@@ -66,7 +67,8 @@ const normalize = (value: unknown): string => {
 export default function EmployeeCardForm({
   telegramId,
   className,
-  allowCreate = false,
+  mode,
+  onClose,
   onSaved,
 }: EmployeeCardFormProps) {
   const { user } = useAuth();
@@ -76,12 +78,16 @@ export default function EmployeeCardForm({
   const [divisions, setDivisions] = useState<CollectionItem[]>([]);
   const [positions, setPositions] = useState<CollectionItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!telegramId);
+  const resolvedMode = mode ?? (telegramId ? "update" : "create");
+  const [loading, setLoading] = useState<boolean>(
+    resolvedMode === "update" && !!telegramId,
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const isCreateMode = !telegramId;
+  const isCreateMode = resolvedMode === "create";
   const canEdit = user?.role === "admin";
 
   useEffect(() => {
@@ -98,6 +104,14 @@ export default function EmployeeCardForm({
   }, []);
 
   useEffect(() => {
+    setSuccessMessage(null);
+    if (isCreateMode) {
+      setLoading(false);
+      setError(null);
+      setForm({ ...emptyForm });
+      setInitialForm({ ...emptyForm });
+      return;
+    }
     if (!telegramId) {
       setLoading(false);
       setError(null);
@@ -126,7 +140,7 @@ export default function EmployeeCardForm({
         setInitialForm({ ...emptyForm });
       })
       .finally(() => setLoading(false));
-  }, [telegramId]);
+  }, [telegramId, isCreateMode]);
 
   const isDirty = useMemo(() => {
     if (!canEdit) return false;
@@ -141,11 +155,13 @@ export default function EmployeeCardForm({
     key: K,
     value: UserFormData[K],
   ) => {
+    setSuccessMessage(null);
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleRoleChange = (value: string) => {
     const role = roles.find((r) => r.name === value);
+    setSuccessMessage(null);
     setForm((prev) => ({
       ...prev,
       role: value,
@@ -156,9 +172,11 @@ export default function EmployeeCardForm({
 
   const resetChanges = () => {
     if (isCreateMode) {
+      setSuccessMessage(null);
       setForm({ ...emptyForm });
       return;
     }
+    setSuccessMessage(null);
     setForm({ ...initialForm });
   };
 
@@ -194,7 +212,7 @@ export default function EmployeeCardForm({
         setForm(mapped);
         setInitialForm({ ...mapped });
         onSaved?.(updated);
-        showToast("Сотрудник создан", "success");
+        setSuccessMessage("Сотрудник создан");
       } catch (error) {
         const message = error instanceof Error ? error.message : "Не удалось сохранить";
         showToast(message, "error");
@@ -217,7 +235,7 @@ export default function EmployeeCardForm({
       setForm(mapped);
       setInitialForm({ ...mapped });
       onSaved?.(updated);
-      showToast("Данные сотрудника сохранены", "success");
+      setSuccessMessage("Данные сотрудника сохранены");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось сохранить";
       showToast(message, "error");
@@ -227,12 +245,34 @@ export default function EmployeeCardForm({
     }
   };
 
-  if (!telegramId && !allowCreate) {
+  if (!telegramId && !isCreateMode) {
     return <div className="text-sm text-gray-500">Выберите сотрудника слева</div>;
   }
 
   return (
     <div className={clsx("space-y-4", className)}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">
+            {isCreateMode ? "Новый сотрудник" : "Карточка сотрудника"}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {isCreateMode
+              ? "Заполните данные и сохраните, чтобы создать запись."
+              : "Измените данные и подтвердите сохранение."}
+          </p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            className="text-gray-500 transition hover:text-gray-700"
+            aria-label="Закрыть"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        )}
+      </div>
       {loading && <div>Загрузка...</div>}
       {!loading && error && <div className="text-red-600">{error}</div>}
       {!loading && !error && (
@@ -240,6 +280,11 @@ export default function EmployeeCardForm({
           onSubmit={handleSubmit}
           className="space-y-4 rounded bg-white p-6 shadow"
         >
+          {successMessage && (
+            <div className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+              {successMessage}
+            </div>
+          )}
           {!canEdit && (
             <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               У вас нет прав на редактирование, данные доступны только для чтения.

@@ -9,15 +9,44 @@ export interface CollectionItem {
   value: string;
 }
 
-export const fetchCollectionItems = (
+const parseErrorMessage = (status: number, body: string) => {
+  let message = "";
+  if (body) {
+    try {
+      const data = JSON.parse(body) as {
+        error?: string;
+        detail?: string;
+        message?: string;
+      };
+      message = data.error || data.detail || data.message || "";
+    } catch {
+      message = body;
+    }
+  }
+  if (!message) {
+    message =
+      status === 429
+        ? "Достигнут лимит запросов, попробуйте позже."
+        : "Не удалось загрузить элементы";
+  }
+  return message;
+};
+
+export const fetchCollectionItems = async (
   type: string,
   search = "",
   page = 1,
   limit = 10,
-) =>
-  authFetch(
+) => {
+  const res = await authFetch(
     `/api/v1/collections?type=${type}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
-  ).then((r) => (r.ok ? r.json() : { items: [], total: 0 }));
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(parseErrorMessage(res.status, body));
+  }
+  return res.json();
+};
 
 export const createCollectionItem = (
   type: string,
@@ -25,9 +54,16 @@ export const createCollectionItem = (
 ) =>
   authFetch("/api/v1/collections", {
     method: "POST",
+    confirmed: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type, ...data }),
-  }).then((r) => r.json());
+  }).then(async (r) => {
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      throw new Error(parseErrorMessage(r.status, body));
+    }
+    return r.json();
+  });
 
 export const updateCollectionItem = (
   id: string,
@@ -35,19 +71,25 @@ export const updateCollectionItem = (
 ) =>
   authFetch(`/api/v1/collections/${id}`, {
     method: "PUT",
+    confirmed: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  }).then((r) => r.json());
+  }).then(async (r) => {
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      throw new Error(parseErrorMessage(r.status, body));
+    }
+    return r.json();
+  });
 
 export const removeCollectionItem = async (id: string) => {
-  const r = await authFetch(`/api/v1/collections/${id}`, { method: "DELETE" });
+  const r = await authFetch(`/api/v1/collections/${id}`, {
+    method: "DELETE",
+    confirmed: true,
+  });
   if (!r.ok) {
-    try {
-      const data = await r.json();
-      throw new Error(data.error || "Не удалось удалить элемент");
-    } catch {
-      throw new Error("Не удалось удалить элемент");
-    }
+    const body = await r.text().catch(() => "");
+    throw new Error(parseErrorMessage(r.status, body));
   }
   return r.json();
 };

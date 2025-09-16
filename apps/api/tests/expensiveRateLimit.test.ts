@@ -101,6 +101,7 @@ test('валидная капча пропускает лимитер auth', asy
 });
 
 test('подтверждённый запрос обходит лимитер auth', async () => {
+
   await new Promise((resolve) => setTimeout(resolve, 250));
   for (let i = 0; i < 2; i++) {
     const res = await request(app)
@@ -115,6 +116,7 @@ test('подтверждённый запрос обходит лимитер au
 
   const confirmed = await request(app)
     .post('/api/v1/auth/send_code')
+
     .send({ telegramId: 2 });
   expect(confirmed.status).toBe(200);
 });

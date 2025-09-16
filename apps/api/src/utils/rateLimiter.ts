@@ -24,6 +24,7 @@ const drops = new client.Counter({
   labelNames: ['name', 'key'],
 });
 
+
 function extractTelegramId(value: unknown): string | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return String(value);
@@ -87,6 +88,7 @@ export default function createRateLimiter({
     standardHeaders: true,
     legacyHeaders: true,
     skip: ((req: RequestWithUser) =>
+      hasConfirmedHeader(req.headers['x-confirmed-action']) ||
       Boolean(
         captcha &&
           process.env.CAPTCHA_TOKEN &&

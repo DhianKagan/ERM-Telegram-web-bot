@@ -81,14 +81,22 @@ export default function CollectionsPage() {
     undefined,
   );
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     if (active === "users") return;
-    fetchCollectionItems(active, query, page, limit).then((d) => {
+    try {
+      const d = await fetchCollectionItems(active, query, page, limit);
       setItems(d.items);
       setTotal(d.total);
       if (active === "departments") setAllDepartments(d.items);
       if (active === "divisions") setAllDivisions(d.items);
-    });
+      setHint("");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить элементы";
+      setHint(message);
+    }
   }, [active, query, page]);
 
   const loadUsers = useCallback(() => {
@@ -96,18 +104,30 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    fetchCollectionItems("departments", "", 1, 200).then((d) =>
-      setAllDepartments(d.items),
-    );
-    fetchCollectionItems("divisions", "", 1, 200).then((d) =>
-      setAllDivisions(d.items),
-    );
+    fetchCollectionItems("departments", "", 1, 200)
+      .then((d) => setAllDepartments(d.items))
+      .catch((error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить департаменты";
+        setHint((prev) => prev || message);
+      });
+    fetchCollectionItems("divisions", "", 1, 200)
+      .then((d) => setAllDivisions(d.items))
+      .catch((error) => {
+        const message =
+          error instanceof Error ? error.message : "Не удалось загрузить отделы";
+        setHint((prev) => prev || message);
+      });
   }, []);
 
   useEffect(() => {
     if (active !== "users") {
-      load();
+      void load();
       setForm({ name: "", value: "" });
+    } else {
+      setHint("");
     }
   }, [load, active]);
 
@@ -156,19 +176,26 @@ export default function CollectionsPage() {
     } else if (active === "divisions" || active === "positions") {
       valueToSave = form.value.trim();
     }
-    if (form._id) {
-      await updateCollectionItem(form._id, {
-        name: trimmedName,
-        value: valueToSave,
-      });
-    } else {
-      await createCollectionItem(active, {
-        name: trimmedName,
-        value: valueToSave,
-      });
+    try {
+      if (form._id) {
+        await updateCollectionItem(form._id, {
+          name: trimmedName,
+          value: valueToSave,
+        });
+      } else {
+        await createCollectionItem(active, {
+          name: trimmedName,
+          value: valueToSave,
+        });
+      }
+      setHint("");
+      setForm({ name: "", value: "" });
+      await load();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Не удалось сохранить элемент";
+      setHint(message);
     }
-    setForm({ name: "", value: "" });
-    load();
   };
 
   const remove = async () => {
@@ -177,7 +204,7 @@ export default function CollectionsPage() {
       await removeCollectionItem(form._id);
       setHint("");
       setForm({ name: "", value: "" });
-      load();
+      await load();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       setHint(msg);
@@ -207,6 +234,16 @@ export default function CollectionsPage() {
     allDivisions.forEach((d) => map.set(d._id, d.name));
     return map;
   }, [allDivisions]);
+
+  const divisionOwners = useMemo(() => {
+    const owners = new Map<string, string>();
+    allDepartments.forEach((department) => {
+      parseIds(department.value).forEach((divisionId) => {
+        if (!owners.has(divisionId)) owners.set(divisionId, department._id);
+      });
+    });
+    return owners;
+  }, [allDepartments]);
 
   const getItemDisplayValue = useCallback(
     (item: CollectionItem, type: string) => {
@@ -248,15 +285,24 @@ export default function CollectionsPage() {
           value={selected}
           onChange={handleSelect}
         >
-          {allDivisions.map((division) => (
-            <option key={division._id} value={division._id}>
-              {division.name}
-            </option>
-          ))}
+          {allDivisions
+            .filter((division) => {
+              const ownerId = divisionOwners.get(division._id);
+              if (!ownerId) return true;
+              const isSelected = selected.includes(division._id);
+              if (isSelected) return true;
+              if (!currentForm._id) return false;
+              return ownerId === currentForm._id;
+            })
+            .map((division) => (
+              <option key={division._id} value={division._id}>
+                {division.name}
+              </option>
+            ))}
         </select>
       );
     },
-    [allDivisions],
+    [allDivisions, divisionOwners],
   );
 
   const renderDivisionValueField = useCallback(

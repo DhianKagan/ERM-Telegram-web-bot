@@ -48,13 +48,13 @@ export default function Profile() {
   useEffect(() => {
     fetchCollectionItems("departments", "", 1, 200).then((d) =>
       setDepartments(d.items),
-    );
+    ).catch(() => setDepartments([]));
     fetchCollectionItems("divisions", "", 1, 200).then((d) =>
       setDivisions(d.items),
-    );
+    ).catch(() => setDivisions([]));
     fetchCollectionItems("positions", "", 1, 200).then((d) =>
       setPositions(d.items),
-    );
+    ).catch(() => setPositions([]));
   }, []);
 
   useEffect(() => {

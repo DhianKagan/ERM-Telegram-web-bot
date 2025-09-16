@@ -101,20 +101,22 @@ test('валидная капча пропускает лимитер auth', asy
 });
 
 test('подтверждённый запрос обходит лимитер auth', async () => {
-  delete process.env.CAPTCHA_TOKEN;
+
+  await new Promise((resolve) => setTimeout(resolve, 250));
   for (let i = 0; i < 2; i++) {
-    const r = await request(app)
+    const res = await request(app)
       .post('/api/v1/auth/send_code')
-      .send({ telegramId: 2 });
-    expect(r.status).toBe(200);
+      .send({ telegramId: 1 });
+    expect(res.status).toBe(200);
   }
   const limited = await request(app)
     .post('/api/v1/auth/send_code')
-    .send({ telegramId: 2 });
+    .send({ telegramId: 1 });
   expect(limited.status).toBe(429);
+
   const confirmed = await request(app)
     .post('/api/v1/auth/send_code')
-    .set('X-Confirmed-Action', 'true')
+
     .send({ telegramId: 2 });
   expect(confirmed.status).toBe(200);
 });

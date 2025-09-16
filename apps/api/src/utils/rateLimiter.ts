@@ -24,16 +24,48 @@ const drops = new client.Counter({
   labelNames: ['name', 'key'],
 });
 
-const confirmedTokens = new Set(['1', 'true', 'yes']);
 
-const isConfirmedValue = (value: string) =>
-  confirmedTokens.has(value.trim().toLowerCase());
+function extractTelegramId(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return undefined;
+}
 
-const hasConfirmedHeader = (value?: string | string[]) => {
-  if (!value) return false;
-  if (Array.isArray(value)) return value.some((item) => isConfirmedValue(item));
-  return isConfirmedValue(value);
-};
+function resolveTelegramId(req: RequestWithUser): string | undefined {
+  const fromUser = req.user?.telegram_id;
+  const userTelegramId = extractTelegramId(fromUser);
+  if (userTelegramId) return userTelegramId;
+
+  const body = req.body as Record<string, unknown> | undefined;
+  const query = req.query as Record<string, unknown> | undefined;
+  const params = req.params as Record<string, unknown> | undefined;
+  const session = (req as unknown as {
+    session?: Record<string, unknown>;
+  }).session;
+
+  const candidates: unknown[] = [
+    body?.telegramId,
+    body?.telegram_id,
+    query?.telegramId,
+    query?.telegram_id,
+    params?.telegramId,
+    params?.telegram_id,
+    session?.telegramId,
+    session?.telegram_id,
+  ];
+
+  for (const candidate of candidates) {
+    const id = extractTelegramId(candidate);
+    if (id) return id;
+  }
+
+  return undefined;
+}
 
 export default function createRateLimiter({
   windowMs,
@@ -48,10 +80,11 @@ export default function createRateLimiter({
       req.user?.role === 'admin' && adminMax
         ? adminMax
         : max) as unknown as RateLimitLibOptions['max'],
-    keyGenerator: ((req: RequestWithUser) =>
-      `${name}:${
-        req.user?.telegram_id ?? ipKeyGenerator(req.ip as string)
-      }`) as unknown as RateLimitLibOptions['keyGenerator'],
+    keyGenerator: ((req: RequestWithUser) => {
+      const telegramId = resolveTelegramId(req);
+      const key = telegramId ?? ipKeyGenerator(req.ip as string);
+      return `${name}:${key}`;
+    }) as unknown as RateLimitLibOptions['keyGenerator'],
     standardHeaders: true,
     legacyHeaders: true,
     skip: ((req: RequestWithUser) =>
@@ -71,8 +104,8 @@ export default function createRateLimiter({
           };
         }
       ).rateLimit;
-      const key = req.user?.telegram_id ?? ipKeyGenerator(req.ip as string);
-      drops.inc({ name, key });
+      const keyBase = resolveTelegramId(req) ?? ipKeyGenerator(req.ip as string);
+      drops.inc({ name, key: keyBase });
       const reset = info?.resetTime;
       if (reset instanceof Date) {
         const retryAfter = Math.ceil((reset.getTime() - Date.now()) / 1000);
@@ -91,7 +124,7 @@ export default function createRateLimiter({
       if (resetTime !== undefined)
         res.setHeader('X-RateLimit-Reset', resetTime.toString());
       writeLog(
-        `Превышен лимит ${req.method} ${req.originalUrl} key:${key} ` +
+        `Превышен лимит ${req.method} ${req.originalUrl} key:${keyBase} ` +
           `limit:${limit} remaining:${remaining} reset:${resetTime}`,
         'warn',
       ).catch(() => {});

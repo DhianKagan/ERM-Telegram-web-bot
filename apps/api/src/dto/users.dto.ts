@@ -5,8 +5,8 @@ import { body } from 'express-validator';
 export class CreateUserDto {
   static rules() {
     return [
-      body('id').isInt(),
-      body('username').isString().notEmpty(),
+      body('id').optional({ checkFalsy: true }).isInt(),
+      body('username').optional({ checkFalsy: true }).isString(),
       body('roleId').optional().isMongoId(),
     ];
   }

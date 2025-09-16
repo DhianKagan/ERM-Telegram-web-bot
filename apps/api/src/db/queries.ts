@@ -293,14 +293,114 @@ export async function summary(
   return { count, time };
 }
 
+interface GeneratedCredentials {
+  telegramId: number;
+  username: string;
+}
+
+function parseTelegramId(id?: string | number): number | undefined {
+  if (id === undefined || id === null) return undefined;
+  const asString = String(id).trim();
+  if (!asString) return undefined;
+  const numeric = Number(asString);
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
+    throw new Error('Invalid telegram_id');
+  }
+  return numeric;
+}
+
+async function ensureTelegramIdAvailable(id: number): Promise<void> {
+  const exists = await User.exists({ telegram_id: id });
+  if (exists) {
+    throw new Error('Пользователь с таким ID уже существует');
+  }
+}
+
+async function findNextTelegramId(): Promise<number> {
+  const last = await User.findOne({}, { telegram_id: 1 })
+    .sort({ telegram_id: -1 })
+    .lean<{ telegram_id?: number }>()
+    .exec();
+  let candidate =
+    typeof last?.telegram_id === 'number' && Number.isFinite(last.telegram_id)
+      ? last.telegram_id + 1
+      : 1;
+  while (await User.exists({ telegram_id: candidate })) {
+    candidate += 1;
+    if (!Number.isFinite(candidate) || candidate > Number.MAX_SAFE_INTEGER) {
+      throw new Error('Не удалось подобрать свободный ID');
+    }
+  }
+  return candidate;
+}
+
+function normalizeUsernameValue(value?: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed || undefined;
+}
+
+async function ensureUsernameAvailable(username: string): Promise<void> {
+  const exists = await User.exists({ username });
+  if (exists) {
+    throw new Error('Username уже используется');
+  }
+}
+
+async function generateUsername(base: string): Promise<string> {
+  let attempt = 0;
+  let candidate = base;
+  while (await User.exists({ username: candidate })) {
+    attempt += 1;
+    if (attempt > 1000) {
+      throw new Error('Не удалось подобрать свободный username');
+    }
+    candidate = `${base}_${attempt}`;
+  }
+  return candidate;
+}
+
+export async function generateUserCredentials(
+  id?: string | number,
+  username?: string,
+): Promise<GeneratedCredentials> {
+  const parsedId = parseTelegramId(id);
+  let telegramId: number;
+  if (parsedId !== undefined) {
+    await ensureTelegramIdAvailable(parsedId);
+    telegramId = parsedId;
+  } else {
+    telegramId = await findNextTelegramId();
+  }
+
+  const normalizedUsername = normalizeUsernameValue(username);
+  if (normalizedUsername) {
+    await ensureUsernameAvailable(normalizedUsername);
+    return { telegramId, username: normalizedUsername };
+  }
+
+  const base = `employee${telegramId}`;
+  const generated = await generateUsername(base);
+  return { telegramId, username: generated };
+}
+
+async function assertCredentialsAvailable({
+  telegramId,
+  username,
+}: GeneratedCredentials): Promise<void> {
+  await ensureTelegramIdAvailable(telegramId);
+  await ensureUsernameAvailable(username);
+}
+
 export async function createUser(
   id: string | number,
   username?: string,
   roleId?: string,
   extra: Omit<Partial<UserDocument>, 'access' | 'role'> = {},
 ): Promise<UserDocument> {
-  const telegramId = Number(id);
-  if (Number.isNaN(telegramId)) throw new Error('Invalid telegram_id');
+  const credentials = await generateUserCredentials(id, username);
+  await assertCredentialsAvailable(credentials);
+  const { telegramId, username: safeUsername } = credentials;
   const email = `${telegramId}@telegram.local`;
   let role = 'user';
   let rId = roleId || config.userRoleId;
@@ -317,9 +417,9 @@ export async function createUser(
   const access = accessByRole(role);
   return User.create({
     telegram_id: telegramId,
-    username,
+    username: safeUsername,
     email,
-    name: username,
+    name: safeUsername,
     role,
     roleId: rId as unknown as Types.ObjectId,
     access,
@@ -449,6 +549,7 @@ export default {
   deleteTask,
   summary,
   createUser,
+  generateUserCredentials,
   getUser,
   listUsers,
   getUsersMap,

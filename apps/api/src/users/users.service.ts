@@ -10,6 +10,10 @@ interface UsersRepo {
     roleId?: string,
     data?: Omit<Partial<UserDocument>, 'access' | 'role'>,
   ): Promise<UserDocument>;
+  generateUserCredentials(
+    id?: string | number,
+    username?: string,
+  ): Promise<{ telegramId: number; username: string }>;
   getUser(id: string | number): Promise<UserDocument | null>;
   updateUser(
     id: string | number,
@@ -28,13 +32,24 @@ class UsersService {
     return this.repo.listUsers();
   }
 
-  create(
-    id: string | number,
+  async create(
+    id?: string | number,
     username?: string,
     roleId?: string,
     data: Omit<Partial<UserDocument>, 'access' | 'role'> = {},
   ) {
-    return this.repo.createUser(id, username, roleId, data);
+    const { telegramId, username: resolvedUsername } =
+      await this.repo.generateUserCredentials(id, username);
+    return this.repo.createUser(
+      telegramId,
+      resolvedUsername,
+      roleId,
+      data,
+    );
+  }
+
+  generate(id?: string | number, username?: string) {
+    return this.repo.generateUserCredentials(id, username);
   }
 
   get(id: string | number) {

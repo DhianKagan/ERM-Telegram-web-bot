@@ -26,6 +26,7 @@ export class UpdateProfileDto {
       body('name').optional().isString().notEmpty(),
       body('phone').optional().isMobilePhone('any'),
       body('mobNumber').optional().isMobilePhone('any'),
+      body('email').optional().isEmail(),
     ];
   }
 }

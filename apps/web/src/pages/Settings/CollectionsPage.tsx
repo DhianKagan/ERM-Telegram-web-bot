@@ -18,10 +18,12 @@ import {
 import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
+import Modal from "../../components/Modal";
 import {
   fetchUsers,
   createUser as createUserApi,
   updateUser as updateUserApi,
+  type UserDetails,
 } from "../../services/users";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "shared";
@@ -79,6 +81,10 @@ export default function CollectionsPage() {
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(
     undefined,
+  );
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+  const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
+    "create",
   );
 
   const load = useCallback(async () => {
@@ -140,6 +146,11 @@ export default function CollectionsPage() {
     if (active === "employees") {
       loadUsers();
       setSelectedEmployeeId(undefined);
+      setEmployeeFormMode("create");
+      setIsEmployeeModalOpen(false);
+    }
+    if (active !== "employees") {
+      setIsEmployeeModalOpen(false);
     }
   }, [active, loadUsers]);
 
@@ -154,6 +165,8 @@ export default function CollectionsPage() {
 
   const selectEmployee = (item: CollectionItem) => {
     setSelectedEmployeeId(item._id);
+    setEmployeeFormMode("update");
+    setIsEmployeeModalOpen(true);
   };
 
   const handleSearch = (text: string) => {
@@ -165,6 +178,14 @@ export default function CollectionsPage() {
     setUserPage(1);
     setUserQuery(text);
     setSelectedEmployeeId(undefined);
+  };
+
+  const handleEmployeeSaved = (updated: UserDetails) => {
+    loadUsers();
+    if (updated.telegram_id !== undefined) {
+      setSelectedEmployeeId(String(updated.telegram_id));
+      setEmployeeFormMode("update");
+    }
   };
 
   const submit = async () => {
@@ -447,37 +468,45 @@ export default function CollectionsPage() {
                 </div>
               </div>
             ) : t.key === "employees" ? (
-              <div className="flex flex-col gap-4 md:flex-row">
-                <div className="md:w-1/2 space-y-2">
-                  <CollectionList
-                    items={userItems}
-                    selectedId={selectedEmployeeId}
-                    totalPages={userTotalPages}
-                    page={userPage}
-                    onSelect={selectEmployee}
-                    onSearch={handleUserSearch}
-                    onPageChange={setUserPage}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-gray w-full rounded"
-                    onClick={() => setSelectedEmployeeId(undefined)}
-                  >
-                    Новый сотрудник
-                  </button>
+              <>
+                <div className="flex flex-col gap-4 md:flex-row">
+                  <div className="md:w-1/2 space-y-2">
+                    <CollectionList
+                      items={userItems}
+                      selectedId={selectedEmployeeId}
+                      totalPages={userTotalPages}
+                      page={userPage}
+                      onSelect={selectEmployee}
+                      onSearch={handleUserSearch}
+                      onPageChange={setUserPage}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-gray w-full rounded"
+                      onClick={() => {
+                        setSelectedEmployeeId(undefined);
+                        setEmployeeFormMode("create");
+                        setIsEmployeeModalOpen(true);
+                      }}
+                    >
+                      Новый сотрудник
+                    </button>
+                  </div>
                 </div>
-                <div className="md:w-1/2">
+                <Modal
+                  open={isEmployeeModalOpen}
+                  onClose={() => setIsEmployeeModalOpen(false)}
+                >
                   <EmployeeCardForm
-                    telegramId={selectedEmployeeId}
-                    allowCreate
-                    onSaved={(updated) => {
-                      loadUsers();
-                      if (updated.telegram_id)
-                        setSelectedEmployeeId(String(updated.telegram_id));
-                    }}
+                    telegramId={
+                      employeeFormMode === "update" ? selectedEmployeeId : undefined
+                    }
+                    mode={employeeFormMode}
+                    onClose={() => setIsEmployeeModalOpen(false)}
+                    onSaved={handleEmployeeSaved}
                   />
-                </div>
-              </div>
+                </Modal>
+              </>
             ) : (
               <div className="flex flex-col gap-4 md:flex-row">
                 <div className="md:w-1/2">

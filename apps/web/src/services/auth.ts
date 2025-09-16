@@ -15,17 +15,39 @@ export const getProfile = async (options?: FetchOptions): Promise<User> => {
 
 interface ProfileData {
   name?: string;
+  phone?: string;
   mobNumber?: string;
+  email?: string;
 }
 
-export const updateProfile = (data: ProfileData) =>
-  authFetch("/api/v1/auth/profile", {
+export const updateProfile = async (data: ProfileData): Promise<User> => {
+  const res = await authFetch("/api/v1/auth/profile", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
-  }).then((r) => r.json());
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (text) {
+      try {
+        const data = JSON.parse(text) as Record<string, unknown>;
+        const detail =
+          (typeof data.detail === "string" && data.detail) ||
+          (typeof data.error === "string" && data.error) ||
+          (typeof data.message === "string" && data.message) ||
+          "";
+        if (detail) throw new Error(detail);
+      } catch {
+        /* игнорируем ошибку парсинга */
+      }
+    }
+    throw new Error(text || "Не удалось обновить профиль");
+  }
+  const updated = await res.json();
+  return { ...updated, id: String(updated.telegram_id ?? "") } as User;
+};
 
 export const logout = () =>
   authFetch("/api/v1/auth/logout", { method: "POST" }).then(() => undefined);

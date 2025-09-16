@@ -15,6 +15,11 @@ interface Props {
   onSubmit: () => void;
   onDelete: () => void;
   onReset: () => void;
+  valueLabel?: string;
+  renderValueField?: (
+    form: ItemForm,
+    onChange: (form: ItemForm) => void,
+  ) => React.ReactNode;
 }
 
 export default function CollectionForm({
@@ -23,6 +28,8 @@ export default function CollectionForm({
   onSubmit,
   onDelete,
   onReset,
+  valueLabel = "Значение",
+  renderValueField,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmSave, setConfirmSave] = React.useState(false);
@@ -44,13 +51,17 @@ export default function CollectionForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium">Значение</label>
-        <input
-          className="h-10 w-full rounded border px-3"
-          value={form.value}
-          onChange={(e) => onChange({ ...form, value: e.target.value })}
-          required
-        />
+        <label className="block text-sm font-medium">{valueLabel}</label>
+        {renderValueField ? (
+          renderValueField(form, onChange)
+        ) : (
+          <input
+            className="h-10 w-full rounded border px-3"
+            value={form.value}
+            onChange={(e) => onChange({ ...form, value: e.target.value })}
+            required
+          />
+        )}
       </div>
       <div className="flex gap-2">
         <button type="submit" className="btn btn-blue rounded">

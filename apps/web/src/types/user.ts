@@ -16,10 +16,20 @@ export interface User {
   phone?: string;
   /** Мобильный номер */
   mobNumber?: string;
+  /** Электронная почта */
+  email?: string;
   /** Роль пользователя */
   role?: string;
   /** Уровень доступа */
   access?: number;
   /** Список разрешений пользователя */
   permissions?: string[];
+  /** Идентификатор роли */
+  roleId?: string;
+  /** Идентификатор департамента */
+  departmentId?: string;
+  /** Идентификатор отдела */
+  divisionId?: string;
+  /** Идентификатор должности */
+  positionId?: string;
 }

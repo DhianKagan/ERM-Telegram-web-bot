@@ -12,6 +12,7 @@ interface Props {
   onSelect: (item: CollectionItem) => void;
   onSearch: (text: string) => void;
   onPageChange: (page: number) => void;
+  renderValue?: (item: CollectionItem) => React.ReactNode;
 }
 
 export default function CollectionList({
@@ -22,6 +23,7 @@ export default function CollectionList({
   onSelect,
   onSearch,
   onPageChange,
+  renderValue,
 }: Props) {
   const [search, setSearch] = React.useState("");
 
@@ -54,7 +56,9 @@ export default function CollectionList({
               }`}
             >
               <div className="font-medium">{it.name}</div>
-              <div className="text-sm text-gray-500">{it.value}</div>
+              <div className="text-sm text-gray-500">
+                {renderValue ? renderValue(it) : it.value}
+              </div>
             </button>
           </li>
         ))}

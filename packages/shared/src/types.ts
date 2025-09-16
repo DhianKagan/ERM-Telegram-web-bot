@@ -14,6 +14,8 @@ export interface User {
   username: string;
   name?: string;
   phone?: string;
+  mobNumber?: string;
+  email?: string;
   role?: string;
   access?: number;
   roleId?: string;

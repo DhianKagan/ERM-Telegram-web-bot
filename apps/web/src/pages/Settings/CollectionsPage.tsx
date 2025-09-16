@@ -1,6 +1,6 @@
 // Назначение: страница управления коллекциями настроек
 // Основные модули: React, Tabs, services/collections
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import {
   Tabs,
@@ -29,7 +29,7 @@ import type { User } from "shared";
 const types = [
   { key: "departments", label: "Департамент" },
   { key: "divisions", label: "Отдел" },
-  { key: "roles", label: "Должность" },
+  { key: "positions", label: "Должность" },
   { key: "employees", label: "Сотрудник" },
   { key: "fleets", label: "Автопарк" },
   { key: "users", label: "Пользователь" },
@@ -56,6 +56,12 @@ interface ItemForm {
   value: string;
 }
 
+const parseIds = (value: string) =>
+  value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
 export default function CollectionsPage() {
   const [active, setActive] = useState("departments");
   const [items, setItems] = useState<CollectionItem[]>([]);
@@ -64,6 +70,8 @@ export default function CollectionsPage() {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
   const [hint, setHint] = useState("");
+  const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
+  const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
   const limit = 10;
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
@@ -78,11 +86,22 @@ export default function CollectionsPage() {
     fetchCollectionItems(active, query, page, limit).then((d) => {
       setItems(d.items);
       setTotal(d.total);
+      if (active === "departments") setAllDepartments(d.items);
+      if (active === "divisions") setAllDivisions(d.items);
     });
   }, [active, query, page]);
 
   const loadUsers = useCallback(() => {
     fetchUsers().then((list) => setUsers(list));
+  }, []);
+
+  useEffect(() => {
+    fetchCollectionItems("departments", "", 1, 200).then((d) =>
+      setAllDepartments(d.items),
+    );
+    fetchCollectionItems("divisions", "", 1, 200).then((d) =>
+      setAllDivisions(d.items),
+    );
   }, []);
 
   useEffect(() => {
@@ -129,15 +148,23 @@ export default function CollectionsPage() {
   };
 
   const submit = async () => {
+    const trimmedName = form.name.trim();
+    if (!trimmedName) return;
+    let valueToSave = form.value;
+    if (active === "departments") {
+      valueToSave = parseIds(form.value).join(",");
+    } else if (active === "divisions" || active === "positions") {
+      valueToSave = form.value.trim();
+    }
     if (form._id) {
       await updateCollectionItem(form._id, {
-        name: form.name,
-        value: form.value,
+        name: trimmedName,
+        value: valueToSave,
       });
     } else {
       await createCollectionItem(active, {
-        name: form.name,
-        value: form.value,
+        name: trimmedName,
+        value: valueToSave,
       });
     }
     setForm({ name: "", value: "" });
@@ -168,6 +195,121 @@ export default function CollectionsPage() {
     setUserForm(emptyUser);
     loadUsers();
   };
+
+  const departmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allDepartments.forEach((d) => map.set(d._id, d.name));
+    return map;
+  }, [allDepartments]);
+
+  const divisionMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allDivisions.forEach((d) => map.set(d._id, d.name));
+    return map;
+  }, [allDivisions]);
+
+  const getItemDisplayValue = useCallback(
+    (item: CollectionItem, type: string) => {
+      if (type === "departments") {
+        const ids = parseIds(item.value);
+        if (!ids.length) return "—";
+        const names = ids
+          .map((id) => divisionMap.get(id))
+          .filter((name): name is string => Boolean(name));
+        return names.length ? names.join(", ") : "—";
+      }
+      if (type === "divisions") {
+        return departmentMap.get(item.value) || "—";
+      }
+      if (type === "positions") {
+        return divisionMap.get(item.value) || "—";
+      }
+      return item.value;
+    },
+    [departmentMap, divisionMap],
+  );
+
+  const renderDepartmentValueField = useCallback(
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+    ) => {
+      const selected = parseIds(currentForm.value);
+      const handleSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const values = Array.from(event.target.selectedOptions).map(
+          (option) => option.value,
+        );
+        handleChange({ ...currentForm, value: values.join(",") });
+      };
+      return (
+        <select
+          multiple
+          className="min-h-[8rem] w-full rounded border px-3 py-2"
+          value={selected}
+          onChange={handleSelect}
+        >
+          {allDivisions.map((division) => (
+            <option key={division._id} value={division._id}>
+              {division.name}
+            </option>
+          ))}
+        </select>
+      );
+    },
+    [allDivisions],
+  );
+
+  const renderDivisionValueField = useCallback(
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+    ) => (
+      <select
+        className="h-10 w-full rounded border px-3"
+        value={currentForm.value}
+        onChange={(event) =>
+          handleChange({ ...currentForm, value: event.target.value })
+        }
+        required
+      >
+        <option value="" disabled>
+          Выберите департамент
+        </option>
+        {allDepartments.map((department) => (
+          <option key={department._id} value={department._id}>
+            {department.name}
+          </option>
+        ))}
+      </select>
+    ),
+    [allDepartments],
+  );
+
+  const renderPositionValueField = useCallback(
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+    ) => (
+      <select
+        className="h-10 w-full rounded border px-3"
+        value={currentForm.value}
+        onChange={(event) =>
+          handleChange({ ...currentForm, value: event.target.value })
+        }
+        required
+      >
+        <option value="" disabled>
+          Выберите отдел
+        </option>
+        {allDivisions.map((division) => (
+          <option key={division._id} value={division._id}>
+            {division.name}
+          </option>
+        ))}
+      </select>
+    ),
+    [allDivisions],
+  );
 
   const totalPages = Math.ceil(total / limit) || 1;
   const filteredUsers = users.filter((u) => {
@@ -207,14 +349,37 @@ export default function CollectionsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        {types.map((t) => (
-          <TabsContent key={t.key} value={t.key}>
-            {t.key === "users" ? (
-              <div className="flex flex-col gap-4 md:flex-row">
-                <div className="md:w-1/2">
-                  <CollectionList
-                    items={userItems}
-                    selectedId={
+        {types.map((t) => {
+          const valueLabel =
+            t.key === "departments"
+              ? "Отделы"
+              : t.key === "divisions"
+                ? "Департамент"
+                : t.key === "positions"
+                  ? "Отдел"
+                  : undefined;
+          const valueFieldRenderer =
+            t.key === "departments"
+              ? renderDepartmentValueField
+              : t.key === "divisions"
+                ? renderDivisionValueField
+                : t.key === "positions"
+                  ? renderPositionValueField
+                  : undefined;
+          const valueRenderer =
+            t.key === "departments" ||
+            t.key === "divisions" ||
+            t.key === "positions"
+              ? (item: CollectionItem) => getItemDisplayValue(item, t.key)
+              : undefined;
+          return (
+            <TabsContent key={t.key} value={t.key}>
+              {t.key === "users" ? (
+                <div className="flex flex-col gap-4 md:flex-row">
+                  <div className="md:w-1/2">
+                    <CollectionList
+                      items={userItems}
+                      selectedId={
                       userForm.telegram_id
                         ? String(userForm.telegram_id)
                         : undefined
@@ -278,6 +443,7 @@ export default function CollectionsPage() {
                     onSelect={selectItem}
                     onSearch={handleSearch}
                     onPageChange={setPage}
+                    renderValue={valueRenderer}
                   />
                 </div>
                 <div className="md:w-1/2">
@@ -287,12 +453,15 @@ export default function CollectionsPage() {
                     onSubmit={submit}
                     onDelete={remove}
                     onReset={() => setForm({ name: "", value: "" })}
+                    valueLabel={valueLabel}
+                    renderValueField={valueFieldRenderer}
                   />
                 </div>
               </div>
-            )}
-          </TabsContent>
-        ))}
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </div>
   );

@@ -13,6 +13,7 @@ interface Props {
   onSearch: (text: string) => void;
   onPageChange: (page: number) => void;
   renderValue?: (item: CollectionItem) => React.ReactNode;
+  searchValue?: string;
 }
 
 export default function CollectionList({
@@ -24,8 +25,13 @@ export default function CollectionList({
   onSearch,
   onPageChange,
   renderValue,
+  searchValue,
 }: Props) {
-  const [search, setSearch] = React.useState("");
+  const [search, setSearch] = React.useState(searchValue ?? "");
+
+  React.useEffect(() => {
+    setSearch(searchValue ?? "");
+  }, [searchValue]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

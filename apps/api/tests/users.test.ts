@@ -102,7 +102,51 @@ app.post(
   checkRole(ACCESS_ADMIN),
   ...validateDto(CreateUserDto),
   asyncHandler(async (req, res) => {
-    res.json(await createUser(req.body.id, req.body.username, req.body.roleId));
+    const rawId = req.body.id;
+    const rawUsername = req.body.username;
+    const rawRoleId = req.body.roleId;
+
+    const normalizedId =
+      typeof rawId === 'string'
+        ? rawId.trim() || undefined
+        : rawId !== undefined
+        ? rawId
+        : undefined;
+
+    const normalizedUsername =
+      typeof rawUsername === 'string'
+        ? rawUsername.trim() || undefined
+        : rawUsername !== undefined
+        ? String(rawUsername)
+        : undefined;
+
+    const normalizedRoleId =
+      typeof rawRoleId === 'string'
+        ? rawRoleId.trim() || undefined
+        : rawRoleId;
+
+    if (req.query.preview === 'true' || req.query.preview === '1') {
+      const generatedPreview = await generateUserCredentials(
+        normalizedId,
+        normalizedUsername,
+      );
+      res.json({
+        telegram_id: generatedPreview.telegramId,
+        username: generatedPreview.username,
+      });
+      return;
+    }
+
+    const generated = await generateUserCredentials(
+      normalizedId,
+      normalizedUsername,
+    );
+    const createdUser = await createUser(
+      generated.telegramId,
+      generated.username,
+      normalizedRoleId,
+    );
+    res.status(201).json(createdUser);
   }),
 );
 app.patch(

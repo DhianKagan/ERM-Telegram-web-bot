@@ -13,13 +13,13 @@ const createCursor = () => ({
   exec: jest.fn().mockResolvedValue(null),
 });
 
-const findOneMock = jest.fn(createCursor);
+const mockFindOne = jest.fn(createCursor);
 
 jest.mock('../src/db/model', () => ({
   User: {
     create: jest.fn(async (doc) => doc),
     exists: jest.fn(async () => false),
-    findOne: findOneMock,
+    findOne: mockFindOne,
   },
   Role: { findById: jest.fn(async () => null) },
 }));
@@ -30,8 +30,8 @@ const model = require('../src/db/model');
 
 describe('createUser', () => {
   beforeEach(() => {
-    findOneMock.mockReset();
-    findOneMock.mockImplementation(createCursor);
+    mockFindOne.mockReset();
+    mockFindOne.mockImplementation(createCursor);
   });
 
   test('новый пользователь получает имя из username', async () => {
@@ -48,7 +48,7 @@ describe('createUser', () => {
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(false)
       .mockResolvedValue(false);
-    findOneMock.mockReturnValueOnce({
+    mockFindOne.mockReturnValueOnce({
       sort: jest.fn().mockReturnThis(),
       lean: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue({ telegram_id: 10 }),

@@ -64,6 +64,7 @@ describe('storage routes', () => {
 
   test('delete file', async () => {
     const f = path.join(uploadsDir, 'del.txt');
+    fs.mkdirSync(uploadsDir, { recursive: true });
     fs.writeFileSync(f, 'd');
     (File.findOneAndDelete as jest.Mock).mockReturnValue({
       lean: jest.fn().mockResolvedValue({ path: 'del.txt' }),

@@ -9,5 +9,13 @@ export {
   generateMultiRouteLink,
   type Coords,
 } from './mapUtils';
-export type { Task, User } from './types';
+export type {
+  Task,
+  User,
+  VehicleDto,
+  VehiclePositionDto,
+  VehicleSensorDto,
+  VehicleTrackPointDto,
+  FleetVehiclesResponse,
+} from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

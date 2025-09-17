@@ -40,6 +40,10 @@ const messages = {
   mapLinkError: 'Не удалось получить ссылку',
   ermLink: 'Ссылка на приложение: https://agromarket.up.railway.app',
   help: `Доступные команды:\n/start - запуск бота\n/register - регистрация`,
+  noFleets: 'Флоты не найдены',
+  noVehicles: 'Транспорт отсутствует',
+  vehiclesError: 'Не удалось загрузить транспорт',
+  vehicleNoPosition: 'нет данных о координатах',
 } as const;
 
 export default messages;

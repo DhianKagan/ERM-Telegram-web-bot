@@ -1,7 +1,7 @@
 // Назначение: сервисные функции для работы с флотами и транспортом
 // Основные модули: authFetch, shared/types
 import authFetch from "../utils/authFetch";
-import type { FleetVehiclesResponse } from "shared";
+import type { FleetVehiclesResponse, VehicleDto, VehicleSensorDto } from "shared";
 
 export interface FleetVehiclesParams {
   track?: boolean;
@@ -46,3 +46,40 @@ export const fetchFleetVehicles = async (
   }
   return res.json();
 };
+
+export interface VehicleUpdatePayload {
+  name?: string;
+  notes?: string | null;
+  customSensors?: VehicleSensorDto[] | null;
+}
+
+async function mutateVehicle(
+  method: "PATCH" | "PUT",
+  fleetId: string,
+  vehicleId: string,
+  payload: VehicleUpdatePayload,
+): Promise<VehicleDto> {
+  const res = await authFetch(`/api/v1/fleets/${fleetId}/vehicles/${vehicleId}`, {
+    method,
+    confirmed: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || "Не удалось сохранить транспорт");
+  }
+  return res.json();
+}
+
+export const patchFleetVehicle = (
+  fleetId: string,
+  vehicleId: string,
+  payload: VehicleUpdatePayload,
+) => mutateVehicle("PATCH", fleetId, vehicleId, payload);
+
+export const replaceFleetVehicle = (
+  fleetId: string,
+  vehicleId: string,
+  payload: VehicleUpdatePayload,
+) => mutateVehicle("PUT", fleetId, vehicleId, payload);

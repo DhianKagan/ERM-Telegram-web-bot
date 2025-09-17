@@ -51,9 +51,12 @@ export interface VehicleDto {
   id: string;
   unitId: number;
   name: string;
+  remoteName?: string;
+  notes?: string;
   updatedAt?: string;
   position?: VehiclePositionDto;
   sensors: VehicleSensorDto[];
+  customSensors?: VehicleSensorDto[];
   track?: VehicleTrackPointDto[];
 }
 

@@ -43,15 +43,25 @@ jest.mock('../src/services/wialon', () => ({
   loadTrack: jest.fn(),
 }));
 
+jest.mock('../src/services/fleetVehicles', () => ({
+  __esModule: true,
+  syncFleetVehicles: jest.fn(),
+  syncAllFleets: jest.fn(),
+}));
+
 import fleetsRouter from '../src/routes/fleets';
 import { Fleet } from '../src/db/models/fleet';
 import { Vehicle } from '../src/db/models/vehicle';
 import { login, loadTrack } from '../src/services/wialon';
+import { syncFleetVehicles } from '../src/services/fleetVehicles';
 
 jest.setTimeout(60000);
 
 const mockedLogin = login as jest.MockedFunction<typeof login>;
 const mockedLoadTrack = loadTrack as jest.MockedFunction<typeof loadTrack>;
+const mockedSyncFleetVehicles = syncFleetVehicles as jest.MockedFunction<
+  typeof syncFleetVehicles
+>;
 
 describe('GET /api/v1/fleets/:id/vehicles', () => {
   let mongod: MongoMemoryServer;
@@ -76,6 +86,8 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
     await Vehicle.deleteMany({});
     mockedLogin.mockReset();
     mockedLoadTrack.mockReset();
+    mockedSyncFleetVehicles.mockReset();
+    mockedSyncFleetVehicles.mockResolvedValue();
   });
 
   it('возвращает список транспорта без трека', async () => {
@@ -140,5 +152,93 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
       lat: 55,
       lon: 37,
     });
+  });
+
+  it('вызывает синхронизацию при создании флота', async () => {
+    const res = await request(app)
+      .post('/api/v1/fleets')
+      .send({ name: 'Новый флот', link: 'https://hosting.wialon.com/locator?t=dG9rZW4=' })
+      .expect(201);
+    expect(res.body.name).toBe('Новый флот');
+    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+  });
+
+  it('вызывает синхронизацию при обновлении флота', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    mockedSyncFleetVehicles.mockClear();
+    await request(app)
+      .put(`/api/v1/fleets/${fleet._id.toString()}`)
+      .send({ name: 'Флот 2' })
+      .expect(200);
+    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+  });
+
+  it('обновляет транспорт через PATCH', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    const vehicle = await Vehicle.create({
+      fleetId: fleet._id,
+      unitId: 55,
+      name: 'Самосвал',
+      sensors: [],
+    });
+
+    const response = await request(app)
+      .patch(`/api/v1/fleets/${fleet._id.toString()}/vehicles/${vehicle._id.toString()}`)
+      .send({
+        name: 'Каток',
+        notes: 'Готов к выезду',
+        customSensors: [{ name: 'Лампочка', value: true }],
+      })
+      .expect(200);
+
+    expect(response.body.name).toBe('Каток');
+    expect(response.body.notes).toBe('Готов к выезду');
+    expect(response.body.customSensors).toHaveLength(1);
+    const stored = await Vehicle.findById(vehicle._id).lean();
+    expect(stored?.notes).toBe('Готов к выезду');
+    expect(stored?.customSensors).toHaveLength(1);
+  });
+
+  it('перезаписывает транспорт через PUT', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    const vehicle = await Vehicle.create({
+      fleetId: fleet._id,
+      unitId: 77,
+      name: 'Кран',
+      notes: 'Замечания',
+      sensors: [],
+      customSensors: [{ name: 'Сирена', value: 'ok' }],
+    });
+
+    const response = await request(app)
+      .put(`/api/v1/fleets/${fleet._id.toString()}/vehicles/${vehicle._id.toString()}`)
+      .send({ name: 'Кран-2' })
+      .expect(200);
+
+    expect(response.body.name).toBe('Кран-2');
+    expect(response.body.notes).toBe('');
+    expect(Array.isArray(response.body.customSensors)).toBe(true);
+    expect(response.body.customSensors).toHaveLength(0);
+    const stored = await Vehicle.findById(vehicle._id).lean();
+    expect(stored?.notes).toBe('');
+    expect(stored?.customSensors).toHaveLength(0);
   });
 });

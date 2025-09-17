@@ -33,18 +33,18 @@ export default function taskColumns(
     {
       header: "Номер",
       accessorKey: "task_number",
-      meta: { minWidth: "4rem", maxWidth: "6rem" },
+      meta: { minWidth: "3.5rem", maxWidth: "5.5rem" },
     },
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      meta: { minWidth: "10rem", maxWidth: "12rem" },
+      meta: { minWidth: "8rem", maxWidth: "11rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Название",
       accessorKey: "title",
-      meta: { minWidth: "10rem", maxWidth: "20rem" },
+      meta: { minWidth: "9rem", maxWidth: "18rem" },
       cell: (p) => {
         const v = p.getValue<string>() || "";
         return <span title={v}>{v}</span>;
@@ -53,7 +53,7 @@ export default function taskColumns(
     {
       header: "Статус",
       accessorKey: "status",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      meta: { minWidth: "5.5rem", maxWidth: "7.5rem" },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         return <span className={statusColorMap[value] || ""}>{value}</span>;
@@ -62,29 +62,29 @@ export default function taskColumns(
     {
       header: "Приоритет",
       accessorKey: "priority",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      meta: { minWidth: "5.5rem", maxWidth: "7.5rem" },
     },
     {
       header: "Начало",
       accessorKey: "start_date",
-      meta: { minWidth: "10rem", maxWidth: "12rem" },
+      meta: { minWidth: "8rem", maxWidth: "11rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Срок",
       accessorKey: "due_date",
-      meta: { minWidth: "10rem", maxWidth: "12rem" },
+      meta: { minWidth: "8rem", maxWidth: "11rem" },
       cell: (p) => formatDate(p.getValue<string>()),
     },
     {
       header: "Тип",
       accessorKey: "task_type",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      meta: { minWidth: "5.5rem", maxWidth: "7.5rem" },
     },
     {
       header: "Старт",
       accessorKey: "start_location",
-      meta: { minWidth: "10rem", maxWidth: "14rem" },
+      meta: { minWidth: "8rem", maxWidth: "12rem" },
       cell: ({ row }) => {
         const name = row.original.start_location || "";
         const link = row.original.start_location_link;
@@ -106,7 +106,7 @@ export default function taskColumns(
     {
       header: "Финиш",
       accessorKey: "end_location",
-      meta: { minWidth: "10rem", maxWidth: "14rem" },
+      meta: { minWidth: "8rem", maxWidth: "12rem" },
       cell: ({ row }) => {
         const name = row.original.end_location || "";
         const link = row.original.end_location_link;
@@ -128,12 +128,12 @@ export default function taskColumns(
     {
       header: "Км",
       accessorKey: "route_distance_km",
-      meta: { minWidth: "4rem", maxWidth: "6rem" },
+      meta: { minWidth: "3.5rem", maxWidth: "5rem" },
     },
     {
       header: "Исполнители",
       accessorKey: "assignees",
-      meta: { minWidth: "10rem", maxWidth: "16rem" },
+      meta: { minWidth: "8rem", maxWidth: "14rem" },
       cell: ({ row }) => {
         const ids: number[] =
           row.original.assignees ||

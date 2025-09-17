@@ -65,6 +65,86 @@ interface InitialValues {
   distanceKm: number | null;
 }
 
+const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const toIsoString = (value: unknown): string => {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "number") {
+    const fromNumber = new Date(value);
+    return Number.isNaN(fromNumber.getTime()) ? "" : fromNumber.toISOString();
+  }
+  if (value && typeof value === "object" && "$date" in (value as Record<string, unknown>)) {
+    const raw = (value as Record<string, unknown>).$date;
+    return typeof raw === "string" ? raw : "";
+  }
+  if (typeof value === "string") return value;
+  return "";
+};
+
+const normalizeHistory = (raw: unknown): HistoryItem[] => {
+  if (!raw) return [];
+  const source = Array.isArray(raw)
+    ? raw
+    : typeof raw === "object"
+    ? Object.values(raw as Record<string, unknown>)
+    : [];
+  return source
+    .filter((entry): entry is Record<string, unknown> => entry !== null && typeof entry === "object")
+    .map((entry) => {
+      const record = entry as Record<string, unknown>;
+      const changes = toRecord(record.changes);
+      const from = toRecord(changes.from);
+      const to = toRecord(changes.to);
+      const changedByRaw = record.changed_by;
+      const changedBy =
+        typeof changedByRaw === "number"
+          ? changedByRaw
+          : Number(changedByRaw) || 0;
+      return {
+        changed_at: toIsoString(record.changed_at),
+        changed_by: changedBy,
+        changes: { from, to },
+      } satisfies HistoryItem;
+    })
+    .sort((a, b) => {
+      const aTime = Date.parse(a.changed_at);
+      const bTime = Date.parse(b.changed_at);
+      if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+      if (Number.isNaN(aTime)) return 1;
+      if (Number.isNaN(bTime)) return -1;
+      return bTime - aTime;
+    });
+};
+
+const formatHistoryDate = (value: string): string => {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value || "";
+  return historyDateFormatter.format(new Date(parsed));
+};
+
+const formatHistoryValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "—";
+  if (value instanceof Date) return historyDateFormatter.format(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
@@ -209,6 +289,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [selectedAction, setSelectedAction] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const titleValue = watch("title");
+  const resolveUserName = React.useCallback(
+    (id: number) => {
+      const person = users.find((u) => u.telegram_id === id);
+      return (
+        person?.name ||
+        person?.telegram_username ||
+        person?.username ||
+        String(id)
+      );
+    },
+    [users],
+  );
   const removeAttachment = (a: Attachment) => {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
   };
@@ -238,7 +330,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           });
           setRequestId(t.task_number || t.request_id);
           setCreated(new Date(t.createdAt).toISOString().slice(0, 10));
-          setHistory((t.history as HistoryItem[]) || []);
+          setHistory(normalizeHistory(t.history));
         });
     } else {
       setCreated(new Date().toISOString().slice(0, 10));
@@ -1252,29 +1344,90 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">
             <h4 className="mb-2 font-semibold">{t("history")}</h4>
-            <ul className="space-y-2 text-sm">
-              {history.map((h, i) => (
-                <li key={i}>
-                  <span className="font-medium">
-                    {new Date(h.changed_at).toLocaleString()}
-                  </span>{" "}
-                  {h.changes.from.status && h.changes.to.status ? (
-                    <span>
-                      {users.find((u) => u.telegram_id === h.changed_by)
-                        ?.username ||
-                        users.find((u) => u.telegram_id === h.changed_by)
-                          ?.name ||
-                        h.changed_by}{" "}
-                      изменил статус с {String(h.changes.from.status)} на{" "}
-                      {String(h.changes.to.status)}
-                    </span>
-                  ) : (
-                    <pre className="break-all whitespace-pre-wrap">
-                      {JSON.stringify(h.changes)}
-                    </pre>
-                  )}
-                </li>
-              ))}
+            <ul className="space-y-2 text-xs sm:text-sm">
+              {history.map((entry, index) => {
+                const timeLabel = formatHistoryDate(entry.changed_at);
+                const author = resolveUserName(entry.changed_by);
+                const fromState = entry.changes.from || {};
+                const toState = entry.changes.to || {};
+                const fromStatusRaw = (fromState as Record<string, unknown>)["status"];
+                const toStatusRaw = (toState as Record<string, unknown>)["status"];
+                const fromStatus = formatHistoryValue(fromStatusRaw);
+                const toStatus = formatHistoryValue(toStatusRaw);
+                const showStatusChange =
+                  fromStatus !== "—" &&
+                  toStatus !== "—" &&
+                  fromStatus !== toStatus;
+                const keys = Array.from(
+                  new Set([
+                    ...Object.keys(fromState as Record<string, unknown>),
+                    ...Object.keys(toState as Record<string, unknown>),
+                  ]),
+                );
+                const keysToRender = showStatusChange
+                  ? keys.filter((key) => key !== "status")
+                  : keys;
+                const hasDetailedChanges = keysToRender.some((key) => {
+                  const prevValue = formatHistoryValue(
+                    (fromState as Record<string, unknown>)[key],
+                  );
+                  const nextValue = formatHistoryValue(
+                    (toState as Record<string, unknown>)[key],
+                  );
+                  return prevValue !== nextValue;
+                });
+                return (
+                  <li
+                    key={`${entry.changed_at}-${entry.changed_by}-${index}`}
+                    className="rounded border border-gray-200 bg-white p-2 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-baseline gap-1 text-xs font-medium text-gray-700 sm:text-sm">
+                      <span>{timeLabel || "—"}</span>
+                      <span className="text-gray-500">{author}</span>
+                    </div>
+                    {showStatusChange && (
+                      <p className="mt-1 text-xs text-gray-700 sm:text-sm">
+                        Изменил статус с {fromStatus} на {toStatus}
+                      </p>
+                    )}
+                    {keysToRender.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-xs text-gray-700 sm:text-sm">
+                        {keysToRender.map((key) => {
+                          const prevValue = formatHistoryValue(
+                            (fromState as Record<string, unknown>)[key],
+                          );
+                          const nextValue = formatHistoryValue(
+                            (toState as Record<string, unknown>)[key],
+                          );
+                          if (prevValue === nextValue) return null;
+                          return (
+                            <li
+                              key={key}
+                              className="flex flex-wrap items-baseline gap-1"
+                            >
+                              <span className="font-medium text-gray-600">
+                                {key}:
+                              </span>
+                              <span className="text-gray-500 line-through decoration-gray-400">
+                                {prevValue}
+                              </span>
+                              <span className="text-gray-400">→</span>
+                              <span className="font-semibold text-gray-900">
+                                {nextValue}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    {!showStatusChange && !hasDetailedChanges && (
+                      <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                        Детали изменений отсутствуют
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <button
               className="btn-blue mt-2 rounded-lg"

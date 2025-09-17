@@ -65,44 +65,44 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
   };
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-2 text-sm">
-      <div className="flex items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+      <div className="flex flex-1 flex-wrap items-center gap-1.5">
         <GlobalSearch />
         {children}
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:justify-end">
         <details className="relative">
-          <summary className="cursor-pointer rounded border px-2 py-1 select-none">
+          <summary className="cursor-pointer rounded border px-2 py-1 text-xs font-medium select-none sm:text-sm">
             {t("export")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-32 rounded border bg-white p-2 shadow">
+          <div className="absolute right-0 z-10 mt-1 w-32 rounded border bg-white p-1.5 shadow">
             <button
               onClick={exportCsv}
-              className="block w-full rounded px-2 py-1 text-left hover:bg-gray-100"
+              className="block w-full rounded px-2 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
             >
               CSV
             </button>
             <button
               onClick={() => void exportPdf()}
-              className="mt-1 block w-full rounded px-2 py-1 text-left hover:bg-gray-100"
+              className="mt-1 block w-full rounded px-2 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
             >
               PDF
             </button>
           </div>
         </details>
         <details className="relative">
-          <summary className="cursor-pointer rounded border px-2 py-1 select-none">
+          <summary className="cursor-pointer rounded border px-2 py-1 text-xs font-medium select-none sm:text-sm">
             {t("settings")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-64 space-y-2 rounded border bg-white p-2 shadow">
+          <div className="absolute right-0 z-10 mt-1 w-64 space-y-1.5 rounded border bg-white p-2 shadow">
             <SearchFilters inline />
-            <div className="border-t pt-2">
+            <div className="border-t pt-1.5">
               {columns.map((col) => (
                 <div
                   key={col.id}
-                  className="flex items-center justify-between gap-2"
+                  className="flex items-center justify-between gap-1.5"
                 >
-                  <label className="flex items-center gap-1">
+                  <label className="flex items-center gap-1 text-xs font-medium sm:text-sm">
                     <input
                       type="checkbox"
                       checked={col.getIsVisible()}
@@ -113,13 +113,13 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveColumn(col.id, -1)}
-                      className="rounded border px-1"
+                      className="rounded border px-1 text-xs font-medium"
                     >
                       ←
                     </button>
                     <button
                       onClick={() => moveColumn(col.id, 1)}
-                      className="rounded border px-1"
+                      className="rounded border px-1 text-xs font-medium"
                     >
                       →
                     </button>

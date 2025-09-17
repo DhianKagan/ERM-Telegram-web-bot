@@ -26,6 +26,17 @@ jest.mock("../../services/users", () => ({
   updateUser: jest.fn(),
 }));
 
+jest.mock("../../services/fleets", () => ({
+  fetchFleetVehicles: jest
+    .fn()
+    .mockResolvedValue({ fleet: { id: "", name: "" }, vehicles: [] }),
+  patchFleetVehicle: jest.fn(),
+  replaceFleetVehicle: jest.fn(),
+}));
+
+jest.mock("./FleetVehiclesGrid", () => () => <div data-testid="fleet-grid" />);
+jest.mock("./VehicleEditDialog", () => () => <div data-testid="vehicle-dialog" />);
+
 jest.mock(
   "../../components/Breadcrumbs",
   () =>

@@ -86,10 +86,50 @@ describe('fleetVehicles sync', () => {
 
     const stored = await Vehicle.findOne({ fleetId: fleet._id, unitId: 101 }).lean();
     expect(stored?.name).toBe('Экскаватор');
+    expect(stored?.remoteName).toBe('Экскаватор');
     expect(stored?.position?.lat).toBeCloseTo(55.75);
     expect(stored?.sensors?.[0]?.name).toBe('Топливо');
+    expect(stored?.notes).toBe('');
+    expect(stored?.customSensors).toHaveLength(0);
     expect(mockedLogin).toHaveBeenCalledWith('token', 'https://hst-api.wialon.com');
     expect(mockedLoadUnits).toHaveBeenCalledWith('sid', 'https://hst-api.wialon.com');
+  });
+
+  it('не перезаписывает ручное имя и примечания', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    await Vehicle.create({
+      fleetId: fleet._id,
+      unitId: 42,
+      name: 'Погрузчик',
+      remoteName: 'OLD',
+      notes: 'Заправлен',
+      sensors: [],
+      customSensors: [{ name: 'Метка', value: 'A1' }],
+    });
+    mockedLogin.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    mockedLoadUnits.mockResolvedValue([
+      {
+        id: 42,
+        name: 'Экскаватор',
+        position: undefined,
+        sensors: [],
+      },
+    ]);
+
+    await syncFleetVehicles(fleet);
+
+    const stored = await Vehicle.findOne({ fleetId: fleet._id, unitId: 42 }).lean();
+    expect(stored?.name).toBe('Погрузчик');
+    expect(stored?.remoteName).toBe('Экскаватор');
+    expect(stored?.notes).toBe('Заправлен');
+    expect(stored?.customSensors).toHaveLength(1);
+    expect(mockedLoadUnits).toHaveBeenCalled();
   });
 
   it('удаляет транспорт, отсутствующий в выгрузке', async () => {

@@ -21,8 +21,11 @@ export interface VehicleAttrs {
   fleetId: Types.ObjectId;
   unitId: number;
   name: string;
+  remoteName?: string;
+  notes?: string;
   position?: VehiclePosition;
   sensors?: VehicleSensor[];
+  customSensors?: VehicleSensor[];
 }
 
 export interface VehicleDocument extends VehicleAttrs, Document {}
@@ -53,8 +56,11 @@ const vehicleSchema = new Schema<VehicleDocument>(
     fleetId: { type: Schema.Types.ObjectId, ref: 'Fleet', required: true, index: true },
     unitId: { type: Number, required: true },
     name: { type: String, required: true },
+    remoteName: { type: String },
+    notes: { type: String, default: '' },
     position: { type: positionSchema },
     sensors: { type: [sensorSchema], default: [] },
+    customSensors: { type: [sensorSchema], default: [] },
   },
   {
     timestamps: true,
@@ -62,5 +68,6 @@ const vehicleSchema = new Schema<VehicleDocument>(
 );
 
 vehicleSchema.index({ fleetId: 1, unitId: 1 }, { unique: true });
+vehicleSchema.index({ fleetId: 1, name: 1 });
 
 export const Vehicle = model<VehicleDocument>('Vehicle', vehicleSchema);

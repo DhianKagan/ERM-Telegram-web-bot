@@ -18,6 +18,8 @@ import {
 import { Vehicle, type VehicleAttrs, type VehicleSensor } from '../db/models/vehicle';
 import { login, loadTrack, parseLocatorLink } from '../services/wialon';
 import type { Types } from 'mongoose';
+import { syncFleetVehicles } from '../services/fleetVehicles';
+import { ReplaceVehicleDto, UpdateVehicleDto } from '../dto/vehicles.dto';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -52,6 +54,11 @@ router.post(
       baseUrl: locator.baseUrl,
       locatorKey: locator.locatorKey,
     });
+    try {
+      await syncFleetVehicles(fleet);
+    } catch (error) {
+      console.error('Не удалось синхронизировать транспорт нового флота:', error);
+    }
     res.status(201).json(fleet);
   },
 );
@@ -82,6 +89,11 @@ router.put(
       res.sendStatus(404);
       return;
     }
+    try {
+      await syncFleetVehicles(fleet);
+    } catch (error) {
+      console.error(`Не удалось синхронизировать транспорт флота ${fleet._id}:`, error);
+    }
     res.json(fleet);
   },
 );
@@ -99,6 +111,49 @@ router.delete(
     res.json({ status: 'ok' });
   },
 );
+
+function mapSensor(sensor: VehicleSensor) {
+  return {
+    name: sensor.name,
+    type: sensor.type,
+    value: sensor.value,
+    updatedAt:
+      sensor.updatedAt instanceof Date ? sensor.updatedAt.toISOString() : sensor.updatedAt,
+  };
+}
+
+function mapVehicle(doc: VehicleAttrs & { _id: Types.ObjectId; updatedAt?: Date | string }) {
+  const updatedAt =
+    doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : doc.updatedAt;
+  const base: Record<string, unknown> = {
+    id: String(doc._id),
+    unitId: doc.unitId,
+    name: doc.name,
+    remoteName: doc.remoteName,
+    notes: doc.notes ?? '',
+    updatedAt,
+  };
+  if (doc.position) {
+    const positionUpdated =
+      doc.position.updatedAt instanceof Date
+        ? doc.position.updatedAt.toISOString()
+        : doc.position.updatedAt;
+    base.position = {
+      lat: doc.position.lat,
+      lon: doc.position.lon,
+      speed: doc.position.speed,
+      course: doc.position.course,
+      updatedAt: positionUpdated,
+    };
+  }
+  base.sensors = Array.isArray(doc.sensors)
+    ? doc.sensors.map((sensor: VehicleSensor) => mapSensor(sensor))
+    : [];
+  base.customSensors = Array.isArray(doc.customSensors)
+    ? doc.customSensors.map((sensor: VehicleSensor) => mapSensor(sensor))
+    : [];
+  return base;
+}
 
 router.get(
   '/:id/vehicles',
@@ -151,38 +206,7 @@ router.get(
 
     const vehicles = [] as unknown[];
     for (const doc of docs) {
-      const updatedAt =
-        doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : doc.updatedAt;
-      const base: Record<string, unknown> = {
-        id: String(doc._id),
-        unitId: doc.unitId,
-        name: doc.name,
-        updatedAt,
-      };
-      if (doc.position) {
-        const positionUpdated =
-          doc.position.updatedAt instanceof Date
-            ? doc.position.updatedAt.toISOString()
-            : doc.position.updatedAt;
-        base.position = {
-          lat: doc.position.lat,
-          lon: doc.position.lon,
-          speed: doc.position.speed,
-          course: doc.position.course,
-          updatedAt: positionUpdated,
-        };
-      }
-      base.sensors = Array.isArray(doc.sensors)
-        ? doc.sensors.map((sensor: VehicleSensor) => ({
-            name: sensor.name,
-            type: sensor.type,
-            value: sensor.value,
-            updatedAt:
-              sensor.updatedAt instanceof Date
-                ? sensor.updatedAt.toISOString()
-                : sensor.updatedAt,
-          }))
-        : [];
+      const base = mapVehicle(doc);
       if (includeTrack && sid && trackFrom && trackTo) {
         try {
           const track = await loadTrack(
@@ -192,7 +216,7 @@ router.get(
             trackTo,
             updatedFleet.baseUrl,
           );
-          base.track = track.map((point) => ({
+          (base as Record<string, unknown>).track = track.map((point) => ({
             lat: point.lat,
             lon: point.lon,
             speed: point.speed,
@@ -210,6 +234,78 @@ router.get(
       fleet: { id: String(updatedFleet._id), name: updatedFleet.name },
       vehicles,
     });
+  },
+);
+
+async function updateVehicle(
+  fleetId: string,
+  vehicleId: string,
+  update: Partial<Pick<VehicleAttrs, 'name' | 'notes' | 'customSensors'>>,
+) {
+  const vehicle = await Vehicle.findOne({ _id: vehicleId, fleetId });
+  if (!vehicle) {
+    return null;
+  }
+  if (update.name !== undefined) {
+    vehicle.name = update.name;
+  }
+  if (update.notes !== undefined) {
+    vehicle.notes = update.notes ?? '';
+  }
+  if (Array.isArray(update.customSensors)) {
+    vehicle.customSensors = update.customSensors;
+  } else if (update.customSensors === null) {
+    vehicle.customSensors = [];
+  }
+  await vehicle.save();
+  return mapVehicle({
+    ...(vehicle.toObject() as VehicleAttrs & { _id: Types.ObjectId; updatedAt?: Date | string }),
+  });
+}
+
+router.patch(
+  '/:id/vehicles/:vehicleId',
+  ...middlewares,
+  param('id').isMongoId(),
+  param('vehicleId').isMongoId(),
+  ...(validateDto(UpdateVehicleDto) as RequestHandler[]),
+  async (req, res) => {
+    const { name, notes, customSensors } = req.body as Partial<
+      Pick<VehicleAttrs, 'name' | 'notes' | 'customSensors'>
+    >;
+    const updated = await updateVehicle(req.params.id, req.params.vehicleId, {
+      name,
+      notes,
+      customSensors,
+    });
+    if (!updated) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(updated);
+  },
+);
+
+router.put(
+  '/:id/vehicles/:vehicleId',
+  ...middlewares,
+  param('id').isMongoId(),
+  param('vehicleId').isMongoId(),
+  ...(validateDto(ReplaceVehicleDto) as RequestHandler[]),
+  async (req, res) => {
+    const { name, notes, customSensors } = req.body as Partial<
+      Pick<VehicleAttrs, 'name' | 'notes' | 'customSensors'>
+    >;
+    const updated = await updateVehicle(req.params.id, req.params.vehicleId, {
+      name,
+      notes: notes ?? '',
+      customSensors: customSensors ?? [],
+    });
+    if (!updated) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(updated);
   },
 );
 

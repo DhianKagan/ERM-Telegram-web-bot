@@ -17,6 +17,8 @@ import {
 } from "../../services/collections";
 import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
+import FleetVehiclesGrid from "./FleetVehiclesGrid";
+import VehicleEditDialog from "./VehicleEditDialog";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import {
@@ -26,7 +28,13 @@ import {
   type UserDetails,
 } from "../../services/users";
 import UserForm, { UserFormData } from "./UserForm";
-import type { User } from "shared";
+import type { User, VehicleDto } from "shared";
+import {
+  fetchFleetVehicles,
+  patchFleetVehicle,
+  replaceFleetVehicle,
+  type VehicleUpdatePayload,
+} from "../../services/fleets";
 
 const types = [
   { key: "departments", label: "Департамент" },
@@ -88,6 +96,14 @@ export default function CollectionsPage() {
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
   const limit = 10;
+  const [selectedFleetId, setSelectedFleetId] = useState<string | undefined>(undefined);
+  const [fleetVehicles, setFleetVehicles] = useState<VehicleDto[]>([]);
+  const [fleetInfo, setFleetInfo] = useState<{ id: string; name: string } | null>(null);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [vehiclesHint, setVehiclesHint] = useState("");
+  const [editingVehicle, setEditingVehicle] = useState<VehicleDto | null>(null);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [vehicleSaving, setVehicleSaving] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
@@ -105,11 +121,23 @@ export default function CollectionsPage() {
   const load = useCallback(async () => {
     if (active === "users") return;
     try {
-      const d = await fetchCollectionItems(active, currentQuery, page, limit);
+      const d = (await fetchCollectionItems(
+        active,
+        currentQuery,
+        page,
+        limit,
+      )) as { items: CollectionItem[]; total: number };
       setItems(d.items);
       setTotal(d.total);
       if (active === "departments") setAllDepartments(d.items);
       if (active === "divisions") setAllDivisions(d.items);
+      if (active === "fleets" && selectedFleetId) {
+        const current = d.items.find((item) => item._id === selectedFleetId);
+        if (current) {
+          setForm({ _id: current._id, name: current.name, value: current.value });
+          setFleetInfo({ id: current._id, name: current.name });
+        }
+      }
       setHint("");
     } catch (error) {
       const message =
@@ -120,11 +148,35 @@ export default function CollectionsPage() {
       setTotal(0);
       setHint(message);
     }
-  }, [active, currentQuery, page]);
+  }, [active, currentQuery, page, selectedFleetId]);
 
   const loadUsers = useCallback(() => {
     fetchUsers().then((list) => setUsers(list));
   }, []);
+
+  const loadFleetVehicles = useCallback(
+    async (fleetId: string) => {
+      setVehiclesLoading(true);
+      setVehiclesHint("");
+      try {
+        const data = await fetchFleetVehicles(fleetId);
+        setFleetVehicles(data.vehicles);
+        setFleetInfo(data.fleet);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить транспорт";
+        setVehiclesHint(message);
+        setFleetVehicles([]);
+        const fallback = items.find((item) => item._id === fleetId);
+        setFleetInfo(fallback ? { id: fallback._id, name: fallback.name } : null);
+      } finally {
+        setVehiclesLoading(false);
+      }
+    },
+    [items],
+  );
 
   useEffect(() => {
     fetchCollectionItems("departments", "", 1, 200)
@@ -150,11 +202,13 @@ export default function CollectionsPage() {
   useEffect(() => {
     if (active !== "users") {
       void load();
-      setForm({ name: "", value: "" });
+      if (active !== "fleets" || !selectedFleetId) {
+        setForm({ name: "", value: "" });
+      }
     } else {
       setHint("");
     }
-  }, [load, active]);
+  }, [load, active, selectedFleetId]);
 
   useEffect(() => {
     if (active === "users") {
@@ -173,8 +227,31 @@ export default function CollectionsPage() {
     }
   }, [active, loadUsers]);
 
+  useEffect(() => {
+    if (active === "fleets" && selectedFleetId) {
+      void loadFleetVehicles(selectedFleetId);
+    }
+    if (active !== "fleets") {
+      setSelectedFleetId(undefined);
+      setFleetVehicles([]);
+      setFleetInfo(null);
+      setVehiclesHint("");
+      setEditingVehicle(null);
+      setIsVehicleModalOpen(false);
+    }
+  }, [active, selectedFleetId, loadFleetVehicles]);
+
   const selectItem = (item: CollectionItem) => {
     setForm({ _id: item._id, name: item.name, value: item.value });
+    if (active === "fleets") {
+      setFleetInfo({ id: item._id, name: item.name });
+      setVehiclesHint("");
+      if (selectedFleetId === item._id) {
+        void loadFleetVehicles(item._id);
+      } else {
+        setSelectedFleetId(item._id);
+      }
+    }
   };
 
   const selectUser = (item: CollectionItem) => {
@@ -191,6 +268,12 @@ export default function CollectionsPage() {
   const handleSearch = (text: string) => {
     setPage(1);
     setQueries((prev) => ({ ...prev, [active]: text }));
+    if (active === "fleets") {
+      setSelectedFleetId(undefined);
+      setFleetVehicles([]);
+      setFleetInfo(null);
+      setVehiclesHint("");
+    }
   };
 
   const handleUserSearch = (text: string) => {
@@ -217,20 +300,29 @@ export default function CollectionsPage() {
       valueToSave = form.value.trim();
     }
     try {
+      let saved: CollectionItem | null = null;
       if (form._id) {
-        await updateCollectionItem(form._id, {
+        saved = await updateCollectionItem(form._id, {
           name: trimmedName,
           value: valueToSave,
         });
       } else {
-        await createCollectionItem(active, {
+        saved = await createCollectionItem(active, {
           name: trimmedName,
           value: valueToSave,
         });
       }
       setHint("");
-      setForm({ name: "", value: "" });
+      if (active === "fleets" && saved) {
+        setSelectedFleetId(saved._id);
+        setForm({ _id: saved._id, name: saved.name, value: saved.value });
+      } else {
+        setForm({ name: "", value: "" });
+      }
       await load();
+      if (active === "fleets" && saved) {
+        await loadFleetVehicles(saved._id);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Не удалось сохранить элемент";
@@ -243,6 +335,12 @@ export default function CollectionsPage() {
     try {
       await removeCollectionItem(form._id);
       setHint("");
+      if (active === "fleets" && selectedFleetId === form._id) {
+        setSelectedFleetId(undefined);
+        setFleetVehicles([]);
+        setFleetInfo(null);
+        setVehiclesHint("");
+      }
       setForm({ name: "", value: "" });
       await load();
     } catch (e) {
@@ -261,6 +359,43 @@ export default function CollectionsPage() {
     await updateUserApi(id, data);
     setUserForm(emptyUser);
     loadUsers();
+  };
+
+  const handleVehicleEdit = (vehicle: VehicleDto) => {
+    setEditingVehicle(vehicle);
+    setIsVehicleModalOpen(true);
+  };
+
+  const closeVehicleModal = () => {
+    setIsVehicleModalOpen(false);
+    setEditingVehicle(null);
+  };
+
+  const submitVehicle = async (
+    payload: VehicleUpdatePayload,
+    mode: "PATCH" | "PUT",
+  ): Promise<void> => {
+    if (!selectedFleetId || !editingVehicle) {
+      throw new Error("Флот не выбран");
+    }
+    setVehicleSaving(true);
+    try {
+      const updated =
+        mode === "PUT"
+          ? await replaceFleetVehicle(selectedFleetId, editingVehicle.id, payload)
+          : await patchFleetVehicle(selectedFleetId, editingVehicle.id, payload);
+      setFleetVehicles((prev) =>
+        prev.map((vehicle) => (vehicle.id === updated.id ? { ...vehicle, ...updated } : vehicle)),
+      );
+      setEditingVehicle(updated);
+      setVehiclesHint("");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Не удалось сохранить транспорт";
+      throw new Error(message);
+    } finally {
+      setVehicleSaving(false);
+    }
   };
 
   const departmentMap = useMemo(() => {
@@ -548,6 +683,57 @@ export default function CollectionsPage() {
                     />
                   </Modal>
                 </>
+              ) : t.key === "fleets" ? (
+                <div className="flex flex-col gap-4 lg:flex-row">
+                  <div className="lg:w-1/3">
+                    <CollectionList
+                      items={items}
+                      selectedId={selectedFleetId}
+                      totalPages={totalPages}
+                      page={page}
+                      onSelect={selectItem}
+                      onSearch={handleSearch}
+                      onPageChange={setPage}
+                      renderValue={valueRenderer}
+                      searchValue={currentQuery}
+                    />
+                  </div>
+                  <div className="space-y-4 lg:w-2/3">
+                    <CollectionForm
+                      form={form}
+                      onChange={setForm}
+                      onSubmit={submit}
+                      onDelete={remove}
+                      onReset={() => setForm({ name: "", value: "" })}
+                      valueLabel={valueLabel}
+                      renderValueField={valueFieldRenderer}
+                    />
+                    {selectedFleetId ? (
+                      <div className="space-y-2">
+                        {fleetInfo ? (
+                          <div className="text-sm text-gray-600">
+                            Автопарк: {fleetInfo.name}
+                          </div>
+                        ) : null}
+                        <FleetVehiclesGrid
+                          vehicles={fleetVehicles}
+                          loading={vehiclesLoading}
+                          error={vehiclesHint}
+                          onRefresh={() => {
+                            if (selectedFleetId) {
+                              void loadFleetVehicles(selectedFleetId);
+                            }
+                          }}
+                          onEdit={handleVehicleEdit}
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded border border-dashed p-4 text-sm text-gray-500">
+                        Выберите автопарк, чтобы просмотреть технику.
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col gap-4 md:flex-row">
                   <div className="md:w-1/2">
@@ -580,6 +766,15 @@ export default function CollectionsPage() {
           );
         })}
       </Tabs>
+      <Modal open={isVehicleModalOpen} onClose={closeVehicleModal}>
+        <VehicleEditDialog
+          open={isVehicleModalOpen}
+          vehicle={editingVehicle}
+          saving={vehicleSaving}
+          onClose={closeVehicleModal}
+          onSubmit={submitVehicle}
+        />
+      </Modal>
     </div>
   );
 }

@@ -39,17 +39,28 @@ async function upsertVehicle(
   fleetId: FleetDocument['_id'],
   unit: UnitInfo,
 ): Promise<void> {
-  await Vehicle.findOneAndUpdate(
-    { fleetId, unitId: unit.id },
-    {
-      $set: {
-        name: unit.name,
-        position: mapPosition(unit.position),
-        sensors: unit.sensors.map((sensor) => mapSensor(sensor)),
-      },
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
+  const existing = await Vehicle.findOne({ fleetId, unitId: unit.id });
+  const position = mapPosition(unit.position);
+  const sensors = unit.sensors.map((sensor) => mapSensor(sensor));
+  if (!existing) {
+    await Vehicle.create({
+      fleetId,
+      unitId: unit.id,
+      name: unit.name,
+      remoteName: unit.name,
+      position,
+      sensors,
+    });
+    return;
+  }
+  const previousRemote = existing.remoteName;
+  existing.remoteName = unit.name;
+  if (!existing.name || existing.name === previousRemote || existing.name === unit.name) {
+    existing.name = unit.name;
+  }
+  existing.position = position;
+  existing.sensors = sensors;
+  await existing.save();
 }
 
 export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {

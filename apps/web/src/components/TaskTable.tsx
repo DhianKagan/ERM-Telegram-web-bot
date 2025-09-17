@@ -15,6 +15,7 @@ interface TaskTableProps {
   onMineChange?: (v: boolean) => void;
   onRowClick?: (id: string) => void;
   toolbarChildren?: React.ReactNode;
+  onDataChange?: (rows: TaskRow[]) => void;
 }
 
 export default function TaskTable({
@@ -27,9 +28,14 @@ export default function TaskTable({
   onMineChange,
   onRowClick,
   toolbarChildren,
+  onDataChange,
 }: TaskTableProps) {
   const { query, filters } = useTasks();
   const columns = React.useMemo(() => taskColumns(users), [users]);
+
+  React.useEffect(() => {
+    onDataChange?.(tasks);
+  }, [onDataChange, tasks]);
 
   return (
     <Suspense fallback={<div>Загрузка таблицы...</div>}>

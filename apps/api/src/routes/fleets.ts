@@ -1,6 +1,6 @@
 // Роуты флотов: CRUD операции
 // Модули: express, express-validator, middleware/auth, models/fleet, middleware/validateDto
-import { Router, RequestHandler } from 'express';
+import { Router, RequestHandler, json } from 'express';
 import createRateLimiter from '../utils/rateLimiter';
 import { param } from 'express-validator';
 import authMiddleware from '../middleware/auth';
@@ -16,12 +16,14 @@ import {
   type FleetAttrs,
 } from '../db/models/fleet';
 import { Vehicle, type VehicleAttrs, type VehicleSensor } from '../db/models/vehicle';
-import { login, loadTrack, parseLocatorLink } from '../services/wialon';
+import { login, loadTrack, DEFAULT_BASE_URL } from '../services/wialon';
+import { parseLocatorLink } from '../utils/wialonLocator';
 import type { Types } from 'mongoose';
 import { syncFleetVehicles } from '../services/fleetVehicles';
 import { ReplaceVehicleDto, UpdateVehicleDto } from '../dto/vehicles.dto';
 
 const router: Router = Router();
+router.use(json());
 const limiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -46,7 +48,7 @@ router.post(
   ...(validateDto(CreateFleetDto) as RequestHandler[]),
   async (req, res) => {
     const { name, link } = req.body as { name: string; link: string };
-    const locator = parseLocatorLink(link);
+    const locator = parseLocatorLink(link, DEFAULT_BASE_URL);
     const fleet = await Fleet.create({
       name,
       token: locator.token,
@@ -76,7 +78,7 @@ router.put(
       update.name = req.body.name;
     }
     if (typeof req.body.link === 'string') {
-      const locator = parseLocatorLink(req.body.link);
+      const locator = parseLocatorLink(req.body.link, DEFAULT_BASE_URL);
       update.token = locator.token;
       update.locatorUrl = locator.locatorUrl;
       update.baseUrl = locator.baseUrl;

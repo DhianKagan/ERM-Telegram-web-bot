@@ -47,16 +47,30 @@ interface BodyWithAttachments extends Record<string, unknown> {
   }[];
 }
 
+const uploadsDirAbs = path.resolve(uploadsDir);
+
+function relativeToUploads(target: string): string | undefined {
+  const absolute = path.resolve(target);
+  const relative = path.relative(uploadsDirAbs, absolute);
+  if (
+    relative.startsWith('..') ||
+    path.isAbsolute(relative) ||
+    relative.length === 0
+  ) {
+    return undefined;
+  }
+  return relative.split(path.sep).join('/');
+}
+
 async function createThumbnail(
   file: Express.Multer.File,
-  userId: number,
 ): Promise<string | undefined> {
   const filePath = path.join(file.destination, file.filename);
   const thumbName = `thumb_${path.parse(file.filename).name}.jpg`;
   const thumbPath = path.join(file.destination, thumbName);
   if (file.mimetype.startsWith('image/')) {
     await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
-    return `${userId}/${thumbName}`;
+    return relativeToUploads(thumbPath);
   }
   if (file.mimetype.startsWith('video/')) {
     await new Promise<void>((resolve, reject) => {
@@ -70,7 +84,7 @@ async function createThumbnail(
           size: '320x?',
         });
     });
-    return `${userId}/${thumbName}`;
+    return relativeToUploads(thumbPath);
   }
   return undefined;
 }
@@ -138,11 +152,18 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       const attachments = await Promise.all(
         files.map(async (f) => {
           const original = path.basename(f.originalname);
-          const thumbRel = await createThumbnail(f, userId);
+          const storedPath = path.join(f.destination, f.filename);
+          const relative = relativeToUploads(storedPath);
+          if (!relative) {
+            await fs.promises.unlink(storedPath).catch(() => undefined);
+            const err = new Error('INVALID_PATH');
+            throw err;
+          }
+          const thumbRel = await createThumbnail(f);
           const doc = await File.create({
             userId,
             name: original,
-            path: `${userId}/${f.filename}`,
+            path: relative,
             thumbnailPath: thumbRel,
             type: f.mimetype,
             size: f.size,
@@ -162,7 +183,12 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       (req.body as BodyWithAttachments).attachments = attachments;
     }
     next();
-  } catch {
+  } catch (error) {
+    if (res.headersSent) return;
+    if ((error as Error).message === 'INVALID_PATH') {
+      res.status(400).json({ error: 'Недопустимый путь файла' });
+      return;
+    }
     res.sendStatus(500);
   }
 };
@@ -192,7 +218,7 @@ const upload = multer({
 
 const chunkUpload = multer({ storage: multer.memoryStorage() });
 
-const handleChunks: RequestHandler = async (req, res) => {
+export const handleChunks: RequestHandler = async (req, res) => {
   try {
     const { fileId, chunkIndex, totalChunks } = req.body as Record<
       string,
@@ -218,7 +244,7 @@ const handleChunks: RequestHandler = async (req, res) => {
       return;
     }
     const userId = (req as RequestWithUser).user?.id as number;
-    const baseDir = path.resolve(uploadsDir, String(userId));
+    const baseDir = path.resolve(uploadsDirAbs, String(userId));
     const dir = path.resolve(baseDir, fileId);
     // Не допускаем выход за пределы каталога пользователя
     if (!dir.startsWith(baseDir + path.sep)) {
@@ -233,7 +259,9 @@ const handleChunks: RequestHandler = async (req, res) => {
     }
     fs.writeFileSync(chunkPath, file.buffer);
     if (idx + 1 === total) {
-      const final = path.resolve(dir, path.basename(file.originalname));
+      const originalName = path.basename(file.originalname);
+      const storedName = `${Date.now()}_${originalName}`;
+      const final = path.resolve(dir, storedName);
       if (!final.startsWith(dir + path.sep)) {
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
@@ -248,18 +276,37 @@ const handleChunks: RequestHandler = async (req, res) => {
         fs.appendFileSync(final, part);
         fs.unlinkSync(partPath);
       }
+      const userDir = path.resolve(uploadsDirAbs, String(userId));
+      fs.mkdirSync(userDir, { recursive: true });
+      const target = path.resolve(userDir, storedName);
+      if (!target.startsWith(userDir + path.sep)) {
+        res.status(400).json({ error: 'Недопустимое имя файла' });
+        return;
+      }
+      fs.renameSync(final, target);
       const diskFile: Express.Multer.File = {
         ...file,
-        destination: dir,
-        filename: path.basename(file.originalname),
-        path: final,
-        size: fs.statSync(final).size,
+        destination: userDir,
+        filename: storedName,
+        path: target,
+        size: fs.statSync(target).size,
         buffer: Buffer.alloc(0),
+        originalname: originalName,
       };
       (req.files as Express.Multer.File[]) = [diskFile];
-      await processUploads(req, res, () => {});
-      fs.rmSync(dir, { recursive: true, force: true });
-      res.json((req.body as BodyWithAttachments).attachments?.[0]);
+      (req as { file?: Express.Multer.File }).file = diskFile;
+      try {
+        await processUploads(req, res, () => {});
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+      if (res.headersSent) return;
+      const attachment = (req.body as BodyWithAttachments).attachments?.[0];
+      if (!attachment) {
+        res.sendStatus(500);
+        return;
+      }
+      res.json(attachment);
       return;
     }
     res.json({ received: idx });

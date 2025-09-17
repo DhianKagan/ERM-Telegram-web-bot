@@ -60,8 +60,14 @@ router.get(
           return;
         }
       }
-      const target = path.resolve(uploadsDir, file.path);
-      if (!target.startsWith(uploadsDir + path.sep)) {
+      const uploadsAbs = path.resolve(uploadsDir);
+      const target = path.resolve(uploadsAbs, file.path);
+      const relative = path.relative(uploadsAbs, target);
+      if (
+        relative.startsWith('..') ||
+        path.isAbsolute(relative) ||
+        relative.length === 0
+      ) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Недопустимое имя файла',

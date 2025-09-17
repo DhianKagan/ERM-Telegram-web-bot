@@ -68,5 +68,25 @@
   "title": "Title",
   "titleRequired": "Title is required",
   "transportType": "Transport type",
-  "uploadFailed": "Upload failed"
+  "uploadFailed": "Upload failed",
+  "storage": {
+    "title": "Files",
+    "previewTitle": "File preview",
+    "previewHint": "Images, video, PDF and text open inside our domain without third-party viewers.",
+    "previewLimitation": "Office documents, archives and binary files are available only via download.",
+    "typeImage": "Images",
+    "typeVideo": "Video",
+    "typePdf": "PDF",
+    "typeText": "Text",
+    "searchPlaceholder": "Search by name...",
+    "sortLabel": "Sort by name",
+    "sortAsc": "Name ↑",
+    "sortDesc": "Name ↓",
+    "previewError": "Failed to load preview.",
+    "previewLoading": "Loading preview...",
+    "openedInNewTab": "File opened in a new tab.",
+    "download": "Download",
+    "downloadHint": "Download file",
+    "mimeLabel": "Type: {{mime}}"
+  }
 }

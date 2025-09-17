@@ -19,6 +19,7 @@ export interface StoredFile {
   size: number;
   uploadedAt: Date;
   url: string;
+  previewUrl: string;
 }
 
 export async function listFiles(
@@ -39,6 +40,7 @@ export async function listFiles(
       size: f.size,
       uploadedAt: f.uploadedAt,
       url: `/api/v1/files/${String(f._id)}`,
+      previewUrl: `/api/v1/files/${String(f._id)}?mode=inline`,
     }));
   } catch {
     return [];

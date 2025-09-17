@@ -10,6 +10,69 @@ export interface UserDetails extends User {
   name?: string;
 }
 
+const referenceFields = new Set<
+  "roleId" | "departmentId" | "divisionId" | "positionId"
+>(["roleId", "departmentId", "divisionId", "positionId"]);
+
+const normalizeRoleId = (value?: string) => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const buildCreateUserBody = (
+  id?: number | string,
+  username?: string,
+  roleId?: string,
+) => {
+  const payload: Record<string, unknown> = {};
+  if (id !== undefined) {
+    payload.id = id;
+  }
+  if (typeof username === "string") {
+    const trimmed = username.trim();
+    if (trimmed.length > 0) {
+      payload.username = trimmed;
+    }
+  } else if (username !== undefined) {
+    payload.username = username;
+  }
+  const normalizedRoleId = normalizeRoleId(roleId);
+  if (normalizedRoleId) {
+    payload.roleId = normalizedRoleId;
+  }
+  return payload;
+};
+
+const sanitizeUserUpdatePayload = (data: Partial<User>): Partial<User> => {
+  const payload: Partial<User> = {};
+  (Object.entries(data) as [keyof User, User[keyof User]][]).forEach(
+    ([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (
+          referenceFields.has(
+            key as "roleId" | "departmentId" | "divisionId" | "positionId",
+          )
+        ) {
+          if (trimmed.length === 0) {
+            return;
+          }
+          payload[key] = trimmed as User[keyof User];
+          return;
+        }
+        payload[key] = trimmed as User[keyof User];
+        return;
+      }
+      payload[key] = value;
+    },
+  );
+  return payload;
+};
+
 export const fetchUser = async (
   id: number | string,
 ): Promise<UserDetails | null> => {
@@ -29,12 +92,13 @@ export const createUser = (
   id?: number | string,
   username?: string,
   roleId?: string,
-) =>
-  authFetch("/api/v1/users", {
+) => {
+  const body = buildCreateUserBody(id, username, roleId);
+  return authFetch("/api/v1/users", {
     method: "POST",
     confirmed: true,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, username, roleId }),
+    body: JSON.stringify(body),
   }).then(async (r) => {
     if (!r.ok) {
       const body = await r.text().catch(() => "");
@@ -55,6 +119,7 @@ export const createUser = (
     }
     return r.json();
   });
+};
 
 export interface GeneratedUserCredentials {
   telegram_id: number;
@@ -94,12 +159,13 @@ export const previewUserCredentials = (
 export const updateUser = (
   id: number | string,
   data: Partial<User>,
-): Promise<UserDetails | null> =>
-  authFetch(`/api/v1/users/${id}`, {
+): Promise<UserDetails | null> => {
+  const body = sanitizeUserUpdatePayload(data);
+  return authFetch(`/api/v1/users/${id}`, {
     method: "PATCH",
     confirmed: true,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   }).then(async (r) => {
     if (!r.ok) {
       const body = await r.text().catch(() => "");
@@ -120,3 +186,4 @@ export const updateUser = (
     }
     return r.json();
   });
+};

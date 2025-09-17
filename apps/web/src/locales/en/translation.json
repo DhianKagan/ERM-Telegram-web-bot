@@ -87,6 +87,11 @@
     "openedInNewTab": "File opened in a new tab.",
     "download": "Download",
     "downloadHint": "Download file",
-    "mimeLabel": "Type: {{mime}}"
+    "mimeLabel": "Type: {{mime}}",
+    "delete": "Delete",
+    "deleteHint": "Delete selected file",
+    "deleteConfirm": "Delete file \"{{name}}\"? This action cannot be undone.",
+    "deleteSuccess": "File deleted.",
+    "deleteError": "Failed to delete file."
   }
 }

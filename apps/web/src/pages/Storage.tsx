@@ -7,6 +7,9 @@ import {
   FileToolbar,
   FileList,
   ChonkyActions,
+  ChonkyIconName,
+  defineFileAction,
+  type FileAction,
   type FileActionData,
   type FileArray,
   type FileData,
@@ -17,7 +20,7 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import Modal from "../components/Modal";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { fetchFiles } from "../services/storage";
+import { fetchFiles, removeFile } from "../services/storage";
 import authFetch from "../utils/authFetch";
 import { showToast } from "../utils/toast";
 import { useTranslation } from "react-i18next";
@@ -99,8 +102,8 @@ export default function StoragePage() {
     error?: string;
   } | null>(null);
 
-  React.useEffect(() => {
-    fetchFiles().then((list: StoredFile[]) => {
+  const loadFiles = React.useCallback(() => {
+    return fetchFiles().then((list: StoredFile[]) => {
       const map: Record<string, FsEntry> = {
         root: { id: "root", name: "Корень", isDir: true },
       };
@@ -127,8 +130,28 @@ export default function StoragePage() {
         };
       });
       setFileMap(map);
+      return map;
     });
   }, []);
+
+  React.useEffect(() => {
+    loadFiles();
+  }, [loadFiles]);
+
+  const deleteAction = React.useMemo<FileAction>(() => {
+    return defineFileAction({
+      id: "delete_file",
+      requiresSelection: true,
+      fileFilter: (entry) => !entry.isDir,
+      button: {
+        name: t("storage.delete"),
+        toolbar: true,
+        contextMenu: true,
+        tooltip: t("storage.deleteHint"),
+        icon: ChonkyIconName.trash,
+      },
+    });
+  }, [t]);
 
   const files = React.useMemo<FileArray>(() => {
     const children = Object.values(fileMap).filter(
@@ -254,9 +277,26 @@ export default function StoragePage() {
       }
       if (data.id === ChonkyActions.DownloadFiles.id) {
         downloadFile(file);
+        return;
+      }
+      if (data.id === deleteAction.id) {
+        if (file.isDir) return;
+        const confirmed = window.confirm(
+          t("storage.deleteConfirm", { name: file.name }),
+        );
+        if (!confirmed) return;
+        removeFile(file.id)
+          .then((res) => {
+            if (!res.ok) throw new Error("delete");
+            showToast(t("storage.deleteSuccess"), "success");
+            return loadFiles();
+          })
+          .catch(() => {
+            showToast(t("storage.deleteError"), "error");
+          });
       }
     },
-    [downloadFile, openFile],
+    [deleteAction.id, downloadFile, loadFiles, openFile, t],
   );
 
   return (
@@ -314,7 +354,7 @@ export default function StoragePage() {
       <FileBrowser
         files={files}
         folderChain={folderChain}
-        fileActions={[ChonkyActions.OpenFiles, ChonkyActions.DownloadFiles]}
+        fileActions={[ChonkyActions.OpenFiles, ChonkyActions.DownloadFiles, deleteAction]}
         onFileAction={handleAction}
       >
         <FileNavbar />

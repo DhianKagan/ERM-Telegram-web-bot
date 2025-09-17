@@ -87,6 +87,11 @@
     "openedInNewTab": "Файл открыт в новой вкладке.",
     "download": "Скачать",
     "downloadHint": "Скачать файл",
-    "mimeLabel": "Тип: {{mime}}"
+    "mimeLabel": "Тип: {{mime}}",
+    "delete": "Удалить",
+    "deleteHint": "Удалить выбранный файл",
+    "deleteConfirm": "Удалить файл «{{name}}»? Это действие нельзя отменить.",
+    "deleteSuccess": "Файл удалён.",
+    "deleteError": "Не удалось удалить файл."
   }
 }

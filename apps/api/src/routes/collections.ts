@@ -1,5 +1,5 @@
 // Роуты коллекций: CRUD операции
-// Модули: express, middleware/auth, middleware/requireRole, repos/collectionRepo, express-validator
+// Модули: express, middleware/auth, middleware/requireRole, middleware/sendProblem, repos/collectionRepo, express-validator
 import { Router, RequestHandler } from 'express';
 import { param } from 'express-validator';
 import createRateLimiter from '../utils/rateLimiter';
@@ -12,6 +12,8 @@ import {
 } from '../db/models/CollectionItem';
 import { Employee } from '../db/models/employee';
 import { Task } from '../db/model';
+import type RequestWithUser from '../types/request';
+import { sendProblem } from '../utils/problem';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -30,6 +32,18 @@ router.get('/', ...base, async (req, res) => {
     value,
     search,
   } = req.query as Record<string, string>;
+  if (type === 'fleets') {
+    const role = (req as RequestWithUser).user?.role ?? 'user';
+    if (role !== 'admin' && role !== 'manager') {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Доступ запрещён',
+        status: 403,
+        detail: 'Недостаточно прав для просмотра автопарка',
+      });
+      return;
+    }
+  }
   const { items, total } = await repo.list(
     { type, name, value, search },
     Number(page),
@@ -40,6 +54,18 @@ router.get('/', ...base, async (req, res) => {
 
 router.get('/:type', ...base, async (req, res) => {
   const { type } = req.params;
+  if (type === 'fleets') {
+    const role = (req as RequestWithUser).user?.role ?? 'user';
+    if (role !== 'admin' && role !== 'manager') {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Доступ запрещён',
+        status: 403,
+        detail: 'Недостаточно прав для просмотра автопарка',
+      });
+      return;
+    }
+  }
   const { items } = await repo.list({ type }, 1, 1000);
   res.json(items);
 });

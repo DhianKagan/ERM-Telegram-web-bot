@@ -23,3 +23,41 @@ export interface User {
   divisionId?: string;
   positionId?: string;
 }
+
+export interface VehiclePositionDto {
+  lat: number;
+  lon: number;
+  speed?: number;
+  course?: number;
+  updatedAt?: string;
+}
+
+export interface VehicleSensorDto {
+  name: string;
+  type?: string;
+  value?: unknown;
+  updatedAt?: string;
+}
+
+export interface VehicleTrackPointDto {
+  lat: number;
+  lon: number;
+  speed?: number;
+  course?: number;
+  timestamp: string;
+}
+
+export interface VehicleDto {
+  id: string;
+  unitId: number;
+  name: string;
+  updatedAt?: string;
+  position?: VehiclePositionDto;
+  sensors: VehicleSensorDto[];
+  track?: VehicleTrackPointDto[];
+}
+
+export interface FleetVehiclesResponse {
+  fleet: { id: string; name: string };
+  vehicles: VehicleDto[];
+}

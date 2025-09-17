@@ -213,4 +213,28 @@ describe("CollectionsPage", () => {
     ) as HTMLInputElement;
     expect(activeSearch.value).toBe("");
   });
+
+  it("показывает сообщение об отсутствии доступа к автопарку", async () => {
+    mockedFetch.mockImplementation(async (type: string, search = "") => {
+      if (type === "fleets") {
+        throw new Error("Недостаточно прав для просмотра автопарка");
+      }
+      const byType = dataset[type] ?? {};
+      const key = search || "";
+      return byType[key] ?? byType[""] ?? { items: [], total: 0 };
+    });
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    const fleetsTab = screen.getByRole("tab", { name: "Автопарк" });
+    fireEvent.click(fleetsTab);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Недостаточно прав для просмотра автопарка"),
+      ).not.toBeNull();
+    });
+  });
 });

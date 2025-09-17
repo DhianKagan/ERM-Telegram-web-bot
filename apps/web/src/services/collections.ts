@@ -27,7 +27,9 @@ const parseErrorMessage = (status: number, body: string) => {
     message =
       status === 429
         ? "Достигнут лимит запросов, попробуйте позже."
-        : "Не удалось загрузить элементы";
+        : status === 403
+          ? "Нет доступа к коллекции"
+          : "Не удалось загрузить элементы";
   }
   return message;
 };

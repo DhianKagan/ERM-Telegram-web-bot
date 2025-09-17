@@ -116,6 +116,8 @@ export default function CollectionsPage() {
         error instanceof Error
           ? error.message
           : "Не удалось загрузить элементы";
+      setItems([]);
+      setTotal(0);
       setHint(message);
     }
   }, [active, currentQuery, page]);

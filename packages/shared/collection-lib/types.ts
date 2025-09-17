@@ -10,6 +10,9 @@ export interface BaseItem {
 
 export interface Fleet extends BaseItem {
   token: string;
+  locatorUrl: string;
+  baseUrl: string;
+  locatorKey: string;
 }
 
 export interface Department extends BaseItem {

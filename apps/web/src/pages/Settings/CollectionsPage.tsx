@@ -365,6 +365,28 @@ export default function CollectionsPage() {
     [allDepartments],
   );
 
+  const renderFleetValueField = useCallback(
+    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
+      <div className="space-y-1">
+        <input
+          className="h-10 w-full rounded border px-3"
+          type="url"
+          inputMode="url"
+          placeholder="https://hosting.wialon.com/locator?...&t=..."
+          value={currentForm.value}
+          onChange={(event) =>
+            handleChange({ ...currentForm, value: event.target.value })
+          }
+          required
+        />
+        <p className="text-xs text-gray-500">
+          Вставьте ссылку Wialon Locator с параметром <code>t</code>.
+        </p>
+      </div>
+    ),
+    [],
+  );
+
   const renderPositionValueField = useCallback(
     (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
       <select
@@ -436,7 +458,7 @@ export default function CollectionsPage() {
                 : t.key === "positions"
                   ? "Отдел"
                   : t.key === "fleets"
-                    ? "Token"
+                    ? "Ссылка"
                     : undefined;
           const valueFieldRenderer =
             t.key === "departments"
@@ -445,7 +467,9 @@ export default function CollectionsPage() {
                 ? renderDivisionValueField
                 : t.key === "positions"
                   ? renderPositionValueField
-                  : undefined;
+                  : t.key === "fleets"
+                    ? renderFleetValueField
+                    : undefined;
           const valueRenderer =
             t.key === "departments" ||
             t.key === "divisions" ||

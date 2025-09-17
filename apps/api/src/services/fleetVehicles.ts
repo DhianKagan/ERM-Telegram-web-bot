@@ -1,6 +1,11 @@
 // Назначение файла: синхронизация транспорта флотов из Wialon
 // Основные модули: mongoose модели, сервис wialon
-import { Fleet, type FleetDocument } from '../db/models/fleet';
+import {
+  Fleet,
+  ensureFleetFields,
+  migrateLegacyFleets,
+  type FleetDocument,
+} from '../db/models/fleet';
 import { Vehicle } from '../db/models/vehicle';
 import {
   login,
@@ -48,8 +53,9 @@ async function upsertVehicle(
 }
 
 export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
-  const { sid } = await login(fleet.token);
-  const units = await loadUnits(sid);
+  const updatedFleet = await ensureFleetFields(fleet);
+  const { sid } = await login(updatedFleet.token, updatedFleet.baseUrl);
+  const units = await loadUnits(sid, updatedFleet.baseUrl);
   const ids = units.map((unit) => unit.id);
   await Vehicle.deleteMany({
     fleetId: fleet._id,
@@ -68,6 +74,7 @@ export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
 }
 
 export async function syncAllFleets(): Promise<void> {
+  await migrateLegacyFleets();
   const fleets = await Fleet.find();
   for (const fleet of fleets) {
     try {

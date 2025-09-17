@@ -47,12 +47,21 @@ describe('API коллекций', () => {
   it('создаёт и читает флот', async () => {
     const create = await request(app)
       .post('/fleets')
-      .send({ id: 'f1', name: 'Флот', token: 'секрет' });
+      .send({
+        id: 'f1',
+        name: 'Флот',
+        token: 'секрет',
+        locatorUrl: 'https://host/locator?t=MTIz',
+        baseUrl: 'https://hst-api.wialon.com',
+        locatorKey: 'MTIz',
+      });
     assert.equal(create.status, 201);
     assert.equal(create.body.token, 'секрет');
+    assert.equal(create.body.locatorKey, 'MTIz');
     const read = await request(app).get('/fleets/f1');
     assert.equal(read.body.name, 'Флот');
     assert.equal(read.body.token, 'секрет');
+    assert.equal(read.body.baseUrl, 'https://hst-api.wialon.com');
   });
 
   it('обновляет отдел', async () => {

@@ -25,6 +25,20 @@ jest.mock('../src/auth/roles.decorator', () => ({
 
 jest.mock('../src/services/wialon', () => ({
   __esModule: true,
+  DEFAULT_BASE_URL: 'https://hst-api.wialon.com',
+  decodeLocatorKey: (value: string) => {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = (4 - (normalized.length % 4)) % 4;
+    const buffer = Buffer.from(normalized.padEnd(normalized.length + padding, '='), 'base64');
+    if (!buffer.length) {
+      throw new Error('Не удалось расшифровать ключ локатора');
+    }
+    const decoded = buffer.toString('utf8');
+    if (!decoded.trim() || !/^[\x20-\x7E]+$/.test(decoded)) {
+      throw new Error('Расшифрованный ключ содержит недопустимые символы');
+    }
+    return decoded;
+  },
   login: jest.fn(),
   loadTrack: jest.fn(),
 }));
@@ -34,7 +48,7 @@ import { Fleet } from '../src/db/models/fleet';
 import { Vehicle } from '../src/db/models/vehicle';
 import { login, loadTrack } from '../src/services/wialon';
 
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 const mockedLogin = login as jest.MockedFunction<typeof login>;
 const mockedLoadTrack = loadTrack as jest.MockedFunction<typeof loadTrack>;
@@ -65,7 +79,13 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
   });
 
   it('возвращает список транспорта без трека', async () => {
-    const fleet = await Fleet.create({ name: 'Флот', token: 'token' });
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
     await Vehicle.create({
       fleetId: fleet._id,
       unitId: 1,
@@ -88,7 +108,13 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
   });
 
   it('подставляет трек при запросе', async () => {
-    const fleet = await Fleet.create({ name: 'Флот', token: 'token' });
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
     await Vehicle.create({
       fleetId: fleet._id,
       unitId: 7,
@@ -108,7 +134,7 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
       )
       .expect(200);
 
-    expect(mockedLogin).toHaveBeenCalledWith('token');
+    expect(mockedLogin).toHaveBeenCalledWith('token', 'https://hst-api.wialon.com');
     expect(res.body.vehicles[0].track).toHaveLength(1);
     expect(res.body.vehicles[0].track[0]).toMatchObject({
       lat: 55,

@@ -12,7 +12,14 @@ import {
 describe('Collection', () => {
   test('создаёт и читает элемент', () => {
     const fleets = new Collection<Fleet>();
-    const fleet = fleets.create({ id: '1', name: 'Флот-1', token: 'секрет-1' });
+    const fleet = fleets.create({
+      id: '1',
+      name: 'Флот-1',
+      token: 'секрет-1',
+      locatorUrl: 'https://host/locator?t=MTIz',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'MTIz',
+    });
     expect(fleets.read('1')).toEqual(fleet);
   });
 
@@ -32,8 +39,22 @@ describe('Collection', () => {
 
   test('выводит список элементов', () => {
     const fleets = new Collection<Fleet>();
-    fleets.create({ id: 'f1', name: 'Флот-1', token: 'секрет-1' });
-    fleets.create({ id: 'f2', name: 'Флот-2', token: 'секрет-2' });
+    fleets.create({
+      id: 'f1',
+      name: 'Флот-1',
+      token: 'секрет-1',
+      locatorUrl: 'https://host/locator?t=MTIz',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'MTIz',
+    });
+    fleets.create({
+      id: 'f2',
+      name: 'Флот-2',
+      token: 'секрет-2',
+      locatorUrl: 'https://host/locator?t=NDU2',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'NDU2',
+    });
     const list = fleets.list();
     expect(list).toHaveLength(2);
   });

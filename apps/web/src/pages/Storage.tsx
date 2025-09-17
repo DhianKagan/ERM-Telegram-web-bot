@@ -1,28 +1,6 @@
-// Страница управления файлами на Chonky
-// Основные модули: React, Chonky, heroicons, i18next, Modal, Breadcrumbs
+// Страница управления файлами в хранилище через DataTable
+// Основные модули: React, DataTable, heroicons, i18next
 import React from "react";
-import {
-  FileBrowser,
-  FileNavbar,
-  FileToolbar,
-  FileList,
-  ChonkyActions,
-  ChonkyIconName,
-  defineFileAction,
-  type FileAction,
-  type FileActionData,
-  type FileArray,
-  type FileData,
-} from "chonky";
-// Стили Chonky включены в пакет, отдельный CSS не подключается.
-
-import Breadcrumbs from "../components/Breadcrumbs";
-import Modal from "../components/Modal";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { fetchFiles, removeFile } from "../services/storage";
-import authFetch from "../utils/authFetch";
-import { showToast } from "../utils/toast";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDownTrayIcon,
@@ -33,28 +11,38 @@ import {
   VideoCameraIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import Breadcrumbs from "../components/Breadcrumbs";
+import DataTable from "../components/DataTable";
+import Modal from "../components/Modal";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import createStorageColumns, {
+  type StorageRow,
+} from "../columns/storageColumns";
+import {
+  fetchFiles,
+  removeFile,
+  type StoredFile,
+} from "../services/storage";
+import authFetch from "../utils/authFetch";
+import { showToast } from "../utils/toast";
 
-interface StoredFile {
-  path: string;
-  userId: number;
-  name: string;
-  type: string;
-  url: string;
-  thumbnailUrl?: string;
-  previewUrl: string;
-}
-
-interface FsEntry extends FileData {
-  url?: string;
-  type?: string;
-  parentId?: string;
-  thumbnailUrl?: string;
-  previewUrl?: string;
-  icon?: string;
-  description?: string;
-}
+const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
 type PreviewMode = "image" | "video" | "pdf" | "text";
+
+type SortOption =
+  | "uploaded_desc"
+  | "uploaded_asc"
+  | "size_desc"
+  | "size_asc";
 
 const previewIcons: Record<PreviewMode, React.ComponentType<{ className?: string }>> = {
   image: PhotoIcon,
@@ -62,16 +50,6 @@ const previewIcons: Record<PreviewMode, React.ComponentType<{ className?: string
   pdf: DocumentIcon,
   text: DocumentTextIcon,
 };
-
-function resolveFileIcon(mime?: string): string | undefined {
-  if (!mime) return undefined;
-  if (mime.startsWith("image/")) return "file-image";
-  if (mime.startsWith("video/")) return "file-video";
-  if (mime === "application/pdf") return "file-pdf";
-  if (mime.startsWith("text/")) return "file-text";
-  if (mime.includes("json")) return "file-code";
-  return "file";
-}
 
 function isTextLike(mime: string): boolean {
   return (
@@ -82,150 +60,136 @@ function isTextLike(mime: string): boolean {
   );
 }
 
+function formatSize(bytes: number | undefined): string {
+  if (!bytes || Number.isNaN(bytes)) return "—";
+  if (bytes <= 0) return "0 Б";
+  const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, i);
+  return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatDate(value?: string): string {
+  if (!value) return "—";
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) return "—";
+  return dateTimeFormatter.format(new Date(time)).replace(", ", " ");
+}
+
 export default function StoragePage() {
   const { t } = useTranslation();
-  const [fileMap, setFileMap] = React.useState<Record<string, FsEntry>>({
-    root: { id: "root", name: "Корень", isDir: true },
-  });
-  const [currentFolderId, setCurrentFolderId] = React.useState("root");
+  const [files, setFiles] = React.useState<StoredFile[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [filters, setFilters] = React.useState<{ userId?: number; type?: string }>({});
+  const [draftFilters, setDraftFilters] = React.useState<{ userId?: number; type?: string }>({});
   const [search, setSearch] = React.useState("");
-  const [sortAsc, setSortAsc] = React.useState(true);
+  const [sort, setSort] = React.useState<SortOption>("uploaded_desc");
+  const [pageIndex, setPageIndex] = React.useState(0);
   const [preview, setPreview] = React.useState<{
-    url: string;
+    file: StoredFile;
     inlineUrl: string;
-    thumbnailUrl?: string;
     mime: string;
-    name: string;
     mode: PreviewMode;
-    content?: string;
     loading?: boolean;
     error?: string;
+    content?: string;
   } | null>(null);
 
   const loadFiles = React.useCallback(() => {
-    return fetchFiles().then((list: StoredFile[]) => {
-      const map: Record<string, FsEntry> = {
-        root: { id: "root", name: "Корень", isDir: true },
-      };
-      list.forEach((f) => {
-        const folderId = `user-${f.userId}`;
-        if (!map[folderId]) {
-          map[folderId] = {
-            id: folderId,
-            name: `Пользователь ${f.userId}`,
-            isDir: true,
-            parentId: "root",
-          };
-        }
-        map[f.path] = {
-          id: f.path,
-          name: f.name,
-          parentId: folderId,
-          url: f.url,
-          type: f.type,
-          thumbnailUrl: f.thumbnailUrl,
-          previewUrl: f.previewUrl,
-          icon: resolveFileIcon(f.type),
-          description: f.type,
-        };
-      });
-      setFileMap(map);
-      return map;
-    });
-  }, []);
+    setLoading(true);
+    return fetchFiles(filters)
+      .then((list) => {
+        setFiles(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        showToast(t("storage.loadError"), "error");
+      })
+      .finally(() => setLoading(false));
+  }, [filters, t]);
 
   React.useEffect(() => {
     loadFiles();
   }, [loadFiles]);
 
-  const deleteAction = React.useMemo<FileAction>(() => {
-    return defineFileAction({
-      id: "delete_file",
-      requiresSelection: true,
-      fileFilter: (entry) => !entry.isDir,
-      button: {
-        name: t("storage.delete"),
-        toolbar: true,
-        contextMenu: true,
-        tooltip: t("storage.deleteHint"),
-        icon: ChonkyIconName.trash,
-      },
-    });
-  }, [t]);
+  React.useEffect(() => {
+    setDraftFilters(filters);
+  }, [filters]);
 
-  const files = React.useMemo<FileArray>(() => {
-    const children = Object.values(fileMap).filter(
-      (f) => f.parentId === currentFolderId,
-    );
-    const filtered = children.filter((f) =>
-      f.name.toLowerCase().includes(search.toLowerCase()),
-    );
-    const sorted = [...filtered].sort((a, b) =>
-      sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
-    );
-    return sorted;
-  }, [fileMap, currentFolderId, search, sortAsc]);
-
-  const folderChain = React.useMemo<FileArray>(() => {
-    const chain: FsEntry[] = [];
-    let id: string | undefined = currentFolderId;
-    while (id) {
-      const item = fileMap[id];
-      if (item) chain.unshift(item);
-      id = item?.parentId;
-    }
-    return chain;
-  }, [fileMap, currentFolderId]);
-
-  const openFile = React.useCallback(
-    (file: FsEntry) => {
-      if (file.isDir) {
-        setCurrentFolderId(file.id);
-        return;
+  const userOptions = React.useMemo(() => {
+    const ids = new Set<number>();
+    files.forEach((file) => {
+      if (typeof file.userId === "number") {
+        ids.add(file.userId);
       }
+    });
+    return Array.from(ids).sort((a, b) => a - b);
+  }, [files]);
+
+  const typeOptions = React.useMemo(() => {
+    const types = new Set<string>();
+    files.forEach((file) => {
+      if (file.type) types.add(file.type);
+    });
+    return Array.from(types).sort((a, b) => a.localeCompare(b));
+  }, [files]);
+
+  const applyFilters = React.useCallback(() => {
+    setPageIndex(0);
+    setFilters({ ...draftFilters });
+  }, [draftFilters]);
+
+  const resetFilters = React.useCallback(() => {
+    setDraftFilters({});
+    setPageIndex(0);
+    setFilters({});
+  }, []);
+
+  const handleDownload = React.useCallback(
+    (file: StoredFile) => {
       if (!file.url) return;
-      const mime = file.type ?? "application/octet-stream";
-      const inlineUrl = file.previewUrl ?? `${file.url}?mode=inline`;
-      if (mime.startsWith("image/")) {
-        setPreview({
-          url: file.url,
-          inlineUrl,
-          thumbnailUrl: file.thumbnailUrl,
-          mime,
-          name: file.name,
-          mode: "image",
+      window.open(file.url, "_blank", "noopener,noreferrer");
+      showToast(t("storage.openedInNewTab"), "success");
+    },
+    [t],
+  );
+
+  const handleDelete = React.useCallback(
+    (file: StoredFile) => {
+      const confirmed = window.confirm(
+        t("storage.deleteConfirm", { name: file.name }),
+      );
+      if (!confirmed) return;
+      removeFile(file.path)
+        .then((res) => {
+          if (!res.ok) throw new Error("delete");
+          showToast(t("storage.deleteSuccess"), "success");
+          return loadFiles();
+        })
+        .catch(() => {
+          showToast(t("storage.deleteError"), "error");
         });
+    },
+    [loadFiles, t],
+  );
+
+  const openPreview = React.useCallback(
+    (file: StoredFile) => {
+      const mime = file.type || "application/octet-stream";
+      const inlineUrl = file.previewUrl || `${file.url}?mode=inline`;
+      if (mime.startsWith("image/")) {
+        setPreview({ file, inlineUrl, mime, mode: "image" });
         return;
       }
       if (mime.startsWith("video/")) {
-        setPreview({
-          url: file.url,
-          inlineUrl,
-          mime,
-          name: file.name,
-          mode: "video",
-        });
+        setPreview({ file, inlineUrl, mime, mode: "video" });
         return;
       }
       if (mime === "application/pdf") {
-        setPreview({
-          url: file.url,
-          inlineUrl,
-          mime,
-          name: file.name,
-          mode: "pdf",
-        });
+        setPreview({ file, inlineUrl, mime, mode: "pdf" });
         return;
       }
       if (isTextLike(mime)) {
-        const base = {
-          url: file.url,
-          inlineUrl,
-          mime,
-          name: file.name,
-          mode: "text" as const,
-        };
-        setPreview({ ...base, loading: true });
+        setPreview({ file, inlineUrl, mime, mode: "text", loading: true });
         authFetch(inlineUrl)
           .then((res) => {
             if (!res.ok) throw new Error("preview");
@@ -233,14 +197,14 @@ export default function StoragePage() {
           })
           .then((content) => {
             setPreview((current) =>
-              current && current.name === file.name
+              current && current.file.path === file.path
                 ? { ...current, content, loading: false, error: undefined }
                 : current,
             );
           })
           .catch(() => {
             setPreview((current) =>
-              current && current.name === file.name
+              current && current.file.path === file.path
                 ? {
                     ...current,
                     loading: false,
@@ -257,47 +221,79 @@ export default function StoragePage() {
     [t],
   );
 
-  const downloadFile = React.useCallback(
-    (file: FsEntry) => {
-      if (!file.url) return;
-      window.open(file.url, "_blank", "noopener,noreferrer");
-      showToast(t("storage.openedInNewTab"), "success");
-    },
+  const filteredFiles = React.useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return files.filter((file) =>
+      query ? file.name.toLowerCase().includes(query) : true,
+    );
+  }, [files, search]);
+
+  const sortedFiles = React.useMemo(() => {
+    const items = [...filteredFiles];
+    items.sort((a, b) => {
+      switch (sort) {
+        case "uploaded_asc": {
+          const left = Date.parse(a.uploadedAt || "");
+          const right = Date.parse(b.uploadedAt || "");
+          return (left || 0) - (right || 0);
+        }
+        case "uploaded_desc": {
+          const left = Date.parse(a.uploadedAt || "");
+          const right = Date.parse(b.uploadedAt || "");
+          return (right || 0) - (left || 0);
+        }
+        case "size_asc": {
+          const left = a.size || 0;
+          const right = b.size || 0;
+          return left - right;
+        }
+        case "size_desc": {
+          const left = a.size || 0;
+          const right = b.size || 0;
+          return right - left;
+        }
+        default:
+          return 0;
+      }
+    });
+    return items;
+  }, [filteredFiles, sort]);
+
+  const rows = React.useMemo<StorageRow[]>(
+    () =>
+      sortedFiles.map((file) => ({
+        ...file,
+        sizeLabel: formatSize(file.size),
+        uploadedLabel: formatDate(file.uploadedAt),
+        userLabel: t("storage.userLabel", { id: file.userId }),
+        taskLabel: file.taskId != null && file.taskId !== ""
+          ? t("storage.taskLabel", { id: file.taskId })
+          : t("storage.taskMissing"),
+        taskLink: file.taskId != null && file.taskId !== ""
+          ? `/cp/tasks?task=${encodeURIComponent(String(file.taskId))}`
+          : undefined,
+        onDownload: () => handleDownload(file),
+        onDelete: () => handleDelete(file),
+      })),
+    [sortedFiles, t, handleDelete, handleDownload],
+  );
+
+  const columns = React.useMemo(
+    () =>
+      createStorageColumns({
+        name: t("storage.columns.name"),
+        user: t("storage.columns.user"),
+        type: t("storage.columns.type"),
+        size: t("storage.columns.size"),
+        task: t("storage.columns.task"),
+        uploaded: t("storage.columns.uploaded"),
+        download: t("storage.download"),
+        delete: t("storage.delete"),
+      }),
     [t],
   );
 
-  const handleAction = React.useCallback(
-    (data: FileActionData<FsEntry>) => {
-      if (!data || !data.payload) return;
-      const file = data.payload.targetFile as FsEntry | undefined;
-      if (!file) return;
-      if (data.id === ChonkyActions.OpenFiles.id) {
-        openFile(file);
-        return;
-      }
-      if (data.id === ChonkyActions.DownloadFiles.id) {
-        downloadFile(file);
-        return;
-      }
-      if (data.id === deleteAction.id) {
-        if (file.isDir) return;
-        const confirmed = window.confirm(
-          t("storage.deleteConfirm", { name: file.name }),
-        );
-        if (!confirmed) return;
-        removeFile(file.id)
-          .then((res) => {
-            if (!res.ok) throw new Error("delete");
-            showToast(t("storage.deleteSuccess"), "success");
-            return loadFiles();
-          })
-          .catch(() => {
-            showToast(t("storage.deleteError"), "error");
-          });
-      }
-    },
-    [deleteAction.id, downloadFile, loadFiles, openFile, t],
-  );
+  const pageSize = rows.length > 0 ? rows.length : 10;
 
   return (
     <div className="space-y-4">
@@ -334,33 +330,107 @@ export default function StoragePage() {
           {t("storage.previewLimitation")}
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-3">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("storage.searchPlaceholder")}
-          data-testid="storage-search"
+          placeholder={t("storage.searchPlaceholder") ?? ""}
+          className="w-64"
         />
         <select
-          value={sortAsc ? "asc" : "desc"}
-          onChange={(e) => setSortAsc(e.target.value === "asc")}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 rounded-md border px-4 py-2 text-sm"
-          aria-label={t("storage.sortLabel")}
+          className="rounded border px-3 py-2 text-sm"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as SortOption)}
         >
-          <option value="asc">{t("storage.sortAsc")}</option>
-          <option value="desc">{t("storage.sortDesc")}</option>
+          <option value="uploaded_desc">{t("storage.sort.uploadedDesc")}</option>
+          <option value="uploaded_asc">{t("storage.sort.uploadedAsc")}</option>
+          <option value="size_desc">{t("storage.sort.sizeDesc")}</option>
+          <option value="size_asc">{t("storage.sort.sizeAsc")}</option>
         </select>
       </div>
-      <FileBrowser
-        files={files}
-        folderChain={folderChain}
-        fileActions={[ChonkyActions.OpenFiles, ChonkyActions.DownloadFiles, deleteAction]}
-        onFileAction={handleAction}
-      >
-        <FileNavbar />
-        <FileToolbar />
-        <FileList />
-      </FileBrowser>
+      <section className="space-y-3 rounded border p-4">
+        <h2 className="text-sm font-semibold">{t("storage.filters.title")}</h2>
+        <div className="flex flex-wrap gap-6">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">
+              {t("storage.filters.user")}
+            </legend>
+            <div className="flex flex-col gap-2">
+              {userOptions.length === 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {t("storage.filters.empty")}
+                </span>
+              )}
+              {userOptions.map((id) => {
+                const checked = draftFilters.userId === id;
+                return (
+                  <label key={id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          userId: checked ? undefined : id,
+                        }))
+                      }
+                    />
+                    {t("storage.userLabel", { id })}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">
+              {t("storage.filters.type")}
+            </legend>
+            <div className="flex flex-col gap-2">
+              {typeOptions.length === 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {t("storage.filters.empty")}
+                </span>
+              )}
+              {typeOptions.map((type) => {
+                const checked = draftFilters.type === type;
+                return (
+                  <label key={type} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          type: checked ? undefined : type,
+                        }))
+                      }
+                    />
+                    <span title={type}>{type}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={applyFilters}>
+            {t("find")}
+          </Button>
+          <Button type="button" variant="outline" onClick={resetFilters}>
+            {t("reset")}
+          </Button>
+        </div>
+      </section>
+      {loading && <div>{t("loading")}</div>}
+      <DataTable
+        columns={columns}
+        data={rows}
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        pageCount={1}
+        onPageChange={setPageIndex}
+        onRowClick={(row) => openPreview(row)}
+      />
       <Modal open={!!preview} onClose={() => setPreview(null)}>
         {preview && (
           <div className="flex flex-col gap-4">
@@ -371,7 +441,7 @@ export default function StoragePage() {
                   "aria-hidden": true,
                 })}
                 <div>
-                  <p className="text-lg font-semibold">{preview.name}</p>
+                  <p className="text-lg font-semibold">{preview.file.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {t("storage.mimeLabel", { mime: preview.mime })}
                   </p>
@@ -381,8 +451,10 @@ export default function StoragePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(preview.url, "_blank", "noopener,noreferrer")}
-                  title={t("storage.downloadHint")}
+                  onClick={() =>
+                    window.open(preview.file.url, "_blank", "noopener,noreferrer")
+                  }
+                  title={t("storage.downloadHint") ?? undefined}
                 >
                   <ArrowDownTrayIcon className="size-4" aria-hidden />
                   {t("storage.download")}
@@ -391,7 +463,7 @@ export default function StoragePage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setPreview(null)}
-                  aria-label={t("close")}
+                  aria-label={t("close") ?? undefined}
                 >
                   <XMarkIcon className="size-5" aria-hidden />
                 </Button>
@@ -399,9 +471,9 @@ export default function StoragePage() {
             </div>
             {preview.mode === "image" && (
               <img
-                srcSet={`${preview.thumbnailUrl || preview.inlineUrl} 1x, ${preview.inlineUrl} 2x`}
+                srcSet={`${preview.file.thumbnailUrl || preview.inlineUrl} 1x, ${preview.inlineUrl} 2x`}
                 sizes="(max-width: 800px) 100vw, 800px"
-                src={preview.thumbnailUrl || preview.inlineUrl}
+                src={preview.file.thumbnailUrl || preview.inlineUrl}
                 alt=""
                 className="max-h-[70vh] w-full rounded-lg object-contain"
               />
@@ -423,7 +495,9 @@ export default function StoragePage() {
             {preview.mode === "text" && (
               <div className="max-h-[70vh] overflow-auto rounded-lg border bg-muted/40 p-4 text-sm leading-relaxed">
                 {preview.loading && (
-                  <p className="text-muted-foreground">{t("storage.previewLoading")}</p>
+                  <p className="text-muted-foreground">
+                    {t("storage.previewLoading")}
+                  </p>
                 )}
                 {preview.error && !preview.loading && (
                   <p className="text-destructive">{preview.error}</p>

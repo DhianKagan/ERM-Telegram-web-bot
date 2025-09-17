@@ -6,7 +6,12 @@ jest.mock('node-fetch', () => ({
 }));
 
 import fetch from 'node-fetch';
-import { login, loadUnits, loadTrack } from '../../src/services/wialon';
+import {
+  login,
+  loadUnits,
+  loadTrack,
+  parseLocatorLink,
+} from '../../src/services/wialon';
 
 const mockedFetch = fetch as unknown as jest.Mock;
 
@@ -28,6 +33,21 @@ describe('wialon service', () => {
     const body = opts?.body as URLSearchParams;
     expect(body.get('svc')).toBe('token/login');
     expect(body.get('params')).toContain('token');
+  });
+
+  it('парсит ссылку локатора', () => {
+    const link = 'https://hosting.wialon.com/locator?lang=ru&t=dG9rZW4tdmFsdWUtMTIz';
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe('token-value-123');
+    expect(parsed.baseUrl).toBe('https://hst-api.wialon.com');
+    expect(parsed.locatorKey).toBe('dG9rZW4tdmFsdWUtMTIz');
+    expect(parsed.locatorUrl).toBe(link);
+  });
+
+  it('отклоняет ссылку без валидного t', () => {
+    expect(() => parseLocatorLink('https://hosting.wialon.com/locator?t=???')).toThrow(
+      'Ключ локатора содержит недопустимые символы',
+    );
   });
 
   it('нормализует список юнитов', async () => {

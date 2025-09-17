@@ -9,9 +9,14 @@ import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
 import { CreateFleetDto, UpdateFleetDto } from '../dto/fleets.dto';
-import { Fleet } from '../db/models/fleet';
+import {
+  Fleet,
+  ensureFleetFields,
+  migrateLegacyFleets,
+  type FleetAttrs,
+} from '../db/models/fleet';
 import { Vehicle, type VehicleAttrs, type VehicleSensor } from '../db/models/vehicle';
-import { login, loadTrack } from '../services/wialon';
+import { login, loadTrack, parseLocatorLink } from '../services/wialon';
 import type { Types } from 'mongoose';
 
 const router: Router = Router();
@@ -28,6 +33,7 @@ const middlewares = [
 ];
 
 router.get('/', ...middlewares, async (_req, res) => {
+  await migrateLegacyFleets();
   const fleets = await Fleet.find();
   res.json(fleets);
 });
@@ -37,7 +43,15 @@ router.post(
   ...middlewares,
   ...(validateDto(CreateFleetDto) as RequestHandler[]),
   async (req, res) => {
-    const fleet = await Fleet.create(req.body);
+    const { name, link } = req.body as { name: string; link: string };
+    const locator = parseLocatorLink(link);
+    const fleet = await Fleet.create({
+      name,
+      token: locator.token,
+      locatorUrl: locator.locatorUrl,
+      baseUrl: locator.baseUrl,
+      locatorKey: locator.locatorKey,
+    });
     res.status(201).json(fleet);
   },
 );
@@ -48,7 +62,20 @@ router.put(
   param('id').isMongoId(),
   ...(validateDto(UpdateFleetDto) as RequestHandler[]),
   async (req, res) => {
-    const fleet = await Fleet.findByIdAndUpdate(req.params.id, req.body, {
+    const update: Partial<
+      Pick<FleetAttrs, 'name' | 'token' | 'locatorUrl' | 'baseUrl' | 'locatorKey'>
+    > = {};
+    if (typeof req.body.name === 'string') {
+      update.name = req.body.name;
+    }
+    if (typeof req.body.link === 'string') {
+      const locator = parseLocatorLink(req.body.link);
+      update.token = locator.token;
+      update.locatorUrl = locator.locatorUrl;
+      update.baseUrl = locator.baseUrl;
+      update.locatorKey = locator.locatorKey;
+    }
+    const fleet = await Fleet.findByIdAndUpdate(req.params.id, update, {
       new: true,
     });
     if (!fleet) {
@@ -83,6 +110,7 @@ router.get(
       res.sendStatus(404);
       return;
     }
+    const updatedFleet = await ensureFleetFields(fleet);
 
     const includeTrack =
       req.query.track === '1' || req.query.track === 'true' || req.query.track === 'yes';
@@ -113,7 +141,7 @@ router.get(
     let sid: string | undefined;
     if (includeTrack) {
       try {
-        sid = (await login(fleet.token)).sid;
+        sid = (await login(updatedFleet.token, updatedFleet.baseUrl)).sid;
       } catch (error) {
         console.error('Не удалось авторизоваться в Wialon:', error);
         res.status(502).json({ error: 'Не удалось получить данные трека' });
@@ -157,7 +185,13 @@ router.get(
         : [];
       if (includeTrack && sid && trackFrom && trackTo) {
         try {
-          const track = await loadTrack(sid, doc.unitId, trackFrom, trackTo);
+          const track = await loadTrack(
+            sid,
+            doc.unitId,
+            trackFrom,
+            trackTo,
+            updatedFleet.baseUrl,
+          );
           base.track = track.map((point) => ({
             lat: point.lat,
             lon: point.lon,
@@ -173,7 +207,7 @@ router.get(
     }
 
     res.json({
-      fleet: { id: String(fleet._id), name: fleet.name },
+      fleet: { id: String(updatedFleet._id), name: updatedFleet.name },
       vehicles,
     });
   },

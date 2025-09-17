@@ -55,7 +55,7 @@ describe('Доступ к автопарку в коллекциях', () => {
           _id: 'fleet-1',
           type: 'fleets',
           name: 'Автопарк №1',
-          value: 'token-1',
+          value: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
         },
       ],
       total: 1,
@@ -74,7 +74,7 @@ describe('Доступ к автопарку в коллекциях', () => {
     const res = await request(app).get('/api/v1/collections?type=fleets');
     expect(res.status).toBe(200);
     expect(res.body.items).toHaveLength(1);
-    expect(res.body.items[0].value).toBe('token-1');
+    expect(res.body.items[0].value).toBe('https://hosting.wialon.com/locator?t=dG9rZW4=');
     expect(repo.list).toHaveBeenCalledTimes(1);
     expect(repo.list.mock.calls[0][0]).toEqual({
       type: 'fleets',
@@ -90,6 +90,6 @@ describe('Доступ к автопарку в коллекциях', () => {
     roleState.current = 'admin';
     const res = await request(app).get('/api/v1/collections?type=fleets');
     expect(res.status).toBe(200);
-    expect(res.body.items[0].value).toBe('token-1');
+    expect(res.body.items[0].value).toBe('https://hosting.wialon.com/locator?t=dG9rZW4=');
   });
 });

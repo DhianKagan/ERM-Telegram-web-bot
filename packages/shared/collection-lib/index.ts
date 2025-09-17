@@ -48,7 +48,10 @@ export function validateBaseItem(item: BaseItem): boolean {
 }
 
 export function validateFleet(fleet: Fleet): boolean {
-  return validateBaseItem(fleet) && Boolean(fleet.token);
+  return (
+    validateBaseItem(fleet) &&
+    Boolean(fleet.token && fleet.locatorUrl && fleet.baseUrl && fleet.locatorKey)
+  );
 }
 
 export function validateDepartment(dept: Department): boolean {

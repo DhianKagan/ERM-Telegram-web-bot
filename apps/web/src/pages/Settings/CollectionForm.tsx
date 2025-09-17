@@ -33,29 +33,6 @@ export default function CollectionForm({
 }: Props) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmSave, setConfirmSave] = React.useState(false);
-  const isTokenField = !renderValueField && valueLabel === "Token";
-  const [showToken, setShowToken] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
-  const canCopy = React.useMemo(
-    () => typeof navigator !== "undefined" && Boolean(navigator.clipboard),
-    [],
-  );
-
-  React.useEffect(() => {
-    if (!isTokenField) return;
-    setCopied(false);
-  }, [form.value, isTokenField]);
-
-  const handleCopy = async () => {
-    if (!isTokenField || !canCopy || !form.value) return;
-    try {
-      await navigator.clipboard.writeText(form.value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,36 +54,6 @@ export default function CollectionForm({
         <label className="block text-sm font-medium">{valueLabel}</label>
         {renderValueField ? (
           renderValueField(form, onChange)
-        ) : isTokenField ? (
-          <>
-            <div className="flex gap-2">
-              <input
-                className="h-10 w-full rounded border px-3"
-                type={showToken ? "text" : "password"}
-                value={form.value}
-                onChange={(e) => onChange({ ...form, value: e.target.value })}
-                required
-              />
-              <button
-                type="button"
-                className="h-10 rounded border px-3"
-                onClick={() => setShowToken((prev) => !prev)}
-              >
-                {showToken ? "Скрыть" : "Показать"}
-              </button>
-              <button
-                type="button"
-                className="h-10 rounded border px-3"
-                onClick={handleCopy}
-                disabled={!canCopy || !form.value}
-              >
-                Копировать
-              </button>
-            </div>
-            {copied && (
-              <span className="text-xs text-green-600">Токен скопирован</span>
-            )}
-          </>
         ) : (
           <input
             className="h-10 w-full rounded border px-3"

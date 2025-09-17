@@ -215,6 +215,10 @@
   @apply text-gray-500 group-hover:text-gray-700;
 }
 
+@utility font-ui {
+  font-family: var(--font-inter), var(--font-outfit), sans-serif;
+}
+
 @utility menu-item-arrow {
   @apply relative;
 }

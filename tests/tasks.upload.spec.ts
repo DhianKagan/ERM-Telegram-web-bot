@@ -3,16 +3,25 @@
  * Основные модули: express, supertest, multer, dataStorage сервис.
  */
 import express = require('express');
-import type { RequestHandler } from 'express';
+import type { Express, Request, RequestHandler } from 'express';
 import request = require('supertest');
 import rateLimit from 'express-rate-limit';
 // @ts-ignore
 import multer from '../apps/api/node_modules/multer';
+import type { FileFilterCallback } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
 const { Types } = require('../apps/api/node_modules/mongoose');
+const { checkFile } = require('../apps/api/src/utils/fileCheck');
+
+jest.mock('sharp', () => {
+  const toFile = jest.fn().mockResolvedValue(undefined);
+  const resize = jest.fn().mockReturnValue({ toFile });
+  const sharpMock = jest.fn().mockReturnValue({ resize });
+  return { __esModule: true, default: sharpMock };
+});
 
 const storedFiles: Array<{
   _id: unknown;
@@ -102,7 +111,8 @@ let uploadsDir: string;
 let deleteFile: typeof import('../apps/api/src/services/dataStorage').deleteFile;
 let filesRouter: express.Router;
 let tempRoot: string;
-let app: express.Express;
+let app: Express;
+const maxUploadSize = 10 * 1024 * 1024;
 
 async function uploadViaChunks(
   fileId: string,
@@ -170,14 +180,27 @@ beforeAll(async () => {
     (req as any).user = { id: currentUserId };
     next();
   };
-  const chunkUpload = multer({ storage: multer.memoryStorage() });
-  app.post(
-    '/upload-chunk',
-    setUser,
-    limiter,
-    chunkUpload.single('file') as unknown as RequestHandler,
-    handleChunks as unknown as RequestHandler,
-  );
+  const chunkUpload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+      if (checkFile(file)) {
+        cb(null, true);
+        return;
+      }
+      cb(new Error('Недопустимый тип файла'));
+    },
+    limits: { fileSize: maxUploadSize },
+  });
+  app.post('/upload-chunk', setUser, limiter, (req, res, next) => {
+    chunkUpload.single('file')(req, res, (err: unknown) => {
+      if (err) {
+        const error = err as Error;
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      (handleChunks as unknown as RequestHandler)(req, res, next);
+    });
+  });
   app.use('/api/v1/files', filesRouter);
 });
 
@@ -202,10 +225,10 @@ describe('Chunk upload', () => {
     const { attachment, storedPath, content } = await uploadViaChunks(
       'chunk-demo',
       chunks,
-      'report.txt',
-      'text/plain',
+      'report.png',
+      'image/png',
     );
-    expect(attachment.name).toBe('report.txt');
+    expect(attachment.name).toBe('report.png');
     expect(attachment.url).toMatch(/\/api\/v1\/files\//);
     const absolute = path.resolve(uploadsDir, storedPath);
     expect(fs.existsSync(absolute)).toBe(true);
@@ -218,12 +241,13 @@ describe('Chunk upload', () => {
     const { attachment, content } = await uploadViaChunks(
       'chunk-download',
       chunks,
-      'notes.txt',
-      'text/plain',
+      'notes.png',
+      'image/png',
     );
-    const response = await request(app).get(attachment.url);
+    const response = await request(app).get(attachment.url).buffer(true);
     expect(response.status).toBe(200);
-    expect(response.text).toBe(content.toString());
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect(Buffer.compare(response.body as Buffer, content)).toBe(0);
   });
 
   test('удаляет файл и запись через deleteFile', async () => {
@@ -231,8 +255,8 @@ describe('Chunk upload', () => {
     const { attachment, storedPath } = await uploadViaChunks(
       'chunk-delete',
       chunks,
-      'todo.txt',
-      'text/plain',
+      'todo.png',
+      'image/png',
     );
     const absolute = path.resolve(uploadsDir, storedPath);
     await deleteFile(storedPath);
@@ -240,5 +264,45 @@ describe('Chunk upload', () => {
     expect(storedFiles).toHaveLength(0);
     const res = await request(app).get(attachment.url);
     expect(res.status).toBe(404);
+  });
+  test('отклоняет загрузку с недопустимым типом', async () => {
+    const response = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'bad-type')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '1')
+      .attach('file', Buffer.from('executable'), {
+        filename: 'tool.exe',
+        contentType: 'application/octet-stream',
+      });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Недопустимый тип файла');
+  });
+
+  test('отклоняет файл больше 10 МБ после сборки', async () => {
+    const largeChunk = Buffer.alloc(6 * 1024 * 1024, 1);
+    const first = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'too-large')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '2')
+      .attach('file', largeChunk, {
+        filename: 'oversize.png',
+        contentType: 'image/png',
+      });
+    expect(first.status).toBe(200);
+    expect(first.body.received).toBe(0);
+    const second = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'too-large')
+      .field('chunkIndex', '1')
+      .field('totalChunks', '2')
+      .attach('file', largeChunk, {
+        filename: 'oversize.png',
+        contentType: 'image/png',
+      });
+    expect(second.status).toBe(400);
+    expect(second.body.error).toBe('Файл превышает допустимый размер');
+    expect(storedFiles).toHaveLength(0);
   });
 });

@@ -207,16 +207,45 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}_${original}`);
   },
 });
+const maxUploadSize = 10 * 1024 * 1024;
+
+const sharedFileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  if (checkFile(file)) {
+    cb(null, true);
+    return;
+  }
+  cb(new Error('Недопустимый тип файла'));
+};
+
+const sharedLimits: multer.Options['limits'] = {
+  fileSize: maxUploadSize,
+};
+
 const upload = multer({
   storage,
-  fileFilter: (_req, file, cb) => {
-    if (checkFile(file)) cb(null, true);
-    else cb(new Error('Недопустимый тип файла'));
-  },
-  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: sharedFileFilter,
+  limits: sharedLimits,
 });
 
-const chunkUpload = multer({ storage: multer.memoryStorage() });
+const chunkUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: sharedFileFilter,
+  limits: sharedLimits,
+});
+
+const chunkUploadMiddleware: RequestHandler = (req, res, next) => {
+  chunkUpload.single('file')(req, res, (err) => {
+    if (err) {
+      const message =
+        err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+          ? 'Файл превышает допустимый размер'
+          : (err as Error).message;
+      res.status(400).json({ error: message });
+      return;
+    }
+    next();
+  });
+};
 
 export const handleChunks: RequestHandler = async (req, res) => {
   try {
@@ -262,24 +291,44 @@ export const handleChunks: RequestHandler = async (req, res) => {
       const originalName = path.basename(file.originalname);
       const storedName = `${Date.now()}_${originalName}`;
       const final = path.resolve(dir, storedName);
+      let cleanedTemp = false;
+      const cleanupTemp = () => {
+        if (!cleanedTemp) {
+          fs.rmSync(dir, { recursive: true, force: true });
+          cleanedTemp = true;
+        }
+      };
       if (!final.startsWith(dir + path.sep)) {
+        cleanupTemp();
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
       }
+      let assembledSize = 0;
       for (let i = 0; i < total; i++) {
         const partPath = path.resolve(dir, String(i));
         if (!partPath.startsWith(dir + path.sep)) {
+          fs.rmSync(final, { force: true });
+          cleanupTemp();
           res.status(400).json({ error: 'Недопустимый путь части' });
           return;
         }
         const part = fs.readFileSync(partPath);
+        assembledSize += part.length;
         fs.appendFileSync(final, part);
         fs.unlinkSync(partPath);
+      }
+      if (assembledSize > maxUploadSize) {
+        fs.rmSync(final, { force: true });
+        cleanupTemp();
+        res.status(400).json({ error: 'Файл превышает допустимый размер' });
+        return;
       }
       const userDir = path.resolve(uploadsDirAbs, String(userId));
       fs.mkdirSync(userDir, { recursive: true });
       const target = path.resolve(userDir, storedName);
       if (!target.startsWith(userDir + path.sep)) {
+        fs.rmSync(final, { force: true });
+        cleanupTemp();
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
       }
@@ -289,7 +338,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
         destination: userDir,
         filename: storedName,
         path: target,
-        size: fs.statSync(target).size,
+        size: assembledSize,
         buffer: Buffer.alloc(0),
         originalname: originalName,
       };
@@ -298,7 +347,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
       try {
         await processUploads(req, res, () => {});
       } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
+        cleanupTemp();
       }
       if (res.headersSent) return;
       const attachment = (req.body as BodyWithAttachments).attachments?.[0];
@@ -318,7 +367,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
 router.post(
   '/upload-chunk',
   authMiddleware(),
-  chunkUpload.single('file'),
+  chunkUploadMiddleware,
   handleChunks,
 );
 /**

@@ -68,5 +68,25 @@
   "title": "Название",
   "titleRequired": "Название обязательно",
   "transportType": "Тип транспорта",
-  "uploadFailed": "Ошибка загрузки"
+  "uploadFailed": "Ошибка загрузки",
+  "storage": {
+    "title": "Файлы",
+    "previewTitle": "Предпросмотр файлов",
+    "previewHint": "Просмотр изображений, видео, PDF и текстов выполняется на нашем домене без сторонних сервисов.",
+    "previewLimitation": "Документы Office, архивы и бинарные файлы доступны только через скачивание.",
+    "typeImage": "Изображения",
+    "typeVideo": "Видео",
+    "typePdf": "PDF",
+    "typeText": "Текст",
+    "searchPlaceholder": "Поиск по имени...",
+    "sortLabel": "Сортировка по имени",
+    "sortAsc": "Имя ↑",
+    "sortDesc": "Имя ↓",
+    "previewError": "Не удалось загрузить предпросмотр.",
+    "previewLoading": "Загрузка предпросмотра...",
+    "openedInNewTab": "Файл открыт в новой вкладке.",
+    "download": "Скачать",
+    "downloadHint": "Скачать файл",
+    "mimeLabel": "Тип: {{mime}}"
+  }
 }

@@ -51,6 +51,7 @@ describe('storage routes', () => {
           type: 'text/plain',
           size: 1,
           uploadedAt: new Date(),
+          _id: '64d000000000000000000001',
         },
       ]),
     });
@@ -58,6 +59,7 @@ describe('storage routes', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body[0].name).toBe('test.txt');
+    expect(res.body[0].previewUrl).toContain('?mode=inline');
   });
 
   test('delete file', async () => {

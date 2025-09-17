@@ -48,4 +48,25 @@ describe('files route', () => {
       .expect('content-disposition', /b.txt/);
     fs.unlinkSync(f);
   });
+
+  test('serve inline preview with same-origin headers', async () => {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    const f = path.join(uploadsDir, 'c.pdf');
+    fs.writeFileSync(f, 'pdf-content');
+    File.findById.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          userId: 1,
+          path: 'c.pdf',
+          name: 'c.pdf',
+          type: 'application/pdf',
+        }),
+    });
+    await request(app)
+      .get('/333333333333333333333333?mode=inline')
+      .expect(200)
+      .expect('content-disposition', 'inline')
+      .expect('content-type', 'application/pdf');
+    fs.unlinkSync(f);
+  });
 });

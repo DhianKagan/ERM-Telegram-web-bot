@@ -76,8 +76,22 @@ router.get(
         });
         return;
       }
-      void writeLog('Скачан файл', 'info', { userId: uid, name: file.name });
-      res.download(target, file.name);
+      const safeName = path.basename(file.name ?? file.path ?? 'file');
+      const inlineMode = req.query.mode === 'inline';
+      const logMessage = inlineMode ? 'Просмотрен файл' : 'Скачан файл';
+      void writeLog(logMessage, 'info', { userId: uid, name: file.name });
+      if (inlineMode) {
+        res.type(file.type || 'application/octet-stream');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Disposition', 'inline');
+        res.sendFile(target, (error) => {
+          if (error) next(error);
+        });
+        return;
+      }
+      res.download(target, safeName, (error) => {
+        if (error) next(error);
+      });
     } catch (err) {
       next(err);
     }

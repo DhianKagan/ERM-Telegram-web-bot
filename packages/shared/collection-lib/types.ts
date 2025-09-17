@@ -8,7 +8,9 @@ export interface BaseItem {
   name: string;
 }
 
-export interface Fleet extends BaseItem {}
+export interface Fleet extends BaseItem {
+  token: string;
+}
 
 export interface Department extends BaseItem {
   fleetId: string;

@@ -33,7 +33,7 @@ test.beforeAll(async () => {
     res.json(employees);
   });
 
-  const fleet = await Fleet.create({ name: 'Флот' });
+  const fleet = await Fleet.create({ name: 'Флот', token: 'секрет-флота' });
   const department = await Department.create({
     fleetId: fleet._id,
     name: 'Отдел',

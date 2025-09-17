@@ -4,13 +4,19 @@ import { body } from 'express-validator';
 
 export class CreateFleetDto {
   static rules() {
-    return [body('name').isString().notEmpty()];
+    return [
+      body('name').isString().notEmpty(),
+      body('token').isString().notEmpty(),
+    ];
   }
 }
 
 export class UpdateFleetDto {
   static rules() {
-    return [body('name').optional().isString().notEmpty()];
+    return [
+      body('name').optional().isString().notEmpty(),
+      body('token').optional().isString().notEmpty(),
+    ];
   }
 }
 

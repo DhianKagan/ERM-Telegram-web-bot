@@ -433,7 +433,9 @@ export default function CollectionsPage() {
                 ? "Департамент"
                 : t.key === "positions"
                   ? "Отдел"
-                  : undefined;
+                  : t.key === "fleets"
+                    ? "Token"
+                    : undefined;
           const valueFieldRenderer =
             t.key === "departments"
               ? renderDepartmentValueField

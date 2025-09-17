@@ -48,7 +48,7 @@ export function validateBaseItem(item: BaseItem): boolean {
 }
 
 export function validateFleet(fleet: Fleet): boolean {
-  return validateBaseItem(fleet);
+  return validateBaseItem(fleet) && Boolean(fleet.token);
 }
 
 export function validateDepartment(dept: Department): boolean {

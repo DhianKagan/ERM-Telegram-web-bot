@@ -12,7 +12,7 @@ import {
 describe('Collection', () => {
   test('создаёт и читает элемент', () => {
     const fleets = new Collection<Fleet>();
-    const fleet = fleets.create({ id: '1', name: 'Флот-1' });
+    const fleet = fleets.create({ id: '1', name: 'Флот-1', token: 'секрет-1' });
     expect(fleets.read('1')).toEqual(fleet);
   });
 
@@ -32,8 +32,8 @@ describe('Collection', () => {
 
   test('выводит список элементов', () => {
     const fleets = new Collection<Fleet>();
-    fleets.create({ id: 'f1', name: 'Флот-1' });
-    fleets.create({ id: 'f2', name: 'Флот-2' });
+    fleets.create({ id: 'f1', name: 'Флот-1', token: 'секрет-1' });
+    fleets.create({ id: 'f2', name: 'Флот-2', token: 'секрет-2' });
     const list = fleets.list();
     expect(list).toHaveLength(2);
   });

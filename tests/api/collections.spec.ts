@@ -45,10 +45,14 @@ app.delete('/employees/:id', (req, res) => {
 
 describe('API коллекций', () => {
   it('создаёт и читает флот', async () => {
-    const create = await request(app).post('/fleets').send({ id: 'f1', name: 'Флот' });
+    const create = await request(app)
+      .post('/fleets')
+      .send({ id: 'f1', name: 'Флот', token: 'секрет' });
     assert.equal(create.status, 201);
+    assert.equal(create.body.token, 'секрет');
     const read = await request(app).get('/fleets/f1');
     assert.equal(read.body.name, 'Флот');
+    assert.equal(read.body.token, 'секрет');
   });
 
   it('обновляет отдел', async () => {

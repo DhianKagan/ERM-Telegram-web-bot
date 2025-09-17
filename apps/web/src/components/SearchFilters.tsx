@@ -22,11 +22,13 @@ export default function SearchFilters({ inline = false }: Props) {
   };
 
   const content = (
-    <div className="flex w-56 flex-col gap-2">
+    <div className="flex w-52 flex-col gap-1.5 text-sm">
       <div>
-        <span className="block text-sm font-medium">Статус</span>
+        <span className="block text-xs font-semibold uppercase tracking-wide text-gray-600">
+          Статус
+        </span>
         {TASK_STATUSES.map((s) => (
-          <label key={s} className="flex items-center gap-1">
+          <label key={s} className="flex items-center gap-1 text-[13px]">
             <input
               type="checkbox"
               checked={local.status.includes(s)}
@@ -37,9 +39,11 @@ export default function SearchFilters({ inline = false }: Props) {
         ))}
       </div>
       <div>
-        <span className="block text-sm font-medium">Приоритет</span>
+        <span className="block text-xs font-semibold uppercase tracking-wide text-gray-600">
+          Приоритет
+        </span>
         {PRIORITIES.map((p) => (
-          <label key={p} className="flex items-center gap-1">
+          <label key={p} className="flex items-center gap-1 text-[13px]">
             <input
               type="checkbox"
               checked={local.priority.includes(p)}
@@ -49,23 +53,23 @@ export default function SearchFilters({ inline = false }: Props) {
           </label>
         ))}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <input
           type="date"
-          className="rounded border p-1"
+          className="rounded border px-1.5 py-1 text-[13px]"
           value={local.from}
           onChange={(e) => setLocal({ ...local, from: e.target.value })}
         />
         <input
           type="date"
-          className="rounded border p-1"
+          className="rounded border px-1.5 py-1 text-[13px]"
           value={local.to}
           onChange={(e) => setLocal({ ...local, to: e.target.value })}
         />
       </div>
       <button
         onClick={() => setFilters(local)}
-        className="mt-2 rounded border px-2 py-1"
+        className="mt-1.5 rounded border px-1.5 py-1 text-[13px]"
       >
         Искать
       </button>
@@ -76,10 +80,10 @@ export default function SearchFilters({ inline = false }: Props) {
 
   return (
     <details className="relative">
-      <summary className="cursor-pointer rounded border px-2 py-1 select-none">
+      <summary className="cursor-pointer rounded border px-1.5 py-0.5 select-none text-sm">
         Фильтры
       </summary>
-      <div className="absolute z-10 mt-1 rounded border bg-white p-2 shadow">
+      <div className="absolute z-10 mt-1 rounded border bg-white p-1.5 shadow">
         {content}
       </div>
     </details>

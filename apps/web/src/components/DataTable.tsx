@@ -65,7 +65,7 @@ export default function DataTable<T>({
   });
 
   return (
-    <div className="space-y-1.5 font-ui text-[13px] sm:text-sm">
+    <div className="space-y-1 font-ui text-[13px] sm:text-sm">
       <TableToolbar table={table as TableType<T>}>
         {toolbarChildren}
       </TableToolbar>
@@ -129,17 +129,17 @@ export default function DataTable<T>({
           ))}
         </TableBody>
       </Table>
-      <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-1.5 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
             disabled={pageIndex === 0}
-            className="rounded border px-2 py-1 font-medium disabled:opacity-50"
+            className="rounded border px-1.5 py-1 font-medium disabled:opacity-50"
           >
             Назад
           </button>
-          <span>
-            Страница {pageIndex + 1}
+          <span className="px-1">
+            Стр. {pageIndex + 1}
             {pageCount ? ` / ${pageCount}` : ""}
           </span>
           <button
@@ -151,7 +151,7 @@ export default function DataTable<T>({
               )
             }
             disabled={pageCount ? pageIndex + 1 >= pageCount : false}
-            className="rounded border px-2 py-1 font-medium disabled:opacity-50"
+            className="rounded border px-1.5 py-1 font-medium disabled:opacity-50"
           >
             Вперёд
           </button>
@@ -160,7 +160,7 @@ export default function DataTable<T>({
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="h-8 min-w-[4.5rem] rounded border px-2 text-xs sm:text-sm"
+            className="h-8 min-w-[4rem] rounded border px-1.5 text-xs sm:text-sm"
           >
             {[10, 25, 50].map((s) => (
               <option key={s} value={s}>

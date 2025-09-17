@@ -65,42 +65,42 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
   };
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-1.5 text-xs sm:text-sm">
-      <div className="flex flex-1 flex-wrap items-center gap-1.5">
+    <div className="flex w-full flex-wrap items-center gap-1 text-xs sm:text-sm">
+      <div className="flex flex-1 flex-wrap items-center gap-1">
         <GlobalSearch />
         {children}
       </div>
-      <div className="ml-auto flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:justify-end">
+      <div className="ml-auto flex w-full flex-wrap items-center gap-1 sm:w-auto sm:justify-end">
         <details className="relative">
-          <summary className="cursor-pointer rounded border px-2 py-1 text-xs font-medium select-none sm:text-sm">
+          <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
             {t("export")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-32 rounded border bg-white p-1.5 shadow">
+          <div className="absolute right-0 z-10 mt-1 w-32 rounded border bg-white p-1 shadow">
             <button
               onClick={exportCsv}
-              className="block w-full rounded px-2 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
+              className="block w-full rounded px-1.5 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
             >
               CSV
             </button>
             <button
               onClick={() => void exportPdf()}
-              className="mt-1 block w-full rounded px-2 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
+              className="mt-1 block w-full rounded px-1.5 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
             >
               PDF
             </button>
           </div>
         </details>
         <details className="relative">
-          <summary className="cursor-pointer rounded border px-2 py-1 text-xs font-medium select-none sm:text-sm">
+          <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
             {t("settings")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-64 space-y-1.5 rounded border bg-white p-2 shadow">
+          <div className="absolute right-0 z-10 mt-1 w-64 space-y-1 rounded border bg-white p-1.5 shadow">
             <SearchFilters inline />
-            <div className="border-t pt-1.5">
+            <div className="border-t pt-1">
               {columns.map((col) => (
                 <div
                   key={col.id}
-                  className="flex items-center justify-between gap-1.5"
+                  className="flex items-center justify-between gap-1"
                 >
                   <label className="flex items-center gap-1 text-xs font-medium sm:text-sm">
                     <input
@@ -113,13 +113,13 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveColumn(col.id, -1)}
-                      className="rounded border px-1 text-xs font-medium"
+                      className="rounded border px-1 text-xs font-medium leading-none"
                     >
                       ←
                     </button>
                     <button
                       onClick={() => moveColumn(col.id, 1)}
-                      className="rounded border px-1 text-xs font-medium"
+                      className="rounded border px-1 text-xs font-medium leading-none"
                     >
                       →
                     </button>

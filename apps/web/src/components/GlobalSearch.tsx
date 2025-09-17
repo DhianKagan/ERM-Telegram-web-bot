@@ -35,7 +35,7 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <div className="relative">
         <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-gray-400" />
         <Input
@@ -45,7 +45,7 @@ export default function GlobalSearch() {
           onKeyDown={onKey}
           placeholder={t("search")}
           aria-label={t("search")}
-          className="h-8 w-52 pr-8 pl-8"
+          className="h-8 w-48 pr-8 pl-8"
         />
         {value && (
           <button
@@ -57,7 +57,7 @@ export default function GlobalSearch() {
           </button>
         )}
       </div>
-      <button onClick={search} className="rounded border px-2 py-1">
+      <button onClick={search} className="rounded border px-1.5 py-1">
         {t("find")}
       </button>
     </div>

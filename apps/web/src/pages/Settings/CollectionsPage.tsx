@@ -300,6 +300,9 @@ export default function CollectionsPage() {
       valueToSave = form.value.trim();
     }
     try {
+      if (active === "fleets") {
+        setHint("Синхронизация автопарка...");
+      }
       let saved: CollectionItem | null = null;
       if (form._id) {
         saved = await updateCollectionItem(form._id, {
@@ -312,15 +315,28 @@ export default function CollectionsPage() {
           value: valueToSave,
         });
       }
-      setHint("");
-      if (active === "fleets" && saved) {
+      if (!saved) {
+        throw new Error("Сервер не вернул сохранённый элемент");
+      }
+      if (active === "fleets") {
+        setItems((prev) => {
+          const index = prev.findIndex((item) => item._id === saved._id);
+          if (index >= 0) {
+            const updated = [...prev];
+            updated[index] = saved;
+            return updated;
+          }
+          return [saved, ...prev];
+        });
         setSelectedFleetId(saved._id);
         setForm({ _id: saved._id, name: saved.name, value: saved.value });
+        setHint("");
       } else {
         setForm({ name: "", value: "" });
+        setHint("");
       }
       await load();
-      if (active === "fleets" && saved) {
+      if (active === "fleets") {
         await loadFleetVehicles(saved._id);
       }
     } catch (error) {

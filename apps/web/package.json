@@ -5,6 +5,8 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
+    "predev": "node ../../scripts/ensure-fonts.mjs",
+    "prebuild": "node ../../scripts/ensure-fonts.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js .",

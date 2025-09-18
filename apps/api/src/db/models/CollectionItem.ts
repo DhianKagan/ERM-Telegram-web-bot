@@ -1,6 +1,6 @@
 // Назначение файла: модель универсальной коллекции
 // Основные модули: mongoose
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface CollectionItemAttrs {
   type: string;
@@ -8,7 +8,13 @@ export interface CollectionItemAttrs {
   value: string;
 }
 
-export interface CollectionItemDocument extends CollectionItemAttrs, Document {}
+export interface CollectionItemDocument
+  extends Document<
+      Types.ObjectId,
+      Record<string, never>,
+      CollectionItemAttrs
+    >,
+    CollectionItemAttrs {}
 
 const collectionItemSchema = new Schema<CollectionItemDocument>({
   type: { type: String, required: true },

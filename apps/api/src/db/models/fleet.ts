@@ -1,11 +1,8 @@
 // Назначение файла: модель коллекции флотов
 // Основные модули: mongoose
-import { Schema, model, Document, Types } from 'mongoose';
-import {
-  DEFAULT_BASE_URL,
-  decodeLocatorKey,
-  parseLocatorLink,
-} from '../../services/wialon';
+import { Schema, model, Types, type HydratedDocument } from 'mongoose';
+import { DEFAULT_BASE_URL, decodeLocatorKey } from '../../services/wialon';
+import { parseLocatorLink } from '../../utils/wialonLocator';
 import {
   CollectionItem,
   type CollectionItemDocument,
@@ -19,9 +16,9 @@ export interface FleetAttrs {
   locatorKey: string;
 }
 
-export interface FleetDocument extends FleetAttrs, Document {}
+export type FleetDocument = HydratedDocument<FleetAttrs>;
 
-const fleetSchema = new Schema<FleetDocument>({
+const fleetSchema = new Schema<FleetAttrs>({
   name: { type: String, required: true },
   token: { type: String, required: true },
   locatorUrl: { type: String, required: true, default: '' },
@@ -29,13 +26,13 @@ const fleetSchema = new Schema<FleetDocument>({
   locatorKey: {
     type: String,
     required: true,
-    default(this: FleetDocument) {
+    default(this: { token: string }) {
       return this.token;
     },
   },
 });
 
-export const Fleet = model<FleetDocument>('Fleet', fleetSchema);
+export const Fleet = model<FleetAttrs>('Fleet', fleetSchema);
 
 interface LegacyFleetPayload {
   token?: string;

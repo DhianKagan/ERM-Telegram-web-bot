@@ -1,21 +1,20 @@
 // Назначение: проверка маппинга данных Wialon
-// Основные модули: jest, node-fetch, wialon сервис
-jest.mock('node-fetch', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
+// Основные модули: jest, глобальный fetch, wialon сервис
+import { login, loadUnits, loadTrack, parseLocatorLink } from '../../src/services/wialon';
 
-import fetch from 'node-fetch';
-import {
-  login,
-  loadUnits,
-  loadTrack,
-  parseLocatorLink,
-} from '../../src/services/wialon';
-
-const mockedFetch = fetch as unknown as jest.Mock;
+const mockedFetch = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
+let originalFetch: typeof fetch;
 
 describe('wialon service', () => {
+  beforeAll(() => {
+    originalFetch = global.fetch;
+    global.fetch = mockedFetch as unknown as typeof fetch;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
   beforeEach(() => {
     mockedFetch.mockReset();
   });

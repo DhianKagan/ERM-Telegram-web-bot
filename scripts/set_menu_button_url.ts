@@ -1,7 +1,6 @@
 #!/usr/bin/env ts-node
 // Назначение файла: скрипт установки URL кнопки меню Telegram
-// Модули: node-fetch, dotenv
-import fetch from 'node-fetch';
+// Модули: глобальный fetch, dotenv
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -32,7 +31,15 @@ interface MenuButtonRequest {
   chat_id?: string;
 }
 
+function ensureFetch(): typeof globalThis.fetch {
+  if (typeof globalThis.fetch !== 'function') {
+    throw new Error('Глобальная функция fetch недоступна');
+  }
+  return globalThis.fetch;
+}
+
 async function setMenuButton(): Promise<void> {
+  const fetchFn = ensureFetch();
   const params: MenuButtonRequest = {
     menu_button: {
       type: 'web_app',
@@ -41,7 +48,7 @@ async function setMenuButton(): Promise<void> {
     }
   };
   if (chatId) params.chat_id = chatId;
-  const res = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
+  const res = await fetchFn(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)

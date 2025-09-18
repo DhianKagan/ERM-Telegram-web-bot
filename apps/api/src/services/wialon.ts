@@ -1,6 +1,5 @@
 // Назначение файла: интеграция с Wialon API для получения транспорта
-// Основные модули: node-fetch, utils/wialonLocator
-import fetch, { Response } from 'node-fetch';
+// Основные модули: глобальный fetch, utils/wialonLocator
 import {
   decodeLocatorKey as decodeLocatorKeyUtil,
   parseLocatorLink as parseLocatorLinkUtil,
@@ -114,6 +113,13 @@ function isErrorResponse(data: unknown): data is ErrorResponse {
   );
 }
 
+function ensureFetch(): typeof globalThis.fetch {
+  if (typeof globalThis.fetch !== 'function') {
+    throw new Error('Глобальная функция fetch недоступна в текущем окружении');
+  }
+  return globalThis.fetch;
+}
+
 async function parseJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
@@ -136,7 +142,8 @@ async function request<T>(
   if (options.sid) {
     search.set('sid', options.sid);
   }
-  const res = await fetch(url, {
+  const fetchFn = ensureFetch();
+  const res = await fetchFn(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: search,

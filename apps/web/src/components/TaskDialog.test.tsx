@@ -43,7 +43,7 @@ const taskData = {
 };
 
 const authFetchMock = jest.fn((url: string) => {
-  if (url === "/api/collections/departments") {
+  if (url === "/api/v1/collections/departments") {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
   if (url === "/api/v1/users") {

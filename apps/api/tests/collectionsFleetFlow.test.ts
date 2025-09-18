@@ -17,7 +17,20 @@ jest.mock('../src/utils/rateLimiter', () => () => (_req: express.Request, _res: 
 );
 jest.mock('../src/middleware/auth', () => ({
   __esModule: true,
-  default: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+  default: () => (
+    req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    Object.assign(req, {
+      user: {
+        id: 'admin',
+        username: 'integration-admin',
+        role: 'admin',
+      },
+    });
+    next();
+  },
 }));
 jest.mock('../src/auth/roles.guard', () => ({
   __esModule: true,

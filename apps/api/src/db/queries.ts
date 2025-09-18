@@ -11,6 +11,7 @@ import {
   RoleAttrs,
   TaskTemplate,
   TaskTemplateDocument,
+  HistoryEntry,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
 import config from '../config';
@@ -246,6 +247,30 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   const doc = await Task.findByIdAndDelete(id);
   if (!doc) return null;
   const data = doc.toObject();
+  const fallbackUserId =
+    typeof data.created_by === 'number' && Number.isFinite(data.created_by)
+      ? data.created_by
+      : 0;
+  if (Array.isArray(data.history) && data.history.length > 0) {
+    const normalized = data.history.map((entry) => {
+      if (entry && typeof entry === 'object') {
+        const withFallback = { ...entry } as HistoryEntry & {
+          changed_by?: unknown;
+        };
+        const changedBy = withFallback.changed_by;
+        if (typeof changedBy !== 'number' || !Number.isFinite(changedBy)) {
+          withFallback.changed_by = fallbackUserId;
+        }
+        return withFallback as HistoryEntry;
+      }
+      return {
+        changed_at: new Date(),
+        changed_by: fallbackUserId,
+        changes: { from: {}, to: {} },
+      } satisfies HistoryEntry;
+    });
+    data.history = normalized;
+  }
   (data as unknown as Record<string, unknown>).request_id = `${
     (data as unknown as Record<string, unknown>).request_id
   }-DEL`;

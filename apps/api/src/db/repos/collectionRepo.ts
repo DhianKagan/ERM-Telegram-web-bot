@@ -1,5 +1,6 @@
 // Назначение файла: репозиторий элементов коллекции
 // Основные модули: mongoose, модели CollectionItem
+import { Types } from 'mongoose';
 import {
   CollectionItem,
   CollectionItemDocument,
@@ -14,9 +15,18 @@ export interface CollectionFilters {
 }
 
 export async function create(
-  data: CollectionItemAttrs,
+  data: CollectionItemAttrs & { _id?: Types.ObjectId | string },
 ): Promise<CollectionItemDocument> {
-  return CollectionItem.create(data);
+  const payload: Record<string, unknown> = {
+    type: data.type,
+    name: data.name,
+    value: data.value,
+  };
+  if (data._id) {
+    payload._id =
+      typeof data._id === 'string' ? new Types.ObjectId(data._id) : data._id;
+  }
+  return CollectionItem.create(payload);
 }
 
 export async function list(

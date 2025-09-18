@@ -5,7 +5,7 @@
  * Назначение файла: конфигурация Vite для мини-приложения.
  * Основные модули: vite, @vitejs/plugin-react, @vitejs/plugin-legacy.
  */
-import { defineConfig } from "vite";
+import { defineConfig, type IndexHtmlTransformContext } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { resolve } from "path";
@@ -38,6 +38,24 @@ function preserveIndexHtml() {
   };
 }
 
+function cspNonceDevPlugin() {
+  const placeholder = "__CSP_NONCE__";
+  const devNonce = "dev-nonce";
+  return {
+    name: "csp-nonce-dev",
+    enforce: "pre" as const,
+    transformIndexHtml(
+      html: string,
+      ctx: IndexHtmlTransformContext | undefined,
+    ) {
+      if (ctx?.server) {
+        return html.split(placeholder).join(devNonce);
+      }
+      return html;
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(() => {
   return {
@@ -56,6 +74,7 @@ export default defineConfig(() => {
           })
         : undefined,
       preserveIndexHtml(),
+      cspNonceDevPlugin(),
     ].filter(Boolean),
     resolve: {
       alias: {

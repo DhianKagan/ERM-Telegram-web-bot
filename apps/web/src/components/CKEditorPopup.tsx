@@ -3,6 +3,9 @@
 import React, { useState } from "react";
 import DOMPurify from "dompurify";
 import Modal from "./Modal";
+import { ensureWebpackNonce } from "../utils/ensureWebpackNonce";
+
+ensureWebpackNonce();
 
 const LazyCKEditor = React.lazy(async () => {
   const [{ CKEditor }, { default: ClassicEditor }] = await Promise.all([

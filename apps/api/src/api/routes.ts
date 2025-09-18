@@ -8,6 +8,7 @@ import express, {
 } from 'express';
 import type { CookieOptions } from 'express-session';
 import path from 'path';
+import { readFile, stat } from 'node:fs/promises';
 import cors from 'cors';
 import lusca from 'lusca';
 import {
@@ -65,6 +66,29 @@ const validate = (validations: ValidationChain[]): RequestHandler[] => [
     });
   },
 ];
+
+const INDEX_NONCE_PLACEHOLDER = '__CSP_NONCE__';
+type IndexCacheEntry = { mtimeMs: number; html: string };
+const indexCache = new Map<string, IndexCacheEntry>();
+
+async function loadIndexTemplate(pub: string): Promise<string> {
+  const filePath = path.join(pub, 'index.html');
+  const fileStat = await stat(filePath);
+  const cached = indexCache.get(filePath);
+  if (cached && cached.mtimeMs === fileStat.mtimeMs) {
+    return cached.html;
+  }
+  const html = await readFile(filePath, 'utf8');
+  indexCache.set(filePath, { html, mtimeMs: fileStat.mtimeMs });
+  return html;
+}
+
+function injectNonce(template: string, nonce: string): string {
+  if (!template.includes(INDEX_NONCE_PLACEHOLDER)) {
+    return template;
+  }
+  return template.split(INDEX_NONCE_PLACEHOLDER).join(nonce);
+}
 
 export default async function registerRoutes(
   app: express.Express,
@@ -292,17 +316,35 @@ export default async function registerRoutes(
     }),
   );
 
-  app.get('/', spaRateLimiter, (_req: Request, res: Response) => {
-    res.sendFile(path.join(pub, 'index.html'));
+  app.get('/', spaRateLimiter, async (_req: Request, res: Response, next) => {
+    try {
+      const template = await loadIndexTemplate(pub);
+      const nonce = String(res.locals.cspNonce ?? '');
+      const html = injectNonce(template, nonce);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    } catch (error) {
+      next(error);
+    }
   });
 
-  app.get('*', spaRateLimiter, (req: Request, res: Response) => {
+  app.get('*', spaRateLimiter, async (req: Request, res: Response, next) => {
     // Не отдаём index.html для запросов статических файлов
     if (req.path.includes('.')) {
       res.status(404).end();
       return;
     }
-    res.sendFile(path.join(pub, 'index.html'));
+    try {
+      const template = await loadIndexTemplate(pub);
+      const nonce = String(res.locals.cspNonce ?? '');
+      const html = injectNonce(template, nonce);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.use(errorMiddleware);

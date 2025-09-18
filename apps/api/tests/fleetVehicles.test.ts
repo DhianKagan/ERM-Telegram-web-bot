@@ -3,25 +3,17 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
-jest.mock('../src/services/wialon', () => ({
-  __esModule: true,
-  DEFAULT_BASE_URL: 'https://hst-api.wialon.com',
-  decodeLocatorKey: (value: string) => {
-    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = (4 - (normalized.length % 4)) % 4;
-    const buffer = Buffer.from(normalized.padEnd(normalized.length + padding, '='), 'base64');
-    if (!buffer.length) {
-      throw new Error('Не удалось расшифровать ключ локатора');
-    }
-    const decoded = buffer.toString('utf8');
-    if (!decoded.trim() || !/^[\x20-\x7E]+$/.test(decoded)) {
-      throw new Error('Расшифрованный ключ содержит недопустимые символы');
-    }
-    return decoded;
-  },
-  login: jest.fn(),
-  loadUnits: jest.fn(),
-}));
+jest.mock('../src/services/wialon', () => {
+  const actual = jest.requireActual('../src/services/wialon');
+  return {
+    __esModule: true,
+    DEFAULT_BASE_URL: actual.DEFAULT_BASE_URL,
+    decodeLocatorKey: actual.decodeLocatorKey,
+    parseLocatorLink: actual.parseLocatorLink,
+    login: jest.fn(),
+    loadUnits: jest.fn(),
+  };
+});
 
 import { Fleet } from '../src/db/models/fleet';
 import { Vehicle } from '../src/db/models/vehicle';

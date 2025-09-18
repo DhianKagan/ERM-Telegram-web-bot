@@ -10,8 +10,14 @@ export interface LocatorLinkData {
 
 const DEFAULT_BASE_FALLBACK = 'https://hst-api.wialon.com';
 
-function isPrintableAscii(value: string): boolean {
-  return /^[\x20-\x7E]+$/.test(value);
+function hasControlCharacters(value: string): boolean {
+  for (const char of value) {
+    const code = char.codePointAt(0);
+    if (code !== undefined && ((code >= 0 && code <= 0x1f) || code === 0x7f)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function normalizeBase64(value: string): string {
@@ -50,10 +56,11 @@ export function decodeLocatorKey(locatorKey: string): string {
     throw new Error('Не удалось расшифровать ключ локатора');
   }
   const decoded = buffer.toString('utf8');
-  if (!decoded.trim() || !isPrintableAscii(decoded)) {
+  const normalizedToken = decoded.trim();
+  if (!normalizedToken || hasControlCharacters(normalizedToken)) {
     throw new Error('Расшифрованный ключ содержит недопустимые символы');
   }
-  return decoded;
+  return normalizedToken;
 }
 
 export function parseLocatorLink(link: string, defaultBaseUrl?: string): LocatorLinkData {

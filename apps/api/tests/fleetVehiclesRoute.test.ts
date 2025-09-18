@@ -23,41 +23,17 @@ jest.mock('../src/auth/roles.decorator', () => ({
     next(),
 }));
 
-jest.mock('../src/services/wialon', () => ({
-  __esModule: true,
-  DEFAULT_BASE_URL: 'https://hst-api.wialon.com',
-  decodeLocatorKey: (value: string) => {
-    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = (4 - (normalized.length % 4)) % 4;
-    const buffer = Buffer.from(normalized.padEnd(normalized.length + padding, '='), 'base64');
-    if (!buffer.length) {
-      throw new Error('Не удалось расшифровать ключ локатора');
-    }
-    const decoded = buffer.toString('utf8');
-    if (!decoded.trim() || !/^[\x20-\x7E]+$/.test(decoded)) {
-      throw new Error('Расшифрованный ключ содержит недопустимые символы');
-    }
-    return decoded;
-  },
-  parseLocatorLink: (link: string) => {
-    const url = new URL(link);
-    const key = url.searchParams.get('t');
-    if (!key) {
-      throw new Error('Нет ключа локатора');
-    }
-    const normalized = key.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = (4 - (normalized.length % 4)) % 4;
-    const token = Buffer.from(normalized.padEnd(normalized.length + padding, '='), 'base64').toString('utf8');
-    return {
-      locatorUrl: url.toString(),
-      baseUrl: 'https://hst-api.wialon.com',
-      locatorKey: key,
-      token,
-    };
-  },
-  login: jest.fn(),
-  loadTrack: jest.fn(),
-}));
+jest.mock('../src/services/wialon', () => {
+  const actual = jest.requireActual('../src/services/wialon');
+  return {
+    __esModule: true,
+    DEFAULT_BASE_URL: actual.DEFAULT_BASE_URL,
+    decodeLocatorKey: actual.decodeLocatorKey,
+    parseLocatorLink: actual.parseLocatorLink,
+    login: jest.fn(),
+    loadTrack: jest.fn(),
+  };
+});
 
 jest.mock('../src/services/fleetVehicles', () => ({
   __esModule: true,

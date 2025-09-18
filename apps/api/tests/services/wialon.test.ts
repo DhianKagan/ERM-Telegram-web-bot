@@ -43,6 +43,14 @@ describe('wialon service', () => {
     expect(parsed.locatorUrl).toBe(link);
   });
 
+  it('поддерживает кириллические символы в токене', () => {
+    const originalToken = 'пароль123';
+    const locatorKey = Buffer.from(originalToken, 'utf8').toString('base64');
+    const link = `https://hosting.wialon.com/locator?t=${locatorKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(originalToken);
+  });
+
   it('отклоняет ссылку без валидного t', () => {
     expect(() => parseLocatorLink('https://hosting.wialon.com/locator?t=???')).toThrow(
       'Ключ локатора содержит недопустимые символы',

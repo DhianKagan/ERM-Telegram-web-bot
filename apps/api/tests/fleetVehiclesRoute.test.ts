@@ -39,6 +39,22 @@ jest.mock('../src/services/wialon', () => ({
     }
     return decoded;
   },
+  parseLocatorLink: (link: string) => {
+    const url = new URL(link);
+    const key = url.searchParams.get('t');
+    if (!key) {
+      throw new Error('Нет ключа локатора');
+    }
+    const normalized = key.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = (4 - (normalized.length % 4)) % 4;
+    const token = Buffer.from(normalized.padEnd(normalized.length + padding, '='), 'base64').toString('utf8');
+    return {
+      locatorUrl: url.toString(),
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: key,
+      token,
+    };
+  },
   login: jest.fn(),
   loadTrack: jest.fn(),
 }));
@@ -51,6 +67,7 @@ jest.mock('../src/services/fleetVehicles', () => ({
 
 import fleetsRouter from '../src/routes/fleets';
 import { Fleet } from '../src/db/models/fleet';
+import { CollectionItem } from '../src/db/models/CollectionItem';
 import { Vehicle } from '../src/db/models/vehicle';
 import { login, loadTrack } from '../src/services/wialon';
 import { syncFleetVehicles } from '../src/services/fleetVehicles';
@@ -84,6 +101,7 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
   beforeEach(async () => {
     await Fleet.deleteMany({});
     await Vehicle.deleteMany({});
+    await CollectionItem.deleteMany({});
     mockedLogin.mockReset();
     mockedLoadTrack.mockReset();
     mockedSyncFleetVehicles.mockReset();
@@ -152,6 +170,80 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
       lat: 55,
       lon: 37,
     });
+  });
+
+  it('восстанавливает флот из коллекции, если запись отсутствует', async () => {
+    const id = new mongoose.Types.ObjectId();
+    await CollectionItem.create({
+      _id: id,
+      type: 'fleets',
+      name: 'Автопарк',
+      value: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+    });
+    mockedSyncFleetVehicles.mockResolvedValue();
+
+    const res = await request(app)
+      .get(`/api/v1/fleets/${id.toString()}/vehicles`)
+      .expect(200);
+
+    expect(res.body.fleet).toMatchObject({ name: 'Автопарк' });
+    const fleet = await Fleet.findById(id);
+    expect(fleet).not.toBeNull();
+    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+  });
+
+  it('восстанавливает флот из коллекции с устаревшим значением', async () => {
+    const id = new mongoose.Types.ObjectId();
+    const legacyPayload = {
+      token: 'legacy-token',
+      baseUrl: 'https://hst-api.wialon.com',
+    };
+    await CollectionItem.create({
+      _id: id,
+      type: 'fleets',
+      name: 'Наследие',
+      value: JSON.stringify(legacyPayload),
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/fleets/${id.toString()}/vehicles`)
+      .expect(200);
+
+    expect(res.body.fleet).toMatchObject({ name: 'Наследие' });
+    const fleet = await Fleet.findById(id);
+    expect(fleet).not.toBeNull();
+    expect(fleet?.token).toBe('legacy-token');
+    const expectedKey = Buffer.from('legacy-token', 'utf8').toString('base64');
+    expect(fleet?.locatorKey).toBe(expectedKey);
+    expect(fleet?.locatorUrl).toContain(expectedKey);
+    const item = await CollectionItem.findById(id);
+    expect(item?.value).toBe(fleet?.locatorUrl);
+    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+  });
+
+  it('обновляет устаревший токен до ссылки локатора', async () => {
+    const id = new mongoose.Types.ObjectId();
+    await CollectionItem.create({
+      _id: id,
+      type: 'fleets',
+      name: 'Сырые данные',
+      value: 'raw-token',
+    });
+
+    await request(app)
+      .get(`/api/v1/fleets/${id.toString()}/vehicles`)
+      .expect(200);
+
+    const fleet = await Fleet.findById(id);
+    expect(fleet).not.toBeNull();
+    expect(fleet?.token).toBe('raw-token');
+    const expectedKey = Buffer.from('raw-token', 'utf8').toString('base64');
+    expect(fleet?.locatorKey).toBe(expectedKey);
+    const item = await CollectionItem.findById(id);
+    expect(item?.value).toBe(
+      `https://hosting.wialon.com/locator?t=${encodeURIComponent(expectedKey)}`,
+    );
+    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
   });
 
   it('вызывает синхронизацию при создании флота', async () => {

@@ -11,6 +11,7 @@ import validateDto from '../middleware/validateDto';
 import { CreateFleetDto, UpdateFleetDto } from '../dto/fleets.dto';
 import {
   Fleet,
+  ensureFleetDocument,
   ensureFleetFields,
   migrateLegacyFleets,
   type FleetAttrs,
@@ -162,12 +163,27 @@ router.get(
   ...middlewares,
   param('id').isMongoId(),
   async (req, res) => {
-    const fleet = await Fleet.findById(req.params.id);
+    let fleet = await Fleet.findById(req.params.id);
+    let restored = false;
+    if (!fleet) {
+      fleet = await ensureFleetDocument(req.params.id);
+      restored = Boolean(fleet);
+    }
     if (!fleet) {
       res.sendStatus(404);
       return;
     }
     const updatedFleet = await ensureFleetFields(fleet);
+    if (restored) {
+      try {
+        await syncFleetVehicles(updatedFleet);
+      } catch (error) {
+        console.error(
+          `Не удалось синхронизировать восстановленный флот ${updatedFleet._id}:`,
+          error,
+        );
+      }
+    }
 
     const includeTrack =
       req.query.track === '1' || req.query.track === 'true' || req.query.track === 'yes';

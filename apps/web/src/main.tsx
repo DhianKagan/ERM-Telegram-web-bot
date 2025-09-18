@@ -4,6 +4,9 @@ import * as ReactDOM from "react-dom/client";
 import ErrorBoundary from "./components/ErrorBoundary";
 import i18n from "./i18n";
 import "./index.css";
+import { ensureWebpackNonce } from "./utils/ensureWebpackNonce";
+
+ensureWebpackNonce();
 
 function bootstrap() {
   const root = document.getElementById("root");

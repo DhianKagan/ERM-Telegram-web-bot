@@ -9,6 +9,13 @@ export interface LocatorLinkData {
 }
 
 const DEFAULT_BASE_FALLBACK = 'https://hst-api.wialon.com';
+const BASE64_KEY_PATTERN = /^[A-Za-z0-9+/=_-]+$/;
+const RAW_KEY_PATTERN = /^[0-9A-Za-z._:+/@=~-]+$/;
+
+interface DecodeLocatorKeyResult {
+  token: string;
+  fallback: boolean;
+}
 
 function hasControlCharacters(value: string): boolean {
   for (const char of value) {
@@ -42,25 +49,44 @@ function resolveBaseUrlFromLocator(url: URL, defaultBaseUrl?: string): string {
   return port ? `${base}:${port}` : base;
 }
 
-export function decodeLocatorKey(locatorKey: string): string {
+function decodeLocatorKeyDetailed(locatorKey: string): DecodeLocatorKeyResult {
   const trimmed = locatorKey.trim();
   if (!trimmed) {
     throw new Error('Ключ локатора не может быть пустым');
   }
-  if (!/^[A-Za-z0-9+/=_-]+$/.test(trimmed)) {
+  const isBase64Candidate = BASE64_KEY_PATTERN.test(trimmed);
+  const isRawCandidate = RAW_KEY_PATTERN.test(trimmed);
+  if (!isBase64Candidate && !isRawCandidate) {
     throw new Error('Ключ локатора содержит недопустимые символы');
   }
-  const normalized = normalizeBase64(trimmed);
-  const buffer = Buffer.from(normalized, 'base64');
-  if (buffer.length === 0) {
-    throw new Error('Не удалось расшифровать ключ локатора');
+  if (!isBase64Candidate) {
+    if (hasControlCharacters(trimmed)) {
+      throw new Error('Ключ локатора содержит недопустимые символы');
+    }
+    return { token: trimmed, fallback: true };
   }
-  const decoded = buffer.toString('utf8');
-  const normalizedToken = decoded.trim();
-  if (!normalizedToken || hasControlCharacters(normalizedToken)) {
-    throw new Error('Расшифрованный ключ содержит недопустимые символы');
+  try {
+    const normalized = normalizeBase64(trimmed);
+    const buffer = Buffer.from(normalized, 'base64');
+    if (buffer.length === 0) {
+      throw new Error('Не удалось расшифровать ключ локатора');
+    }
+    const decoded = buffer.toString('utf8');
+    const normalizedToken = decoded.trim();
+    if (!normalizedToken || hasControlCharacters(normalizedToken)) {
+      throw new Error('Расшифрованный ключ содержит недопустимые символы');
+    }
+    return { token: normalizedToken, fallback: false };
+  } catch (error) {
+    if (isRawCandidate && !hasControlCharacters(trimmed)) {
+      return { token: trimmed, fallback: true };
+    }
+    throw error instanceof Error ? error : new Error(String(error));
   }
-  return normalizedToken;
+}
+
+export function decodeLocatorKey(locatorKey: string): string {
+  return decodeLocatorKeyDetailed(locatorKey).token;
 }
 
 export function parseLocatorLink(link: string, defaultBaseUrl?: string): LocatorLinkData {
@@ -81,7 +107,7 @@ export function parseLocatorLink(link: string, defaultBaseUrl?: string): Locator
   if (!locatorKey) {
     throw new Error('Ссылка Wialon должна содержать параметр t');
   }
-  const token = decodeLocatorKey(locatorKey);
+  const { token } = decodeLocatorKeyDetailed(locatorKey);
   const baseUrl = resolveBaseUrlFromLocator(url, defaultBaseUrl);
   return {
     locatorUrl: url.toString(),

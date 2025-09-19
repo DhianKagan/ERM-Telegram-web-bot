@@ -168,6 +168,24 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
     expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
   });
 
+  it('возвращает 422 и подсказку, если флот нельзя восстановить', async () => {
+    const id = new mongoose.Types.ObjectId();
+    await CollectionItem.create({
+      _id: id,
+      type: 'fleets',
+      name: 'Проблемный флот',
+      value: 'not-a-link',
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/fleets/${id.toString()}/vehicles`)
+      .expect(422);
+
+    expect(res.body).toMatchObject({ error: 'Не удалось восстановить автопарк' });
+    expect(res.body.detail).toContain('Некорректная ссылка Wialon');
+    expect(res.body.detail).toContain('Обновите ссылку Wialon');
+  });
+
   it('восстанавливает флот из коллекции с устаревшим значением', async () => {
     const id = new mongoose.Types.ObjectId();
     const legacyPayload = {

@@ -15,6 +15,7 @@ import {
   ensureFleetFields,
   migrateLegacyFleets,
   type FleetAttrs,
+  type FleetRecoveryFailure,
 } from '../db/models/fleet';
 import { Vehicle, type VehicleAttrs, type VehicleSensor } from '../db/models/vehicle';
 import { login, loadTrack, DEFAULT_BASE_URL } from '../services/wialon';
@@ -165,11 +166,28 @@ router.get(
   async (req, res) => {
     let fleet = await Fleet.findById(req.params.id);
     let restored = false;
+    let recoveryFailure: FleetRecoveryFailure | null = null;
     if (!fleet) {
-      fleet = await ensureFleetDocument(req.params.id);
+      fleet = await ensureFleetDocument(req.params.id, {
+        onFailure: (failure) => {
+          recoveryFailure = failure;
+        },
+      });
       restored = Boolean(fleet);
     }
     if (!fleet) {
+      if (recoveryFailure) {
+        const reason = recoveryFailure.reason;
+        const normalizedReason = reason.endsWith('.')
+          ? reason.slice(0, -1)
+          : reason;
+        const detail = `${normalizedReason}. Обновите ссылку Wialon в коллекции автопарков.`;
+        res.status(422).json({
+          error: 'Не удалось восстановить автопарк',
+          detail,
+        });
+        return;
+      }
       res.sendStatus(404);
       return;
     }

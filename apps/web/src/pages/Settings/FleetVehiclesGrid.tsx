@@ -12,14 +12,20 @@ interface Props {
 }
 
 function formatSensors(list: VehicleDto["sensors"] | undefined) {
-  if (!list?.length) return null;
+  const sensors = (list ?? []).filter(
+    (sensor): sensor is VehicleDto["sensors"][number] => Boolean(sensor),
+  );
+  if (!sensors.length) return null;
   return (
     <ul className="mt-1 space-y-1 text-sm text-gray-700">
-      {list.map((sensor, index) => (
-        <li key={`${sensor.name}-${index}`}>
-          <span className="font-medium">{sensor.name}</span>: {String(sensor.value ?? "—")}
-        </li>
-      ))}
+      {sensors.map((sensor, index) => {
+        const name = sensor?.name ?? "—";
+        return (
+          <li key={`${name}-${index}`}>
+            <span className="font-medium">{name}</span>: {String(sensor?.value ?? "—")}
+          </li>
+        );
+      })}
     </ul>
   );
 }

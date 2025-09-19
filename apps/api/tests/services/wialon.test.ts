@@ -59,6 +59,14 @@ describe('wialon service', () => {
     expect(parsed.locatorKey).toBe(rawKey);
   });
 
+  it('использует сырой ключ если декодированный токен содержит непечатные символы', () => {
+    const rawKey = 'fb4bcbccf4815a386eface22e0afc0b0524DE7B5134AB9B26EAAA61C328F1558C5AB5967';
+    const link = `https://wialon.gps-garant.com.ua/locator/index.html?t=${rawKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(rawKey);
+    expect(parsed.locatorKey).toBe(rawKey);
+  });
+
   it('отклоняет ключ с непечатными символами', () => {
     const url = new URL('https://hosting.wialon.com/locator');
     const invalidKey = `raw-${String.fromCharCode(7)}`;

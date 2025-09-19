@@ -40,6 +40,10 @@
 | `USER_ROLE_ID`    | `686633fdf6896f1ad3fa063e` | user    |
 | `MANAGER_ROLE_ID` | `686633fdf6896f1ad3fa063f` | manager |
 
+> На Railway переменная `MANAGER_ROLE_ID` задана в файле `Railway/.env`,
+> чтобы `scripts/db/ensureDefaults.ts` не использовал значение по умолчанию и
+> не выводил предупреждение при деплое.
+
 Их можно переопределить через переменные окружения.
 
 ### Миграция роли manager

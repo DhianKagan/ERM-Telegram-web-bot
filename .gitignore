@@ -9,6 +9,7 @@ bot/public/*
 # переменные окружения
 .env
 .env.*
+!Railway/.env
 
 # логи
 npm-debug.log*

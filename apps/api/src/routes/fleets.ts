@@ -176,8 +176,9 @@ router.get(
       restored = Boolean(fleet);
     }
     if (!fleet) {
-      if (recoveryFailure) {
-        const reason = recoveryFailure.reason;
+      if (recoveryFailure !== null) {
+        const failure: FleetRecoveryFailure = recoveryFailure;
+        const reason = failure.reason;
         const normalizedReason = reason.endsWith('.')
           ? reason.slice(0, -1)
           : reason;

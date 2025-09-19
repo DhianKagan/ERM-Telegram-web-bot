@@ -93,6 +93,46 @@ function buildLocatorUrl(baseUrl: string, locatorKey: string): string {
   return url.toString();
 }
 
+const TOKEN_CANDIDATE_PATTERN = /^[0-9A-Za-z._:+/@=~-]+$/;
+
+function isPrintableToken(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  for (const char of value) {
+    const code = char.codePointAt(0);
+    if (code === undefined) {
+      continue;
+    }
+    if (code < 0x20 || code > 0x7e) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function looksLikeTokenCandidate(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  if (value.length < 4 || value.length > 256) {
+    return false;
+  }
+  if (!TOKEN_CANDIDATE_PATTERN.test(value)) {
+    return false;
+  }
+  const lower = value.toLowerCase();
+  if (
+    lower.includes('http') ||
+    lower.includes('://') ||
+    lower.includes('link') ||
+    lower.includes('locator')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function parseLegacyValue(value: string): LegacyFleetPayload | null {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -122,12 +162,19 @@ function parseLegacyValue(value: string): LegacyFleetPayload | null {
     .filter(Boolean);
   if (parts[0]) {
     const candidate = parts[0];
-    try {
-      const decoded = decodeLocatorKey(candidate);
-      payload.token = decoded;
-      payload.locatorKey = candidate;
-    } catch {
-      payload.token = candidate;
+    if (candidate) {
+      try {
+        const decoded = decodeLocatorKey(candidate);
+        if (isPrintableToken(decoded)) {
+          payload.token = decoded;
+          payload.locatorKey = candidate;
+        }
+      } catch {
+        /* игнорируем */
+      }
+      if (!payload.token && looksLikeTokenCandidate(candidate)) {
+        payload.token = candidate;
+      }
     }
   }
   return payload.token ? payload : null;

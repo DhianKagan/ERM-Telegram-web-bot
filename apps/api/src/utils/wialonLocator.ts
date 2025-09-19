@@ -13,7 +13,7 @@ const DEFAULT_BASE_FALLBACK = 'https://hst-api.wialon.com';
 function hasControlCharacters(value: string): boolean {
   for (const char of value) {
     const code = char.codePointAt(0);
-    if (code !== undefined && ((code >= 0 && code <= 0x1f) || code === 0x7f)) {
+    if (code !== undefined && (code < 0x20 || code > 0x7e)) {
       return true;
     }
   }

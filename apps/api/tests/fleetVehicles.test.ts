@@ -15,10 +15,15 @@ jest.mock('../src/services/wialon', () => {
   };
 });
 
-import { Fleet } from '../src/db/models/fleet';
+import {
+  Fleet,
+  ensureFleetDocument,
+  migrateLegacyFleets,
+} from '../src/db/models/fleet';
 import { Vehicle } from '../src/db/models/vehicle';
 import { syncFleetVehicles, syncAllFleets } from '../src/services/fleetVehicles';
 import { login, loadUnits } from '../src/services/wialon';
+import { CollectionItem } from '../src/db/models/CollectionItem';
 
 jest.setTimeout(60000);
 
@@ -43,6 +48,7 @@ describe('fleetVehicles sync', () => {
   beforeEach(async () => {
     await Fleet.deleteMany({});
     await Vehicle.deleteMany({});
+    await CollectionItem.deleteMany({});
     mockedLogin.mockReset();
     mockedLoadUnits.mockReset();
   });
@@ -149,5 +155,26 @@ describe('fleetVehicles sync', () => {
     expect(units).toHaveLength(1);
     expect(units[0]?.unitId).toBe(6);
     expect(mockedLogin).toHaveBeenCalledWith('token', 'https://hst-api.wialon.com');
+  });
+
+  it('помечает проблемный элемент коллекции и пропускает миграцию', async () => {
+    const id = new mongoose.Types.ObjectId();
+    await CollectionItem.create({
+      _id: id,
+      type: 'fleets',
+      name: 'Проблемный автопарк',
+      value: 'not-a-link',
+    });
+
+    const fleet = await ensureFleetDocument(id);
+    expect(fleet).toBeNull();
+
+    const item = await CollectionItem.findById(id);
+    expect(item?.meta?.invalid).toBe(true);
+    expect(item?.meta?.invalidReason).toContain('Некорректная ссылка');
+
+    await migrateLegacyFleets();
+    const storedFleet = await Fleet.findById(id);
+    expect(storedFleet).toBeNull();
   });
 });

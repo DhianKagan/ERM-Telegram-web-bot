@@ -74,6 +74,9 @@ function decodeLocatorKeyDetailed(locatorKey: string): DecodeLocatorKeyResult {
     const decoded = buffer.toString('utf8');
     const normalizedToken = decoded.trim();
     if (!normalizedToken || hasControlCharacters(normalizedToken)) {
+      if (isRawCandidate && !hasControlCharacters(trimmed)) {
+        return { token: trimmed, fallback: true };
+      }
       throw new Error('Расшифрованный ключ содержит недопустимые символы');
     }
     return { token: normalizedToken, fallback: false };

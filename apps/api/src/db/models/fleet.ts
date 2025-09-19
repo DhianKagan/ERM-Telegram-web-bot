@@ -7,6 +7,7 @@ import { fleetRecoveryFailuresTotal } from '../../metrics';
 import {
   CollectionItem,
   type CollectionItemDocument,
+  type CollectionItemMeta,
 } from './CollectionItem';
 
 export interface FleetAttrs {
@@ -44,6 +45,59 @@ type FleetAttrsFromCollectionResult =
       ok: false;
       failure: FleetRecoveryFailure;
     };
+
+function normalizeFailureReason(reason: string | undefined): string {
+  if (!reason) {
+    return 'Значение автопарка помечено как некорректное';
+  }
+  const trimmed = reason.trim();
+  return trimmed || 'Значение автопарка помечено как некорректное';
+}
+
+function extractFailureFromMeta(
+  meta?: CollectionItemMeta | null,
+): FleetRecoveryFailure | null {
+  if (!meta || meta.invalid !== true) {
+    return null;
+  }
+  const code: FleetRecoveryFailureCode =
+    meta.invalidCode === 'legacy_payload_invalid'
+      ? 'legacy_payload_invalid'
+      : 'invalid_locator_link';
+  return {
+    code,
+    reason: normalizeFailureReason(
+      typeof meta.invalidReason === 'string' ? meta.invalidReason : undefined,
+    ),
+  };
+}
+
+async function flagCollectionItemInvalid(
+  item: CollectionItemDocument,
+  failure: FleetRecoveryFailure,
+): Promise<void> {
+  const meta = (item.meta ?? {}) as CollectionItemMeta;
+  if (meta.invalid === true) {
+    return;
+  }
+  const nextMeta: CollectionItemMeta = {
+    ...meta,
+    invalid: true,
+    invalidReason: failure.reason,
+    invalidCode: failure.code,
+    invalidAt: new Date(),
+  };
+  item.set('meta', nextMeta);
+  item.markModified('meta');
+  try {
+    await item.save();
+  } catch (error) {
+    console.error(
+      `Не удалось пометить автопарк ${item._id} как некорректный:`,
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
 
 const fleetSchema = new Schema<FleetAttrs>({
   name: { type: String, required: true },
@@ -232,6 +286,10 @@ function normalizeFleetAttrs(
 async function buildFleetAttrsFromCollection(
   item: CollectionItemDocument,
 ): Promise<FleetAttrsFromCollectionResult> {
+  const failureFromMeta = extractFailureFromMeta(item.meta);
+  if (failureFromMeta) {
+    return { ok: false, failure: failureFromMeta };
+  }
   try {
     const locator = parseLocatorLink(item.value, DEFAULT_BASE_URL);
     return {
@@ -254,6 +312,7 @@ async function buildFleetAttrsFromCollection(
         code: 'invalid_locator_link',
         reason: initialReason,
       };
+      await flagCollectionItemInvalid(item, failure);
       console.warn(
         `Не удалось восстановить автопарк ${item._id} из коллекции: ${failure.reason}`,
       );
@@ -270,6 +329,7 @@ async function buildFleetAttrsFromCollection(
         reason:
           'Устаревшие данные автопарка не содержат валидного токена Wialon',
       };
+      await flagCollectionItemInvalid(item, failure);
       console.warn(
         `Не удалось восстановить автопарк ${item._id} из коллекции: ${failure.reason}`,
       );
@@ -301,6 +361,11 @@ export async function ensureFleetDocument(
   }
   const item = await CollectionItem.findById(id);
   if (!item || item.type !== 'fleets') {
+    return null;
+  }
+  const failureFromMeta = extractFailureFromMeta(item.meta);
+  if (failureFromMeta) {
+    options?.onFailure?.(failureFromMeta);
     return null;
   }
   const result = await buildFleetAttrsFromCollection(item);
@@ -366,7 +431,13 @@ export async function migrateLegacyFleets(): Promise<void> {
     ],
   });
   await Promise.all(legacyFleets.map((fleet) => ensureFleetFields(fleet)));
-  const fleetItems = await CollectionItem.find({ type: 'fleets' });
+  const fleetItems = await CollectionItem.find({
+    type: 'fleets',
+    $or: [
+      { 'meta.invalid': { $exists: false } },
+      { 'meta.invalid': { $ne: true } },
+    ],
+  });
   await Promise.all(
     fleetItems.map((item) => ensureFleetDocument(item._id)),
   );

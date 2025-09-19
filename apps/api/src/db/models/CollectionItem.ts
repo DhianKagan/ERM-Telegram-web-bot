@@ -2,10 +2,19 @@
 // Основные модули: mongoose
 import { Schema, model, Document, Types } from 'mongoose';
 
+export interface CollectionItemMeta {
+  invalid?: boolean;
+  invalidReason?: string;
+  invalidCode?: string;
+  invalidAt?: Date;
+  [key: string]: unknown;
+}
+
 export interface CollectionItemAttrs {
   type: string;
   name: string;
   value: string;
+  meta?: CollectionItemMeta;
 }
 
 export interface CollectionItemDocument
@@ -20,6 +29,7 @@ const collectionItemSchema = new Schema<CollectionItemDocument>({
   type: { type: String, required: true },
   name: { type: String, required: true },
   value: { type: String, required: true },
+  meta: { type: Schema.Types.Mixed, default: undefined },
 });
 
 collectionItemSchema.index(

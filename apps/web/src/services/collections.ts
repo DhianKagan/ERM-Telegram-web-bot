@@ -7,6 +7,13 @@ export interface CollectionItem {
   type: string;
   name: string;
   value: string;
+  meta?: {
+    invalid?: boolean;
+    invalidReason?: string;
+    invalidCode?: string;
+    invalidAt?: string;
+    [key: string]: unknown;
+  };
 }
 
 const parseErrorMessage = (status: number, body: string) => {

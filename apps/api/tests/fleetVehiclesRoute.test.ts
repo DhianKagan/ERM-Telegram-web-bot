@@ -184,6 +184,10 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
     expect(res.body).toMatchObject({ error: 'Не удалось восстановить автопарк' });
     expect(res.body.detail).toContain('Некорректная ссылка Wialon');
     expect(res.body.detail).toContain('Обновите ссылку Wialon');
+
+    const item = await CollectionItem.findById(id);
+    expect(item?.meta?.invalid).toBe(true);
+    expect(item?.meta?.invalidReason).toContain('Некорректная ссылка');
   });
 
   it('восстанавливает флот из коллекции с устаревшим значением', async () => {

@@ -22,6 +22,9 @@ export async function create(
     name: data.name,
     value: data.value,
   };
+  if (data.meta) {
+    payload.meta = data.meta;
+  }
   if (data._id) {
     payload._id =
       typeof data._id === 'string' ? new Types.ObjectId(data._id) : data._id;

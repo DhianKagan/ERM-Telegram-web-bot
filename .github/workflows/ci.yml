@@ -35,9 +35,19 @@ jobs:
         run: corepack enable
       - name: Установка зависимостей
         run: pnpm install
+      - name: Определение версии Playwright
+        id: playwright-version
+        run: echo "version=$(node -p \"require('@playwright/test/package.json').version\")" >> "$GITHUB_OUTPUT"
+      - name: Кеш браузеров Playwright
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
       - name: Проверка build-скриптов
         run: pnpm approve-builds
       - name: Установка браузеров Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: sudo env "PATH=$PATH" npx playwright install --with-deps
       - name: Линтеры
         run: pnpm lint
@@ -84,7 +94,17 @@ jobs:
         run: corepack enable
       - name: Установка зависимостей
         run: pnpm install
+      - name: Определение версии Playwright
+        id: playwright-version
+        run: echo "version=$(node -p \"require('@playwright/test/package.json').version\")" >> "$GITHUB_OUTPUT"
+      - name: Кеш браузеров Playwright
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
       - name: Установка браузеров Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: sudo env "PATH=$PATH" npx playwright install --with-deps
       - name: E2E тесты
         run: pnpm run test:e2e --project="${{ matrix.project }}"

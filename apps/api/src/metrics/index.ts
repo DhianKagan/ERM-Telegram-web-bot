@@ -40,3 +40,10 @@ export const osrmErrorsTotal = new client.Counter({
   labelNames: ['endpoint', 'reason'],
   registers: [register],
 });
+
+export const fleetRecoveryFailuresTotal = new client.Counter({
+  name: 'fleet_recovery_failures_total',
+  help: 'Неудачные попытки восстановления флота из коллекции',
+  labelNames: ['reason'],
+  registers: [register],
+});

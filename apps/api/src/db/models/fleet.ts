@@ -3,6 +3,7 @@
 import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 import { DEFAULT_BASE_URL, decodeLocatorKey } from '../../services/wialon';
 import { parseLocatorLink } from '../../utils/wialonLocator';
+import { fleetRecoveryFailuresTotal } from '../../metrics';
 import {
   CollectionItem,
   type CollectionItemDocument,
@@ -17,6 +18,32 @@ export interface FleetAttrs {
 }
 
 export type FleetDocument = HydratedDocument<FleetAttrs>;
+
+export type FleetRecoveryFailureCode =
+  | 'invalid_locator_link'
+  | 'legacy_payload_invalid';
+
+export interface FleetRecoveryFailure {
+  code: FleetRecoveryFailureCode;
+  reason: string;
+}
+
+export interface EnsureFleetDocumentOptions {
+  onFailure?: (failure: FleetRecoveryFailure) => void;
+}
+
+type FleetAttrsFromCollectionResult =
+  | {
+      ok: true;
+      attrs: Pick<
+        FleetAttrs,
+        'token' | 'baseUrl' | 'locatorUrl' | 'locatorKey'
+      >;
+    }
+  | {
+      ok: false;
+      failure: FleetRecoveryFailure;
+    };
 
 const fleetSchema = new Schema<FleetAttrs>({
   name: { type: String, required: true },
@@ -157,34 +184,50 @@ function normalizeFleetAttrs(
 
 async function buildFleetAttrsFromCollection(
   item: CollectionItemDocument,
-): Promise<Pick<FleetAttrs, 'token' | 'baseUrl' | 'locatorUrl' | 'locatorKey'> | null> {
+): Promise<FleetAttrsFromCollectionResult> {
   try {
     const locator = parseLocatorLink(item.value, DEFAULT_BASE_URL);
     return {
-      token: locator.token,
-      baseUrl: locator.baseUrl,
-      locatorUrl: locator.locatorUrl,
-      locatorKey: locator.locatorKey,
+      ok: true,
+      attrs: {
+        token: locator.token,
+        baseUrl: locator.baseUrl,
+        locatorUrl: locator.locatorUrl,
+        locatorKey: locator.locatorKey,
+      },
     };
   } catch (initialError) {
+    const initialReason =
+      initialError instanceof Error && initialError.message
+        ? initialError.message
+        : 'Не удалось разобрать ссылку Wialon';
     const legacy = parseLegacyValue(item.value);
     if (!legacy) {
-      console.error(
-        `Не удалось восстановить автопарк ${item._id} из коллекции:`,
-        initialError instanceof Error ? initialError.message : initialError,
+      const failure: FleetRecoveryFailure = {
+        code: 'invalid_locator_link',
+        reason: initialReason,
+      };
+      console.warn(
+        `Не удалось восстановить автопарк ${item._id} из коллекции: ${failure.reason}`,
       );
-      return null;
+      fleetRecoveryFailuresTotal.inc({ reason: failure.code });
+      return { ok: false, failure };
     }
     const attrs = normalizeFleetAttrs({
       ...legacy,
       baseUrl: legacy.baseUrl || DEFAULT_BASE_URL,
     });
     if (!attrs) {
-      console.error(
-        `Не удалось восстановить автопарк ${item._id} из коллекции:`,
-        initialError instanceof Error ? initialError.message : initialError,
+      const failure: FleetRecoveryFailure = {
+        code: 'legacy_payload_invalid',
+        reason:
+          'Устаревшие данные автопарка не содержат валидного токена Wialon',
+      };
+      console.warn(
+        `Не удалось восстановить автопарк ${item._id} из коллекции: ${failure.reason}`,
       );
-      return null;
+      fleetRecoveryFailuresTotal.inc({ reason: failure.code });
+      return { ok: false, failure };
     }
     if (item.value !== attrs.locatorUrl) {
       try {
@@ -197,12 +240,13 @@ async function buildFleetAttrsFromCollection(
         );
       }
     }
-    return attrs;
+    return { ok: true, attrs };
   }
 }
 
 export async function ensureFleetDocument(
   id: Types.ObjectId | string,
+  options?: EnsureFleetDocumentOptions,
 ): Promise<FleetDocument | null> {
   const existing = await Fleet.findById(id);
   if (existing) {
@@ -212,14 +256,15 @@ export async function ensureFleetDocument(
   if (!item || item.type !== 'fleets') {
     return null;
   }
-  const attrs = await buildFleetAttrsFromCollection(item);
-  if (!attrs) {
+  const result = await buildFleetAttrsFromCollection(item);
+  if (!result.ok) {
+    options?.onFailure?.(result.failure);
     return null;
   }
   return Fleet.create({
     _id: item._id,
     name: item.name,
-    ...attrs,
+    ...result.attrs,
   });
 }
 

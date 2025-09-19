@@ -30,13 +30,13 @@ jest.mock('../src/utils/verifyInitData', () =>
 );
 
 const { Types } = require('mongoose');
-const adminRoleId = new Types.ObjectId('64b111111111111111111111');
-const managerRoleId = new Types.ObjectId('64b222222222222222222222');
+const mockAdminRoleId = new Types.ObjectId('64b111111111111111111111');
+const mockManagerRoleId = new Types.ObjectId('64b222222222222222222222');
 
 jest.mock('../src/db/roleCache', () => ({
   resolveRoleId: jest.fn(async (name: string) => {
-    if (name === 'admin') return adminRoleId;
-    if (name === 'manager') return managerRoleId;
+    if (name === 'admin') return mockAdminRoleId;
+    if (name === 'manager') return mockManagerRoleId;
     return new (require('mongoose').Types.ObjectId)('64b333333333333333333333');
   }),
   clearRoleCache: jest.fn(),
@@ -56,13 +56,13 @@ beforeEach(() => {
 });
 
 test('sendCode использует adminCodes для админа', async () => {
-  queries.getUser.mockResolvedValueOnce({ roleId: adminRoleId });
+  queries.getUser.mockResolvedValueOnce({ roleId: mockAdminRoleId });
   await service.sendCode('1');
   expect(otp.sendAdminCode).toHaveBeenCalledWith({ telegramId: 1 });
 });
 
 test('sendCode использует sendManagerCode для менеджера', async () => {
-  queries.getUser.mockResolvedValueOnce({ roleId: managerRoleId });
+  queries.getUser.mockResolvedValueOnce({ roleId: mockManagerRoleId });
   await service.sendCode('3');
   expect(otp.sendManagerCode).toHaveBeenCalledWith({ telegramId: 3 });
 });

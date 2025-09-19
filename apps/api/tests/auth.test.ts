@@ -5,6 +5,17 @@ jest.mock('telegraf', () => ({
 }));
 jest.mock('jsonwebtoken');
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }));
+const { Types } = require('mongoose');
+const mockAdminRoleId = new Types.ObjectId('686591126cc86a6bd16c18af');
+const mockManagerRoleId = new Types.ObjectId('686633fdf6896f1ad3fa063e');
+jest.mock('../src/db/roleCache', () => ({
+  resolveRoleId: jest.fn(async (name: string) => {
+    if (name === 'admin') return mockAdminRoleId;
+    if (name === 'manager') return mockManagerRoleId;
+    return null;
+  }),
+  clearRoleCache: jest.fn(),
+}));
 jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member'),
 }));

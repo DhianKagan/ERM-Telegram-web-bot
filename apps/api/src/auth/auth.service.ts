@@ -1,21 +1,22 @@
 // Сервис авторизации: отправка и проверка кодов входа
-// Основные модули: otp, queries, userInfoService, writeLog
+// Основные модули: otp, queries, userInfoService, writeLog, roleCache
 import * as otp from '../services/otp';
 import { generateToken, generateShortToken } from './auth';
 import { getUser, createUser, updateUser, accessByRole } from '../db/queries';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
-import config from '../config';
-import { Types } from 'mongoose';
+import { resolveRoleId } from '../db/roleCache';
 import type { UserDocument } from '../db/model';
 
 async function sendCode(telegramId: number | string) {
   if (!telegramId) throw new Error('telegramId required');
   const user = await getUser(telegramId);
   const roleId = user?.roleId?.toString();
-  if (roleId === config.adminRoleId) {
+  const adminRoleId = await resolveRoleId('admin');
+  const managerRoleId = await resolveRoleId('manager');
+  if (adminRoleId && roleId === adminRoleId.toString()) {
     await otp.sendAdminCode({ telegramId: Number(telegramId) });
-  } else if (roleId === config.managerRoleId) {
+  } else if (managerRoleId && roleId === managerRoleId.toString()) {
     await otp.sendManagerCode({ telegramId: Number(telegramId) });
   } else {
     await otp.sendCode({ telegramId: Number(telegramId) });
@@ -31,15 +32,20 @@ async function verifyCode(
   if (!/^[0-9]+$/.test(telegramId)) throw new Error('Invalid telegramId');
   let user = await getUser(telegramId);
   let roleId = user?.roleId?.toString();
+  const adminRoleId = await resolveRoleId('admin');
+  const adminRoleIdString = adminRoleId ? adminRoleId.toString() : null;
   let verified;
-  if (roleId === config.adminRoleId || otp.adminCodes.has(telegramId)) {
+  if (roleId === adminRoleIdString || otp.adminCodes.has(telegramId)) {
     verified = otp.verifyAdminCode({ telegramId: Number(telegramId), code });
-    if (verified && user && roleId !== config.adminRoleId) {
+    if (verified && user && roleId !== adminRoleIdString) {
+      if (!adminRoleId) {
+        throw new Error('Не найдена роль admin');
+      }
       user = await updateUser(telegramId, {
-        roleId: new Types.ObjectId(config.adminRoleId),
+        roleId: adminRoleId,
       });
       await writeLog(`Пользователь ${telegramId} повышен до администратора`);
-      roleId = config.adminRoleId;
+      roleId = adminRoleIdString ?? undefined;
     }
   } else {
     verified = otp.verifyCode({ telegramId: Number(telegramId), code });
@@ -55,12 +61,16 @@ async function verifyCode(
     throw new Error('member check failed');
   }
   let u = user;
-  if (!u)
-    u = await createUser(telegramId, username, roleId || config.userRoleId);
+  if (!u) {
+    u = await createUser(telegramId, username, roleId || undefined);
+    roleId = u.roleId?.toString() || roleId;
+  }
+  const managerRoleId = await resolveRoleId('manager');
+  const managerRoleIdString = managerRoleId ? managerRoleId.toString() : null;
   const role =
-    roleId === config.adminRoleId
+    roleId === adminRoleIdString
       ? 'admin'
-      : roleId === config.managerRoleId
+      : roleId === managerRoleIdString
         ? 'manager'
         : 'user';
   const access = accessByRole(role);
@@ -92,11 +102,7 @@ async function verifyInitData(initData: string) {
   if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
   if (!user) {
-    user = await createUser(
-      telegramId,
-      userData.username || '',
-      config.userRoleId,
-    );
+    user = await createUser(telegramId, userData.username || '');
   }
   const role = user.role || 'user';
   const access = accessByRole(role);
@@ -120,11 +126,7 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
   if (!telegramId) throw new Error('no user id');
   let user = await getUser(telegramId);
   if (!user) {
-    user = await createUser(
-      telegramId,
-      userData.username || '',
-      config.userRoleId,
-    );
+    user = await createUser(telegramId, userData.username || '');
   }
   const role = user.role || 'user';
   const access = accessByRole(role);

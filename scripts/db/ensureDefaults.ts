@@ -32,10 +32,6 @@ const mongoUrl = (
   ''
 ).trim();
 
-const adminRoleId = process.env.ADMIN_ROLE_ID || '686591126cc86a6bd16c18af';
-const userRoleId = process.env.USER_ROLE_ID || '686633fdf6896f1ad3fa063e';
-const managerRoleId = process.env.MANAGER_ROLE_ID || '686633fdf6896f1ad3fa063f';
-
 const roleSchema = new mongoose.Schema({
   name: String,
   permissions: [String],
@@ -66,33 +62,16 @@ async function ensureDefaults(): Promise<void> {
     return;
   }
 
-  const ids: Record<string, string> = {
-    ADMIN_ROLE_ID: adminRoleId,
-    USER_ROLE_ID: userRoleId,
-    MANAGER_ROLE_ID: managerRoleId,
-  };
-  for (const [key, value] of Object.entries(ids)) {
-    if (!process.env[key]) {
-      console.warn(
-        `Переменная ${key} не задана, используем значение по умолчанию ${value}`,
-      );
-    }
-  }
+  const roleNames = ['user', 'admin', 'manager'];
 
-  const roles = [
-    { _id: userRoleId, name: 'user' },
-    { _id: adminRoleId, name: 'admin' },
-    { _id: managerRoleId, name: 'manager' },
-  ];
-
-  for (const r of roles) {
+  for (const name of roleNames) {
     const res = await Role.updateOne(
-      { _id: r._id },
-      { $setOnInsert: r },
+      { name },
+      { $setOnInsert: { name } },
       { upsert: true },
     );
     if (res.upsertedCount) {
-      console.log(`Добавлена роль ${r.name}`);
+      console.log(`Добавлена роль ${name}`);
     }
   }
 

@@ -1,13 +1,16 @@
 // Заполнение тестовыми данными
-// Модули: db/model, config
+// Модули: db/model
 import { Task, Group, User, Log, Role } from '../../apps/api/src/db/model';
-import config from '../../apps/api/src/config';
 import 'dotenv/config';
 
 async function seed(): Promise<void> {
-  const roleExists = await Role.exists({ _id: config.managerRoleId });
-  if (!roleExists) {
-    await Role.create({ _id: config.managerRoleId, name: 'manager' });
+  const managerRoleExists = await Role.exists({ name: 'manager' });
+  if (!managerRoleExists) {
+    await Role.create({ name: 'manager' });
+  }
+  let adminRole = await Role.findOne({ name: 'admin' });
+  if (!adminRole) {
+    adminRole = await Role.create({ name: 'admin' });
   }
 
   let group = await Group.findOne({ name: 'Default' });
@@ -21,7 +24,7 @@ async function seed(): Promise<void> {
       telegram_id: 1,
       username: 'admin',
       role: 'admin',
-      roleId: config.adminRoleId,
+      roleId: adminRole._id,
       access: 2,
     });
   }

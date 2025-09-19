@@ -67,13 +67,6 @@ export const port = Number.parseInt(process.env.PORT ?? '', 10) || 3000;
 export const locale = process.env.LOCALE || 'ru';
 export const routingUrl = routingUrlEnv;
 export const cookieDomain = cookieDomainEnv;
-export const adminRoleId =
-  process.env.ADMIN_ROLE_ID || '686591126cc86a6bd16c18af';
-export const userRoleId =
-  process.env.USER_ROLE_ID || '686633fdf6896f1ad3fa063e';
-export const managerRoleId =
-  process.env.MANAGER_ROLE_ID || '686633fdf6896f1ad3fa063f';
-
 const config = {
   botToken,
   botApiUrl,
@@ -85,9 +78,6 @@ const config = {
   locale,
   routingUrl,
   cookieDomain,
-  adminRoleId,
-  userRoleId,
-  managerRoleId,
 };
 
 export default config;

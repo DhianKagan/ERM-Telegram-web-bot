@@ -39,8 +39,8 @@
 pnpm ts-node scripts/db/addManagerRole.ts
 ```
 
-Идентификаторы ролей задаются переменными `ADMIN_ROLE_ID`, `USER_ROLE_ID` и
-`MANAGER_ROLE_ID`; подробнее см. `docs/permissions.md`.
+Идентификаторы ролей берутся напрямую из коллекции `roles` по имени; подробнее
+см. `docs/permissions.md`.
 
 ### Лимиты запросов
 

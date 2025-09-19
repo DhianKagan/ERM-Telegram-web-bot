@@ -1,5 +1,5 @@
 // Централизованные функции работы с MongoDB для всего проекта
-// Основные модули: mongoose модели, wgLogEngine, config
+// Основные модули: mongoose модели, wgLogEngine, roleCache
 import {
   Task,
   Archive,
@@ -14,7 +14,7 @@ import {
   HistoryEntry,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
-import config from '../config';
+import { resolveRoleId } from './roleCache';
 import { Types, PipelineStage, Query } from 'mongoose';
 import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
 
@@ -428,16 +428,23 @@ export async function createUser(
   const { telegramId, username: safeUsername } = credentials;
   const email = `${telegramId}@telegram.local`;
   let role = 'user';
-  let rId = roleId || config.userRoleId;
-  if (rId) {
-    if (!Types.ObjectId.isValid(rId)) {
+  let rId: Types.ObjectId | null = null;
+  if (roleId) {
+    if (!Types.ObjectId.isValid(roleId)) {
       throw new Error('Invalid roleId');
     }
-    const dbRole = await Role.findById(rId);
+    const dbRole = await Role.findById(roleId);
     if (dbRole) {
       role = dbRole.name || 'user';
-      rId = (dbRole._id as Types.ObjectId).toString();
+      rId = dbRole._id as Types.ObjectId;
     }
+  }
+  if (!rId) {
+    rId = await resolveRoleId('user');
+    if (!rId) {
+      throw new Error('Не найдена базовая роль user');
+    }
+    role = 'user';
   }
   const access = accessByRole(role);
   return User.create({
@@ -446,7 +453,7 @@ export async function createUser(
     email,
     name: safeUsername,
     role,
-    roleId: rId as unknown as Types.ObjectId,
+    roleId: rId,
     access,
     ...extra,
   });
@@ -496,9 +503,11 @@ export async function updateUser(
     }
   } else if (sanitized.role) {
     sanitized.access = accessByRole(sanitized.role);
-    const dbRole = await Role.findOne({ name: sanitized.role });
-    if (dbRole) {
-      sanitized.roleId = dbRole._id as Types.ObjectId;
+    const resolved = await resolveRoleId(sanitized.role);
+    if (resolved) {
+      sanitized.roleId = resolved;
+    } else {
+      delete (sanitized as Record<string, unknown>).roleId;
     }
   }
   return User.findOneAndUpdate(

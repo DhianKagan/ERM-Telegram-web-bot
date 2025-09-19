@@ -7,7 +7,19 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-process.env.MANAGER_ROLE_ID = 'm';
+
+const { Types } = require('mongoose');
+const adminRoleId = new Types.ObjectId('64b000000000000000000001');
+const managerRoleId = new Types.ObjectId('64b000000000000000000002');
+
+jest.mock('../src/db/roleCache', () => ({
+  resolveRoleId: jest.fn(async (name: string) => {
+    if (name === 'admin') return adminRoleId;
+    if (name === 'manager') return managerRoleId;
+    return new (require('mongoose').Types.ObjectId)('64b000000000000000000003');
+  }),
+  clearRoleCache: jest.fn(),
+}));
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -38,8 +50,8 @@ jest.mock('../src/services/tasks', () => ({
 jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => ({ roleId: 'm' })),
-  createUser: jest.fn(async () => ({ username: 'u', role: 'manager' })),
+  getUser: jest.fn(async () => ({ roleId: managerRoleId })),
+  createUser: jest.fn(async () => ({ username: 'u', role: 'manager', roleId: managerRoleId })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));

@@ -14,7 +14,10 @@ const config: Config = {
     '<rootDir>/tests/playwright/',
     '<rootDir>/apps/web/src/types/',
   ],
-  setupFiles: ['<rootDir>/tests/setupEnv.ts'],
+  setupFiles: [
+    '<rootDir>/tests/setupMongoMemoryServer.ts',
+    '<rootDir>/tests/setupEnv.ts',
+  ],
   coverageDirectory: 'coverage',
   transform: {
     '^.+\\.[jt]sx?$': ['ts-jest', { tsconfig: './tests/tsconfig.json' }],

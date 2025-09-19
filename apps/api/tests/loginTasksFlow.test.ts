@@ -9,13 +9,13 @@ process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
 const { Types } = require('mongoose');
-const adminRoleId = new Types.ObjectId('64b000000000000000000001');
-const managerRoleId = new Types.ObjectId('64b000000000000000000002');
+const mockAdminRoleId = new Types.ObjectId('64b000000000000000000001');
+const mockManagerRoleId = new Types.ObjectId('64b000000000000000000002');
 
 jest.mock('../src/db/roleCache', () => ({
   resolveRoleId: jest.fn(async (name: string) => {
-    if (name === 'admin') return adminRoleId;
-    if (name === 'manager') return managerRoleId;
+    if (name === 'admin') return mockAdminRoleId;
+    if (name === 'manager') return mockManagerRoleId;
     return new (require('mongoose').Types.ObjectId)('64b000000000000000000003');
   }),
   clearRoleCache: jest.fn(),
@@ -50,8 +50,8 @@ jest.mock('../src/services/tasks', () => ({
 jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 jest.mock('../src/db/queries', () => ({
-  getUser: jest.fn(async () => ({ roleId: managerRoleId })),
-  createUser: jest.fn(async () => ({ username: 'u', role: 'manager', roleId: managerRoleId })),
+  getUser: jest.fn(async () => ({ roleId: mockManagerRoleId })),
+  createUser: jest.fn(async () => ({ username: 'u', role: 'manager', roleId: mockManagerRoleId })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));

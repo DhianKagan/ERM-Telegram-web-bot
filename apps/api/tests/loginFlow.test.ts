@@ -12,11 +12,23 @@ const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const lusca = require('lusca');
 const request = require('supertest');
+const { Types } = require('mongoose');
 jest.unmock('jsonwebtoken');
 
 jest.mock('../src/services/telegramApi', () => ({ call: jest.fn() }));
 jest.mock('../src/services/userInfoService', () => ({
   getMemberStatus: jest.fn(async () => 'member'),
+}));
+
+const mockAdminRoleId = new Types.ObjectId('64b111111111111111111111');
+const mockManagerRoleId = new Types.ObjectId('64b222222222222222222222');
+jest.mock('../src/db/roleCache', () => ({
+  resolveRoleId: jest.fn(async (name: string) => {
+    if (name === 'admin') return mockAdminRoleId;
+    if (name === 'manager') return mockManagerRoleId;
+    return null;
+  }),
+  clearRoleCache: jest.fn(),
 }));
 
 jest.mock('../src/db/queries', () => ({

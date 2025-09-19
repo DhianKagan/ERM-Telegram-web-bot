@@ -25,10 +25,10 @@ jest.mock('../src/db/model', () => ({
 }));
 
 const { Types } = require('mongoose');
-const defaultRoleId = new Types.ObjectId();
+const mockDefaultRoleId = new Types.ObjectId();
 
 jest.mock('../src/db/roleCache', () => ({
-  resolveRoleId: jest.fn(async () => defaultRoleId),
+  resolveRoleId: jest.fn(async () => mockDefaultRoleId),
   clearRoleCache: jest.fn(),
 }));
 
@@ -46,7 +46,7 @@ describe('createUser', () => {
     model.User.exists = jest.fn(async () => false);
     const u = await createUser(1, 'test');
     expect(u.name).toBe('test');
-    expect(u.roleId?.toString()).toBe(defaultRoleId.toString());
+    expect(u.roleId?.toString()).toBe(mockDefaultRoleId.toString());
   });
 
   test('генерирует id и username при пустом вводе', async () => {

@@ -2,12 +2,16 @@
 // Назначение файла: проверяет наличие локальных шрифтов и скачивает недостающие.
 // Основные модули: fs/promises, path, url, fetch
 import { access, mkdir, writeFile } from 'node:fs/promises';
+import dns from 'node:dns';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fontsDir = path.join(__dirname, '../apps/web/public/fonts');
+
+dns.setDefaultResultOrder('ipv4first');
 
 const fonts = [
   {
@@ -45,13 +49,40 @@ async function fileExists(filePath) {
   }
 }
 
+async function downloadViaCurl(url, targetPath) {
+  await new Promise((resolve, reject) => {
+    execFile('curl', ['-fsSL', '-o', targetPath, url], (error) => {
+      if (error) {
+        reject(new Error(`Не удалось скачать ${url} через curl: ${error.message}`));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 async function downloadFont({ file, url }) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Не удалось скачать ${file}: ${response.status} ${response.statusText}`);
+  const target = path.join(fontsDir, file);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Не удалось скачать ${file}: ${response.status} ${response.statusText}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await writeFile(target, buffer);
+    return;
+  } catch (error) {
+    const causeCode = error?.cause?.code ?? error?.code;
+    if (causeCode !== 'ENETUNREACH' && causeCode !== 'ERR_INVALID_IP_ADDRESS') {
+      throw error;
+    }
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  await writeFile(path.join(fontsDir, file), buffer);
+  try {
+    await downloadViaCurl(url, target);
+  } catch (curlError) {
+    const message = curlError instanceof Error ? curlError.message : String(curlError);
+    throw new Error(`Не удалось скачать ${file}: ${message}`);
+  }
 }
 
 async function ensureFonts() {

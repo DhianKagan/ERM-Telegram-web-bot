@@ -8,6 +8,10 @@
 
 Проект состоит из сервера `apps/api` и клиентского мини‑приложения React в `apps/web`.
 
+## Шрифты
+
+Клиентское приложение использует локальные шрифты Inter, Poppins и Roboto из каталога `apps/web/public/fonts`; каждый шрифт распространяется вместе с соответствующим файлом лицензии (`LICENSE-INTER.txt`, `LICENSE-POPPINS.txt`, `LICENSE-ROBOTO.txt`).
+
 ## Скрипты зависимостей
 
 Для контроля `postinstall`‑скриптов используется `pnpm approve-builds`.

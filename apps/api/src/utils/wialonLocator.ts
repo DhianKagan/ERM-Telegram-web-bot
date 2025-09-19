@@ -11,7 +11,11 @@ export interface LocatorLinkData {
 const DEFAULT_BASE_FALLBACK = 'https://hst-api.wialon.com';
 const BASE64_KEY_PATTERN = /^[A-Za-z0-9+/=_-]+$/;
 const RAW_KEY_PATTERN = /^[0-9A-Za-z._:+/@=~-]+$/;
+const REPLACEMENT_CHAR = '\uFFFD';
 
+// Обработка локатора поддерживает «сырые» токены, не прошедшие base64-декодирование;
+// fallback срабатывает, если декодирование возвращает управляющие символы,
+// символ подстановки U+FFFD или результат не совпадает с исходным ключом после повторного кодирования.
 interface DecodeLocatorKeyResult {
   token: string;
   fallback: boolean;
@@ -72,8 +76,17 @@ function decodeLocatorKeyDetailed(locatorKey: string): DecodeLocatorKeyResult {
       throw new Error('Не удалось расшифровать ключ локатора');
     }
     const decoded = buffer.toString('utf8');
+    const reEncoded = Buffer.from(decoded, 'utf8').toString('base64');
+    const normalizedReEncoded = normalizeBase64(reEncoded);
+    const hasReplacementChar = decoded.includes(REPLACEMENT_CHAR);
     const normalizedToken = decoded.trim();
-    if (!normalizedToken || hasControlCharacters(normalizedToken)) {
+    const isConsistent = normalizedReEncoded === normalized;
+    if (
+      !normalizedToken ||
+      hasControlCharacters(normalizedToken) ||
+      hasReplacementChar ||
+      !isConsistent
+    ) {
       if (isRawCandidate && !hasControlCharacters(trimmed)) {
         return { token: trimmed, fallback: true };
       }

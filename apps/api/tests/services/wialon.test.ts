@@ -51,6 +51,23 @@ describe('wialon service', () => {
     expect(parsed.token).toBe(originalToken);
   });
 
+  it('сохраняет сырой ключ при невозможности декодировать base64', () => {
+    const rawKey = 'raw-token';
+    const link = `https://hosting.wialon.com/locator?t=${rawKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(rawKey);
+    expect(parsed.locatorKey).toBe(rawKey);
+  });
+
+  it('отклоняет ключ с непечатными символами', () => {
+    const url = new URL('https://hosting.wialon.com/locator');
+    const invalidKey = `raw-${String.fromCharCode(7)}`;
+    url.searchParams.set('t', invalidKey);
+    expect(() => parseLocatorLink(url.toString())).toThrow(
+      'Ключ локатора содержит недопустимые символы',
+    );
+  });
+
   it('отклоняет ссылку без валидного t', () => {
     expect(() => parseLocatorLink('https://hosting.wialon.com/locator?t=???')).toThrow(
       'Ключ локатора содержит недопустимые символы',

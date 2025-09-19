@@ -228,20 +228,26 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
       value: 'raw-token',
     });
 
-    await request(app)
-      .get(`/api/v1/fleets/${id.toString()}/vehicles`)
-      .expect(200);
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const fleet = await Fleet.findById(id);
-    expect(fleet).not.toBeNull();
-    expect(fleet?.token).toBe('raw-token');
-    const expectedKey = Buffer.from('raw-token', 'utf8').toString('base64');
-    expect(fleet?.locatorKey).toBe(expectedKey);
-    const item = await CollectionItem.findById(id);
-    expect(item?.value).toBe(
-      `https://hosting.wialon.com/locator?t=${encodeURIComponent(expectedKey)}`,
-    );
-    expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+    try {
+      await request(app)
+        .get(`/api/v1/fleets/${id.toString()}/vehicles`)
+        .expect(200);
+
+      const fleet = await Fleet.findById(id);
+      expect(fleet).not.toBeNull();
+      expect(fleet?.token).toBe('raw-token');
+      expect(fleet?.locatorKey).toBe('raw-token');
+      const item = await CollectionItem.findById(id);
+      expect(item?.value).toBe('https://hosting.wialon.com/locator?t=raw-token');
+      expect(mockedSyncFleetVehicles).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Для автопарка ${id.toString()} используется исходный ключ локатора без декодирования`,
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('вызывает синхронизацию при создании флота', async () => {

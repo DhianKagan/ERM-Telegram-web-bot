@@ -373,6 +373,11 @@ export async function ensureFleetDocument(
     options?.onFailure?.(result.failure);
     return null;
   }
+  if (result.attrs.token === result.attrs.locatorKey) {
+    console.warn(
+      `Для автопарка ${item._id} используется исходный ключ локатора без декодирования`,
+    );
+  }
   return Fleet.create({
     _id: item._id,
     name: item.name,

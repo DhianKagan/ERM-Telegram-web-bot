@@ -11,6 +11,7 @@ import legacy from "@vitejs/plugin-legacy";
 import { resolve } from "path";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import sri from "./plugins/sri";
+import inlineNonce from "./plugins/inlineNonce";
 import { visualizer } from "rollup-plugin-visualizer";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 
@@ -62,6 +63,7 @@ export default defineConfig(() => {
     plugins: [
       react(),
       legacy(),
+      inlineNonce(),
       sri(),
       ViteImageOptimizer(),
       process.env.ANALYZE

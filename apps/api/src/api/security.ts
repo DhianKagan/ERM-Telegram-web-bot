@@ -50,10 +50,8 @@ export default function applySecurity(app: express.Express): void {
   type ResWithNonce = ServerResponse & { locals: { cspNonce: string } };
   const scriptSrc = [
     "'self'",
-    "'unsafe-inline'",
     (_req: IncomingMessage, res: ServerResponse) =>
       `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
-    "'sha256-2/O23rVGzYb9aZ8tq1s0n2ikD9CzHyqf5NS+VJWXcDI='",
     'https://telegram.org',
     ...parseList(process.env.CSP_SCRIPT_SRC_ALLOWLIST),
   ];
@@ -61,8 +59,6 @@ export default function applySecurity(app: express.Express): void {
   const styleSrc = [
     "'self'",
     "'unsafe-inline'",
-    (_req: IncomingMessage, res: ServerResponse) =>
-      `'nonce-${(res as ResWithNonce).locals.cspNonce}'`,
     ...parseList(process.env.CSP_STYLE_SRC_ALLOWLIST),
   ];
 

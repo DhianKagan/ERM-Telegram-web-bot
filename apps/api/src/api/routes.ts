@@ -189,6 +189,7 @@ export default async function registerRoutes(
     express.static(path.join(__dirname, '../../public'), {
       maxAge: '1y',
       immutable: true,
+      index: false,
       // Для HTML отключаем кэш, чтобы браузер получал свежий index.html
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {

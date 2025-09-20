@@ -21,6 +21,59 @@ function normalizeLocatorKeyValue(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+const MAX_JSON_DEPTH = 5;
+
+function extractLocatorKeyFromJson(
+  value: unknown,
+  keys: string[],
+  depth = 0,
+): string | null {
+  if (depth > MAX_JSON_DEPTH || value === null) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const extracted = extractLocatorKeyFromJson(item, keys, depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+    return null;
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    for (const [entryKey, entryValue] of Object.entries(record)) {
+      if (typeof entryKey === 'string') {
+        const normalizedKey = entryKey.toLowerCase();
+        if (keys.includes(entryKey) || keys.includes(normalizedKey)) {
+          if (typeof entryValue === 'string') {
+            const normalized = normalizeLocatorKeyValue(entryValue);
+            if (normalized) {
+              return normalized;
+            }
+          }
+        }
+      }
+    }
+    for (const entry of Object.values(record)) {
+      const extracted = extractLocatorKeyFromJson(entry, keys, depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+    return null;
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return extractLocatorKeyFromJson(parsed, keys, depth + 1);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function extractLocatorKeyFromComponent(component: string, keys: string[]): string | null {
   if (!component) {
     return null;
@@ -45,6 +98,7 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
     return null;
   }
   const pairs = normalized.split('&').filter(Boolean);
+  const jsonCandidates: string[] = [];
   if (pairs.length === 0) {
     return null;
   }
@@ -52,15 +106,20 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
     for (const pair of pairs) {
       const [rawName, ...rawValueParts] = pair.split('=');
       if (!rawName) {
+        jsonCandidates.push(pair);
         continue;
       }
       let name: string;
       try {
         name = decodeURIComponent(rawName);
       } catch {
+        jsonCandidates.push(pair);
         continue;
       }
       if (name !== key) {
+        if (!rawValueParts.length) {
+          jsonCandidates.push(pair);
+        }
         continue;
       }
       const rawValue = rawValueParts.join('=');
@@ -75,6 +134,19 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
         continue;
       }
       return normalizedValue;
+    }
+  }
+  const sourcesToCheck = new Set<string>([normalized, ...jsonCandidates]);
+  for (const source of sourcesToCheck) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(source);
+    } catch {
+      continue;
+    }
+    const extracted = extractLocatorKeyFromJson(decoded, keys);
+    if (extracted) {
+      return extracted;
     }
   }
   return null;

@@ -51,6 +51,14 @@ describe('wialon service', () => {
     expect(parsed.token).toBe(originalToken);
   });
 
+  it('поддерживает параметр token', () => {
+    const locatorKey = Buffer.from('token-value-123', 'utf8').toString('base64');
+    const link = `https://hosting.wialon.com/locator?token=${locatorKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe('token-value-123');
+    expect(parsed.locatorKey).toBe(locatorKey);
+  });
+
   it('сохраняет сырой ключ при невозможности декодировать base64', () => {
     const rawKey = 'raw-token';
     const link = `https://hosting.wialon.com/locator?t=${rawKey}`;
@@ -73,6 +81,14 @@ describe('wialon service', () => {
     const parsed = parseLocatorLink(link);
     expect(parsed.token).toBe(rawKey);
     expect(parsed.locatorKey).toBe('-._~@:');
+  });
+
+  it('поддерживает токен в hash', () => {
+    const rawKey = 'raw-hash-token';
+    const link = `https://hosting.wialon.com/locator#token=${rawKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(rawKey);
+    expect(parsed.locatorKey).toBe(rawKey);
   });
 
   it('использует сырой ключ если декодированный токен содержит непечатные символы', () => {

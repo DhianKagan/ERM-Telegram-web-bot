@@ -12,6 +12,11 @@ const DEFAULT_BASE_FALLBACK = 'https://hst-api.wialon.com';
 const BASE64_KEY_PATTERN = /^[A-Za-z0-9+/=_-]+$/;
 const RAW_KEY_PATTERN = /^[0-9A-Za-z._:+/@=~-]+$/;
 const REPLACEMENT_CHAR = '\uFFFD';
+const LOCATOR_KEY_CANDIDATES = ['t', 'token'];
+const LOCATOR_KEY_NORMALIZED = LOCATOR_KEY_CANDIDATES.map((key) => key.toLowerCase());
+const LOCATOR_KEY_SEARCH_KEYS = Array.from(
+  new Set([...LOCATOR_KEY_CANDIDATES, ...LOCATOR_KEY_NORMALIZED]),
+);
 
 function normalizeLocatorKeyValue(value: string | null): string | null {
   if (value === null) {
@@ -154,13 +159,11 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
 }
 
 function resolveLocatorKey(url: URL): string | null {
-  const keys = ['t', 'token'];
-  const normalizedKeys = keys.map((key) => key.toLowerCase());
-  const fromSearch = extractLocatorKeyFromComponent(url.search, normalizedKeys);
+  const fromSearch = extractLocatorKeyFromComponent(url.search, LOCATOR_KEY_NORMALIZED);
   if (fromSearch) {
     return fromSearch;
   }
-  return extractLocatorKeyFromComponent(url.hash, normalizedKeys);
+  return extractLocatorKeyFromComponent(url.hash, LOCATOR_KEY_NORMALIZED);
 }
 
 // Обработка локатора поддерживает «сырые» токены, не прошедшие base64-декодирование;
@@ -203,9 +206,23 @@ function resolveBaseUrlFromLocator(url: URL, defaultBaseUrl?: string): string {
   return port ? `${base}:${port}` : base;
 }
 
-export function decodeLocatorKeyDetailed(
-  locatorKey: string,
-): DecodeLocatorKeyResult {
+function extractTokenFromDecodedValue(value: string): string | null {
+  const normalized = normalizeLocatorKeyValue(value);
+  if (!normalized) {
+    return null;
+  }
+  const fromJson = extractLocatorKeyFromJson(normalized, LOCATOR_KEY_SEARCH_KEYS);
+  if (fromJson) {
+    return fromJson;
+  }
+  try {
+    return extractLocatorKeyFromComponent(normalized, LOCATOR_KEY_NORMALIZED);
+  } catch {
+    return null;
+  }
+}
+
+export function decodeLocatorKeyDetailed(locatorKey: string): DecodeLocatorKeyResult {
   const trimmed = locatorKey.trim();
   if (!trimmed) {
     throw new Error('Ключ локатора не может быть пустым');
@@ -231,14 +248,22 @@ export function decodeLocatorKeyDetailed(
     const reEncoded = Buffer.from(decoded, 'utf8').toString('base64');
     const normalizedReEncoded = normalizeBase64(reEncoded);
     const hasReplacementChar = decoded.includes(REPLACEMENT_CHAR);
-    const normalizedToken = decoded.trim();
+    const decodedPayload = decoded.trim();
     const isConsistent = normalizedReEncoded === normalized;
     if (
-      !normalizedToken ||
-      hasControlCharacters(normalizedToken) ||
+      !decodedPayload ||
+      hasControlCharacters(decodedPayload) ||
       hasReplacementChar ||
       !isConsistent
     ) {
+      if (isRawCandidate && !hasControlCharacters(trimmed)) {
+        return { token: trimmed, fallback: true };
+      }
+      throw new Error('Расшифрованный ключ содержит недопустимые символы');
+    }
+    const extractedToken = extractTokenFromDecodedValue(decodedPayload) ?? decodedPayload;
+    const normalizedToken = normalizeLocatorKeyValue(extractedToken);
+    if (!normalizedToken || hasControlCharacters(normalizedToken)) {
       if (isRawCandidate && !hasControlCharacters(trimmed)) {
         return { token: trimmed, fallback: true };
       }

@@ -195,7 +195,12 @@ function normalizeTrackPoint(point: WialonTrackPointRaw): TrackPoint {
 }
 
 export async function login(token: string, baseUrl?: string): Promise<WialonLoginResult> {
-  return request<WialonLoginResult>('token/login', { token }, { baseUrl });
+  const normalizedToken = decodeLocatorKey(token);
+  return request<WialonLoginResult>(
+    'token/login',
+    { token: normalizedToken },
+    { baseUrl },
+  );
 }
 
 export async function loadUnits(

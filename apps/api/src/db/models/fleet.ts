@@ -404,9 +404,9 @@ export async function ensureFleetFields(
   }
   if (fleet.locatorKey) {
     try {
-      const decoded = decodeLocatorKey(fleet.locatorKey);
-      if (decoded !== fleet.token) {
-        fleet.token = decoded;
+      const decoded = decodeLocatorKeyDetailed(fleet.locatorKey);
+      if (decoded.token !== fleet.token) {
+        fleet.token = decoded.token;
         changed = true;
       }
     } catch (error) {

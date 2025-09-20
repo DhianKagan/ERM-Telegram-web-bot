@@ -34,6 +34,26 @@ describe('wialon service', () => {
     expect(body.get('params')).toContain('token');
   });
 
+  it('очищает base64 JSON токен перед авторизацией', async () => {
+    mockedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
+    });
+    const payload = Buffer.from(
+      JSON.stringify({ token: 'clean-token', extra: 1 }),
+      'utf8',
+    ).toString('base64');
+    await login(payload, 'https://example.com');
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    const [, opts] = mockedFetch.mock.calls[0];
+    const body = opts?.body as URLSearchParams;
+    const paramsRaw = body.get('params');
+    expect(paramsRaw).toBeTruthy();
+    const params = paramsRaw ? JSON.parse(paramsRaw) : null;
+    expect(params).not.toBeNull();
+    expect((params as { token?: string }).token).toBe('clean-token');
+  });
+
   it('парсит ссылку локатора', () => {
     const link = 'https://hosting.wialon.com/locator?lang=ru&t=dG9rZW4tdmFsdWUtMTIz';
     const parsed = parseLocatorLink(link);

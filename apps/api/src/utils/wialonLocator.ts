@@ -16,7 +16,7 @@ const REPLACEMENT_CHAR = '\uFFFD';
 // Обработка локатора поддерживает «сырые» токены, не прошедшие base64-декодирование;
 // fallback срабатывает, если декодирование возвращает управляющие символы,
 // символ подстановки U+FFFD или результат не совпадает с исходным ключом после повторного кодирования.
-interface DecodeLocatorKeyResult {
+export interface DecodeLocatorKeyResult {
   token: string;
   fallback: boolean;
 }
@@ -53,7 +53,9 @@ function resolveBaseUrlFromLocator(url: URL, defaultBaseUrl?: string): string {
   return port ? `${base}:${port}` : base;
 }
 
-function decodeLocatorKeyDetailed(locatorKey: string): DecodeLocatorKeyResult {
+export function decodeLocatorKeyDetailed(
+  locatorKey: string,
+): DecodeLocatorKeyResult {
   const trimmed = locatorKey.trim();
   if (!trimmed) {
     throw new Error('Ключ локатора не может быть пустым');

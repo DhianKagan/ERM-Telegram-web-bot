@@ -2,7 +2,7 @@
 // Основные модули: mongoose
 import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 import { DEFAULT_BASE_URL, decodeLocatorKey } from '../../services/wialon';
-import { parseLocatorLink } from '../../utils/wialonLocator';
+import { decodeLocatorKeyDetailed, parseLocatorLink } from '../../utils/wialonLocator';
 import { fleetRecoveryFailuresTotal } from '../../metrics';
 import {
   CollectionItem,
@@ -218,9 +218,9 @@ function parseLegacyValue(value: string): LegacyFleetPayload | null {
     const candidate = parts[0];
     if (candidate) {
       try {
-        const decoded = decodeLocatorKey(candidate);
-        if (isPrintableToken(decoded)) {
-          payload.token = decoded;
+        const decoded = decodeLocatorKeyDetailed(candidate);
+        if (!decoded.fallback && isPrintableToken(decoded.token)) {
+          payload.token = decoded.token;
           payload.locatorKey = candidate;
         }
       } catch {
@@ -228,6 +228,7 @@ function parseLegacyValue(value: string): LegacyFleetPayload | null {
       }
       if (!payload.token && looksLikeTokenCandidate(candidate)) {
         payload.token = candidate;
+        payload.locatorKey = candidate;
       }
     }
   }

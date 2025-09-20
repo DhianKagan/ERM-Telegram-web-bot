@@ -35,7 +35,10 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
   }
   const queryIndex = normalized.indexOf('?');
   if (queryIndex >= 0) {
-    normalized = normalized.slice(queryIndex + 1);
+    const equalsIndex = normalized.indexOf('=');
+    if (equalsIndex === -1 || queryIndex < equalsIndex) {
+      normalized = normalized.slice(queryIndex + 1);
+    }
   }
   normalized = normalized.replace(/^\/+/, '');
   if (!normalized) {

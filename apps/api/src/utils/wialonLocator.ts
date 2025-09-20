@@ -13,6 +13,79 @@ const BASE64_KEY_PATTERN = /^[A-Za-z0-9+/=_-]+$/;
 const RAW_KEY_PATTERN = /^[0-9A-Za-z._:+/@=~-]+$/;
 const REPLACEMENT_CHAR = '\uFFFD';
 
+function normalizeLocatorKeyValue(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function extractLocatorKeyFromComponent(component: string, keys: string[]): string | null {
+  if (!component) {
+    return null;
+  }
+  const trimmed = component.trim();
+  if (!trimmed) {
+    return null;
+  }
+  let normalized = trimmed.replace(/^[?#]/, '');
+  if (!normalized) {
+    return null;
+  }
+  const queryIndex = normalized.indexOf('?');
+  if (queryIndex >= 0) {
+    normalized = normalized.slice(queryIndex + 1);
+  }
+  normalized = normalized.replace(/^\/+/, '');
+  if (!normalized) {
+    return null;
+  }
+  const pairs = normalized.split('&').filter(Boolean);
+  if (pairs.length === 0) {
+    return null;
+  }
+  for (const key of keys) {
+    for (const pair of pairs) {
+      const [rawName, ...rawValueParts] = pair.split('=');
+      if (!rawName) {
+        continue;
+      }
+      let name: string;
+      try {
+        name = decodeURIComponent(rawName);
+      } catch {
+        continue;
+      }
+      if (name !== key) {
+        continue;
+      }
+      const rawValue = rawValueParts.join('=');
+      let value: string;
+      try {
+        value = decodeURIComponent(rawValue);
+      } catch {
+        throw new Error('Ключ локатора содержит недопустимые символы');
+      }
+      const normalizedValue = normalizeLocatorKeyValue(value);
+      if (!normalizedValue) {
+        continue;
+      }
+      return normalizedValue;
+    }
+  }
+  return null;
+}
+
+function resolveLocatorKey(url: URL): string | null {
+  const keys = ['t', 'token'];
+  const fromSearch = extractLocatorKeyFromComponent(url.search, keys);
+  if (fromSearch) {
+    return fromSearch;
+  }
+  return extractLocatorKeyFromComponent(url.hash, keys);
+}
+
 // Обработка локатора поддерживает «сырые» токены, не прошедшие base64-декодирование;
 // fallback срабатывает, если декодирование возвращает управляющие символы,
 // символ подстановки U+FFFD или результат не совпадает с исходным ключом после повторного кодирования.
@@ -121,7 +194,7 @@ export function parseLocatorLink(link: string, defaultBaseUrl?: string): Locator
   } catch {
     throw new Error('Некорректная ссылка Wialon');
   }
-  const locatorKey = url.searchParams.get('t');
+  const locatorKey = resolveLocatorKey(url);
   if (!locatorKey) {
     throw new Error('Ссылка Wialon должна содержать параметр t');
   }

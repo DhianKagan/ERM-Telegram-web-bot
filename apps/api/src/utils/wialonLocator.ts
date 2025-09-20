@@ -116,7 +116,8 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
         jsonCandidates.push(pair);
         continue;
       }
-      if (name !== key) {
+      const normalizedName = name.toLowerCase();
+      if (normalizedName !== key) {
         if (!rawValueParts.length) {
           jsonCandidates.push(pair);
         }
@@ -154,11 +155,12 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
 
 function resolveLocatorKey(url: URL): string | null {
   const keys = ['t', 'token'];
-  const fromSearch = extractLocatorKeyFromComponent(url.search, keys);
+  const normalizedKeys = keys.map((key) => key.toLowerCase());
+  const fromSearch = extractLocatorKeyFromComponent(url.search, normalizedKeys);
   if (fromSearch) {
     return fromSearch;
   }
-  return extractLocatorKeyFromComponent(url.hash, keys);
+  return extractLocatorKeyFromComponent(url.hash, normalizedKeys);
 }
 
 // Обработка локатора поддерживает «сырые» токены, не прошедшие base64-декодирование;

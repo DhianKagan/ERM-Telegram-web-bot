@@ -59,6 +59,14 @@ describe('wialon service', () => {
     expect(parsed.locatorKey).toBe(locatorKey);
   });
 
+  it('поддерживает параметр T в верхнем регистре', () => {
+    const locatorKey = Buffer.from('token-upper', 'utf8').toString('base64');
+    const link = `https://hosting.wialon.com/locator?T=${locatorKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe('token-upper');
+    expect(parsed.locatorKey).toBe(locatorKey);
+  });
+
   it('сохраняет сырой ключ при невозможности декодировать base64', () => {
     const rawKey = 'raw-token';
     const link = `https://hosting.wialon.com/locator?t=${rawKey}`;

@@ -205,14 +205,14 @@ export default defineConfig(() => {
             if (!pkg) {
               return undefined;
             }
-            if (pkg.startsWith("@ckeditor/") || pkg.startsWith("ckeditor5")) {
-              return "ckeditor";
-            }
             if (pkg === "jspdf" || pkg === "jspdf-autotable") {
               return "jspdf";
             }
             if (pkg.startsWith("@radix-ui/")) {
               return "vendor-ui";
+            }
+            if (pkg.startsWith("@ckeditor/") || pkg.startsWith("ckeditor5")) {
+              return "vendor-richtext";
             }
             const mapped = vendorChunkLookup.get(pkg);
             if (mapped) {

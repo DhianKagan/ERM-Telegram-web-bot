@@ -1,11 +1,11 @@
 {
   "light": {
-    "primary": "#3C50E0",
+    "primary": "#2563EB",
     "background": "#FFFFFF",
     "foreground": "#1C2434"
   },
   "dark": {
-    "primary": "#3C50E0",
+    "primary": "#2563EB",
     "background": "#1C2434",
     "foreground": "#FFFFFF"
   }

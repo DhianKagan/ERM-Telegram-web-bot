@@ -3,7 +3,7 @@
  * Основные модули: child_process, http.
  */
 import { spawn } from 'node:child_process';
-import http from 'node:http';
+import * as http from 'node:http';
 
 async function waitForServer(url: string, timeoutMs = 10000): Promise<void> {
   const start = Date.now();

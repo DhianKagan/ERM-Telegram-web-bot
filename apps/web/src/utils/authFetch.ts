@@ -4,6 +4,23 @@
 import { getCsrfToken, setCsrfToken } from "./csrfToken";
 import { showToast } from "./toast";
 
+const unavailablePaths = new Set<string>();
+
+function normalizePath(input: string): string {
+  try {
+    const base =
+      typeof window !== "undefined" && window.location
+        ? window.location.origin
+        : "http://localhost";
+    return new URL(input, base).pathname;
+  } catch {
+    return input;
+  }
+}
+
+const CSRF_PATH = "/api/v1/csrf";
+const PROFILE_PATH = "/api/v1/auth/profile";
+
 interface FetchOptions extends globalThis.RequestInit {
   headers?: Record<string, string>;
   body?: globalThis.BodyInit | null;
@@ -66,20 +83,31 @@ export default async function authFetch(
   const getToken = getCsrfToken;
   const saveToken = setCsrfToken;
   const headers: Record<string, string> = { ...(fetchOpts.headers || {}) };
+  const path = normalizePath(url);
+  const isProfileRequest = path === PROFILE_PATH;
   if (confirmed && !headers["X-Confirmed-Action"]) {
     headers["X-Confirmed-Action"] = "true";
   }
   let token = getToken();
-  if (!token) {
+  if (isProfileRequest && unavailablePaths.has(PROFILE_PATH)) {
+    return new Response(null, {
+      status: 404,
+      statusText: "Not Found",
+    });
+  }
+  if (!token && !unavailablePaths.has(CSRF_PATH)) {
     try {
       const res = await fetch("/api/v1/csrf", { credentials: "include" });
-      if (res.ok) {
+      if (res.status === 404) {
+        unavailablePaths.add(CSRF_PATH);
+      } else if (res.ok) {
         const data = (await res
           .json()
           .catch(() => ({}))) as { csrfToken?: string };
         if (data.csrfToken) {
           token = data.csrfToken;
           saveToken(token);
+          unavailablePaths.delete(CSRF_PATH);
         }
       }
     } catch {
@@ -89,7 +117,12 @@ export default async function authFetch(
   if (token) headers["X-XSRF-TOKEN"] = token;
   const opts: FetchOptions = { ...fetchOpts, credentials: "include", headers };
   let res = await sendRequest(url, opts, onProgress);
-  if (res.status === 403) {
+  if (res.status === 404 && isProfileRequest) {
+    unavailablePaths.add(PROFILE_PATH);
+  } else if (isProfileRequest && res.ok) {
+    unavailablePaths.delete(PROFILE_PATH);
+  }
+  if (res.status === 403 && !unavailablePaths.has(CSRF_PATH)) {
     if (opts.body) {
       try {
         if (

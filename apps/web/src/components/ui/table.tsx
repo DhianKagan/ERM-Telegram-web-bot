@@ -10,13 +10,13 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto rounded-xl border border-slate-200 shadow-sm"
+      className="relative w-full overflow-x-auto rounded-xl border border-slate-200 shadow-sm lg:overflow-x-visible"
     >
       <table
         data-slot="table"
         className={cn(
           "w-full caption-bottom text-[12px] leading-tight text-gray-900 table-auto font-ui border-collapse",
-          "sm:text-[13px] md:table-fixed",
+          "sm:text-[13px]",
           className,
         )}
         {...props}
@@ -79,7 +79,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       className={cn(
         "text-foreground border border-slate-200 px-2 py-2 text-left align-middle font-semibold",
         "text-[11px] leading-snug sm:px-2.5 sm:text-[13px]",
-        "whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "whitespace-normal [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}
@@ -92,7 +92,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "border border-slate-200 px-2 py-1.5 align-top text-[12px] leading-snug",
+        "border border-slate-200 px-2 py-1.5 align-middle text-[12px] leading-snug",
         "sm:px-2.5 sm:py-2 sm:text-sm",
         "whitespace-normal [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,

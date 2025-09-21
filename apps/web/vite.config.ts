@@ -57,6 +57,37 @@ function cspNonceDevPlugin() {
   };
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const modulePreloadChunks = [
+  "ckeditor",
+  "jspdf",
+  "fast-png",
+  "pako",
+  "fflate",
+];
+
+const modulePreloadPattern = new RegExp(
+  `<link\\s[^>]*rel=["']modulepreload["'][^>]*href=["'][^"']*(?:${modulePreloadChunks
+    .map(escapeRegex)
+    .join("|")})[^"']*["'][^>]*>`,
+  "gi",
+);
+
+function filterModulePreloadLinks() {
+  return {
+    name: "filter-modulepreload-links",
+    transformIndexHtml(html: string, ctx: IndexHtmlTransformContext | undefined) {
+      if (ctx?.server) {
+        return html;
+      }
+      return html.replace(modulePreloadPattern, "");
+    },
+  };
+}
+
 const vendorChunkGroups: Record<string, string[]> = {
   "vendor-core": [
     "react",
@@ -136,6 +167,7 @@ export default defineConfig(() => {
           })
         : undefined,
       preserveIndexHtml(),
+      filterModulePreloadLinks(),
       cspNonceDevPlugin(),
     ].filter(Boolean),
     resolve: {

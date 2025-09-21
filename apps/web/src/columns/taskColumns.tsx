@@ -62,6 +62,16 @@ const renderDateCell = (value?: string) => {
   );
 };
 
+// Делает текст компактнее, добавляя многоточие по необходимости
+const compactText = (value: string, maxLength: number) => {
+  const trimmed = value.trim();
+  if (!trimmed || maxLength < 2 || trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  const shortened = trimmed.slice(0, maxLength - 1).trimEnd();
+  return `${shortened}…`;
+};
+
 export type TaskRow = Task & Record<string, any>;
 
 export default function taskColumns(
@@ -74,9 +84,14 @@ export default function taskColumns(
       meta: { minWidth: "2.75rem", maxWidth: "3.5rem" },
       cell: (p) => {
         const value = p.getValue<string>() || "";
+        const numericMatch = value.match(/\d+/);
+        const shortValue = numericMatch ? numericMatch[0] : value;
         return (
-          <span className="font-mono tabular-nums whitespace-nowrap">
-            {value}
+          <span
+            className="font-mono tabular-nums whitespace-nowrap"
+            title={value}
+          >
+            {shortValue}
           </span>
         );
       },
@@ -94,10 +109,15 @@ export default function taskColumns(
     {
       header: "Название",
       accessorKey: "title",
-      meta: { minWidth: "8rem", maxWidth: "16rem" },
+      meta: { minWidth: "7rem", maxWidth: "14rem" },
       cell: (p) => {
         const v = p.getValue<string>() || "";
-        return <span title={v}>{v}</span>;
+        const compact = compactText(v, 48);
+        return (
+          <span title={v} className="block leading-tight">
+            {compact}
+          </span>
+        );
       },
     },
     {
@@ -142,9 +162,10 @@ export default function taskColumns(
     {
       header: "Старт",
       accessorKey: "start_location",
-      meta: { minWidth: "7rem", maxWidth: "10rem" },
+      meta: { minWidth: "6rem", maxWidth: "9rem" },
       cell: ({ row }) => {
         const name = row.original.start_location || "";
+        const compact = compactText(name, 36);
         const link = row.original.start_location_link;
         return link ? (
           <a
@@ -154,19 +175,22 @@ export default function taskColumns(
             className="text-blue-600 underline"
             title={name}
           >
-            {name}
+            {compact}
           </a>
         ) : (
-          <span title={name}>{name}</span>
+          <span title={name} className="block leading-tight">
+            {compact}
+          </span>
         );
       },
     },
     {
       header: "Финиш",
       accessorKey: "end_location",
-      meta: { minWidth: "7rem", maxWidth: "10rem" },
+      meta: { minWidth: "6rem", maxWidth: "9rem" },
       cell: ({ row }) => {
         const name = row.original.end_location || "";
+        const compact = compactText(name, 36);
         const link = row.original.end_location_link;
         return link ? (
           <a
@@ -176,10 +200,12 @@ export default function taskColumns(
             className="text-blue-600 underline"
             title={name}
           >
-            {name}
+            {compact}
           </a>
         ) : (
-          <span title={name}>{name}</span>
+          <span title={name} className="block leading-tight">
+            {compact}
+          </span>
         );
       },
     },
@@ -191,32 +217,45 @@ export default function taskColumns(
     {
       header: "Исполнители",
       accessorKey: "assignees",
-      meta: { minWidth: "7rem", maxWidth: "12rem" },
+      meta: { minWidth: "6rem", maxWidth: "10rem" },
       cell: ({ row }) => {
         const ids: number[] =
           row.original.assignees ||
           (row.original.assigned_user_id
             ? [row.original.assigned_user_id]
             : []);
+        if (!ids.length) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const labels = ids.map((id) => ({
+          id,
+          label:
+            users[id]?.name ||
+            users[id]?.telegram_username ||
+            users[id]?.username ||
+            String(id),
+        }));
+        const visible = labels.slice(0, 2);
+        const hiddenCount = labels.length - visible.length;
+        const tooltip = labels.map((item) => item.label).join(", ");
         return (
-          <div className="flex flex-wrap gap-1">
-            {ids.map((id) => {
-              const label =
-                users[id]?.name ||
-                users[id]?.telegram_username ||
-                users[id]?.username ||
-                String(id);
-              return (
-                <Link
-                  key={id}
-                  to={`/employees/${id}`}
-                  className="text-blue-600 underline"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {label}
-                </Link>
-              );
-            })}
+          <div
+            className="flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-tight"
+            title={tooltip}
+          >
+            {visible.map(({ id, label }) => (
+              <Link
+                key={id}
+                to={`/employees/${id}`}
+                className="text-blue-600 underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {compactText(label, 18)}
+              </Link>
+            ))}
+            {hiddenCount > 0 ? (
+              <span className="text-muted-foreground">+{hiddenCount}</span>
+            ) : null}
           </div>
         );
       },

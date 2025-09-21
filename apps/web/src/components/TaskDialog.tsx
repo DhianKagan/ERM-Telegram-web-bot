@@ -763,11 +763,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
       <div
-        className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-2 rounded-xl bg-white p-4 shadow-lg`}
+        className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-1.5 rounded-xl bg-white p-4 shadow-lg`}
       >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">{t("task")}</h3>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             {isEdit && !editing && (
               <button
                 onClick={() => setEditing(true)}
@@ -809,7 +809,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
         </div>
         <>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("taskNumber")}
@@ -817,7 +817,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={requestId}
                 disabled
-                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
               />
             </div>
             <div>
@@ -827,7 +827,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 value={created}
                 disabled
-                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
               />
             </div>
           </div>
@@ -847,14 +847,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <input
               {...register("title")}
               placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm focus:ring focus:outline-none"
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
               disabled={!editing}
             />
             {errors.title && (
               <p className="text-sm text-red-600">{errors.title.message}</p>
             )}
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("startDate")}
@@ -862,7 +862,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 type="datetime-local"
                 {...register("startDate")}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />
             </div>
@@ -873,18 +873,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 type="datetime-local"
                 {...register("dueDate", { onChange: handleDueDateChange })}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">{t("status")}</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {statuses.map((s) => (
@@ -901,7 +901,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {priorities.map((p) => (
@@ -912,7 +912,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("taskType")}
@@ -920,7 +920,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {types.map((t) => (
@@ -937,7 +937,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 <option value="">{t("selectOption")}</option>
@@ -949,7 +949,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("creator")}
@@ -957,7 +957,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={creator}
                 onChange={(e) => setCreator(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 <option value="">{t("author")}</option>
@@ -982,13 +982,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               )}
             />
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("startPoint")}
               </label>
               {startLink ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div className="flex flex-col">
                     <a
                       href={DOMPurify.sanitize(startLink)}
@@ -1015,14 +1015,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   )}
                 </div>
               ) : (
-                <div className="mt-1 flex space-x-2">
-                  <input
-                    value={startLink}
-                    onChange={(e) => handleStartLink(e.target.value)}
-                    placeholder={t("googleMapsLink")}
-                    className="flex-1 rounded border px-2 py-1"
-                    disabled={!editing}
-                  />
+                <div className="mt-1 flex gap-2">
+                    <input
+                      value={startLink}
+                      onChange={(e) => handleStartLink(e.target.value)}
+                      placeholder={t("googleMapsLink")}
+                      className="flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      disabled={!editing}
+                    />
                   <a
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
@@ -1039,7 +1039,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {t("endPoint")}
               </label>
               {endLink ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div className="flex flex-col">
                     <a
                       href={DOMPurify.sanitize(endLink)}
@@ -1066,14 +1066,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   )}
                 </div>
               ) : (
-                <div className="mt-1 flex space-x-2">
-                  <input
-                    value={endLink}
-                    onChange={(e) => handleEndLink(e.target.value)}
-                    placeholder={t("googleMapsLink")}
-                    className="flex-1 rounded border px-2 py-1"
-                    disabled={!editing}
-                  />
+                <div className="mt-1 flex gap-2">
+                    <input
+                      value={endLink}
+                      onChange={(e) => handleEndLink(e.target.value)}
+                      placeholder={t("googleMapsLink")}
+                      className="flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      disabled={!editing}
+                    />
                   <a
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
@@ -1086,7 +1086,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               )}
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
                 {t("transportType")}
@@ -1094,7 +1094,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={transportType}
                 onChange={(e) => setTransportType(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {transports.map((t) => (
@@ -1111,7 +1111,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full rounded border px-2 py-1"
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {payments.map((p) => (
@@ -1122,7 +1122,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             {distanceKm !== null && (
               <div>
                 <label className="block text-sm font-medium">
@@ -1303,7 +1303,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                         setShowDoneConfirm(true);
                       }
                     }}
-                    className="mt-1 mb-2 w-full rounded border px-2 py-1"
+                    className="mt-1 mb-2 w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                   >
                     <option value="">{t("selectOption")}</option>
                     {doneOptions.map((o) => (

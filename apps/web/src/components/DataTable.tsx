@@ -65,11 +65,11 @@ export default function DataTable<T>({
   });
 
   return (
-    <div className="space-y-1 font-ui text-[13px] sm:text-sm">
+    <div className="space-y-0.5 font-ui text-[13px] sm:text-sm">
       <TableToolbar table={table as TableType<T>}>
         {toolbarChildren}
       </TableToolbar>
-      <Table>
+      <Table className="text-left">
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
@@ -129,7 +129,7 @@ export default function DataTable<T>({
           ))}
         </TableBody>
       </Table>
-      <div className="flex flex-col gap-1.5 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
+      <div className="flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => onPageChange(Math.max(0, pageIndex - 1))}

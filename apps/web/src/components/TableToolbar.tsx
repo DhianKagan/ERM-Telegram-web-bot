@@ -33,8 +33,10 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
   };
 
   const exportPdf = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    await import("jspdf-autotable");
+    const pdfEntry = "jspdf";
+    const autoTableEntry = "jspdf-autotable";
+    const { default: jsPDF } = await import(/* @vite-ignore */ pdfEntry);
+    await import(/* @vite-ignore */ autoTableEntry);
     const headers = columns
       .filter((c) => c.getIsVisible())
       .map((c) => c.columnDef.header as string);

@@ -7,6 +7,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -37,131 +38,10 @@ import TaskDialogRoute from "./components/TaskDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AlertDialog from "./components/AlertDialog";
 
-function Content() {
-  const { collapsed, open } = useSidebar();
-  const { t } = useTranslation();
-  return (
-    <main
-      className={`mt-14 p-4 transition-all ${open ? (collapsed ? "md:ml-20" : "md:ml-60") : "md:ml-0"}`}
-    >
-      <Suspense fallback={<div>{t("loading")}</div>}>
-        <Routes>
-          <Route path="/login" element={<CodeLogin />} />
-          <Route path="/menu" element={<AttachmentMenu />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/employees/:id"
-            element={
-              <ProtectedRoute>
-                <EmployeeCard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tasks"
-            element={
-              <ProtectedRoute>
-                <TasksPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/mg/kanban"
-            element={
-              <ManagerRoute>
-                <TaskKanban />
-              </ManagerRoute>
-            }
-          />
-          <Route
-            path="/mg/reports"
-            element={
-              <ManagerRoute>
-                <Reports />
-              </ManagerRoute>
-            }
-          />
-          <Route
-            path="/mg/routes"
-            element={
-              <ManagerRoute>
-                <RoutesPage />
-              </ManagerRoute>
-            }
-          />
-          <Route
-            path="/cp/kanban"
-            element={
-              <AdminRoute>
-                <TaskKanban />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/reports"
-            element={
-              <AdminRoute>
-                <Reports />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/routes"
-            element={
-              <AdminRoute>
-                <RoutesPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/settings"
-            element={
-              <AdminRoute>
-                <SettingsPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/logs"
-            element={
-              <AdminRoute>
-                <LogsPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/cp/storage"
-            element={
-              <AdminRoute>
-                <StoragePage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/theme"
-            element={
-              <ProtectedRoute>
-                <ThemeSettings />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/tasks" />} />
-        </Routes>
-      </Suspense>
-    </main>
-  );
-}
-
-function Layout() {
+function AppShell() {
   const { user } = useAuth();
-  const { open, toggle } = useSidebar();
+  const { collapsed, open, toggle } = useSidebar();
+  const { t } = useTranslation();
   return (
     <>
       {user && <Sidebar />}
@@ -177,10 +57,151 @@ function Layout() {
         />
       )}
       {user && <Header />}
-      <Toasts />
-      <Content />
+      <main
+        className={`mt-14 p-4 transition-all ${open ? (collapsed ? "md:ml-20" : "md:ml-60") : "md:ml-0"}`}
+      >
+        <Suspense fallback={<div>{t("loading")}</div>}>
+          <Routes>
+            <Route path="/menu" element={<AttachmentMenu />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employees/:id"
+              element={
+                <ProtectedRoute>
+                  <EmployeeCard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <TasksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mg/kanban"
+              element={
+                <ManagerRoute>
+                  <TaskKanban />
+                </ManagerRoute>
+              }
+            />
+            <Route
+              path="/mg/reports"
+              element={
+                <ManagerRoute>
+                  <Reports />
+                </ManagerRoute>
+              }
+            />
+            <Route
+              path="/mg/routes"
+              element={
+                <ManagerRoute>
+                  <RoutesPage />
+                </ManagerRoute>
+              }
+            />
+            <Route
+              path="/cp/kanban"
+              element={
+                <AdminRoute>
+                  <TaskKanban />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/cp/reports"
+              element={
+                <AdminRoute>
+                  <Reports />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/cp/routes"
+              element={
+                <AdminRoute>
+                  <RoutesPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/cp/settings"
+              element={
+                <AdminRoute>
+                  <SettingsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/cp/logs"
+              element={
+                <AdminRoute>
+                  <LogsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/cp/storage"
+              element={
+                <AdminRoute>
+                  <StoragePage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/theme"
+              element={
+                <ProtectedRoute>
+                  <ThemeSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/tasks" />} />
+          </Routes>
+        </Suspense>
+      </main>
       <TaskDialogRoute />
     </>
+  );
+}
+
+function LoginLayout() {
+  const { t } = useTranslation();
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-sm space-y-4 rounded border bg-white p-6 shadow">
+        <Suspense fallback={<div>{t("loading")}</div>}>
+          <CodeLogin />
+        </Suspense>
+      </div>
+    </main>
+  );
+}
+
+function AppRouter() {
+  const location = useLocation();
+  if (location.pathname.startsWith("/login")) {
+    return <LoginLayout />;
+  }
+  return (
+    <AuthProvider>
+      <SidebarProvider>
+        <TasksProvider>
+          <AppShell />
+        </TasksProvider>
+      </SidebarProvider>
+    </AuthProvider>
   );
 }
 
@@ -192,27 +213,22 @@ export default function App() {
   );
   return (
     <I18nextProvider i18n={i18n}>
-      <AuthProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <SidebarProvider>
-              <TasksProvider>
-                <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
-                  <Router>
-                    <Layout />
-                  </Router>
-                  <AlertDialog
-                    open={!!initialAlert}
-                    message={initialAlert || ""}
-                    onClose={() => setInitialAlert(null)}
-                    closeText={i18n.t("close")}
-                  />
-                </ErrorBoundary>
-              </TasksProvider>
-            </SidebarProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+            <Router>
+              <Toasts />
+              <AppRouter />
+              <AlertDialog
+                open={!!initialAlert}
+                message={initialAlert || ""}
+                onClose={() => setInitialAlert(null)}
+                closeText={i18n.t("close")}
+              />
+            </Router>
+          </ErrorBoundary>
+        </ToastProvider>
+      </ThemeProvider>
     </I18nextProvider>
   );
 }

@@ -57,6 +57,66 @@ function cspNonceDevPlugin() {
   };
 }
 
+const vendorChunkGroups: Record<string, string[]> = {
+  "vendor-core": [
+    "react",
+    "react-dom",
+    "scheduler",
+    "react-is",
+    "use-sync-external-store",
+  ],
+  "vendor-router": ["react-router", "react-router-dom", "@remix-run/router"],
+  "vendor-i18n": ["i18next", "react-i18next"],
+  "vendor-forms": [
+    "react-hook-form",
+    "@hookform/resolvers",
+    "zod",
+    "validator",
+  ],
+  "vendor-ui": [
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-dropdown-menu",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-visually-hidden",
+    "clsx",
+    "class-variance-authority",
+    "tailwind-merge",
+    "lucide-react",
+    "next-themes",
+    "@heroicons/react",
+  ],
+  "vendor-telegram": ["@telegram-apps/sdk-react", "@telegram-apps/telegram-ui"],
+  "vendor-data": ["@tanstack/react-table", "match-sorter"],
+  "vendor-visualization": [
+    "apexcharts",
+    "react-apexcharts",
+    "chart.js",
+    "react-chartjs-2",
+  ],
+  "vendor-dnd": ["@hello-pangea/dnd"],
+  "vendor-filemanager": ["chonky", "react-jss"],
+  "vendor-richtext": ["react-quill", "quill", "dompurify"],
+  "vendor-maps": ["leaflet"],
+};
+
+const vendorChunkLookup = new Map<string, string>();
+for (const [chunkName, packages] of Object.entries(vendorChunkGroups)) {
+  for (const pkg of packages) {
+    vendorChunkLookup.set(pkg, chunkName);
+  }
+}
+
+function resolvePackageName(id: string) {
+  const parts = id.split("node_modules/");
+  const pkgPath = parts[parts.length - 1];
+  const segments = pkgPath.split("/");
+  if (segments[0]?.startsWith("@")) {
+    return `${segments[0]}/${segments[1] || ""}`;
+  }
+  return segments[0];
+}
+
 // https://vite.dev/config/
 export default defineConfig(() => {
   return {
@@ -106,15 +166,27 @@ export default defineConfig(() => {
         output: {
           // Разбиваем node_modules на отдельные чанки по именам пакетов
           manualChunks(id) {
-            if (id.includes("node_modules")) {
-              const parts = id.toString().split("node_modules/");
-              const pkgPath = parts[parts.length - 1].split("/");
-              const pkg = pkgPath[0].startsWith("@")
-                ? `${pkgPath[0]}/${pkgPath[1]}`
-                : pkgPath[0];
-              if (pkg.includes("@ckeditor")) return "ckeditor";
-              return pkg.replace("@", "").replace("/", "-");
+            if (!id.includes("node_modules")) {
+              return undefined;
             }
+            const pkg = resolvePackageName(id);
+            if (!pkg) {
+              return undefined;
+            }
+            if (pkg.startsWith("@ckeditor/") || pkg.startsWith("ckeditor5")) {
+              return "ckeditor";
+            }
+            if (pkg === "jspdf" || pkg === "jspdf-autotable") {
+              return "jspdf";
+            }
+            if (pkg.startsWith("@radix-ui/")) {
+              return "vendor-ui";
+            }
+            const mapped = vendorChunkLookup.get(pkg);
+            if (mapped) {
+              return mapped;
+            }
+            return "vendor-misc";
           },
         },
       },

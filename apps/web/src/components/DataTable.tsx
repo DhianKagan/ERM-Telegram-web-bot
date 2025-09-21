@@ -33,6 +33,7 @@ interface DataTableProps<T> {
 interface ColumnMeta {
   minWidth?: string;
   maxWidth?: string;
+  cellClassName?: string;
 }
 
 export default function DataTable<T>({
@@ -110,6 +111,12 @@ export default function DataTable<T>({
               {row.getVisibleCells().map((cell) => {
                 const meta =
                   (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
+                const cellClassName = [
+                  "break-words whitespace-normal",
+                  meta.cellClassName,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
                 return (
                   <TableCell
                     key={cell.id}
@@ -118,7 +125,7 @@ export default function DataTable<T>({
                       minWidth: meta.minWidth ?? "4rem",
                       maxWidth: meta.maxWidth ?? "16rem",
                     }}
-                    className="break-words whitespace-normal"
+                    className={cellClassName}
                     // фиксируем ширину ячейки данных
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

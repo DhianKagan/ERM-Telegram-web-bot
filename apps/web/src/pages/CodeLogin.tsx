@@ -55,7 +55,7 @@ export default function CodeLogin() {
         onChange={(e) => setTelegramId(e.target.value)}
       />
       <a
-        className="text-blue-500 underline"
+        className="text-primary underline"
         href="https://telegram.me/userinfobot"
         target="_blank"
         rel="noopener"
@@ -70,7 +70,7 @@ export default function CodeLogin() {
           onChange={(e) => setCode(e.target.value)}
         />
       )}
-      <button type="submit" className="bg-blue-500 p-2 text-white">
+      <button type="submit" className="bg-primary p-2 text-white">
         {sent ? "Войти по коду" : "Отправить код"}
       </button>
     </form>

@@ -18,6 +18,6 @@ interface ThemeContextType {
 export const ThemeContext = createContext<ThemeContextType>({
   theme: "light",
   setTheme: () => {},
-  tokens: { primary: "#3C50E0", background: "#FFFFFF", foreground: "#1C2434" },
+  tokens: { primary: "#2563EB", background: "#FFFFFF", foreground: "#1C2434" },
   setTokens: () => {},
 });

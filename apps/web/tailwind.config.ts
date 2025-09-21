@@ -51,7 +51,7 @@ export default {
         bodydark: "#AEB7C0",
         bodydark1: "#DEE4EE",
         bodydark2: "#8A99AF",
-        primary: "#3C50E0",
+        primary: "#2563EB",
         secondary: "#80CAEE",
         accentPrimary: "#465fff",
         accentSecondary: "#7a5af8",

@@ -33,7 +33,7 @@ export default function TasksChart() {
       toolbar: { show: false },
       background: theme === "dark" ? "#24303F" : undefined,
     },
-    colors: ["#3C50E0"],
+    colors: ["#2563EB"],
     stroke: { width: 2, curve: "smooth" },
     xaxis: {
       categories,

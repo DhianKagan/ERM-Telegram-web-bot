@@ -119,6 +119,23 @@ describe('wialon service', () => {
     expect(parsed.locatorKey).toBe(rawKey);
   });
 
+  it('поддерживает hashbang с параметром token', () => {
+    const rawKey = 'hashbang-token';
+    const link = `https://hosting.wialon.com/locator#!/token=${rawKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(rawKey);
+    expect(parsed.locatorKey).toBe(rawKey);
+  });
+
+  it('поддерживает hashbang с параметром t', () => {
+    const token = 'hashbang-t';
+    const locatorKey = Buffer.from(token, 'utf8').toString('base64');
+    const link = `https://hosting.wialon.com/locator#!/?t=${locatorKey}`;
+    const parsed = parseLocatorLink(link);
+    expect(parsed.token).toBe(token);
+    expect(parsed.locatorKey).toBe(locatorKey);
+  });
+
   it('извлекает токен из JSON в hash', () => {
     const rawKey = 'json-token';
     const payload = encodeURIComponent(JSON.stringify({ token: rawKey, map: 1 }));

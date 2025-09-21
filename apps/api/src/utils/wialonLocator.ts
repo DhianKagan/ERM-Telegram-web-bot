@@ -91,6 +91,10 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
   if (!normalized) {
     return null;
   }
+  normalized = normalized.replace(/^!+/, '');
+  if (!normalized) {
+    return null;
+  }
   const queryIndex = normalized.indexOf('?');
   if (queryIndex >= 0) {
     const equalsIndex = normalized.indexOf('=');

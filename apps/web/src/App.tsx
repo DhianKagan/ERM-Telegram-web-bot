@@ -25,18 +25,27 @@ import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import { SidebarProvider } from "./context/SidebarContext";
 import { useSidebar } from "./context/useSidebar";
-import { ThemeProvider } from "./context/ThemeProvider";
 import { AuthProvider } from "./context/AuthProvider";
 import { useAuth } from "./context/useAuth";
-import { ToastProvider } from "./context/ToastContext";
 import { TasksProvider } from "./context/TasksContext";
-import Toasts from "./components/Toasts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import ManagerRoute from "./components/ManagerRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AlertDialog from "./components/AlertDialog";
+
+const ThemeProviderLazy = lazy(async () => {
+  const mod = await import("./context/ThemeProvider");
+  return { default: mod.ThemeProvider };
+});
+
+const ToastProviderLazy = lazy(async () => {
+  const mod = await import("./context/ToastProvider");
+  return { default: mod.ToastProvider };
+});
+
+const ToastsLazy = lazy(() => import("./components/Toasts"));
 
 function AppShell() {
   const { user } = useAuth();
@@ -189,20 +198,59 @@ function LoginLayout() {
   );
 }
 
-function AppRouter() {
-  const location = useLocation();
-  if (location.pathname.startsWith("/login")) {
-    return <LoginLayout />;
-  }
+function AuthenticatedArea({ alert }: { alert: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <SidebarProvider>
-        <TasksProvider>
-          <AppShell />
-        </TasksProvider>
-      </SidebarProvider>
-    </AuthProvider>
+    <Suspense fallback={null}>
+      <ThemeProviderLazy>
+        <Suspense fallback={null}>
+          <ToastProviderLazy>
+            <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+              <Suspense fallback={null}>
+                <ToastsLazy />
+              </Suspense>
+              <AuthProvider>
+                <SidebarProvider>
+                  <TasksProvider>
+                    <AppShell />
+                  </TasksProvider>
+                </SidebarProvider>
+              </AuthProvider>
+              {alert}
+            </ErrorBoundary>
+          </ToastProviderLazy>
+        </Suspense>
+      </ThemeProviderLazy>
+    </Suspense>
   );
+}
+
+function AppContent({
+  initialAlert,
+  onCloseAlert,
+}: {
+  initialAlert: string | null;
+  onCloseAlert: () => void;
+}) {
+  const location = useLocation();
+  const alert = (
+    <AlertDialog
+      open={!!initialAlert}
+      message={initialAlert || ""}
+      onClose={onCloseAlert}
+      closeText={i18n.t("close")}
+    />
+  );
+  if (location.pathname.startsWith("/login")) {
+    return (
+      <>
+        <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+          <LoginLayout />
+        </ErrorBoundary>
+        {alert}
+      </>
+    );
+  }
+  return <AuthenticatedArea alert={alert} />;
 }
 
 export default function App() {
@@ -213,22 +261,12 @@ export default function App() {
   );
   return (
     <I18nextProvider i18n={i18n}>
-      <ThemeProvider>
-        <ToastProvider>
-          <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
-            <Router>
-              <Toasts />
-              <AppRouter />
-              <AlertDialog
-                open={!!initialAlert}
-                message={initialAlert || ""}
-                onClose={() => setInitialAlert(null)}
-                closeText={i18n.t("close")}
-              />
-            </Router>
-          </ErrorBoundary>
-        </ToastProvider>
-      </ThemeProvider>
+      <Router>
+        <AppContent
+          initialAlert={initialAlert}
+          onCloseAlert={() => setInitialAlert(null)}
+        />
+      </Router>
     </I18nextProvider>
   );
 }

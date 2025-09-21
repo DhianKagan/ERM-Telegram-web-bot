@@ -21,9 +21,13 @@ const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   hour12: false,
 });
 
-const compactDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
+const datePartFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
   month: "2-digit",
+  year: "numeric",
+});
+
+const timePartFmt = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
@@ -36,8 +40,8 @@ const formatDate = (value?: string) => {
     return null;
   }
   const full = fullDateTimeFmt.format(date).replace(", ", " ");
-  const compact = compactDateTimeFmt.format(date).replace(", ", " ");
-  const [datePart, timePart] = compact.split(" ");
+  const datePart = datePartFmt.format(date);
+  const timePart = timePartFmt.format(date);
   return {
     full,
     date: datePart || full,
@@ -52,11 +56,11 @@ const renderDateCell = (value?: string) => {
     <time
       dateTime={value}
       title={formatted.full}
-      className="inline-flex flex-wrap items-baseline gap-x-1 font-mono tabular-nums leading-tight"
+      className="inline-flex flex-col font-mono tabular-nums leading-tight"
     >
-      <span>{formatted.date}</span>
+      <span className="leading-tight">{formatted.date}</span>
       {formatted.time ? (
-        <span className="text-muted-foreground text-[0.85em]">
+        <span className="text-muted-foreground text-[0.85em] leading-tight">
           {formatted.time}
         </span>
       ) : null}
@@ -84,9 +88,9 @@ export default function taskColumns(
       header: "Номер",
       accessorKey: "task_number",
       meta: {
-        width: "clamp(2.75rem, 4vw, 3.5rem)",
-        minWidth: "2.75rem",
-        maxWidth: "3.5rem",
+        width: "clamp(3.25rem, 5vw, 4.25rem)",
+        minWidth: "3.25rem",
+        maxWidth: "4.25rem",
         cellClassName:
           "text-center font-mono tabular-nums sm:text-left sm:pl-1.5",
         headerClassName: "text-center sm:text-left",
@@ -109,9 +113,9 @@ export default function taskColumns(
       header: "Дата создания",
       accessorKey: "createdAt",
       meta: {
-        width: "clamp(6.5rem, 10vw, 8.5rem)",
-        minWidth: "6.25rem",
-        maxWidth: "8.75rem",
+        width: "clamp(6.75rem, 11vw, 8.75rem)",
+        minWidth: "6.5rem",
+        maxWidth: "9rem",
         cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
@@ -161,8 +165,8 @@ export default function taskColumns(
       accessorKey: "start_date",
       meta: {
         width: "clamp(6.75rem, 11vw, 8.75rem)",
-        minWidth: "6.25rem",
-        maxWidth: "8.75rem",
+        minWidth: "6.5rem",
+        maxWidth: "9rem",
         cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
@@ -172,8 +176,8 @@ export default function taskColumns(
       accessorKey: "due_date",
       meta: {
         width: "clamp(6.75rem, 11vw, 8.75rem)",
-        minWidth: "6.25rem",
-        maxWidth: "8.75rem",
+        minWidth: "6.5rem",
+        maxWidth: "9rem",
         cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),

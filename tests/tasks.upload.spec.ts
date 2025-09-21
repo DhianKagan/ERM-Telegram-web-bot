@@ -16,12 +16,14 @@ import * as os from 'os';
 const { Types } = require('../apps/api/node_modules/mongoose');
 const { checkFile } = require('../apps/api/src/utils/fileCheck');
 
-jest.mock('sharp', () => {
-  const toFile = jest.fn().mockResolvedValue(undefined);
-  const resize = jest.fn().mockReturnValue({ toFile });
-  const sharpMock = jest.fn().mockReturnValue({ resize });
-  return { __esModule: true, default: sharpMock };
-});
+const sharpToFileMock = jest.fn().mockResolvedValue(undefined);
+const sharpResizeMock = jest.fn().mockReturnValue({ toFile: sharpToFileMock });
+const sharpMock = jest.fn().mockReturnValue({ resize: sharpResizeMock });
+
+jest.mock('sharp', () => ({
+  __esModule: true,
+  default: sharpMock,
+}));
 
 const storedFiles: Array<{
   _id: unknown;
@@ -234,6 +236,21 @@ describe('Chunk upload', () => {
     expect(fs.existsSync(absolute)).toBe(true);
     expect(fs.readFileSync(absolute).toString()).toBe(content.toString());
     expect(storedPath.startsWith(`${currentUserId}/`)).toBe(true);
+  });
+
+  test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {
+    sharpToFileMock.mockRejectedValueOnce(new Error('pngload: libspng read error'));
+    const chunks = [Buffer.from('thumb fail image')];
+    const { attachment, storedPath } = await uploadViaChunks(
+      'thumb-fail',
+      chunks,
+      'preview.png',
+      'image/png',
+    );
+    expect(attachment.name).toBe('preview.png');
+    expect(attachment.thumbnailUrl).toBeUndefined();
+    const stored = storedFiles.find((f) => f.path === storedPath);
+    expect(stored?.thumbnailPath).toBeUndefined();
   });
 
   test('позволяет скачать собранный файл', async () => {

@@ -1,4 +1,5 @@
 # Игнорируем скачанные шрифты
 *.ttf
+*.woff2
 !fonts.css
 !.gitignore

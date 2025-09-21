@@ -32,9 +32,16 @@ const compactDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
 const formatDate = (value?: string) => {
   if (!value) return null;
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const full = fullDateTimeFmt.format(date).replace(", ", " ");
+  const compact = compactDateTimeFmt.format(date).replace(", ", " ");
+  const [datePart, timePart] = compact.split(" ");
   return {
-    full: fullDateTimeFmt.format(date).replace(", ", " "),
-    compact: compactDateTimeFmt.format(date).replace(", ", " "),
+    full,
+    date: datePart || full,
+    time: timePart,
   };
 };
 
@@ -45,9 +52,12 @@ const renderDateCell = (value?: string) => {
     <time
       dateTime={value}
       title={formatted.full}
-      className="font-mono tabular-nums whitespace-nowrap"
+      className="inline-flex flex-col font-mono tabular-nums leading-tight"
     >
-      {formatted.compact}
+      <span>{formatted.date}</span>
+      {formatted.time ? (
+        <span className="text-muted-foreground">{formatted.time}</span>
+      ) : null}
     </time>
   );
 };
@@ -74,7 +84,11 @@ export default function taskColumns(
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      meta: {
+        minWidth: "6.25rem",
+        maxWidth: "7.5rem",
+        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+      },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
@@ -103,13 +117,21 @@ export default function taskColumns(
     {
       header: "Начало",
       accessorKey: "start_date",
-      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      meta: {
+        minWidth: "6.25rem",
+        maxWidth: "7.5rem",
+        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+      },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Срок",
       accessorKey: "due_date",
-      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      meta: {
+        minWidth: "6.25rem",
+        maxWidth: "7.5rem",
+        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+      },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {

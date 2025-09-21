@@ -137,7 +137,7 @@ function extractLocatorKeyFromComponent(component: string, keys: string[]): stri
       try {
         value = decodeURIComponent(rawValue);
       } catch {
-        throw new Error('Ключ локатора содержит недопустимые символы');
+        continue;
       }
       const normalizedValue = normalizeLocatorKeyValue(value);
       if (!normalizedValue) {

@@ -5,6 +5,7 @@ import {
   parseLocatorLink as parseLocatorLinkUtil,
   type LocatorLinkData,
 } from '../utils/wialonLocator';
+import { fetch as undiciFetch } from 'undici';
 export type { LocatorLinkData } from '../utils/wialonLocator';
 
 export interface WialonLoginResult {
@@ -113,11 +114,21 @@ function isErrorResponse(data: unknown): data is ErrorResponse {
   );
 }
 
+let cachedFetch: typeof globalThis.fetch | null = null;
+
 function ensureFetch(): typeof globalThis.fetch {
-  if (typeof globalThis.fetch !== 'function') {
-    throw new Error('Глобальная функция fetch недоступна в текущем окружении');
+  if (cachedFetch) {
+    return cachedFetch;
   }
-  return globalThis.fetch;
+  if (typeof globalThis.fetch === 'function') {
+    cachedFetch = globalThis.fetch.bind(globalThis);
+    return cachedFetch;
+  }
+  if (typeof undiciFetch === 'function') {
+    cachedFetch = (undiciFetch as unknown as typeof globalThis.fetch).bind(globalThis);
+    return cachedFetch;
+  }
+  throw new Error('Глобальная функция fetch недоступна в текущем окружении');
 }
 
 async function parseJson(response: Response): Promise<unknown> {

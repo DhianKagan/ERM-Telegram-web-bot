@@ -68,23 +68,31 @@ async function createThumbnail(
   const filePath = path.join(file.destination, file.filename);
   const thumbName = `thumb_${path.parse(file.filename).name}.jpg`;
   const thumbPath = path.join(file.destination, thumbName);
-  if (file.mimetype.startsWith('image/')) {
-    await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
-    return relativeToUploads(thumbPath);
-  }
-  if (file.mimetype.startsWith('video/')) {
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(filePath)
-        .on('end', () => resolve())
-        .on('error', reject)
-        .screenshots({
-          count: 1,
-          filename: thumbName,
-          folder: file.destination,
-          size: '320x?',
-        });
+  try {
+    if (file.mimetype.startsWith('image/')) {
+      await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
+      return relativeToUploads(thumbPath);
+    }
+    if (file.mimetype.startsWith('video/')) {
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(filePath)
+          .on('end', () => resolve())
+          .on('error', reject)
+          .screenshots({
+            count: 1,
+            filename: thumbName,
+            folder: file.destination,
+            size: '320x?',
+          });
+      });
+      return relativeToUploads(thumbPath);
+    }
+  } catch (error) {
+    await fs.promises.unlink(thumbPath).catch(() => undefined);
+    await writeLog('Не удалось создать миниатюру', 'warn', {
+      path: filePath,
+      error: (error as Error).message,
     });
-    return relativeToUploads(thumbPath);
   }
   return undefined;
 }

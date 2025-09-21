@@ -8,11 +8,9 @@ import { ensureWebpackNonce } from "../utils/ensureWebpackNonce";
 ensureWebpackNonce();
 
 const LazyCKEditor = React.lazy(async () => {
-  const reactEntry = "@ckeditor/ckeditor5-react";
-  const buildEntry = "@ckeditor/ckeditor5-build-classic";
   const [{ CKEditor }, { default: ClassicEditor }] = await Promise.all([
-    import(/* @vite-ignore */ reactEntry),
-    import(/* @vite-ignore */ buildEntry),
+    import("@ckeditor/ckeditor5-react"),
+    import("@ckeditor/ckeditor5-build-classic"),
   ]);
   type Props = React.ComponentProps<typeof CKEditor>;
   return {

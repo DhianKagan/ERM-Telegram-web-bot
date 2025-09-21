@@ -12,7 +12,7 @@ const statusColorMap: Record<Task["status"], string> = {
   Выполнена: "text-green-600",
 };
 
-const dateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
+const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
@@ -21,8 +21,36 @@ const dateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   hour12: false,
 });
 
-const formatDate = (v?: string) =>
-  v ? dateTimeFmt.format(new Date(v)).replace(", ", " ") : "";
+const compactDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const formatDate = (value?: string) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return {
+    full: fullDateTimeFmt.format(date).replace(", ", " "),
+    compact: compactDateTimeFmt.format(date).replace(", ", " "),
+  };
+};
+
+const renderDateCell = (value?: string) => {
+  const formatted = formatDate(value);
+  if (!formatted) return "";
+  return (
+    <time
+      dateTime={value}
+      title={formatted.full}
+      className="font-mono tabular-nums whitespace-nowrap"
+    >
+      {formatted.compact}
+    </time>
+  );
+};
 
 export type TaskRow = Task & Record<string, any>;
 
@@ -33,13 +61,21 @@ export default function taskColumns(
     {
       header: "Номер",
       accessorKey: "task_number",
-      meta: { minWidth: "3rem", maxWidth: "4.5rem" },
+      meta: { minWidth: "2.75rem", maxWidth: "3.5rem" },
+      cell: (p) => {
+        const value = p.getValue<string>() || "";
+        return (
+          <span className="font-mono tabular-nums whitespace-nowrap">
+            {value}
+          </span>
+        );
+      },
     },
     {
       header: "Дата создания",
       accessorKey: "createdAt",
-      meta: { minWidth: "7rem", maxWidth: "9.5rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
+      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Название",
@@ -67,14 +103,14 @@ export default function taskColumns(
     {
       header: "Начало",
       accessorKey: "start_date",
-      meta: { minWidth: "7rem", maxWidth: "9.5rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
+      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Срок",
       accessorKey: "due_date",
-      meta: { minWidth: "7rem", maxWidth: "9.5rem" },
-      cell: (p) => formatDate(p.getValue<string>()),
+      meta: { minWidth: "6.25rem", maxWidth: "7.5rem" },
+      cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Тип",

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Назначение файла: проверяет наличие локальных шрифтов и скачивает недостающие.
-// Основные модули: fs/promises, path, url, fetch
+// Назначение файла: проверяет наличие локальных шрифтов, скачивает недостающие и конвертирует их в WOFF2.
+// Основные модули: fs/promises, path, url, fetch, dns, child_process
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import dns from 'node:dns';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { convertFonts } from './convert-fonts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,6 +101,8 @@ async function ensureFonts() {
   if (downloaded > 0) {
     console.log(`Скачано шрифтов: ${downloaded}`);
   }
+
+  await convertFonts(fontsDir);
 }
 
 ensureFonts().catch((error) => {

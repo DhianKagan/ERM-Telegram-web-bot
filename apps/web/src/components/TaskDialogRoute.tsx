@@ -1,10 +1,11 @@
 // Назначение файла: показ TaskDialog поверх текущей страницы
 // Отображает TaskDialog при наличии query-параметров
-import React from "react";
+import React, { Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import TaskDialog from "./TaskDialog";
 import useTasks from "../context/useTasks";
 import Modal from "./Modal";
+
+const TaskDialogLazy = React.lazy(() => import("./TaskDialog"));
 
 export default function TaskDialogRoute() {
   const [params] = useSearchParams();
@@ -20,13 +21,15 @@ export default function TaskDialogRoute() {
   };
   return (
     <Modal open onClose={close}>
-      <TaskDialog
-        id={id || undefined}
-        onClose={close}
-        onSave={() => {
-          refresh();
-        }}
-      />
+      <Suspense fallback={<div>Загрузка диалога...</div>}>
+        <TaskDialogLazy
+          id={id || undefined}
+          onClose={close}
+          onSave={() => {
+            refresh();
+          }}
+        />
+      </Suspense>
     </Modal>
   );
 }

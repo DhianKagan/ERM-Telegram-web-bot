@@ -33,7 +33,9 @@ interface DataTableProps<T> {
 interface ColumnMeta {
   minWidth?: string;
   maxWidth?: string;
+  width?: string;
   cellClassName?: string;
+  headerClassName?: string;
 }
 
 export default function DataTable<T>({
@@ -78,15 +80,28 @@ export default function DataTable<T>({
                 const meta =
                   (header.column.columnDef.meta as ColumnMeta | undefined) ||
                   {};
+                const baseSize = header.getSize();
+                const computedWidth =
+                  typeof meta.width === "string"
+                    ? meta.width
+                    : Number.isFinite(baseSize)
+                    ? `${baseSize}px`
+                    : undefined;
+                const headerClassName = [
+                  "break-words whitespace-normal",
+                  meta.headerClassName,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
                 return (
                   <TableHead
                     key={header.id}
                     style={{
-                      width: header.getSize(),
+                      width: computedWidth,
                       minWidth: meta.minWidth ?? "4rem",
                       maxWidth: meta.maxWidth ?? "16rem",
                     }}
-                    className="break-words whitespace-normal"
+                    className={headerClassName}
                     // фиксируем ширину ячейки заголовка
                   >
                     {header.isPlaceholder
@@ -111,6 +126,13 @@ export default function DataTable<T>({
               {row.getVisibleCells().map((cell) => {
                 const meta =
                   (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
+                const baseSize = cell.column.getSize();
+                const computedWidth =
+                  typeof meta.width === "string"
+                    ? meta.width
+                    : Number.isFinite(baseSize)
+                    ? `${baseSize}px`
+                    : undefined;
                 const cellClassName = [
                   "break-words whitespace-normal",
                   meta.cellClassName,
@@ -121,7 +143,7 @@ export default function DataTable<T>({
                   <TableCell
                     key={cell.id}
                     style={{
-                      width: cell.column.getSize(),
+                      width: computedWidth,
                       minWidth: meta.minWidth ?? "4rem",
                       maxWidth: meta.maxWidth ?? "16rem",
                     }}

@@ -52,11 +52,13 @@ const renderDateCell = (value?: string) => {
     <time
       dateTime={value}
       title={formatted.full}
-      className="inline-flex flex-col font-mono tabular-nums leading-tight"
+      className="inline-flex flex-wrap items-baseline gap-x-1 font-mono tabular-nums leading-tight"
     >
       <span>{formatted.date}</span>
       {formatted.time ? (
-        <span className="text-muted-foreground">{formatted.time}</span>
+        <span className="text-muted-foreground text-[0.85em]">
+          {formatted.time}
+        </span>
       ) : null}
     </time>
   );
@@ -81,14 +83,21 @@ export default function taskColumns(
     {
       header: "Номер",
       accessorKey: "task_number",
-      meta: { minWidth: "2.75rem", maxWidth: "3.5rem" },
+      meta: {
+        width: "clamp(2.75rem, 4vw, 3.5rem)",
+        minWidth: "2.75rem",
+        maxWidth: "3.5rem",
+        cellClassName:
+          "text-center font-mono tabular-nums sm:text-left sm:pl-1.5",
+        headerClassName: "text-center sm:text-left",
+      },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         const numericMatch = value.match(/\d+/);
         const shortValue = numericMatch ? numericMatch[0] : value;
         return (
           <span
-            className="font-mono tabular-nums whitespace-nowrap"
+            className="block whitespace-nowrap"
             title={value}
           >
             {shortValue}
@@ -100,16 +109,21 @@ export default function taskColumns(
       header: "Дата создания",
       accessorKey: "createdAt",
       meta: {
+        width: "clamp(6.5rem, 10vw, 8.5rem)",
         minWidth: "6.25rem",
-        maxWidth: "7.5rem",
-        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+        maxWidth: "8.75rem",
+        cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Название",
       accessorKey: "title",
-      meta: { minWidth: "7rem", maxWidth: "14rem" },
+      meta: {
+        width: "clamp(9rem, 24vw, 18rem)",
+        minWidth: "7rem",
+        maxWidth: "18rem",
+      },
       cell: (p) => {
         const v = p.getValue<string>() || "";
         const compact = compactText(v, 48);
@@ -123,7 +137,11 @@ export default function taskColumns(
     {
       header: "Статус",
       accessorKey: "status",
-      meta: { minWidth: "4.5rem", maxWidth: "6.5rem" },
+      meta: {
+        width: "clamp(4.5rem, 8vw, 6.5rem)",
+        minWidth: "4.5rem",
+        maxWidth: "6.5rem",
+      },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         return <span className={statusColorMap[value] || ""}>{value}</span>;
@@ -132,15 +150,20 @@ export default function taskColumns(
     {
       header: "Приоритет",
       accessorKey: "priority",
-      meta: { minWidth: "4.5rem", maxWidth: "6.5rem" },
+      meta: {
+        width: "clamp(4.5rem, 7vw, 6.5rem)",
+        minWidth: "4.5rem",
+        maxWidth: "6.5rem",
+      },
     },
     {
       header: "Начало",
       accessorKey: "start_date",
       meta: {
+        width: "clamp(6.75rem, 11vw, 8.75rem)",
         minWidth: "6.25rem",
-        maxWidth: "7.5rem",
-        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+        maxWidth: "8.75rem",
+        cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
@@ -148,21 +171,30 @@ export default function taskColumns(
       header: "Срок",
       accessorKey: "due_date",
       meta: {
+        width: "clamp(6.75rem, 11vw, 8.75rem)",
         minWidth: "6.25rem",
-        maxWidth: "7.5rem",
-        cellClassName: "flex flex-col gap-0.5 text-xs sm:text-sm",
+        maxWidth: "8.75rem",
+        cellClassName: "text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
       header: "Тип",
       accessorKey: "task_type",
-      meta: { minWidth: "4.5rem", maxWidth: "6.5rem" },
+      meta: {
+        width: "clamp(4.5rem, 8vw, 6.5rem)",
+        minWidth: "4.5rem",
+        maxWidth: "6.5rem",
+      },
     },
     {
       header: "Старт",
       accessorKey: "start_location",
-      meta: { minWidth: "6rem", maxWidth: "9rem" },
+      meta: {
+        width: "clamp(6.5rem, 18vw, 12rem)",
+        minWidth: "6rem",
+        maxWidth: "12rem",
+      },
       cell: ({ row }) => {
         const name = row.original.start_location || "";
         const compact = compactText(name, 36);
@@ -187,7 +219,11 @@ export default function taskColumns(
     {
       header: "Финиш",
       accessorKey: "end_location",
-      meta: { minWidth: "6rem", maxWidth: "9rem" },
+      meta: {
+        width: "clamp(6.5rem, 18vw, 12rem)",
+        minWidth: "6rem",
+        maxWidth: "12rem",
+      },
       cell: ({ row }) => {
         const name = row.original.end_location || "";
         const compact = compactText(name, 36);
@@ -212,12 +248,22 @@ export default function taskColumns(
     {
       header: "Км",
       accessorKey: "route_distance_km",
-      meta: { minWidth: "3rem", maxWidth: "4.5rem" },
+      meta: {
+        width: "clamp(3.25rem, 6vw, 4.75rem)",
+        minWidth: "3rem",
+        maxWidth: "4.75rem",
+        cellClassName: "text-center sm:text-left",
+        headerClassName: "text-center sm:text-left",
+      },
     },
     {
       header: "Исполнители",
       accessorKey: "assignees",
-      meta: { minWidth: "6rem", maxWidth: "10rem" },
+      meta: {
+        width: "clamp(7rem, 20vw, 13rem)",
+        minWidth: "6rem",
+        maxWidth: "13rem",
+      },
       cell: ({ row }) => {
         const ids: number[] =
           row.original.assignees ||

@@ -56,7 +56,39 @@ const allowed: Record<string, string[]> = {
   'video/x-matroska': ['.mkv'],
 };
 
+const allowedExtensions = new Set(
+  Object.values(allowed).flatMap((values) => values.map((ext) => ext.toLowerCase())),
+);
+
+const extensionToMime = new Map<string, string>();
+for (const [mime, extensions] of Object.entries(allowed)) {
+  for (const extension of extensions) {
+    const extLower = extension.toLowerCase();
+    if (!extensionToMime.has(extLower)) {
+      extensionToMime.set(extLower, mime);
+    }
+  }
+}
+
 export function checkFile(file: Express.Multer.File): boolean {
   const ext = path.extname(file.originalname).toLowerCase();
-  return allowed[file.mimetype]?.includes(ext) ?? false;
+  if (!ext) {
+    return false;
+  }
+  const mime = file.mimetype.toLowerCase();
+  const matches = allowed[mime];
+  if (matches) {
+    return matches.includes(ext);
+  }
+  if (mime === '' || mime === 'application/octet-stream' || mime === 'binary/octet-stream') {
+    const isAllowed = allowedExtensions.has(ext);
+    if (isAllowed) {
+      const canonical = extensionToMime.get(ext);
+      if (canonical) {
+        file.mimetype = canonical;
+      }
+    }
+    return isAllowed;
+  }
+  return false;
 }

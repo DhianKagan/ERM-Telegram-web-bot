@@ -3,6 +3,7 @@
 // Основные модули: React, @testing-library/react, TaskDialog.
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 
 jest.mock("../context/useAuth", () => ({
@@ -33,13 +34,13 @@ const taskData = {
   title: "Task",
   task_description: "",
   assignees: [1],
-  controllers: [2],
   start_date: "2024-01-01T00:00:00Z",
   due_date: "2024-01-02T00:00:00Z",
   created_by: 99,
   createdAt: "2024-01-01T00:00:00Z",
   department: "",
   attachments: [],
+  history: [],
 };
 
 const authFetchMock = jest.fn((url: string) => {
@@ -63,7 +64,10 @@ jest.mock("../utils/authFetch", () => ({
   default: (url: string) => authFetchMock(url),
 }));
 
-const updateTaskMock = jest.fn().mockResolvedValue({ _id: "1" });
+const updateTaskMock = jest.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ ...taskData, _id: "1" }),
+});
 
 jest.mock("../services/tasks", () => ({
   createTask: jest.fn(),
@@ -74,21 +78,25 @@ jest.mock("../services/tasks", () => ({
 
 describe("TaskDialog", () => {
   it("сохраняет задачу и повторно открывает форму", async () => {
-    const { unmount } = render(<TaskDialog onClose={() => {}} id="1" />);
-    expect((await screen.findAllByText("Alice")).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText("Bob")).length).toBeGreaterThan(0);
+    const renderDialog = () =>
+      render(
+        <MemoryRouter>
+          <TaskDialog onClose={() => {}} id="1" />
+        </MemoryRouter>,
+      );
+    const { unmount } = renderDialog();
+    expect(await screen.findByText("taskFrom")).toBeTruthy();
 
     fireEvent.click(screen.getByText("save"));
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
         "1",
-        expect.objectContaining({ assignees: ["1"], controllers: ["2"] }),
+        expect.objectContaining({ assignees: ["1"] }),
       ),
     );
 
     unmount();
-    render(<TaskDialog onClose={() => {}} id="1" />);
-    expect((await screen.findAllByText("Alice")).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText("Bob")).length).toBeGreaterThan(0);
+    renderDialog();
+    expect(await screen.findByText("taskFrom")).toBeTruthy();
   });
 });

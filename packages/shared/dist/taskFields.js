@@ -28,7 +28,7 @@ exports.taskFields = [
         label: 'Тип транспорта',
         type: 'select',
         options: constants_1.TRANSPORT_TYPES,
-        default: constants_1.TRANSPORT_TYPES[1],
+        default: constants_1.TRANSPORT_TYPES[0],
     },
     { name: 'cargo_length_m', label: 'Длина, м', type: 'number' },
     { name: 'cargo_width_m', label: 'Ширина, м', type: 'number' },

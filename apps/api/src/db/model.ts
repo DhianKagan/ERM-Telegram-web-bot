@@ -57,7 +57,7 @@ export interface Logistics {
   start_date?: Date;
   end_date?: Date;
   transport?: string;
-  transport_type?: 'Легковой' | 'Грузовой';
+  transport_type?: 'Без транспорта' | 'Легковой' | 'Грузовой';
 }
 
 const logisticsSchema = new Schema<Logistics>(
@@ -69,8 +69,8 @@ const logisticsSchema = new Schema<Logistics>(
     transport: String,
     transport_type: {
       type: String,
-      enum: ['Легковой', 'Грузовой'],
-      default: 'Легковой',
+      enum: ['Без транспорта', 'Легковой', 'Грузовой'],
+      default: 'Без транспорта',
     },
   },
   { _id: false },
@@ -212,7 +212,7 @@ export interface TaskAttrs {
   comment?: string;
   files?: string[];
   attachments?: Attachment[];
-  transport_type?: 'Легковой' | 'Грузовой';
+  transport_type?: 'Без транспорта' | 'Легковой' | 'Грузовой';
   cargo_length_m?: number;
   cargo_width_m?: number;
   cargo_height_m?: number;

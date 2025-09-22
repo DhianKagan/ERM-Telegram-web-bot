@@ -10,12 +10,12 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto rounded-xl border border-slate-200 shadow-sm lg:overflow-x-visible"
+      className="relative w-full overflow-x-auto rounded-xl border border-border dark:border-border/60 shadow-sm lg:overflow-x-visible"
     >
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-[12px] leading-tight text-gray-900 table-auto font-ui border-collapse",
+          "w-full caption-bottom text-[12px] leading-tight text-foreground dark:text-foreground table-auto font-ui border-collapse",
           "sm:text-[13px]",
           className,
         )}
@@ -29,7 +29,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-slate-50", className)}
+      className={cn("bg-background dark:bg-background", className)}
       {...props}
     />
   );
@@ -63,7 +63,10 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "hover:bg-slate-100 data-[state=selected]:bg-slate-100 transition-colors",
+        "border-b border-border dark:border-border/60 transition-colors",
+        "hover:bg-muted/60 dark:hover:bg-muted/40",
+        "data-[state=selected]:bg-muted data-[state=selected]:text-foreground",
+        "dark:data-[state=selected]:bg-muted/50 dark:data-[state=selected]:text-foreground",
         "min-h-[2rem] text-[12px] sm:min-h-[2.25rem] sm:text-sm",
         className,
       )}
@@ -77,7 +80,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground border border-slate-200 px-2 py-2 text-left align-middle font-semibold",
+        "text-foreground border border-border dark:border-border/60 px-2 py-2 text-left align-middle font-semibold",
         "text-[11px] leading-snug sm:px-2.5 sm:text-[13px]",
         "whitespace-normal [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
@@ -92,7 +95,9 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "border border-slate-200 px-2 py-1.5 align-middle text-[12px] leading-snug",
+        "border border-border dark:border-border/60 px-2 py-1.5 align-middle text-[12px] leading-snug",
+        "data-[state=selected]:bg-muted data-[state=selected]:text-foreground",
+        "dark:data-[state=selected]:bg-muted/50 dark:data-[state=selected]:text-foreground",
         "sm:px-2.5 sm:py-2 sm:text-sm",
         "whitespace-normal [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,

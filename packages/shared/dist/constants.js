@@ -10,7 +10,7 @@ exports.TASK_TYPES = [
     'Построить',
     'Починить',
 ];
-exports.PRIORITIES = ['Срочно', 'В течение дня', 'Бессрочно'];
+exports.PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'];
 exports.TRANSPORT_TYPES = ['Пешком', 'Авто', 'Дрон'];
 exports.PAYMENT_METHODS = [
     'Наличные',

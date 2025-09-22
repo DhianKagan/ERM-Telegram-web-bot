@@ -52,7 +52,6 @@ interface InitialValues {
   paymentMethod: string;
   status: string;
   creator: string;
-  department: string;
   assignees: string[];
   controllers: string[];
   start: string;
@@ -63,6 +62,11 @@ interface InitialValues {
   dueDate: string;
   attachments: Attachment[];
   distanceKm: number | null;
+  cargoLength: string;
+  cargoWidth: string;
+  cargoHeight: string;
+  cargoVolume: string;
+  cargoWeight: string;
 }
 
 const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -87,6 +91,25 @@ const normalizePriorityOption = (value?: string | null) => {
     return undefined;
   }
   return /^бессроч/i.test(trimmed) ? "До выполнения" : trimmed;
+};
+
+const parseMetricInput = (value: string): number | null => {
+  const normalized = value.trim().replace(/\s+/g, "").replace(/,/g, ".");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed >= 0 ? parsed : null;
+};
+
+const formatMetricValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return "";
 };
 
 const toIsoString = (value: unknown): string => {
@@ -217,13 +240,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const DEFAULT_PAYMENT =
     fields.find((f) => f.name === "payment_method")?.default || "";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
-  const [departments, setDepartments] = React.useState<
-    {
-      _id: string;
-      name: string;
-    }[]
-  >([]);
-  const [department, setDepartment] = React.useState("");
 
   const makeDefaultDate = (h: number) => {
     const d = new Date();
@@ -266,6 +282,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
+  const [cargoLength, setCargoLength] = React.useState("");
+  const [cargoWidth, setCargoWidth] = React.useState("");
+  const [cargoHeight, setCargoHeight] = React.useState("");
+  const [cargoVolume, setCargoVolume] = React.useState("");
+  const [cargoWeight, setCargoWeight] = React.useState("");
   const [creator, setCreator] = React.useState("");
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
@@ -332,10 +353,30 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   React.useEffect(() => {
-    authFetch("/api/v1/collections/departments")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setDepartments(d));
-  }, []);
+    const lengthValue = parseMetricInput(cargoLength);
+    const widthValue = parseMetricInput(cargoWidth);
+    const heightValue = parseMetricInput(cargoHeight);
+    if (
+      lengthValue !== null &&
+      widthValue !== null &&
+      heightValue !== null
+    ) {
+      const computed = lengthValue * widthValue * heightValue;
+      if (Number.isFinite(computed)) {
+        const formatted = computed.toFixed(3);
+        if (formatted !== cargoVolume) setCargoVolume(formatted);
+      } else if (cargoVolume !== '') {
+        setCargoVolume('');
+      }
+      return;
+    }
+    if (
+      (cargoLength.trim() || cargoWidth.trim() || cargoHeight.trim()) &&
+      cargoVolume !== ''
+    ) {
+      setCargoVolume('');
+    }
+  }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
   React.useEffect(() => {
     setEditing(true);
@@ -377,7 +418,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         paymentMethod: DEFAULT_PAYMENT,
         status: DEFAULT_STATUS,
         creator: user ? String(user.telegram_id) : "",
-        department: "",
         assignees: [],
         start: "",
         startLink: "",
@@ -388,6 +428,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         controllers: [],
         attachments: [],
         distanceKm: null,
+        cargoLength: "",
+        cargoWidth: "",
+        cargoHeight: "",
+        cargoVolume: "",
+        cargoWeight: "",
       };
       reset({
         title: "",
@@ -397,7 +442,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startDate: DEFAULT_START_DATE,
         dueDate: DEFAULT_DUE_DATE,
       });
-      setDepartment("");
+      setCargoLength("");
+      setCargoWidth("");
+      setCargoHeight("");
+      setCargoVolume("");
+      setCargoWeight("");
       setDueOffset(24 * 60 * 60 * 1000);
     }
   }, [
@@ -466,13 +515,21 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         setTransportType(curTransport);
         setPaymentMethod(curPayment);
         setStatus(curStatus);
+        setCargoLength(formatMetricValue(t.cargo_length_m));
+        setCargoWidth(formatMetricValue(t.cargo_width_m));
+        setCargoHeight(formatMetricValue(t.cargo_height_m));
+        setCargoWeight(formatMetricValue(t.cargo_weight_kg));
+        const volumeValue =
+          typeof t.cargo_volume_m3 === "number"
+            ? String(t.cargo_volume_m3)
+            : formatMetricValue(t.cargo_volume_m3);
+        setCargoVolume(volumeValue);
         setCreator(String(t.created_by || ""));
         setStart(t.start_location || "");
         setStartLink(t.start_location_link || "");
         setEnd(t.end_location || "");
         setEndLink(t.end_location_link || "");
         setAttachments((t.attachments as Attachment[]) || []);
-        setDepartment(String(t.department || ""));
         setUsers((p) => {
           const list = [...p];
           const uMap = (d.users || {}) as Record<string, UserBrief>;
@@ -495,7 +552,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           paymentMethod: curPayment,
           status: curStatus,
           creator: String(t.created_by || ""),
-          department: String(t.department || ""),
           assignees: formValues.assignees,
           start: t.start_location || "",
           startLink: t.start_location_link || "",
@@ -509,6 +565,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             typeof t.route_distance_km === "number"
               ? t.route_distance_km
               : null,
+          cargoLength: formatMetricValue(t.cargo_length_m),
+          cargoWidth: formatMetricValue(t.cargo_width_m),
+          cargoHeight: formatMetricValue(t.cargo_height_m),
+          cargoVolume: volumeValue,
+          cargoWeight: formatMetricValue(t.cargo_weight_kg),
         };
       });
   }, [
@@ -586,7 +647,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         task_description: formData.description,
         comment,
         priority,
-        department,
         transport_type: transportType,
         payment_method: paymentMethod,
         status,
@@ -600,6 +660,24 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         start_date: formData.startDate || DEFAULT_START_DATE,
         due_date: formData.dueDate || DEFAULT_DUE_DATE,
       };
+      const lengthValue = parseMetricInput(cargoLength);
+      const widthValue = parseMetricInput(cargoWidth);
+      const heightValue = parseMetricInput(cargoHeight);
+      const weightValue = parseMetricInput(cargoWeight);
+      const volumeValue =
+        lengthValue !== null && widthValue !== null && heightValue !== null
+          ? lengthValue * widthValue * heightValue
+          : parseMetricInput(cargoVolume);
+      if (lengthValue !== null) payload.cargo_length_m = lengthValue;
+      else if (isEdit) payload.cargo_length_m = "";
+      if (widthValue !== null) payload.cargo_width_m = widthValue;
+      else if (isEdit) payload.cargo_width_m = "";
+      if (heightValue !== null) payload.cargo_height_m = heightValue;
+      else if (isEdit) payload.cargo_height_m = "";
+      if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
+      else if (isEdit) payload.cargo_volume_m3 = "";
+      if (weightValue !== null) payload.cargo_weight_kg = weightValue;
+      else if (isEdit) payload.cargo_weight_kg = "";
       if (startCoordinates) payload.startCoordinates = startCoordinates;
       if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
       if (distanceKm !== null) payload.route_distance_km = distanceKm;
@@ -645,8 +723,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               setTransportType(curTransport);
               setPaymentMethod(curPayment);
               setStatus(curStatus);
+              setCargoLength(formatMetricValue(t.cargo_length_m));
+              setCargoWidth(formatMetricValue(t.cargo_width_m));
+              setCargoHeight(formatMetricValue(t.cargo_height_m));
+              const responseVolume =
+                typeof t.cargo_volume_m3 === "number"
+                  ? String(t.cargo_volume_m3)
+                  : formatMetricValue(t.cargo_volume_m3);
+              setCargoVolume(responseVolume);
+              setCargoWeight(formatMetricValue(t.cargo_weight_kg));
               setCreator(String(t.created_by || ""));
-              setDepartment(String(t.department || ""));
               setStart(t.start_location || "");
               setStartLink(t.start_location_link || "");
               setEnd(t.end_location || "");
@@ -676,7 +762,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 paymentMethod: curPayment,
                 status: curStatus,
                 creator: String(t.created_by || ""),
-                department: String(t.department || ""),
                 assignees,
                 start: t.start_location || "",
                 startLink: t.start_location_link || "",
@@ -690,6 +775,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   typeof t.route_distance_km === "number"
                     ? t.route_distance_km
                     : null,
+                cargoLength: formatMetricValue(t.cargo_length_m),
+                cargoWidth: formatMetricValue(t.cargo_width_m),
+                cargoHeight: formatMetricValue(t.cargo_height_m),
+                cargoVolume: responseVolume,
+                cargoWeight: formatMetricValue(t.cargo_weight_kg),
               };
             }
           });
@@ -738,7 +828,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setPaymentMethod(d.paymentMethod);
     setStatus(d.status);
     setCreator(d.creator);
-    setDepartment(d.department);
+    setCargoLength(d.cargoLength);
+    setCargoWidth(d.cargoWidth);
+    setCargoHeight(d.cargoHeight);
+    setCargoVolume(d.cargoVolume);
+    setCargoWeight(d.cargoWeight);
     setStart(d.start);
     setStartLink(d.startLink);
     setEnd(d.end);
@@ -965,24 +1059,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("department")}
-              </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                <option value="">{t("selectOption")}</option>
-                {departments.map((d) => (
-                  <option key={d._id} value={d._id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
@@ -1155,6 +1231,73 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+            <div>
+              <label className="block text-sm font-medium">
+                {t("cargoLength")}
+              </label>
+              <input
+                value={cargoLength}
+                onChange={(e) => setCargoLength(e.target.value)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="0"
+                inputMode="decimal"
+                disabled={!editing}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("cargoWidth")}
+              </label>
+              <input
+                value={cargoWidth}
+                onChange={(e) => setCargoWidth(e.target.value)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="0"
+                inputMode="decimal"
+                disabled={!editing}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("cargoHeight")}
+              </label>
+              <input
+                value={cargoHeight}
+                onChange={(e) => setCargoHeight(e.target.value)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="0"
+                inputMode="decimal"
+                disabled={!editing}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("cargoVolume")}
+              </label>
+              <input
+                value={cargoVolume}
+                readOnly
+                className="w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="—"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+            <div>
+              <label className="block text-sm font-medium">
+                {t("cargoWeight")}
+              </label>
+              <input
+                value={cargoWeight}
+                onChange={(e) => setCargoWeight(e.target.value)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="0"
+                inputMode="decimal"
+                disabled={!editing}
+              />
             </div>
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">

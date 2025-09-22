@@ -68,6 +68,11 @@
   "title": "Title",
   "titleRequired": "Title is required",
   "transportType": "Transport type",
+  "cargoLength": "Length, m",
+  "cargoWidth": "Width, m",
+  "cargoHeight": "Height, m",
+  "cargoVolume": "Volume, m³",
+  "cargoWeight": "Weight, kg",
   "uploadFailed": "Upload failed",
   "storage": {
     "title": "Files",

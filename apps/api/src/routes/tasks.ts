@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import { Router, RequestHandler } from 'express';
+import JSON5 from 'json5';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
 import container from '../di';
@@ -382,6 +383,28 @@ router.post(
  * Нормализует массивы и парсит вложения из JSON-строк.
  * Поддерживает поля исполнителей, контролёров и вложений.
  */
+const parseAttachments = (
+  raw: string,
+): BodyWithAttachments['attachments'] => {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const parsers = [JSON.parse, JSON5.parse];
+  for (const parse of parsers) {
+    try {
+      const parsed = parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (item): item is NonNullable<BodyWithAttachments['attachments']>[number] =>
+            typeof item === 'object' && item !== null,
+        );
+      }
+    } catch {
+      // пробуем следующий парсер
+    }
+  }
+  return [];
+};
+
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];
@@ -389,13 +412,16 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
       (req.body as Record<string, unknown>)[k] = [v];
     }
   });
-  const at = (req.body as BodyWithAttachments).attachments;
-  if (typeof at === 'string') {
-    try {
-      (req.body as BodyWithAttachments).attachments = JSON.parse(at);
-    } catch {
-      (req.body as BodyWithAttachments).attachments = [];
-    }
+  const attachmentsField = (req.body as BodyWithAttachments).attachments;
+  if (typeof attachmentsField === 'string') {
+    (req.body as BodyWithAttachments).attachments = parseAttachments(
+      attachmentsField,
+    );
+  } else if (Array.isArray(attachmentsField)) {
+    (req.body as BodyWithAttachments).attachments = attachmentsField.filter(
+      (item): item is NonNullable<BodyWithAttachments['attachments']>[number] =>
+        typeof item === 'object' && item !== null,
+    );
   }
   next();
 };

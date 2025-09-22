@@ -288,7 +288,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { ref: titleFieldRef, ...titleFieldRest } = register("title");
   const titleValue = watch("title");
+  const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const handleTitleRef = React.useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      titleRef.current = node;
+      titleFieldRef(node);
+    },
+    [titleFieldRef],
+  );
+  React.useEffect(() => {
+    const node = titleRef.current;
+    if (!node) return;
+    node.style.height = "";
+    node.style.height = `${node.scrollHeight}px`;
+  }, [titleValue]);
   const resolveUserName = React.useCallback(
     (id: number) => {
       const person = users.find((u) => u.telegram_id === id);
@@ -844,11 +859,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <label className="block text-sm font-medium">
               {t("taskTitle")}
             </label>
-            <input
-              {...register("title")}
+            <textarea
+              {...titleFieldRest}
+              ref={handleTitleRef}
+              rows={1}
               placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring min-h-[44px] resize-none"
               disabled={!editing}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                }
+              }}
             />
             {errors.title && (
               <p className="text-sm text-red-600">{errors.title.message}</p>

@@ -19,6 +19,9 @@ function stripTags(html: unknown): string {
 import userLink from './userLink';
 import type { Task, User } from 'shared';
 
+const toPriorityDisplay = (value: string) =>
+  /^бессроч/i.test(value.trim()) ? 'До выполнения' : value;
+
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
 type TaskData = Task & {
@@ -87,11 +90,14 @@ export default function formatTask(
   if (extra.length) lines.push(extra.join(' • '));
 
   const ps: string[] = [];
-  if (task.priority) ps.push(`*Приоритет:* _${mdEscape(task.priority)}_`);
+  if (task.priority) {
+    const priority = toPriorityDisplay(task.priority);
+    ps.push(`*Приоритет:* _${mdEscape(priority)}_`);
+  }
   if (task.status) ps.push(`🛠 *Статус:* _${mdEscape(task.status)}_`);
   if (ps.length) lines.push(`🔁 ${ps.join(' • ')}`);
 
-  if (task.route_distance_km) {
+  if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
     lines.push(
       `🗺 *Расстояние:* ${mdEscape(String(task.route_distance_km))} км`,
     );

@@ -9,7 +9,7 @@ export const TASK_TYPES = [
   'Починить',
 ] as const;
 
-export const PRIORITIES = ['Срочно', 'В течение дня', 'Бессрочно'] as const;
+export const PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'] as const;
 
 export const TRANSPORT_TYPES = ['Пешком', 'Авто', 'Дрон'] as const;
 

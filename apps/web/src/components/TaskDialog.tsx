@@ -78,6 +78,17 @@ const toRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
+const normalizePriorityOption = (value?: string | null) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return /^бессроч/i.test(trimmed) ? "До выполнения" : trimmed;
+};
+
 const toIsoString = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "number") {
@@ -425,7 +436,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         if (!d) return;
         const t = d.task || d;
         const curTaskType = t.task_type || DEFAULT_TASK_TYPE;
-        const curPriority = t.priority || DEFAULT_PRIORITY;
+        const curPriority =
+          normalizePriorityOption(t.priority) || DEFAULT_PRIORITY;
         const curTransport = t.transport_type || DEFAULT_TRANSPORT;
         const curPayment = t.payment_method || DEFAULT_PAYMENT;
         const curStatus = t.status || DEFAULT_STATUS;
@@ -606,7 +618,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             if (d) {
               const t = d.task || d;
               const curTaskType = t.task_type || DEFAULT_TASK_TYPE;
-              const curPriority = t.priority || DEFAULT_PRIORITY;
+              const curPriority =
+                normalizePriorityOption(t.priority) || DEFAULT_PRIORITY;
               const curTransport = t.transport_type || DEFAULT_TRANSPORT;
               const curPayment = t.payment_method || DEFAULT_PAYMENT;
               const curStatus = t.status || DEFAULT_STATUS;

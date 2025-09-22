@@ -9,8 +9,10 @@ import type { Task } from "shared";
 const badgeBaseClass =
   "inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
 
-const buildBadgeClass = (tones: string) =>
-  `${badgeBaseClass} text-primary transition-colors dark:text-primary ${tones}`;
+const buildBadgeClass = (
+  tones: string,
+  textClass = "text-primary dark:text-primary",
+) => `${badgeBaseClass} transition-colors ${textClass} ${tones}`;
 
 const defaultBadgeClass = buildBadgeClass(
   "bg-accent/60 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
@@ -68,13 +70,143 @@ const getPriorityBadgeClass = (value: string) => {
   if (/высок|повыш|high/.test(normalized)) {
     return highPriorityBadgeClass;
   }
-  if (/низк|бесср|без\s+срок|low|minor/.test(normalized)) {
+  if (/низк|бесср|без\s+срок|до\s+выполн|low|minor/.test(normalized)) {
     return lowPriorityBadgeClass;
   }
   if (/обыч|дня|сутк|norm|stand/.test(normalized)) {
     return normalPriorityBadgeClass;
   }
   return defaultBadgeClass;
+};
+
+const normalizePriorityLabel = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  if (/^бессроч/i.test(trimmed)) {
+    return "До выполнения";
+  }
+  return trimmed;
+};
+
+const typeBadgeClassMap: Record<string, string> = {
+  доставить: buildBadgeClass(
+    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    "text-sky-900 dark:text-sky-100",
+  ),
+  купить: buildBadgeClass(
+    "bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45",
+    "text-violet-900 dark:text-violet-100",
+  ),
+  выполнить: buildBadgeClass(
+    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    "text-emerald-900 dark:text-emerald-100",
+  ),
+  построить: buildBadgeClass(
+    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+    "text-amber-900 dark:text-amber-100",
+  ),
+  починить: buildBadgeClass(
+    "bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45",
+    "text-orange-900 dark:text-orange-100",
+  ),
+};
+
+const getTypeBadgeClass = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return defaultBadgeClass;
+  }
+  if (hasOwn(typeBadgeClassMap, normalized)) {
+    return typeBadgeClassMap[normalized];
+  }
+  if (/стро|монтаж/.test(normalized)) {
+    return typeBadgeClassMap['построить'];
+  }
+  if (/ремонт|чин/.test(normalized)) {
+    return typeBadgeClassMap['починить'];
+  }
+  if (/закуп|покуп|приобр/.test(normalized)) {
+    return typeBadgeClassMap['купить'];
+  }
+  if (/достав|курьер/.test(normalized)) {
+    return typeBadgeClassMap['доставить'];
+  }
+  if (/исполн|выполн/.test(normalized)) {
+    return typeBadgeClassMap['выполнить'];
+  }
+  return defaultBadgeClass;
+};
+
+const parseDistance = (value: unknown) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const normalized = Number(trimmed.replace(/\s+/g, "").replace(/,/g, "."));
+    return Number.isFinite(normalized) ? normalized : null;
+  }
+  return null;
+};
+
+const formatDistanceLabel = (value: unknown) => {
+  const numeric = parseDistance(value);
+  if (numeric !== null) {
+    const fractionDigits = Number.isInteger(numeric) ? 0 : 1;
+    return numeric.toLocaleString("ru-RU", {
+      maximumFractionDigits: fractionDigits,
+      minimumFractionDigits: fractionDigits,
+    });
+  }
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number") {
+    return value.toString();
+  }
+  return "";
+};
+
+const shortDistanceBadgeClass = buildBadgeClass(
+  "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+  "text-emerald-900 dark:text-emerald-100",
+);
+
+const mediumDistanceBadgeClass = buildBadgeClass(
+  "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+  "text-sky-900 dark:text-sky-100",
+);
+
+const longDistanceBadgeClass = buildBadgeClass(
+  "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  "text-amber-900 dark:text-amber-100",
+);
+
+const extraLongDistanceBadgeClass = buildBadgeClass(
+  "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+  "text-rose-900 dark:text-rose-100",
+);
+
+const getDistanceBadgeClass = (value: unknown) => {
+  const numeric = parseDistance(value);
+  if (numeric === null) {
+    return defaultBadgeClass;
+  }
+  if (numeric < 5) {
+    return shortDistanceBadgeClass;
+  }
+  if (numeric < 25) {
+    return mediumDistanceBadgeClass;
+  }
+  if (numeric < 100) {
+    return longDistanceBadgeClass;
+  }
+  return extraLongDistanceBadgeClass;
 };
 
 const focusableLinkClass =
@@ -232,10 +364,15 @@ export default function taskColumns(
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
-        if (!value) {
+        if (!value.trim()) {
           return "";
         }
-        return <span className={getPriorityBadgeClass(value)}>{value}</span>;
+        const display = normalizePriorityLabel(value);
+        return (
+          <span className={getPriorityBadgeClass(value)} title={display}>
+            {display}
+          </span>
+        );
       },
     },
     {
@@ -267,6 +404,18 @@ export default function taskColumns(
         width: "clamp(4.5rem, 8vw, 6.5rem)",
         minWidth: "4.5rem",
         maxWidth: "6.5rem",
+      },
+      cell: (p) => {
+        const value = p.getValue<string>() || "";
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return "";
+        }
+        return (
+          <span className={getTypeBadgeClass(trimmed)} title={trimmed}>
+            {trimmed}
+          </span>
+        );
       },
     },
     {
@@ -336,6 +485,21 @@ export default function taskColumns(
         maxWidth: "4.75rem",
         cellClassName: "text-center sm:text-left",
         headerClassName: "text-center sm:text-left",
+      },
+      cell: (p) => {
+        const raw = p.getValue<number | string | null>();
+        if (raw === null || raw === undefined || (typeof raw === "string" && !raw.trim())) {
+          return "";
+        }
+        const display = formatDistanceLabel(raw);
+        if (!display) {
+          return "";
+        }
+        return (
+          <span className={getDistanceBadgeClass(raw)} title={`${display} км`}>
+            {display}
+          </span>
+        );
       },
     },
     {

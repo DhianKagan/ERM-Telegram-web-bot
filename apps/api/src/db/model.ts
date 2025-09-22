@@ -4,6 +4,17 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import slugify from 'slugify';
 import connect from './connection';
 
+const normalizePriorityValue = (value?: string | null) => {
+  if (typeof value !== 'string') {
+    return value ?? undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return /^бессроч/i.test(trimmed) ? 'До выполнения' : trimmed;
+};
+
 if (process.env.NODE_ENV !== 'test') {
   connect().catch((e: unknown) => {
     const err = e as { message?: string };
@@ -189,7 +200,7 @@ export interface TaskAttrs {
   controllers?: number[];
   assignees?: number[];
   project?: string;
-  priority?: 'Срочно' | 'В течение дня' | 'Бессрочно';
+  priority?: 'Срочно' | 'В течение дня' | 'До выполнения';
   priority_id?: number;
   created_by?: number;
   comments?: Comment[];
@@ -253,8 +264,9 @@ const taskSchema = new Schema<TaskDocument>(
     project: String,
     priority: {
       type: String,
-      enum: ['Срочно', 'В течение дня', 'Бессрочно'],
+      enum: ['Срочно', 'В течение дня', 'До выполнения'],
       default: 'В течение дня',
+      set: normalizePriorityValue,
     },
     priority_id: Number,
     created_by: Number,
@@ -314,6 +326,15 @@ const taskSchema = new Schema<TaskDocument>(
   },
   { timestamps: true },
 );
+
+taskSchema.pre('init', (doc: Record<string, unknown>) => {
+  if (doc && typeof doc.priority === 'string') {
+    const normalized = normalizePriorityValue(doc.priority);
+    if (normalized) {
+      doc.priority = normalized;
+    }
+  }
+});
 
 taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
   if (!this.request_id) {

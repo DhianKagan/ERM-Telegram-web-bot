@@ -15,12 +15,21 @@ export const buildTaskFormData = (
     if (v === undefined || v === null) return;
     if (Array.isArray(v)) {
       if (v.length === 0) return;
+      const hasObjects = v.some(
+        (item) => typeof item === "object" && item !== null,
+      );
+      if (hasObjects) {
+        body.append(k, JSON.stringify(v));
+        return;
+      }
       v.forEach((val) => body.append(k, String(val)));
-    } else if (typeof v === "object") {
-      body.append(k, JSON.stringify(v));
-    } else {
-      body.append(k, String(v));
+      return;
     }
+    if (typeof v === "object") {
+      body.append(k, JSON.stringify(v));
+      return;
+    }
+    body.append(k, String(v));
   });
   if (files) Array.from(files).forEach((f) => body.append("files", f));
   return body;

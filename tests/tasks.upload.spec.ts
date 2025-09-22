@@ -268,6 +268,19 @@ describe('Chunk upload', () => {
     );
   });
 
+  test('принимает допустимое расширение с неопределённым MIME', async () => {
+    const chunks = [Buffer.from('Unknown mime chunk data')];
+    const { attachment, storedPath } = await uploadViaChunks(
+      'chunk-octet',
+      chunks,
+      'instruction.pdf',
+      'application/octet-stream',
+    );
+    expect(attachment.name).toBe('instruction.pdf');
+    const stored = storedFiles.find((f) => f.path === storedPath);
+    expect(stored?.type).toBe('application/pdf');
+  });
+
   test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {
     sharpToFileMock.mockRejectedValueOnce(new Error('pngload: libspng read error'));
     const chunks = [Buffer.from('thumb fail image')];

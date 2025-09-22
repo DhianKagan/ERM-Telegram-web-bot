@@ -1,6 +1,6 @@
 // Провайдер темы и токенов
 // Модули: React, next-themes, ThemeContext
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { ThemeContext, type ThemeTokens } from "./ThemeContext";
 import presets from "../theme/presets.json";
@@ -14,32 +14,97 @@ function setCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=31536000`;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState(() => getCookie("theme") || "light");
-  const [tokens, setTokens] = useState<ThemeTokens>(() => {
-    const saved = getCookie("theme-tokens");
-    if (saved) {
-      try {
-        return JSON.parse(saved) as ThemeTokens;
-      } catch {
-        /* игнорируем */
-      }
+const presetMap = presets as Record<string, ThemeTokens>;
+const defaultTheme = "light";
+
+function sanitizeTokens(
+  source: unknown,
+  base: ThemeTokens,
+): Partial<ThemeTokens> | null {
+  if (!source || typeof source !== "object") return null;
+  const sanitized: Partial<ThemeTokens> = {};
+  for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+    if (typeof value === "string" && key in base) {
+      sanitized[key as keyof ThemeTokens] = value;
     }
-    return (presets as Record<string, ThemeTokens>)[theme] || presets.light;
-  });
+  }
+  return Object.keys(sanitized).length ? sanitized : null;
+}
+
+function readThemeCookie(): string {
+  const cookieTheme = getCookie("theme");
+  return cookieTheme && presetMap[cookieTheme] ? cookieTheme : defaultTheme;
+}
+
+function readTokensCookie(
+  theme: string,
+  base: ThemeTokens,
+): Partial<ThemeTokens> | null {
+  const raw = getCookie("theme-tokens");
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+    if ("theme" in parsed || "tokens" in parsed) {
+      const cookieTheme = (parsed as { theme?: unknown }).theme;
+      if (typeof cookieTheme === "string" && cookieTheme !== theme) {
+        return null;
+      }
+      const cookieTokens = sanitizeTokens(
+        (parsed as { tokens?: unknown }).tokens,
+        base,
+      );
+      return cookieTokens;
+    }
+    return sanitizeTokens(parsed, base);
+  } catch {
+    return null;
+  }
+}
+
+function mergeWithPreset(
+  base: ThemeTokens,
+  extra: Partial<ThemeTokens> | null,
+): ThemeTokens {
+  if (!extra) return base;
+  return { ...extra, ...base } as ThemeTokens;
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const initialTheme = readThemeCookie();
+  const initialBase = presetMap[initialTheme] || presetMap[defaultTheme];
+  const [theme, setTheme] = useState(initialTheme);
+  const [tokens, setTokens] = useState<ThemeTokens>(() =>
+    mergeWithPreset(initialBase, readTokensCookie(initialTheme, initialBase)),
+  );
+
+  const appliedKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const base = (presets as Record<string, ThemeTokens>)[theme];
-    if (base) setTokens((t) => ({ ...base, ...t }));
+    if (!presetMap[theme]) {
+      setTheme(defaultTheme);
+      return;
+    }
+    const base = presetMap[theme] || presetMap[defaultTheme];
+    setTokens(mergeWithPreset(base, readTokensCookie(theme, base)));
   }, [theme]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const currentKeys = new Set<string>();
     for (const [k, v] of Object.entries(tokens)) {
-      document.documentElement.style.setProperty(`--${k}`, v);
+      root.style.setProperty(`--${k}`, v);
+      currentKeys.add(k);
     }
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    for (const key of appliedKeys.current) {
+      if (!currentKeys.has(key)) {
+        root.style.removeProperty(`--${key}`);
+      }
+    }
+    appliedKeys.current = currentKeys;
+    root.classList.toggle("dark", theme === "dark");
     setCookie("theme", theme);
-    setCookie("theme-tokens", JSON.stringify(tokens));
+    setCookie("theme-tokens", JSON.stringify({ theme, tokens }));
   }, [tokens, theme]);
 
   return (

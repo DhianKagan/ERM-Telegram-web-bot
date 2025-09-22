@@ -3,6 +3,8 @@
 # История изменений
 
 - Команда сборки компилирует `ensureDefaults` в `dist`, чтобы стартовый скрипт находился в Docker и на Railway.
+- Скрипт установки браузеров ставит Firefox и Chromium, pretest запускает диагностику `playwright doctor` с запасным `--list`,
+  CI публикует отчёт, runbook и FAQ обновлены.
 - Добавлен `nixpacks.toml` для сборки на Railway без режима offline.
 - Функция updateUser синхронизирует roleId по названию роли; добавлен скрипт `syncUserRoles.ts`.
 - Скрипт seed добавляет документ роли manager, миграция `addManagerRole.ts`

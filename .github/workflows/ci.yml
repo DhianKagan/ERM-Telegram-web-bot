@@ -51,6 +51,16 @@ jobs:
       - name: Установка браузеров Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: sudo env "PATH=$PATH" npx playwright install --with-deps
+      - name: Диагностика Playwright
+        if: ${{ always() }}
+        run: |
+          ./scripts/run_playwright_diagnostics.sh playwright-doctor.log
+          {
+            echo '### Playwright doctor (lint-test-build)'
+            echo '```'
+            cat playwright-doctor.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Линтеры
         run: pnpm lint
       - name: Юнит и API тесты
@@ -110,6 +120,16 @@ jobs:
       - name: Установка браузеров Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: sudo env "PATH=$PATH" npx playwright install --with-deps
+      - name: Диагностика Playwright
+        if: ${{ always() }}
+        run: |
+          ./scripts/run_playwright_diagnostics.sh playwright-doctor.log
+          {
+            echo "### Playwright doctor (${{ matrix.project }})"
+            echo '```'
+            cat playwright-doctor.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: E2E тесты
         run: pnpm run test:e2e --project="${{ matrix.project }}"
       - name: Сохранение артефактов

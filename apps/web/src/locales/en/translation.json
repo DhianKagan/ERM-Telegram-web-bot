@@ -74,6 +74,7 @@
   "cargoVolume": "Volume, m³",
   "cargoWeight": "Weight, kg",
   "uploadFailed": "Upload failed",
+  "invalidFileType": "Invalid file type",
   "storage": {
     "title": "Files",
     "previewTitle": "File preview",

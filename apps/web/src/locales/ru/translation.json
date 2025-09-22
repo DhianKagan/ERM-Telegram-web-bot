@@ -74,6 +74,7 @@
   "cargoVolume": "Объём, м³",
   "cargoWeight": "Вес, кг",
   "uploadFailed": "Ошибка загрузки",
+  "invalidFileType": "Недопустимый тип файла",
   "storage": {
     "title": "Файлы",
     "previewTitle": "Предпросмотр файлов",

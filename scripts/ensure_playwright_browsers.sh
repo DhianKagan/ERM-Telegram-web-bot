@@ -9,9 +9,9 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
-INSTALL_ARGS=("firefox")
+INSTALL_ARGS=("firefox" "chromium")
 if [[ "${CI:-}" == "true" ]] || [[ "$(uname -s)" == "Linux" ]]; then
-  INSTALL_ARGS=("--with-deps" "firefox")
+  INSTALL_ARGS=("--with-deps" "firefox" "chromium")
 fi
 
 pnpm exec playwright install "${INSTALL_ARGS[@]}"

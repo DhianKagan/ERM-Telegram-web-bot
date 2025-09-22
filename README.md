@@ -48,6 +48,7 @@ pnpm a11y        # проверка контрастности
 pnpm approve-builds  # контроль скриптов зависимостей
 ./scripts/pre_pr_check.sh  # проверка сборки и запуска перед PR
 ./scripts/install_bot_deps.sh  # установка зависимостей; при сбоях скачивает pnpm из GitHub
+pnpm pretest:e2e  # установка Firefox и Chromium, диагностика playwright doctor/--list и сборка перед e2e
 ```
 
 Команда `pnpm size` ищет файлы `index-*.js` в `apps/api/public/js`.

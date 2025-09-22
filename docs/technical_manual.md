@@ -18,6 +18,16 @@
 Разрешены сборки `esbuild`, `ffmpeg-static`, `mongodb-memory-server`, `sharp`.
 Скрипты `@scarf/scarf`, `@tailwindcss/oxide`, `chromedriver`, `core-js`, `unrs-resolver` блокируются.
 
+## Runbook: восстановление Playwright в CI
+
+1. Запустите `./scripts/ensure_playwright_browsers.sh`, чтобы поставить Firefox и Chromium.
+2. Выполните `./scripts/run_playwright_diagnostics.sh` — скрипт попробует `playwright doctor`
+   и при отсутствии команды выполнит `playwright install --list`, сохранив вывод.
+3. В GitHub Actions откройте сводку шага «Диагностика Playwright»;
+   если браузеры скачиваются заново, проверьте кэш `~/.cache/ms-playwright`.
+4. При системных сбоях очистите кэш job и повторите сборку, время шага pretest
+   фиксируйте в метриках наблюдаемости.
+
 - `apps/api/src/api` — Express API с подключением Swagger и лимитом запросов.
 - `apps/api/src/bot` — Telegram‑бот на Telegraf и планировщик напоминаний.
 - `apps/api/src/routes` — REST‑маршруты; `users`, `roles` и `logs` используют default‑импорт `rolesGuard`.

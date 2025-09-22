@@ -41,7 +41,7 @@
     "clamscan": "^2.4.0",
     "node-cron": "^4.1.1",
     "node-vault": "^0.10.5",
-    "pino": "^9.9.4",
+    "pino": "^9.11.0",
     "pino-http": "^10.5.0",
     "pm2": "^6.0.8",
     "prom-client": "^14.2.0",

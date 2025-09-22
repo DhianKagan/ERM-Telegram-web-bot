@@ -11,7 +11,11 @@ exports.TASK_TYPES = [
     'Починить',
 ];
 exports.PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'];
-exports.TRANSPORT_TYPES = ['Легковой', 'Грузовой'];
+exports.TRANSPORT_TYPES = [
+    'Без транспорта',
+    'Легковой',
+    'Грузовой',
+];
 exports.PAYMENT_METHODS = [
     'Наличные',
     'Карта',

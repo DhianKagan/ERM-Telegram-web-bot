@@ -1,6 +1,7 @@
 // Общая форма создания и редактирования задач
 // Модули: React, DOMPurify, контексты, сервисы задач, shared и логов
 import React from "react";
+import { Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
@@ -53,7 +54,6 @@ interface InitialValues {
   status: string;
   creator: string;
   assignees: string[];
-  controllers: string[];
   start: string;
   startLink: string;
   end: string;
@@ -67,6 +67,7 @@ interface InitialValues {
   cargoHeight: string;
   cargoVolume: string;
   cargoWeight: string;
+  showDimensions: boolean;
 }
 
 const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -179,6 +180,17 @@ const formatHistoryValue = (value: unknown): string => {
   }
 };
 
+const hasDimensionValues = (
+  length: string,
+  width: string,
+  height: string,
+  volume: string,
+  weight: string,
+) =>
+  [length, width, height, volume, weight].some(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
+
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(id);
   const { user } = useAuth();
@@ -196,7 +208,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     .object({
       title: z.string().min(1, t("titleRequired")),
       description: z.string().optional(),
-      controllers: z.array(z.string()).default([]),
       assignees: z.array(z.string()).default([]),
       startDate: z.string().optional(),
       dueDate: z.string().optional(),
@@ -225,7 +236,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     defaultValues: {
       title: "",
       description: "",
-      controllers: [],
       assignees: [],
       startDate: "",
       dueDate: "",
@@ -287,6 +297,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [cargoHeight, setCargoHeight] = React.useState("");
   const [cargoVolume, setCargoVolume] = React.useState("");
   const [cargoWeight, setCargoWeight] = React.useState("");
+  const [showDimensions, setShowDimensions] = React.useState(false);
   const [creator, setCreator] = React.useState("");
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
@@ -350,6 +361,144 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   );
   const removeAttachment = (a: Attachment) => {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
+  };
+
+  const applyTaskDetails = React.useCallback(
+    (
+      taskData: Partial<Task> & Record<string, unknown>,
+      usersMap?: Record<string, UserBrief>,
+    ) => {
+      const curTaskType = (taskData.task_type as string) || DEFAULT_TASK_TYPE;
+      const curPriority =
+        normalizePriorityOption(taskData.priority as string) || DEFAULT_PRIORITY;
+      const curTransport =
+        (taskData.transport_type as string) || DEFAULT_TRANSPORT;
+      const curPayment =
+        (taskData.payment_method as string) || DEFAULT_PAYMENT;
+      const curStatus = (taskData.status as string) || DEFAULT_STATUS;
+      const assignees = Array.isArray(taskData.assignees)
+        ? (taskData.assignees as (string | number)[]).map(String)
+        : [];
+      const startDate = taskData.start_date
+        ? new Date(taskData.start_date as string)
+            .toISOString()
+            .slice(0, 16)
+        : "";
+      const dueDate = taskData.due_date
+        ? new Date(taskData.due_date as string)
+            .toISOString()
+            .slice(0, 16)
+        : "";
+      const diff =
+        startDate && dueDate
+          ? new Date(dueDate).getTime() - new Date(startDate).getTime()
+          : 24 * 60 * 60 * 1000;
+      setDueOffset(diff);
+      reset({
+        title: (taskData.title as string) || "",
+        description: (taskData.task_description as string) || "",
+        assignees,
+        startDate,
+        dueDate,
+      });
+      setTaskType(curTaskType);
+      setComment((taskData.comment as string) || "");
+      setPriority(curPriority);
+      setTransportType(curTransport);
+      setPaymentMethod(curPayment);
+      setStatus(curStatus);
+      const lengthValue = formatMetricValue(taskData.cargo_length_m);
+      const widthValue = formatMetricValue(taskData.cargo_width_m);
+      const heightValue = formatMetricValue(taskData.cargo_height_m);
+      const weightValue = formatMetricValue(taskData.cargo_weight_kg);
+      const volumeValue =
+        typeof taskData.cargo_volume_m3 === "number"
+          ? String(taskData.cargo_volume_m3)
+          : formatMetricValue(taskData.cargo_volume_m3);
+      setCargoLength(lengthValue);
+      setCargoWidth(widthValue);
+      setCargoHeight(heightValue);
+      setCargoWeight(weightValue);
+      setCargoVolume(volumeValue);
+      const hasDims = hasDimensionValues(
+        lengthValue,
+        widthValue,
+        heightValue,
+        volumeValue,
+        weightValue,
+      );
+      setShowDimensions(hasDims);
+      setCreator(String((taskData.created_by as unknown) || ""));
+      setStart((taskData.start_location as string) || "");
+      setStartLink((taskData.start_location_link as string) || "");
+      setEnd((taskData.end_location as string) || "");
+      setEndLink((taskData.end_location_link as string) || "");
+      setAttachments(((taskData.attachments as Attachment[]) || []) as Attachment[]);
+      if (usersMap) {
+        setUsers((prev) => {
+          const list = [...prev];
+          Object.values(usersMap).forEach((userItem) => {
+            if (!list.some((u) => u.telegram_id === userItem.telegram_id)) {
+              list.push(userItem);
+            }
+          });
+          return list;
+        });
+      }
+      setDistanceKm(
+        typeof taskData.route_distance_km === "number"
+          ? taskData.route_distance_km
+          : null,
+      );
+      initialRef.current = {
+        title: (taskData.title as string) || "",
+        taskType: curTaskType,
+        description: (taskData.task_description as string) || "",
+        comment: (taskData.comment as string) || "",
+        priority: curPriority,
+        transportType: curTransport,
+        paymentMethod: curPayment,
+        status: curStatus,
+        creator: String((taskData.created_by as unknown) || ""),
+        assignees,
+        start: (taskData.start_location as string) || "",
+        startLink: (taskData.start_location_link as string) || "",
+        end: (taskData.end_location as string) || "",
+        endLink: (taskData.end_location_link as string) || "",
+        startDate,
+        dueDate,
+        attachments: ((taskData.attachments as Attachment[]) || []) as Attachment[],
+        distanceKm:
+          typeof taskData.route_distance_km === "number"
+            ? taskData.route_distance_km
+            : null,
+        cargoLength: lengthValue,
+        cargoWidth: widthValue,
+        cargoHeight: heightValue,
+        cargoVolume: volumeValue,
+        cargoWeight: weightValue,
+        showDimensions: hasDims,
+      };
+    },
+    [
+      DEFAULT_TASK_TYPE,
+      DEFAULT_PRIORITY,
+      DEFAULT_TRANSPORT,
+      DEFAULT_PAYMENT,
+      DEFAULT_STATUS,
+      reset,
+    ],
+  );
+
+  const handleDimensionsToggle = (checked: boolean) => {
+    if (!checked) {
+      setCargoLength("");
+      setCargoWidth("");
+      setCargoHeight("");
+      setCargoVolume("");
+      setCargoWeight("");
+    }
+    setShowDimensions(checked);
   };
 
   React.useEffect(() => {
@@ -425,7 +574,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         endLink: "",
         startDate: DEFAULT_START_DATE,
         dueDate: DEFAULT_DUE_DATE,
-        controllers: [],
         attachments: [],
         distanceKm: null,
         cargoLength: "",
@@ -433,12 +581,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         cargoHeight: "",
         cargoVolume: "",
         cargoWeight: "",
+        showDimensions: false,
       };
       reset({
         title: "",
         description: "",
         assignees: [],
-        controllers: [],
         startDate: DEFAULT_START_DATE,
         dueDate: DEFAULT_DUE_DATE,
       });
@@ -447,6 +595,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCargoHeight("");
       setCargoVolume("");
       setCargoWeight("");
+      setShowDimensions(false);
       setDueOffset(24 * 60 * 60 * 1000);
     }
   }, [
@@ -484,104 +633,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       .then((d) => {
         if (!d) return;
         const t = d.task || d;
-        const curTaskType = t.task_type || DEFAULT_TASK_TYPE;
-        const curPriority =
-          normalizePriorityOption(t.priority) || DEFAULT_PRIORITY;
-        const curTransport = t.transport_type || DEFAULT_TRANSPORT;
-        const curPayment = t.payment_method || DEFAULT_PAYMENT;
-        const curStatus = t.status || DEFAULT_STATUS;
-        const formValues = {
-          title: t.title || "",
-          description: t.task_description || "",
-          assignees: (t.assignees || []).map(String),
-          controllers: (t.controllers || []).map(String),
-          startDate: t.start_date
-            ? new Date(t.start_date).toISOString().slice(0, 16)
-            : "",
-          dueDate: t.due_date
-            ? new Date(t.due_date).toISOString().slice(0, 16)
-            : "",
-        };
-        const diff =
-          formValues.startDate && formValues.dueDate
-            ? new Date(formValues.dueDate).getTime() -
-              new Date(formValues.startDate).getTime()
-            : 24 * 60 * 60 * 1000;
-        setDueOffset(diff);
-        reset(formValues);
-        setTaskType(curTaskType);
-        setComment(t.comment || "");
-        setPriority(curPriority);
-        setTransportType(curTransport);
-        setPaymentMethod(curPayment);
-        setStatus(curStatus);
-        setCargoLength(formatMetricValue(t.cargo_length_m));
-        setCargoWidth(formatMetricValue(t.cargo_width_m));
-        setCargoHeight(formatMetricValue(t.cargo_height_m));
-        setCargoWeight(formatMetricValue(t.cargo_weight_kg));
-        const volumeValue =
-          typeof t.cargo_volume_m3 === "number"
-            ? String(t.cargo_volume_m3)
-            : formatMetricValue(t.cargo_volume_m3);
-        setCargoVolume(volumeValue);
-        setCreator(String(t.created_by || ""));
-        setStart(t.start_location || "");
-        setStartLink(t.start_location_link || "");
-        setEnd(t.end_location || "");
-        setEndLink(t.end_location_link || "");
-        setAttachments((t.attachments as Attachment[]) || []);
-        setUsers((p) => {
-          const list = [...p];
-          const uMap = (d.users || {}) as Record<string, UserBrief>;
-          Object.values(uMap).forEach((u) => {
-            if (!list.some((v) => v.telegram_id === u.telegram_id))
-              list.push(u);
-          });
-          return list;
-        });
-        setDistanceKm(
-          typeof t.route_distance_km === "number" ? t.route_distance_km : null,
-        );
-        initialRef.current = {
-          title: formValues.title,
-          taskType: curTaskType,
-          description: formValues.description,
-          comment: t.comment || "",
-          priority: curPriority,
-          transportType: curTransport,
-          paymentMethod: curPayment,
-          status: curStatus,
-          creator: String(t.created_by || ""),
-          assignees: formValues.assignees,
-          start: t.start_location || "",
-          startLink: t.start_location_link || "",
-          end: t.end_location || "",
-          endLink: t.end_location_link || "",
-          startDate: formValues.startDate,
-          dueDate: formValues.dueDate,
-          controllers: formValues.controllers,
-          attachments: t.attachments || [],
-          distanceKm:
-            typeof t.route_distance_km === "number"
-              ? t.route_distance_km
-              : null,
-          cargoLength: formatMetricValue(t.cargo_length_m),
-          cargoWidth: formatMetricValue(t.cargo_width_m),
-          cargoHeight: formatMetricValue(t.cargo_height_m),
-          cargoVolume: volumeValue,
-          cargoWeight: formatMetricValue(t.cargo_weight_kg),
-        };
+        applyTaskDetails(t, d.users as Record<string, UserBrief>);
       });
-  }, [
-    id,
-    isEdit,
-    DEFAULT_TASK_TYPE,
-    DEFAULT_PRIORITY,
-    DEFAULT_TRANSPORT,
-    DEFAULT_PAYMENT,
-    DEFAULT_STATUS,
-    reset,
-  ]);
+  }, [id, isEdit, applyTaskDetails]);
 
   const handleStartLink = async (v: string) => {
     setStartLink(v);
@@ -652,7 +706,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         status,
         created_by: creator,
         assignees: formData.assignees,
-        controllers: formData.controllers,
         start_location: start,
         start_location_link: startLink,
         end_location: end,
@@ -682,111 +735,66 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
       if (distanceKm !== null) payload.route_distance_km = distanceKm;
       if (routeLink) payload.google_route_url = routeLink;
-      let data: any;
       const sendPayload = { ...payload, attachments };
+      let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
+      let savedId = id || "";
       if (isEdit && id) {
-        data = await updateTask(id, sendPayload);
+        const response = await updateTask(id, sendPayload);
+        if (!response.ok) throw new Error("SAVE_FAILED");
+        const updated = (await response.json()) as
+          | (Partial<Task> & Record<string, unknown>)
+          | null;
+        savedTask = updated;
+        savedId = (updated?._id as string) || id;
       } else {
-        data = await createTask(sendPayload);
+        const created = await createTask(sendPayload);
+        if (!created) throw new Error("SAVE_FAILED");
+        savedTask = created as Partial<Task> & Record<string, unknown>;
+        savedId =
+          ((created as Record<string, unknown>)._id as string) ||
+          ((created as Record<string, unknown>).id as string) ||
+          savedId;
       }
-      if (data && data._id) {
-        authFetch(`/api/v1/tasks/${data._id}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => {
-            if (d) {
-              const t = d.task || d;
-              const curTaskType = t.task_type || DEFAULT_TASK_TYPE;
-              const curPriority =
-                normalizePriorityOption(t.priority) || DEFAULT_PRIORITY;
-              const curTransport = t.transport_type || DEFAULT_TRANSPORT;
-              const curPayment = t.payment_method || DEFAULT_PAYMENT;
-              const curStatus = t.status || DEFAULT_STATUS;
-              const assignees = (t.assignees || []).map(String);
-              const controllers = (t.controllers || []).map(String);
-              const startDate = t.start_date
-                ? new Date(t.start_date).toISOString().slice(0, 16)
-                : "";
-              const dueDate = t.due_date
-                ? new Date(t.due_date).toISOString().slice(0, 16)
-                : "";
-              reset({
-                title: t.title || "",
-                description: t.task_description || "",
-                assignees,
-                controllers,
-                startDate,
-                dueDate,
-              });
-              setTaskType(curTaskType);
-              setComment(t.comment || "");
-              setPriority(curPriority);
-              setTransportType(curTransport);
-              setPaymentMethod(curPayment);
-              setStatus(curStatus);
-              setCargoLength(formatMetricValue(t.cargo_length_m));
-              setCargoWidth(formatMetricValue(t.cargo_width_m));
-              setCargoHeight(formatMetricValue(t.cargo_height_m));
-              const responseVolume =
-                typeof t.cargo_volume_m3 === "number"
-                  ? String(t.cargo_volume_m3)
-                  : formatMetricValue(t.cargo_volume_m3);
-              setCargoVolume(responseVolume);
-              setCargoWeight(formatMetricValue(t.cargo_weight_kg));
-              setCreator(String(t.created_by || ""));
-              setStart(t.start_location || "");
-              setStartLink(t.start_location_link || "");
-              setEnd(t.end_location || "");
-              setEndLink(t.end_location_link || "");
-              setAttachments((t.attachments as Attachment[]) || []);
-              setUsers((p) => {
-                const list = [...p];
-                const uMap = (d.users || {}) as Record<string, UserBrief>;
-                Object.values(uMap).forEach((u) => {
-                  if (!list.some((v) => v.telegram_id === u.telegram_id))
-                    list.push(u);
-                });
-                return list;
-              });
-              setDistanceKm(
-                typeof t.route_distance_km === "number"
-                  ? t.route_distance_km
-                  : null,
-              );
-              initialRef.current = {
-                title: t.title || "",
-                taskType: curTaskType,
-                description: t.task_description || "",
-                comment: t.comment || "",
-                priority: curPriority,
-                transportType: curTransport,
-                paymentMethod: curPayment,
-                status: curStatus,
-                creator: String(t.created_by || ""),
-                assignees,
-                start: t.start_location || "",
-                startLink: t.start_location_link || "",
-                end: t.end_location || "",
-                endLink: t.end_location_link || "",
-                startDate,
-                dueDate,
-                controllers,
-                attachments: (t.attachments as Attachment[]) || [],
-                distanceKm:
-                  typeof t.route_distance_km === "number"
-                    ? t.route_distance_km
-                    : null,
-                cargoLength: formatMetricValue(t.cargo_length_m),
-                cargoWidth: formatMetricValue(t.cargo_width_m),
-                cargoHeight: formatMetricValue(t.cargo_height_m),
-                cargoVolume: responseVolume,
-                cargoWeight: formatMetricValue(t.cargo_weight_kg),
-              };
-            }
-          });
+      let detail: {
+        task?: Record<string, unknown>;
+        users?: Record<string, UserBrief>;
+      } | null = null;
+      if (savedId) {
+        try {
+          detail = await authFetch(`/api/v1/tasks/${savedId}`).then((r) =>
+            r.ok ? r.json() : null,
+          );
+        } catch {
+          detail = null;
+        }
       }
-      if (data) setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
-      if (data && onSave) onSave(data as Task);
-      setAttachments([]);
+      const taskData = (detail?.task || detail || savedTask) as
+        | (Partial<Task> & Record<string, unknown>)
+        | null;
+      if (taskData) {
+        applyTaskDetails(taskData, detail?.users as Record<string, UserBrief> | undefined);
+        const createdAtRaw =
+          (taskData.createdAt as string | undefined) ||
+          ((detail?.task as Record<string, unknown>)?.createdAt as string | undefined);
+        if (createdAtRaw) {
+          const createdDate = new Date(createdAtRaw);
+          if (!Number.isNaN(createdDate.getTime())) {
+            setCreated(createdDate.toISOString().slice(0, 10));
+          }
+        }
+        const detailTask = detail?.task as Record<string, unknown> | undefined;
+        if (detailTask?.history) {
+          setHistory(normalizeHistory(detailTask.history));
+        }
+        const requestLabel =
+          (detailTask?.task_number as string | undefined) ||
+          (detailTask?.request_id as string | undefined) ||
+          (taskData.task_number as string | undefined) ||
+          (taskData.request_id as string | undefined);
+        if (requestLabel) setRequestId(requestLabel);
+      }
+      setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
+      if (taskData && onSave) onSave(taskData as Task);
     } catch (e) {
       console.error(e);
       setAlertMsg(t("taskSaveFailed"));
@@ -817,7 +825,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       title: d.title,
       description: d.description,
       assignees: d.assignees,
-      controllers: d.controllers,
       startDate: d.startDate,
       dueDate: d.dueDate,
     });
@@ -839,6 +846,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setEndLink(d.endLink);
     setAttachments(d.attachments as Attachment[]);
     setDistanceKm(d.distanceKm);
+    setShowDimensions(d.showDimensions);
   };
 
   const acceptTask = async () => {
@@ -882,13 +890,29 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setSelectedAction("done");
   };
 
+  const creatorId = Number(creator);
+  const hasCreator = Number.isFinite(creatorId) && creator.trim().length > 0;
+  const creatorName = hasCreator ? resolveUserName(creatorId) : "";
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
       <div
         className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-1.5 rounded-xl bg-white p-4 shadow-lg`}
       >
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{t("task")}</h3>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">{t("task")}</h3>
+            {hasCreator ? (
+              <Link
+                to={`/employees/${creatorId}`}
+                className="text-sm font-medium text-accentPrimary underline"
+              >
+                {t("taskFrom", { name: creatorName })}
+              </Link>
+            ) : (
+              <span className="text-sm text-gray-500">{t("taskFromUnknown")}</span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             {isEdit && !editing && (
               <button
@@ -1061,24 +1085,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             </div>
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("creator")}
-              </label>
-              <select
-                value={creator}
-                onChange={(e) => setCreator(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                <option value="">{t("author")}</option>
-                {users.map((u) => (
-                  <option key={u.telegram_id} value={u.telegram_id}>
-                    {u.name || u.telegram_username || u.username}
-                  </option>
-                ))}
-              </select>
-            </div>
             <Controller
               name="assignees"
               control={control}
@@ -1233,72 +1239,88 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
           </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("cargoLength")}
-              </label>
+          <div className="space-y-3 rounded-md border border-dashed border-gray-300 p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
               <input
-                value={cargoLength}
-                onChange={(e) => setCargoLength(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="0"
-                inputMode="decimal"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={showDimensions}
+                onChange={(e) => handleDimensionsToggle(e.target.checked)}
                 disabled={!editing}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("cargoWidth")}
-              </label>
-              <input
-                value={cargoWidth}
-                onChange={(e) => setCargoWidth(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="0"
-                inputMode="decimal"
-                disabled={!editing}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("cargoHeight")}
-              </label>
-              <input
-                value={cargoHeight}
-                onChange={(e) => setCargoHeight(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="0"
-                inputMode="decimal"
-                disabled={!editing}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("cargoVolume")}
-              </label>
-              <input
-                value={cargoVolume}
-                readOnly
-                className="w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="—"
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("cargoWeight")}
-              </label>
-              <input
-                value={cargoWeight}
-                onChange={(e) => setCargoWeight(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="0"
-                inputMode="decimal"
-                disabled={!editing}
-              />
-            </div>
+              {t("enterDimensions")}
+            </label>
+            {showDimensions && (
+              <div className="space-y-3">
+                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("cargoLength")}
+                    </label>
+                    <input
+                      value={cargoLength}
+                      onChange={(e) => setCargoLength(e.target.value)}
+                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      placeholder="0"
+                      inputMode="decimal"
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("cargoWidth")}
+                    </label>
+                    <input
+                      value={cargoWidth}
+                      onChange={(e) => setCargoWidth(e.target.value)}
+                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      placeholder="0"
+                      inputMode="decimal"
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("cargoHeight")}
+                    </label>
+                    <input
+                      value={cargoHeight}
+                      onChange={(e) => setCargoHeight(e.target.value)}
+                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      placeholder="0"
+                      inputMode="decimal"
+                      disabled={!editing}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("cargoVolume")}
+                    </label>
+                    <input
+                      value={cargoVolume}
+                      readOnly
+                      className="w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("cargoWeight")}
+                    </label>
+                    <input
+                      value={cargoWeight}
+                      onChange={(e) => setCargoWeight(e.target.value)}
+                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      placeholder="0"
+                      inputMode="decimal"
+                      disabled={!editing}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             {distanceKm !== null && (
@@ -1351,19 +1373,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               readOnly={!editing}
             />
           </div>
-          <Controller
-            name="controllers"
-            control={control}
-            render={({ field }) => (
-              <MultiUserSelect
-                label={t("controller")}
-                users={users}
-                value={(field.value || []).map(String)}
-                onChange={(v) => field.onChange(v.map(String))}
-                disabled={!editing}
-              />
-            )}
-          />
           {attachments.length > 0 && (
             <div>
               <label className="block text-sm font-medium">

@@ -42,7 +42,7 @@ export const taskFields: TaskField[] = [
     label: 'Тип транспорта',
     type: 'select',
     options: TRANSPORT_TYPES,
-    default: TRANSPORT_TYPES[1],
+    default: TRANSPORT_TYPES[0],
   },
   { name: 'cargo_length_m', label: 'Длина, м', type: 'number' },
   { name: 'cargo_width_m', label: 'Ширина, м', type: 'number' },

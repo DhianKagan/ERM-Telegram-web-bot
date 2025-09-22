@@ -11,7 +11,11 @@ export const TASK_TYPES = [
 
 export const PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'] as const;
 
-export const TRANSPORT_TYPES = ['Легковой', 'Грузовой'] as const;
+export const TRANSPORT_TYPES = [
+  'Без транспорта',
+  'Легковой',
+  'Грузовой',
+] as const;
 
 export const PAYMENT_METHODS = [
   'Наличные',

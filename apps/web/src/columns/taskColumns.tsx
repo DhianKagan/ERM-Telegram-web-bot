@@ -7,7 +7,7 @@ import type { Task } from "shared";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
+  "inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
 
 const buildBadgeClass = (tones: string) =>
   `${badgeBaseClass} text-primary transition-colors dark:text-primary ${tones}`;
@@ -226,9 +226,9 @@ export default function taskColumns(
       header: "Приоритет",
       accessorKey: "priority",
       meta: {
-        width: "clamp(4.5rem, 7vw, 6.5rem)",
-        minWidth: "4.5rem",
-        maxWidth: "6.5rem",
+        width: "clamp(8.5rem, 15vw, 12.5rem)",
+        minWidth: "8.5rem",
+        maxWidth: "12.5rem",
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";

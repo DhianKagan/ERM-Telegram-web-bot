@@ -54,7 +54,7 @@ export default function Tasks() {
       />
       <h2 className="text-xl font-semibold">Задачи</h2>
       {!isManager && (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-foreground dark:text-foreground">
           Для создания задач необходима роль manager. Обратитесь к
           администратору.
         </p>
@@ -82,7 +82,7 @@ export default function Tasks() {
             {tasks.slice((page - 1) * 10, page * 10).map((t) => (
               <li
                 key={t._id}
-                className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                className="rounded-lg border border-border dark:border-border bg-card dark:bg-card p-3 shadow-sm"
               >
                 {t.task_description}
               </li>

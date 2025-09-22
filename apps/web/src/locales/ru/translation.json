@@ -68,6 +68,11 @@
   "title": "Название",
   "titleRequired": "Название обязательно",
   "transportType": "Тип транспорта",
+  "cargoLength": "Длина, м",
+  "cargoWidth": "Ширина, м",
+  "cargoHeight": "Высота, м",
+  "cargoVolume": "Объём, м³",
+  "cargoWeight": "Вес, кг",
   "uploadFailed": "Ошибка загрузки",
   "storage": {
     "title": "Файлы",

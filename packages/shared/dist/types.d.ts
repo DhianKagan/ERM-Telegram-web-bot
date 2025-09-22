@@ -3,6 +3,11 @@ export interface Task {
     title: string;
     status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
     assignees?: number[];
+    cargo_length_m?: number;
+    cargo_width_m?: number;
+    cargo_height_m?: number;
+    cargo_volume_m3?: number;
+    cargo_weight_kg?: number;
     [key: string]: unknown;
 }
 export interface User {

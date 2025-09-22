@@ -24,6 +24,16 @@ const toPriorityDisplay = (value: string) =>
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
+const metricFormatter = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 3,
+  minimumFractionDigits: 0,
+});
+
+const weightFormatter = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
 type TaskData = Task & {
   request_id?: string;
   task_number?: string;
@@ -88,6 +98,40 @@ export default function formatTask(
   if (task.transport_type) extra.push(`🚗 ${mdEscape(task.transport_type)}`);
   if (task.payment_method) extra.push(`💰 ${mdEscape(task.payment_method)}`);
   if (extra.length) lines.push(extra.join(' • '));
+
+  const cargoParts: string[] = [];
+  const lengthValue =
+    typeof task.cargo_length_m === 'number'
+      ? metricFormatter.format(task.cargo_length_m)
+      : null;
+  const widthValue =
+    typeof task.cargo_width_m === 'number'
+      ? metricFormatter.format(task.cargo_width_m)
+      : null;
+  const heightValue =
+    typeof task.cargo_height_m === 'number'
+      ? metricFormatter.format(task.cargo_height_m)
+      : null;
+  if (lengthValue && widthValue && heightValue) {
+    cargoParts.push(`Д×Ш×В: ${lengthValue}×${widthValue}×${heightValue} м`);
+  } else {
+    if (lengthValue) cargoParts.push(`Д: ${lengthValue} м`);
+    if (widthValue) cargoParts.push(`Ш: ${widthValue} м`);
+    if (heightValue) cargoParts.push(`В: ${heightValue} м`);
+  }
+  if (typeof task.cargo_volume_m3 === 'number') {
+    cargoParts.push(
+      `Объём: ${metricFormatter.format(task.cargo_volume_m3)} м³`,
+    );
+  }
+  if (typeof task.cargo_weight_kg === 'number') {
+    cargoParts.push(
+      `Вес: ${weightFormatter.format(task.cargo_weight_kg)} кг`,
+    );
+  }
+  if (cargoParts.length) {
+    lines.push(`📦 ${cargoParts.map((part) => mdEscape(part)).join(' • ')}`);
+  }
 
   const ps: string[] = [];
   if (task.priority) {

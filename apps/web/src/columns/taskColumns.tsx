@@ -18,18 +18,35 @@ const defaultBadgeClass = buildBadgeClass(
   "bg-accent/60 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
 );
 
+const infoBadgeClass = buildBadgeClass(
+  "bg-slate-500/20 ring-1 ring-slate-500/35 dark:bg-slate-400/25 dark:ring-slate-300/40",
+  "text-slate-900 dark:text-slate-100 normal-case font-medium",
+);
+
+const assigneeBadgeClass = buildBadgeClass(
+  "bg-indigo-500/20 ring-1 ring-indigo-500/40 dark:bg-indigo-400/25 dark:ring-indigo-300/45",
+  "text-indigo-900 dark:text-indigo-100 normal-case font-medium",
+);
+
+const focusableBadgeClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
 const statusBadgeClassMap: Record<Task["status"], string> = {
   Новая: buildBadgeClass(
-    "bg-accent/70 ring-1 ring-primary/30 dark:bg-accent/50 dark:ring-primary/30",
+    "bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    "text-sky-900 dark:text-sky-100",
   ),
   "В работе": buildBadgeClass(
-    "bg-accent/80 ring-1 ring-primary/40 dark:bg-accent/60 dark:ring-primary/40",
+    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+    "text-amber-900 dark:text-amber-100",
   ),
   Выполнена: buildBadgeClass(
-    "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/40 dark:ring-primary/20",
+    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    "text-emerald-900 dark:text-emerald-100",
   ),
   Отменена: buildBadgeClass(
-    "bg-accent/40 ring-1 ring-destructive/40 dark:bg-accent/30 dark:ring-destructive/40",
+    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    "text-rose-900 dark:text-rose-100",
   ),
 };
 
@@ -49,6 +66,21 @@ const lowPriorityBadgeClass = buildBadgeClass(
   "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20",
 );
 
+const priorityBadgeClassMap: Record<string, string> = {
+  срочно: buildBadgeClass(
+    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    "text-rose-900 dark:text-rose-100",
+  ),
+  'в течение дня': buildBadgeClass(
+    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    "text-sky-900 dark:text-sky-100",
+  ),
+  'до выполнения': buildBadgeClass(
+    "bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45",
+    "text-slate-900 dark:text-slate-100 normal-case",
+  ),
+};
+
 const hasOwn = <T extends Record<string, unknown>>(obj: T, key: string): key is keyof T =>
   Object.prototype.hasOwnProperty.call(obj, key);
 
@@ -63,6 +95,9 @@ const getPriorityBadgeClass = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
     return defaultBadgeClass;
+  }
+  if (hasOwn(priorityBadgeClassMap, normalized)) {
+    return priorityBadgeClassMap[normalized];
   }
   if (/сроч|urgent/.test(normalized)) {
     return urgentPriorityBadgeClass;
@@ -253,18 +288,22 @@ const renderDateCell = (value?: string) => {
   const formatted = formatDate(value);
   if (!formatted) return "";
   return (
-    <time
-      dateTime={value}
+    <span
+      className={`${infoBadgeClass} items-start justify-center font-mono`}
       title={formatted.full}
-      className="inline-flex flex-col font-mono tabular-nums leading-tight"
     >
-      <span className="leading-tight">{formatted.date}</span>
-      {formatted.time ? (
-        <span className="text-muted-foreground text-[0.85em] leading-tight">
-          {formatted.time}
-        </span>
-      ) : null}
-    </time>
+      <time
+        dateTime={value}
+        className="flex flex-col tabular-nums leading-tight"
+      >
+        <span className="leading-tight">{formatted.date}</span>
+        {formatted.time ? (
+          <span className="text-muted-foreground text-[0.85em] leading-tight">
+            {formatted.time}
+          </span>
+        ) : null}
+      </time>
+    </span>
   );
 };
 
@@ -301,7 +340,7 @@ export default function taskColumns(
         const shortValue = numericMatch ? numericMatch[0] : value;
         return (
           <span
-            className="block whitespace-nowrap"
+            className={`${infoBadgeClass} font-mono`}
             title={value}
           >
             {shortValue}
@@ -539,14 +578,16 @@ export default function taskColumns(
               <Link
                 key={id}
                 to={`/employees/${id}`}
-                className={focusableLinkClass}
+                className={`${assigneeBadgeClass} ${focusableBadgeClass} no-underline`}
                 onClick={(event) => event.stopPropagation()}
               >
                 {compactText(label, 18)}
               </Link>
             ))}
             {hiddenCount > 0 ? (
-              <span className="text-muted-foreground">+{hiddenCount}</span>
+              <span className={`${infoBadgeClass} text-xs font-medium`}>
+                +{hiddenCount}
+              </span>
             ) : null}
           </div>
         );

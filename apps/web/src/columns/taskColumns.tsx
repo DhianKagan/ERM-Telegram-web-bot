@@ -5,12 +5,80 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
 import type { Task } from "shared";
 
-// Цвета статусов задач для соответствия WCAG контрасту ≥4.5:1
-const statusColorMap: Record<Task["status"], string> = {
-  Новая: "text-gray-600",
-  "В работе": "text-blue-600",
-  Выполнена: "text-green-600",
+// Оформление бейджей статусов и приоритетов на дизайн-токенах
+const badgeBaseClass =
+  "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
+
+const buildBadgeClass = (tones: string) =>
+  `${badgeBaseClass} text-primary transition-colors dark:text-primary ${tones}`;
+
+const defaultBadgeClass = buildBadgeClass(
+  "bg-accent/60 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
+);
+
+const statusBadgeClassMap: Record<Task["status"], string> = {
+  Новая: buildBadgeClass(
+    "bg-accent/70 ring-1 ring-primary/30 dark:bg-accent/50 dark:ring-primary/30",
+  ),
+  "В работе": buildBadgeClass(
+    "bg-accent/80 ring-1 ring-primary/40 dark:bg-accent/60 dark:ring-primary/40",
+  ),
+  Выполнена: buildBadgeClass(
+    "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/40 dark:ring-primary/20",
+  ),
+  Отменена: buildBadgeClass(
+    "bg-accent/40 ring-1 ring-destructive/40 dark:bg-accent/30 dark:ring-destructive/40",
+  ),
 };
+
+const urgentPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40",
+);
+
+const highPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40",
+);
+
+const normalPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
+);
+
+const lowPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20",
+);
+
+const hasOwn = <T extends Record<string, unknown>>(obj: T, key: string): key is keyof T =>
+  Object.prototype.hasOwnProperty.call(obj, key);
+
+const getStatusBadgeClass = (value: string) => {
+  if (hasOwn(statusBadgeClassMap, value)) {
+    return statusBadgeClassMap[value];
+  }
+  return defaultBadgeClass;
+};
+
+const getPriorityBadgeClass = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return defaultBadgeClass;
+  }
+  if (/сроч|urgent/.test(normalized)) {
+    return urgentPriorityBadgeClass;
+  }
+  if (/высок|повыш|high/.test(normalized)) {
+    return highPriorityBadgeClass;
+  }
+  if (/низк|бесср|без\s+срок|low|minor/.test(normalized)) {
+    return lowPriorityBadgeClass;
+  }
+  if (/обыч|дня|сутк|norm|stand/.test(normalized)) {
+    return normalPriorityBadgeClass;
+  }
+  return defaultBadgeClass;
+};
+
+const focusableLinkClass =
+  "text-primary underline decoration-2 underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
@@ -148,7 +216,10 @@ export default function taskColumns(
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
-        return <span className={statusColorMap[value] || ""}>{value}</span>;
+        if (!value) {
+          return "";
+        }
+        return <span className={getStatusBadgeClass(value)}>{value}</span>;
       },
     },
     {
@@ -158,6 +229,13 @@ export default function taskColumns(
         width: "clamp(4.5rem, 7vw, 6.5rem)",
         minWidth: "4.5rem",
         maxWidth: "6.5rem",
+      },
+      cell: (p) => {
+        const value = p.getValue<string>() || "";
+        if (!value) {
+          return "";
+        }
+        return <span className={getPriorityBadgeClass(value)}>{value}</span>;
       },
     },
     {
@@ -208,7 +286,7 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 underline"
+            className={focusableLinkClass}
             title={name}
           >
             {compact}
@@ -237,7 +315,7 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 underline"
+            className={focusableLinkClass}
             title={name}
           >
             {compact}
@@ -297,7 +375,7 @@ export default function taskColumns(
               <Link
                 key={id}
                 to={`/employees/${id}`}
-                className="text-blue-600 underline"
+                className={focusableLinkClass}
                 onClick={(event) => event.stopPropagation()}
               >
                 {compactText(label, 18)}

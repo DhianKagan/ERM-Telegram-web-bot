@@ -238,6 +238,36 @@ describe('Chunk upload', () => {
     expect(storedPath.startsWith(`${currentUserId}/`)).toBe(true);
   });
 
+  test('загружает PDF документ', async () => {
+    const chunks = [Buffer.from('%PDF-1.4\nERM test document')];
+    const { attachment, storedPath } = await uploadViaChunks(
+      'chunk-pdf',
+      chunks,
+      'contract.pdf',
+      'application/pdf',
+    );
+    expect(attachment.name).toBe('contract.pdf');
+    const stored = storedFiles.find((f) => f.path === storedPath);
+    expect(stored?.type).toBe('application/pdf');
+  });
+
+  test('загружает документ DOCX', async () => {
+    const chunks = [
+      Buffer.from('PK\u0003\u0004\u0014\u0000\u0006\u0000\u0008\u0000\u0000\u0000!\u0000ERM docx test'),
+    ];
+    const { attachment, storedPath } = await uploadViaChunks(
+      'chunk-docx',
+      chunks,
+      'spec.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    expect(attachment.name).toBe('spec.docx');
+    const stored = storedFiles.find((f) => f.path === storedPath);
+    expect(stored?.type).toBe(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+  });
+
   test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {
     sharpToFileMock.mockRejectedValueOnce(new Error('pngload: libspng read error'));
     const chunks = [Buffer.from('thumb fail image')];

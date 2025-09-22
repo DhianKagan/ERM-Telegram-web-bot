@@ -57,7 +57,7 @@ export interface Logistics {
   start_date?: Date;
   end_date?: Date;
   transport?: string;
-  transport_type?: 'Пешком' | 'Авто' | 'Дрон';
+  transport_type?: 'Легковой' | 'Грузовой';
 }
 
 const logisticsSchema = new Schema<Logistics>(
@@ -69,8 +69,8 @@ const logisticsSchema = new Schema<Logistics>(
     transport: String,
     transport_type: {
       type: String,
-      enum: ['Пешком', 'Авто', 'Дрон'],
-      default: 'Авто',
+      enum: ['Легковой', 'Грузовой'],
+      default: 'Легковой',
     },
   },
   { _id: false },
@@ -212,7 +212,12 @@ export interface TaskAttrs {
   comment?: string;
   files?: string[];
   attachments?: Attachment[];
-  transport_type?: 'Пешком' | 'Авто' | 'Дрон';
+  transport_type?: 'Легковой' | 'Грузовой';
+  cargo_length_m?: number;
+  cargo_width_m?: number;
+  cargo_height_m?: number;
+  cargo_volume_m3?: number;
+  cargo_weight_kg?: number;
   payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
   telegram_topic_id?: number;
   time_spent?: number;
@@ -307,9 +312,14 @@ const taskSchema = new Schema<TaskDocument>(
     ],
     transport_type: {
       type: String,
-      enum: ['Пешком', 'Авто', 'Дрон'],
-      default: 'Авто',
+      enum: ['Легковой', 'Грузовой'],
+      default: 'Легковой',
     },
+    cargo_length_m: Number,
+    cargo_width_m: Number,
+    cargo_height_m: Number,
+    cargo_volume_m3: Number,
+    cargo_weight_kg: Number,
 
     // Способ оплаты допускает отсутствие оплаты
     payment_method: {

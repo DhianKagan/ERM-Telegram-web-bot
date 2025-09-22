@@ -30,6 +30,38 @@ interface RepositoryWithModel extends TasksRepository {
   Task?: { create: (data: Partial<TaskDocument>) => Promise<TaskDocument> };
 }
 
+const toNumeric = (value: unknown): number | undefined => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === 'string') {
+    const normalized = value
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/,/g, '.');
+    if (!normalized) return undefined;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const roundValue = (value: number, digits = 3) =>
+  Number(Number.isFinite(value) ? value.toFixed(digits) : Number.NaN);
+
+const setMetric = (
+  target: Record<string, unknown>,
+  key: keyof TaskDocument,
+  value: number | undefined,
+) => {
+  if (value === undefined || Number.isNaN(value)) {
+    delete target[key as string];
+    return;
+  }
+  target[key as string] = value;
+};
+
 class TasksService {
   repo: TasksRepository;
   constructor(repo: RepositoryWithModel) {
@@ -49,6 +81,7 @@ class TasksService {
   async create(data: Partial<TaskDocument> = {}) {
     applyIntakeRules(data);
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
+    this.applyCargoMetrics(data);
     await this.applyRouteInfo(data);
     const task = await this.repo.createTask(data);
     await clearRouteCache();
@@ -64,10 +97,47 @@ class TasksService {
   }
 
   async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
+    this.applyCargoMetrics(data);
     await this.applyRouteInfo(data);
     const task = await this.repo.updateTask(id, data, userId);
     await clearRouteCache();
     return task;
+  }
+
+  applyCargoMetrics(data: Partial<TaskDocument> = {}) {
+    const target = data as Record<string, unknown>;
+    const length = toNumeric(data.cargo_length_m);
+    const width = toNumeric(data.cargo_width_m);
+    const height = toNumeric(data.cargo_height_m);
+    const weight = toNumeric(data.cargo_weight_kg);
+    const volume = toNumeric(data.cargo_volume_m3);
+
+    setMetric(target, 'cargo_length_m',
+      length !== undefined ? roundValue(length) : undefined);
+    setMetric(target, 'cargo_width_m',
+      width !== undefined ? roundValue(width) : undefined);
+    setMetric(target, 'cargo_height_m',
+      height !== undefined ? roundValue(height) : undefined);
+    setMetric(target, 'cargo_weight_kg',
+      weight !== undefined ? roundValue(weight, 2) : undefined);
+
+    if (
+      length !== undefined &&
+      width !== undefined &&
+      height !== undefined
+    ) {
+      setMetric(
+        target,
+        'cargo_volume_m3',
+        roundValue(length * width * height),
+      );
+    } else {
+      setMetric(
+        target,
+        'cargo_volume_m3',
+        volume !== undefined ? roundValue(volume) : undefined,
+      );
+    }
   }
 
   async applyRouteInfo(data: Partial<TaskDocument> = {}) {

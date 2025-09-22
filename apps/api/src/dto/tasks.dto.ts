@@ -18,6 +18,11 @@ export class CreateTaskDto {
       body('status').optional().isString().isIn(statusList),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
+      body('cargo_length_m').optional().isFloat({ min: 0 }),
+      body('cargo_width_m').optional().isFloat({ min: 0 }),
+      body('cargo_height_m').optional().isFloat({ min: 0 }),
+      body('cargo_volume_m3').optional().isFloat({ min: 0 }),
+      body('cargo_weight_kg').optional().isFloat({ min: 0 }),
     ];
   }
 }
@@ -28,6 +33,11 @@ export class UpdateTaskDto {
       body('title').optional().isString(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
+      body('cargo_length_m').optional().isFloat({ min: 0 }),
+      body('cargo_width_m').optional().isFloat({ min: 0 }),
+      body('cargo_height_m').optional().isFloat({ min: 0 }),
+      body('cargo_volume_m3').optional().isFloat({ min: 0 }),
+      body('cargo_weight_kg').optional().isFloat({ min: 0 }),
     ];
   }
 }

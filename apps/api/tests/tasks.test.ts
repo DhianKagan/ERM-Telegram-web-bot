@@ -144,6 +144,16 @@ test('обновление задачи', async () => {
   expect(res.body.status).toBe('Выполнена');
 });
 
+test('обновление с очисткой габаритов проходит валидацию', async () => {
+  const res = await request(app)
+    .patch(`/api/v1/tasks/${id}`)
+    .send({ cargo_length_m: '', cargo_weight_kg: '   ' });
+  expect(res.status).toBe(200);
+  const [, update] = Task.findByIdAndUpdate.mock.calls.at(-1);
+  expect(update.$set).not.toHaveProperty('cargo_length_m', '');
+  expect(update.$set).not.toHaveProperty('cargo_weight_kg', '   ');
+});
+
 test('добавление времени', async () => {
   await request(app).patch(`/api/v1/tasks/${id}/time`).send({ minutes: 15 });
   expect(Task.findById).toHaveBeenCalled();

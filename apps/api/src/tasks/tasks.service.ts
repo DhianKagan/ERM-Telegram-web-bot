@@ -125,7 +125,10 @@ class TasksService {
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
     try {
-      const task = await this.repo.createTask(payload, userId);
+      const task =
+        userId === undefined
+          ? await this.repo.createTask(payload)
+          : await this.repo.createTask(payload, userId);
       await clearRouteCache();
       await this.logAttachmentSync(
         'create',

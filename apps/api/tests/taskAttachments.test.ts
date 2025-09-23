@@ -118,6 +118,38 @@ describe('Привязка вложений к задачам', () => {
       { $unset: { taskId: '' } },
     );
   });
+
+  test('парсит строковое представление вложений при обновлении', async () => {
+    const iso = new Date().toISOString();
+    const raw = `[
+      {
+        name: 'doc.pdf',
+        url: '/api/v1/files/${fileId}',
+        uploadedBy: '7',
+        uploadedAt: '${iso}',
+        type: 'application/pdf',
+        size: '512'
+      }
+    ]`;
+
+    await updateTask(
+      String(existingTaskId),
+      { attachments: raw } as unknown as Record<string, unknown>,
+      1,
+    );
+
+    const call = mockTaskFindByIdAndUpdate.mock.calls[0];
+    expect(call).toBeTruthy();
+    const setArg = call[1]?.$set as { attachments?: unknown[] };
+    expect(Array.isArray(setArg.attachments)).toBe(true);
+    const [attachment] = setArg.attachments as Record<string, unknown>[];
+    expect(attachment.url).toBe(`/api/v1/files/${fileId}`);
+    expect(attachment.name).toBe('doc.pdf');
+    expect(attachment.type).toBe('application/pdf');
+    expect(attachment.size).toBe(512);
+    expect(attachment.uploadedBy).toBe(7);
+    expect(attachment.uploadedAt).toBeInstanceOf(Date);
+  });
 });
 
 describe('Проверка доступа к задаче другим пользователем', () => {

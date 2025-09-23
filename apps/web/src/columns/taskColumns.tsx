@@ -33,7 +33,10 @@ const numberBadgeClass =
   `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
 
 const titleBadgeClass =
-  `${pillBadgeBaseClass} max-w-full justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
+  `${pillBadgeBaseClass} max-w-full w-full justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
+
+const creatorBadgeClass =
+  `${pillBadgeBaseClass} max-w-full w-full justify-start normal-case text-indigo-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
 
 const fallbackBadgeClass = buildBadgeClass(
   "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
@@ -352,15 +355,47 @@ export default function taskColumns(
       },
     },
     {
-      header: "Дата создания",
+      header: "Задачу создал",
       accessorKey: "createdAt",
       meta: {
-        width: "clamp(6.75rem, 11vw, 8.75rem)",
-        minWidth: "6.5rem",
-        maxWidth: "9rem",
-        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
+        width: "clamp(9rem, 18vw, 14rem)",
+        minWidth: "8.5rem",
+        maxWidth: "16rem",
+        cellClassName: "whitespace-nowrap",
       },
-      cell: (p) => renderDateCell(p.getValue<string>()),
+      cell: ({ row }) => {
+        const rawCreator =
+          (row.original.created_by as unknown) ??
+          (row.original.createdBy as unknown) ??
+          (row.original.creator as unknown);
+        const creatorId =
+          typeof rawCreator === "number"
+            ? rawCreator
+            : typeof rawCreator === "string" && rawCreator.trim()
+            ? Number(rawCreator)
+            : NaN;
+        if (!Number.isFinite(creatorId)) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const id = creatorId as number;
+        const user = users[id];
+        const label =
+          (user?.name as string | undefined) ||
+          (user?.telegram_username as string | undefined) ||
+          (user?.username as string | undefined) ||
+          String(id);
+        const title = label.trim() || String(id);
+        return (
+          <EmployeeLink
+            employeeId={id}
+            stopPropagation
+            title={title}
+            className={`${creatorBadgeClass} ${focusableBadgeClass} no-underline`}
+          >
+            <span className="truncate">{compactText(label, 32)}</span>
+          </EmployeeLink>
+        );
+      },
     },
     {
       header: "Название",
@@ -375,7 +410,7 @@ export default function taskColumns(
         const v = p.getValue<string>() || "";
         const compact = compactText(v, 72);
         return (
-          <span title={v} className={`${titleBadgeClass} max-w-full`}>
+          <span title={v} className={titleBadgeClass}>
             <span className="truncate">{compact}</span>
           </span>
         );

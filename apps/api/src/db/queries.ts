@@ -18,7 +18,7 @@ import * as logEngine from '../services/wgLogEngine';
 import { resolveRoleId } from './roleCache';
 import { Types, PipelineStage, Query } from 'mongoose';
 import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
-import { extractAttachmentIds } from '../utils/attachments';
+import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,6 +37,19 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
     });
   }
   return res;
+}
+
+function normalizeAttachmentsField(
+  target: Record<string, unknown>,
+): void {
+  if (!target || typeof target !== 'object') return;
+  if (!Object.prototype.hasOwnProperty.call(target, 'attachments')) return;
+  const normalized = coerceAttachments(target.attachments);
+  if (normalized === undefined) {
+    delete target.attachments;
+    return;
+  }
+  target.attachments = normalized;
 }
 
 async function syncTaskAttachments(
@@ -118,12 +131,14 @@ export async function createTask(
   data: Partial<TaskDocument>,
   userId?: number,
 ): Promise<TaskDocument> {
+  const payload: Partial<TaskDocument> = data ? { ...data } : {};
+  normalizeAttachmentsField(payload as Record<string, unknown>);
   const entry = {
     changed_at: new Date(),
-    changed_by: data.created_by || 0,
-    changes: { from: {}, to: data },
+    changed_by: payload.created_by || 0,
+    changes: { from: {}, to: payload },
   };
-  const task = await Task.create({ ...data, history: [entry] });
+  const task = await Task.create({ ...payload, history: [entry] });
   await syncTaskAttachments(task._id as Types.ObjectId, task.attachments, userId);
   return task;
 }
@@ -153,6 +168,7 @@ export async function updateTask(
   userId: number,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
   const from: Record<string, unknown> = {};

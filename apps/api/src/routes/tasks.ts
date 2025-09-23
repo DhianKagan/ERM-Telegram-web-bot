@@ -7,7 +7,6 @@ import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import { Router, RequestHandler } from 'express';
-import JSON5 from 'json5';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
 import container from '../di';
@@ -29,6 +28,7 @@ import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
 import { maxUserFiles, maxUserStorage } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
+import { coerceAttachments } from '../utils/attachments';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN, ACCESS_MANAGER } from '../utils/accessMask';
@@ -41,22 +41,14 @@ interface BodyWithAttachments extends Record<string, unknown> {
     name: string;
     url: string;
     thumbnailUrl?: string;
-    uploadedBy: number;
-    uploadedAt: Date;
-    type: string;
-    size: number;
+    uploadedBy?: number;
+    uploadedAt?: Date;
+    type?: string;
+    size?: number;
   }[];
 }
 
 type AttachmentItem = NonNullable<BodyWithAttachments['attachments']>[number];
-
-const isAttachmentItem = (value: unknown): value is AttachmentItem =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as { url?: unknown }).url === 'string';
-
-const filterAttachmentItems = (values: unknown[]): AttachmentItem[] =>
-  values.filter(isAttachmentItem);
 
 const mergeAttachments = (
   current: AttachmentItem[],
@@ -73,13 +65,8 @@ const mergeAttachments = (
 };
 
 function readAttachmentsField(value: unknown): AttachmentItem[] {
-  if (typeof value === 'string') {
-    return parseAttachments(value);
-  }
-  if (Array.isArray(value)) {
-    return filterAttachmentItems(value);
-  }
-  return [];
+  const parsed = coerceAttachments(value);
+  return Array.isArray(parsed) ? (parsed as AttachmentItem[]) : [];
 }
 
 const uploadsDirAbs = path.resolve(uploadsDir);
@@ -421,27 +408,6 @@ router.post(
   chunkUploadMiddleware,
   handleChunks,
 );
-/**
- * Нормализует массивы и парсит вложения из JSON-строк.
- * Поддерживает поля исполнителей, контролёров и вложений.
- */
-function parseAttachments(raw: string): AttachmentItem[] {
-  const trimmed = raw.trim();
-  if (!trimmed) return [];
-  const parsers = [JSON.parse, JSON5.parse];
-  for (const parse of parsers) {
-    try {
-      const parsed = parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return filterAttachmentItems(parsed);
-      }
-    } catch {
-      // пробуем следующий парсер
-    }
-  }
-  return [];
-}
-
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
     const v = (req.body as Record<string, unknown>)[k];

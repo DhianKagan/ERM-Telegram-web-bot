@@ -7,7 +7,7 @@ import EmployeeLink from "../components/EmployeeLink";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex h-8 min-h-[2rem] max-h-[2rem] max-w-full items-center justify-center truncate rounded-full px-2.5 text-center text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
+  "inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-center text-[0.68rem] font-semibold uppercase tracking-wide shadow-xs";
 
 const buildBadgeClass = (
   tones: string,
@@ -18,27 +18,20 @@ const defaultBadgeClass = buildBadgeClass(
   "bg-accent/60 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
 );
 
-const infoBadgeClass = buildBadgeClass(
-  "bg-slate-500/20 ring-1 ring-slate-500/35 dark:bg-slate-400/25 dark:ring-slate-300/40",
-  "text-slate-900 dark:text-slate-100 normal-case font-medium",
-);
-
-const numberBadgeClass = `${infoBadgeClass} px-2.5 py-1 text-xs font-semibold tracking-wide sm:text-sm`;
-
-const assigneeBadgeClass = buildBadgeClass(
-  "bg-indigo-500/20 ring-1 ring-indigo-500/40 dark:bg-indigo-400/25 dark:ring-indigo-300/45",
-  "text-indigo-900 dark:text-indigo-100 normal-case font-medium text-left items-center justify-start",
-);
+const assigneeBadgeClass =
+  "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2 py-0.5 text-left text-xs font-medium text-indigo-900 transition-colors hover:bg-indigo-500/25 dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30";
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-const rectangularBadgeBaseClass =
-  "relative flex h-9 min-h-[2.25rem] w-full min-w-0 max-w-full items-center overflow-hidden rounded-[1.15rem] border border-slate-200 bg-slate-50 px-3 text-left text-xs font-medium leading-tight text-slate-800 shadow-xs transition-colors hover:bg-slate-100 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-100 dark:hover:bg-slate-700/60 whitespace-nowrap text-ellipsis";
+const titleTextClass =
+  "block max-w-full truncate text-[0.85rem] font-semibold leading-tight text-slate-900 dark:text-slate-100 sm:text-[0.95rem]";
 
-const titleBadgeClass = `${rectangularBadgeBaseClass} font-semibold text-[0.85rem] sm:text-[0.95rem]`;
+const locationTextClass =
+  "block max-w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200 sm:text-sm";
 
-const locationBadgeClass = `${rectangularBadgeBaseClass} text-[0.8rem] sm:text-[0.85rem]`;
+const locationLinkClass =
+  "block max-w-full truncate text-xs font-medium text-primary underline-offset-4 hover:underline sm:text-sm";
 
 const statusBadgeClassMap: Record<Task["status"], string> = {
   Новая: buildBadgeClass(
@@ -294,14 +287,14 @@ const renderDateCell = (value?: string) => {
   if (!formatted) return "";
   return (
     <span
-      className={`${infoBadgeClass} gap-1 font-mono whitespace-nowrap`}
+      className="flex items-center gap-1 font-mono text-xs text-slate-700 dark:text-slate-200 sm:text-sm"
       title={formatted.full}
     >
       <time
         dateTime={value}
-        className="flex items-center gap-1 tabular-nums leading-tight"
+        className="flex items-center gap-1 truncate tabular-nums leading-tight"
       >
-        <span>{formatted.date}</span>
+        <span className="truncate">{formatted.date}</span>
         {formatted.time ? (
           <span className="text-muted-foreground text-[0.85em] leading-tight">
             {formatted.time}
@@ -344,7 +337,10 @@ export default function taskColumns(
         const numericMatch = value.match(/\d+/);
         const shortValue = numericMatch ? numericMatch[0] : value;
         return (
-          <span className={`${numberBadgeClass} font-mono`} title={value}>
+          <span
+            className="block truncate font-mono text-xs text-slate-900 dark:text-slate-100 sm:text-sm"
+            title={value}
+          >
             {shortValue}
           </span>
         );
@@ -373,7 +369,7 @@ export default function taskColumns(
         const v = p.getValue<string>() || "";
         const compact = compactText(v, 72);
         return (
-          <span title={v} className={titleBadgeClass}>
+          <span title={v} className={titleTextClass}>
             {compact}
           </span>
         );
@@ -476,13 +472,13 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${locationBadgeClass} ${focusableBadgeClass} no-underline`}
+            className={`${locationLinkClass} ${focusableBadgeClass}`}
             title={name}
           >
             {compact}
           </a>
         ) : (
-          <span title={name} className={locationBadgeClass}>
+          <span title={name} className={locationTextClass}>
             {compact}
           </span>
         );
@@ -505,13 +501,13 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${locationBadgeClass} ${focusableBadgeClass} no-underline`}
+            className={`${locationLinkClass} ${focusableBadgeClass}`}
             title={name}
           >
             {compact}
           </a>
         ) : (
-          <span title={name} className={locationBadgeClass}>
+          <span title={name} className={locationTextClass}>
             {compact}
           </span>
         );

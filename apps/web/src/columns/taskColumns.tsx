@@ -14,9 +14,6 @@ const buildBadgeClass = (
   textClass = "text-primary dark:text-primary",
 ) => `${badgeBaseClass} transition-colors ${textClass} ${tones}`;
 
-const assigneeBadgeClass =
-  "inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-indigo-500/15 px-2 py-0.5 text-left text-xs font-medium text-indigo-900 transition-colors hover:bg-indigo-500/25 dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30";
-
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
@@ -99,7 +96,7 @@ const priorityBadgeClassMap: Record<string, string> = {
   ),
 };
 
-const hasOwn = <T extends Record<string, unknown>>(obj: T, key: string): key is keyof T =>
+const hasOwn = <T extends Record<PropertyKey, unknown>>(obj: T, key: PropertyKey): key is keyof T =>
   Object.prototype.hasOwnProperty.call(obj, key);
 
 const getStatusBadgeClass = (value: string) => {
@@ -417,6 +414,51 @@ export default function taskColumns(
       },
     },
     {
+      header: "Исполнители",
+      accessorKey: "assignees",
+      meta: {
+        width: "clamp(7rem, 20vw, 13rem)",
+        minWidth: "6rem",
+        maxWidth: "13rem",
+      },
+      cell: ({ row }) => {
+        const ids: number[] =
+          row.original.assignees ||
+          (row.original.assigned_user_id
+            ? [row.original.assigned_user_id]
+            : []);
+        if (!ids.length) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const labels = ids.map((id) => ({
+          id,
+          label:
+            users[id]?.name ||
+            users[id]?.telegram_username ||
+            users[id]?.username ||
+            String(id),
+        }));
+        const tooltip = labels.map((item) => item.label).join(", ");
+        return (
+          <div
+            className="flex w-full flex-wrap items-start gap-1 leading-tight"
+            title={tooltip}
+          >
+            {labels.map(({ id, label }) => (
+              <EmployeeLink
+                key={id}
+                employeeId={id}
+                stopPropagation
+                className={`${creatorBadgeClass} ${focusableBadgeClass} no-underline`}
+              >
+                <span className="truncate">{compactText(label, 18)}</span>
+              </EmployeeLink>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       header: "Статус",
       accessorKey: "status",
       meta: {
@@ -596,51 +638,6 @@ export default function taskColumns(
           <span className={className} title={`${display} км`}>
             {display}
           </span>
-        );
-      },
-    },
-    {
-      header: "Исполнители",
-      accessorKey: "assignees",
-      meta: {
-        width: "clamp(7rem, 20vw, 13rem)",
-        minWidth: "6rem",
-        maxWidth: "13rem",
-      },
-      cell: ({ row }) => {
-        const ids: number[] =
-          row.original.assignees ||
-          (row.original.assigned_user_id
-            ? [row.original.assigned_user_id]
-            : []);
-        if (!ids.length) {
-          return <span className="text-muted-foreground">—</span>;
-        }
-        const labels = ids.map((id) => ({
-          id,
-          label:
-            users[id]?.name ||
-            users[id]?.telegram_username ||
-            users[id]?.username ||
-            String(id),
-        }));
-        const tooltip = labels.map((item) => item.label).join(", ");
-        return (
-          <div
-            className="flex w-full flex-wrap items-start gap-1 leading-tight"
-            title={tooltip}
-          >
-            {labels.map(({ id, label }) => (
-              <EmployeeLink
-                key={id}
-                employeeId={id}
-                stopPropagation
-                className={`${assigneeBadgeClass} ${focusableBadgeClass} no-underline`}
-              >
-                {compactText(label, 18)}
-              </EmployeeLink>
-            ))}
-          </div>
         );
       },
     },

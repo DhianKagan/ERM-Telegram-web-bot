@@ -48,6 +48,40 @@ interface BodyWithAttachments extends Record<string, unknown> {
   }[];
 }
 
+type AttachmentItem = NonNullable<BodyWithAttachments['attachments']>[number];
+
+const isAttachmentItem = (value: unknown): value is AttachmentItem =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { url?: unknown }).url === 'string';
+
+const filterAttachmentItems = (values: unknown[]): AttachmentItem[] =>
+  values.filter(isAttachmentItem);
+
+const mergeAttachments = (
+  current: AttachmentItem[],
+  incoming: AttachmentItem[],
+): AttachmentItem[] => {
+  const map = new Map<string, AttachmentItem>();
+  for (const attachment of current) {
+    map.set(attachment.url, attachment);
+  }
+  for (const attachment of incoming) {
+    map.set(attachment.url, attachment);
+  }
+  return Array.from(map.values());
+};
+
+function readAttachmentsField(value: unknown): AttachmentItem[] {
+  if (typeof value === 'string') {
+    return parseAttachments(value);
+  }
+  if (Array.isArray(value)) {
+    return filterAttachmentItems(value);
+  }
+  return [];
+}
+
 const uploadsDirAbs = path.resolve(uploadsDir);
 
 function relativeToUploads(target: string): string | undefined {
@@ -104,6 +138,9 @@ export const processUploads: RequestHandler = async (req, res, next) => {
     const files = Array.isArray(filesRaw)
       ? (filesRaw as Express.Multer.File[])
       : [];
+    const existingAttachments = readAttachmentsField(
+      (req.body as Record<string, unknown>).attachments,
+    );
     // Проверяем тип полученных файлов
     if (
       !Array.isArray(filesRaw) &&
@@ -113,6 +150,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       res.status(400).json({ error: 'Некорректный формат загрузки файлов' });
       return;
     }
+    let createdAttachments: AttachmentItem[] = [];
     if (files.length > 0) {
       const userId = (req as RequestWithUser).user?.id as number;
       const agg = await File.aggregate([
@@ -189,8 +227,12 @@ export const processUploads: RequestHandler = async (req, res, next) => {
           };
         }),
       );
-      (req.body as BodyWithAttachments).attachments = attachments;
+      createdAttachments = attachments;
     }
+    (req.body as BodyWithAttachments).attachments = mergeAttachments(
+      existingAttachments,
+      createdAttachments,
+    );
     next();
   } catch (error) {
     if (res.headersSent) return;
@@ -383,9 +425,7 @@ router.post(
  * Нормализует массивы и парсит вложения из JSON-строк.
  * Поддерживает поля исполнителей, контролёров и вложений.
  */
-const parseAttachments = (
-  raw: string,
-): BodyWithAttachments['attachments'] => {
+function parseAttachments(raw: string): AttachmentItem[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];
   const parsers = [JSON.parse, JSON5.parse];
@@ -393,17 +433,14 @@ const parseAttachments = (
     try {
       const parsed = parse(trimmed);
       if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (item): item is NonNullable<BodyWithAttachments['attachments']>[number] =>
-            typeof item === 'object' && item !== null,
-        );
+        return filterAttachmentItems(parsed);
       }
     } catch {
       // пробуем следующий парсер
     }
   }
   return [];
-};
+}
 
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {
@@ -412,15 +449,10 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
       (req.body as Record<string, unknown>)[k] = [v];
     }
   });
-  const attachmentsField = (req.body as BodyWithAttachments).attachments;
-  if (typeof attachmentsField === 'string') {
-    (req.body as BodyWithAttachments).attachments = parseAttachments(
+  const attachmentsField = (req.body as Record<string, unknown>).attachments;
+  if (attachmentsField !== undefined) {
+    (req.body as BodyWithAttachments).attachments = readAttachmentsField(
       attachmentsField,
-    );
-  } else if (Array.isArray(attachmentsField)) {
-    (req.body as BodyWithAttachments).attachments = attachmentsField.filter(
-      (item): item is NonNullable<BodyWithAttachments['attachments']>[number] =>
-        typeof item === 'object' && item !== null,
     );
   }
   next();

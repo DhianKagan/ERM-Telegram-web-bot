@@ -45,11 +45,36 @@ async function syncTaskAttachments(
   userId?: number,
 ): Promise<void> {
   if (attachments === undefined) return;
+  const fileModel = File as typeof File | undefined;
+  if (!fileModel) {
+    await logEngine
+      .writeLog(
+        `Модель файлов недоступна, пропускаем обновление вложений задачи ${String(
+          taskId,
+        )}`,
+        'warn',
+        { taskId: String(taskId), userId },
+      )
+      .catch(() => undefined);
+    return;
+  }
+  if (typeof fileModel.updateMany !== 'function') {
+    await logEngine
+      .writeLog(
+        `Метод updateMany отсутствует у модели файлов, пропускаем обновление вложений задачи ${String(
+          taskId,
+        )}`,
+        'warn',
+        { taskId: String(taskId), userId },
+      )
+      .catch(() => undefined);
+    return;
+  }
   const fileIds = extractAttachmentIds(attachments);
   const idsForLog = fileIds.map((id) => id.toHexString());
   try {
     if (fileIds.length === 0) {
-      await File.updateMany({ taskId }, { $unset: { taskId: '' } });
+      await fileModel.updateMany({ taskId }, { $unset: { taskId: '' } });
       return;
     }
     const filter: Record<string, unknown> = {
@@ -58,8 +83,8 @@ async function syncTaskAttachments(
     if (userId !== undefined) {
       filter.$or = [{ userId }, { taskId }];
     }
-    await File.updateMany(filter, { $set: { taskId } });
-    await File.updateMany(
+    await fileModel.updateMany(filter, { $set: { taskId } });
+    await fileModel.updateMany(
       { taskId, _id: { $nin: fileIds } },
       { $unset: { taskId: '' } },
     );

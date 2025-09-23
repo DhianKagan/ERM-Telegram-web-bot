@@ -77,7 +77,10 @@ export default class TasksController {
   create = [
     handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      const task = await this.service.create(req.body as Partial<TaskDocument>);
+      const task = await this.service.create(
+        req.body as Partial<TaskDocument>,
+        req.user!.id as number,
+      );
       await writeLog(
         `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );

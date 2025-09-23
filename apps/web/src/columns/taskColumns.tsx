@@ -7,7 +7,7 @@ import EmployeeLink from "../components/EmployeeLink";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
+  "inline-flex h-8 min-h-[2rem] max-h-[2rem] max-w-full items-center justify-center truncate rounded-full px-2.5 text-center text-[0.7rem] font-semibold uppercase tracking-wide shadow-xs";
 
 const buildBadgeClass = (
   tones: string,
@@ -27,14 +27,14 @@ const numberBadgeClass = `${infoBadgeClass} px-2.5 py-1 text-xs font-semibold tr
 
 const assigneeBadgeClass = buildBadgeClass(
   "bg-indigo-500/20 ring-1 ring-indigo-500/40 dark:bg-indigo-400/25 dark:ring-indigo-300/45",
-  "text-indigo-900 dark:text-indigo-100 normal-case font-medium whitespace-normal break-words text-left items-start justify-start",
+  "text-indigo-900 dark:text-indigo-100 normal-case font-medium text-left items-center justify-start",
 );
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const rectangularBadgeBaseClass =
-  "block w-full min-w-0 max-w-full break-words rounded-xl border border-slate-200 bg-slate-50 px-2 py-1 text-left text-xs font-medium leading-snug text-slate-800 shadow-xs transition-colors hover:bg-slate-100 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-100 dark:hover:bg-slate-700/60";
+  "relative flex h-9 min-h-[2.25rem] w-full min-w-0 max-w-full items-center overflow-hidden rounded-[1.15rem] border border-slate-200 bg-slate-50 px-3 text-left text-xs font-medium leading-tight text-slate-800 shadow-xs transition-colors hover:bg-slate-100 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-100 dark:hover:bg-slate-700/60 whitespace-nowrap text-ellipsis";
 
 const titleBadgeClass = `${rectangularBadgeBaseClass} font-semibold text-[0.85rem] sm:text-[0.95rem]`;
 
@@ -294,14 +294,14 @@ const renderDateCell = (value?: string) => {
   if (!formatted) return "";
   return (
     <span
-      className={`${infoBadgeClass} items-start justify-center font-mono`}
+      className={`${infoBadgeClass} gap-1 font-mono whitespace-nowrap`}
       title={formatted.full}
     >
       <time
         dateTime={value}
-        className="flex flex-col tabular-nums leading-tight"
+        className="flex items-center gap-1 tabular-nums leading-tight"
       >
-        <span className="leading-tight">{formatted.date}</span>
+        <span>{formatted.date}</span>
         {formatted.time ? (
           <span className="text-muted-foreground text-[0.85em] leading-tight">
             {formatted.time}

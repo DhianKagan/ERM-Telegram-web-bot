@@ -1,9 +1,9 @@
 // Конфигурация колонок задач для React Table
-// Модули: React, @tanstack/react-table, react-router-dom
+// Модули: React, @tanstack/react-table, EmployeeLink
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Link } from "react-router-dom";
 import type { Task } from "shared";
+import EmployeeLink from "../components/EmployeeLink";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
@@ -575,14 +575,14 @@ export default function taskColumns(
             title={tooltip}
           >
             {visible.map(({ id, label }) => (
-              <Link
+              <EmployeeLink
                 key={id}
-                to={`/employees/${id}`}
+                employeeId={id}
+                stopPropagation
                 className={`${assigneeBadgeClass} ${focusableBadgeClass} no-underline`}
-                onClick={(event) => event.stopPropagation()}
               >
                 {compactText(label, 18)}
-              </Link>
+              </EmployeeLink>
             ))}
             {hiddenCount > 0 ? (
               <span className={`${infoBadgeClass} text-xs font-medium`}>

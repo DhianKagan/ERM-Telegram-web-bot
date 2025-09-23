@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import ManagerRoute from "./components/ManagerRoute";
 import TaskDialogRoute from "./components/TaskDialogRoute";
+import EmployeeDialogRoute from "./components/EmployeeDialogRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const TasksPage = lazy(() => import("./pages/TasksPage"));
@@ -24,8 +25,6 @@ const RoutesPage = lazy(() => import("./pages/Routes"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
-const EmployeeCard = lazy(() => import("./pages/EmployeeCard"));
-
 const ThemeProviderLazy = lazy(async () => {
   const mod = await import("./context/ThemeProvider");
   return { default: mod.ThemeProvider };
@@ -60,14 +59,6 @@ function AppShell() {
               element={
                 <ProtectedRoute>
                   <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/employees/:id"
-              element={
-                <ProtectedRoute>
-                  <EmployeeCard />
                 </ProtectedRoute>
               }
             />
@@ -164,6 +155,7 @@ function AppShell() {
         </Suspense>
       </main>
       <TaskDialogRoute />
+      <EmployeeDialogRoute />
     </>
   );
 }

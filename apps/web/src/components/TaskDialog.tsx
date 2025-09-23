@@ -1,7 +1,6 @@
 // Общая форма создания и редактирования задач
-// Модули: React, DOMPurify, контексты, сервисы задач, shared и логов
+// Модули: React, DOMPurify, контексты, сервисы задач, shared, EmployeeLink и логов
 import React from "react";
-import { Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
@@ -21,12 +20,7 @@ import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
-import {
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
-  ArrowPathIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import createRouteLink from "../utils/createRouteLink";
 import { useForm, Controller } from "react-hook-form";
@@ -36,6 +30,7 @@ import FileUploader from "./FileUploader";
 import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 import type { Task } from "shared";
+import EmployeeLink from "./EmployeeLink";
 
 interface Props {
   onClose: () => void;
@@ -198,7 +193,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const canEditAll = isAdmin || user?.role === "manager";
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
-  const [expanded, setExpanded] = React.useState(false);
   const initialRef = React.useRef<InitialValues | null>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
@@ -893,99 +887,66 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const creatorId = Number(creator);
   const hasCreator = Number.isFinite(creatorId) && creator.trim().length > 0;
   const creatorName = hasCreator ? resolveUserName(creatorId) : "";
+  const headerLabel = React.useMemo(() => {
+    const parts: string[] = [t("task")];
+    if (requestId) parts.push(requestId);
+    if (created) parts.push(created);
+    return parts.join(" ").trim();
+  }, [created, requestId, t]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div
-        className={`w-full ${expanded ? "max-w-screen-xl" : "max-w-screen-md"} mx-auto space-y-1.5 rounded-xl bg-white p-4 shadow-lg`}
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold">{t("task")}</h3>
-            {hasCreator ? (
-              <Link
-                to={`/employees/${creatorId}`}
-                className="text-sm font-medium text-accentPrimary underline"
+      <div className="relative mx-auto w-full max-w-screen-md space-y-4 rounded-xl bg-white p-4 shadow-lg">
+        <div className="pr-16">
+          <h3 className="text-lg font-semibold leading-tight text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+            {headerLabel}
+          </h3>
+          {hasCreator ? (
+            <p className="mt-1 text-sm text-gray-600">
+              {t("taskCreatedBy")} {" "}
+              <EmployeeLink
+                employeeId={creatorId}
+                className="font-medium underline decoration-1 underline-offset-2"
               >
-                {t("taskFrom", { name: creatorName })}
-              </Link>
-            ) : (
-              <span className="text-sm text-gray-500">{t("taskFromUnknown")}</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {isEdit && !editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="flex h-12 w-12 items-center justify-center"
-                title={t("edit")}
-                aria-label={t("edit")}
-              >
-                ✎
-              </button>
-            )}
-            <button
-              onClick={resetForm}
-              className="flex h-12 w-12 items-center justify-center"
-              title={t("reset")}
-              aria-label={t("reset")}
-            >
-              <ArrowPathIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex h-12 w-12 items-center justify-center"
-              title={expanded ? t("collapse") : t("expand")}
-              aria-label={expanded ? t("collapse") : t("expand")}
-            >
-              {expanded ? (
-                <ArrowsPointingInIcon className="h-5 w-5" />
-              ) : (
-                <ArrowsPointingOutIcon className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              className="flex h-12 w-12 items-center justify-center"
-              title={t("close")}
-              aria-label={t("close")}
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
+                {creatorName}
+              </EmployeeLink>
+            </p>
+          ) : (
+            <span className="mt-1 block text-sm text-gray-500">{t("taskCreatorUnknown")}</span>
+          )}
         </div>
-        <>
-          <div className="grid grid-cols-1 gap-2 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("taskNumber")}
-              </label>
-              <input
-                value={requestId}
-                disabled
-                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("createdDate")}
-              </label>
-              <input
-                value={created}
-                disabled
-                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring"
-              />
-            </div>
-          </div>
-          {isEdit && history.length > 0 && (
+        <div className="absolute right-4 top-4 flex flex-wrap justify-end gap-2">
+          {isEdit && !editing && (
             <button
               type="button"
-              className="btn-red mt-2 rounded-full"
-              onClick={() => setShowHistory(true)}
+              onClick={() => setEditing(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+              title={t("edit")}
+              aria-label={t("edit")}
             >
-              {t("history")}
+              ✎
             </button>
           )}
+          <button
+            type="button"
+            onClick={resetForm}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
+            title={t("reset")}
+            aria-label={t("reset")}
+          >
+            <ArrowPathIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
+            title={t("close")}
+            aria-label={t("close")}
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <>
           <div>
             <label className="block text-sm font-medium">
               {t("taskTitle")}
@@ -1416,6 +1377,17 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             onUploaded={(a) => setAttachments((p) => [...p, a])}
             onRemove={(a) => removeAttachment(a)}
           />
+          {isEdit && history.length > 0 && (
+            <div className="mt-2 flex justify-start">
+              <button
+                type="button"
+                className="btn-red rounded-full"
+                onClick={() => setShowHistory(true)}
+              >
+                {t("history")}
+              </button>
+            </div>
+          )}
           {isEdit && isAdmin && editing && (
             <div className="mt-2 flex justify-start">
               <button

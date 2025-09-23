@@ -26,9 +26,13 @@ export default function AttachmentMenu() {
   }, [addToast]);
 
   function select(id: string) {
-    if (window.Telegram?.WebApp?.sendData) {
-      window.Telegram.WebApp.sendData(`task_selected:${id}`);
-    }
+    type TelegramApi = {
+      WebApp?: {
+        sendData?: (data: string) => void;
+      };
+    };
+    const telegram = (globalThis as typeof globalThis & { Telegram?: TelegramApi }).Telegram;
+    telegram?.WebApp?.sendData?.(`task_selected:${id}`);
   }
 
   return (

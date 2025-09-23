@@ -118,12 +118,14 @@ class TasksService {
   }
 
   async create(data: Partial<TaskDocument> = {}, userId?: number) {
-    applyIntakeRules(data);
-    if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
-    this.applyCargoMetrics(data);
-    await this.applyRouteInfo(data);
+    const payload = data ?? {};
+    applyIntakeRules(payload);
+    if (payload.due_date && !payload.remind_at)
+      payload.remind_at = payload.due_date;
+    this.applyCargoMetrics(payload);
+    await this.applyRouteInfo(payload);
     try {
-      const task = await this.repo.createTask(data, userId);
+      const task = await this.repo.createTask(payload, userId);
       await clearRouteCache();
       await this.logAttachmentSync(
         'create',
@@ -148,15 +150,16 @@ class TasksService {
   }
 
   async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
-    this.applyCargoMetrics(data);
-    await this.applyRouteInfo(data);
+    const payload = data ?? {};
+    this.applyCargoMetrics(payload);
+    await this.applyRouteInfo(payload);
     try {
-      const task = await this.repo.updateTask(id, data, userId);
+      const task = await this.repo.updateTask(id, payload, userId);
       await clearRouteCache();
       await this.logAttachmentSync(
         'update',
         task,
-        Object.prototype.hasOwnProperty.call(data, 'attachments'),
+        Object.prototype.hasOwnProperty.call(payload, 'attachments'),
       );
       return task;
     } catch (error) {

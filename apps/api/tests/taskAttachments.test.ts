@@ -11,11 +11,11 @@ const createdTaskId = new Types.ObjectId();
 const existingTaskId = new Types.ObjectId();
 const fileId = new Types.ObjectId();
 
-const taskCreateMock = jest.fn(async (data: any) => ({
+const mockTaskCreate = jest.fn(async (data: any) => ({
   ...data,
   _id: createdTaskId,
 }));
-const taskFindByIdMock = jest.fn(async () => ({
+const mockTaskFindById = jest.fn(async () => ({
   _id: existingTaskId,
   attachments: [
     {
@@ -28,23 +28,23 @@ const taskFindByIdMock = jest.fn(async () => ({
     },
   ],
 }));
-const taskFindByIdAndUpdateMock = jest.fn(async () => ({
+const mockTaskFindByIdAndUpdate = jest.fn(async () => ({
   _id: existingTaskId,
   attachments: [],
 }));
-const fileUpdateManyMock = jest.fn(async () => ({}));
+const mockFileUpdateMany = jest.fn(async () => ({}));
 
 jest.mock('../src/db/model', () => ({
   Task: {
-    create: taskCreateMock,
-    findById: taskFindByIdMock,
-    findByIdAndUpdate: taskFindByIdAndUpdateMock,
+    create: mockTaskCreate,
+    findById: mockTaskFindById,
+    findByIdAndUpdate: mockTaskFindByIdAndUpdate,
   },
   Archive: {},
   User: {},
   Role: {},
   File: {
-    updateMany: fileUpdateManyMock,
+    updateMany: mockFileUpdateMany,
   },
   RoleAttrs: {},
   TaskTemplate: {},
@@ -86,8 +86,8 @@ describe('Привязка вложений к задачам', () => {
       },
     ];
     await createTask({ attachments }, 7);
-    expect(taskCreateMock).toHaveBeenCalled();
-    expect(fileUpdateManyMock).toHaveBeenNthCalledWith(
+    expect(mockTaskCreate).toHaveBeenCalled();
+    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
       1,
       {
         _id: { $in: [fileId] },
@@ -95,7 +95,7 @@ describe('Привязка вложений к задачам', () => {
       },
       { $set: { taskId: createdTaskId } },
     );
-    expect(fileUpdateManyMock).toHaveBeenNthCalledWith(
+    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
       2,
       {
         taskId: createdTaskId,
@@ -112,7 +112,7 @@ describe('Привязка вложений к задачам', () => {
       1,
     );
     expect(result).not.toBeNull();
-    expect(fileUpdateManyMock).toHaveBeenCalledWith(
+    expect(mockFileUpdateMany).toHaveBeenCalledWith(
       { taskId: existingTaskId },
       { $unset: { taskId: '' } },
     );

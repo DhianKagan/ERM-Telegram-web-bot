@@ -72,8 +72,8 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
         <GlobalSearch />
         {children}
       </div>
-      <div className="ml-auto flex w-full flex-wrap items-center gap-1 sm:w-auto sm:justify-end">
-        <details className="relative">
+      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto">
+        <details className="relative flex-shrink-0">
           <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
             {t("export")}
           </summary>
@@ -92,7 +92,7 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
             </button>
           </div>
         </details>
-        <details className="relative">
+        <details className="relative flex-shrink-0">
           <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
             {t("settings")}
           </summary>

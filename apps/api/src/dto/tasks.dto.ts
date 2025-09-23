@@ -2,6 +2,17 @@
 // Основные модули: routes, middleware
 import { body } from 'express-validator';
 import { taskFields } from 'shared';
+
+const normalizeEmptyNumeric = (value: unknown) => {
+  if (typeof value === 'string' && value.trim() === '') return null;
+  return value;
+};
+
+const optionalFloatField = (field: string) =>
+  body(field)
+    .customSanitizer(normalizeEmptyNumeric)
+    .optional({ nullable: true })
+    .isFloat({ min: 0 });
 const statusField = taskFields.find((f) => f.name === 'status');
 const statusList: readonly string[] = statusField?.options ?? [
   'Новая',
@@ -18,11 +29,11 @@ export class CreateTaskDto {
       body('status').optional().isString().isIn(statusList),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
-      body('cargo_length_m').optional().isFloat({ min: 0 }),
-      body('cargo_width_m').optional().isFloat({ min: 0 }),
-      body('cargo_height_m').optional().isFloat({ min: 0 }),
-      body('cargo_volume_m3').optional().isFloat({ min: 0 }),
-      body('cargo_weight_kg').optional().isFloat({ min: 0 }),
+      optionalFloatField('cargo_length_m'),
+      optionalFloatField('cargo_width_m'),
+      optionalFloatField('cargo_height_m'),
+      optionalFloatField('cargo_volume_m3'),
+      optionalFloatField('cargo_weight_kg'),
     ];
   }
 }
@@ -33,11 +44,11 @@ export class UpdateTaskDto {
       body('title').optional().isString(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
-      body('cargo_length_m').optional().isFloat({ min: 0 }),
-      body('cargo_width_m').optional().isFloat({ min: 0 }),
-      body('cargo_height_m').optional().isFloat({ min: 0 }),
-      body('cargo_volume_m3').optional().isFloat({ min: 0 }),
-      body('cargo_weight_kg').optional().isFloat({ min: 0 }),
+      optionalFloatField('cargo_length_m'),
+      optionalFloatField('cargo_width_m'),
+      optionalFloatField('cargo_height_m'),
+      optionalFloatField('cargo_volume_m3'),
+      optionalFloatField('cargo_weight_kg'),
     ];
   }
 }

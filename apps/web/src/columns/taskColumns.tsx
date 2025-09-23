@@ -23,11 +23,10 @@ const focusableBadgeClass =
 const titleTextClass =
   "block max-w-full truncate font-semibold leading-tight text-slate-900 dark:text-slate-100";
 
-const fallbackBadgeTextClass =
-  "font-semibold uppercase tracking-wide text-slate-900 dark:text-slate-100";
-
-const fallbackPillTextClass =
-  "font-semibold text-slate-900 dark:text-slate-100";
+const fallbackBadgeClass = buildBadgeClass(
+  "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
+  "text-slate-900 dark:text-slate-100",
+);
 
 const locationTextClass =
   "block max-w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200 sm:text-sm";
@@ -392,7 +391,7 @@ export default function taskColumns(
         }
         const badgeClass = getStatusBadgeClass(value);
         if (!badgeClass) {
-          return <span className={fallbackBadgeTextClass}>{value}</span>;
+          return <span className={fallbackBadgeClass}>{value}</span>;
         }
         return <span className={badgeClass}>{value}</span>;
       },
@@ -412,11 +411,9 @@ export default function taskColumns(
         }
         const display = normalizePriorityLabel(value);
         const badgeClass = getPriorityBadgeClass(value);
-        if (!badgeClass) {
-          return <span className={fallbackPillTextClass}>{display}</span>;
-        }
+        const className = badgeClass || `${fallbackBadgeClass} normal-case`;
         return (
-          <span className={badgeClass} title={display}>
+          <span className={className} title={display}>
             {display}
           </span>
         );
@@ -459,11 +456,9 @@ export default function taskColumns(
           return "";
         }
         const badgeClass = getTypeBadgeClass(trimmed);
-        if (!badgeClass) {
-          return <span className={fallbackPillTextClass}>{trimmed}</span>;
-        }
+        const className = badgeClass || `${fallbackBadgeClass} normal-case`;
         return (
-          <span className={badgeClass} title={trimmed}>
+          <span className={className} title={trimmed}>
             {trimmed}
           </span>
         );
@@ -547,11 +542,9 @@ export default function taskColumns(
           return "";
         }
         const badgeClass = getDistanceBadgeClass(raw);
-        if (!badgeClass) {
-          return <span className={fallbackPillTextClass}>{display}</span>;
-        }
+        const className = badgeClass || fallbackBadgeClass;
         return (
-          <span className={badgeClass} title={`${display} км`}>
+          <span className={className} title={`${display} км`}>
             {display}
           </span>
         );

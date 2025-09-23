@@ -8,7 +8,8 @@ import { Types } from 'mongoose';
 import type { RequestHandler } from 'express';
 
 const createdTaskId = new Types.ObjectId();
-const existingTaskId = new Types.ObjectId();
+const mockExistingTaskId = new Types.ObjectId();
+const existingTaskId = mockExistingTaskId;
 const fileId = new Types.ObjectId();
 
 const mockTaskCreate = jest.fn(async (data: any) => ({
@@ -58,7 +59,7 @@ jest.mock('../src/services/wgLogEngine', () => ({
 
 jest.mock('../src/services/tasks', () => ({
   getById: jest.fn(async () => ({
-    _id: existingTaskId,
+    _id: mockExistingTaskId,
     created_by: 1,
     assignees: [],
     controllers: [],

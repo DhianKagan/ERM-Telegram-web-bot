@@ -68,7 +68,7 @@ export default function DataTable<T>({
   });
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-2 px-1 font-ui text-[13px] sm:px-2 sm:text-sm lg:px-0">
+    <div className="w-full space-y-2 px-0 font-ui text-[13px] sm:px-2 sm:text-sm">
       <TableToolbar table={table as TableType<T>}>
         {toolbarChildren}
       </TableToolbar>

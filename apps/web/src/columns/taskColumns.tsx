@@ -7,7 +7,7 @@ import EmployeeLink from "../components/EmployeeLink";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-center text-[0.68rem] font-semibold uppercase tracking-wide shadow-xs";
+  "inline-flex min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.68rem] font-semibold uppercase tracking-wide shadow-xs";
 
 const buildBadgeClass = (
   tones: string,
@@ -15,13 +15,13 @@ const buildBadgeClass = (
 ) => `${badgeBaseClass} transition-colors ${textClass} ${tones}`;
 
 const assigneeBadgeClass =
-  "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2 py-0.5 text-left text-xs font-medium text-indigo-900 transition-colors hover:bg-indigo-500/25 dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30";
+  "inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-indigo-500/15 px-2 py-0.5 text-left text-xs font-medium text-indigo-900 transition-colors hover:bg-indigo-500/25 dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30";
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const pillBadgeBaseClass =
-  "inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-left text-[0.72rem] font-semibold leading-tight tracking-normal shadow-xs sm:text-[0.78rem]";
+  "inline-flex max-w-full min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-left text-[0.72rem] font-semibold leading-tight tracking-normal shadow-xs sm:text-[0.78rem]";
 
 const dateBadgeClass =
   `${pillBadgeBaseClass} font-mono normal-case text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
@@ -29,8 +29,11 @@ const dateBadgeClass =
 const dateBadgeTimeClass =
   "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
 
-const titleTextClass =
-  "block max-w-full truncate font-semibold leading-tight text-slate-900 dark:text-slate-100";
+const numberBadgeClass =
+  `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
+
+const titleBadgeClass =
+  `${pillBadgeBaseClass} max-w-full justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
 
 const fallbackBadgeClass = buildBadgeClass(
   "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
@@ -330,23 +333,20 @@ export default function taskColumns(
       header: "Номер",
       accessorKey: "task_number",
       meta: {
-        width: "clamp(3.25rem, 5vw, 4.25rem)",
-        minWidth: "3.25rem",
-        maxWidth: "4.25rem",
+        width: "clamp(4.25rem, 8vw, 6.25rem)",
+        minWidth: "4rem",
+        maxWidth: "6.5rem",
         cellClassName:
-          "text-center font-mono tabular-nums sm:text-left sm:pl-1.5",
-        headerClassName: "text-center sm:text-left",
+          "whitespace-nowrap text-center font-mono tabular-nums sm:text-left sm:pl-1.5",
+        headerClassName: "whitespace-nowrap text-center sm:text-left",
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
         const numericMatch = value.match(/\d+/);
         const shortValue = numericMatch ? numericMatch[0] : value;
         return (
-          <span
-            className="block truncate font-mono text-xs text-slate-900 dark:text-slate-100 sm:text-sm"
-            title={value}
-          >
-            {shortValue}
+          <span className={`${numberBadgeClass} justify-center`} title={value}>
+            <span className="truncate">{shortValue}</span>
           </span>
         );
       },
@@ -358,7 +358,7 @@ export default function taskColumns(
         width: "clamp(6.75rem, 11vw, 8.75rem)",
         minWidth: "6.5rem",
         maxWidth: "9rem",
-        cellClassName: "text-xs sm:text-sm",
+        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
@@ -366,16 +366,17 @@ export default function taskColumns(
       header: "Название",
       accessorKey: "title",
       meta: {
-        width: "clamp(9rem, 24vw, 18rem)",
-        minWidth: "7rem",
-        maxWidth: "18rem",
+        width: "clamp(12rem, 32vw, 26rem)",
+        minWidth: "10rem",
+        maxWidth: "26rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: (p) => {
         const v = p.getValue<string>() || "";
         const compact = compactText(v, 72);
         return (
-          <span title={v} className={titleTextClass}>
-            {compact}
+          <span title={v} className={`${titleBadgeClass} max-w-full`}>
+            <span className="truncate">{compact}</span>
           </span>
         );
       },
@@ -387,6 +388,7 @@ export default function taskColumns(
         width: "clamp(4.5rem, 8vw, 6.5rem)",
         minWidth: "4.5rem",
         maxWidth: "6.5rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
@@ -407,6 +409,7 @@ export default function taskColumns(
         width: "clamp(8.5rem, 15vw, 12.5rem)",
         minWidth: "8.5rem",
         maxWidth: "12.5rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
@@ -430,7 +433,7 @@ export default function taskColumns(
         width: "clamp(6.75rem, 11vw, 8.75rem)",
         minWidth: "6.5rem",
         maxWidth: "9rem",
-        cellClassName: "text-xs sm:text-sm",
+        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
@@ -441,7 +444,7 @@ export default function taskColumns(
         width: "clamp(6.75rem, 11vw, 8.75rem)",
         minWidth: "6.5rem",
         maxWidth: "9rem",
-        cellClassName: "text-xs sm:text-sm",
+        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
@@ -452,6 +455,7 @@ export default function taskColumns(
         width: "clamp(4.5rem, 8vw, 6.5rem)",
         minWidth: "4.5rem",
         maxWidth: "6.5rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: (p) => {
         const value = p.getValue<string>() || "";
@@ -472,13 +476,16 @@ export default function taskColumns(
       header: "Старт",
       accessorKey: "start_location",
       meta: {
-        width: "clamp(6.5rem, 18vw, 12rem)",
-        minWidth: "6rem",
-        maxWidth: "12rem",
+        width: "clamp(5.5rem, 14vw, 9.5rem)",
+        minWidth: "5rem",
+        maxWidth: "9.5rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: ({ row }) => {
         const name = row.original.start_location || "";
-        const compact = compactText(name, 48);
+        const trimmed = name.trim();
+        const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
+        const compact = compactText(firstToken, 24);
         const link = row.original.start_location_link;
         return link ? (
           <a
@@ -501,13 +508,16 @@ export default function taskColumns(
       header: "Финиш",
       accessorKey: "end_location",
       meta: {
-        width: "clamp(6.5rem, 18vw, 12rem)",
-        minWidth: "6rem",
-        maxWidth: "12rem",
+        width: "clamp(5.5rem, 14vw, 9.5rem)",
+        minWidth: "5rem",
+        maxWidth: "9.5rem",
+        cellClassName: "whitespace-nowrap",
       },
       cell: ({ row }) => {
         const name = row.original.end_location || "";
-        const compact = compactText(name, 48);
+        const trimmed = name.trim();
+        const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
+        const compact = compactText(firstToken, 24);
         const link = row.original.end_location_link;
         return link ? (
           <a
@@ -533,7 +543,7 @@ export default function taskColumns(
         width: "clamp(3.25rem, 6vw, 4.75rem)",
         minWidth: "3rem",
         maxWidth: "4.75rem",
-        cellClassName: "text-center sm:text-left",
+        cellClassName: "whitespace-nowrap text-center sm:text-left",
         headerClassName: "text-center sm:text-left",
       },
       cell: (p) => {

@@ -75,7 +75,7 @@ export default function DataTable<T>({
       <Table className="text-left">
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id}>
+            <TableRow key={hg.id} variant="header">
               {hg.headers.map((header) => {
                 const meta =
                   (header.column.columnDef.meta as ColumnMeta | undefined) ||

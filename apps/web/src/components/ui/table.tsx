@@ -58,15 +58,29 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+type TableRowProps = React.ComponentProps<"tr"> & {
+  variant?: "body" | "header" | "footer";
+};
+
+function TableRow({ className, variant = "body", ...props }: TableRowProps) {
+  const isBodyRow = variant === "body";
   return (
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-border dark:border-border/60 transition-colors",
-        "hover:bg-muted/60 dark:hover:bg-muted/40",
-        "data-[state=selected]:bg-muted data-[state=selected]:text-foreground",
-        "dark:data-[state=selected]:bg-muted/50 dark:data-[state=selected]:text-foreground",
+        "group relative isolate transition-colors",
+        "border-b border-border dark:border-border/60",
+        isBodyRow
+          ? [
+              "before:absolute before:inset-x-1 before:top-0.5 before:bottom-0.5 before:-z-10 before:rounded-[1.35rem] before:opacity-90",
+              "before:bg-[repeating-linear-gradient(90deg,rgba(148,163,184,0.24)_0,rgba(148,163,184,0.24)_14%,rgba(100,116,139,0.18)_14%,rgba(100,116,139,0.18)_28%)]",
+              "dark:before:bg-[repeating-linear-gradient(90deg,rgba(71,85,105,0.45)_0,rgba(71,85,105,0.45)_14%,rgba(30,41,59,0.55)_14%,rgba(30,41,59,0.55)_28%)]",
+              "before:ring-1 before:ring-slate-300/60 before:transition-opacity before:duration-150 dark:before:ring-slate-600/70",
+              "hover:before:opacity-100",
+            ]
+          : "",
+        "data-[state=selected]:bg-transparent data-[state=selected]:text-foreground",
+        "dark:data-[state=selected]:bg-transparent dark:data-[state=selected]:text-foreground",
         "min-h-[2rem] text-[12px] sm:min-h-[2.25rem] sm:text-sm",
         className,
       )}
@@ -95,7 +109,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "border border-border dark:border-border/60 px-2 py-1.5 align-top text-[12px] leading-snug",
+        "relative z-[1] border border-border dark:border-border/60 px-2 py-1.5 align-top text-[12px] leading-snug",
         "data-[state=selected]:bg-muted data-[state=selected]:text-foreground",
         "dark:data-[state=selected]:bg-muted/50 dark:data-[state=selected]:text-foreground",
         "sm:px-2.5 sm:py-2 sm:text-sm",

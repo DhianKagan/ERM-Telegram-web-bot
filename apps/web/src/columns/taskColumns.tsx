@@ -14,10 +14,6 @@ const buildBadgeClass = (
   textClass = "text-primary dark:text-primary",
 ) => `${badgeBaseClass} transition-colors ${textClass} ${tones}`;
 
-const defaultBadgeClass = buildBadgeClass(
-  "bg-accent/60 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
-);
-
 const assigneeBadgeClass =
   "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2 py-0.5 text-left text-xs font-medium text-indigo-900 transition-colors hover:bg-indigo-500/25 dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30";
 
@@ -25,7 +21,13 @@ const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const titleTextClass =
-  "block max-w-full truncate text-[0.85rem] font-semibold leading-tight text-slate-900 dark:text-slate-100 sm:text-[0.95rem]";
+  "block max-w-full truncate font-semibold leading-tight text-slate-900 dark:text-slate-100";
+
+const fallbackBadgeTextClass =
+  "font-semibold uppercase tracking-wide text-slate-900 dark:text-slate-100";
+
+const fallbackPillTextClass =
+  "font-semibold text-slate-900 dark:text-slate-100";
 
 const locationTextClass =
   "block max-w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200 sm:text-sm";
@@ -90,13 +92,13 @@ const getStatusBadgeClass = (value: string) => {
   if (hasOwn(statusBadgeClassMap, value)) {
     return statusBadgeClassMap[value];
   }
-  return defaultBadgeClass;
+  return null;
 };
 
 const getPriorityBadgeClass = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
-    return defaultBadgeClass;
+    return null;
   }
   if (hasOwn(priorityBadgeClassMap, normalized)) {
     return priorityBadgeClassMap[normalized];
@@ -113,7 +115,7 @@ const getPriorityBadgeClass = (value: string) => {
   if (/обыч|дня|сутк|norm|stand/.test(normalized)) {
     return normalPriorityBadgeClass;
   }
-  return defaultBadgeClass;
+  return null;
 };
 
 const normalizePriorityLabel = (value: string) => {
@@ -153,7 +155,7 @@ const typeBadgeClassMap: Record<string, string> = {
 const getTypeBadgeClass = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
-    return defaultBadgeClass;
+    return null;
   }
   if (hasOwn(typeBadgeClassMap, normalized)) {
     return typeBadgeClassMap[normalized];
@@ -173,7 +175,7 @@ const getTypeBadgeClass = (value: string) => {
   if (/исполн|выполн/.test(normalized)) {
     return typeBadgeClassMap['выполнить'];
   }
-  return defaultBadgeClass;
+  return null;
 };
 
 const parseDistance = (value: unknown) => {
@@ -231,7 +233,7 @@ const extraLongDistanceBadgeClass = buildBadgeClass(
 const getDistanceBadgeClass = (value: unknown) => {
   const numeric = parseDistance(value);
   if (numeric === null) {
-    return defaultBadgeClass;
+    return null;
   }
   if (numeric < 5) {
     return shortDistanceBadgeClass;
@@ -388,7 +390,11 @@ export default function taskColumns(
         if (!value) {
           return "";
         }
-        return <span className={getStatusBadgeClass(value)}>{value}</span>;
+        const badgeClass = getStatusBadgeClass(value);
+        if (!badgeClass) {
+          return <span className={fallbackBadgeTextClass}>{value}</span>;
+        }
+        return <span className={badgeClass}>{value}</span>;
       },
     },
     {
@@ -405,8 +411,12 @@ export default function taskColumns(
           return "";
         }
         const display = normalizePriorityLabel(value);
+        const badgeClass = getPriorityBadgeClass(value);
+        if (!badgeClass) {
+          return <span className={fallbackPillTextClass}>{display}</span>;
+        }
         return (
-          <span className={getPriorityBadgeClass(value)} title={display}>
+          <span className={badgeClass} title={display}>
             {display}
           </span>
         );
@@ -448,8 +458,12 @@ export default function taskColumns(
         if (!trimmed) {
           return "";
         }
+        const badgeClass = getTypeBadgeClass(trimmed);
+        if (!badgeClass) {
+          return <span className={fallbackPillTextClass}>{trimmed}</span>;
+        }
         return (
-          <span className={getTypeBadgeClass(trimmed)} title={trimmed}>
+          <span className={badgeClass} title={trimmed}>
             {trimmed}
           </span>
         );
@@ -532,8 +546,12 @@ export default function taskColumns(
         if (!display) {
           return "";
         }
+        const badgeClass = getDistanceBadgeClass(raw);
+        if (!badgeClass) {
+          return <span className={fallbackPillTextClass}>{display}</span>;
+        }
         return (
-          <span className={getDistanceBadgeClass(raw)} title={`${display} км`}>
+          <span className={badgeClass} title={`${display} км`}>
             {display}
           </span>
         );

@@ -23,13 +23,22 @@ const infoBadgeClass = buildBadgeClass(
   "text-slate-900 dark:text-slate-100 normal-case font-medium",
 );
 
+const numberBadgeClass = `${infoBadgeClass} px-2.5 py-1 text-xs font-semibold tracking-wide sm:text-sm`;
+
 const assigneeBadgeClass = buildBadgeClass(
   "bg-indigo-500/20 ring-1 ring-indigo-500/40 dark:bg-indigo-400/25 dark:ring-indigo-300/45",
-  "text-indigo-900 dark:text-indigo-100 normal-case font-medium",
+  "text-indigo-900 dark:text-indigo-100 normal-case font-medium whitespace-normal break-words text-left items-start justify-start",
 );
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+const rectangularBadgeBaseClass =
+  "block w-full min-w-0 max-w-full break-words rounded-xl border border-slate-200 bg-slate-50 px-2 py-1 text-left text-xs font-medium leading-snug text-slate-800 shadow-xs transition-colors hover:bg-slate-100 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-100 dark:hover:bg-slate-700/60";
+
+const titleBadgeClass = `${rectangularBadgeBaseClass} font-semibold text-[0.85rem] sm:text-[0.95rem]`;
+
+const locationBadgeClass = `${rectangularBadgeBaseClass} text-[0.8rem] sm:text-[0.85rem]`;
 
 const statusBadgeClassMap: Record<Task["status"], string> = {
   Новая: buildBadgeClass(
@@ -192,10 +201,9 @@ const parseDistance = (value: unknown) => {
 const formatDistanceLabel = (value: unknown) => {
   const numeric = parseDistance(value);
   if (numeric !== null) {
-    const fractionDigits = Number.isInteger(numeric) ? 0 : 1;
     return numeric.toLocaleString("ru-RU", {
-      maximumFractionDigits: fractionDigits,
-      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
     });
   }
   if (typeof value === "string") {
@@ -243,9 +251,6 @@ const getDistanceBadgeClass = (value: unknown) => {
   }
   return extraLongDistanceBadgeClass;
 };
-
-const focusableLinkClass =
-  "text-primary underline decoration-2 underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
@@ -339,10 +344,7 @@ export default function taskColumns(
         const numericMatch = value.match(/\d+/);
         const shortValue = numericMatch ? numericMatch[0] : value;
         return (
-          <span
-            className={`${infoBadgeClass} font-mono`}
-            title={value}
-          >
+          <span className={`${numberBadgeClass} font-mono`} title={value}>
             {shortValue}
           </span>
         );
@@ -369,9 +371,9 @@ export default function taskColumns(
       },
       cell: (p) => {
         const v = p.getValue<string>() || "";
-        const compact = compactText(v, 48);
+        const compact = compactText(v, 72);
         return (
-          <span title={v} className="block leading-tight">
+          <span title={v} className={titleBadgeClass}>
             {compact}
           </span>
         );
@@ -467,20 +469,20 @@ export default function taskColumns(
       },
       cell: ({ row }) => {
         const name = row.original.start_location || "";
-        const compact = compactText(name, 36);
+        const compact = compactText(name, 48);
         const link = row.original.start_location_link;
         return link ? (
           <a
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={focusableLinkClass}
+            className={`${locationBadgeClass} ${focusableBadgeClass} no-underline`}
             title={name}
           >
             {compact}
           </a>
         ) : (
-          <span title={name} className="block leading-tight">
+          <span title={name} className={locationBadgeClass}>
             {compact}
           </span>
         );
@@ -496,20 +498,20 @@ export default function taskColumns(
       },
       cell: ({ row }) => {
         const name = row.original.end_location || "";
-        const compact = compactText(name, 36);
+        const compact = compactText(name, 48);
         const link = row.original.end_location_link;
         return link ? (
           <a
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={focusableLinkClass}
+            className={`${locationBadgeClass} ${focusableBadgeClass} no-underline`}
             title={name}
           >
             {compact}
           </a>
         ) : (
-          <span title={name} className="block leading-tight">
+          <span title={name} className={locationBadgeClass}>
             {compact}
           </span>
         );
@@ -566,15 +568,13 @@ export default function taskColumns(
             users[id]?.username ||
             String(id),
         }));
-        const visible = labels.slice(0, 2);
-        const hiddenCount = labels.length - visible.length;
         const tooltip = labels.map((item) => item.label).join(", ");
         return (
           <div
-            className="flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-tight"
+            className="flex w-full flex-wrap items-start gap-1 leading-tight"
             title={tooltip}
           >
-            {visible.map(({ id, label }) => (
+            {labels.map(({ id, label }) => (
               <EmployeeLink
                 key={id}
                 employeeId={id}
@@ -584,11 +584,6 @@ export default function taskColumns(
                 {compactText(label, 18)}
               </EmployeeLink>
             ))}
-            {hiddenCount > 0 ? (
-              <span className={`${infoBadgeClass} text-xs font-medium`}>
-                +{hiddenCount}
-              </span>
-            ) : null}
           </div>
         );
       },

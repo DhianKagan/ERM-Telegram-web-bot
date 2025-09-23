@@ -898,7 +898,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
       <div className="relative mx-auto w-full max-w-screen-md space-y-4 rounded-xl bg-white p-4 shadow-lg">
         <div className="pr-16">
-          <h3 className="text-lg font-semibold leading-tight text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+          <h3
+            className="text-lg font-semibold leading-snug text-gray-900 break-words sm:whitespace-nowrap sm:overflow-hidden sm:text-ellipsis"
+          >
             {headerLabel}
           </h3>
           {hasCreator ? (
@@ -956,7 +958,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ref={handleTitleRef}
               rows={1}
               placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring min-h-[44px] resize-none"
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
               disabled={!editing}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {

@@ -95,7 +95,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "border border-border dark:border-border/60 px-2 py-1.5 align-middle text-[12px] leading-snug",
+        "border border-border dark:border-border/60 px-2 py-1.5 align-top text-[12px] leading-snug",
         "data-[state=selected]:bg-muted data-[state=selected]:text-foreground",
         "dark:data-[state=selected]:bg-muted/50 dark:data-[state=selected]:text-foreground",
         "sm:px-2.5 sm:py-2 sm:text-sm",

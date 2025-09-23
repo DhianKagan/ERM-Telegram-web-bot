@@ -32,7 +32,7 @@ const ThemeProviderLazy = lazy(async () => {
 
 function AppShell() {
   const { user } = useAuth();
-  const { collapsed, open, toggle } = useSidebar();
+  const { open, toggle } = useSidebar();
   const { t } = useTranslation();
   return (
     <>
@@ -49,9 +49,7 @@ function AppShell() {
         />
       )}
       {user && <Header />}
-      <main
-        className={`mt-14 p-4 transition-all ${open ? (collapsed ? "md:ml-20" : "md:ml-60") : "md:ml-0"}`}
-      >
+      <main className="mt-14 p-4 transition-all">
         <Suspense fallback={<div>{t("loading")}</div>}>
           <Routes>
             <Route

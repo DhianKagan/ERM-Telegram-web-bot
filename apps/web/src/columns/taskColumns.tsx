@@ -33,7 +33,7 @@ const numberBadgeClass =
   `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
 
 const titleBadgeClass =
-  `${pillBadgeBaseClass} max-w-full w-full justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
+  `${pillBadgeBaseClass} justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
 
 const creatorBadgeClass =
   `${pillBadgeBaseClass} max-w-full w-full justify-start normal-case text-indigo-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
@@ -401,9 +401,9 @@ export default function taskColumns(
       header: "Название",
       accessorKey: "title",
       meta: {
-        width: "clamp(12rem, 32vw, 26rem)",
-        minWidth: "10rem",
-        maxWidth: "26rem",
+        width: "clamp(6rem, 16vw, 13rem)",
+        minWidth: "5rem",
+        maxWidth: "13rem",
         cellClassName: "whitespace-nowrap",
       },
       cell: (p) => {

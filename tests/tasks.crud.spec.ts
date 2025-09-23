@@ -12,6 +12,7 @@ interface Task {
   id: number;
   title: string;
   custom?: Record<string, unknown>;
+  transport_type?: string;
 }
 const tasks: Task[] = [];
 let counter = 1;
@@ -21,6 +22,7 @@ app.post('/tasks', (req, res) => {
     id: counter++,
     title: req.body.title,
     custom: req.body.custom,
+    transport_type: req.body.transport_type ?? 'Без транспорта',
   };
   tasks.push(task);
   res.status(201).json(task);
@@ -37,6 +39,7 @@ app.patch('/tasks/:id', (req, res) => {
   if (!task) return res.sendStatus(404);
   if (req.body.title) task.title = req.body.title;
   if (req.body.custom) task.custom = req.body.custom;
+  if (req.body.transport_type) task.transport_type = req.body.transport_type;
   res.json(task);
 });
 
@@ -73,6 +76,20 @@ describe('CRUD задач', () => {
     expect(res.status).toBe(200);
     expect(res.body.title).toBe('upd');
     expect(res.body.custom).toEqual({ foo: 'baz' });
+  });
+
+  test("поддерживает транспорт 'Без транспорта'", async () => {
+    const createRes = await request(app)
+      .post('/tasks')
+      .send({ title: 'logistics', transport_type: 'Без транспорта' });
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.transport_type).toBe('Без транспорта');
+
+    const updateRes = await request(app)
+      .patch(`/tasks/${createRes.body.id}`)
+      .send({ transport_type: 'Без транспорта' });
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.transport_type).toBe('Без транспорта');
   });
 
   test('удаляет задачу', async () => {

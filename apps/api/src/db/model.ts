@@ -312,8 +312,8 @@ const taskSchema = new Schema<TaskDocument>(
     ],
     transport_type: {
       type: String,
-      enum: ['Легковой', 'Грузовой'],
-      default: 'Легковой',
+      enum: ['Без транспорта', 'Легковой', 'Грузовой'],
+      default: 'Без транспорта',
     },
     cargo_length_m: Number,
     cargo_width_m: Number,

@@ -11,6 +11,10 @@ jest.mock('../src/services/route', () => ({
   clearRouteCache: jest.fn(),
 }));
 
+jest.mock('../src/services/wgLogEngine', () => ({
+  writeLog: jest.fn().mockResolvedValue(undefined),
+}));
+
 const route = require('../src/services/route');
 const { generateRouteLink } = require('shared');
 const TasksService = require('../src/tasks/tasks.service.ts').default;

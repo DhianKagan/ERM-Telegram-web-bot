@@ -32,10 +32,13 @@ async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   }
 }
 
-export const create = async (data: TaskData = {}): Promise<unknown> => {
+export const create = async (
+  data: TaskData = {},
+  userId?: number,
+): Promise<unknown> => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
   await applyRouteInfo(data);
-  return q.createTask(data);
+  return q.createTask(data, userId);
 };
 
 export const get = (

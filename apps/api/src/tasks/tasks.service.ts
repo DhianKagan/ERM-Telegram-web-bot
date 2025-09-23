@@ -5,9 +5,14 @@ import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
+import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
+import { extractAttachmentIds } from '../utils/attachments';
 
 interface TasksRepository {
-  createTask(data: Partial<TaskDocument>): Promise<TaskDocument>;
+  createTask(
+    data: Partial<TaskDocument>,
+    userId?: number,
+  ): Promise<TaskDocument>;
   getTasks(
     filters: TaskFilters,
     page?: number,
@@ -27,7 +32,12 @@ interface TasksRepository {
 }
 
 interface RepositoryWithModel extends TasksRepository {
-  Task?: { create: (data: Partial<TaskDocument>) => Promise<TaskDocument> };
+  Task?: {
+    create: (
+      data: Partial<TaskDocument>,
+      userId?: number,
+    ) => Promise<TaskDocument>;
+  };
 }
 
 const toNumeric = (value: unknown): number | undefined => {
@@ -78,14 +88,55 @@ class TasksService {
     }
   }
 
-  async create(data: Partial<TaskDocument> = {}) {
+  private async logAttachmentSync(
+    action: 'create' | 'update',
+    task: TaskDocument | null,
+    shouldLog: boolean,
+  ) {
+    if (!task || !shouldLog) return;
+    const ids = extractAttachmentIds(task.attachments || []);
+    const message =
+      action === 'create'
+        ? `Вложения привязаны к задаче ${String(task._id)}`
+        : `Вложения обновлены у задачи ${String(task._id)}`;
+    try {
+      await writeAttachmentLog(message, 'info', {
+        taskId: String(task._id),
+        fileIds: ids.map((id) => id.toHexString()),
+        attachments: Array.isArray(task.attachments)
+          ? task.attachments.length
+          : 0,
+        action,
+      });
+    } catch (error) {
+      await writeAttachmentLog(
+        `Ошибка логирования вложений задачи ${String(task?._id ?? 'unknown')}`,
+        'error',
+        { error: (error as Error).message, action },
+      ).catch(() => undefined);
+    }
+  }
+
+  async create(data: Partial<TaskDocument> = {}, userId?: number) {
     applyIntakeRules(data);
     if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
     this.applyCargoMetrics(data);
     await this.applyRouteInfo(data);
-    const task = await this.repo.createTask(data);
-    await clearRouteCache();
-    return task;
+    try {
+      const task = await this.repo.createTask(data, userId);
+      await clearRouteCache();
+      await this.logAttachmentSync(
+        'create',
+        task,
+        Array.isArray(task.attachments) && task.attachments.length > 0,
+      );
+      return task;
+    } catch (error) {
+      await writeAttachmentLog('Ошибка создания задачи с вложениями', 'error', {
+        error: (error as Error).message,
+      }).catch(() => undefined);
+      throw error;
+    }
   }
 
   get(filters: TaskFilters, page?: number, limit?: number) {
@@ -99,9 +150,22 @@ class TasksService {
   async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
     this.applyCargoMetrics(data);
     await this.applyRouteInfo(data);
-    const task = await this.repo.updateTask(id, data, userId);
-    await clearRouteCache();
-    return task;
+    try {
+      const task = await this.repo.updateTask(id, data, userId);
+      await clearRouteCache();
+      await this.logAttachmentSync(
+        'update',
+        task,
+        Object.prototype.hasOwnProperty.call(data, 'attachments'),
+      );
+      return task;
+    } catch (error) {
+      await writeAttachmentLog('Ошибка обновления вложений задачи', 'error', {
+        taskId: id,
+        error: (error as Error).message,
+      }).catch(() => undefined);
+      throw error;
+    }
   }
 
   applyCargoMetrics(data: Partial<TaskDocument> = {}) {

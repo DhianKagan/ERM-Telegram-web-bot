@@ -5,6 +5,7 @@ import {
   Archive,
   User,
   Role,
+  File,
   TaskDocument,
   UserDocument,
   RoleDocument,
@@ -17,6 +18,7 @@ import * as logEngine from '../services/wgLogEngine';
 import { resolveRoleId } from './roleCache';
 import { Types, PipelineStage, Query } from 'mongoose';
 import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
+import { extractAttachmentIds } from '../utils/attachments';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,6 +39,44 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
   return res;
 }
 
+async function syncTaskAttachments(
+  taskId: Types.ObjectId,
+  attachments: TaskDocument['attachments'] | undefined,
+  userId?: number,
+): Promise<void> {
+  if (attachments === undefined) return;
+  const fileIds = extractAttachmentIds(attachments);
+  const idsForLog = fileIds.map((id) => id.toHexString());
+  try {
+    if (fileIds.length === 0) {
+      await File.updateMany({ taskId }, { $unset: { taskId: '' } });
+      return;
+    }
+    const filter: Record<string, unknown> = {
+      _id: { $in: fileIds },
+    };
+    if (userId !== undefined) {
+      filter.$or = [{ userId }, { taskId }];
+    }
+    await File.updateMany(filter, { $set: { taskId } });
+    await File.updateMany(
+      { taskId, _id: { $nin: fileIds } },
+      { $unset: { taskId: '' } },
+    );
+  } catch (error) {
+    await logEngine.writeLog(
+      `Ошибка обновления вложений задачи ${String(taskId)}`,
+      'error',
+      {
+        taskId: String(taskId),
+        fileIds: idsForLog,
+        error: (error as Error).message,
+      },
+    );
+    throw error;
+  }
+}
+
 // Возвращает уровень доступа по имени роли
 export function accessByRole(role: string): number {
   switch (role) {
@@ -51,13 +91,16 @@ export function accessByRole(role: string): number {
 
 export async function createTask(
   data: Partial<TaskDocument>,
+  userId?: number,
 ): Promise<TaskDocument> {
   const entry = {
     changed_at: new Date(),
     changed_by: data.created_by || 0,
     changes: { from: {}, to: data },
   };
-  return Task.create({ ...data, history: [entry] });
+  const task = await Task.create({ ...data, history: [entry] });
+  await syncTaskAttachments(task._id as Types.ObjectId, task.attachments, userId);
+  return task;
 }
 
 export async function getTask(id: string): Promise<TaskDocument | null> {
@@ -101,7 +144,7 @@ export async function updateTask(
     changed_by: userId,
     changes: { from, to },
   };
-  return Task.findByIdAndUpdate(
+  const updated = await Task.findByIdAndUpdate(
     id,
     {
       $set: data,
@@ -109,6 +152,10 @@ export async function updateTask(
     },
     { new: true },
   );
+  if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
+    await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+  }
+  return updated;
 }
 
 export async function updateTaskStatus(

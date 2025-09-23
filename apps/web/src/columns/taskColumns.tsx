@@ -20,6 +20,15 @@ const assigneeBadgeClass =
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
+const pillBadgeBaseClass =
+  "inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-left text-[0.72rem] font-semibold leading-tight tracking-normal shadow-xs sm:text-[0.78rem]";
+
+const dateBadgeClass =
+  `${pillBadgeBaseClass} font-mono normal-case text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
+
+const dateBadgeTimeClass =
+  "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
+
 const titleTextClass =
   "block max-w-full truncate font-semibold leading-tight text-slate-900 dark:text-slate-100";
 
@@ -28,11 +37,11 @@ const fallbackBadgeClass = buildBadgeClass(
   "text-slate-900 dark:text-slate-100",
 );
 
-const locationTextClass =
-  "block max-w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200 sm:text-sm";
+const locationBadgeClass =
+  `${pillBadgeBaseClass} normal-case text-emerald-900 ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:text-emerald-100 dark:ring-emerald-300/30`;
 
-const locationLinkClass =
-  "block max-w-full truncate text-xs font-medium text-primary underline-offset-4 hover:underline sm:text-sm";
+const locationLinkBadgeClass =
+  `${locationBadgeClass} ${focusableBadgeClass} no-underline underline-offset-4 hover:underline`;
 
 const statusBadgeClassMap: Record<Task["status"], string> = {
   Новая: buildBadgeClass(
@@ -287,19 +296,14 @@ const renderDateCell = (value?: string) => {
   const formatted = formatDate(value);
   if (!formatted) return "";
   return (
-    <span
-      className="flex items-center gap-1 font-mono text-xs text-slate-700 dark:text-slate-200 sm:text-sm"
-      title={formatted.full}
-    >
+    <span className={dateBadgeClass} title={formatted.full}>
       <time
         dateTime={value}
-        className="flex items-center gap-1 truncate tabular-nums leading-tight"
+        className="flex w-full items-baseline gap-1 truncate tabular-nums"
       >
         <span className="truncate">{formatted.date}</span>
         {formatted.time ? (
-          <span className="text-muted-foreground text-[0.85em] leading-tight">
-            {formatted.time}
-          </span>
+          <span className={dateBadgeTimeClass}>{formatted.time}</span>
         ) : null}
       </time>
     </span>
@@ -481,14 +485,14 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${locationLinkClass} ${focusableBadgeClass}`}
+            className={locationLinkBadgeClass}
             title={name}
           >
-            {compact}
+            <span className="truncate">{compact}</span>
           </a>
         ) : (
-          <span title={name} className={locationTextClass}>
-            {compact}
+          <span title={name} className={locationBadgeClass}>
+            <span className="truncate">{compact}</span>
           </span>
         );
       },
@@ -510,14 +514,14 @@ export default function taskColumns(
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${locationLinkClass} ${focusableBadgeClass}`}
+            className={locationLinkBadgeClass}
             title={name}
           >
-            {compact}
+            <span className="truncate">{compact}</span>
           </a>
         ) : (
-          <span title={name} className={locationTextClass}>
-            {compact}
+          <span title={name} className={locationBadgeClass}>
+            <span className="truncate">{compact}</span>
           </span>
         );
       },

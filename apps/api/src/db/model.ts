@@ -148,6 +148,19 @@ export interface Attachment {
   size: number;
 }
 
+const attachmentSchema = new Schema<Attachment>(
+  {
+    name: String,
+    url: String,
+    thumbnailUrl: String,
+    uploadedBy: Number,
+    uploadedAt: Date,
+    type: String,
+    size: Number,
+  },
+  { _id: false },
+);
+
 export interface HistoryEntry {
   changed_at: Date;
   changed_by: number;
@@ -299,17 +312,7 @@ const taskSchema = new Schema<TaskDocument>(
     checklist: [checklistItemSchema],
     comment: { type: String, maxlength: 4096 },
     files: [String],
-    attachments: [
-      {
-        name: String,
-        url: String,
-        thumbnailUrl: String,
-        uploadedBy: Number,
-        uploadedAt: Date,
-        type: String,
-        size: Number,
-      },
-    ],
+    attachments: [attachmentSchema],
     transport_type: {
       type: String,
       enum: ['Без транспорта', 'Легковой', 'Грузовой'],

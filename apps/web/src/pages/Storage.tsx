@@ -6,7 +6,6 @@ import {
   ArrowDownTrayIcon,
   DocumentIcon,
   DocumentTextIcon,
-  InformationCircleIcon,
   PhotoIcon,
   VideoCameraIcon,
   XMarkIcon,
@@ -298,38 +297,6 @@ export default function StoragePage() {
   return (
     <div className="space-y-4">
       <Breadcrumbs items={[{ label: t("storage.title") }]} />
-      <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50/60 p-4 text-sm text-blue-900 shadow-xs dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100">
-        <div className="flex items-center gap-2 font-medium">
-          <InformationCircleIcon className="size-5" aria-hidden />
-          <span>{t("storage.previewTitle")}</span>
-        </div>
-        <p className="text-sm leading-relaxed text-blue-900/90 dark:text-blue-50/80">
-          {t("storage.previewHint")}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {([
-            { key: "image", label: t("storage.typeImage"), icon: PhotoIcon },
-            { key: "video", label: t("storage.typeVideo"), icon: VideoCameraIcon },
-            { key: "pdf", label: t("storage.typePdf"), icon: DocumentIcon },
-            { key: "text", label: t("storage.typeText"), icon: DocumentTextIcon },
-          ] as Array<{
-            key: PreviewMode;
-            label: string;
-            icon: React.ComponentType<{ className?: string }>;
-          }>).map(({ key, label, icon: Icon }) => (
-            <span
-              key={key}
-              className="flex items-center gap-1.5 rounded-md bg-white/60 px-2.5 py-1 text-xs font-medium text-blue-900 ring-1 ring-blue-200 dark:bg-slate-900/60 dark:text-blue-100 dark:ring-blue-500/40"
-            >
-              <Icon className="size-4" aria-hidden />
-              {label}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-blue-800/80 dark:text-blue-200/60">
-          {t("storage.previewLimitation")}
-        </p>
-      </div>
       <div className="flex flex-wrap gap-3">
         <Input
           value={search}

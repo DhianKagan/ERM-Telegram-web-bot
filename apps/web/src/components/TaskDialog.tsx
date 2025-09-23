@@ -73,6 +73,9 @@ const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
   minute: "2-digit",
 });
 
+const creatorBadgeClass =
+  "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2.5 py-1 text-sm font-semibold text-indigo-900 no-underline transition-colors hover:bg-indigo-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30 dark:focus-visible:ring-indigo-200";
+
 const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -904,15 +907,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             {headerLabel}
           </h3>
           {hasCreator ? (
-            <p className="mt-1 text-sm text-gray-600">
-              {t("taskCreatedBy")} {" "}
-              <EmployeeLink
-                employeeId={creatorId}
-                className="font-medium underline decoration-1 underline-offset-2"
-              >
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-600">
+              <span>{t("taskCreatedBy")}</span>
+              <EmployeeLink employeeId={creatorId} className={creatorBadgeClass}>
                 {creatorName}
               </EmployeeLink>
-            </p>
+            </div>
           ) : (
             <span className="mt-1 block text-sm text-gray-500">{t("taskCreatorUnknown")}</span>
           )}

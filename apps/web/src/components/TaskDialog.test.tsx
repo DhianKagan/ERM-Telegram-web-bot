@@ -85,7 +85,7 @@ describe("TaskDialog", () => {
         </MemoryRouter>,
       );
     const { unmount } = renderDialog();
-    expect(await screen.findByText("taskFrom")).toBeTruthy();
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
 
     fireEvent.click(screen.getByText("save"));
     await waitFor(() =>
@@ -97,6 +97,6 @@ describe("TaskDialog", () => {
 
     unmount();
     renderDialog();
-    expect(await screen.findByText("taskFrom")).toBeTruthy();
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
   });
 });

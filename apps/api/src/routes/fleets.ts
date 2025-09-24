@@ -230,10 +230,21 @@ router.get(
     const docs = ((await Vehicle.find({ fleetId: fleet._id })
       .lean()
       .exec()) as unknown) as (VehicleAttrs & { _id: Types.ObjectId; updatedAt?: Date })[];
-    let sid: string | undefined;
+    let loginResult: Awaited<ReturnType<typeof login>> | null = null;
     if (includeTrack) {
       try {
-        sid = (await login(updatedFleet.token, updatedFleet.baseUrl)).sid;
+        loginResult = await login(updatedFleet.token, updatedFleet.baseUrl);
+        if (loginResult.baseUrl !== updatedFleet.baseUrl) {
+          updatedFleet.baseUrl = loginResult.baseUrl;
+          try {
+            await updatedFleet.save();
+          } catch (error) {
+            console.error(
+              `Не удалось сохранить базовый адрес Wialon для флота ${updatedFleet._id}:`,
+              error instanceof Error ? error.message : error,
+            );
+          }
+        }
       } catch (error) {
         console.error('Не удалось авторизоваться в Wialon:', error);
         res.status(502).json({ error: 'Не удалось получить данные трека' });
@@ -244,14 +255,14 @@ router.get(
     const vehicles = [] as unknown[];
     for (const doc of docs) {
       const base = mapVehicle(doc);
-      if (includeTrack && sid && trackFrom && trackTo) {
+      if (includeTrack && loginResult?.sid && trackFrom && trackTo) {
         try {
           const track = await loadTrack(
-            sid,
+            loginResult.sid,
             doc.unitId,
             trackFrom,
             trackTo,
-            updatedFleet.baseUrl,
+            loginResult.baseUrl,
           );
           (base as Record<string, unknown>).track = track.map((point) => ({
             lat: point.lat,

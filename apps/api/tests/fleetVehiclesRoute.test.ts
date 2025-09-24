@@ -129,7 +129,12 @@ describe('GET /api/v1/fleets/:id/vehicles', () => {
     });
     const from = new Date('2024-01-01T00:00:00.000Z');
     const to = new Date('2024-01-01T01:00:00.000Z');
-    mockedLogin.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    mockedLogin.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'https://hst-api.wialon.com',
+    });
     mockedLoadTrack.mockResolvedValue([
       { lat: 55, lon: 37, speed: 15, course: 90, timestamp: from },
     ]);

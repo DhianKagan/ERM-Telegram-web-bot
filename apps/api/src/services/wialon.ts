@@ -16,6 +16,8 @@ export interface WialonLoginResult {
   user: { id: number; nm?: string };
 }
 
+export type WialonLoginSuccess = WialonLoginResult & { baseUrl: string };
+
 export interface WialonUnitSensor {
   id: number;
   n: string;
@@ -266,24 +268,49 @@ function normalizeTrackPoint(point: WialonTrackPointRaw): TrackPoint {
   };
 }
 
-export async function login(token: string, baseUrl?: string): Promise<WialonLoginResult> {
-  const decoded = decodeLocatorKeyDetailedUtil(token);
+async function loginWithBase(
+  decoded: DecodeLocatorKeyResult,
+  baseUrl: string,
+): Promise<WialonLoginSuccess> {
   try {
-    return await request<WialonLoginResult>(
+    const result = await request<WialonLoginResult>(
       'token/login',
       { token: decoded.token },
       { baseUrl },
     );
+    return { ...result, baseUrl };
   } catch (error) {
     if (shouldRetryWithAuthHash(error, decoded)) {
-      return request<WialonLoginResult>(
+      const result = await request<WialonLoginResult>(
         'core/use_auth_hash',
         { authHash: decoded.token },
         { baseUrl },
       );
+      return { ...result, baseUrl };
     }
     throw error;
   }
+}
+
+export async function login(token: string, baseUrl?: string): Promise<WialonLoginSuccess> {
+  const decoded = decodeLocatorKeyDetailedUtil(token);
+  const bases = new Set<string>();
+  if (baseUrl) {
+    bases.add(baseUrl);
+  }
+  bases.add(DEFAULT_BASE_URL);
+  let lastError: unknown;
+  for (const currentBase of bases) {
+    try {
+      return await loginWithBase(decoded, currentBase);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+  throw new Error('Не удалось выполнить авторизацию в Wialon');
 }
 
 export async function loadUnits(

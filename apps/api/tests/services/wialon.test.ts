@@ -68,6 +68,11 @@ describe('wialon service', () => {
         text: async () => 'Bad Request',
       } as unknown as Awaited<ReturnType<typeof fetch>>)
       .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => 'Bad Request',
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
@@ -75,12 +80,14 @@ describe('wialon service', () => {
     const result = await login(authHash, 'https://example.com');
     expect(result.sid).toBe('sid');
     expect(result.baseUrl).toBe('https://example.com');
-    expect(mockedFetch).toHaveBeenCalledTimes(2);
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
     const firstBody = mockedFetch.mock.calls[0][1]?.body as URLSearchParams;
-    expect(firstBody.get('svc')).toBe('token/login');
+    expect(firstBody.get('svc')).toBe('core/use_auth_hash');
     const secondBody = mockedFetch.mock.calls[1][1]?.body as URLSearchParams;
-    expect(secondBody.get('svc')).toBe('core/use_auth_hash');
-    const paramsRaw = secondBody.get('params');
+    expect(secondBody.get('svc')).toBe('token/login');
+    const thirdBody = mockedFetch.mock.calls[2][1]?.body as URLSearchParams;
+    expect(thirdBody.get('svc')).toBe('core/use_auth_hash');
+    const paramsRaw = thirdBody.get('params');
     expect(paramsRaw).toBeTruthy();
     const params = paramsRaw ? JSON.parse(paramsRaw) : null;
     expect(params).toMatchObject({ authHash });
@@ -90,6 +97,11 @@ describe('wialon service', () => {
     const authHash =
       'fb4bcbccf4815a386eface22e0afc0b0524DE7B5134AB9B26EAAA61C328F1558C5AB5967';
     mockedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ error: 7, message: 'Invalid auth hash' }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -103,9 +115,13 @@ describe('wialon service', () => {
     const result = await login(authHash, 'https://example.com');
     expect(result.sid).toBe('sid-2');
     expect(result.baseUrl).toBe('https://example.com');
-    expect(mockedFetch).toHaveBeenCalledTimes(2);
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
+    const firstBody = mockedFetch.mock.calls[0][1]?.body as URLSearchParams;
+    expect(firstBody.get('svc')).toBe('core/use_auth_hash');
     const secondBody = mockedFetch.mock.calls[1][1]?.body as URLSearchParams;
-    expect(secondBody.get('svc')).toBe('core/use_auth_hash');
+    expect(secondBody.get('svc')).toBe('token/login');
+    const thirdBody = mockedFetch.mock.calls[2][1]?.body as URLSearchParams;
+    expect(thirdBody.get('svc')).toBe('core/use_auth_hash');
   });
 
   it('повторяет авторизацию на стандартном хосте при ошибке 400', async () => {
@@ -143,12 +159,16 @@ describe('wialon service', () => {
     const secondCall = mockedFetch.mock.calls[1];
     expect(secondCall?.[0]).toBe('https://example.com/wialon/ajax.html');
     const thirdCall = mockedFetch.mock.calls[2];
-    expect(thirdCall?.[0]).toBe('https://hst-api.wialon.com/wialon/ajax.html');
+    expect(thirdCall?.[0]).toBe('https://example.com/wialon/ajax.html');
     const fourthCall = mockedFetch.mock.calls[3];
     expect(fourthCall?.[0]).toBe('https://hst-api.wialon.com/wialon/ajax.html');
 
+    const firstBody = firstCall?.[1]?.body as URLSearchParams;
+    expect(firstBody.get('svc')).toBe('core/use_auth_hash');
+    const secondBody = secondCall?.[1]?.body as URLSearchParams;
+    expect(secondBody.get('svc')).toBe('token/login');
     const thirdBody = thirdCall?.[1]?.body as URLSearchParams;
-    expect(thirdBody.get('svc')).toBe('token/login');
+    expect(thirdBody.get('svc')).toBe('core/use_auth_hash');
     const fourthBody = fourthCall?.[1]?.body as URLSearchParams;
     expect(fourthBody.get('svc')).toBe('core/use_auth_hash');
   });

@@ -1,9 +1,18 @@
 // Конфигурация колонок задач для React Table
-// Модули: React, @tanstack/react-table, EmployeeLink
+// Модули: React, @tanstack/react-table, heroicons, EmployeeLink
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Task } from "shared";
+import {
+  ClockIcon,
+  QuestionMarkCircleIcon,
+  StopCircleIcon,
+} from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
+import {
+  formatDurationShort,
+  getDeadlineState,
+} from "./taskDeadline";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
@@ -518,15 +527,128 @@ export default function taskColumns(
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
-      header: "Срок",
+      header: "Выполнить до",
       accessorKey: "due_date",
       meta: {
-        width: "clamp(6.75rem, 11vw, 8.75rem)",
-        minWidth: "6.5rem",
-        maxWidth: "9rem",
+        width: "clamp(7.75rem, 12.5vw, 10rem)",
+        minWidth: "7.5rem",
+        maxWidth: "10.5rem",
         cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
-      cell: (p) => renderDateCell(p.getValue<string>()),
+      cell: (p) => {
+        const dueValue = p.getValue<string>();
+        const row = p.row.original;
+        const formatted = formatDate(dueValue);
+        const state = getDeadlineState(row.start_date, row.due_date);
+
+        if (state.kind === "invalid") {
+          return (
+            <span
+              className={`${dateBadgeClass} flex min-w-0 items-center gap-1`}
+              title={
+                state.reason === "missing"
+                  ? "Срок не назначен"
+                  : "Срок указан некорректно"
+              }
+            >
+              <QuestionMarkCircleIcon
+                className="size-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
+                aria-hidden
+              />
+              <span className="truncate">Нет данных</span>
+            </span>
+          );
+        }
+
+        const isOverdue = state.kind === "overdue";
+        const iconClassName =
+          state.kind === "countdown"
+            ? state.level === "safe"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : state.level === "warn"
+                ? "text-amber-500 dark:text-amber-300"
+                : "text-orange-500 dark:text-orange-300"
+            : isOverdue
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-slate-400 dark:text-slate-500";
+
+        const remainingLabel =
+          state.remainingMs !== null
+            ? formatDurationShort(state.remainingMs)
+            : null;
+
+        const subtitle = (() => {
+          if (state.remainingMs === null) {
+            return null;
+          }
+          if (isOverdue) {
+            return `Просрочено на ${remainingLabel}`;
+          }
+          if (state.kind === "pending") {
+            return state.issue === "missing-start"
+              ? "Нет даты начала"
+              : "Диапазон дат некорректен";
+          }
+          return `Осталось ${remainingLabel}`;
+        })();
+
+        const percentLabel =
+          state.kind === "countdown"
+            ? `${Math.round(state.ratio * 100)}%`
+            : null;
+
+        const icon = isOverdue ? (
+          <StopCircleIcon
+            className={`size-4 flex-shrink-0 ${iconClassName}`}
+            aria-hidden
+          />
+        ) : (
+          <ClockIcon
+            className={`size-4 flex-shrink-0 ${iconClassName}`}
+            aria-hidden
+          />
+        );
+
+        return (
+          <span
+            className={`${dateBadgeClass} flex min-w-0 flex-col gap-0.5`}
+            title={
+              formatted
+                ? isOverdue
+                  ? `Просрочено с ${formatted.full}`
+                  : `Выполнить до ${formatted.full}`
+                : undefined
+            }
+          >
+            <span className="flex min-w-0 items-center gap-1">
+              {icon}
+              {formatted ? (
+                <time
+                  dateTime={dueValue}
+                  className="flex min-w-0 items-baseline gap-1 truncate tabular-nums"
+                >
+                  <span className="truncate">{formatted.date}</span>
+                  {formatted.time ? (
+                    <span className={dateBadgeTimeClass}>{formatted.time}</span>
+                  ) : null}
+                </time>
+              ) : (
+                <span className="truncate">{row.due_date}</span>
+              )}
+              {percentLabel ? (
+                <span className="ml-auto shrink-0 text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-200">
+                  {percentLabel}
+                </span>
+              ) : null}
+            </span>
+            {subtitle ? (
+              <span className="truncate text-[0.62rem] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                {subtitle}
+              </span>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       header: "Тип",

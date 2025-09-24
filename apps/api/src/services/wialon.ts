@@ -272,6 +272,24 @@ async function loginWithBase(
   decoded: DecodeLocatorKeyResult,
   baseUrl: string,
 ): Promise<WialonLoginSuccess> {
+  const authHashCandidate = isAuthHashCandidate(decoded);
+  const tryAuthHash = async (): Promise<WialonLoginSuccess> => {
+    const result = await request<WialonLoginResult>(
+      'core/use_auth_hash',
+      { authHash: decoded.token },
+      { baseUrl },
+    );
+    return { ...result, baseUrl };
+  };
+  if (authHashCandidate) {
+    try {
+      return await tryAuthHash();
+    } catch (error) {
+      if (!(error instanceof WialonHttpError) && !(error instanceof WialonResponseError)) {
+        throw error;
+      }
+    }
+  }
   try {
     const result = await request<WialonLoginResult>(
       'token/login',
@@ -280,13 +298,8 @@ async function loginWithBase(
     );
     return { ...result, baseUrl };
   } catch (error) {
-    if (shouldRetryWithAuthHash(error, decoded)) {
-      const result = await request<WialonLoginResult>(
-        'core/use_auth_hash',
-        { authHash: decoded.token },
-        { baseUrl },
-      );
-      return { ...result, baseUrl };
+    if (authHashCandidate && shouldRetryWithAuthHash(error, decoded)) {
+      return tryAuthHash();
     }
     throw error;
   }

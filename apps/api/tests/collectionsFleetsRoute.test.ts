@@ -140,6 +140,45 @@ describe('Маршруты коллекций для автопарка', () => 
     expect(res.body).toMatchObject({ name: 'Автопарк', value: 'https://host/locator?t=abcd' });
   });
 
+  test('возвращает предупреждение при ошибке синхронизации автопарка', async () => {
+    locatorUtil.parseLocatorLink.mockReturnValue({
+      token: 'token',
+      locatorUrl: 'https://host/locator',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'b64',
+    });
+    const { WialonHttpError } = require('../src/services/wialon');
+    syncService.syncFleetVehicles.mockRejectedValue(
+      new WialonHttpError('token/login', 502, 'Bad Gateway'),
+    );
+    fleetModel.Fleet.create.mockImplementation(async (data: Record<string, unknown>) => ({
+      ...data,
+      _id: data._id,
+    }));
+    repo.create.mockImplementation(async (data: Record<string, unknown>) => ({
+      ...data,
+      _id: String(data._id),
+      toJSON() {
+        return {
+          _id: this._id,
+          type: this.type,
+          name: this.name,
+          value: this.value,
+        };
+      },
+    }));
+
+    const res = await request(app)
+      .post('/api/v1/collections')
+      .send({ type: 'fleets', name: 'Автопарк', value: 'https://host/locator?t=abcd' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.meta).toMatchObject({ syncPending: true });
+    expect(res.body.meta.syncWarning).toContain('синхронизация транспорта');
+    expect(res.body.meta.syncError).toContain('ошибкой 502');
+    expect(fleetModel.Fleet.findByIdAndDelete).not.toHaveBeenCalled();
+  });
+
   test('обновляет существующий автопарк и синхронизирует транспорт', async () => {
     collectionModel.CollectionItem.findById.mockResolvedValue({
       _id: '507f1f77bcf86cd799439011',

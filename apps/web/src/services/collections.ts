@@ -12,6 +12,10 @@ export interface CollectionItem {
     invalidReason?: string;
     invalidCode?: string;
     invalidAt?: string;
+    syncPending?: boolean;
+    syncWarning?: string;
+    syncError?: string;
+    syncFailedAt?: string;
     [key: string]: unknown;
   };
 }

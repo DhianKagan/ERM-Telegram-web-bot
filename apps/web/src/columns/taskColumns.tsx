@@ -9,19 +9,17 @@ import {
   StopCircleIcon,
 } from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
-import {
-  formatDurationShort,
-  getDeadlineState,
-} from "./taskDeadline";
+import { getDeadlineState, type DeadlineState } from "./taskDeadline";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
   "inline-flex min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.68rem] font-semibold uppercase tracking-wide shadow-xs";
+const badgeTextClass = "text-black dark:text-white";
 
-const buildBadgeClass = (
-  tones: string,
-  textClass = "text-primary dark:text-primary",
-) => `${badgeBaseClass} transition-colors ${textClass} ${tones}`;
+const buildBadgeClass = (tones: string, extraClass = "") =>
+  [badgeBaseClass, "transition-colors", badgeTextClass, extraClass, tones]
+    .filter(Boolean)
+    .join(" ");
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -30,30 +28,29 @@ const pillBadgeBaseClass =
   "inline-flex max-w-full min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-left text-[0.72rem] font-semibold leading-tight tracking-normal shadow-xs sm:text-[0.78rem]";
 
 const dateBadgeClass =
-  `${pillBadgeBaseClass} font-mono normal-case text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
+  `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
 const dateBadgeTimeClass =
   "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
 
 const numberBadgeClass =
-  `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
+  `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
 const titleBadgeClass =
-  `${pillBadgeBaseClass} justify-start normal-case text-indigo-900 ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:text-indigo-100 dark:ring-indigo-300/45`;
+  `${pillBadgeBaseClass} justify-start normal-case ${badgeTextClass} ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:ring-indigo-300/45`;
 
 const creatorBadgeClass =
-  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case text-blue-900 ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:text-blue-100 dark:ring-blue-300/45`;
+  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
 
 const assigneeBadgeClass =
-  `${pillBadgeBaseClass} normal-case text-violet-900 ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:text-violet-100 dark:ring-violet-300/45`;
+  `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:ring-violet-300/45`;
 
 const fallbackBadgeClass = buildBadgeClass(
   "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
-  "text-slate-900 dark:text-slate-100",
 );
 
 const locationBadgeClass =
-  `${pillBadgeBaseClass} normal-case text-emerald-900 ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:text-emerald-100 dark:ring-emerald-300/30`;
+  `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:ring-emerald-300/30`;
 
 const locationLinkBadgeClass =
   `${locationBadgeClass} ${focusableBadgeClass} no-underline underline-offset-4 hover:underline`;
@@ -61,19 +58,15 @@ const locationLinkBadgeClass =
 const statusBadgeClassMap: Record<Task["status"], string> = {
   Новая: buildBadgeClass(
     "bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45",
-    "text-sky-900 dark:text-sky-100",
   ),
   "В работе": buildBadgeClass(
     "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
-    "text-amber-900 dark:text-amber-100",
   ),
   Выполнена: buildBadgeClass(
     "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
-    "text-emerald-900 dark:text-emerald-100",
   ),
   Отменена: buildBadgeClass(
     "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
-    "text-rose-900 dark:text-rose-100",
   ),
 };
 
@@ -96,15 +89,13 @@ const lowPriorityBadgeClass = buildBadgeClass(
 const priorityBadgeClassMap: Record<string, string> = {
   срочно: buildBadgeClass(
     "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
-    "text-rose-900 dark:text-rose-100",
   ),
   'в течение дня': buildBadgeClass(
     "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
-    "text-sky-900 dark:text-sky-100",
   ),
   'до выполнения': buildBadgeClass(
     "bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45",
-    "text-slate-900 dark:text-slate-100 normal-case",
+    "normal-case",
   ),
 };
 
@@ -155,23 +146,18 @@ const normalizePriorityLabel = (value: string) => {
 const typeBadgeClassMap: Record<string, string> = {
   доставить: buildBadgeClass(
     "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
-    "text-sky-900 dark:text-sky-100",
   ),
   купить: buildBadgeClass(
     "bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45",
-    "text-violet-900 dark:text-violet-100",
   ),
   выполнить: buildBadgeClass(
     "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
-    "text-emerald-900 dark:text-emerald-100",
   ),
   построить: buildBadgeClass(
     "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
-    "text-amber-900 dark:text-amber-100",
   ),
   починить: buildBadgeClass(
     "bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45",
-    "text-orange-900 dark:text-orange-100",
   ),
 };
 
@@ -235,22 +221,18 @@ const formatDistanceLabel = (value: unknown) => {
 
 const shortDistanceBadgeClass = buildBadgeClass(
   "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
-  "text-emerald-900 dark:text-emerald-100",
 );
 
 const mediumDistanceBadgeClass = buildBadgeClass(
   "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
-  "text-sky-900 dark:text-sky-100",
 );
 
 const longDistanceBadgeClass = buildBadgeClass(
   "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
-  "text-amber-900 dark:text-amber-100",
 );
 
 const extraLongDistanceBadgeClass = buildBadgeClass(
   "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
-  "text-rose-900 dark:text-rose-100",
 );
 
 const getDistanceBadgeClass = (value: unknown) => {
@@ -336,6 +318,141 @@ const compactText = (value: string, maxLength: number) => {
 };
 
 export type TaskRow = Task & Record<string, any>;
+
+type CountdownLikeState = Extract<
+  DeadlineState,
+  { kind: "countdown" | "pending" | "overdue" }
+>;
+
+const countdownBadgeBaseClass = `${pillBadgeBaseClass} min-w-0 justify-start normal-case ${badgeTextClass} tabular-nums ring-1`;
+
+const countdownToneClassMap: Record<
+  "safe" | "warn" | "danger" | "overdue" | "pending",
+  string
+> = {
+  safe: `${countdownBadgeBaseClass} bg-emerald-500/25 ring-emerald-500/45 dark:bg-emerald-400/25 dark:ring-emerald-300/45`,
+  warn: `${countdownBadgeBaseClass} bg-amber-500/25 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45`,
+  danger: `${countdownBadgeBaseClass} bg-orange-500/25 ring-orange-500/45 dark:bg-orange-400/25 dark:ring-orange-300/45`,
+  overdue: `${countdownBadgeBaseClass} bg-rose-500/30 ring-rose-500/55 dark:bg-rose-400/30 dark:ring-rose-300/50`,
+  pending: `${countdownBadgeBaseClass} bg-sky-500/20 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45`,
+};
+
+const neutralCountdownBadgeClass = `${countdownBadgeBaseClass} bg-slate-500/15 ring-slate-500/35 dark:bg-slate-500/25 dark:ring-slate-400/35`;
+
+const formatCountdownParts = (remainingMs: number) => {
+  const absValue = Math.abs(remainingMs);
+  const totalMinutes = Math.max(0, Math.floor(absValue / (60 * 1000)));
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const pad = (value: number) => value.toString().padStart(2, "0");
+  return {
+    days: pad(days),
+    hours: pad(hours),
+    minutes: pad(minutes),
+  };
+};
+
+const getCountdownToneKey = (
+  state: CountdownLikeState,
+): keyof typeof countdownToneClassMap => {
+  if (state.kind === "overdue") {
+    return "overdue";
+  }
+  if (state.kind === "pending") {
+    return "pending";
+  }
+  return state.level;
+};
+
+const buildCountdownLabel = (state: CountdownLikeState) => {
+  const { days, hours, minutes } = formatCountdownParts(state.remainingMs);
+  const base = state.kind === "overdue" ? "просрочено" : "осталось";
+  return `${base} ${days} дней ${hours} часов ${minutes} минут`;
+};
+
+const buildCountdownTitle = (
+  state: CountdownLikeState,
+  formatted: ReturnType<typeof formatDate>,
+  rawDue?: string,
+) => {
+  if (!formatted) {
+    return rawDue ? rawDue.trim() : undefined;
+  }
+  if (state.kind === "overdue") {
+    return `Просрочено с ${formatted.full}`;
+  }
+  if (state.kind === "pending") {
+    const note =
+      state.issue === "missing-start"
+        ? "Не указана дата начала"
+        : "Диапазон дат некорректен";
+    return `${note}. Срок ${formatted.full}`;
+  }
+  return `Выполнить до ${formatted.full}`;
+};
+
+function DeadlineCountdownBadge({
+  startValue,
+  dueValue,
+  rawDue,
+}: {
+  startValue?: string;
+  dueValue?: string;
+  rawDue?: string;
+}) {
+  const [now, setNow] = React.useState(() => new Date());
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [startValue, dueValue]);
+
+  const state = React.useMemo(
+    () => getDeadlineState(startValue, dueValue, now),
+    [startValue, dueValue, now],
+  );
+
+  const formatted = React.useMemo(() => formatDate(dueValue), [dueValue]);
+
+  if (state.kind === "invalid") {
+    return (
+      <span
+        className={`${neutralCountdownBadgeClass} inline-flex items-center gap-2`}
+        title={
+          state.reason === "missing"
+            ? "Срок не назначен"
+            : "Срок указан некорректно"
+        }
+      >
+        <QuestionMarkCircleIcon
+          className="size-4 flex-shrink-0 text-black dark:text-white"
+          aria-hidden
+        />
+        <span className="truncate">Нет данных</span>
+      </span>
+    );
+  }
+
+  const toneKey = getCountdownToneKey(state);
+  const className = countdownToneClassMap[toneKey];
+  const label = buildCountdownLabel(state);
+  const title = buildCountdownTitle(state, formatted, rawDue);
+  const Icon = state.kind === "overdue" ? StopCircleIcon : ClockIcon;
+
+  return (
+    <span
+      className={`${className} inline-flex items-center gap-2`}
+      title={title}
+    >
+      <Icon
+        className="size-4 flex-shrink-0 text-black dark:text-white"
+        aria-hidden
+      />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
 
 export default function taskColumns(
   users: Record<number, any>,
@@ -530,123 +647,20 @@ export default function taskColumns(
       header: "Выполнить до",
       accessorKey: "due_date",
       meta: {
-        width: "clamp(7.75rem, 12.5vw, 10rem)",
-        minWidth: "7.5rem",
-        maxWidth: "10.5rem",
+        width: "clamp(14rem, 26vw, 22rem)",
+        minWidth: "13rem",
+        maxWidth: "24rem",
         cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
       cell: (p) => {
         const dueValue = p.getValue<string>();
         const row = p.row.original;
-        const formatted = formatDate(dueValue);
-        const state = getDeadlineState(row.start_date, row.due_date);
-
-        if (state.kind === "invalid") {
-          return (
-            <span
-              className={`${dateBadgeClass} flex min-w-0 items-center gap-1`}
-              title={
-                state.reason === "missing"
-                  ? "Срок не назначен"
-                  : "Срок указан некорректно"
-              }
-            >
-              <QuestionMarkCircleIcon
-                className="size-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
-                aria-hidden
-              />
-              <span className="truncate">Нет данных</span>
-            </span>
-          );
-        }
-
-        const isOverdue = state.kind === "overdue";
-        const iconClassName =
-          state.kind === "countdown"
-            ? state.level === "safe"
-              ? "text-emerald-600 dark:text-emerald-400"
-              : state.level === "warn"
-                ? "text-amber-500 dark:text-amber-300"
-                : "text-orange-500 dark:text-orange-300"
-            : isOverdue
-              ? "text-rose-600 dark:text-rose-400"
-              : "text-slate-400 dark:text-slate-500";
-
-        const remainingLabel =
-          state.remainingMs !== null
-            ? formatDurationShort(state.remainingMs)
-            : null;
-
-        const subtitle = (() => {
-          if (state.remainingMs === null) {
-            return null;
-          }
-          if (isOverdue) {
-            return `Просрочено на ${remainingLabel}`;
-          }
-          if (state.kind === "pending") {
-            return state.issue === "missing-start"
-              ? "Нет даты начала"
-              : "Диапазон дат некорректен";
-          }
-          return `Осталось ${remainingLabel}`;
-        })();
-
-        const percentLabel =
-          state.kind === "countdown"
-            ? `${Math.round(state.ratio * 100)}%`
-            : null;
-
-        const icon = isOverdue ? (
-          <StopCircleIcon
-            className={`size-4 flex-shrink-0 ${iconClassName}`}
-            aria-hidden
-          />
-        ) : (
-          <ClockIcon
-            className={`size-4 flex-shrink-0 ${iconClassName}`}
-            aria-hidden
-          />
-        );
-
         return (
-          <span
-            className={`${dateBadgeClass} flex min-w-0 flex-col gap-0.5`}
-            title={
-              formatted
-                ? isOverdue
-                  ? `Просрочено с ${formatted.full}`
-                  : `Выполнить до ${formatted.full}`
-                : undefined
-            }
-          >
-            <span className="flex min-w-0 items-center gap-1">
-              {icon}
-              {formatted ? (
-                <time
-                  dateTime={dueValue}
-                  className="flex min-w-0 items-baseline gap-1 truncate tabular-nums"
-                >
-                  <span className="truncate">{formatted.date}</span>
-                  {formatted.time ? (
-                    <span className={dateBadgeTimeClass}>{formatted.time}</span>
-                  ) : null}
-                </time>
-              ) : (
-                <span className="truncate">{row.due_date}</span>
-              )}
-              {percentLabel ? (
-                <span className="ml-auto shrink-0 text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-200">
-                  {percentLabel}
-                </span>
-              ) : null}
-            </span>
-            {subtitle ? (
-              <span className="truncate text-[0.62rem] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                {subtitle}
-              </span>
-            ) : null}
-          </span>
+          <DeadlineCountdownBadge
+            startValue={row.start_date}
+            dueValue={row.due_date}
+            rawDue={dueValue}
+          />
         );
       },
     },

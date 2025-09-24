@@ -49,7 +49,7 @@ function AppShell() {
         />
       )}
       {user && <Header />}
-      <main className="mt-14 p-4 transition-all">
+      <main className="p-4 pt-3 transition-all lg:pt-4">
         <Suspense fallback={<div>{t("loading")}</div>}>
           <Routes>
             <Route

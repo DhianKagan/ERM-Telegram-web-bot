@@ -96,8 +96,8 @@ async function upsertVehicle(
 export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
   const updatedFleet = await ensureFleetFields(fleet);
   let loginResult = await login(updatedFleet.token, updatedFleet.baseUrl);
-  await persistBaseUrl(updatedFleet, loginResult.baseUrl);
-  let resolvedBaseUrl = updatedFleet.baseUrl;
+  let resolvedBaseUrl = loginResult.baseUrl;
+  await persistBaseUrl(updatedFleet, resolvedBaseUrl);
   let units: UnitInfo[];
   try {
     units = await loadUnits(loginResult.sid, resolvedBaseUrl);
@@ -109,8 +109,8 @@ export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
       `Сессия Wialon недействительна для флота ${updatedFleet._id}, выполняем повторную авторизацию`,
     );
     loginResult = await login(updatedFleet.token, resolvedBaseUrl);
-    await persistBaseUrl(updatedFleet, loginResult.baseUrl);
-    resolvedBaseUrl = updatedFleet.baseUrl;
+    resolvedBaseUrl = loginResult.baseUrl;
+    await persistBaseUrl(updatedFleet, resolvedBaseUrl);
     units = await loadUnits(loginResult.sid, resolvedBaseUrl);
   }
   const ids = units.map((unit) => unit.id);

@@ -104,6 +104,29 @@ describe('fleetVehicles sync', () => {
     expect(mockedLoadUnits).toHaveBeenCalledWith('sid', 'https://hst-api.wialon.com');
   });
 
+  it('использует базовый адрес из Wialon при загрузке транспорта', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    mockedLogin.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'http://wialon.gps-garant.com.ua',
+    });
+    mockedLoadUnits.mockResolvedValue([]);
+
+    await syncFleetVehicles(fleet);
+
+    expect(mockedLoadUnits).toHaveBeenCalledWith('sid', 'http://wialon.gps-garant.com.ua');
+    const updatedFleet = await Fleet.findById(fleet._id).lean();
+    expect(updatedFleet?.baseUrl).toBe('http://wialon.gps-garant.com.ua');
+  });
+
   it('не перезаписывает ручное имя и примечания', async () => {
     const fleet = await Fleet.create({
       name: 'Флот',

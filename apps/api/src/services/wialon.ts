@@ -14,6 +14,8 @@ export interface WialonLoginResult {
   eid: string;
   sid: string;
   user: { id: number; nm?: string };
+  host?: string;
+  base_url?: string;
 }
 
 export type WialonLoginSuccess = WialonLoginResult & { baseUrl: string };
@@ -45,10 +47,22 @@ export interface WialonUnitRaw {
   sens?: WialonUnitSensor[];
 }
 
-export type WialonTrackPointRaw = WialonUnitPositionRaw;
+export interface WialonTrackPointRaw {
+  t: number;
+  x?: number;
+  y?: number;
+  s?: number;
+  c?: number;
+  pos?: {
+    x?: number;
+    y?: number;
+    s?: number;
+    c?: number;
+  };
+}
 
 export interface WialonTrackResponse {
-  track: WialonTrackPointRaw[];
+  messages?: WialonTrackPointRaw[];
 }
 
 export interface UnitPosition {
@@ -156,6 +170,40 @@ function buildUrl(baseUrl: string): string {
   return url.toString();
 }
 
+function sanitizeBaseUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.pathname = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
+function resolveBaseUrl(
+  loginResult: WialonLoginResult,
+  fallbackBaseUrl: string,
+): string {
+  if (loginResult.base_url) {
+    return sanitizeBaseUrl(loginResult.base_url);
+  }
+  if (loginResult.host) {
+    try {
+      const parsedFallback = new URL(fallbackBaseUrl);
+      parsedFallback.host = loginResult.host;
+      parsedFallback.pathname = '';
+      parsedFallback.search = '';
+      parsedFallback.hash = '';
+      return parsedFallback.toString().replace(/\/$/, '');
+    } catch {
+      return sanitizeBaseUrl(`https://${loginResult.host}`);
+    }
+  }
+  return sanitizeBaseUrl(fallbackBaseUrl);
+}
+
 export function decodeLocatorKey(locatorKey: string): string {
   return decodeLocatorKeyUtil(locatorKey);
 }
@@ -258,12 +306,19 @@ function normalizeSensor(sensor: WialonUnitSensor): UnitSensor {
   };
 }
 
-function normalizeTrackPoint(point: WialonTrackPointRaw): TrackPoint {
+function normalizeTrackPoint(point: WialonTrackPointRaw): TrackPoint | undefined {
+  const lon = typeof point.x === 'number' ? point.x : point.pos?.x;
+  const lat = typeof point.y === 'number' ? point.y : point.pos?.y;
+  if (typeof lon !== 'number' || typeof lat !== 'number') {
+    return undefined;
+  }
+  const speed = typeof point.s === 'number' ? point.s : point.pos?.s;
+  const course = typeof point.c === 'number' ? point.c : point.pos?.c;
   return {
-    lat: point.y,
-    lon: point.x,
-    speed: point.s,
-    course: point.c,
+    lat,
+    lon,
+    speed: typeof speed === 'number' ? speed : undefined,
+    course: typeof course === 'number' ? course : undefined,
     timestamp: new Date(point.t * 1000),
   };
 }
@@ -279,7 +334,7 @@ async function loginWithBase(
       { authHash: decoded.token },
       { baseUrl },
     );
-    return { ...result, baseUrl };
+    return { ...result, baseUrl: resolveBaseUrl(result, baseUrl) };
   };
   if (authHashCandidate) {
     try {
@@ -296,7 +351,7 @@ async function loginWithBase(
       { token: decoded.token },
       { baseUrl },
     );
-    return { ...result, baseUrl };
+    return { ...result, baseUrl: resolveBaseUrl(result, baseUrl) };
   } catch (error) {
     if (authHashCandidate && shouldRetryWithAuthHash(error, decoded)) {
       return tryAuthHash();
@@ -335,7 +390,7 @@ export async function loadUnits(
     {
       spec: {
         itemsType: 'avl_unit',
-        propName: 'sys_id',
+        propName: 'sys_name',
         propValueMask: '*',
         sortType: 'sys_name',
       },
@@ -365,16 +420,22 @@ export async function loadTrack(
   baseUrl?: string,
 ): Promise<TrackPoint[]> {
   const response = await request<WialonTrackResponse>(
-    'unit/calc_track',
+    'messages/load_interval',
     {
-      unitId,
+      itemId: unitId,
       timeFrom: Math.floor(from.getTime() / 1000),
       timeTo: Math.floor(to.getTime() / 1000),
       flags: 0,
+      flagsMask: 0xff00,
+      loadCount: 0xffffffff,
+      returnList: 1,
     },
     { baseUrl, sid },
   );
-  return Array.isArray(response.track)
-    ? response.track.map((p) => normalizeTrackPoint(p))
-    : [];
+  if (!Array.isArray(response.messages)) {
+    return [];
+  }
+  return response.messages
+    .map((p) => normalizeTrackPoint(p))
+    .filter((point): point is TrackPoint => Boolean(point));
 }

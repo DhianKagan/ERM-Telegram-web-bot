@@ -23,11 +23,16 @@ describe('wialon service', () => {
     mockedFetch.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
+      json: async () => ({
+        sid: 'sid',
+        eid: 'eid',
+        user: { id: 1 },
+        base_url: 'http://wialon.gps-garant.com.ua',
+      }),
     } as unknown as Awaited<ReturnType<typeof fetch>>);
     const result = await login('token', 'https://example.com');
     expect(result.sid).toBe('sid');
-    expect(result.baseUrl).toBe('https://example.com');
+    expect(result.baseUrl).toBe('http://wialon.gps-garant.com.ua');
     expect(mockedFetch).toHaveBeenCalledTimes(1);
     const [url, opts] = mockedFetch.mock.calls[0];
     expect(url).toBe('https://example.com/wialon/ajax.html');
@@ -334,7 +339,12 @@ describe('wialon service', () => {
     mockedFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        track: [{ x: 50, y: 55, t: 2000, s: 20, c: 45 }],
+        messages: [
+          {
+            t: 2000,
+            pos: { x: 50, y: 55, s: 20, c: 45 },
+          },
+        ],
       }),
     });
     const points = await loadTrack(
@@ -353,5 +363,18 @@ describe('wialon service', () => {
         timestamp: new Date(2000 * 1000),
       },
     ]);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    const [, opts] = mockedFetch.mock.calls[0];
+    const body = opts?.body as URLSearchParams;
+    expect(body.get('svc')).toBe('messages/load_interval');
+    const paramsRaw = body.get('params');
+    expect(paramsRaw).toBeTruthy();
+    const params = paramsRaw ? JSON.parse(paramsRaw) : null;
+    expect(params).toMatchObject({
+      itemId: 3,
+      flagsMask: 0xff00,
+      loadCount: 0xffffffff,
+      returnList: 1,
+    });
   });
 });

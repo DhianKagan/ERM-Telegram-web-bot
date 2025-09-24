@@ -2,7 +2,9 @@
 // Основные модули: глобальный fetch, utils/wialonLocator
 import {
   decodeLocatorKey as decodeLocatorKeyUtil,
+  decodeLocatorKeyDetailed as decodeLocatorKeyDetailedUtil,
   parseLocatorLink as parseLocatorLinkUtil,
+  type DecodeLocatorKeyResult,
   type LocatorLinkData,
 } from '../utils/wialonLocator';
 import { fetch as undiciFetch } from 'undici';
@@ -92,6 +94,61 @@ interface ErrorResponse {
   message?: string;
 }
 
+export class WialonHttpError extends Error {
+  readonly status: number;
+
+  readonly body?: string;
+
+  constructor(svc: string, status: number, body?: string) {
+    super(`Wialon запрос ${svc} завершился с ошибкой ${status}`);
+    this.name = 'WialonHttpError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export class WialonResponseError extends Error {
+  readonly code: number;
+
+  readonly payload: ErrorResponse;
+
+  constructor(svc: string, payload: ErrorResponse) {
+    const messageSuffix = payload.message ? `: ${payload.message}` : '';
+    super(`Wialon вернул ошибку ${payload.error}${messageSuffix}`);
+    this.name = 'WialonResponseError';
+    this.code = payload.error;
+    this.payload = payload;
+  }
+}
+
+const AUTH_HASH_PATTERN = /^[0-9a-f]+$/i;
+const AUTH_HASH_MIN_LENGTH = 40;
+const AUTH_HASH_STATUS_CODES = new Set([400, 401, 403]);
+const AUTH_HASH_ERROR_CODES = new Set([4, 7]);
+
+function isAuthHashCandidate(decoded: DecodeLocatorKeyResult): boolean {
+  if (!decoded.fallback) {
+    return false;
+  }
+  if (!AUTH_HASH_PATTERN.test(decoded.token)) {
+    return false;
+  }
+  return decoded.token.length >= AUTH_HASH_MIN_LENGTH;
+}
+
+function shouldRetryWithAuthHash(error: unknown, decoded: DecodeLocatorKeyResult): boolean {
+  if (!isAuthHashCandidate(decoded)) {
+    return false;
+  }
+  if (error instanceof WialonHttpError) {
+    return AUTH_HASH_STATUS_CODES.has(error.status);
+  }
+  if (error instanceof WialonResponseError) {
+    return AUTH_HASH_ERROR_CODES.has(error.code);
+  }
+  return false;
+}
+
 function buildUrl(baseUrl: string): string {
   const url = new URL(API_PATH, baseUrl);
   return url.toString();
@@ -160,13 +217,17 @@ async function request<T>(
     body: search,
   });
   if (!res.ok) {
-    throw new Error(`Wialon запрос ${svc} завершился с ошибкой ${res.status}`);
+    let body: string | undefined;
+    try {
+      body = await res.text();
+    } catch {
+      body = undefined;
+    }
+    throw new WialonHttpError(svc, res.status, body);
   }
   const data = await parseJson(res);
   if (isErrorResponse(data)) {
-    throw new Error(
-      `Wialon вернул ошибку ${data.error}${data.message ? `: ${data.message}` : ''}`,
-    );
+    throw new WialonResponseError(svc, data);
   }
   return data as T;
 }
@@ -206,12 +267,23 @@ function normalizeTrackPoint(point: WialonTrackPointRaw): TrackPoint {
 }
 
 export async function login(token: string, baseUrl?: string): Promise<WialonLoginResult> {
-  const normalizedToken = decodeLocatorKey(token);
-  return request<WialonLoginResult>(
-    'token/login',
-    { token: normalizedToken },
-    { baseUrl },
-  );
+  const decoded = decodeLocatorKeyDetailedUtil(token);
+  try {
+    return await request<WialonLoginResult>(
+      'token/login',
+      { token: decoded.token },
+      { baseUrl },
+    );
+  } catch (error) {
+    if (shouldRetryWithAuthHash(error, decoded)) {
+      return request<WialonLoginResult>(
+        'core/use_auth_hash',
+        { authHash: decoded.token },
+        { baseUrl },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function loadUnits(

@@ -488,10 +488,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       );
       setShowDimensions(hasDims);
       setCreator(String((taskData.created_by as unknown) || ""));
+      const startLocationLink = (taskData.start_location_link as string) || "";
+      const endLocationLink = (taskData.end_location_link as string) || "";
       setStart((taskData.start_location as string) || "");
-      setStartLink((taskData.start_location_link as string) || "");
+      setStartLink(startLocationLink);
+      setStartCoordinates(startLocationLink ? extractCoords(startLocationLink) : null);
       setEnd((taskData.end_location as string) || "");
-      setEndLink((taskData.end_location_link as string) || "");
+      setEndLink(endLocationLink);
+      setFinishCoordinates(endLocationLink ? extractCoords(endLocationLink) : null);
       setAttachments(((taskData.attachments as Attachment[]) || []) as Attachment[]);
       if (usersMap) {
         setUsers((prev) => {
@@ -522,9 +526,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         creator: String((taskData.created_by as unknown) || ""),
         assignees,
         start: (taskData.start_location as string) || "",
-        startLink: (taskData.start_location_link as string) || "",
+        startLink: startLocationLink,
         end: (taskData.end_location as string) || "",
-        endLink: (taskData.end_location_link as string) || "",
+        endLink: endLocationLink,
         startDate,
         dueDate,
         attachments: ((taskData.attachments as Attachment[]) || []) as Attachment[],
@@ -1024,27 +1028,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </button>
         </div>
         <>
-          <div>
-            <label className="block text-sm font-medium">
-              {t("taskTitle")}
-            </label>
-            <textarea
-              {...titleFieldRest}
-              ref={handleTitleRef}
-              rows={1}
-              placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
-              disabled={!editing}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                }
-              }}
-            />
-            {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
-            )}
-          </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
               <label className="block text-sm font-medium">
@@ -1068,6 +1051,43 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 disabled={!editing}
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">
+              {t("taskTitle")}
+            </label>
+            <textarea
+              {...titleFieldRest}
+              ref={handleTitleRef}
+              rows={1}
+              placeholder={t("title")}
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
+              disabled={!editing}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                }
+              }}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-600">{errors.title.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium">
+              {t("taskSection")}
+            </label>
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <CKEditorPopup
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  readOnly={!editing}
+                />
+              )}
+            />
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
@@ -1411,22 +1431,6 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 </a>
               </div>
             )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              {t("taskSection")}
-            </label>
-            <Controller
-              name="description"
-              control={control}
-              render={({ field }) => (
-                <CKEditorPopup
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  readOnly={!editing}
-                />
-              )}
-            />
           </div>
           <div>
             <label className="block text-sm font-medium">{t("comment")}</label>

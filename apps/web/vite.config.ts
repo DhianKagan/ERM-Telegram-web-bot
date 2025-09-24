@@ -76,6 +76,8 @@ const modulePreloadPattern = new RegExp(
   "gi",
 );
 
+const fontPreloadPattern = /<link\s[^>]*rel=["'][^"']*preload[^"']*["'][^>]*href=["'][^"']*fonts\/fonts\.css["'][^>]*>/gi;
+
 function filterModulePreloadLinks() {
   return {
     name: "filter-modulepreload-links",
@@ -83,7 +85,15 @@ function filterModulePreloadLinks() {
       if (ctx?.server) {
         return html;
       }
-      return html.replace(modulePreloadPattern, "");
+      const withoutModulePreload = html.replace(modulePreloadPattern, "");
+      return withoutModulePreload.replace(fontPreloadPattern, (tag) => {
+        const hasStylesheet = /rel=["'][^"']*stylesheet[^"']*["']/i.test(tag);
+        const hasAsStyle = /\sas\s*=\s*["']style["']/i.test(tag);
+        if (hasStylesheet && hasAsStyle) {
+          return tag;
+        }
+        return "";
+      });
     },
   };
 }

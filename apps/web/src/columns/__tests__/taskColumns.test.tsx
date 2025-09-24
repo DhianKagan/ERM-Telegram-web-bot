@@ -82,9 +82,9 @@ describe("taskColumns", () => {
     render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
     const label = screen.getByText(
-      "осталось 04 дней 03 часов 30 минут",
+      "До дедлайна 4 дня 3 часа 30 минут",
     );
-    const badge = label.parentElement;
+    const badge = label.closest("[title]");
     expect(badge).not.toBeNull();
     expect(badge as HTMLElement).toHaveClass("bg-emerald-500/25");
   });
@@ -118,9 +118,9 @@ describe("taskColumns", () => {
     render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
     const label = screen.getByText(
-      "просрочено 04 дней 17 часов 45 минут",
+      "Просрочено на 4 дня 17 часов 45 минут",
     );
-    const badge = label.parentElement;
+    const badge = label.closest("[title]");
     expect(badge).not.toBeNull();
     expect(badge as HTMLElement).toHaveClass("bg-rose-500/30");
   });

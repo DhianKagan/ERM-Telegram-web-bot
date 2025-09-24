@@ -347,10 +347,31 @@ const formatCountdownParts = (remainingMs: number) => {
   const minutes = totalMinutes % 60;
   const pad = (value: number) => value.toString().padStart(2, "0");
   return {
-    days: pad(days),
-    hours: pad(hours),
-    minutes: pad(minutes),
+    days,
+    hours,
+    minutes,
+    paddedDays: pad(days),
+    paddedHours: pad(hours),
+    paddedMinutes: pad(minutes),
   };
+};
+
+const getRussianPlural = (
+  value: number,
+  forms: [string, string, string],
+) => {
+  const absValue = Math.abs(value) % 100;
+  if (absValue >= 11 && absValue <= 14) {
+    return forms[2];
+  }
+  const lastDigit = absValue % 10;
+  if (lastDigit === 1) {
+    return forms[0];
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return forms[1];
+  }
+  return forms[2];
 };
 
 const getCountdownToneKey = (
@@ -367,8 +388,49 @@ const getCountdownToneKey = (
 
 const buildCountdownLabel = (state: CountdownLikeState) => {
   const { days, hours, minutes } = formatCountdownParts(state.remainingMs);
-  const base = state.kind === "overdue" ? "просрочено" : "осталось";
-  return `${base} ${days} дней ${hours} часов ${minutes} минут`;
+  if (state.kind === "overdue") {
+    return `Просрочено на ${days} ${getRussianPlural(days, [
+      "день",
+      "дня",
+      "дней",
+    ])} ${hours} ${getRussianPlural(hours, [
+      "час",
+      "часа",
+      "часов",
+    ])} ${minutes} ${getRussianPlural(minutes, [
+      "минута",
+      "минуты",
+      "минут",
+    ])}`;
+  }
+  if (state.kind === "pending") {
+    return `Начало через ${days} ${getRussianPlural(days, [
+      "день",
+      "дня",
+      "дней",
+    ])} ${hours} ${getRussianPlural(hours, [
+      "час",
+      "часа",
+      "часов",
+    ])} ${minutes} ${getRussianPlural(minutes, [
+      "минута",
+      "минуты",
+      "минут",
+    ])}`;
+  }
+  return `До дедлайна ${days} ${getRussianPlural(days, [
+    "день",
+    "дня",
+    "дней",
+  ])} ${hours} ${getRussianPlural(hours, [
+    "час",
+    "часа",
+    "часов",
+  ])} ${minutes} ${getRussianPlural(minutes, [
+    "минута",
+    "минуты",
+    "минут",
+  ])}`;
 };
 
 const buildCountdownTitle = (
@@ -436,20 +498,50 @@ function DeadlineCountdownBadge({
 
   const toneKey = getCountdownToneKey(state);
   const className = countdownToneClassMap[toneKey];
+  const parts = formatCountdownParts(state.remainingMs);
   const label = buildCountdownLabel(state);
   const title = buildCountdownTitle(state, formatted, rawDue);
   const Icon = state.kind === "overdue" ? StopCircleIcon : ClockIcon;
 
   return (
     <span
-      className={`${className} inline-flex items-center gap-2`}
+      className={`${className} inline-flex items-center gap-3`}
       title={title}
     >
       <Icon
         className="size-4 flex-shrink-0 text-black dark:text-white"
         aria-hidden
       />
-      <span className="truncate">{label}</span>
+      <span className="sr-only">{label}</span>
+      <span
+        aria-hidden
+        className="flex items-end gap-2 text-black dark:text-white"
+      >
+        <span className="flex flex-col items-center leading-tight">
+          <span className="text-sm font-semibold tabular-nums">
+            {parts.paddedDays}
+          </span>
+          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+            {getRussianPlural(parts.days, ["день", "дня", "дней"])}
+          </span>
+        </span>
+        <span className="flex flex-col items-center leading-tight">
+          <span className="text-sm font-semibold tabular-nums">
+            {parts.paddedHours}
+          </span>
+          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+            {getRussianPlural(parts.hours, ["час", "часа", "часов"])}
+          </span>
+        </span>
+        <span className="flex flex-col items-center leading-tight">
+          <span className="text-sm font-semibold tabular-nums">
+            {parts.paddedMinutes}
+          </span>
+          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+            {getRussianPlural(parts.minutes, ["минута", "минуты", "минут"])}
+          </span>
+        </span>
+      </span>
     </span>
   );
 }
@@ -644,7 +736,7 @@ export default function taskColumns(
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
-      header: "Выполнить до",
+      header: "Дедлайн",
       accessorKey: "due_date",
       meta: {
         width: "clamp(14rem, 26vw, 22rem)",

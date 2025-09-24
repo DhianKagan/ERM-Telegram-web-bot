@@ -65,8 +65,20 @@ async function upsertVehicle(
 
 export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
   const updatedFleet = await ensureFleetFields(fleet);
-  const { sid } = await login(updatedFleet.token, updatedFleet.baseUrl);
-  const units = await loadUnits(sid, updatedFleet.baseUrl);
+  const loginResult = await login(updatedFleet.token, updatedFleet.baseUrl);
+  const resolvedBaseUrl = loginResult.baseUrl;
+  if (resolvedBaseUrl !== updatedFleet.baseUrl) {
+    updatedFleet.baseUrl = resolvedBaseUrl;
+    try {
+      await updatedFleet.save();
+    } catch (error) {
+      console.error(
+        `Не удалось сохранить базовый адрес Wialon для флота ${updatedFleet._id}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  const units = await loadUnits(loginResult.sid, resolvedBaseUrl);
   const ids = units.map((unit) => unit.id);
   await Vehicle.deleteMany({
     fleetId: fleet._id,

@@ -27,6 +27,7 @@ describe('wialon service', () => {
     } as unknown as Awaited<ReturnType<typeof fetch>>);
     const result = await login('token', 'https://example.com');
     expect(result.sid).toBe('sid');
+    expect(result.baseUrl).toBe('https://example.com');
     expect(mockedFetch).toHaveBeenCalledTimes(1);
     const [url, opts] = mockedFetch.mock.calls[0];
     expect(url).toBe('https://example.com/wialon/ajax.html');
@@ -45,7 +46,7 @@ describe('wialon service', () => {
       JSON.stringify({ token: 'clean-token', extra: 1 }),
       'utf8',
     ).toString('base64');
-    await login(payload, 'https://example.com');
+    const result = await login(payload, 'https://example.com');
     expect(mockedFetch).toHaveBeenCalledTimes(1);
     const [, opts] = mockedFetch.mock.calls[0];
     const body = opts?.body as URLSearchParams;
@@ -54,6 +55,7 @@ describe('wialon service', () => {
     const params = paramsRaw ? JSON.parse(paramsRaw) : null;
     expect(params).not.toBeNull();
     expect((params as { token?: string }).token).toBe('clean-token');
+    expect(result.baseUrl).toBe('https://example.com');
   });
 
   it('использует core/use_auth_hash при ошибке 400', async () => {
@@ -72,6 +74,7 @@ describe('wialon service', () => {
       } as unknown as Awaited<ReturnType<typeof fetch>>);
     const result = await login(authHash, 'https://example.com');
     expect(result.sid).toBe('sid');
+    expect(result.baseUrl).toBe('https://example.com');
     expect(mockedFetch).toHaveBeenCalledTimes(2);
     const firstBody = mockedFetch.mock.calls[0][1]?.body as URLSearchParams;
     expect(firstBody.get('svc')).toBe('token/login');
@@ -99,9 +102,55 @@ describe('wialon service', () => {
       } as unknown as Awaited<ReturnType<typeof fetch>>);
     const result = await login(authHash, 'https://example.com');
     expect(result.sid).toBe('sid-2');
+    expect(result.baseUrl).toBe('https://example.com');
     expect(mockedFetch).toHaveBeenCalledTimes(2);
     const secondBody = mockedFetch.mock.calls[1][1]?.body as URLSearchParams;
     expect(secondBody.get('svc')).toBe('core/use_auth_hash');
+  });
+
+  it('повторяет авторизацию на стандартном хосте при ошибке 400', async () => {
+    const authHash =
+      'fb4bcbccf4815a386eface22e0afc0b0524DE7B5134AB9B26EAAA61C328F1558C5AB5967';
+    mockedFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => 'Bad Request',
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => 'Bad Request',
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ error: 4, message: 'Invalid token' }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ sid: 'sid-fallback', eid: 'eid', user: { id: 1 } }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>);
+
+    const result = await login(authHash, 'https://example.com');
+    expect(result.sid).toBe('sid-fallback');
+    expect(result.baseUrl).toBe('https://hst-api.wialon.com');
+    expect(mockedFetch).toHaveBeenCalledTimes(4);
+
+    const firstCall = mockedFetch.mock.calls[0];
+    expect(firstCall?.[0]).toBe('https://example.com/wialon/ajax.html');
+    const secondCall = mockedFetch.mock.calls[1];
+    expect(secondCall?.[0]).toBe('https://example.com/wialon/ajax.html');
+    const thirdCall = mockedFetch.mock.calls[2];
+    expect(thirdCall?.[0]).toBe('https://hst-api.wialon.com/wialon/ajax.html');
+    const fourthCall = mockedFetch.mock.calls[3];
+    expect(fourthCall?.[0]).toBe('https://hst-api.wialon.com/wialon/ajax.html');
+
+    const thirdBody = thirdCall?.[1]?.body as URLSearchParams;
+    expect(thirdBody.get('svc')).toBe('token/login');
+    const fourthBody = fourthCall?.[1]?.body as URLSearchParams;
+    expect(fourthBody.get('svc')).toBe('core/use_auth_hash');
   });
 
   it('парсит ссылку локатора', () => {

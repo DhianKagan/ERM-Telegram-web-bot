@@ -96,7 +96,12 @@ describe('Интеграция коллекций и флотов', () => {
 
   test('создаёт автопарк и позволяет получить транспорт', async () => {
     const locatorKey = Buffer.from('test-token', 'utf8').toString('base64');
-    login.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    login.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'https://hst-api.wialon.com',
+    });
     loadUnits.mockResolvedValue([
       {
         id: 101,

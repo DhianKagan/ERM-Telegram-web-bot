@@ -61,7 +61,12 @@ describe('fleetVehicles sync', () => {
       baseUrl: 'https://hst-api.wialon.com',
       locatorKey: 'dG9rZW4=',
     });
-    mockedLogin.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    mockedLogin.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'https://hst-api.wialon.com',
+    });
     const updatedAt = new Date('2024-01-01T00:00:00.000Z');
     mockedLoadUnits.mockResolvedValue([
       {
@@ -110,7 +115,12 @@ describe('fleetVehicles sync', () => {
       sensors: [],
       customSensors: [{ name: 'Метка', value: 'A1' }],
     });
-    mockedLogin.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    mockedLogin.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'https://hst-api.wialon.com',
+    });
     mockedLoadUnits.mockResolvedValue([
       {
         id: 42,
@@ -139,7 +149,12 @@ describe('fleetVehicles sync', () => {
       locatorKey: 'dG9rZW4=',
     });
     await Vehicle.create({ fleetId: fleet._id, unitId: 5, name: 'Старый', sensors: [] });
-    mockedLogin.mockResolvedValue({ sid: 'sid', eid: 'eid', user: { id: 1 } });
+    mockedLogin.mockResolvedValue({
+      sid: 'sid',
+      eid: 'eid',
+      user: { id: 1 },
+      baseUrl: 'https://hst-api.wialon.com',
+    });
     mockedLoadUnits.mockResolvedValue([
       {
         id: 6,

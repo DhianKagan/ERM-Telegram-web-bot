@@ -50,7 +50,7 @@ type TaskData = Task & {
   start_location_link?: string;
   end_location_link?: string;
   transport_type?: string;
-  payment_method?: string;
+  payment_method?: Task['payment_method'];
   priority?: string;
   status?: string;
   route_distance_km?: number;

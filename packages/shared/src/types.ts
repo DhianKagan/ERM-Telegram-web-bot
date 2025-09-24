@@ -1,6 +1,12 @@
 // Назначение: общие интерфейсы Task и User.
 // Модули: отсутствуют
 
+export type PaymentMethod =
+  | 'Наличные'
+  | 'Карта'
+  | 'Безнал'
+  | 'Без оплаты';
+
 export interface Task {
   _id: string;
   title: string;
@@ -11,7 +17,7 @@ export interface Task {
   cargo_height_m?: number;
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
-  payment_method?: string;
+  payment_method?: PaymentMethod;
   payment_amount?: number;
   [key: string]: unknown;
 }

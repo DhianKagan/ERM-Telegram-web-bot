@@ -30,17 +30,19 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
 
   if (readOnly) {
     return (
-      <div
-        className="ql-snow"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
-      />
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+        <div
+          className="ql-snow"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
+        />
+      </div>
     );
   }
 
   return (
     <>
       <div
-        className="min-h-[4rem] w-full cursor-text rounded border px-2 py-1"
+        className="min-h-[4rem] w-full cursor-text rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed transition-colors hover:bg-slate-100 focus-within:ring focus-within:ring-brand-200"
         onClick={() => {
           setDraft(value);
           setOpen(true);

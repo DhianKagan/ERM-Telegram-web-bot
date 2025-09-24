@@ -34,6 +34,11 @@ const weightFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 0,
 });
 
+const currencyFormatter = new Intl.NumberFormat('uk-UA', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 type TaskData = Task & {
   request_id?: string;
   task_number?: string;
@@ -97,6 +102,10 @@ export default function formatTask(
   const extra: string[] = [];
   if (task.transport_type) extra.push(`🚗 ${mdEscape(task.transport_type)}`);
   if (task.payment_method) extra.push(`💰 ${mdEscape(task.payment_method)}`);
+  if (typeof task.payment_amount === 'number') {
+    const formatted = currencyFormatter.format(task.payment_amount);
+    extra.push(`💵 ${mdEscape(formatted)} грн`);
+  }
   if (extra.length) lines.push(extra.join(' • '));
 
   const cargoParts: string[] = [];

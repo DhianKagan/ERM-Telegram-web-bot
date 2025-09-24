@@ -34,6 +34,7 @@ export class CreateTaskDto {
       optionalFloatField('cargo_height_m'),
       optionalFloatField('cargo_volume_m3'),
       optionalFloatField('cargo_weight_kg'),
+      optionalFloatField('payment_amount'),
     ];
   }
 }
@@ -49,6 +50,7 @@ export class UpdateTaskDto {
       optionalFloatField('cargo_height_m'),
       optionalFloatField('cargo_volume_m3'),
       optionalFloatField('cargo_weight_kg'),
+      optionalFloatField('payment_amount'),
     ];
   }
 }

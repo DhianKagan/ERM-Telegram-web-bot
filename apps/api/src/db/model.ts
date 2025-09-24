@@ -232,6 +232,7 @@ export interface TaskAttrs {
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
   payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
+  payment_amount?: number;
   telegram_topic_id?: number;
   time_spent?: number;
   // Произвольные поля задачи
@@ -329,6 +330,11 @@ const taskSchema = new Schema<TaskDocument>(
       type: String,
       enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
       default: 'Карта',
+    },
+    payment_amount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     telegram_topic_id: Number,

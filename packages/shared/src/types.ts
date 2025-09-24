@@ -11,6 +11,8 @@ export interface Task {
   cargo_height_m?: number;
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
+  payment_method?: string;
+  payment_amount?: number;
   [key: string]: unknown;
 }
 

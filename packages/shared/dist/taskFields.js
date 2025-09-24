@@ -44,6 +44,12 @@ exports.taskFields = [
         default: constants_1.PAYMENT_METHODS[1],
     },
     {
+        name: 'payment_amount',
+        label: 'Сумма',
+        type: 'number',
+        default: '0',
+    },
+    {
         name: 'status',
         label: 'Статус',
         type: 'select',

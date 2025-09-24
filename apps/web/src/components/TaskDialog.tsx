@@ -46,6 +46,7 @@ interface InitialValues {
   priority: string;
   transportType: string;
   paymentMethod: string;
+  paymentAmount: string;
   status: string;
   creator: string;
   assignees: string[];
@@ -109,6 +110,58 @@ const formatMetricValue = (value: unknown): string => {
     return value;
   }
   return "";
+};
+
+const currencyFormatter = new Intl.NumberFormat("uk-UA", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const parseCurrencyInput = (value: string): number | null => {
+  if (!value.trim()) return 0;
+  const parsed = parseMetricInput(value);
+  if (parsed === null) return null;
+  if (!Number.isFinite(parsed)) return null;
+  return Number(parsed.toFixed(2));
+};
+
+const formatCurrencyDisplay = (value: unknown): string => {
+  if (value === null || value === undefined) return currencyFormatter.format(0);
+  if (typeof value === "number") return currencyFormatter.format(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return currencyFormatter.format(0);
+    const parsed = parseCurrencyInput(trimmed);
+    if (parsed === null) return trimmed;
+    return currencyFormatter.format(parsed);
+  }
+  return currencyFormatter.format(0);
+};
+
+const formatCreatedLabel = (value: string): string => {
+  if (!value) return "";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  const date = new Date(parsed);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
+const formatCoords = (
+  coords: { lat: number; lng: number } | null,
+): string => {
+  if (!coords) return "";
+  const lat = Number.isFinite(coords.lat)
+    ? coords.lat.toFixed(6)
+    : String(coords.lat);
+  const lng = Number.isFinite(coords.lng)
+    ? coords.lng.toFixed(6)
+    : String(coords.lng);
+  return `${lat}, ${lng}`;
 };
 
 const toIsoString = (value: unknown): string => {
@@ -246,6 +299,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     fields.find((f) => f.name === "transport_type")?.default || "";
   const DEFAULT_PAYMENT =
     fields.find((f) => f.name === "payment_method")?.default || "";
+  const DEFAULT_PAYMENT_AMOUNT =
+    fields.find((f) => f.name === "payment_amount")?.default || "0";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
 
   const makeDefaultDate = (h: number) => {
@@ -288,6 +343,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
+  const [paymentAmount, setPaymentAmount] = React.useState(() =>
+    formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
+  );
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
   const [cargoLength, setCargoLength] = React.useState("");
   const [cargoWidth, setCargoWidth] = React.useState("");
@@ -372,6 +430,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         (taskData.transport_type as string) || DEFAULT_TRANSPORT;
       const curPayment =
         (taskData.payment_method as string) || DEFAULT_PAYMENT;
+      const amountValue = formatCurrencyDisplay(
+        (taskData.payment_amount as unknown) ?? DEFAULT_PAYMENT_AMOUNT,
+      );
       const curStatus = (taskData.status as string) || DEFAULT_STATUS;
       const assignees = Array.isArray(taskData.assignees)
         ? (taskData.assignees as (string | number)[]).map(String)
@@ -403,6 +464,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setPriority(curPriority);
       setTransportType(curTransport);
       setPaymentMethod(curPayment);
+      setPaymentAmount(amountValue);
       setStatus(curStatus);
       const lengthValue = formatMetricValue(taskData.cargo_length_m);
       const widthValue = formatMetricValue(taskData.cargo_width_m);
@@ -455,6 +517,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         priority: curPriority,
         transportType: curTransport,
         paymentMethod: curPayment,
+        paymentAmount: amountValue,
         status: curStatus,
         creator: String((taskData.created_by as unknown) || ""),
         assignees,
@@ -482,6 +545,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       DEFAULT_PRIORITY,
       DEFAULT_TRANSPORT,
       DEFAULT_PAYMENT,
+      DEFAULT_PAYMENT_AMOUNT,
       DEFAULT_STATUS,
       reset,
     ],
@@ -542,11 +606,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             return list;
           });
           setRequestId(t.task_number || t.request_id);
-          setCreated(new Date(t.createdAt).toISOString().slice(0, 10));
+          setCreated(new Date(t.createdAt).toISOString());
           setHistory(normalizeHistory(t.history));
         });
     } else {
-      setCreated(new Date().toISOString().slice(0, 10));
+      setCreated(new Date().toISOString());
       setHistory([]);
       authFetch("/api/v1/tasks/report/summary")
         .then((r) => (r.ok ? r.json() : { count: 0 }))
@@ -554,6 +618,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           const num = String((s.count || 0) + 1).padStart(6, "0");
           setRequestId(`ERM_${num}`);
         });
+      setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
       initialRef.current = {
         title: "",
         taskType: DEFAULT_TASK_TYPE,
@@ -562,6 +627,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         priority: DEFAULT_PRIORITY,
         transportType: DEFAULT_TRANSPORT,
         paymentMethod: DEFAULT_PAYMENT,
+        paymentAmount: formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
         status: DEFAULT_STATUS,
         creator: user ? String(user.telegram_id) : "",
         assignees: [],
@@ -603,6 +669,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_PRIORITY,
     DEFAULT_TRANSPORT,
     DEFAULT_PAYMENT,
+    DEFAULT_PAYMENT_AMOUNT,
     DEFAULT_STATUS,
     DEFAULT_START_DATE,
     DEFAULT_DUE_DATE,
@@ -710,6 +777,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         start_date: formData.startDate || DEFAULT_START_DATE,
         due_date: formData.dueDate || DEFAULT_DUE_DATE,
       };
+      const amountValue = parseCurrencyInput(paymentAmount);
+      if (amountValue === null) {
+        setAlertMsg(t("paymentAmountInvalid"));
+        return;
+      }
+      payload.payment_amount = amountValue;
       const lengthValue = parseMetricInput(cargoLength);
       const widthValue = parseMetricInput(cargoWidth);
       const heightValue = parseMetricInput(cargoHeight);
@@ -776,7 +849,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         if (createdAtRaw) {
           const createdDate = new Date(createdAtRaw);
           if (!Number.isNaN(createdDate.getTime())) {
-            setCreated(createdDate.toISOString().slice(0, 10));
+          setCreated(createdDate.toISOString());
           }
         }
         const detailTask = detail?.task as Record<string, unknown> | undefined;
@@ -830,6 +903,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setPriority(d.priority);
     setTransportType(d.transportType);
     setPaymentMethod(d.paymentMethod);
+    setPaymentAmount(d.paymentAmount);
     setStatus(d.status);
     setCreator(d.creator);
     setCargoLength(d.cargoLength);
@@ -893,7 +967,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const headerLabel = React.useMemo(() => {
     const parts: string[] = [t("task")];
     if (requestId) parts.push(requestId);
-    if (created) parts.push(created);
+    const createdLabel = created ? formatCreatedLabel(created) : "";
+    if (createdLabel) parts.push(createdLabel);
     return parts.join(" ").trim();
   }, [created, requestId, t]);
 
@@ -958,7 +1033,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ref={handleTitleRef}
               rows={1}
               placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
+              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
               disabled={!editing}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -978,7 +1053,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 type="datetime-local"
                 {...register("startDate")}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />
             </div>
@@ -989,7 +1064,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <input
                 type="datetime-local"
                 {...register("dueDate", { onChange: handleDueDateChange })}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />
             </div>
@@ -1000,7 +1075,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {statuses.map((s) => (
@@ -1017,7 +1092,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {priorities.map((p) => (
@@ -1036,7 +1111,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {types.map((t) => (
@@ -1068,8 +1143,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {t("startPoint")}
               </label>
               {startLink ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col">
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-col gap-1">
                     <a
                       href={DOMPurify.sanitize(startLink)}
                       target="_blank"
@@ -1079,9 +1154,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       {start || t("link")}
                     </a>
                     {startCoordinates && (
-                      <span className="text-xs text-gray-600">
-                        {startCoordinates.lat},{startCoordinates.lng}
-                      </span>
+                      <input
+                        value={formatCoords(startCoordinates)}
+                        readOnly
+                        className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                        onFocus={(e) => e.currentTarget.select()}
+                        aria-label={t("coordinates")}
+                      />
                     )}
                   </div>
                   {editing && (
@@ -1096,13 +1175,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 </div>
               ) : (
                 <div className="mt-1 flex gap-2">
-                    <input
-                      value={startLink}
-                      onChange={(e) => handleStartLink(e.target.value)}
-                      placeholder={t("googleMapsLink")}
-                      className="flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      disabled={!editing}
-                    />
+                  <input
+                    value={startLink}
+                    onChange={(e) => handleStartLink(e.target.value)}
+                    placeholder={t("googleMapsLink")}
+                    className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                    disabled={!editing}
+                  />
                   <a
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
@@ -1119,8 +1198,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {t("endPoint")}
               </label>
               {endLink ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col">
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-col gap-1">
                     <a
                       href={DOMPurify.sanitize(endLink)}
                       target="_blank"
@@ -1130,9 +1209,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                       {end || t("link")}
                     </a>
                     {finishCoordinates && (
-                      <span className="text-xs text-gray-600">
-                        {finishCoordinates.lat},{finishCoordinates.lng}
-                      </span>
+                      <input
+                        value={formatCoords(finishCoordinates)}
+                        readOnly
+                        className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                        onFocus={(e) => e.currentTarget.select()}
+                        aria-label={t("coordinates")}
+                      />
                     )}
                   </div>
                   {editing && (
@@ -1147,13 +1230,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 </div>
               ) : (
                 <div className="mt-1 flex gap-2">
-                    <input
-                      value={endLink}
-                      onChange={(e) => handleEndLink(e.target.value)}
-                      placeholder={t("googleMapsLink")}
-                      className="flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      disabled={!editing}
-                    />
+                  <input
+                    value={endLink}
+                    onChange={(e) => handleEndLink(e.target.value)}
+                    placeholder={t("googleMapsLink")}
+                    className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                    disabled={!editing}
+                  />
                   <a
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
@@ -1174,7 +1257,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={transportType}
                 onChange={(e) => setTransportType(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {transports.map((t) => (
@@ -1191,7 +1274,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
                 {payments.map((p) => (
@@ -1200,6 +1283,23 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("paymentAmount")}
+              </label>
+              <input
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                onBlur={(e) => setPaymentAmount(formatCurrencyDisplay(e.target.value))}
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                placeholder="0"
+                inputMode="decimal"
+                disabled={!editing}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                {t("paymentAmountFormat")}
+              </p>
             </div>
           </div>
           <div className="space-y-3 rounded-md border border-dashed border-gray-300 p-3">
@@ -1223,7 +1323,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     <input
                       value={cargoLength}
                       onChange={(e) => setCargoLength(e.target.value)}
-                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                       placeholder="0"
                       inputMode="decimal"
                       disabled={!editing}
@@ -1236,7 +1336,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     <input
                       value={cargoWidth}
                       onChange={(e) => setCargoWidth(e.target.value)}
-                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                       placeholder="0"
                       inputMode="decimal"
                       disabled={!editing}
@@ -1249,7 +1349,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     <input
                       value={cargoHeight}
                       onChange={(e) => setCargoHeight(e.target.value)}
-                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                       placeholder="0"
                       inputMode="decimal"
                       disabled={!editing}
@@ -1275,7 +1375,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     <input
                       value={cargoWeight}
                       onChange={(e) => setCargoWeight(e.target.value)}
-                      className="w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                       placeholder="0"
                       inputMode="decimal"
                       disabled={!editing}
@@ -1464,7 +1564,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                         setShowDoneConfirm(true);
                       }
                     }}
-                    className="mt-1 mb-2 w-full rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                    className="mt-1 mb-2 w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                   >
                     <option value="">{t("selectOption")}</option>
                     {doneOptions.map((o) => (

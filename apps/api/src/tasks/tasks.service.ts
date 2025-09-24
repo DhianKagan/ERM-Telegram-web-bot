@@ -181,6 +181,7 @@ class TasksService {
     const height = toNumeric(data.cargo_height_m);
     const weight = toNumeric(data.cargo_weight_kg);
     const volume = toNumeric(data.cargo_volume_m3);
+    const paymentAmount = toNumeric(data.payment_amount);
 
     setMetric(target, 'cargo_length_m',
       length !== undefined ? roundValue(length) : undefined);
@@ -190,6 +191,8 @@ class TasksService {
       height !== undefined ? roundValue(height) : undefined);
     setMetric(target, 'cargo_weight_kg',
       weight !== undefined ? roundValue(weight, 2) : undefined);
+    setMetric(target, 'payment_amount',
+      paymentAmount !== undefined ? roundValue(paymentAmount, 2) : undefined);
 
     if (
       length !== undefined &&

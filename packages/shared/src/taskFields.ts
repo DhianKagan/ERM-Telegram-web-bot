@@ -58,6 +58,12 @@ export const taskFields: TaskField[] = [
     default: PAYMENT_METHODS[1],
   },
   {
+    name: 'payment_amount',
+    label: 'Сумма',
+    type: 'number',
+    default: '0',
+  },
+  {
     name: 'status',
     label: 'Статус',
     type: 'select',

@@ -22,7 +22,7 @@ const renderField = (
     case "text":
       return (
         <input
-          className="h-10 w-full rounded border px-3"
+          className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           required={field.required}
@@ -31,7 +31,7 @@ const renderField = (
     case "textarea":
       return (
         <textarea
-          className="w-full rounded border px-3 py-2"
+          className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
@@ -40,7 +40,7 @@ const renderField = (
       return (
         <input
           type="datetime-local"
-          className="h-10 w-full rounded border px-3"
+          className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           required={field.required}
@@ -126,7 +126,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
         <div className="space-y-1">
           <label className="block text-sm font-medium">Шаблон</label>
           <select
-            className="h-10 w-full rounded border px-3"
+            className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3"
             value={selectedTemplate}
             onChange={(e) => handleTemplateChange(e.target.value)}
           >

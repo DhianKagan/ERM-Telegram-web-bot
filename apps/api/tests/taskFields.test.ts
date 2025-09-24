@@ -21,6 +21,7 @@ test('содержит все обязательные поля', () => {
     'cargo_weight_kg',
     'end_location',
     'payment_method',
+    'payment_amount',
     'status',
     'description',
     'comment',

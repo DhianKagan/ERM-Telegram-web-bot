@@ -10,10 +10,16 @@ jest.mock('../src/services/wialon', () => {
     DEFAULT_BASE_URL: actual.DEFAULT_BASE_URL,
     decodeLocatorKey: actual.decodeLocatorKey,
     parseLocatorLink: actual.parseLocatorLink,
+    WialonHttpError: actual.WialonHttpError,
+    WialonResponseError: actual.WialonResponseError,
     login: jest.fn(),
     loadUnits: jest.fn(),
   };
 });
+
+const { WialonResponseError } = jest.requireActual('../src/services/wialon') as {
+  WialonResponseError: typeof import('../src/services/wialon').WialonResponseError;
+};
 
 import {
   Fleet,
@@ -170,6 +176,48 @@ describe('fleetVehicles sync', () => {
     expect(units).toHaveLength(1);
     expect(units[0]?.unitId).toBe(6);
     expect(mockedLogin).toHaveBeenCalledWith('token', 'https://hst-api.wialon.com');
+  });
+
+  it('повторяет авторизацию при недействительной сессии', async () => {
+    const fleet = await Fleet.create({
+      name: 'Флот',
+      token: 'token',
+      locatorUrl: 'https://hosting.wialon.com/locator?t=dG9rZW4=',
+      baseUrl: 'https://hst-api.wialon.com',
+      locatorKey: 'dG9rZW4=',
+    });
+    mockedLogin
+      .mockResolvedValueOnce({
+        sid: 'expired-sid',
+        eid: 'eid',
+        user: { id: 1 },
+        baseUrl: 'https://hst-api.wialon.com',
+      })
+      .mockResolvedValueOnce({
+        sid: 'fresh-sid',
+        eid: 'eid',
+        user: { id: 1 },
+        baseUrl: 'https://hst-api.wialon.com',
+      });
+    mockedLoadUnits
+      .mockRejectedValueOnce(new WialonResponseError('core/search_items', { error: 1 }))
+      .mockResolvedValueOnce([
+        {
+          id: 501,
+          name: 'Бульдозер',
+          position: undefined,
+          sensors: [],
+        },
+      ]);
+
+    await syncFleetVehicles(fleet);
+
+    expect(mockedLogin).toHaveBeenCalledTimes(2);
+    expect(mockedLoadUnits).toHaveBeenCalledTimes(2);
+    expect(mockedLoadUnits).toHaveBeenNthCalledWith(1, 'expired-sid', 'https://hst-api.wialon.com');
+    expect(mockedLoadUnits).toHaveBeenNthCalledWith(2, 'fresh-sid', 'https://hst-api.wialon.com');
+    const stored = await Vehicle.findOne({ fleetId: fleet._id, unitId: 501 }).lean();
+    expect(stored?.name).toBe('Бульдозер');
   });
 
   it('помечает проблемный элемент коллекции и пропускает миграцию', async () => {

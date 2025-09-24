@@ -30,10 +30,13 @@ const numberBadgeClass =
   `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] text-slate-900 ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30`;
 
 const titleBadgeClass =
-  `${pillBadgeBaseClass} justify-start normal-case text-slate-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
+  `${pillBadgeBaseClass} justify-start normal-case text-indigo-900 ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:text-indigo-100 dark:ring-indigo-300/45`;
 
 const creatorBadgeClass =
-  `${pillBadgeBaseClass} max-w-full w-full justify-start normal-case text-indigo-900 ring-1 ring-indigo-500/35 bg-indigo-500/12 dark:bg-indigo-400/15 dark:text-slate-100 dark:ring-indigo-400/30`;
+  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case text-blue-900 ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:text-blue-100 dark:ring-blue-300/45`;
+
+const assigneeBadgeClass =
+  `${pillBadgeBaseClass} normal-case text-violet-900 ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:text-violet-100 dark:ring-violet-300/45`;
 
 const fallbackBadgeClass = buildBadgeClass(
   "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
@@ -449,7 +452,7 @@ export default function taskColumns(
                 key={id}
                 employeeId={id}
                 stopPropagation
-                className={`${creatorBadgeClass} ${focusableBadgeClass} no-underline`}
+                className={`${assigneeBadgeClass} ${focusableBadgeClass} no-underline`}
               >
                 <span className="truncate">{compactText(label, 18)}</span>
               </EmployeeLink>

@@ -22,8 +22,9 @@ describe('wialon service', () => {
   it('отправляет запрос на авторизацию', async () => {
     mockedFetch.mockResolvedValue({
       ok: true,
+      status: 200,
       json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
-    });
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
     const result = await login('token', 'https://example.com');
     expect(result.sid).toBe('sid');
     expect(mockedFetch).toHaveBeenCalledTimes(1);
@@ -37,8 +38,9 @@ describe('wialon service', () => {
   it('очищает base64 JSON токен перед авторизацией', async () => {
     mockedFetch.mockResolvedValue({
       ok: true,
+      status: 200,
       json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
-    });
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
     const payload = Buffer.from(
       JSON.stringify({ token: 'clean-token', extra: 1 }),
       'utf8',
@@ -52,6 +54,54 @@ describe('wialon service', () => {
     const params = paramsRaw ? JSON.parse(paramsRaw) : null;
     expect(params).not.toBeNull();
     expect((params as { token?: string }).token).toBe('clean-token');
+  });
+
+  it('использует core/use_auth_hash при ошибке 400', async () => {
+    const authHash =
+      'fb4bcbccf4815a386eface22e0afc0b0524DE7B5134AB9B26EAAA61C328F1558C5AB5967';
+    mockedFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => 'Bad Request',
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ sid: 'sid', eid: 'eid', user: { id: 1 } }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>);
+    const result = await login(authHash, 'https://example.com');
+    expect(result.sid).toBe('sid');
+    expect(mockedFetch).toHaveBeenCalledTimes(2);
+    const firstBody = mockedFetch.mock.calls[0][1]?.body as URLSearchParams;
+    expect(firstBody.get('svc')).toBe('token/login');
+    const secondBody = mockedFetch.mock.calls[1][1]?.body as URLSearchParams;
+    expect(secondBody.get('svc')).toBe('core/use_auth_hash');
+    const paramsRaw = secondBody.get('params');
+    expect(paramsRaw).toBeTruthy();
+    const params = paramsRaw ? JSON.parse(paramsRaw) : null;
+    expect(params).toMatchObject({ authHash });
+  });
+
+  it('использует core/use_auth_hash при ошибке Wialon', async () => {
+    const authHash =
+      'fb4bcbccf4815a386eface22e0afc0b0524DE7B5134AB9B26EAAA61C328F1558C5AB5967';
+    mockedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ error: 4, message: 'Invalid token' }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ sid: 'sid-2', eid: 'eid', user: { id: 1 } }),
+      } as unknown as Awaited<ReturnType<typeof fetch>>);
+    const result = await login(authHash, 'https://example.com');
+    expect(result.sid).toBe('sid-2');
+    expect(mockedFetch).toHaveBeenCalledTimes(2);
+    const secondBody = mockedFetch.mock.calls[1][1]?.body as URLSearchParams;
+    expect(secondBody.get('svc')).toBe('core/use_auth_hash');
   });
 
   it('парсит ссылку локатора', () => {

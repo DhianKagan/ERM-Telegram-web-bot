@@ -641,21 +641,30 @@ export default function CollectionsPage() {
         <TabsList className="mb-4 flex h-auto w-full snap-x gap-2 overflow-x-auto rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:flex-wrap lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:min-w-[18rem] lg:flex-col lg:gap-2 lg:overflow-visible lg:rounded-xl lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0">
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
+            const labelId = `${t.key}-tab-label`;
             return (
               <TabsTrigger
                 key={t.key}
                 value={t.key}
+                aria-label={t.label}
+                aria-labelledby={labelId}
                 className="group flex h-auto min-w-[11rem] flex-1 items-center justify-start gap-3 rounded-xl border border-transparent px-3 py-3 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 sm:min-w-[12rem] lg:min-w-full lg:px-4 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 snap-start"
               >
                 {Icon ? (
                   <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300" />
                 ) : null}
                 <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-base font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300">
+                  <span
+                    id={labelId}
+                    className="truncate text-base font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300"
+                  >
                     {t.label}
                   </span>
                   {t.description ? (
-                    <span className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span
+                      aria-hidden="true"
+                      className="truncate text-xs font-medium text-slate-500 dark:text-slate-400"
+                    >
                       {t.description}
                     </span>
                   ) : null}

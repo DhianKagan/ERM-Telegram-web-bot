@@ -47,6 +47,8 @@ jest.mock('../src/services/wialon', () => {
     __esModule: true,
     DEFAULT_BASE_URL: 'https://hst-api.wialon.com',
     decodeLocatorKey: actual.decodeLocatorKey,
+    WialonHttpError: actual.WialonHttpError,
+    WialonResponseError: actual.WialonResponseError,
     login: jest.fn(),
     loadUnits: jest.fn(),
     loadTrack: jest.fn(),

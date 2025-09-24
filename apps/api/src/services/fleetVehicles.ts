@@ -10,10 +10,40 @@ import { Vehicle } from '../db/models/vehicle';
 import {
   login,
   loadUnits,
+  WialonHttpError,
+  WialonResponseError,
   type UnitInfo,
   type UnitSensor,
   type UnitPosition,
 } from './wialon';
+
+function isSessionInvalidError(error: unknown): boolean {
+  if (error instanceof WialonResponseError) {
+    return error.code === 1;
+  }
+  if (error instanceof WialonHttpError) {
+    return error.status === 401 || error.status === 403;
+  }
+  return false;
+}
+
+async function persistBaseUrl(
+  fleet: FleetDocument,
+  nextBaseUrl: string,
+): Promise<void> {
+  if (fleet.baseUrl === nextBaseUrl) {
+    return;
+  }
+  fleet.baseUrl = nextBaseUrl;
+  try {
+    await fleet.save();
+  } catch (error) {
+    console.error(
+      `Не удалось сохранить базовый адрес Wialon для флота ${fleet._id}:`,
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
 
 function mapPosition(position?: UnitPosition) {
   if (!position) return undefined;
@@ -65,20 +95,24 @@ async function upsertVehicle(
 
 export async function syncFleetVehicles(fleet: FleetDocument): Promise<void> {
   const updatedFleet = await ensureFleetFields(fleet);
-  const loginResult = await login(updatedFleet.token, updatedFleet.baseUrl);
-  const resolvedBaseUrl = loginResult.baseUrl;
-  if (resolvedBaseUrl !== updatedFleet.baseUrl) {
-    updatedFleet.baseUrl = resolvedBaseUrl;
-    try {
-      await updatedFleet.save();
-    } catch (error) {
-      console.error(
-        `Не удалось сохранить базовый адрес Wialon для флота ${updatedFleet._id}:`,
-        error instanceof Error ? error.message : error,
-      );
+  let loginResult = await login(updatedFleet.token, updatedFleet.baseUrl);
+  await persistBaseUrl(updatedFleet, loginResult.baseUrl);
+  let resolvedBaseUrl = updatedFleet.baseUrl;
+  let units: UnitInfo[];
+  try {
+    units = await loadUnits(loginResult.sid, resolvedBaseUrl);
+  } catch (error) {
+    if (!isSessionInvalidError(error)) {
+      throw error;
     }
+    console.warn(
+      `Сессия Wialon недействительна для флота ${updatedFleet._id}, выполняем повторную авторизацию`,
+    );
+    loginResult = await login(updatedFleet.token, resolvedBaseUrl);
+    await persistBaseUrl(updatedFleet, loginResult.baseUrl);
+    resolvedBaseUrl = updatedFleet.baseUrl;
+    units = await loadUnits(loginResult.sid, resolvedBaseUrl);
   }
-  const units = await loadUnits(loginResult.sid, resolvedBaseUrl);
   const ids = units.map((unit) => unit.id);
   await Vehicle.deleteMany({
     fleetId: fleet._id,

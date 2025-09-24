@@ -87,6 +87,9 @@ function isNonEmptyString(value: unknown): value is string {
 
 function describeSyncFailure(error: unknown): string {
   if (error instanceof WialonResponseError) {
+    if (error.code === 1) {
+      return 'Сессия Wialon недействительна. Обновите ссылку автопарка и повторите попытку.';
+    }
     return error.message;
   }
   if (error instanceof WialonHttpError) {

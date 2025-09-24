@@ -8,6 +8,11 @@ import { MemoryRouter } from "react-router-dom";
 import taskColumns, { TaskRow } from "../taskColumns";
 
 describe("taskColumns", () => {
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
   it("формирует тултип и переносы для нескольких исполнителей", () => {
     const users = {
       1: { name: "Александр Александров" },
@@ -42,9 +47,81 @@ describe("taskColumns", () => {
 
     const badges = screen.getAllByRole("button");
     expect(badges).toHaveLength(2);
-    expect(badges[0]).toHaveClass("ring-indigo-500/35");
+    expect(badges[0]).toHaveClass("ring-violet-500/35");
     expect(within(badges[0]).getByText(/Александр/)).toHaveClass("truncate");
     expect(badges[0].textContent).toMatch(/…$/);
     expect(badges[1].textContent).toBe("ivanov");
+  });
+
+  it("показывает обратный отсчёт до срока", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-01T12:00:00Z"));
+
+    const columns = taskColumns({});
+    const dueColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "due_date",
+    );
+
+    expect(dueColumn).toBeDefined();
+    const cellRenderer = dueColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: "2024-02-28T12:00:00Z",
+      due_date: "2024-03-05T15:30:00Z",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.due_date,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    const label = screen.getByText(
+      "осталось 04 дней 03 часов 30 минут",
+    );
+    const badge = label.parentElement;
+    expect(badge).not.toBeNull();
+    expect(badge as HTMLElement).toHaveClass("bg-emerald-500/25");
+  });
+
+  it("отмечает просроченный срок", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-10T09:15:00Z"));
+
+    const columns = taskColumns({});
+    const dueColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "due_date",
+    );
+
+    expect(dueColumn).toBeDefined();
+    const cellRenderer = dueColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: "2024-02-28T12:00:00Z",
+      due_date: "2024-03-05T15:30:00Z",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.due_date,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    const label = screen.getByText(
+      "просрочено 04 дней 17 часов 45 минут",
+    );
+    const badge = label.parentElement;
+    expect(badge).not.toBeNull();
+    expect(badge as HTMLElement).toHaveClass("bg-rose-500/30");
   });
 });

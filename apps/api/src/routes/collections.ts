@@ -19,7 +19,11 @@ import { sendProblem } from '../utils/problem';
 import { Fleet } from '../db/models/fleet';
 import { Vehicle } from '../db/models/vehicle';
 import { parseLocatorLink } from '../utils/wialonLocator';
-import { DEFAULT_BASE_URL } from '../services/wialon';
+import {
+  DEFAULT_BASE_URL,
+  WialonHttpError,
+  WialonResponseError,
+} from '../services/wialon';
 import { syncFleetVehicles } from '../services/fleetVehicles';
 
 const router: Router = Router();
@@ -81,6 +85,32 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function describeSyncFailure(error: unknown): string {
+  if (error instanceof WialonResponseError) {
+    return error.message;
+  }
+  if (error instanceof WialonHttpError) {
+    return error.body ? `${error.message}: ${error.body}` : error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Неизвестная ошибка синхронизации автопарка';
+}
+
+function buildSyncWarning(meta?: Record<string, unknown>) {
+  const baseMeta =
+    meta && typeof meta === 'object' && !Array.isArray(meta) ? meta : {};
+  const syncFailedAt = new Date().toISOString();
+  return {
+    ...baseMeta,
+    syncPending: true,
+    syncWarning:
+      'Автопарк сохранён, синхронизация транспорта выполнится в фоне.',
+    syncFailedAt,
+  } satisfies Record<string, unknown>;
+}
+
 async function createFleetAndCollectionItem(
   body: CollectionItemAttrs,
   req: RequestWithUser,
@@ -111,8 +141,9 @@ async function createFleetAndCollectionItem(
     return;
   }
   const id = new Types.ObjectId();
+  let fleet;
   try {
-    const fleet = await Fleet.create({
+    fleet = await Fleet.create({
       _id: id,
       name: body.name,
       token: locator.token,
@@ -120,30 +151,52 @@ async function createFleetAndCollectionItem(
       baseUrl: locator.baseUrl,
       locatorKey: locator.locatorKey,
     });
-    try {
-      await syncFleetVehicles(fleet);
-    } catch (error) {
-      console.error(
-        `Не удалось синхронизировать транспорт автопарка ${fleet._id}:`,
-        error,
-      );
-      await Vehicle.deleteMany({ fleetId: fleet._id });
-      await Fleet.findByIdAndDelete(fleet._id);
-      sendProblem(req, res, {
-        type: 'about:blank',
-        title: 'Синхронизация автопарка не выполнена',
-        status: 502,
-        detail: 'Не удалось синхронизировать транспорт автопарка',
-      });
-      return;
-    }
+  } catch (error) {
+    console.error('Ошибка создания автопарка из коллекции:', error);
+    await Fleet.findByIdAndDelete(id).catch(() => undefined);
+    await Vehicle.deleteMany({ fleetId: id }).catch(() => undefined);
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Не удалось создать автопарк',
+      status: 500,
+      detail:
+        error instanceof Error ? error.message : 'Неизвестная ошибка сервера',
+    });
+    return;
+  }
+  let syncWarningMeta: Record<string, unknown> | null = null;
+  try {
+    await syncFleetVehicles(fleet);
+  } catch (error) {
+    const detail = describeSyncFailure(error);
+    console.error(
+      `Не удалось синхронизировать транспорт автопарка ${fleet._id}:`,
+      error,
+    );
+    syncWarningMeta = buildSyncWarning({ syncError: detail });
+  }
+  try {
     const item = await repo.create({
       _id: id,
       type: 'fleets',
       name: body.name,
       value: body.value,
     });
-    res.status(201).json(item);
+    const payload =
+      typeof (item as { toJSON?: () => unknown }).toJSON === 'function'
+        ? ((item as { toJSON: () => unknown }).toJSON() as Record<
+            string,
+            unknown
+          >)
+        : (item as unknown as Record<string, unknown>);
+    if (syncWarningMeta) {
+      const currentMeta =
+        payload.meta && typeof payload.meta === 'object'
+          ? (payload.meta as Record<string, unknown>)
+          : {};
+      payload.meta = { ...currentMeta, ...syncWarningMeta };
+    }
+    res.status(201).json(payload);
   } catch (error) {
     console.error('Ошибка создания автопарка из коллекции:', error);
     await Fleet.findByIdAndDelete(id).catch(() => undefined);

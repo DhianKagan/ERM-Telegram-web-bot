@@ -362,6 +362,14 @@ export default function CollectionsPage() {
       if (!saved) {
         throw new Error("Сервер не вернул сохранённый элемент");
       }
+      const syncHint =
+        active === "fleets"
+          ? typeof saved.meta?.syncWarning === "string"
+            ? saved.meta.syncWarning
+            : saved.meta?.syncPending && typeof saved.meta?.syncError === "string"
+              ? saved.meta.syncError
+              : ""
+          : "";
       if (active === "fleets") {
         setItems((prev) => {
           const index = prev.findIndex((item) => item._id === saved._id);
@@ -374,7 +382,7 @@ export default function CollectionsPage() {
         });
         setSelectedFleetId(saved._id);
         setForm({ _id: saved._id, name: saved.name, value: saved.value });
-        setHint("");
+        setHint(syncHint);
       } else {
         setForm({ name: "", value: "" });
         setHint("");

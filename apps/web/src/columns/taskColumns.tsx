@@ -3,17 +3,13 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Task } from "shared";
-import {
-  ClockIcon,
-  QuestionMarkCircleIcon,
-  StopCircleIcon,
-} from "@heroicons/react/20/solid";
+import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
 import { getDeadlineState, type DeadlineState } from "./taskDeadline";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[0.68rem] font-semibold uppercase tracking-wide shadow-xs";
+  "inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs";
 const badgeTextClass = "text-black dark:text-white";
 
 const buildBadgeClass = (tones: string, extraClass = "") =>
@@ -25,7 +21,7 @@ const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const pillBadgeBaseClass =
-  "inline-flex max-w-full min-w-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-left text-[0.72rem] font-semibold leading-tight tracking-normal shadow-xs sm:text-[0.78rem]";
+  "inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]";
 
 const dateBadgeClass =
   `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
@@ -480,7 +476,7 @@ function DeadlineCountdownBadge({
   if (state.kind === "invalid") {
     return (
       <span
-        className={`${neutralCountdownBadgeClass} inline-flex items-center gap-2`}
+        className={`${neutralCountdownBadgeClass} inline-flex items-center gap-1.5`}
         title={
           state.reason === "missing"
             ? "Срок не назначен"
@@ -501,43 +497,37 @@ function DeadlineCountdownBadge({
   const parts = formatCountdownParts(state.remainingMs);
   const label = buildCountdownLabel(state);
   const title = buildCountdownTitle(state, formatted, rawDue);
-  const Icon = state.kind === "overdue" ? StopCircleIcon : ClockIcon;
-
   return (
     <span
-      className={`${className} inline-flex items-center gap-3`}
+      className={`${className} inline-flex items-center gap-1.5`}
       title={title}
     >
-      <Icon
-        className="size-4 flex-shrink-0 text-black dark:text-white"
-        aria-hidden
-      />
       <span className="sr-only">{label}</span>
       <span
         aria-hidden
-        className="flex items-end gap-2 text-black dark:text-white"
+        className="flex items-end gap-1 text-black dark:text-white"
       >
         <span className="flex flex-col items-center leading-tight">
-          <span className="text-sm font-semibold tabular-nums">
+          <span className="text-[0.8rem] font-semibold tabular-nums">
             {parts.paddedDays}
           </span>
-          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
             {getRussianPlural(parts.days, ["день", "дня", "дней"])}
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
-          <span className="text-sm font-semibold tabular-nums">
+          <span className="text-[0.8rem] font-semibold tabular-nums">
             {parts.paddedHours}
           </span>
-          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
             {getRussianPlural(parts.hours, ["час", "часа", "часов"])}
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
-          <span className="text-sm font-semibold tabular-nums">
+          <span className="text-[0.8rem] font-semibold tabular-nums">
             {parts.paddedMinutes}
           </span>
-          <span className="text-[10px] font-medium text-black/80 dark:text-white/80">
+          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
             {getRussianPlural(parts.minutes, ["минута", "минуты", "минут"])}
           </span>
         </span>
@@ -739,9 +729,9 @@ export default function taskColumns(
       header: "Дедлайн",
       accessorKey: "due_date",
       meta: {
-        width: "clamp(14rem, 26vw, 22rem)",
-        minWidth: "13rem",
-        maxWidth: "24rem",
+        width: "clamp(10.5rem, 20vw, 15.5rem)",
+        minWidth: "10rem",
+        maxWidth: "16.5rem",
         cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
       cell: (p) => {

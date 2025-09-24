@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 // Назначение файла: проверяет наличие локальных шрифтов, скачивает недостающие и конвертирует их в WOFF2.
 // Основные модули: fs/promises, path, url, fetch, dns, child_process
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import dns from 'node:dns';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 import { convertFonts } from './convert-fonts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fontsDir = path.join(__dirname, '../apps/web/public/fonts');
+const apiFontsDir = path.join(__dirname, '../apps/api/public/fonts');
+const apiIndexPath = path.join(__dirname, '../apps/api/public/index.html');
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -103,6 +106,65 @@ async function ensureFonts() {
   }
 
   await convertFonts(fontsDir);
+  await mkdir(apiFontsDir, { recursive: true });
+  await updateFontSri();
+}
+
+async function updateFontSri() {
+  const candidates = [
+    path.join(fontsDir, 'fonts.css'),
+    path.join(apiFontsDir, 'fonts.css'),
+  ];
+  let cssBuffer = null;
+  for (const candidate of candidates) {
+    try {
+      cssBuffer = await readFile(candidate);
+      break;
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+  if (!cssBuffer) {
+    return;
+  }
+  let indexHtml;
+  try {
+    indexHtml = await readFile(apiIndexPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+  const hash = createHash('sha384').update(cssBuffer).digest('base64');
+  const sri = `sha384-${hash}`;
+  const fontLinkRegex = /<link\s+[^>]*href=["']\/fonts\/fonts\.css["'][^>]*>/gi;
+  let updated = indexHtml;
+  let changed = false;
+  updated = updated.replace(fontLinkRegex, (tag) => {
+    let nextTag = tag;
+    if (/integrity=/i.test(nextTag)) {
+      nextTag = nextTag.replace(/integrity=["'][^"']*["']/i, `integrity="${sri}"`);
+    } else {
+      nextTag = nextTag.replace(
+        /href=["']\/fonts\/fonts\.css["']/i,
+        `href="/fonts/fonts.css" integrity="${sri}"`,
+      );
+    }
+    if (!/crossorigin=/i.test(nextTag)) {
+      nextTag = nextTag.replace(/\s*\/?>(?!.*>)/, (end) => ` crossorigin="anonymous"${end}`);
+    }
+    if (nextTag !== tag) {
+      changed = true;
+    }
+    return nextTag;
+  });
+  if (changed) {
+    await writeFile(apiIndexPath, updated);
+    console.log('Обновили SRI для /fonts/fonts.css');
+  }
 }
 
 ensureFonts().catch((error) => {

@@ -1,24 +1,55 @@
-// Назначение файла: DTO для флотов
-// Основные модули: express-validator, services/wialon, utils/wialonLocator
+// Назначение файла: DTO для объектов автопарка
+// Основные модули: express-validator
 import { body } from 'express-validator';
-import { DEFAULT_BASE_URL } from '../services/wialon';
-import { parseLocatorLink } from '../utils/wialonLocator';
 
-function ensureLocatorLink(value: string) {
-  parseLocatorLink(value, DEFAULT_BASE_URL);
+const registrationPattern = /^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u;
+const fuelTypes = ['Бензин', 'Дизель'];
+
+function numberField(field: string) {
+  return body(field).isNumeric().withMessage(`${field} должен быть числом`).custom((value) => {
+    if (Number(value) < 0) {
+      throw new Error(`${field} не может быть отрицательным`);
+    }
+    return true;
+  });
+}
+
+function tasksField() {
+  return body('currentTasks')
+    .optional()
+    .isArray()
+    .withMessage('currentTasks должен быть массивом')
+    .custom((value: unknown[]) => {
+      const invalid = value.find((item) => typeof item !== 'string');
+      if (invalid) {
+        throw new Error('currentTasks должны содержать строки');
+      }
+      return true;
+    });
 }
 
 export class CreateFleetDto {
   static rules() {
     return [
-      body('name').isString().notEmpty(),
-      body('link')
+      body('name').isString().trim().notEmpty(),
+      body('registrationNumber')
         .isString()
+        .trim()
         .notEmpty()
         .custom((value) => {
-          ensureLocatorLink(value);
+          if (!registrationPattern.test(value.toUpperCase())) {
+            throw new Error('Некорректный регистрационный номер');
+          }
           return true;
         }),
+      numberField('odometerInitial'),
+      numberField('odometerCurrent'),
+      numberField('mileageTotal'),
+      body('fuelType').isIn(fuelTypes),
+      numberField('fuelRefilled'),
+      numberField('fuelAverageConsumption'),
+      numberField('fuelSpentTotal'),
+      tasksField(),
     ];
   }
 }
@@ -26,15 +57,26 @@ export class CreateFleetDto {
 export class UpdateFleetDto {
   static rules() {
     return [
-      body('name').optional().isString().notEmpty(),
-      body('link')
+      body('name').optional().isString().trim().notEmpty(),
+      body('registrationNumber')
         .optional()
         .isString()
+        .trim()
         .notEmpty()
         .custom((value) => {
-          ensureLocatorLink(value);
+          if (!registrationPattern.test(value.toUpperCase())) {
+            throw new Error('Некорректный регистрационный номер');
+          }
           return true;
         }),
+      numberField('odometerInitial').optional({ nullable: true }),
+      numberField('odometerCurrent').optional({ nullable: true }),
+      numberField('mileageTotal').optional({ nullable: true }),
+      body('fuelType').optional().isIn(fuelTypes),
+      numberField('fuelRefilled').optional({ nullable: true }),
+      numberField('fuelAverageConsumption').optional({ nullable: true }),
+      numberField('fuelSpentTotal').optional({ nullable: true }),
+      tasksField(),
     ];
   }
 }

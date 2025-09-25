@@ -26,16 +26,7 @@ jest.mock("../../services/users", () => ({
   updateUser: jest.fn(),
 }));
 
-jest.mock("../../services/fleets", () => ({
-  fetchFleetVehicles: jest
-    .fn()
-    .mockResolvedValue({ fleet: { id: "", name: "" }, vehicles: [] }),
-  patchFleetVehicle: jest.fn(),
-  replaceFleetVehicle: jest.fn(),
-}));
-
-jest.mock("./FleetVehiclesGrid", () => () => <div data-testid="fleet-grid" />);
-jest.mock("./VehicleEditDialog", () => () => <div data-testid="vehicle-dialog" />);
+jest.mock("./FleetVehiclesTab", () => () => <div data-testid="fleet-tab" />);
 
 jest.mock(
   "../../components/Breadcrumbs",
@@ -225,7 +216,7 @@ describe("CollectionsPage", () => {
     expect(activeSearch.value).toBe("");
   });
 
-  it("показывает сообщение об отсутствии доступа к автопарку", async () => {
+  it("открывает вкладку автопарка", async () => {
     mockedFetch.mockImplementation(async (type: string, search = "") => {
       if (type === "fleets") {
         throw new Error("Недостаточно прав для просмотра автопарка");
@@ -242,10 +233,6 @@ describe("CollectionsPage", () => {
     const fleetsTab = screen.getByRole("tab", { name: "Автопарк" });
     fireEvent.click(fleetsTab);
 
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Недостаточно прав для просмотра автопарка"),
-      ).not.toBeNull();
-    });
+    await screen.findByTestId("fleet-tab");
   });
 });

@@ -50,18 +50,22 @@ describe('API коллекций', () => {
       .send({
         id: 'f1',
         name: 'Флот',
-        token: 'секрет',
-        locatorUrl: 'https://host/locator?t=MTIz',
-        baseUrl: 'https://hst-api.wialon.com',
-        locatorKey: 'MTIz',
+        registrationNumber: 'AB 1234 CD',
+        odometerInitial: 1000,
+        odometerCurrent: 1500,
+        mileageTotal: 500,
+        fuelType: 'Бензин',
+        fuelRefilled: 120,
+        fuelAverageConsumption: 0.12,
+        fuelSpentTotal: 60,
+        currentTasks: ['t1'],
       });
     assert.equal(create.status, 201);
-    assert.equal(create.body.token, 'секрет');
-    assert.equal(create.body.locatorKey, 'MTIz');
+    assert.equal(create.body.registrationNumber, 'AB 1234 CD');
+    assert.equal(create.body.currentTasks[0], 't1');
     const read = await request(app).get('/fleets/f1');
     assert.equal(read.body.name, 'Флот');
-    assert.equal(read.body.token, 'секрет');
-    assert.equal(read.body.baseUrl, 'https://hst-api.wialon.com');
+    assert.equal(read.body.odometerCurrent, 1500);
   });
 
   it('обновляет отдел', async () => {

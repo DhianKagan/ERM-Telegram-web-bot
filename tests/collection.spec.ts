@@ -15,10 +15,15 @@ describe('Collection', () => {
     const fleet = fleets.create({
       id: '1',
       name: 'Флот-1',
-      token: 'секрет-1',
-      locatorUrl: 'https://host/locator?t=MTIz',
-      baseUrl: 'https://hst-api.wialon.com',
-      locatorKey: 'MTIz',
+      registrationNumber: 'AA 1234 BB',
+      odometerInitial: 1000,
+      odometerCurrent: 1500,
+      mileageTotal: 500,
+      fuelType: 'Бензин',
+      fuelRefilled: 120,
+      fuelAverageConsumption: 0.1,
+      fuelSpentTotal: 60,
+      currentTasks: [],
     });
     expect(fleets.read('1')).toEqual(fleet);
   });
@@ -42,18 +47,28 @@ describe('Collection', () => {
     fleets.create({
       id: 'f1',
       name: 'Флот-1',
-      token: 'секрет-1',
-      locatorUrl: 'https://host/locator?t=MTIz',
-      baseUrl: 'https://hst-api.wialon.com',
-      locatorKey: 'MTIz',
+      registrationNumber: 'AB 1111 CD',
+      odometerInitial: 100,
+      odometerCurrent: 200,
+      mileageTotal: 100,
+      fuelType: 'Дизель',
+      fuelRefilled: 50,
+      fuelAverageConsumption: 0.2,
+      fuelSpentTotal: 20,
+      currentTasks: [],
     });
     fleets.create({
       id: 'f2',
       name: 'Флот-2',
-      token: 'секрет-2',
-      locatorUrl: 'https://host/locator?t=NDU2',
-      baseUrl: 'https://hst-api.wialon.com',
-      locatorKey: 'NDU2',
+      registrationNumber: 'EF 2222 GH',
+      odometerInitial: 200,
+      odometerCurrent: 260,
+      mileageTotal: 60,
+      fuelType: 'Бензин',
+      fuelRefilled: 30,
+      fuelAverageConsumption: 0.15,
+      fuelSpentTotal: 15,
+      currentTasks: ['task-1'],
     });
     const list = fleets.list();
     expect(list).toHaveLength(2);

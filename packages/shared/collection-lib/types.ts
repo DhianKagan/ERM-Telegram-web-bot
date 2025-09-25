@@ -9,10 +9,15 @@ export interface BaseItem {
 }
 
 export interface Fleet extends BaseItem {
-  token: string;
-  locatorUrl: string;
-  baseUrl: string;
-  locatorKey: string;
+  registrationNumber: string;
+  odometerInitial: number;
+  odometerCurrent: number;
+  mileageTotal: number;
+  fuelType: 'Бензин' | 'Дизель';
+  fuelRefilled: number;
+  fuelAverageConsumption: number;
+  fuelSpentTotal: number;
+  currentTasks: string[];
 }
 
 export interface Department extends BaseItem {

@@ -13,7 +13,6 @@ import { promisify } from 'util';
 import applySecurity from './security';
 import registerRoutes from './routes';
 import { startDiskMonitor } from '../services/diskSpace';
-import { startFleetVehiclesScheduler } from '../services/fleetVehiclesScheduler';
 import sanitizeError from '../utils/sanitizeError';
 
 process.on('unhandledRejection', (err) => {
@@ -102,10 +101,6 @@ export async function buildApp(): Promise<express.Express> {
   await registerRoutes(app, cookieFlags, pub);
 
   startDiskMonitor();
-
-  if (process.env.NODE_ENV !== 'test') {
-    startFleetVehiclesScheduler();
-  }
 
   return app;
 }

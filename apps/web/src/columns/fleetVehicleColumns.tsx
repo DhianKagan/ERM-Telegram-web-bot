@@ -31,6 +31,7 @@ export const fleetVehicleColumns: ColumnDef<FleetVehicleRow>[] = [
   { accessorKey: "odometerInitial", header: "Одометр начальный", meta: { minWidth: "8rem", maxWidth: "14rem" } },
   { accessorKey: "odometerCurrent", header: "Одометр текущий", meta: { minWidth: "8rem", maxWidth: "14rem" } },
   { accessorKey: "mileageTotal", header: "Пробег", meta: { minWidth: "6rem", maxWidth: "12rem" } },
+  { accessorKey: "transportType", header: "Тип транспорта", meta: { minWidth: "8rem", maxWidth: "14rem" } },
   { accessorKey: "fuelType", header: "Тип топлива", meta: { minWidth: "6rem", maxWidth: "12rem" } },
   { accessorKey: "fuelRefilled", header: "Заправлено", meta: { minWidth: "6rem", maxWidth: "10rem" } },
   { accessorKey: "fuelAverageConsumption", header: "Расход", meta: { minWidth: "6rem", maxWidth: "10rem" } },

@@ -4,12 +4,15 @@ import { Schema, model, type HydratedDocument } from 'mongoose';
 
 export type FuelType = 'Бензин' | 'Дизель';
 
+export type TransportType = 'Легковой' | 'Грузовой';
+
 export interface FleetVehicleAttrs {
   name: string;
   registrationNumber: string;
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
+  transportType: TransportType;
   fuelType: FuelType;
   fuelRefilled: number;
   fuelAverageConsumption: number;
@@ -32,6 +35,12 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     odometerInitial: { type: Number, required: true, min: 0 },
     odometerCurrent: { type: Number, required: true, min: 0 },
     mileageTotal: { type: Number, required: true, min: 0 },
+    transportType: {
+      type: String,
+      required: true,
+      enum: ['Легковой', 'Грузовой'],
+      default: 'Легковой',
+    },
     fuelType: {
       type: String,
       required: true,

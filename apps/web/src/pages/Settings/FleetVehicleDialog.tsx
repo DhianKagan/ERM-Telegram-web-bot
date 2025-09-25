@@ -21,6 +21,7 @@ interface FormState {
   odometerInitial: string;
   odometerCurrent: string;
   mileageTotal: string;
+  transportType: "Легковой" | "Грузовой";
   fuelType: "Бензин" | "Дизель";
   fuelRefilled: string;
   fuelAverageConsumption: string;
@@ -34,6 +35,7 @@ const emptyForm: FormState = {
   odometerInitial: "0",
   odometerCurrent: "0",
   mileageTotal: "0",
+  transportType: "Легковой",
   fuelType: "Бензин",
   fuelRefilled: "0",
   fuelAverageConsumption: "0",
@@ -72,6 +74,7 @@ export default function FleetVehicleDialog({
         odometerInitial: String(vehicle.odometerInitial),
         odometerCurrent: String(vehicle.odometerCurrent),
         mileageTotal: String(vehicle.mileageTotal),
+        transportType: vehicle.transportType,
         fuelType: vehicle.fuelType,
         fuelRefilled: String(vehicle.fuelRefilled),
         fuelAverageConsumption: String(vehicle.fuelAverageConsumption),
@@ -106,6 +109,7 @@ export default function FleetVehicleDialog({
       odometerInitial: Number(form.odometerInitial || "0"),
       odometerCurrent: Number(form.odometerCurrent || "0"),
       mileageTotal: Number(form.mileageTotal || "0"),
+      transportType: form.transportType,
       fuelType: form.fuelType,
       fuelRefilled: Number(form.fuelRefilled || "0"),
       fuelAverageConsumption: Number(form.fuelAverageConsumption || "0"),
@@ -185,6 +189,21 @@ export default function FleetVehicleDialog({
             required
             placeholder="AA 1234 BB"
           />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Тип транспорта</span>
+          <select
+            className="h-10 w-full rounded border px-3"
+            value={form.transportType}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, transportType: event.target.value as FormState["transportType"] }))
+            }
+            disabled={saving}
+            required
+          >
+            <option value="Легковой">Легковой</option>
+            <option value="Грузовой">Грузовой</option>
+          </select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Одометр начальный, км</span>

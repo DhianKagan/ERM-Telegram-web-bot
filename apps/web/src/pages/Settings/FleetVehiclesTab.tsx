@@ -217,6 +217,10 @@ export default function FleetVehiclesTab() {
                   <dd className="text-slate-900">{selectedVehicle.mileageTotal}</dd>
                 </div>
                 <div>
+                  <dt className="font-medium text-slate-500">Тип транспорта</dt>
+                  <dd className="text-slate-900">{selectedVehicle.transportType || "—"}</dd>
+                </div>
+                <div>
                   <dt className="font-medium text-slate-500">Тип топлива</dt>
                   <dd className="text-slate-900">{selectedVehicle.fuelType}</dd>
                 </div>
@@ -267,40 +271,6 @@ export default function FleetVehiclesTab() {
                   <dd className="text-slate-900">{selectedVehicle.notes || "—"}</dd>
                 </div>
               </dl>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-600">Позиция</h4>
-                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
-                    {selectedVehicle.position
-                      ? JSON.stringify(selectedVehicle.position, null, 2)
-                      : "{}"}
-                  </pre>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-600">Датчики</h4>
-                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
-                    {selectedVehicle.sensors
-                      ? JSON.stringify(selectedVehicle.sensors, null, 2)
-                      : "[]"}
-                  </pre>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-600">Пользовательские датчики</h4>
-                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
-                    {selectedVehicle.customSensors
-                      ? JSON.stringify(selectedVehicle.customSensors, null, 2)
-                      : "[]"}
-                  </pre>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-600">Трек</h4>
-                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
-                    {selectedVehicle.track
-                      ? JSON.stringify(selectedVehicle.track, null, 2)
-                      : "[]"}
-                  </pre>
-                </div>
-              </div>
             </article>
           ) : null}
           <FleetVehicleDialog

@@ -4,6 +4,7 @@ import { body } from 'express-validator';
 
 const registrationPattern = /^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u;
 const fuelTypes = ['Бензин', 'Дизель'];
+const transportTypes = ['Легковой', 'Грузовой'];
 
 function numberField(field: string) {
   return body(field).isNumeric().withMessage(`${field} должен быть числом`).custom((value) => {
@@ -45,6 +46,7 @@ export class CreateFleetDto {
       numberField('odometerInitial'),
       numberField('odometerCurrent'),
       numberField('mileageTotal'),
+      body('transportType').isIn(transportTypes),
       body('fuelType').isIn(fuelTypes),
       numberField('fuelRefilled'),
       numberField('fuelAverageConsumption'),
@@ -72,6 +74,7 @@ export class UpdateFleetDto {
       numberField('odometerInitial').optional({ nullable: true }),
       numberField('odometerCurrent').optional({ nullable: true }),
       numberField('mileageTotal').optional({ nullable: true }),
+      body('transportType').optional().isIn(transportTypes),
       body('fuelType').optional().isIn(fuelTypes),
       numberField('fuelRefilled').optional({ nullable: true }),
       numberField('fuelAverageConsumption').optional({ nullable: true }),

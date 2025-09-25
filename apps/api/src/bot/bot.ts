@@ -67,6 +67,7 @@ bot.hears('ERM', async (ctx) => {
 
 function formatVehicleLine(vehicle: FleetVehicleAttrs): string {
   const parts: string[] = [`Регистрация: ${vehicle.registrationNumber}`];
+  parts.push(`Тип транспорта: ${vehicle.transportType}`);
   parts.push(
     `Одометр: старт ${vehicle.odometerInitial} км, текущее ${vehicle.odometerCurrent} км`,
   );
@@ -95,6 +96,7 @@ async function sendFleetVehicles(ctx: Context): Promise<void> {
         odometerInitial: vehicle.odometerInitial,
         odometerCurrent: vehicle.odometerCurrent,
         mileageTotal: vehicle.mileageTotal,
+        transportType: vehicle.transportType,
         fuelType: vehicle.fuelType,
         fuelRefilled: vehicle.fuelRefilled,
         fuelAverageConsumption: vehicle.fuelAverageConsumption,

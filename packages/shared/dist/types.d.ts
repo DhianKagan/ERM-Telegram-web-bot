@@ -47,22 +47,25 @@ export interface VehicleTrackPointDto {
     course?: number;
     timestamp: string;
 }
-export interface VehicleDto {
+export interface FleetVehicleDto {
     id: string;
-    unitId: number;
     name: string;
+    registrationNumber: string;
+    odometerInitial: number;
+    odometerCurrent: number;
+    mileageTotal: number;
+    fuelType: 'Бензин' | 'Дизель';
+    fuelRefilled: number;
+    fuelAverageConsumption: number;
+    fuelSpentTotal: number;
+    currentTasks: string[];
+    createdAt?: string;
+    updatedAt?: string;
+    unitId?: number;
     remoteName?: string;
     notes?: string;
-    updatedAt?: string;
     position?: VehiclePositionDto;
-    sensors: VehicleSensorDto[];
+    sensors?: VehicleSensorDto[];
     customSensors?: VehicleSensorDto[];
     track?: VehicleTrackPointDto[];
-}
-export interface FleetVehiclesResponse {
-    fleet: {
-        id: string;
-        name: string;
-    };
-    vehicles: VehicleDto[];
 }

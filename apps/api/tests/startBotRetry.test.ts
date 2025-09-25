@@ -4,12 +4,6 @@ process.env.CHAT_ID = '1';
 process.env.NODE_ENV = 'test';
 process.env.SUPPRESS_JEST_WARNINGS = 'true';
 
-jest.mock('../src/services/wialon', () => ({
-  __esModule: true,
-  DEFAULT_BASE_URL: 'https://hst-api.wialon.com',
-  decodeLocatorKey: (value: string) => value,
-}));
-
 jest.mock('telegraf', () => {
   const launch = jest.fn();
   const telegram = { deleteWebhook: jest.fn().mockResolvedValue(undefined) };

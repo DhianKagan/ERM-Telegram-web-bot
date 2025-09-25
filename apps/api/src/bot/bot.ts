@@ -8,8 +8,7 @@ import { createUser, getUser } from '../services/service';
 import { startScheduler } from '../services/scheduler';
 import { startKeyRotation } from '../services/keyRotation';
 import '../db/model';
-import { Fleet } from '../db/models/fleet';
-import { Vehicle } from '../db/models/vehicle';
+import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -66,72 +65,44 @@ bot.hears('ERM', async (ctx) => {
   await ctx.reply(messages.ermLink);
 });
 
-function formatVehicleLine(vehicle: {
-  name: string;
-  unitId: number;
-  position?: {
-    lat?: number;
-    lon?: number;
-    speed?: number;
-    updatedAt?: Date | string;
-  };
-  sensors?: { name: string; value?: unknown }[];
-}): string {
-  const title = vehicle.name || `Юнит ${vehicle.unitId}`;
-  const pos = vehicle.position;
-  if (!pos || typeof pos.lat !== 'number' || typeof pos.lon !== 'number') {
-    return `• ${title}: ${messages.vehicleNoPosition}`;
+function formatVehicleLine(vehicle: FleetVehicleAttrs): string {
+  const parts: string[] = [`Регистрация: ${vehicle.registrationNumber}`];
+  parts.push(
+    `Одометр: старт ${vehicle.odometerInitial} км, текущее ${vehicle.odometerCurrent} км`,
+  );
+  parts.push(`Пробег: ${vehicle.mileageTotal} км`);
+  parts.push(`Топливо: ${vehicle.fuelType}`);
+  parts.push(`Заправлено: ${vehicle.fuelRefilled}`);
+  parts.push(`Средний расход: ${vehicle.fuelAverageConsumption} л/км`);
+  parts.push(`Израсходовано: ${vehicle.fuelSpentTotal} л`);
+  if (vehicle.currentTasks.length) {
+    parts.push(`Текущие задачи: ${vehicle.currentTasks.join(', ')}`);
   }
-  const coords = `${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}`;
-  const parts: string[] = [coords];
-  if (typeof pos.speed === 'number') {
-    parts.push(`скорость ${Math.round(pos.speed)} км/ч`);
-  }
-  if (pos.updatedAt) {
-    const date =
-      pos.updatedAt instanceof Date
-        ? pos.updatedAt
-        : new Date(pos.updatedAt as string);
-    if (!Number.isNaN(date.getTime())) {
-      parts.push(`обновлено ${date.toLocaleString('ru-RU')}`);
-    }
-  }
-  const firstSensor = vehicle.sensors?.find((sensor) => sensor.value !== undefined);
-  if (firstSensor) {
-    parts.push(`${firstSensor.name}: ${String(firstSensor.value)}`);
-  }
-  return `• ${title}: ${parts.join(', ')}`;
+  return `• ${vehicle.name}\n${parts.join('\n')}`;
 }
 
 async function sendFleetVehicles(ctx: Context): Promise<void> {
   try {
-    const fleets = await Fleet.find().lean();
-    if (!fleets.length) {
-      await ctx.reply(messages.noFleets);
-      return;
-    }
-    const sections: string[] = [];
-    for (const fleet of fleets) {
-      const vehicles = await Vehicle.find({ fleetId: fleet._id }).lean();
-      if (!vehicles.length) {
-        sections.push(`${fleet.name}: ${messages.noVehicles}`);
-        continue;
-      }
-      const lines = vehicles.map((vehicle) =>
-        formatVehicleLine({
-          name: vehicle.name,
-          unitId: vehicle.unitId,
-          position: vehicle.position,
-          sensors: vehicle.sensors,
-        }),
-      );
-      sections.push(`${fleet.name}:\n${lines.join('\n')}`);
-    }
-    if (!sections.length) {
+    const vehicles = await FleetVehicle.find().sort({ name: 1 }).lean();
+    if (!vehicles.length) {
       await ctx.reply(messages.noVehicles);
       return;
     }
-    await ctx.reply(sections.join('\n\n'));
+    const lines = vehicles.map((vehicle) =>
+      formatVehicleLine({
+        name: vehicle.name,
+        registrationNumber: vehicle.registrationNumber,
+        odometerInitial: vehicle.odometerInitial,
+        odometerCurrent: vehicle.odometerCurrent,
+        mileageTotal: vehicle.mileageTotal,
+        fuelType: vehicle.fuelType,
+        fuelRefilled: vehicle.fuelRefilled,
+        fuelAverageConsumption: vehicle.fuelAverageConsumption,
+        fuelSpentTotal: vehicle.fuelSpentTotal,
+        currentTasks: vehicle.currentTasks,
+      }),
+    );
+    await ctx.reply(lines.join('\n\n'));
   } catch (error) {
     console.error('Не удалось отправить список транспорта:', error);
     await ctx.reply(messages.vehiclesError);

@@ -84,51 +84,30 @@ jest.mock("../services/tasks", () => ({
   fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
 }));
 
-const fetchCollectionItemsMock = jest.fn().mockResolvedValue({
-  items: [{ _id: "fleet-1", name: "Основной флот", value: "" }],
-  total: 1,
-});
+const baseVehicle = {
+  id: "veh-1",
+  name: "Погрузчик",
+  registrationNumber: "AA 1234 BB",
+  odometerInitial: 1000,
+  odometerCurrent: 1200,
+  mileageTotal: 200,
+  fuelType: "Бензин" as const,
+  fuelRefilled: 50,
+  fuelAverageConsumption: 0.1,
+  fuelSpentTotal: 20,
+  currentTasks: [] as string[],
+  position: {
+    lat: 10,
+    lon: 20,
+    speed: 12.5,
+    updatedAt: "2024-05-05T12:00:00.000Z",
+  },
+};
 
-jest.mock("../services/collections", () => ({
-  fetchCollectionItems: (...args: unknown[]) => fetchCollectionItemsMock(...args),
-}));
-
-const fetchFleetVehiclesMock = jest
-  .fn()
-  .mockImplementation(async (_fleetId: string, params?: { track?: boolean }) => ({
-    fleet: { id: "fleet-1", name: "Основной флот" },
-    vehicles: [
-      {
-        id: "veh-1",
-        unitId: 1,
-        name: "Погрузчик",
-        sensors: [],
-        position: {
-          lat: 10,
-          lon: 20,
-          speed: 12.5,
-          updatedAt: "2024-05-05T12:00:00.000Z",
-        },
-        track: params?.track
-          ? [
-              {
-                lat: 10,
-                lon: 20,
-                timestamp: "2024-05-05T12:00:00.000Z",
-              },
-              {
-                lat: 11,
-                lon: 21,
-                timestamp: "2024-05-05T12:10:00.000Z",
-              },
-            ]
-          : undefined,
-      },
-    ],
-  }));
+const listFleetVehiclesMock = jest.fn();
 
 jest.mock("../services/fleets", () => ({
-  fetchFleetVehicles: (...args: unknown[]) => fetchFleetVehiclesMock(...args),
+  listFleetVehicles: (...args: unknown[]) => listFleetVehiclesMock(...args),
 }));
 
 jest.mock("../services/osrm", () =>
@@ -150,10 +129,36 @@ describe("RoutesPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchTasksMock.mockResolvedValue(mockTasks);
-    fetchCollectionItemsMock.mockResolvedValue({
-      items: [{ _id: "fleet-1", name: "Основной флот", value: "" }],
-      total: 1,
-    });
+    listFleetVehiclesMock.mockReset();
+    listFleetVehiclesMock
+      .mockResolvedValueOnce({
+        items: [{ ...baseVehicle }],
+        total: 1,
+        page: 1,
+        limit: 100,
+      })
+      .mockResolvedValue({
+        items: [
+          {
+            ...baseVehicle,
+            track: [
+              {
+                lat: 10,
+                lon: 20,
+                timestamp: "2024-05-05T12:00:00.000Z",
+              },
+              {
+                lat: 11,
+                lon: 21,
+                timestamp: "2024-05-05T12:10:00.000Z",
+              },
+            ],
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+      });
   });
 
   it("отображает маркеры техники и трек после включения", async () => {
@@ -163,9 +168,9 @@ describe("RoutesPage", () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(fetchFleetVehiclesMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1));
 
-    expect(fetchFleetVehiclesMock).toHaveBeenCalledWith("fleet-1", undefined);
+    expect(listFleetVehiclesMock).toHaveBeenCalledWith("", 1, 100);
 
     await waitFor(() =>
       expect(mockedLeaflet.marker).toHaveBeenCalledWith(
@@ -178,10 +183,7 @@ describe("RoutesPage", () => {
     fireEvent.click(trackToggle);
 
     await waitFor(() =>
-      expect(fetchFleetVehiclesMock).toHaveBeenLastCalledWith(
-        "fleet-1",
-        expect.objectContaining({ track: true }),
-      ),
+      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
     );
 
     await waitFor(() =>

@@ -10,9 +10,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
-import { fetchCollectionItems, type CollectionItem } from "../services/collections";
-import { fetchFleetVehicles } from "../services/fleets";
-import type { Coords, Task, VehicleDto } from "shared";
+import { listFleetVehicles } from "../services/fleets";
+import type { Coords, Task, FleetVehicleDto } from "shared";
 
 type RouteTask = Task & Record<string, any>;
 
@@ -29,11 +28,13 @@ export default function RoutesPage() {
   const optLayerRef = React.useRef<L.LayerGroup | null>(null);
   const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
   const vehiclesLayerRef = React.useRef<L.LayerGroup | null>(null);
-  const [fleets, setFleets] = React.useState<CollectionItem[]>([]);
+  const [availableVehicles, setAvailableVehicles] = React.useState<
+    FleetVehicleDto[]
+  >([]);
   const [fleetError, setFleetError] = React.useState("");
-  const [selectedFleetId, setSelectedFleetId] = React.useState<string>("");
-  const [fleetInfo, setFleetInfo] = React.useState<{ id: string; name: string } | null>(null);
-  const [fleetVehicles, setFleetVehicles] = React.useState<VehicleDto[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string>("");
+  const [fleetInfo, setFleetInfo] = React.useState<FleetVehicleDto | null>(null);
+  const [fleetVehicles, setFleetVehicles] = React.useState<FleetVehicleDto[]>([]);
   const [vehiclesHint, setVehiclesHint] = React.useState("");
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
   const [autoRefresh, setAutoRefresh] = React.useState(false);
@@ -84,49 +85,52 @@ export default function RoutesPage() {
     });
   }, [user]);
 
-  const loadFleetVehicles = React.useCallback(
-    async (fleetId: string) => {
-      if (!fleetId || role !== "admin") return;
-      setVehiclesLoading(true);
-      setVehiclesHint("");
-      try {
-        const params = withTrack
-          ? {
-              track: true,
-              from: new Date(Date.now() - TRACK_INTERVAL_MS),
-              to: new Date(),
-            }
-          : undefined;
-        const data = await fetchFleetVehicles(fleetId, params);
-        setFleetVehicles(data.vehicles);
-        setFleetInfo(data.fleet);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить транспорт флота";
-        setVehiclesHint(message);
-        setFleetVehicles([]);
-        setFleetInfo(null);
-      } finally {
-        setVehiclesLoading(false);
+  const loadFleetVehicles = React.useCallback(async () => {
+    if (role !== "admin") return;
+    setVehiclesLoading(true);
+    setVehiclesHint("");
+    try {
+      const data = await listFleetVehicles("", 1, 100);
+      setAvailableVehicles(data.items);
+      setFleetError("");
+      if (!data.items.length) {
+        setSelectedVehicleId("");
+        setVehiclesHint("Транспорт не найден");
+        return;
       }
-    },
-    [role, withTrack],
-  );
+      const selected =
+        selectedVehicleId &&
+        data.items.find((vehicle) => vehicle.id === selectedVehicleId);
+      if (!selected) {
+        setSelectedVehicleId(data.items[0].id);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить транспорт автопарка";
+      setVehiclesHint(message);
+      setAvailableVehicles([]);
+      setFleetVehicles([]);
+      setFleetInfo(null);
+      setFleetError(message);
+    } finally {
+      setVehiclesLoading(false);
+    }
+  }, [role, selectedVehicleId]);
 
   const refreshAll = React.useCallback(() => {
     load();
-    if (selectedFleetId && role === "admin") {
-      void loadFleetVehicles(selectedFleetId);
+    if (role === "admin") {
+      void loadFleetVehicles();
     }
-  }, [load, loadFleetVehicles, role, selectedFleetId]);
+  }, [load, loadFleetVehicles, role]);
 
   const refreshFleet = React.useCallback(() => {
-    if (selectedFleetId && role === "admin") {
-      void loadFleetVehicles(selectedFleetId);
+    if (role === "admin") {
+      void loadFleetVehicles();
     }
-  }, [loadFleetVehicles, role, selectedFleetId]);
+  }, [loadFleetVehicles, role]);
 
   const calculate = React.useCallback(() => {
     const ids = sorted.map((t) => t._id);
@@ -179,13 +183,13 @@ export default function RoutesPage() {
 
   React.useEffect(() => {
     if (role !== "admin") {
-      setFleets([]);
+      setAvailableVehicles([]);
       setFleetError(
         role === "manager"
           ? "Автопарк доступен только администраторам"
           : "",
       );
-      setSelectedFleetId("");
+      setSelectedVehicleId("");
       setFleetInfo(null);
       setFleetVehicles([]);
       setVehiclesHint(role ? "Нет доступа к автопарку" : "");
@@ -196,61 +200,50 @@ export default function RoutesPage() {
       }
       return;
     }
-    let cancelled = false;
     setFleetError("");
-    fetchCollectionItems("fleets", "", 1, 200)
-      .then((data: { items: CollectionItem[] }) => {
-        if (cancelled) return;
-        setFleets(data.items);
-        if (!data.items.length) {
-          setSelectedFleetId("");
-          return;
-        }
-        setSelectedFleetId((prev) => {
-          if (prev && data.items.some((item) => item._id === prev)) {
-            return prev;
-          }
-          return data.items[0]._id;
-        });
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить список автопарков";
-        setFleets([]);
-        setSelectedFleetId("");
-        setFleetError(message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [role]);
+    void loadFleetVehicles();
+  }, [loadFleetVehicles, role]);
 
   React.useEffect(() => {
-    if (role !== "admin" || !selectedFleetId) return;
-    void loadFleetVehicles(selectedFleetId);
-  }, [role, selectedFleetId, loadFleetVehicles]);
+    if (role !== "admin") return;
+    if (!selectedVehicleId) {
+      setFleetInfo(null);
+      setFleetVehicles([]);
+      if (vehiclesLayerRef.current) {
+        vehiclesLayerRef.current.clearLayers();
+      }
+      return;
+    }
+    const selected = availableVehicles.find(
+      (vehicle) => vehicle.id === selectedVehicleId,
+    );
+    if (selected) {
+      setFleetInfo(selected);
+      setFleetVehicles([selected]);
+    } else {
+      setFleetInfo(null);
+      setFleetVehicles([]);
+    }
+  }, [availableVehicles, role, selectedVehicleId]);
 
   React.useEffect(() => {
-    if (role === "admin" && selectedFleetId) return;
+    if (role === "admin" && selectedVehicleId) return;
     setFleetInfo(null);
     setFleetVehicles([]);
     if (vehiclesLayerRef.current) {
       vehiclesLayerRef.current.clearLayers();
     }
-  }, [role, selectedFleetId]);
+  }, [role, selectedVehicleId]);
 
   React.useEffect(() => {
-    if (role !== "admin" || !selectedFleetId || !autoRefresh) return;
+    if (role !== "admin" || !autoRefresh) return;
     const timer = window.setInterval(() => {
-      void loadFleetVehicles(selectedFleetId);
+      void loadFleetVehicles();
     }, REFRESH_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
     };
-  }, [autoRefresh, loadFleetVehicles, role, selectedFleetId]);
+  }, [autoRefresh, loadFleetVehicles, role]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -347,7 +340,7 @@ export default function RoutesPage() {
           .bindTooltip(tooltip, { direction: "top", offset: [0, -8] })
           .addTo(group);
       }
-      if (vehicle.track?.length) {
+      if (withTrack && vehicle.track?.length) {
         const latlngs = vehicle.track.map(
           (point) => [point.lat, point.lon] as [number, number],
         );
@@ -358,7 +351,7 @@ export default function RoutesPage() {
         }).addTo(group);
       }
     });
-  }, [fleetVehicles, mapReady]);
+  }, [fleetVehicles, mapReady, withTrack]);
 
   return (
     <div className="space-y-4">
@@ -369,17 +362,17 @@ export default function RoutesPage() {
         <div className="space-y-2 rounded border p-3">
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm">
-              <span>Автопарк</span>
+              <span>Транспорт</span>
               <select
-                value={selectedFleetId}
-                onChange={(event) => setSelectedFleetId(event.target.value)}
+                value={selectedVehicleId}
+                onChange={(event) => setSelectedVehicleId(event.target.value)}
                 className="rounded border px-2 py-1"
-                disabled={!fleets.length || vehiclesLoading}
+                disabled={!availableVehicles.length || vehiclesLoading}
               >
                 <option value="">Не выбран</option>
-                {fleets.map((fleet) => (
-                  <option key={fleet._id} value={fleet._id}>
-                    {fleet.name}
+                {availableVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.name}
                   </option>
                 ))}
               </select>
@@ -388,7 +381,7 @@ export default function RoutesPage() {
               type="button"
               onClick={refreshFleet}
               className="btn-blue rounded px-4"
-              disabled={!selectedFleetId || vehiclesLoading}
+              disabled={!availableVehicles.length || vehiclesLoading}
             >
               {vehiclesLoading ? "Загрузка..." : "Обновить технику"}
             </button>
@@ -411,14 +404,17 @@ export default function RoutesPage() {
                   setAutoRefresh(checked);
                   if (checked) refreshFleet();
                 }}
-                disabled={!selectedFleetId}
+                disabled={!selectedVehicleId}
               />
               <span>Автообновление</span>
             </label>
           </div>
           {fleetInfo ? (
             <div className="text-sm text-muted-foreground">
-              Выбран автопарк: {fleetInfo.name}
+              Выбран транспорт: {fleetInfo.name}
+              {fleetInfo.registrationNumber
+                ? ` (${fleetInfo.registrationNumber})`
+                : ""}
             </div>
           ) : null}
           {vehiclesHint ? (

@@ -50,7 +50,15 @@ export function validateBaseItem(item: BaseItem): boolean {
 export function validateFleet(fleet: Fleet): boolean {
   return (
     validateBaseItem(fleet) &&
-    Boolean(fleet.token && fleet.locatorUrl && fleet.baseUrl && fleet.locatorKey)
+    Boolean(fleet.registrationNumber) &&
+    Number.isFinite(fleet.odometerInitial) &&
+    Number.isFinite(fleet.odometerCurrent) &&
+    Number.isFinite(fleet.mileageTotal) &&
+    ['Бензин', 'Дизель'].includes(fleet.fuelType) &&
+    Number.isFinite(fleet.fuelRefilled) &&
+    Number.isFinite(fleet.fuelAverageConsumption) &&
+    Number.isFinite(fleet.fuelSpentTotal) &&
+    Array.isArray(fleet.currentTasks)
   );
 }
 

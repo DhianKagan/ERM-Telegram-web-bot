@@ -1,4 +1,4 @@
-// Назначение: проверки сервиса загрузки транспорта флота
+// Назначение: проверки сервиса автопарка
 // Основные модули: jest, authFetch
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
@@ -7,92 +7,103 @@ jest.mock("../utils/authFetch", () => ({
 
 import authFetch from "../utils/authFetch";
 import {
+  listFleetVehicles,
+  createFleetVehicle,
+  updateFleetVehicle,
+  deleteFleetVehicle,
+  type FleetVehiclePayload,
   fetchFleetVehicles,
-  patchFleetVehicle,
-  replaceFleetVehicle,
-  type VehicleUpdatePayload,
 } from "./fleets";
+
+describe("listFleetVehicles", () => {
+  beforeEach(() => {
+    (authFetch as jest.Mock).mockReset();
+  });
+
+  it("подставляет параметры поиска", async () => {
+    (authFetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [], total: 0, page: 1, limit: 10 }),
+    });
+    await listFleetVehicles("Газель", 2, 5);
+    expect(authFetch).toHaveBeenCalledWith("/api/v1/fleets?page=2&limit=5&search=%D0%93%D0%B0%D0%B7%D0%B5%D0%BB%D1%8C");
+  });
+
+  it("бросает ошибку при сбое", async () => {
+    (authFetch as jest.Mock).mockResolvedValue({ ok: false, text: async () => "Ошибка" });
+    await expect(listFleetVehicles()).rejects.toThrow("Ошибка");
+  });
+});
 
 describe("fetchFleetVehicles", () => {
   beforeEach(() => {
     (authFetch as jest.Mock).mockReset();
   });
 
-  it("запрашивает транспорт без параметров", async () => {
-    const payload = { fleet: { id: "1", name: "Флот" }, vehicles: [] };
+  it("возвращает список в прежнем формате", async () => {
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => payload,
+      json: async () => ({ items: [{ id: "1", name: "Газель" }], total: 1, page: 1, limit: 10 }),
     });
-    const data = await fetchFleetVehicles("1");
-    expect(authFetch).toHaveBeenCalledWith("/api/v1/fleets/1/vehicles");
-    expect(data).toEqual(payload);
-  });
-
-  it("формирует параметры трека", async () => {
-    const payload = { fleet: { id: "1", name: "Флот" }, vehicles: [] };
-    (authFetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => payload,
-    });
-    const from = new Date("2024-01-01T00:00:00.000Z");
-    const to = new Date("2024-01-01T01:00:00.000Z");
-    await fetchFleetVehicles("5", { track: true, from, to });
-    expect(authFetch).toHaveBeenCalledWith(
-      `/api/v1/fleets/5/vehicles?track=1&from=${encodeURIComponent(
-        from.toISOString(),
-      )}&to=${encodeURIComponent(to.toISOString())}`,
-    );
-  });
-
-  it("отклоняет некорректные даты", async () => {
-    await expect(
-      fetchFleetVehicles("2", { track: true, from: "nope", to: "later" }),
-    ).rejects.toThrow("Некорректная дата для построения трека");
-  });
-
-  it("сообщает об ошибке API", async () => {
-    (authFetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      text: async () => "Ошибка",
-    });
-    await expect(fetchFleetVehicles("3")).rejects.toThrow("Ошибка");
+    const data = await fetchFleetVehicles("any");
+    expect(data.vehicles).toHaveLength(1);
+    expect(authFetch).toHaveBeenCalledWith("/api/v1/fleets?page=1&limit=10");
   });
 });
 
 describe("mutations", () => {
+  const payload: FleetVehiclePayload = {
+    name: "Погрузчик",
+    registrationNumber: "AB 1234 CD",
+    odometerInitial: 0,
+    odometerCurrent: 10,
+    mileageTotal: 10,
+    fuelType: "Бензин",
+    fuelRefilled: 5,
+    fuelAverageConsumption: 0.2,
+    fuelSpentTotal: 2,
+    currentTasks: [],
+  };
+
   beforeEach(() => {
     (authFetch as jest.Mock).mockReset();
   });
 
-  const payload: VehicleUpdatePayload = { name: "Погрузчик", notes: "Сервис" };
-
-  it("обновляет транспорт через PATCH", async () => {
+  it("создаёт транспорт", async () => {
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({ id: "1" }),
+      json: async () => ({ id: "1", ...payload }),
     });
-    await patchFleetVehicle("f1", "v1", payload);
+    await createFleetVehicle(payload);
     expect(authFetch).toHaveBeenCalledWith(
-      "/api/v1/fleets/f1/vehicles/v1",
-      expect.objectContaining({ method: "PATCH" }),
+      "/api/v1/fleets",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 
-  it("заменяет транспорт через PUT", async () => {
+  it("обновляет транспорт", async () => {
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({ id: "1" }),
+      json: async () => ({ id: "1", ...payload }),
     });
-    await replaceFleetVehicle("f2", "v3", payload);
+    await updateFleetVehicle("1", { name: "Газель" });
     expect(authFetch).toHaveBeenCalledWith(
-      "/api/v1/fleets/f2/vehicles/v3",
+      "/api/v1/fleets/1",
       expect.objectContaining({ method: "PUT" }),
     );
   });
 
-  it("сообщает об ошибке при сбое", async () => {
+  it("удаляет транспорт", async () => {
+    (authFetch as jest.Mock).mockResolvedValue({ ok: true, text: async () => "" });
+    await deleteFleetVehicle("1");
+    expect(authFetch).toHaveBeenCalledWith(
+      "/api/v1/fleets/1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("обрабатывает ошибки", async () => {
     (authFetch as jest.Mock).mockResolvedValue({ ok: false, text: async () => "Ошибка" });
-    await expect(patchFleetVehicle("f1", "v1", payload)).rejects.toThrow("Ошибка");
+    await expect(createFleetVehicle(payload)).rejects.toThrow("Ошибка");
   });
 });

@@ -1,85 +1,94 @@
-// Назначение: сервисные функции для работы с флотами и транспортом
-// Основные модули: authFetch, shared/types
+// Назначение: сервисные функции для работы с объектами автопарка
+// Основные модули: authFetch, shared/FleetVehicleDto
 import authFetch from "../utils/authFetch";
-import type { FleetVehiclesResponse, VehicleDto, VehicleSensorDto } from "shared";
+import type { FleetVehicleDto } from "shared";
 
-export interface FleetVehiclesParams {
-  track?: boolean;
-  from?: Date | string;
-  to?: Date | string;
+export interface FleetVehiclePayload {
+  name: string;
+  registrationNumber: string;
+  odometerInitial: number;
+  odometerCurrent: number;
+  mileageTotal: number;
+  fuelType: "Бензин" | "Дизель";
+  fuelRefilled: number;
+  fuelAverageConsumption: number;
+  fuelSpentTotal: number;
+  currentTasks: string[];
 }
 
-const toIsoString = (value: Date | string | undefined): string | undefined => {
-  if (!value) return undefined;
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error("Некорректная дата для построения трека");
-  }
-  return parsed.toISOString();
-};
-
-export const fetchFleetVehicles = async (
-  fleetId: string,
-  params: FleetVehiclesParams = {},
-): Promise<FleetVehiclesResponse> => {
-  const query = new URLSearchParams();
-  if (params.track) {
-    query.set("track", "1");
-    const from = toIsoString(params.from);
-    const to = toIsoString(params.to);
-    if (!from || !to) {
-      throw new Error("Для трека необходимо указать период from и to");
-    }
-    query.set("from", from);
-    query.set("to", to);
-  }
-  const suffix = query.toString();
-  const res = await authFetch(
-    `/api/v1/fleets/${fleetId}/vehicles${suffix ? `?${suffix}` : ""}`,
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось загрузить транспорт флота");
-  }
-  return res.json();
-};
-
-export interface VehicleUpdatePayload {
-  name?: string;
-  notes?: string | null;
-  customSensors?: VehicleSensorDto[] | null;
+export interface FleetVehicleResponse {
+  items: FleetVehicleDto[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
-async function mutateVehicle(
-  method: "PATCH" | "PUT",
-  fleetId: string,
-  vehicleId: string,
-  payload: VehicleUpdatePayload,
-): Promise<VehicleDto> {
-  const res = await authFetch(`/api/v1/fleets/${fleetId}/vehicles/${vehicleId}`, {
-    method,
+function parseResponse(res: Response, fallback: string) {
+  if (res.ok) return res.json();
+  return res.text().then((text) => {
+    throw new Error(text || fallback);
+  });
+}
+
+export async function listFleetVehicles(
+  search = "",
+  page = 1,
+  limit = 10,
+): Promise<FleetVehicleResponse> {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (search) params.set("search", search);
+  const res = await authFetch(`/api/v1/fleets?${params.toString()}`);
+  return parseResponse(res, "Не удалось загрузить транспорт");
+}
+
+export interface LegacyFleetVehiclesResponse {
+  fleet: { id: string; name: string };
+  vehicles: FleetVehicleDto[];
+}
+
+export async function fetchFleetVehicles(
+  _fleetId?: string,
+): Promise<LegacyFleetVehiclesResponse> {
+  void _fleetId;
+  const data = await listFleetVehicles();
+  return {
+    fleet: { id: "manual-fleet", name: "Автопарк" },
+    vehicles: data.items,
+  };
+}
+
+export async function createFleetVehicle(payload: FleetVehiclePayload): Promise<FleetVehicleDto> {
+  const res = await authFetch("/api/v1/fleets", {
+    method: "POST",
     confirmed: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось сохранить транспорт");
-  }
-  return res.json();
+  return parseResponse(res, "Не удалось создать транспорт");
 }
 
-export const patchFleetVehicle = (
-  fleetId: string,
-  vehicleId: string,
-  payload: VehicleUpdatePayload,
-) => mutateVehicle("PATCH", fleetId, vehicleId, payload);
+export async function updateFleetVehicle(
+  id: string,
+  payload: Partial<FleetVehiclePayload>,
+): Promise<FleetVehicleDto> {
+  const res = await authFetch(`/api/v1/fleets/${id}`, {
+    method: "PUT",
+    confirmed: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(res, "Не удалось обновить транспорт");
+}
 
-export const replaceFleetVehicle = (
-  fleetId: string,
-  vehicleId: string,
-  payload: VehicleUpdatePayload,
-) => mutateVehicle("PUT", fleetId, vehicleId, payload);
+export async function deleteFleetVehicle(id: string): Promise<void> {
+  const res = await authFetch(`/api/v1/fleets/${id}`, {
+    method: "DELETE",
+    confirmed: true,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || "Не удалось удалить транспорт");
+  }
+}

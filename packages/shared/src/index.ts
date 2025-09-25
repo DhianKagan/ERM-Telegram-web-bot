@@ -12,10 +12,9 @@ export {
 export type {
   Task,
   User,
-  VehicleDto,
+  FleetVehicleDto,
   VehiclePositionDto,
   VehicleSensorDto,
   VehicleTrackPointDto,
-  FleetVehiclesResponse,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

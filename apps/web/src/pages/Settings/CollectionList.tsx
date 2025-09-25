@@ -40,14 +40,20 @@ export default function CollectionList({
 
   return (
     <div>
-      <form onSubmit={submit} className="mb-2 flex gap-2">
+      <form
+        onSubmit={submit}
+        className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center"
+      >
         <input
-          className="h-8 flex-1 rounded border px-2"
+          className="h-10 w-full rounded border px-3 sm:h-9 sm:flex-1"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск"
         />
-        <button type="submit" className="btn btn-blue">
+        <button
+          type="submit"
+          className="btn btn-blue h-10 rounded px-4 sm:h-9 sm:px-3"
+        >
           Искать
         </button>
       </form>

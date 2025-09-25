@@ -35,10 +35,15 @@ test.beforeAll(async () => {
 
   const fleet = await Fleet.create({
     name: 'Флот',
-    token: 'secret-fleet',
-    locatorUrl: 'https://hosting.wialon.com/locator?t=c2VjcmV0LWZsZWV0',
-    baseUrl: 'https://hst-api.wialon.com',
-    locatorKey: 'c2VjcmV0LWZsZWV0',
+    registrationNumber: 'AB 1234 CD',
+    odometerInitial: 0,
+    odometerCurrent: 0,
+    mileageTotal: 0,
+    fuelType: 'Бензин',
+    fuelRefilled: 0,
+    fuelAverageConsumption: 0,
+    fuelSpentTotal: 0,
+    currentTasks: [],
   });
   const department = await Department.create({
     fleetId: fleet._id,

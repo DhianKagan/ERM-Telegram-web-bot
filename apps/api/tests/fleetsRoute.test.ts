@@ -50,6 +50,7 @@ describe('fleets router', () => {
     odometerInitial: 1000,
     odometerCurrent: 1200,
     mileageTotal: 200,
+    transportType: 'Легковой' as const,
     fuelType: 'Бензин' as const,
     fuelRefilled: 50,
     fuelAverageConsumption: 0.25,
@@ -62,18 +63,21 @@ describe('fleets router', () => {
     expect(res.status).toBe(201);
     expect(res.body.name).toBe('Газель');
     expect(res.body.registrationNumber).toBe('AA 1234 BB');
+    expect(res.body.transportType).toBe('Легковой');
     const stored = await FleetVehicle.findById(res.body.id).lean();
     expect(stored?.fuelType).toBe('Бензин');
+    expect(stored?.transportType).toBe('Легковой');
   });
 
   it('обновляет транспорт', async () => {
     const created = await FleetVehicle.create(payload);
     const res = await request(app)
       .put(`/api/v1/fleets/${created._id}`)
-      .send({ odometerCurrent: 1300, fuelType: 'Дизель' });
+      .send({ odometerCurrent: 1300, fuelType: 'Дизель', transportType: 'Грузовой' });
     expect(res.status).toBe(200);
     expect(res.body.odometerCurrent).toBe(1300);
     expect(res.body.fuelType).toBe('Дизель');
+    expect(res.body.transportType).toBe('Грузовой');
   });
 
   it('удаляет транспорт', async () => {

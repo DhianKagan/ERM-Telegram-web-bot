@@ -25,11 +25,16 @@ import {
 } from "../../columns/collectionColumns";
 import { settingsUserColumns } from "../../columns/settingsUserColumns";
 import {
+  settingsEmployeeColumns,
+  type EmployeeRow,
+} from "../../columns/settingsEmployeeColumns";
+import {
   fetchUsers,
   createUser as createUserApi,
   updateUser as updateUserApi,
   type UserDetails,
 } from "../../services/users";
+import { fetchRoles, type Role } from "../../services/roles";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "shared";
 import {
@@ -139,6 +144,8 @@ export default function CollectionsPage() {
   const [hint, setHint] = useState("");
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
+  const [allPositions, setAllPositions] = useState<CollectionItem[]>([]);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
   const limit = 10;
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
@@ -184,6 +191,7 @@ export default function CollectionsPage() {
       setTotal(d.total);
       if (active === "departments") setAllDepartments(d.items);
       if (active === "divisions") setAllDivisions(d.items);
+      if (active === "positions") setAllPositions(d.items);
       setHint("");
     } catch (error) {
       const message =
@@ -223,6 +231,25 @@ export default function CollectionsPage() {
           error instanceof Error
             ? error.message
             : "Не удалось загрузить отделы";
+        setHint((prev) => prev || message);
+      });
+    fetchCollectionItems("positions", "", 1, 200)
+      .then((d) => setAllPositions(d.items))
+      .catch((error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить должности";
+        setHint((prev) => prev || message);
+      });
+    fetchRoles()
+      .then((list) => setAllRoles(list))
+      .catch((error) => {
+        setAllRoles([]);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить роли";
         setHint((prev) => prev || message);
       });
   }, []);
@@ -414,6 +441,18 @@ export default function CollectionsPage() {
     return map;
   }, [allDivisions]);
 
+  const positionMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allPositions.forEach((position) => map.set(position._id, position.name));
+    return map;
+  }, [allPositions]);
+
+  const roleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allRoles.forEach((role) => map.set(role._id, role.name));
+    return map;
+  }, [allRoles]);
+
   const divisionOwners = useMemo(() => {
     const owners = new Map<string, string>();
     allDepartments.forEach((department) => {
@@ -443,6 +482,14 @@ export default function CollectionsPage() {
       return item.value;
     },
     [departmentMap, divisionMap],
+  );
+
+  const slimCollectionColumns = useMemo(
+    () =>
+      collectionColumns.filter(
+        (column) => column.accessorKey !== "value" && column.accessorKey !== "_id",
+      ),
+    [],
   );
 
   const renderDepartmentValueField = useCallback(
@@ -541,6 +588,32 @@ export default function CollectionsPage() {
     (userPage - 1) * limit,
     userPage * limit,
   );
+
+  const employeeRows = useMemo<EmployeeRow[]>(
+    () =>
+      paginatedUsers.map((user) => {
+        const roleName = user.roleId
+          ? roleMap.get(user.roleId) ?? user.roleId
+          : "";
+        const departmentName = user.departmentId
+          ? departmentMap.get(user.departmentId) ?? user.departmentId
+          : "";
+        const divisionName = user.divisionId
+          ? divisionMap.get(user.divisionId) ?? user.divisionId
+          : "";
+        const positionName = user.positionId
+          ? positionMap.get(user.positionId) ?? user.positionId
+          : "";
+        return {
+          ...user,
+          roleName,
+          departmentName,
+          divisionName,
+          positionName,
+        };
+      }),
+    [paginatedUsers, roleMap, departmentMap, divisionMap, positionMap],
+  );
   const selectedEmployee = useMemo(
     () =>
       selectedEmployeeId
@@ -560,7 +633,7 @@ export default function CollectionsPage() {
         }}
         className="space-y-6"
       >
-        <TabsList className="flex flex-wrap items-stretch gap-3 rounded-2xl bg-white/80 p-3 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700">
+        <TabsList className="flex flex-wrap items-stretch gap-2 rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:gap-3 sm:p-3">
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
             const labelId = `${t.key}-tab-label`;
@@ -570,22 +643,22 @@ export default function CollectionsPage() {
                 value={t.key}
                 aria-label={t.label}
                 aria-labelledby={labelId}
-                className="group flex h-auto min-w-[11rem] flex-1 items-center justify-start gap-3 rounded-xl border border-transparent px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100"
+                className="group flex h-auto min-w-full flex-1 items-center justify-start gap-2 rounded-xl border border-transparent px-3 py-2 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:min-w-[11rem] sm:gap-3 sm:px-4 sm:py-3"
               >
                 {Icon ? (
-                  <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300" />
+                  <Icon className="size-4 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-5" />
                 ) : null}
                 <span className="flex min-w-0 flex-col">
                   <span
                     id={labelId}
-                    className="truncate text-base font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300"
+                    className="truncate text-sm font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300 sm:text-base"
                   >
                     {t.label}
                   </span>
                   {t.description ? (
                     <span
                       aria-hidden="true"
-                      className="truncate text-xs font-medium text-slate-500 dark:text-slate-400"
+                      className="hidden truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:inline"
                     >
                       {t.description}
                     </span>
@@ -611,6 +684,12 @@ export default function CollectionsPage() {
                   displayValue: item.value,
                   metaSummary: item.meta ? JSON.stringify(item.meta) : "",
                 }));
+          const columnsForType =
+            t.key === "departments" ||
+            t.key === "divisions" ||
+            t.key === "positions"
+              ? slimCollectionColumns
+              : collectionColumns;
           return (
             <TabsContent
               key={t.key}
@@ -647,8 +726,8 @@ export default function CollectionsPage() {
                     </button>
                   </form>
                   <DataTable
-                    columns={settingsUserColumns}
-                    data={paginatedUsers}
+                    columns={settingsEmployeeColumns}
+                    data={employeeRows}
                     pageIndex={userPage - 1}
                     pageSize={limit}
                     pageCount={userTotalPages}
@@ -733,7 +812,7 @@ export default function CollectionsPage() {
                     </button>
                   </form>
                   <DataTable
-                    columns={collectionColumns}
+                    columns={columnsForType}
                     data={rows}
                     pageIndex={page - 1}
                     pageSize={limit}
@@ -861,19 +940,35 @@ export default function CollectionsPage() {
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Роль ID</dt>
-                <dd className="text-slate-900">{userForm.roleId || "—"}</dd>
+                <dd className="text-slate-900">
+                  {userForm.roleId
+                    ? roleMap.get(userForm.roleId) ?? userForm.roleId
+                    : "—"}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Департамент</dt>
-                <dd className="text-slate-900">{userForm.departmentId || "—"}</dd>
+                <dd className="text-slate-900">
+                  {userForm.departmentId
+                    ? departmentMap.get(userForm.departmentId) ?? userForm.departmentId
+                    : "—"}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Отдел</dt>
-                <dd className="text-slate-900">{userForm.divisionId || "—"}</dd>
+                <dd className="text-slate-900">
+                  {userForm.divisionId
+                    ? divisionMap.get(userForm.divisionId) ?? userForm.divisionId
+                    : "—"}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Должность</dt>
-                <dd className="text-slate-900">{userForm.positionId || "—"}</dd>
+                <dd className="text-slate-900">
+                  {userForm.positionId
+                    ? positionMap.get(userForm.positionId) ?? userForm.positionId
+                    : "—"}
+                </dd>
               </div>
             </dl>
           </article>
@@ -945,25 +1040,33 @@ export default function CollectionsPage() {
                 <div>
                   <dt className="font-medium text-slate-500">Роль ID</dt>
                   <dd className="text-slate-900">
-                    {selectedEmployee.roleId || "—"}
+                    {selectedEmployee.roleId
+                      ? roleMap.get(selectedEmployee.roleId) ?? selectedEmployee.roleId
+                      : "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Департамент</dt>
                   <dd className="text-slate-900">
-                    {selectedEmployee.departmentId || "—"}
+                    {selectedEmployee.departmentId
+                      ? departmentMap.get(selectedEmployee.departmentId) ?? selectedEmployee.departmentId
+                      : "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Отдел</dt>
                   <dd className="text-slate-900">
-                    {selectedEmployee.divisionId || "—"}
+                    {selectedEmployee.divisionId
+                      ? divisionMap.get(selectedEmployee.divisionId) ?? selectedEmployee.divisionId
+                      : "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Должность</dt>
                   <dd className="text-slate-900">
-                    {selectedEmployee.positionId || "—"}
+                    {selectedEmployee.positionId
+                      ? positionMap.get(selectedEmployee.positionId) ?? selectedEmployee.positionId
+                      : "—"}
                   </dd>
                 </div>
               </dl>

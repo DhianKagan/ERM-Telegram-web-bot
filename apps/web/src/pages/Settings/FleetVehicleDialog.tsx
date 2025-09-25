@@ -63,6 +63,9 @@ export default function FleetVehicleDialog({
 
   useEffect(() => {
     if (open && vehicle) {
+      const currentTasks = Array.isArray(vehicle.currentTasks)
+        ? vehicle.currentTasks.filter(Boolean)
+        : [];
       setForm({
         name: vehicle.name,
         registrationNumber: vehicle.registrationNumber,
@@ -73,7 +76,7 @@ export default function FleetVehicleDialog({
         fuelRefilled: String(vehicle.fuelRefilled),
         fuelAverageConsumption: String(vehicle.fuelAverageConsumption),
         fuelSpentTotal: String(vehicle.fuelSpentTotal),
-        currentTasks: vehicle.currentTasks.join("\n"),
+        currentTasks: currentTasks.join("\n"),
       });
       setError(null);
       setConfirmSave(false);

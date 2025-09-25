@@ -145,8 +145,13 @@ export default function FleetVehiclesTab() {
         <p className="text-sm text-gray-500">Транспорт не найден.</p>
       ) : null}
       <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {items.map((item) => (
-          <article key={item.id} className="rounded border p-3 shadow-sm">
+        {items.map((item) => {
+          const currentTasks = Array.isArray(item.currentTasks)
+            ? item.currentTasks.filter(Boolean)
+            : [];
+
+          return (
+            <article key={item.id} className="rounded border p-3 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-base font-semibold">{item.name}</div>
@@ -190,13 +195,14 @@ export default function FleetVehiclesTab() {
                 <dd>{item.fuelSpentTotal} л</dd>
               </div>
             </dl>
-            {item.currentTasks.length ? (
+            {currentTasks.length ? (
               <div className="mt-3 rounded bg-blue-50 p-2 text-xs text-blue-900">
-                Текущие задачи: {item.currentTasks.join(", ")}
+                Текущие задачи: {currentTasks.join(", ")}
               </div>
             ) : null}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
       {totalPages > 1 ? (
         <div className="flex items-center justify-end gap-2">

@@ -28,13 +28,16 @@ jest.mock("../../services/users", () => ({
 
 jest.mock("./FleetVehiclesTab", () => () => <div data-testid="fleet-tab" />);
 
-jest.mock(
-  "../../components/Breadcrumbs",
-  () =>
-    ({ items }: { items: any[] }) => (
-      <nav data-testid="breadcrumbs">{items.length}</nav>
-    ),
-);
+jest.mock("../../components/DataTable", () => ({
+  __esModule: true,
+  default: ({ data }: { data: Array<Record<string, unknown>> }) => (
+    <div data-testid="data-table">
+      {data.map((row, index) => (
+        <div key={index}>{(row.name as string) ?? "row"}</div>
+      ))}
+    </div>
+  ),
+}));
 
 jest.mock("../../components/Tabs", () => {
   type TabsContextValue = {
@@ -192,7 +195,7 @@ describe("CollectionsPage", () => {
 
     await screen.findByText("Главный департамент");
 
-    const searchInput = screen.getByPlaceholderText("Поиск");
+    const searchInput = screen.getByPlaceholderText("Название или значение");
     fireEvent.change(searchInput, { target: { value: "финансы" } });
     fireEvent.click(screen.getByText("Искать"));
 
@@ -211,7 +214,7 @@ describe("CollectionsPage", () => {
 
     const divisionsPanel = screen.getByTestId("tab-content-divisions");
     const activeSearch = within(divisionsPanel).getByPlaceholderText(
-      "Поиск",
+      "Название или значение",
     ) as HTMLInputElement;
     expect(activeSearch.value).toBe("");
   });

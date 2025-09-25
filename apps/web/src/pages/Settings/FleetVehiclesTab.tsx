@@ -1,7 +1,8 @@
 // Назначение: вкладка автопарка с ручным управлением транспортом
-// Основные модули: React, services/fleets, FleetVehicleDialog, Modal
+// Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../components/Modal";
+import DataTable from "../../components/DataTable";
 import { showToast } from "../../utils/toast";
 import {
   listFleetVehicles,
@@ -12,6 +13,10 @@ import {
 } from "../../services/fleets";
 import type { FleetVehicleDto } from "shared";
 import FleetVehicleDialog from "./FleetVehicleDialog";
+import {
+  fleetVehicleColumns,
+  type FleetVehicleRow,
+} from "../../columns/fleetVehicleColumns";
 
 const PAGE_LIMIT = 10;
 
@@ -25,10 +30,25 @@ export default function FleetVehiclesTab() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "update">("create");
-  const [editing, setEditing] = useState<FleetVehicleDto | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<FleetVehicleDto | null>(
+    null,
+  );
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_LIMIT)), [total]);
+  const rows = useMemo<FleetVehicleRow[]>(
+    () =>
+      items.map((item) => ({
+        ...item,
+        sensorsInfo: item.sensors ? JSON.stringify(item.sensors) : "",
+        customSensorsInfo: item.customSensors
+          ? JSON.stringify(item.customSensors)
+          : "",
+        trackInfo: item.track ? JSON.stringify(item.track) : "",
+        positionInfo: item.position ? JSON.stringify(item.position) : "",
+      })),
+    [items],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,20 +74,20 @@ export default function FleetVehiclesTab() {
 
   const openCreate = () => {
     setMode("create");
-    setEditing(null);
+    setSelectedVehicle(null);
     setModalOpen(true);
   };
 
   const openEdit = (item: FleetVehicleDto) => {
     setMode("update");
-    setEditing(item);
+    setSelectedVehicle(item);
     setModalOpen(true);
   };
 
   const closeModal = () => {
     if (saving) return;
     setModalOpen(false);
-    setEditing(null);
+    setSelectedVehicle(null);
   };
 
   const submit = async (payload: FleetVehiclePayload, id?: string) => {
@@ -81,6 +101,8 @@ export default function FleetVehiclesTab() {
         showToast("Транспорт обновлён", "success");
       }
       await load();
+      setSelectedVehicle(null);
+      setModalOpen(false);
     } finally {
       setSaving(false);
     }
@@ -92,6 +114,8 @@ export default function FleetVehiclesTab() {
       await deleteFleetVehicle(id);
       showToast("Транспорт удалён", "success");
       await load();
+      setSelectedVehicle(null);
+      setModalOpen(false);
     } finally {
       setSaving(false);
     }
@@ -140,103 +164,155 @@ export default function FleetVehiclesTab() {
         </button>
       </div>
       {loading ? <p className="text-sm text-gray-500">Загрузка транспорта…</p> : null}
-      {error ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      ) : null}
       {!loading && !error && !items.length ? (
         <p className="text-sm text-gray-500">Транспорт не найден.</p>
       ) : null}
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {items.map((item) => {
-          const currentTasks = Array.isArray(item.currentTasks)
-            ? item.currentTasks.filter(Boolean)
-            : [];
-
-          return (
-            <article key={item.id} className="rounded border p-3 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-base font-semibold">{item.name}</div>
-                <div className="text-sm text-gray-600">{item.registrationNumber}</div>
+      <DataTable
+        columns={fleetVehicleColumns}
+        data={rows}
+        pageIndex={page - 1}
+        pageSize={PAGE_LIMIT}
+        pageCount={totalPages}
+        onPageChange={(index) => handlePageChange(index + 1)}
+        showGlobalSearch={false}
+        showFilters={false}
+        onRowClick={(row) => openEdit(row)}
+      />
+      <Modal
+        open={modalOpen}
+        onClose={closeModal}
+      >
+        <div className="space-y-4">
+          {selectedVehicle ? (
+            <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <h3 className="text-base font-semibold">Карточка транспорта</h3>
+              <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-slate-500">ID</dt>
+                  <dd className="text-slate-900">{selectedVehicle.id}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Название</dt>
+                  <dd className="text-slate-900">{selectedVehicle.name}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Регистрационный номер</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.registrationNumber}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Одометр начальный</dt>
+                  <dd className="text-slate-900">{selectedVehicle.odometerInitial}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Одометр текущий</dt>
+                  <dd className="text-slate-900">{selectedVehicle.odometerCurrent}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Пробег</dt>
+                  <dd className="text-slate-900">{selectedVehicle.mileageTotal}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Тип топлива</dt>
+                  <dd className="text-slate-900">{selectedVehicle.fuelType}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Заправлено</dt>
+                  <dd className="text-slate-900">{selectedVehicle.fuelRefilled}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Расход</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.fuelAverageConsumption}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Израсходовано</dt>
+                  <dd className="text-slate-900">{selectedVehicle.fuelSpentTotal}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Задачи</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.currentTasks?.length
+                      ? selectedVehicle.currentTasks.join(", ")
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Создан</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.createdAt || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Обновлён</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.updatedAt || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Устройство</dt>
+                  <dd className="text-slate-900">{selectedVehicle.unitId ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Удалённое имя</dt>
+                  <dd className="text-slate-900">{selectedVehicle.remoteName || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Примечания</dt>
+                  <dd className="text-slate-900">{selectedVehicle.notes || "—"}</dd>
+                </div>
+              </dl>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-600">Позиция</h4>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                    {selectedVehicle.position
+                      ? JSON.stringify(selectedVehicle.position, null, 2)
+                      : "{}"}
+                  </pre>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-600">Датчики</h4>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                    {selectedVehicle.sensors
+                      ? JSON.stringify(selectedVehicle.sensors, null, 2)
+                      : "[]"}
+                  </pre>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-600">Пользовательские датчики</h4>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                    {selectedVehicle.customSensors
+                      ? JSON.stringify(selectedVehicle.customSensors, null, 2)
+                      : "[]"}
+                  </pre>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-600">Трек</h4>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                    {selectedVehicle.track
+                      ? JSON.stringify(selectedVehicle.track, null, 2)
+                      : "[]"}
+                  </pre>
+                </div>
               </div>
-              <button
-                type="button"
-                className="btn btn-gray h-8 rounded px-3 text-xs"
-                onClick={() => openEdit(item)}
-              >
-                Редактировать
-              </button>
-            </div>
-            <dl className="mt-3 space-y-1 text-sm text-gray-700">
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Одометр начальный</dt>
-                <dd>{item.odometerInitial} км</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Одометр текущий</dt>
-                <dd>{item.odometerCurrent} км</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Пробег общий</dt>
-                <dd>{item.mileageTotal} км</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Вид топлива</dt>
-                <dd>{item.fuelType}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Заправлено</dt>
-                <dd>{item.fuelRefilled}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Расход средний</dt>
-                <dd>{item.fuelAverageConsumption} л/км</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gray-500">Израсходовано</dt>
-                <dd>{item.fuelSpentTotal} л</dd>
-              </div>
-            </dl>
-            {currentTasks.length ? (
-              <div className="mt-3 rounded bg-blue-50 p-2 text-xs text-blue-900">
-                Текущие задачи: {currentTasks.join(", ")}
-              </div>
-            ) : null}
             </article>
-          );
-        })}
-      </div>
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            className="btn btn-gray h-8 rounded px-3 text-xs"
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page === 1}
-          >
-            Назад
-          </button>
-          <span className="text-sm text-gray-600">
-            Стр. {page} из {totalPages}
-          </span>
-          <button
-            type="button"
-            className="btn btn-gray h-8 rounded px-3 text-xs"
-            onClick={() => handlePageChange(page + 1)}
-            disabled={page === totalPages}
-          >
-            Вперёд
-          </button>
+          ) : null}
+          <FleetVehicleDialog
+            open={modalOpen}
+            mode={mode}
+            vehicle={selectedVehicle}
+            saving={saving}
+            onSubmit={submit}
+            onDelete={mode === "update" ? remove : undefined}
+            onClose={closeModal}
+          />
         </div>
-      ) : null}
-      <Modal open={modalOpen} onClose={closeModal} title={mode === "create" ? "Новый транспорт" : "Редактирование транспорта"}>
-        <FleetVehicleDialog
-          open={modalOpen}
-          mode={mode}
-          vehicle={editing}
-          saving={saving}
-          onSubmit={submit}
-          onDelete={mode === "update" ? remove : undefined}
-          onClose={closeModal}
-        />
       </Modal>
     </section>
   );

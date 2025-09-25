@@ -1,9 +1,18 @@
 // Назначение: получение маршрута через OSRM
 // Основные модули: fetch
+const isValidPoint = (point?: { lng: number; lat: number }) => {
+  if (!point) return false;
+  const { lng, lat } = point;
+  return Number.isFinite(lng) && Number.isFinite(lat);
+};
+
 export const fetchRouteGeometry = async (
   start: { lng: number; lat: number },
   end: { lng: number; lat: number },
 ) => {
+  if (!isValidPoint(start) || !isValidPoint(end)) {
+    return null;
+  }
   const base =
     import.meta.env.VITE_ROUTING_URL ||
     "https://router.project-osrm.org/route/v1/driving";

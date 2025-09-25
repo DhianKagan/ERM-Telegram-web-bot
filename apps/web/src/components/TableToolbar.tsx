@@ -9,9 +9,16 @@ import SearchFilters from "./SearchFilters";
 interface Props<T> {
   table: Table<T>;
   children?: React.ReactNode;
+  showGlobalSearch?: boolean;
+  showFilters?: boolean;
 }
 
-export default function TableToolbar<T>({ table, children }: Props<T>) {
+export default function TableToolbar<T>({
+  table,
+  children,
+  showGlobalSearch = true,
+  showFilters = true,
+}: Props<T>) {
   const columns = table.getAllLeafColumns();
   const { t } = useTranslation();
 
@@ -69,7 +76,7 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
   return (
     <div className="flex w-full flex-wrap items-center gap-1 text-xs sm:text-sm">
       <div className="flex flex-1 flex-wrap items-center gap-1">
-        <GlobalSearch />
+        {showGlobalSearch ? <GlobalSearch /> : null}
         {children}
       </div>
       <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto">
@@ -97,7 +104,7 @@ export default function TableToolbar<T>({ table, children }: Props<T>) {
             {t("settings")}
           </summary>
           <div className="absolute right-0 z-10 mt-1 w-64 space-y-1 rounded border bg-white p-1.5 shadow">
-            <SearchFilters inline />
+            {showFilters ? <SearchFilters inline /> : null}
             <div className="border-t pt-1">
               {columns.map((col) => (
                 <div

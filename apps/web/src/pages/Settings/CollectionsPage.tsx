@@ -1,13 +1,13 @@
 // Назначение: страница управления коллекциями настроек
 // Основные модули: React, Tabs, services/collections
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Breadcrumbs from "../../components/Breadcrumbs";
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from "../../components/Tabs";
+import DataTable from "../../components/DataTable";
 import {
   fetchCollectionItems,
   createCollectionItem,
@@ -15,11 +15,15 @@ import {
   removeCollectionItem,
   CollectionItem,
 } from "../../services/collections";
-import CollectionList from "./CollectionList";
 import CollectionForm from "./CollectionForm";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
+import {
+  collectionColumns,
+  type CollectionTableRow,
+} from "../../columns/collectionColumns";
+import { settingsUserColumns } from "../../columns/settingsUserColumns";
 import {
   fetchUsers,
   createUser as createUserApi,
@@ -128,6 +132,9 @@ export default function CollectionsPage() {
   const [queries, setQueries] = useState<Record<CollectionKey, string>>(() =>
     createInitialQueries(),
   );
+  const [searchDrafts, setSearchDrafts] = useState<Record<CollectionKey, string>>(
+    () => createInitialQueries(),
+  );
   const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
   const [hint, setHint] = useState("");
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
@@ -136,7 +143,13 @@ export default function CollectionsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
   const [userQuery, setUserQuery] = useState("");
+  const [userSearchDraft, setUserSearchDraft] = useState("");
+  const [userModalOpen, setUserModalOpen] = useState(false);
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<
+    CollectionItem | null
+  >(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<
     string | undefined
   >(undefined);
@@ -146,6 +159,11 @@ export default function CollectionsPage() {
   );
 
   const currentQuery = queries[active] ?? "";
+  const currentSearchDraft = searchDrafts[active] ?? "";
+
+  useEffect(() => {
+    setSearchDrafts((prev) => ({ ...prev, [active]: currentQuery }));
+  }, [active, currentQuery]);
 
   const load = useCallback(async () => {
     if (active === "users") return;
@@ -181,6 +199,12 @@ export default function CollectionsPage() {
   const loadUsers = useCallback(() => {
     fetchUsers().then((list) => setUsers(list));
   }, []);
+
+  useEffect(() => {
+    if (active === "users" || active === "employees") {
+      setUserSearchDraft(userQuery);
+    }
+  }, [active, userQuery]);
 
   useEffect(() => {
     fetchCollectionItems("departments", "", 1, 200)
@@ -229,31 +253,83 @@ export default function CollectionsPage() {
     if (active !== "employees") {
       setIsEmployeeModalOpen(false);
     }
+    if (active === "users" || active === "employees" || active === "fleets") {
+      setCollectionModalOpen(false);
+    }
+    if (active !== "users") {
+      setUserModalOpen(false);
+      setUserForm(emptyUser);
+    }
   }, [active, loadUsers]);
 
-  const selectItem = (item: CollectionItem) => {
-    setForm({ _id: item._id, name: item.name, value: item.value });
+  const openCollectionModal = (item?: CollectionItem) => {
+    if (item) {
+      setForm({ _id: item._id, name: item.name, value: item.value });
+      setSelectedCollection(item);
+    } else {
+      setForm({ name: "", value: "" });
+      setSelectedCollection(null);
+    }
+    setCollectionModalOpen(true);
   };
 
-  const selectUser = (item: CollectionItem) => {
-    const u = users.find((x) => String(x.telegram_id) === item._id);
-    if (u) setUserForm({ ...u });
+  const closeCollectionModal = () => {
+    setCollectionModalOpen(false);
+    setSelectedCollection(null);
+    setForm({ name: "", value: "" });
   };
 
-  const selectEmployee = (item: CollectionItem) => {
-    setSelectedEmployeeId(item._id);
-    setEmployeeFormMode("update");
+  const mapUserToForm = (user?: User): UserFormData => ({
+    telegram_id: user?.telegram_id,
+    username: user?.username ?? "",
+    name: user?.name ?? "",
+    phone: user?.phone ?? "",
+    mobNumber: user?.mobNumber ?? "",
+    email: user?.email ?? "",
+    role: user?.role ?? "user",
+    access: user?.access ?? 1,
+    roleId: user?.roleId ?? "",
+    departmentId: user?.departmentId ?? "",
+    divisionId: user?.divisionId ?? "",
+    positionId: user?.positionId ?? "",
+  });
+
+  const openUserModal = (user?: User) => {
+    setUserForm(user ? mapUserToForm(user) : emptyUser);
+    setUserModalOpen(true);
+  };
+
+  const closeUserModal = () => {
+    setUserModalOpen(false);
+    setUserForm(emptyUser);
+  };
+
+  const openEmployeeModal = (user?: User) => {
+    if (user) {
+      setSelectedEmployeeId(String(user.telegram_id));
+      setEmployeeFormMode("update");
+    } else {
+      setSelectedEmployeeId(undefined);
+      setEmployeeFormMode("create");
+    }
     setIsEmployeeModalOpen(true);
   };
 
-  const handleSearch = (text: string) => {
+  const updateCollectionSearchDraft = (value: string) => {
+    setSearchDrafts((prev) => ({ ...prev, [active]: value }));
+  };
+
+  const submitCollectionSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     setPage(1);
+    const text = (searchDrafts[active] ?? "").trim();
     setQueries((prev) => ({ ...prev, [active]: text }));
   };
 
-  const handleUserSearch = (text: string) => {
+  const submitUserSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     setUserPage(1);
-    setUserQuery(text);
+    setUserQuery(userSearchDraft.trim());
     setSelectedEmployeeId(undefined);
   };
 
@@ -291,9 +367,9 @@ export default function CollectionsPage() {
       if (!saved) {
         throw new Error("Сервер не вернул сохранённый элемент");
       }
-      setForm({ name: "", value: "" });
       setHint("");
       await load();
+      closeCollectionModal();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Не удалось сохранить элемент";
@@ -306,8 +382,8 @@ export default function CollectionsPage() {
     try {
       await removeCollectionItem(form._id);
       setHint("");
-      setForm({ name: "", value: "" });
       await load();
+      closeCollectionModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       setHint(msg);
@@ -322,8 +398,8 @@ export default function CollectionsPage() {
     }
     const { telegram_id: _telegramId, ...data } = userForm;
     await updateUserApi(id, data);
-    setUserForm(emptyUser);
     loadUsers();
+    closeUserModal();
   };
 
   const departmentMap = useMemo(() => {
@@ -461,20 +537,20 @@ export default function CollectionsPage() {
     );
   });
   const userTotalPages = Math.ceil(filteredUsers.length / limit) || 1;
-  const userItems = filteredUsers
-    .slice((userPage - 1) * limit, userPage * limit)
-    .map((u) => ({
-      _id: String(u.telegram_id),
-      type: "users",
-      name: u.name || "",
-      value: u.username || "",
-    }));
+  const paginatedUsers = filteredUsers.slice(
+    (userPage - 1) * limit,
+    userPage * limit,
+  );
+  const selectedEmployee = useMemo(
+    () =>
+      selectedEmployeeId
+        ? users.find((u) => String(u.telegram_id) === selectedEmployeeId)
+        : undefined,
+    [selectedEmployeeId, users],
+  );
 
   return (
     <div className="space-y-6 p-4">
-      <Breadcrumbs
-        items={[{ label: "Задачи", href: "/tasks" }, { label: "Настройки" }]}
-      />
       {hint && <div className="text-sm text-red-600">{hint}</div>}
       <Tabs
         value={active}
@@ -482,9 +558,9 @@ export default function CollectionsPage() {
           setActive(v as CollectionKey);
           setPage(1);
         }}
-        className="flex flex-col gap-6 lg:flex-row lg:items-start"
+        className="space-y-6"
       >
-        <TabsList className="mb-4 flex h-auto w-full snap-x gap-2 overflow-x-auto rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:flex-wrap lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:min-w-[18rem] lg:flex-col lg:gap-2 lg:overflow-visible lg:rounded-xl lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0">
+        <TabsList className="flex flex-wrap items-stretch gap-3 rounded-2xl bg-white/80 p-3 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700">
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
             const labelId = `${t.key}-tab-label`;
@@ -494,7 +570,7 @@ export default function CollectionsPage() {
                 value={t.key}
                 aria-label={t.label}
                 aria-labelledby={labelId}
-                className="group flex h-auto min-w-[11rem] flex-1 items-center justify-start gap-3 rounded-xl border border-transparent px-3 py-3 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 sm:min-w-[12rem] lg:min-w-full lg:px-4 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 snap-start"
+                className="group flex h-auto min-w-[11rem] flex-1 items-center justify-start gap-3 rounded-xl border border-transparent px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100"
               >
                 {Icon ? (
                   <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300" />
@@ -521,28 +597,20 @@ export default function CollectionsPage() {
         </TabsList>
         <div className="flex-1 space-y-6">
           {types.map((t) => {
-          const valueLabel =
-            t.key === "departments"
-              ? "Отделы"
-              : t.key === "divisions"
-                ? "Департамент"
-                : t.key === "positions"
-                  ? "Отдел"
-                  : undefined;
-          const valueFieldRenderer =
-            t.key === "departments"
-              ? renderDepartmentValueField
-              : t.key === "divisions"
-                ? renderDivisionValueField
-                : t.key === "positions"
-                  ? renderPositionValueField
-                  : undefined;
-          const valueRenderer =
+          const rows: CollectionTableRow[] =
             t.key === "departments" ||
             t.key === "divisions" ||
             t.key === "positions"
-              ? (item: CollectionItem) => getItemDisplayValue(item, t.key)
-              : undefined;
+              ? items.map((item) => ({
+                  ...item,
+                  displayValue: String(getItemDisplayValue(item, t.key)),
+                  metaSummary: item.meta ? JSON.stringify(item.meta) : "",
+                }))
+              : items.map((item) => ({
+                  ...item,
+                  displayValue: item.value,
+                  metaSummary: item.meta ? JSON.stringify(item.meta) : "",
+                }));
           return (
             <TabsContent
               key={t.key}
@@ -550,103 +618,131 @@ export default function CollectionsPage() {
               className="mt-0 flex flex-col gap-4"
             >
               {t.key === "users" ? (
-                <div className="flex flex-col gap-4 md:flex-row">
-                  <div className="md:w-1/2">
-                    <CollectionList
-                      items={userItems}
-                      selectedId={
-                        userForm.telegram_id
-                          ? String(userForm.telegram_id)
-                          : undefined
-                      }
-                      totalPages={userTotalPages}
-                      page={userPage}
-                      onSelect={selectUser}
-                      onSearch={handleUserSearch}
-                      onPageChange={setUserPage}
-                      searchValue={userQuery}
-                    />
-                  </div>
-                  <div className="md:w-1/2">
-                    <UserForm
-                      form={userForm}
-                      onChange={setUserForm}
-                      onSubmit={submitUser}
-                      onReset={() => setUserForm(emptyUser)}
-                    />
-                  </div>
+                <div className="space-y-4">
+                  <form
+                    onSubmit={submitUserSearch}
+                    className="flex flex-wrap items-end gap-3"
+                  >
+                    <label className="flex flex-col gap-1 sm:w-64">
+                      <span className="text-sm font-medium">Поиск</span>
+                      <input
+                        className="h-10 w-full rounded border px-3"
+                        value={userSearchDraft}
+                        onChange={(event) => setUserSearchDraft(event.target.value)}
+                        placeholder="Имя или логин"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="btn btn-blue h-10 rounded px-4"
+                    >
+                      Искать
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-green h-10 rounded px-4"
+                      onClick={() => openUserModal()}
+                    >
+                      Новый пользователь
+                    </button>
+                  </form>
+                  <DataTable
+                    columns={settingsUserColumns}
+                    data={paginatedUsers}
+                    pageIndex={userPage - 1}
+                    pageSize={limit}
+                    pageCount={userTotalPages}
+                    onPageChange={(index) => setUserPage(index + 1)}
+                    showGlobalSearch={false}
+                    showFilters={false}
+                    onRowClick={(row) => openUserModal(row)}
+                  />
                 </div>
               ) : t.key === "employees" ? (
-                <>
-                  <div className="flex flex-col gap-4 md:flex-row">
-                    <div className="space-y-2 md:w-1/2">
-                      <CollectionList
-                        items={userItems}
-                        selectedId={selectedEmployeeId}
-                        totalPages={userTotalPages}
-                        page={userPage}
-                        onSelect={selectEmployee}
-                        onSearch={handleUserSearch}
-                        onPageChange={setUserPage}
-                        searchValue={userQuery}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-gray w-full rounded"
-                        onClick={() => {
-                          setSelectedEmployeeId(undefined);
-                          setEmployeeFormMode("create");
-                          setIsEmployeeModalOpen(true);
-                        }}
-                      >
-                        Новый сотрудник
-                      </button>
-                    </div>
-                  </div>
-                  <Modal
-                    open={isEmployeeModalOpen}
-                    onClose={() => setIsEmployeeModalOpen(false)}
+                <div className="space-y-4">
+                  <form
+                    onSubmit={submitUserSearch}
+                    className="flex flex-wrap items-end gap-3"
                   >
-                    <EmployeeCardForm
-                      telegramId={
-                        employeeFormMode === "update"
-                          ? selectedEmployeeId
-                          : undefined
-                      }
-                      mode={employeeFormMode}
-                      onClose={() => setIsEmployeeModalOpen(false)}
-                      onSaved={handleEmployeeSaved}
-                    />
-                  </Modal>
-                </>
+                    <label className="flex flex-col gap-1 sm:w-64">
+                      <span className="text-sm font-medium">Поиск</span>
+                      <input
+                        className="h-10 w-full rounded border px-3"
+                        value={userSearchDraft}
+                        onChange={(event) => setUserSearchDraft(event.target.value)}
+                        placeholder="Имя или логин"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="btn btn-blue h-10 rounded px-4"
+                    >
+                      Искать
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-green h-10 rounded px-4"
+                      onClick={() => openEmployeeModal()}
+                    >
+                      Новый сотрудник
+                    </button>
+                  </form>
+                  <DataTable
+                    columns={settingsUserColumns}
+                    data={paginatedUsers}
+                    pageIndex={userPage - 1}
+                    pageSize={limit}
+                    pageCount={userTotalPages}
+                    onPageChange={(index) => setUserPage(index + 1)}
+                    showGlobalSearch={false}
+                    showFilters={false}
+                    onRowClick={(row) => openEmployeeModal(row)}
+                  />
+                </div>
               ) : t.key === "fleets" ? (
                 <FleetVehiclesTab />
               ) : (
-                <div className="flex flex-col gap-4 md:flex-row">
-                  <div className="md:w-1/2">
-                    <CollectionList
-                      items={items}
-                      selectedId={form._id}
-                      totalPages={totalPages}
-                      page={page}
-                      onSelect={selectItem}
-                      onSearch={handleSearch}
-                      onPageChange={setPage}
-                      renderValue={valueRenderer}
-                      searchValue={currentQuery}
-                    />
-                  </div>
-                  <div className="md:w-1/2">
-                    <CollectionForm
-                      form={form}
-                      onChange={setForm}
-                      onSubmit={submit}
-                      onDelete={remove}
-                      onReset={() => setForm({ name: "", value: "" })}
-                      valueLabel={valueLabel}
-                      renderValueField={valueFieldRenderer}
-                    />
-                  </div>
+                <div className="space-y-4">
+                  <form
+                    onSubmit={submitCollectionSearch}
+                    className="flex flex-wrap items-end gap-3"
+                  >
+                    <label className="flex flex-col gap-1 sm:w-64">
+                      <span className="text-sm font-medium">Поиск</span>
+                      <input
+                        className="h-10 w-full rounded border px-3"
+                        value={currentSearchDraft}
+                        onChange={(event) =>
+                          updateCollectionSearchDraft(event.target.value)
+                        }
+                        placeholder="Название или значение"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="btn btn-blue h-10 rounded px-4"
+                    >
+                      Искать
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-green h-10 rounded px-4"
+                      onClick={() => openCollectionModal()}
+                    >
+                      Добавить
+                    </button>
+                  </form>
+                  <DataTable
+                    columns={collectionColumns}
+                    data={rows}
+                    pageIndex={page - 1}
+                    pageSize={limit}
+                    pageCount={totalPages}
+                    onPageChange={(index) => setPage(index + 1)}
+                    showGlobalSearch={false}
+                    showFilters={false}
+                    onRowClick={(row) => openCollectionModal(row)}
+                  />
                 </div>
               )}
             </TabsContent>
@@ -654,6 +750,235 @@ export default function CollectionsPage() {
         })}
         </div>
       </Tabs>
+      <Modal open={collectionModalOpen} onClose={closeCollectionModal}>
+        <div className="space-y-4">
+          {selectedCollection ? (
+            <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <h3 className="text-base font-semibold">Карточка элемента</h3>
+              <dl className="mt-2 space-y-1 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="font-medium text-slate-500">ID</dt>
+                  <dd className="text-right text-slate-900">
+                    {selectedCollection._id}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="font-medium text-slate-500">Название</dt>
+                  <dd className="text-right text-slate-900">
+                    {selectedCollection.name}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="font-medium text-slate-500">Тип</dt>
+                  <dd className="text-right text-slate-900">
+                    {selectedCollection.type}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Значение</dt>
+                  <dd className="mt-1 rounded bg-white p-2 font-mono text-xs text-slate-900">
+                    {selectedCollection.value || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Meta</dt>
+                  <dd className="mt-1">
+                    <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                      {selectedCollection.meta
+                        ? JSON.stringify(selectedCollection.meta, null, 2)
+                        : "{}"}
+                    </pre>
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ) : null}
+          <CollectionForm
+            form={form}
+            onChange={setForm}
+            onSubmit={submit}
+            onDelete={remove}
+            onReset={() => setForm({ name: "", value: "" })}
+            valueLabel={
+              active === "departments"
+                ? "Отделы"
+                : active === "divisions"
+                  ? "Департамент"
+                  : active === "positions"
+                    ? "Отдел"
+                    : undefined
+            }
+            renderValueField={
+              active === "departments"
+                ? renderDepartmentValueField
+                : active === "divisions"
+                  ? renderDivisionValueField
+                  : active === "positions"
+                    ? renderPositionValueField
+                    : undefined
+            }
+          />
+        </div>
+      </Modal>
+      <Modal open={userModalOpen} onClose={closeUserModal}>
+        <div className="space-y-4">
+          <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+            <h3 className="text-base font-semibold">Карточка пользователя</h3>
+            <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="font-medium text-slate-500">Telegram ID</dt>
+                <dd className="text-slate-900">
+                  {userForm.telegram_id ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Логин</dt>
+                <dd className="text-slate-900">{userForm.username || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Имя</dt>
+                <dd className="text-slate-900">{userForm.name || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Телефон</dt>
+                <dd className="text-slate-900">{userForm.phone || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Мобильный</dt>
+                <dd className="text-slate-900">{userForm.mobNumber || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Email</dt>
+                <dd className="text-slate-900">{userForm.email || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Роль</dt>
+                <dd className="text-slate-900">{userForm.role || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Уровень доступа</dt>
+                <dd className="text-slate-900">{userForm.access ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Роль ID</dt>
+                <dd className="text-slate-900">{userForm.roleId || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Департамент</dt>
+                <dd className="text-slate-900">{userForm.departmentId || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Отдел</dt>
+                <dd className="text-slate-900">{userForm.divisionId || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-500">Должность</dt>
+                <dd className="text-slate-900">{userForm.positionId || "—"}</dd>
+              </div>
+            </dl>
+          </article>
+          <UserForm
+            form={userForm}
+            onChange={setUserForm}
+            onSubmit={submitUser}
+            onReset={() => setUserForm(emptyUser)}
+          />
+        </div>
+      </Modal>
+      <Modal
+        open={isEmployeeModalOpen}
+        onClose={() => setIsEmployeeModalOpen(false)}
+      >
+        <div className="space-y-4">
+          {selectedEmployee ? (
+            <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <h3 className="text-base font-semibold">Карточка сотрудника</h3>
+              <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-slate-500">Telegram ID</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.telegram_id}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Логин</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.username || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Имя</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.name || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Телефон</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.phone || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Мобильный</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.mobNumber || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Email</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.email || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Роль</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.role || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Доступ</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.access ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Роль ID</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.roleId || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Департамент</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.departmentId || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Отдел</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.divisionId || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">Должность</dt>
+                  <dd className="text-slate-900">
+                    {selectedEmployee.positionId || "—"}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ) : null}
+          <EmployeeCardForm
+            telegramId={
+              employeeFormMode === "update" ? selectedEmployeeId : undefined
+            }
+            mode={employeeFormMode}
+            onClose={() => setIsEmployeeModalOpen(false)}
+            onSaved={handleEmployeeSaved}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

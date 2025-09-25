@@ -28,6 +28,8 @@ interface DataTableProps<T> {
   onPageSizeChange?: (size: number) => void;
   onRowClick?: (row: T) => void;
   toolbarChildren?: React.ReactNode;
+  showGlobalSearch?: boolean;
+  showFilters?: boolean;
 }
 
 interface ColumnMeta {
@@ -48,6 +50,8 @@ export default function DataTable<T>({
   onPageSizeChange,
   onRowClick,
   toolbarChildren,
+  showGlobalSearch = true,
+  showFilters = true,
 }: DataTableProps<T>) {
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -69,7 +73,11 @@ export default function DataTable<T>({
 
   return (
     <div className="w-full space-y-1.5 px-0 font-ui text-[13px] sm:px-1.5 sm:text-sm">
-      <TableToolbar table={table as TableType<T>}>
+      <TableToolbar
+        table={table as TableType<T>}
+        showGlobalSearch={showGlobalSearch}
+        showFilters={showFilters}
+      >
         {toolbarChildren}
       </TableToolbar>
       <Table className="text-left">

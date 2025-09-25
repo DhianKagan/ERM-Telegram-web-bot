@@ -20,7 +20,9 @@ import { FleetVehicle } from '../src/db/models/fleet';
 jest.mock('../src/utils/rateLimiter', () => () => (_req: any, _res: any, next: () => void) => next());
 jest.mock('../src/middleware/auth', () => () => (_req: any, _res: any, next: () => void) => next());
 jest.mock('../src/auth/roles.guard', () => (_req: any, _res: any, next: () => void) => next());
-jest.mock('../src/auth/roles.decorator', () => ({ Roles: () => () => undefined }));
+jest.mock('../src/auth/roles.decorator', () => ({
+  Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
 
 let mongod: MongoMemoryServer;
 let app: express.Express;

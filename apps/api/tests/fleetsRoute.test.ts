@@ -7,7 +7,8 @@ process.env.JWT_SECRET = 'secret';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-jest.setTimeout(30_000);
+// MongoMemoryServer может скачивать бинарники дольше 30 секунд, поэтому увеличиваем таймаут.
+jest.setTimeout(120_000);
 
 import express from 'express';
 import request from 'supertest';

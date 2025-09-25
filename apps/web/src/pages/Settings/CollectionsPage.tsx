@@ -129,6 +129,13 @@ const parseIds = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
+type CollectionColumn = (typeof collectionColumns)[number];
+
+const hasAccessorKey = (
+  column: CollectionColumn,
+): column is CollectionColumn & { accessorKey: string } =>
+  typeof (column as { accessorKey?: unknown }).accessorKey === "string";
+
 export default function CollectionsPage() {
   const [active, setActive] = useState<CollectionKey>("departments");
   const [items, setItems] = useState<CollectionItem[]>([]);
@@ -487,7 +494,9 @@ export default function CollectionsPage() {
   const slimCollectionColumns = useMemo(
     () =>
       collectionColumns.filter(
-        (column) => column.accessorKey !== "value" && column.accessorKey !== "_id",
+        (column) =>
+          !hasAccessorKey(column) ||
+          (column.accessorKey !== "value" && column.accessorKey !== "_id"),
       ),
     [],
   );

@@ -58,6 +58,7 @@ describe("mutations", () => {
     odometerInitial: 0,
     odometerCurrent: 10,
     mileageTotal: 10,
+    transportType: "Легковой",
     fuelType: "Бензин",
     fuelRefilled: 5,
     fuelAverageConsumption: 0.2,

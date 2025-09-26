@@ -52,15 +52,15 @@ const toObjectId = (value: unknown): Types.ObjectId | undefined => {
   return undefined;
 };
 
-const getObjectIdTimestamp = (value: unknown): number | undefined => {
+const getObjectIdHex = (value: unknown): string | undefined => {
   const objectId = toObjectId(value);
-  return objectId ? objectId.getTimestamp().getTime() : undefined;
+  return objectId?.toHexString();
 };
 
-const isLegacyDocument = (id: unknown, cutoff?: number): boolean => {
+const isLegacyDocument = (id: unknown, cutoff?: string): boolean => {
   if (!cutoff) return true;
-  const createdAt = getObjectIdTimestamp(id);
-  return createdAt === undefined || createdAt <= cutoff;
+  const objectIdHex = getObjectIdHex(id);
+  return objectIdHex === undefined || objectIdHex <= cutoff;
 };
 
 const mapCollectionItem = (doc: LeanCollectionItem): AggregatedCollectionItem => ({
@@ -131,7 +131,7 @@ const paginate = <T>(items: T[], page: number, limit: number): T[] => {
 
 const resolveLegacyCutoffs = async (
   typeFilter?: string,
-): Promise<Map<string, number>> => {
+): Promise<Map<string, string>> => {
   const typesToCheck = typeFilter && SUPPORTED_LEGACY_TYPES.has(typeFilter)
     ? [typeFilter]
     : Array.from(SUPPORTED_LEGACY_TYPES);
@@ -142,12 +142,12 @@ const resolveLegacyCutoffs = async (
         .sort({ _id: 1 })
         .select({ _id: 1 })
         .lean();
-      const cutoff = doc ? getObjectIdTimestamp(doc._id) : undefined;
+      const cutoff = doc ? getObjectIdHex(doc._id) : undefined;
       return cutoff !== undefined ? ([type, cutoff] as const) : undefined;
     }),
   );
 
-  return new Map(entries.filter(Boolean) as [string, number][]);
+  return new Map(entries.filter(Boolean) as [string, string][]);
 };
 
 export async function listCollectionsWithLegacy(
@@ -166,7 +166,7 @@ export async function listCollectionsWithLegacy(
   const typeFilter = filters.type;
   const legacyCutoffs = shouldIncludeLegacyType(typeFilter)
     ? await resolveLegacyCutoffs(typeFilter)
-    : new Map<string, number>();
+    : new Map<string, string>();
   const byTypeName = new Map<string, Set<string>>();
   const byTypeId = new Map<string, Set<string>>();
   items.forEach((item) => {

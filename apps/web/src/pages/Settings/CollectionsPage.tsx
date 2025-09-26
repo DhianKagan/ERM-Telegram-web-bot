@@ -121,22 +121,31 @@ const tabIcons: Record<
   users: KeyIcon,
 };
 
+const EMPTY_BADGE_TEXT = "Нет данных";
 const settingsBadgeClassName = `${defaultBadgeClassName} whitespace-nowrap sm:text-sm`;
 const settingsBadgeWrapperClassName = `${defaultBadgeWrapperClassName} justify-start`;
 
 const renderBadgeList = (items: string[]) => {
   if (!items.length) {
-    return <span className={settingsBadgeClassName}>—</span>;
+    return (
+      <span className={settingsBadgeClassName} title={EMPTY_BADGE_TEXT}>
+        {EMPTY_BADGE_TEXT}
+      </span>
+    );
   }
-  return (
-    <div className={settingsBadgeWrapperClassName}>
-      {items.map((item, index) => (
-        <span key={`${item}-${index}`} className={settingsBadgeClassName}>
-          {item}
-        </span>
-      ))}
-    </div>
-  );
+    return (
+      <div className={settingsBadgeWrapperClassName}>
+        {items.map((item, index) => (
+          <span
+            key={`${item}-${index}`}
+            className={settingsBadgeClassName}
+            title={item}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    );
 };
 
 interface ItemForm {
@@ -150,6 +159,18 @@ const parseIds = (value: string) =>
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
+
+const resolveReferenceName = (
+  map: Map<string, string>,
+  id?: string | null,
+): string => {
+  if (typeof id !== "string") return "";
+  const trimmed = id.trim();
+  if (!trimmed) return "";
+  return map.get(trimmed) ?? trimmed;
+};
+
+const USERS_ERROR_HINT = "Не удалось загрузить пользователей";
 
 type CollectionColumn = (typeof collectionColumns)[number];
 
@@ -233,8 +254,17 @@ export default function CollectionsPage() {
     }
   }, [active, currentQuery, page]);
 
-  const loadUsers = useCallback(() => {
-    fetchUsers().then((list) => setUsers(list));
+  const loadUsers = useCallback(async () => {
+    try {
+      const list = await fetchUsers();
+      setUsers(list);
+      setHint((prev) => (prev === USERS_ERROR_HINT ? "" : prev));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : USERS_ERROR_HINT;
+      setUsers([]);
+      setHint(message || USERS_ERROR_HINT);
+    }
   }, []);
 
   useEffect(() => {
@@ -245,7 +275,7 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (collectionModalOpen && selectedCollection?.type === "divisions") {
-      loadUsers();
+      void loadUsers();
     }
   }, [collectionModalOpen, selectedCollection, loadUsers]);
 
@@ -302,12 +332,12 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (active === "users") {
-      loadUsers();
+      void loadUsers();
       setUserForm(emptyUser);
       setSelectedEmployeeId(undefined);
     }
     if (active === "employees") {
-      loadUsers();
+      void loadUsers();
       setSelectedEmployeeId(undefined);
       setEmployeeFormMode("create");
       setIsEmployeeModalOpen(false);
@@ -396,7 +426,7 @@ export default function CollectionsPage() {
   };
 
   const handleEmployeeSaved = (updated: UserDetails) => {
-    loadUsers();
+    void loadUsers();
     if (updated.telegram_id !== undefined) {
       setSelectedEmployeeId(String(updated.telegram_id));
       setEmployeeFormMode("update");
@@ -460,7 +490,7 @@ export default function CollectionsPage() {
     }
     const { telegram_id: _telegramId, ...data } = userForm;
     await updateUserApi(id, data);
-    loadUsers();
+    void loadUsers();
     closeUserModal();
   };
 
@@ -502,17 +532,17 @@ export default function CollectionsPage() {
     (item: CollectionItem, type: string) => {
       if (type === "departments") {
         const ids = parseIds(item.value);
-        if (!ids.length) return "—";
+        if (!ids.length) return EMPTY_BADGE_TEXT;
         const names = ids
           .map((id) => divisionMap.get(id))
           .filter((name): name is string => Boolean(name));
-        return names.length ? names.join(", ") : "—";
+        return names.length ? names.join(", ") : EMPTY_BADGE_TEXT;
       }
       if (type === "divisions") {
-        return departmentMap.get(item.value) || "—";
+        return departmentMap.get(item.value) || EMPTY_BADGE_TEXT;
       }
       if (type === "positions") {
-        return divisionMap.get(item.value) || "—";
+        return divisionMap.get(item.value) || EMPTY_BADGE_TEXT;
       }
       return item.value;
     },
@@ -644,21 +674,24 @@ export default function CollectionsPage() {
   const employeeRows = useMemo<EmployeeRow[]>(
     () =>
       paginatedUsers.map((user) => {
-        const roleName = user.roleId
-          ? roleMap.get(user.roleId) ?? user.roleId
-          : "";
-        const departmentName = user.departmentId
-          ? departmentMap.get(user.departmentId) ?? user.departmentId
-          : "";
-        const divisionName = user.divisionId
-          ? divisionMap.get(user.divisionId) ?? user.divisionId
-          : "";
-        const positionName = user.positionId
-          ? positionMap.get(user.positionId) ?? user.positionId
-          : "";
+        const roleNameFromMap = resolveReferenceName(roleMap, user.roleId);
+        const departmentName = resolveReferenceName(
+          departmentMap,
+          user.departmentId,
+        );
+        const divisionName = resolveReferenceName(
+          divisionMap,
+          user.divisionId,
+        );
+        const positionName = resolveReferenceName(
+          positionMap,
+          user.positionId,
+        );
+        const roleLabel =
+          roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
         return {
           ...user,
-          roleName,
+          roleName: roleLabel,
           departmentName,
           divisionName,
           positionName,
@@ -691,10 +724,10 @@ export default function CollectionsPage() {
 
   const selectedDivisionDepartmentName = useMemo(() => {
     if (!selectedCollection || selectedCollection.type !== "divisions") {
-      return "—";
+      return EMPTY_BADGE_TEXT;
     }
     const departmentId = selectedCollection.value;
-    if (!departmentId) return "—";
+    if (!departmentId) return EMPTY_BADGE_TEXT;
     return (
       departmentMap.get(departmentId) ??
       allDepartments.find((department) => department._id === departmentId)?.name ??
@@ -868,6 +901,7 @@ export default function CollectionsPage() {
                     wrapCellsAsBadges
                     badgeClassName={settingsBadgeClassName}
                     badgeWrapperClassName={settingsBadgeWrapperClassName}
+                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
                   />
                 </div>
               ) : t.key === "employees" ? (
@@ -912,6 +946,7 @@ export default function CollectionsPage() {
                     wrapCellsAsBadges
                     badgeClassName={settingsBadgeClassName}
                     badgeWrapperClassName={settingsBadgeWrapperClassName}
+                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
                   />
                 </div>
               ) : t.key === "fleets" ? (
@@ -960,6 +995,7 @@ export default function CollectionsPage() {
                     wrapCellsAsBadges
                     badgeClassName={settingsBadgeClassName}
                     badgeWrapperClassName={settingsBadgeWrapperClassName}
+                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
                   />
                 </div>
               )}

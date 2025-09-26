@@ -85,8 +85,14 @@ export const fetchUser = async (
   return res.json();
 };
 
-export const fetchUsers = () =>
-  authFetch("/api/v1/users").then((r) => (r.ok ? r.json() : []));
+export const fetchUsers = async (): Promise<User[]> => {
+  const response = await authFetch("/api/v1/users");
+  if (response.ok) {
+    return response.json();
+  }
+  const text = await response.text().catch(() => "");
+  throw new Error(text || "Не удалось загрузить пользователей");
+};
 
 export const createUser = (
   id?: number | string,

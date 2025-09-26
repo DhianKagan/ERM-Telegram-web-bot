@@ -32,13 +32,9 @@ const ThemeProviderLazy = lazy(async () => {
 
 function AppShell() {
   const { user } = useAuth();
-  const { open, toggle, collapsed } = useSidebar();
+  const { open, toggle } = useSidebar();
   const { t } = useTranslation();
-  const contentOffsetClass = open
-    ? collapsed
-      ? "lg:pl-20"
-      : "lg:pl-60"
-    : "lg:pl-0";
+  const contentOffsetClass = open ? "lg:pl-64" : "lg:pl-0";
   return (
     <>
       {user && <Sidebar />}

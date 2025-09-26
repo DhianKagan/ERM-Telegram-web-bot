@@ -11,9 +11,8 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   XMarkIcon,
-  ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
+import { cn } from "@/lib/utils";
 
 const baseItems = [
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
@@ -36,7 +35,7 @@ const managerItems = [
 ];
 
 export default function Sidebar() {
-  const { open, toggle, collapsed, toggleCollapsed } = useSidebar();
+  const { open, toggle } = useSidebar();
   const { pathname } = useLocation();
   const { user } = useAuth();
   const role = user?.role || "user";
@@ -47,41 +46,36 @@ export default function Sidebar() {
   }, [role]);
   return (
     <aside
-      className={`fixed top-0 left-0 z-50 h-full ${collapsed ? "w-20" : "w-60"} border-stroke border-r bg-white p-4 transition-all ${open ? "translate-x-0" : "-translate-x-full"}`}
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900",
+        open ? "translate-x-0" : "-translate-x-full",
+        "lg:shadow-none",
+      )}
+      aria-hidden={!open}
     >
       <div className="flex items-center justify-between">
         <button
           onClick={toggle}
-          className="flex h-12 w-12 items-center justify-center"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Закрыть меню"
+          type="button"
         >
           <XMarkIcon className="h-5 w-5" />
         </button>
-        <button
-          onClick={toggleCollapsed}
-          className="hover:text-accentPrimary hidden h-12 w-12 items-center justify-center lg:flex"
-          title="Свернуть меню"
-          aria-label="Свернуть меню"
-        >
-          {collapsed ? (
-            <ChevronDoubleRightIcon className="h-5 w-5" />
-          ) : (
-            <ChevronDoubleLeftIcon className="h-5 w-5" />
-          )}
-        </button>
       </div>
-      <nav className="mt-4 space-y-2">
+      <nav className="mt-4 space-y-1">
         {items.map((i) => (
           <Link
             key={i.to}
             to={i.to}
             aria-label={i.label}
-            className={`flex h-12 items-center gap-2 rounded-lg px-2 text-gray-700 hover:bg-gray-100 ${
-              pathname === i.to ? "bg-gray-100 font-semibold" : ""
-            }`}
+            className={cn(
+              "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
+              pathname === i.to && "bg-slate-100 font-semibold dark:bg-slate-800",
+            )}
           >
             <i.icon className="h-5 w-5" />
-            {!collapsed && <span>{i.label}</span>}
+            <span className="truncate">{i.label}</span>
           </Link>
         ))}
       </nav>

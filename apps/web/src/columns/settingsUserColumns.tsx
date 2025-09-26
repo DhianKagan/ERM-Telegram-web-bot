@@ -2,6 +2,7 @@
 // Основные модули: @tanstack/react-table, shared/types
 import type { ColumnDef } from "@tanstack/react-table";
 import type { User } from "shared";
+import { formatRoleName } from "../utils/roleDisplay";
 
 export const settingsUserColumns: ColumnDef<User>[] = [
   { accessorKey: "telegram_id", header: "Telegram ID", meta: { minWidth: "8rem" } },
@@ -10,7 +11,12 @@ export const settingsUserColumns: ColumnDef<User>[] = [
   { accessorKey: "phone", header: "Телефон", meta: { minWidth: "8rem", maxWidth: "16rem" } },
   { accessorKey: "mobNumber", header: "Моб. номер", meta: { minWidth: "8rem", maxWidth: "16rem" } },
   { accessorKey: "email", header: "E-mail", meta: { minWidth: "10rem", maxWidth: "20rem" } },
-  { accessorKey: "role", header: "Роль", meta: { minWidth: "6rem", maxWidth: "12rem" } },
+  {
+    accessorKey: "role",
+    header: "Роль",
+    cell: ({ getValue }) => formatRoleName(getValue<string | undefined>()),
+    meta: { minWidth: "6rem", maxWidth: "12rem" },
+  },
   {
     accessorKey: "access",
     header: "Доступ",

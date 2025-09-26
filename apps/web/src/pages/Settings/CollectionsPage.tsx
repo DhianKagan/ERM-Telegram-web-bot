@@ -7,7 +7,10 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/Tabs";
-import DataTable from "../../components/DataTable";
+import DataTable, {
+  defaultBadgeClassName,
+  defaultBadgeWrapperClassName,
+} from "../../components/DataTable";
 import {
   fetchCollectionItems,
   createCollectionItem,
@@ -35,6 +38,7 @@ import {
   type UserDetails,
 } from "../../services/users";
 import { fetchRoles, type Role } from "../../services/roles";
+import { formatRoleName } from "../../utils/roleDisplay";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "shared";
 import {
@@ -115,6 +119,24 @@ const tabIcons: Record<
   employees: UserGroupIcon,
   fleets: TruckIcon,
   users: KeyIcon,
+};
+
+const settingsBadgeClassName = `${defaultBadgeClassName} whitespace-nowrap`;
+const settingsBadgeWrapperClassName = defaultBadgeWrapperClassName;
+
+const renderBadgeList = (items: string[]) => {
+  if (!items.length) {
+    return <span className={settingsBadgeClassName}>—</span>;
+  }
+  return (
+    <div className={settingsBadgeWrapperClassName}>
+      {items.map((item, index) => (
+        <span key={`${item}-${index}`} className={settingsBadgeClassName}>
+          {item}
+        </span>
+      ))}
+    </div>
+  );
 };
 
 interface ItemForm {
@@ -220,6 +242,12 @@ export default function CollectionsPage() {
       setUserSearchDraft(userQuery);
     }
   }, [active, userQuery]);
+
+  useEffect(() => {
+    if (collectionModalOpen && selectedCollection?.type === "divisions") {
+      loadUsers();
+    }
+  }, [collectionModalOpen, selectedCollection, loadUsers]);
 
   useEffect(() => {
     fetchCollectionItems("departments", "", 1, 200)
@@ -491,14 +519,29 @@ export default function CollectionsPage() {
     [departmentMap, divisionMap],
   );
 
-  const slimCollectionColumns = useMemo(
-    () =>
+  const buildCollectionColumns = useCallback(
+    (excludedKeys: string[]) =>
       collectionColumns.filter(
         (column) =>
           !hasAccessorKey(column) ||
-          (column.accessorKey !== "value" && column.accessorKey !== "_id"),
+          !excludedKeys.includes(column.accessorKey),
       ),
     [],
+  );
+
+  const departmentColumns = useMemo(
+    () => buildCollectionColumns(["value", "_id", "type", "metaSummary"]),
+    [buildCollectionColumns],
+  );
+
+  const divisionColumns = useMemo(
+    () => buildCollectionColumns(["value", "_id", "type", "metaSummary"]),
+    [buildCollectionColumns],
+  );
+
+  const positionColumns = useMemo(
+    () => buildCollectionColumns(["value", "_id"]),
+    [buildCollectionColumns],
   );
 
   const renderDepartmentValueField = useCallback(
@@ -631,6 +674,59 @@ export default function CollectionsPage() {
     [selectedEmployeeId, users],
   );
 
+  const selectedDepartmentDivisionNames = useMemo(() => {
+    if (!selectedCollection || selectedCollection.type !== "departments") {
+      return [] as string[];
+    }
+    const ids = parseIds(selectedCollection.value);
+    return ids
+      .map(
+        (id) =>
+          divisionMap.get(id) ??
+          allDivisions.find((division) => division._id === id)?.name ??
+          id,
+      )
+      .filter((name): name is string => Boolean(name));
+  }, [selectedCollection, divisionMap, allDivisions]);
+
+  const selectedDivisionDepartmentName = useMemo(() => {
+    if (!selectedCollection || selectedCollection.type !== "divisions") {
+      return "—";
+    }
+    const departmentId = selectedCollection.value;
+    if (!departmentId) return "—";
+    return (
+      departmentMap.get(departmentId) ??
+      allDepartments.find((department) => department._id === departmentId)?.name ??
+      departmentId
+    );
+  }, [selectedCollection, departmentMap, allDepartments]);
+
+  const selectedDivisionPositionNames = useMemo(() => {
+    if (!selectedCollection || selectedCollection.type !== "divisions") {
+      return [] as string[];
+    }
+    return allPositions
+      .filter((position) => position.value === selectedCollection._id)
+      .map((position) => position.name)
+      .filter((name): name is string => Boolean(name));
+  }, [selectedCollection, allPositions]);
+
+  const selectedDivisionEmployeeNames = useMemo(() => {
+    if (!selectedCollection || selectedCollection.type !== "divisions") {
+      return [] as string[];
+    }
+    return users
+      .filter((user) => user.divisionId === selectedCollection._id)
+      .map((user) => {
+        if (user.name && user.name.trim()) return user.name.trim();
+        if (user.username && user.username.trim()) return user.username.trim();
+        if (user.telegram_id !== undefined && user.telegram_id !== null)
+          return `ID ${user.telegram_id}`;
+        return "Без имени";
+      });
+  }, [selectedCollection, users]);
+
   return (
     <div className="space-y-6 p-4">
       {hint && <div className="text-sm text-red-600">{hint}</div>}
@@ -642,7 +738,30 @@ export default function CollectionsPage() {
         }}
         className="space-y-6"
       >
-        <TabsList className="flex flex-wrap items-stretch gap-2 rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:gap-3 sm:p-3">
+        <div className="sm:hidden">
+          <label htmlFor="settings-section-select" className="sr-only">
+            Выбор раздела настроек
+          </label>
+          <select
+            id="settings-section-select"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-transparent transition focus:border-blue-400 focus:outline-none focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            value={active}
+            onChange={(event) => {
+              const next = event.target.value as CollectionKey;
+              setActive(next);
+              setPage(1);
+            }}
+          >
+            {types.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <TabsList
+          className="hidden overflow-x-auto rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:grid sm:gap-3 sm:p-3 sm:[grid-template-columns:repeat(6,minmax(11rem,1fr))]"
+        >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
             const labelId = `${t.key}-tab-label`;
@@ -652,12 +771,12 @@ export default function CollectionsPage() {
                 value={t.key}
                 aria-label={t.label}
                 aria-labelledby={labelId}
-                className="group flex h-auto min-w-full flex-1 items-center justify-start gap-2 rounded-xl border border-transparent px-3 py-2 text-left text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:min-w-[11rem] sm:gap-3 sm:px-4 sm:py-3"
+                className="group flex h-full min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2 text-center text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:flex-col sm:gap-2 sm:px-4 sm:py-3"
               >
                 {Icon ? (
-                  <Icon className="size-4 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-5" />
+                  <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-6" />
                 ) : null}
-                <span className="flex min-w-0 flex-col">
+                <span className="flex min-w-0 flex-col items-center">
                   <span
                     id={labelId}
                     className="truncate text-sm font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300 sm:text-base"
@@ -667,7 +786,7 @@ export default function CollectionsPage() {
                   {t.description ? (
                     <span
                       aria-hidden="true"
-                      className="hidden truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:inline"
+                      className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block"
                     >
                       {t.description}
                     </span>
@@ -679,26 +798,28 @@ export default function CollectionsPage() {
         </TabsList>
         <div className="flex-1 space-y-6">
           {types.map((t) => {
-          const rows: CollectionTableRow[] =
-            t.key === "departments" ||
-            t.key === "divisions" ||
-            t.key === "positions"
-              ? items.map((item) => ({
-                  ...item,
-                  displayValue: String(getItemDisplayValue(item, t.key)),
-                  metaSummary: item.meta ? JSON.stringify(item.meta) : "",
-                }))
-              : items.map((item) => ({
-                  ...item,
-                  displayValue: item.value,
-                  metaSummary: item.meta ? JSON.stringify(item.meta) : "",
-                }));
+            const rows: CollectionTableRow[] =
+              t.key === "departments" ||
+              t.key === "divisions" ||
+              t.key === "positions"
+                ? items.map((item) => ({
+                    ...item,
+                    displayValue: String(getItemDisplayValue(item, t.key)),
+                    metaSummary: item.meta ? JSON.stringify(item.meta) : "",
+                  }))
+                : items.map((item) => ({
+                    ...item,
+                    displayValue: item.value,
+                    metaSummary: item.meta ? JSON.stringify(item.meta) : "",
+                  }));
           const columnsForType =
-            t.key === "departments" ||
-            t.key === "divisions" ||
-            t.key === "positions"
-              ? slimCollectionColumns
-              : collectionColumns;
+            t.key === "departments"
+              ? departmentColumns
+              : t.key === "divisions"
+                ? divisionColumns
+                : t.key === "positions"
+                  ? positionColumns
+                  : collectionColumns;
           return (
             <TabsContent
               key={t.key}
@@ -744,6 +865,9 @@ export default function CollectionsPage() {
                     showGlobalSearch={false}
                     showFilters={false}
                     onRowClick={(row) => openUserModal(row)}
+                    wrapCellsAsBadges
+                    badgeClassName={settingsBadgeClassName}
+                    badgeWrapperClassName={settingsBadgeWrapperClassName}
                   />
                 </div>
               ) : t.key === "employees" ? (
@@ -785,6 +909,9 @@ export default function CollectionsPage() {
                     showGlobalSearch={false}
                     showFilters={false}
                     onRowClick={(row) => openEmployeeModal(row)}
+                    wrapCellsAsBadges
+                    badgeClassName={settingsBadgeClassName}
+                    badgeWrapperClassName={settingsBadgeWrapperClassName}
                   />
                 </div>
               ) : t.key === "fleets" ? (
@@ -830,6 +957,9 @@ export default function CollectionsPage() {
                     showGlobalSearch={false}
                     showFilters={false}
                     onRowClick={(row) => openCollectionModal(row)}
+                    wrapCellsAsBadges
+                    badgeClassName={settingsBadgeClassName}
+                    badgeWrapperClassName={settingsBadgeWrapperClassName}
                   />
                 </div>
               )}
@@ -842,43 +972,101 @@ export default function CollectionsPage() {
         <div className="space-y-4">
           {selectedCollection ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <h3 className="text-base font-semibold">Карточка элемента</h3>
-              <dl className="mt-2 space-y-1 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="font-medium text-slate-500">ID</dt>
-                  <dd className="text-right text-slate-900">
-                    {selectedCollection._id}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="font-medium text-slate-500">Название</dt>
-                  <dd className="text-right text-slate-900">
-                    {selectedCollection.name}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="font-medium text-slate-500">Тип</dt>
-                  <dd className="text-right text-slate-900">
-                    {selectedCollection.type}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Значение</dt>
-                  <dd className="mt-1 rounded bg-white p-2 font-mono text-xs text-slate-900">
-                    {selectedCollection.value || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Meta</dt>
-                  <dd className="mt-1">
-                    <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
-                      {selectedCollection.meta
-                        ? JSON.stringify(selectedCollection.meta, null, 2)
-                        : "{}"}
-                    </pre>
-                  </dd>
-                </div>
-              </dl>
+              {selectedCollection.type === "departments" ? (
+                <>
+                  <h3 className="text-base font-semibold">Информация о департаменте</h3>
+                  <dl className="mt-2 space-y-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">ID</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection._id}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">Название</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection.name}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Отделы департамента</dt>
+                      <dd className="mt-2">{renderBadgeList(selectedDepartmentDivisionNames)}</dd>
+                    </div>
+                  </dl>
+                </>
+              ) : selectedCollection.type === "divisions" ? (
+                <>
+                  <h3 className="text-base font-semibold">Информация о департаменте</h3>
+                  <dl className="mt-2 space-y-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">ID</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection._id}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">Название</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection.name}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">Департамент</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedDivisionDepartmentName || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Должности отдела</dt>
+                      <dd className="mt-2">{renderBadgeList(selectedDivisionPositionNames)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Сотрудники отдела</dt>
+                      <dd className="mt-2">{renderBadgeList(selectedDivisionEmployeeNames)}</dd>
+                    </div>
+                  </dl>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-base font-semibold">Карточка элемента</h3>
+                  <dl className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">ID</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection._id}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">Название</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection.name}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-medium text-slate-500">Тип</dt>
+                      <dd className="text-right text-slate-900">
+                        {selectedCollection.type}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Значение</dt>
+                      <dd className="mt-1 rounded bg-white p-2 font-mono text-xs text-slate-900">
+                        {selectedCollection.value || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Meta</dt>
+                      <dd className="mt-1">
+                        <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                          {selectedCollection.meta
+                            ? JSON.stringify(selectedCollection.meta, null, 2)
+                            : "{}"}
+                        </pre>
+                      </dd>
+                    </div>
+                  </dl>
+                </>
+              )}
             </article>
           ) : null}
           <CollectionForm
@@ -941,7 +1129,7 @@ export default function CollectionsPage() {
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Роль</dt>
-                <dd className="text-slate-900">{userForm.role || "—"}</dd>
+                <dd className="text-slate-900">{formatRoleName(userForm.role)}</dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-500">Уровень доступа</dt>
@@ -951,7 +1139,7 @@ export default function CollectionsPage() {
                 <dt className="font-medium text-slate-500">Роль ID</dt>
                 <dd className="text-slate-900">
                   {userForm.roleId
-                    ? roleMap.get(userForm.roleId) ?? userForm.roleId
+                    ? formatRoleName(roleMap.get(userForm.roleId) ?? userForm.roleId)
                     : "—"}
                 </dd>
               </div>
@@ -1037,7 +1225,7 @@ export default function CollectionsPage() {
                 <div>
                   <dt className="font-medium text-slate-500">Роль</dt>
                   <dd className="text-slate-900">
-                    {selectedEmployee.role || "—"}
+                    {formatRoleName(selectedEmployee.role)}
                   </dd>
                 </div>
                 <div>
@@ -1050,7 +1238,10 @@ export default function CollectionsPage() {
                   <dt className="font-medium text-slate-500">Роль ID</dt>
                   <dd className="text-slate-900">
                     {selectedEmployee.roleId
-                      ? roleMap.get(selectedEmployee.roleId) ?? selectedEmployee.roleId
+                      ? formatRoleName(
+                          roleMap.get(selectedEmployee.roleId) ??
+                            selectedEmployee.roleId,
+                        )
                       : "—"}
                   </dd>
                 </div>

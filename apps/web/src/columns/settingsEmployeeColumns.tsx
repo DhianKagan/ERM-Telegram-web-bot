@@ -2,6 +2,7 @@
 // Основные модули: @tanstack/react-table, shared/types
 import type { ColumnDef } from "@tanstack/react-table";
 import type { User } from "shared";
+import { formatRoleName } from "../utils/roleDisplay";
 
 export interface EmployeeRow extends User {
   roleName: string;
@@ -36,7 +37,12 @@ export const settingsEmployeeColumns: ColumnDef<EmployeeRow>[] = [
     header: "E-mail",
     meta: { minWidth: "10rem", maxWidth: "20rem" },
   },
-  { accessorKey: "role", header: "Роль", meta: { minWidth: "6rem", maxWidth: "12rem" } },
+  {
+    accessorKey: "role",
+    header: "Роль",
+    cell: ({ getValue }) => formatRoleName(getValue<string | undefined>()),
+    meta: { minWidth: "6rem", maxWidth: "12rem" },
+  },
   {
     accessorKey: "access",
     header: "Доступ",
@@ -46,7 +52,7 @@ export const settingsEmployeeColumns: ColumnDef<EmployeeRow>[] = [
   {
     accessorKey: "roleId",
     header: "Роль ID",
-    cell: ({ row }) => row.original.roleName || "—",
+    cell: ({ row }) => formatRoleName(row.original.roleName),
     meta: { minWidth: "8rem", maxWidth: "16rem" },
   },
   {

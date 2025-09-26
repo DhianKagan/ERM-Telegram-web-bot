@@ -14,6 +14,7 @@ import {
   type CollectionItem,
 } from "../services/collections";
 import { fetchRoles, type Role } from "../services/roles";
+import { ROLE_OPTIONS } from "../utils/roleDisplay";
 import {
   createUser,
   fetchUser,
@@ -433,9 +434,11 @@ export default function EmployeeCardForm({
                 onChange={(e) => handleRoleChange(e.target.value)}
                 disabled={!canEdit}
               >
-                <option value="user">user</option>
-                <option value="manager">manager</option>
-                <option value="admin">admin</option>
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="space-y-1">

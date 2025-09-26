@@ -2,7 +2,10 @@
 // Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../components/Modal";
-import DataTable from "../../components/DataTable";
+import DataTable, {
+  defaultBadgeClassName,
+  defaultBadgeWrapperClassName,
+} from "../../components/DataTable";
 import { showToast } from "../../utils/toast";
 import {
   listFleetVehicles,
@@ -11,7 +14,12 @@ import {
   deleteFleetVehicle,
   type FleetVehiclePayload,
 } from "../../services/fleets";
-import type { FleetVehicleDto } from "shared";
+import type {
+  FleetVehicleDto,
+  VehiclePositionDto,
+  VehicleSensorDto,
+  VehicleTrackPointDto,
+} from "shared";
 import FleetVehicleDialog from "./FleetVehicleDialog";
 import {
   fleetVehicleColumns,
@@ -19,6 +27,100 @@ import {
 } from "../../columns/fleetVehicleColumns";
 
 const PAGE_LIMIT = 10;
+const TRACK_POINTS_PREVIEW_LIMIT = 20;
+
+const formatUnknown = (value: unknown): string => {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const formatSensorList = (sensors?: VehicleSensorDto[]): string => {
+  if (!sensors?.length) {
+    return "";
+  }
+  return sensors
+    .map((sensor) => {
+      const parts: string[] = [];
+      if (sensor.name) {
+        parts.push(sensor.name);
+      }
+      if (sensor.type) {
+        parts.push(`тип: ${sensor.type}`);
+      }
+      if (sensor.value !== undefined && sensor.value !== null) {
+        const sensorValue = formatUnknown(sensor.value);
+        if (sensorValue) {
+          parts.push(`значение: ${sensorValue}`);
+        }
+      }
+      if (sensor.updatedAt) {
+        parts.push(`обновлён: ${sensor.updatedAt}`);
+      }
+      return parts.join(" • ");
+    })
+    .filter(Boolean)
+    .join("; ");
+};
+
+const formatTrackList = (track?: VehicleTrackPointDto[]): string => {
+  if (!track?.length) {
+    return "";
+  }
+  const preview = track.slice(0, TRACK_POINTS_PREVIEW_LIMIT);
+  const rendered = preview
+    .map((point, index) => {
+      const parts: string[] = [];
+      parts.push(`#${index + 1}`);
+      parts.push(`широта: ${point.lat}`);
+      parts.push(`долгота: ${point.lon}`);
+      if (point.speed !== undefined) {
+        parts.push(`скорость: ${point.speed}`);
+      }
+      if (point.course !== undefined) {
+        parts.push(`курс: ${point.course}`);
+      }
+      parts.push(`время: ${point.timestamp}`);
+      return parts.join(" • ");
+    })
+    .join("; ");
+  if (track.length > TRACK_POINTS_PREVIEW_LIMIT) {
+    const restCount = track.length - TRACK_POINTS_PREVIEW_LIMIT;
+    return `${rendered}; ещё ${restCount}`;
+  }
+  return rendered;
+};
+
+const formatPositionInfo = (position?: VehiclePositionDto): string => {
+  if (!position) {
+    return "";
+  }
+  const items: string[] = [
+    `широта: ${position.lat}`,
+    `долгота: ${position.lon}`,
+  ];
+  if (position.speed !== undefined) {
+    items.push(`скорость: ${position.speed}`);
+  }
+  if (position.course !== undefined) {
+    items.push(`курс: ${position.course}`);
+  }
+  if (position.updatedAt) {
+    items.push(`обновлено: ${position.updatedAt}`);
+  }
+  return items.join("; ");
+};
 
 export default function FleetVehiclesTab() {
   const [items, setItems] = useState<FleetVehicleDto[]>([]);
@@ -40,14 +142,21 @@ export default function FleetVehiclesTab() {
     () =>
       items.map((item) => ({
         ...item,
-        sensorsInfo: item.sensors ? JSON.stringify(item.sensors) : "",
-        customSensorsInfo: item.customSensors
-          ? JSON.stringify(item.customSensors)
-          : "",
-        trackInfo: item.track ? JSON.stringify(item.track) : "",
-        positionInfo: item.position ? JSON.stringify(item.position) : "",
+        sensorsInfo: formatSensorList(item.sensors),
+        customSensorsInfo: formatSensorList(item.customSensors),
+        trackInfo: formatTrackList(item.track),
+        positionInfo: formatPositionInfo(item.position),
       })),
     [items],
+  );
+
+  const badgeClassName = useMemo(
+    () => `${defaultBadgeClassName} whitespace-nowrap sm:text-sm`,
+    [],
+  );
+  const badgeWrapperClassName = useMemo(
+    () => `${defaultBadgeWrapperClassName} justify-start`,
+    [],
   );
 
   const load = useCallback(async () => {
@@ -180,6 +289,9 @@ export default function FleetVehiclesTab() {
         showGlobalSearch={false}
         showFilters={false}
         onRowClick={(row) => openEdit(row)}
+        wrapCellsAsBadges
+        badgeClassName={badgeClassName}
+        badgeWrapperClassName={badgeWrapperClassName}
       />
       <Modal
         open={modalOpen}

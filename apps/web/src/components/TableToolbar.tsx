@@ -80,30 +80,38 @@ export default function TableToolbar<T>({
         {children}
       </div>
       <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto">
-        <details className="relative flex-shrink-0">
-          <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
+        <details className="group relative flex-shrink-0">
+          <summary
+            className="cursor-pointer rounded-t-md rounded-b-none border border-b-0 border-gray-200 bg-white px-2 py-1 text-xs font-semibold leading-tight text-gray-700 shadow-sm transition-colors select-none hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 group-open:border-gray-200 sm:text-sm"
+          >
             {t("export")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-32 rounded border bg-white p-1 shadow">
+          <div
+            className="absolute left-0 top-full z-10 w-32 min-w-full rounded-b-md border border-t border-gray-200 bg-white p-1 shadow-sm"
+          >
             <button
               onClick={exportCsv}
-              className="block w-full rounded px-1.5 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
+              className="block w-full rounded px-1.5 py-1 text-left text-xs font-medium transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 sm:text-sm"
             >
               CSV
             </button>
             <button
               onClick={() => void exportPdf()}
-              className="mt-1 block w-full rounded px-1.5 py-1 text-left text-xs font-medium hover:bg-gray-100 sm:text-sm"
+              className="mt-1 block w-full rounded px-1.5 py-1 text-left text-xs font-medium transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 sm:text-sm"
             >
               PDF
             </button>
           </div>
         </details>
-        <details className="relative flex-shrink-0">
-          <summary className="cursor-pointer rounded border px-1.5 py-1 text-xs font-medium select-none sm:text-sm">
+        <details className="group relative flex-shrink-0">
+          <summary
+            className="cursor-pointer rounded-t-md rounded-b-none border border-b-0 border-gray-200 bg-white px-2 py-1 text-xs font-semibold leading-tight text-gray-700 shadow-sm transition-colors select-none hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 group-open:border-gray-200 sm:text-sm"
+          >
             {t("settings")}
           </summary>
-          <div className="absolute right-0 z-10 mt-1 w-64 space-y-1 rounded border bg-white p-1.5 shadow">
+          <div
+            className="absolute left-0 top-full z-10 w-64 min-w-full space-y-1 rounded-b-md border border-t border-gray-200 bg-white p-1.5 shadow-sm"
+          >
             {showFilters ? <SearchFilters inline /> : null}
             <div className="border-t pt-1">
               {columns.map((col) => (
@@ -122,13 +130,13 @@ export default function TableToolbar<T>({
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveColumn(col.id, -1)}
-                      className="rounded border px-1 text-xs font-medium leading-none"
+                      className="rounded border border-gray-200 px-1 text-xs font-medium leading-none text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
                     >
                       ←
                     </button>
                     <button
                       onClick={() => moveColumn(col.id, 1)}
-                      className="rounded border px-1 text-xs font-medium leading-none"
+                      className="rounded border border-gray-200 px-1 text-xs font-medium leading-none text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
                     >
                       →
                     </button>

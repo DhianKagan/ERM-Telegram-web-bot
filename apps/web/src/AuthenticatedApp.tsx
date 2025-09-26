@@ -32,8 +32,13 @@ const ThemeProviderLazy = lazy(async () => {
 
 function AppShell() {
   const { user } = useAuth();
-  const { open, toggle } = useSidebar();
+  const { open, toggle, collapsed } = useSidebar();
   const { t } = useTranslation();
+  const contentOffsetClass = open
+    ? collapsed
+      ? "lg:pl-20"
+      : "lg:pl-60"
+    : "lg:pl-0";
   return (
     <>
       {user && <Sidebar />}
@@ -48,110 +53,114 @@ function AppShell() {
           }}
         />
       )}
-      {user && <Header />}
-      <main className="p-4 pt-3 transition-all lg:pt-4">
-        <Suspense fallback={<div>{t("loading")}</div>}>
-          <Routes>
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tasks"
-              element={
-                <ProtectedRoute>
-                  <TasksPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/mg/kanban"
-              element={
-                <ManagerRoute>
-                  <TaskKanban />
-                </ManagerRoute>
-              }
-            />
-            <Route
-              path="/mg/reports"
-              element={
-                <ManagerRoute>
-                  <Reports />
-                </ManagerRoute>
-              }
-            />
-            <Route
-              path="/mg/routes"
-              element={
-                <ManagerRoute>
-                  <RoutesPage />
-                </ManagerRoute>
-              }
-            />
-            <Route
-              path="/cp/kanban"
-              element={
-                <AdminRoute>
-                  <TaskKanban />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/cp/reports"
-              element={
-                <AdminRoute>
-                  <Reports />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/cp/routes"
-              element={
-                <AdminRoute>
-                  <RoutesPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/cp/settings"
-              element={
-                <AdminRoute>
-                  <SettingsPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/cp/logs"
-              element={
-                <AdminRoute>
-                  <LogsPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/cp/storage"
-              element={
-                <AdminRoute>
-                  <StoragePage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/theme"
-              element={
-                <ProtectedRoute>
-                  <ThemeSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/tasks" />} />
-          </Routes>
-        </Suspense>
-      </main>
+      <div
+        className={`flex min-h-screen flex-col bg-slate-50/40 transition-[padding] duration-200 ease-out dark:bg-slate-900/40 ${contentOffsetClass}`}
+      >
+        {user && <Header />}
+        <main className="flex-1 p-4 pt-3 transition-all lg:pt-4">
+          <Suspense fallback={<div>{t("loading")}</div>}>
+            <Routes>
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <ProtectedRoute>
+                    <TasksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mg/kanban"
+                element={
+                  <ManagerRoute>
+                    <TaskKanban />
+                  </ManagerRoute>
+                }
+              />
+              <Route
+                path="/mg/reports"
+                element={
+                  <ManagerRoute>
+                    <Reports />
+                  </ManagerRoute>
+                }
+              />
+              <Route
+                path="/mg/routes"
+                element={
+                  <ManagerRoute>
+                    <RoutesPage />
+                  </ManagerRoute>
+                }
+              />
+              <Route
+                path="/cp/kanban"
+                element={
+                  <AdminRoute>
+                    <TaskKanban />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/reports"
+                element={
+                  <AdminRoute>
+                    <Reports />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/routes"
+                element={
+                  <AdminRoute>
+                    <RoutesPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/settings"
+                element={
+                  <AdminRoute>
+                    <SettingsPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/logs"
+                element={
+                  <AdminRoute>
+                    <LogsPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/storage"
+                element={
+                  <AdminRoute>
+                    <StoragePage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/theme"
+                element={
+                  <ProtectedRoute>
+                    <ThemeSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/tasks" />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
       <TaskDialogRoute />
       <EmployeeDialogRoute />
     </>

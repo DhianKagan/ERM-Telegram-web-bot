@@ -2,10 +2,7 @@
 // Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../components/Modal";
-import DataTable, {
-  defaultBadgeClassName,
-  defaultBadgeWrapperClassName,
-} from "../../components/DataTable";
+import DataTable from "../../components/DataTable";
 import { showToast } from "../../utils/toast";
 import {
   listFleetVehicles,
@@ -25,6 +22,11 @@ import {
   fleetVehicleColumns,
   type FleetVehicleRow,
 } from "../../columns/fleetVehicleColumns";
+import {
+  SETTINGS_BADGE_CLASS,
+  SETTINGS_BADGE_EMPTY,
+  SETTINGS_BADGE_WRAPPER_CLASS,
+} from "./badgeStyles";
 
 const PAGE_LIMIT = 10;
 const TRACK_POINTS_PREVIEW_LIMIT = 20;
@@ -151,11 +153,11 @@ export default function FleetVehiclesTab() {
   );
 
   const badgeClassName = useMemo(
-    () => `${defaultBadgeClassName} whitespace-nowrap sm:text-sm`,
+    () => `${SETTINGS_BADGE_CLASS} whitespace-nowrap sm:text-sm`,
     [],
   );
   const badgeWrapperClassName = useMemo(
-    () => `${defaultBadgeWrapperClassName} justify-start`,
+    () => `${SETTINGS_BADGE_WRAPPER_CLASS} justify-start`,
     [],
   );
 
@@ -246,7 +248,7 @@ export default function FleetVehiclesTab() {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-3 lg:items-center lg:gap-3">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-3 lg:mt-1"
+          className="mt-2 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-3"
         >
           <label className="flex w-full flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
             <span className="text-sm font-medium">Поиск</span>
@@ -259,14 +261,14 @@ export default function FleetVehiclesTab() {
           </label>
           <button
             type="submit"
-            className="btn btn-blue h-10 rounded px-4 text-sm font-semibold sm:h-10 sm:px-4 lg:h-8 lg:px-3 lg:text-xs"
+            className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:h-10 sm:w-auto sm:px-3 lg:h-8 lg:text-xs"
           >
             Искать
           </button>
         </form>
         <button
           type="button"
-          className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+          className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
           onClick={openCreate}
         >
           Добавить
@@ -292,6 +294,7 @@ export default function FleetVehiclesTab() {
         wrapCellsAsBadges
         badgeClassName={badgeClassName}
         badgeWrapperClassName={badgeWrapperClassName}
+        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
       />
       <Modal
         open={modalOpen}

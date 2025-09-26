@@ -72,6 +72,49 @@ export const fetchCollectionItems = async (
   return res.json();
 };
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+export const fetchAllCollectionItems = async (
+  type: string,
+  search = "",
+  limit = 200,
+): Promise<CollectionItem[]> => {
+  const effectiveLimit = limit > 0 ? limit : 200;
+  const aggregated: CollectionItem[] = [];
+  let page = 1;
+  let expectedTotal = 0;
+  // ограничиваем количество итераций, чтобы избежать бесконечных циклов при ошибках пагинации
+  const maxIterations = 100;
+  while (page <= maxIterations) {
+    const response = (await fetchCollectionItems(
+      type,
+      search,
+      page,
+      effectiveLimit,
+    )) as { items?: CollectionItem[]; total?: number };
+    const items = Array.isArray(response.items) ? response.items : [];
+    if (!items.length && aggregated.length === 0 && !isFiniteNumber(response.total)) {
+      return [];
+    }
+    aggregated.push(...items);
+    if (isFiniteNumber(response.total)) {
+      expectedTotal = Math.max(expectedTotal, response.total);
+    }
+    if (items.length < effectiveLimit) {
+      break;
+    }
+    if (expectedTotal && aggregated.length >= expectedTotal) {
+      break;
+    }
+    page += 1;
+  }
+  if (expectedTotal && aggregated.length > expectedTotal) {
+    return aggregated.slice(0, expectedTotal);
+  }
+  return aggregated;
+};
+
 export const createCollectionItem = (
   type: string,
   data: { name: string; value: string },

@@ -10,6 +10,7 @@ import {
 import DataTable from "../../components/DataTable";
 import {
   fetchCollectionItems,
+  fetchAllCollectionItems,
   createCollectionItem,
   updateCollectionItem,
   removeCollectionItem,
@@ -297,33 +298,49 @@ export default function CollectionsPage() {
   }, [collectionModalOpen, selectedCollection, loadUsers]);
 
   useEffect(() => {
-    fetchCollectionItems("departments", "", 1, 200)
-      .then((d) => setAllDepartments(d.items))
-      .catch((error) => {
+    const loadReferenceCollections = async () => {
+      const [departmentsResult, divisionsResult, positionsResult] =
+        await Promise.allSettled([
+          fetchAllCollectionItems("departments"),
+          fetchAllCollectionItems("divisions"),
+          fetchAllCollectionItems("positions"),
+        ]);
+
+      const applyResult = (
+        result: PromiseSettledResult<CollectionItem[]>,
+        setter: React.Dispatch<React.SetStateAction<CollectionItem[]>>,
+        fallbackMessage: string,
+      ) => {
+        if (result.status === "fulfilled") {
+          setter(result.value);
+          return;
+        }
+        const reason = result.reason;
         const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить департаменты";
+          reason instanceof Error && reason.message
+            ? reason.message
+            : fallbackMessage;
         setHint((prev) => prev || message);
-      });
-    fetchCollectionItems("divisions", "", 1, 200)
-      .then((d) => setAllDivisions(d.items))
-      .catch((error) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить отделы";
-        setHint((prev) => prev || message);
-      });
-    fetchCollectionItems("positions", "", 1, 200)
-      .then((d) => setAllPositions(d.items))
-      .catch((error) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить должности";
-        setHint((prev) => prev || message);
-      });
+      };
+
+      applyResult(
+        departmentsResult,
+        setAllDepartments,
+        "Не удалось загрузить департаменты",
+      );
+      applyResult(
+        divisionsResult,
+        setAllDivisions,
+        "Не удалось загрузить отделы",
+      );
+      applyResult(
+        positionsResult,
+        setAllPositions,
+        "Не удалось загрузить должности",
+      );
+    };
+
+    void loadReferenceCollections();
     fetchRoles()
       .then((list) => setAllRoles(list))
       .catch((error) => {

@@ -19,7 +19,10 @@ interface Props {
   renderValueField?: (
     form: ItemForm,
     onChange: (form: ItemForm) => void,
+    options?: { readonly?: boolean },
   ) => React.ReactNode;
+  readonly?: boolean;
+  readonlyNotice?: string;
 }
 
 export default function CollectionForm({
@@ -30,12 +33,15 @@ export default function CollectionForm({
   onReset,
   valueLabel = "Значение",
   renderValueField,
+  readonly = false,
+  readonlyNotice,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmSave, setConfirmSave] = React.useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readonly) return;
     setConfirmSave(true);
   };
 
@@ -48,30 +54,47 @@ export default function CollectionForm({
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
           required
+          disabled={readonly}
         />
       </div>
       <div>
         <label className="block text-sm font-medium">{valueLabel}</label>
         {renderValueField ? (
-          renderValueField(form, onChange)
+          renderValueField(form, readonly ? () => undefined : onChange, {
+            readonly,
+          })
         ) : (
           <input
             className="h-10 w-full rounded border px-3"
             value={form.value}
             onChange={(e) => onChange({ ...form, value: e.target.value })}
             required
+            disabled={readonly}
           />
         )}
       </div>
+      {readonly ? (
+        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
+          {readonlyNotice ?? 'Элемент доступен только для чтения.'}
+        </p>
+      ) : null}
       <div className="flex gap-2">
-        <button type="submit" className="btn btn-blue rounded">
+        <button
+          type="submit"
+          className="btn btn-blue rounded"
+          disabled={readonly}
+        >
           Сохранить
         </button>
         {form._id ? (
           <button
             type="button"
             className="btn btn-red rounded"
-            onClick={() => setConfirmDelete(true)}
+            disabled={readonly}
+            onClick={() => {
+              if (readonly) return;
+              setConfirmDelete(true);
+            }}
           >
             Удалить
           </button>
@@ -80,6 +103,7 @@ export default function CollectionForm({
             type="button"
             className="btn btn-gray rounded"
             onClick={onReset}
+            disabled={readonly}
           >
             Очистить
           </button>

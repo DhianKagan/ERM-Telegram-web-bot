@@ -2,6 +2,7 @@
 
 # История изменений
 
+- `/api/v1/collections` объединяет данные `CollectionItem` с коллекциями Department и Employee; устаревшие элементы получают `meta.readonly` и отображаются в интерфейсе как только для чтения.
 - Команда сборки компилирует `ensureDefaults` в `dist`, чтобы стартовый скрипт находился в Docker и на Railway.
 - Скрипт установки браузеров ставит Firefox и Chromium, pretest запускает диагностику `playwright doctor` с запасным `--list`,
   CI публикует отчёт, runbook и FAQ обновлены.

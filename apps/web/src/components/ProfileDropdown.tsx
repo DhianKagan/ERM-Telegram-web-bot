@@ -3,6 +3,7 @@
 import React from "react";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
 
+import { cn } from "@/lib/utils";
 import { useAuth } from "../context/useAuth";
 import { Button } from "./ui/button";
 import {
@@ -16,10 +17,12 @@ import useEmployeeDialog from "../hooks/useEmployeeDialog";
 
 interface ProfileDropdownProps {
   children?: React.ReactNode;
+  triggerClassName?: string;
 }
 
 export default function ProfileDropdown({
   children,
+  triggerClassName,
 }: ProfileDropdownProps) {
   const { user, logout } = useAuth();
   const { open } = useEmployeeDialog();
@@ -35,9 +38,12 @@ export default function ProfileDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           aria-label="Профиль"
-          className="size-12"
+          className={cn(
+            "h-auto rounded-full border border-slate-200/80 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-white focus-visible:ring-2 focus-visible:ring-primary/60 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800",
+            triggerClassName,
+          )}
         >
           {children ?? <UserCircleIcon className="h-5 w-5" />}
         </Button>

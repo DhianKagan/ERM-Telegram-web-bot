@@ -33,6 +33,7 @@ interface DataTableProps<T> {
   wrapCellsAsBadges?: boolean;
   badgeClassName?: string;
   badgeWrapperClassName?: string;
+  badgeEmptyPlaceholder?: string;
 }
 
 interface ColumnMeta {
@@ -43,8 +44,12 @@ interface ColumnMeta {
   headerClassName?: string;
 }
 
-export const defaultBadgeClassName =
-  "inline-flex min-h-[1.75rem] max-w-full items-center justify-start gap-1 rounded-full border border-slate-200 bg-white px-3 py-0.5 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:ring-slate-700/60";
+export const defaultBadgeClassName = [
+  "inline-flex min-h-[1.75rem] max-w-full items-center justify-start gap-1",
+  "rounded-full border border-slate-200 bg-white px-3 py-0.5 text-xs font-semibold text-slate-700 shadow-sm",
+  "ring-1 ring-inset ring-slate-100",
+  "dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:ring-slate-700/60",
+].join(" ");
 export const defaultBadgeWrapperClassName = "flex flex-wrap items-center gap-2";
 
 const extractBadgeItems = (value: React.ReactNode): string[] => {
@@ -84,10 +89,15 @@ const renderBadgeContent = (
   content: React.ReactNode,
   badgeClassName: string,
   wrapperClassName: string,
+  emptyPlaceholder: string,
 ) => {
   const items = extractBadgeItems(content);
   if (!items.length) {
-    return <span className={badgeClassName}>—</span>;
+    return (
+      <span className={badgeClassName} title={emptyPlaceholder}>
+        {emptyPlaceholder}
+      </span>
+    );
   }
   if (items.length === 1) {
     return (
@@ -122,6 +132,7 @@ export default function DataTable<T>({
   wrapCellsAsBadges = false,
   badgeClassName = defaultBadgeClassName,
   badgeWrapperClassName = defaultBadgeWrapperClassName,
+  badgeEmptyPlaceholder = "—",
 }: DataTableProps<T>) {
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -237,6 +248,7 @@ export default function DataTable<T>({
                           cellContent,
                           badgeClassName,
                           badgeWrapperClassName,
+                          badgeEmptyPlaceholder,
                         )
                       : cellContent}
                   </TableCell>

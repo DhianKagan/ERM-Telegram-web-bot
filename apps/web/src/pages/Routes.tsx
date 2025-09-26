@@ -1,6 +1,5 @@
 // Страница отображения маршрутов на карте с фильтрами
 import React from "react";
-import Breadcrumbs from "../components/Breadcrumbs";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
@@ -355,9 +354,6 @@ export default function RoutesPage() {
 
   return (
     <div className="space-y-4">
-      <Breadcrumbs
-        items={[{ label: "Задачи", href: "/tasks" }, { label: "Маршруты" }]}
-      />
       {role === "admin" ? (
         <div className="space-y-2 rounded border p-3">
           <div className="flex flex-wrap items-center gap-3">

@@ -529,24 +529,42 @@ export default function CollectionsPage() {
   }, [allDepartments]);
 
   const getItemDisplayValue = useCallback(
-    (item: CollectionItem, type: string) => {
+    (item: CollectionItem, type: CollectionKey) => {
       if (type === "departments") {
         const ids = parseIds(item.value);
         if (!ids.length) return EMPTY_BADGE_TEXT;
         const names = ids
-          .map((id) => divisionMap.get(id))
+          .map(
+            (id) =>
+              divisionMap.get(id) ??
+              allDivisions.find((division) => division._id === id)?.name ??
+              id,
+          )
           .filter((name): name is string => Boolean(name));
-        return names.length ? names.join(", ") : EMPTY_BADGE_TEXT;
+        return names.length ? names.join("\n") : EMPTY_BADGE_TEXT;
       }
       if (type === "divisions") {
-        return departmentMap.get(item.value) || EMPTY_BADGE_TEXT;
+        const departmentName =
+          departmentMap.get(item.value) ??
+          allDepartments.find((department) => department._id === item.value)?.name ??
+          item.value;
+        return departmentName || EMPTY_BADGE_TEXT;
       }
       if (type === "positions") {
-        return divisionMap.get(item.value) || EMPTY_BADGE_TEXT;
+        const divisionName =
+          divisionMap.get(item.value) ??
+          allDivisions.find((division) => division._id === item.value)?.name ??
+          item.value;
+        return divisionName || EMPTY_BADGE_TEXT;
       }
-      return item.value;
+      return item.value || EMPTY_BADGE_TEXT;
     },
-    [departmentMap, divisionMap],
+    [
+      allDepartments,
+      allDivisions,
+      departmentMap,
+      divisionMap,
+    ],
   );
 
   const buildCollectionColumns = useCallback(
@@ -762,14 +780,19 @@ export default function CollectionsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">
-      {hint && <div className="text-sm text-red-600">{hint}</div>}
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+          Управление предприятием
+        </h1>
+        {hint && <div className="text-sm text-red-600">{hint}</div>}
+      </header>
       <Tabs
         value={active}
         onValueChange={(v) => {
           setActive(v as CollectionKey);
           setPage(1);
         }}
-        className="space-y-6"
+        className="space-y-5"
       >
         <div className="sm:hidden">
           <label htmlFor="settings-section-select" className="sr-only">
@@ -863,12 +886,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3 lg:h-9"
+                        className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
                         placeholder="Имя или логин"
@@ -876,16 +899,16 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                       onClick={() => openUserModal()}
                     >
-                      Новый пользователь
+                      Добавить
                     </button>
                   </form>
                   <DataTable
@@ -908,12 +931,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3 lg:h-9"
+                        className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
                         placeholder="Имя или логин"
@@ -921,16 +944,16 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                       onClick={() => openEmployeeModal()}
                     >
-                      Новый сотрудник
+                      Добавить
                     </button>
                   </form>
                   <DataTable
@@ -955,12 +978,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitCollectionSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3 lg:h-9"
+                        className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={currentSearchDraft}
                         onChange={(event) =>
                           updateCollectionSearchDraft(event.target.value)
@@ -970,13 +993,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
+                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
                       onClick={() => openCollectionModal()}
                     >
                       Добавить

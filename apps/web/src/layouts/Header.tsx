@@ -20,7 +20,7 @@ export default function Header() {
       className="border-stroke sticky top-0 z-40 w-full border-b bg-white/90 px-4 py-3 shadow-sm backdrop-blur transition-colors dark:bg-slate-900/90"
       data-testid="app-header"
     >
-      <div className="flex w-full flex-col gap-3">
+      <div className="flex w-full flex-col gap-2">
         <div className="flex items-center gap-3">
           <button
             onClick={toggle}
@@ -33,9 +33,6 @@ export default function Header() {
           </button>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">ERM</h1>
         </div>
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-100">
-          Управление предприятием
-        </h2>
         <nav
           aria-label={t("menu")}
           className="flex flex-wrap items-center gap-2 self-start sm:self-end"

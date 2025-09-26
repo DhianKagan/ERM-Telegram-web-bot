@@ -243,15 +243,15 @@ export default function FleetVehiclesTab() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-3 lg:items-center lg:gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-3 lg:items-center lg:gap-3">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-2"
+          className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-3 lg:mt-1"
         >
           <label className="flex w-full flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
             <span className="text-sm font-medium">Поиск</span>
             <input
-              className="h-10 w-full rounded border px-3 lg:h-9"
+              className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Название или номер"
@@ -259,17 +259,17 @@ export default function FleetVehiclesTab() {
           </label>
           <button
             type="submit"
-            className="btn btn-blue h-10 rounded px-4 sm:h-10 sm:px-4 lg:h-9 lg:px-3"
+            className="btn btn-blue h-10 rounded px-4 text-sm font-semibold sm:h-10 sm:px-4 lg:h-8 lg:px-3 lg:text-xs"
           >
             Искать
           </button>
         </form>
         <button
           type="button"
-          className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
+          className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
           onClick={openCreate}
         >
-          Добавить транспорт
+          Добавить
         </button>
       </div>
       {loading ? <p className="text-sm text-gray-500">Загрузка транспорта…</p> : null}

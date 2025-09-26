@@ -1,7 +1,6 @@
 // Назначение: страница профиля пользователя
 // Основные модули: React, React Router
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import Breadcrumbs from "../components/Breadcrumbs";
 import { useAuth } from "../context/useAuth";
 import { updateProfile } from "../services/auth";
 import { fetchCollectionItems, type CollectionItem } from "../services/collections";
@@ -155,9 +154,6 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs
-        items={[{ label: "Задачи", href: "/tasks" }, { label: "Профиль" }]}
-      />
       <div className="mx-auto max-w-4xl space-y-4">
         {error && (
           <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">

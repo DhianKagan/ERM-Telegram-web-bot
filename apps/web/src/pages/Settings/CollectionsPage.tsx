@@ -910,8 +910,8 @@ export default function CollectionsPage() {
                     </button>
                   </form>
                   <DataTable
-                    columns={settingsEmployeeColumns}
-                    data={employeeRows}
+                    columns={settingsUserColumns}
+                    data={paginatedUsers}
                     pageIndex={userPage - 1}
                     pageSize={limit}
                     pageCount={userTotalPages}
@@ -955,8 +955,8 @@ export default function CollectionsPage() {
                     </button>
                   </form>
                   <DataTable
-                    columns={settingsUserColumns}
-                    data={paginatedUsers}
+                    columns={settingsEmployeeColumns}
+                    data={employeeRows}
                     pageIndex={userPage - 1}
                     pageSize={limit}
                     pageCount={userTotalPages}

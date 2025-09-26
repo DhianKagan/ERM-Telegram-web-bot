@@ -9,6 +9,7 @@ import * as repo from '../db/repos/collectionRepo';
 import { CollectionItem, CollectionItemAttrs } from '../db/models/CollectionItem';
 import { Employee } from '../db/models/employee';
 import { Task } from '../db/model';
+import { listCollectionsWithLegacy } from '../services/collectionsAggregator';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -27,7 +28,7 @@ router.get('/', ...base, async (req, res) => {
     value,
     search,
   } = req.query as Record<string, string>;
-  const { items, total } = await repo.list(
+  const { items, total } = await listCollectionsWithLegacy(
     { type, name, value, search },
     Number(page),
     Number(limit),
@@ -37,7 +38,7 @@ router.get('/', ...base, async (req, res) => {
 
 router.get('/:type', ...base, async (req, res) => {
   const { type } = req.params;
-  const { items } = await repo.list({ type }, 1, 1000);
+  const { items } = await listCollectionsWithLegacy({ type }, 1, 1000);
   res.json(items);
 });
 

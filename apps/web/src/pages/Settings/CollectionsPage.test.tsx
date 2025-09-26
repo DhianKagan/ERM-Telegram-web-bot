@@ -149,9 +149,16 @@ jest.mock("../../components/Modal", () => ({
   }) => (open ? <div data-testid="modal">{children}</div> : null),
 }));
 
-jest.mock("./CollectionForm", () => ({ form }: { form: { name: string } }) => (
-  <div data-testid="collection-form">{form?.name}</div>
-));
+jest.mock("./CollectionForm", () => ({
+  __esModule: true,
+  default: ({
+    form,
+  }: {
+    form: { name: string };
+    readonly?: boolean;
+    readonlyNotice?: string;
+  }) => <div data-testid="collection-form">{form?.name}</div>,
+}));
 
 jest.mock("./UserForm", () => ({ form }: { form: { name: string } }) => (
   <div data-testid="user-form">{form?.name}</div>

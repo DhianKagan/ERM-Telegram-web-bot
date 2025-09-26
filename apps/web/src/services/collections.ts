@@ -2,22 +2,33 @@
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
 
+export interface CollectionItemMeta {
+  invalid?: boolean;
+  invalidReason?: string;
+  invalidCode?: string;
+  invalidAt?: string;
+  syncPending?: boolean;
+  syncWarning?: string;
+  syncError?: string;
+  syncFailedAt?: string;
+  legacy?: boolean;
+  readonly?: boolean;
+  readonlyReason?: string;
+  source?: string;
+  sourceId?: string;
+  fleetId?: string;
+  departmentId?: string;
+  divisionId?: string;
+  positionId?: string;
+  [key: string]: unknown;
+}
+
 export interface CollectionItem {
   _id: string;
   type: string;
   name: string;
   value: string;
-  meta?: {
-    invalid?: boolean;
-    invalidReason?: string;
-    invalidCode?: string;
-    invalidAt?: string;
-    syncPending?: boolean;
-    syncWarning?: string;
-    syncError?: string;
-    syncFailedAt?: string;
-    [key: string]: unknown;
-  };
+  meta?: CollectionItemMeta;
 }
 
 const parseErrorMessage = (status: number, body: string) => {

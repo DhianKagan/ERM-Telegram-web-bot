@@ -212,6 +212,25 @@ export default function CollectionsPage() {
   const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
     "create",
   );
+  const selectedCollectionInfo = useMemo(() => {
+    if (!selectedCollection?.meta || typeof selectedCollection.meta !== "object") {
+      return { readonly: false, notice: undefined as string | undefined };
+    }
+    const meta = selectedCollection.meta as {
+      readonly?: unknown;
+      legacy?: unknown;
+      readonlyReason?: unknown;
+    };
+    const readonly = Boolean(meta.readonly ?? meta.legacy);
+    const notice = readonly
+      ? typeof meta.readonlyReason === "string"
+        ? meta.readonlyReason
+        : meta.legacy
+          ? "Элемент перенесён из старой коллекции и доступен только для чтения."
+          : undefined
+      : undefined;
+    return { readonly, notice };
+  }, [selectedCollection]);
 
   const currentQuery = queries[active] ?? "";
   const currentSearchDraft = searchDrafts[active] ?? "";
@@ -435,6 +454,13 @@ export default function CollectionsPage() {
     if (active === "fleets") return;
     const trimmedName = form.name.trim();
     if (!trimmedName) return;
+    if (form._id && selectedCollectionInfo.readonly) {
+      setHint(
+        selectedCollectionInfo.notice ??
+          "Элемент перенесён из старой коллекции и доступен только для чтения.",
+      );
+      return;
+    }
     let valueToSave = form.value;
     if (active === "departments") {
       valueToSave = parseIds(form.value).join(",");
@@ -469,6 +495,13 @@ export default function CollectionsPage() {
 
   const remove = async () => {
     if (!form._id) return;
+    if (selectedCollectionInfo.readonly) {
+      setHint(
+        selectedCollectionInfo.notice ??
+          "Элемент перенесён из старой коллекции и доступен только для чтения.",
+      );
+      return;
+    }
     try {
       await removeCollectionItem(form._id);
       setHint("");
@@ -591,7 +624,11 @@ export default function CollectionsPage() {
   );
 
   const renderDepartmentValueField = useCallback(
-    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => {
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+      options?: { readonly?: boolean },
+    ) => {
       const selected = parseIds(currentForm.value);
       const handleSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const values = Array.from(event.target.selectedOptions).map(
@@ -605,6 +642,7 @@ export default function CollectionsPage() {
           className="min-h-[8rem] w-full rounded border px-3 py-2"
           value={selected}
           onChange={handleSelect}
+          disabled={options?.readonly}
         >
           {allDivisions
             .filter((division) => {
@@ -627,7 +665,11 @@ export default function CollectionsPage() {
   );
 
   const renderDivisionValueField = useCallback(
-    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+      options?: { readonly?: boolean },
+    ) => (
       <select
         className="h-10 w-full rounded border px-3"
         value={currentForm.value}
@@ -635,6 +677,7 @@ export default function CollectionsPage() {
           handleChange({ ...currentForm, value: event.target.value })
         }
         required
+        disabled={options?.readonly}
       >
         <option value="" disabled>
           Выберите департамент
@@ -650,7 +693,11 @@ export default function CollectionsPage() {
   );
 
   const renderPositionValueField = useCallback(
-    (currentForm: ItemForm, handleChange: (next: ItemForm) => void) => (
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+      options?: { readonly?: boolean },
+    ) => (
       <select
         className="h-10 w-full rounded border px-3"
         value={currentForm.value}
@@ -658,6 +705,7 @@ export default function CollectionsPage() {
           handleChange({ ...currentForm, value: event.target.value })
         }
         required
+        disabled={options?.readonly}
       >
         <option value="" disabled>
           Выберите отдел
@@ -1150,6 +1198,8 @@ export default function CollectionsPage() {
                     ? renderPositionValueField
                     : undefined
             }
+            readonly={selectedCollectionInfo.readonly}
+            readonlyNotice={selectedCollectionInfo.notice}
           />
         </div>
       </Modal>

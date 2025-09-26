@@ -243,15 +243,15 @@ export default function FleetVehiclesTab() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-3 lg:items-center lg:gap-2">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex w-full flex-col gap-2 sm:flex-row sm:items-end"
+          className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-2"
         >
-          <label className="flex w-full flex-col gap-1 sm:w-64">
+          <label className="flex w-full flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
             <span className="text-sm font-medium">Поиск</span>
             <input
-              className="h-10 w-full rounded border px-3"
+              className="h-10 w-full rounded border px-3 lg:h-9"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Название или номер"
@@ -259,14 +259,14 @@ export default function FleetVehiclesTab() {
           </label>
           <button
             type="submit"
-            className="btn btn-blue h-10 rounded px-4 sm:h-10 sm:px-4"
+            className="btn btn-blue h-10 rounded px-4 sm:h-10 sm:px-4 lg:h-9 lg:px-3"
           >
             Искать
           </button>
         </form>
         <button
           type="button"
-          className="btn btn-green h-10 rounded px-4"
+          className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
           onClick={openCreate}
         >
           Добавить транспорт

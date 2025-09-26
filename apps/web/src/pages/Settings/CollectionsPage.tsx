@@ -830,12 +830,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-wrap items-end gap-3"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
                   >
-                    <label className="flex flex-col gap-1 sm:w-64">
+                    <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3"
+                        className="h-10 w-full rounded border px-3 lg:h-9"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
                         placeholder="Имя или логин"
@@ -843,13 +843,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4"
+                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4"
+                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
                       onClick={() => openUserModal()}
                     >
                       Новый пользователь
@@ -874,12 +874,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-wrap items-end gap-3"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
                   >
-                    <label className="flex flex-col gap-1 sm:w-64">
+                    <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3"
+                        className="h-10 w-full rounded border px-3 lg:h-9"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
                         placeholder="Имя или логин"
@@ -887,13 +887,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4"
+                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4"
+                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
                       onClick={() => openEmployeeModal()}
                     >
                       Новый сотрудник
@@ -920,12 +920,12 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitCollectionSearch}
-                    className="flex flex-wrap items-end gap-3"
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-2"
                   >
-                    <label className="flex flex-col gap-1 sm:w-64">
+                    <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
-                        className="h-10 w-full rounded border px-3"
+                        className="h-10 w-full rounded border px-3 lg:h-9"
                         value={currentSearchDraft}
                         onChange={(event) =>
                           updateCollectionSearchDraft(event.target.value)
@@ -935,13 +935,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4"
+                      className="btn btn-blue h-10 rounded px-4 lg:h-9 lg:px-3"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4"
+                      className="btn btn-green h-10 rounded px-4 lg:h-9 lg:px-3"
                       onClick={() => openCollectionModal()}
                     >
                       Добавить

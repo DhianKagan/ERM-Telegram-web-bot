@@ -1,6 +1,6 @@
 // Назначение файла: объединение данных CollectionItem с устаревшими коллекциями.
 // Основные модули: mongoose, модели CollectionItem, Department, Employee.
-import type { FilterQuery } from 'mongoose';
+import { Types, type FilterQuery } from 'mongoose';
 import { CollectionItem } from '../db/models/CollectionItem';
 import { Department } from '../db/models/department';
 import { Employee } from '../db/models/employee';
@@ -42,6 +42,26 @@ const toStringId = (value: unknown): string => String(value);
 
 const normalizeMeta = (meta?: Record<string, unknown>): Record<string, unknown> | undefined =>
   meta ? { ...meta } : undefined;
+
+const toObjectId = (value: unknown): Types.ObjectId | undefined => {
+  if (!value) return undefined;
+  if (value instanceof Types.ObjectId) return value;
+  if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
+    return new Types.ObjectId(value);
+  }
+  return undefined;
+};
+
+const getObjectIdTimestamp = (value: unknown): number | undefined => {
+  const objectId = toObjectId(value);
+  return objectId ? objectId.getTimestamp().getTime() : undefined;
+};
+
+const isLegacyDocument = (id: unknown, cutoff?: number): boolean => {
+  if (!cutoff) return true;
+  const createdAt = getObjectIdTimestamp(id);
+  return createdAt === undefined || createdAt <= cutoff;
+};
 
 const mapCollectionItem = (doc: LeanCollectionItem): AggregatedCollectionItem => ({
   _id: toStringId(doc._id),
@@ -109,6 +129,27 @@ const paginate = <T>(items: T[], page: number, limit: number): T[] => {
   return items.slice(start, end);
 };
 
+const resolveLegacyCutoffs = async (
+  typeFilter?: string,
+): Promise<Map<string, number>> => {
+  const typesToCheck = typeFilter && SUPPORTED_LEGACY_TYPES.has(typeFilter)
+    ? [typeFilter]
+    : Array.from(SUPPORTED_LEGACY_TYPES);
+
+  const entries = await Promise.all(
+    typesToCheck.map(async (type) => {
+      const doc = await CollectionItem.findOne({ type })
+        .sort({ _id: 1 })
+        .select({ _id: 1 })
+        .lean();
+      const cutoff = doc ? getObjectIdTimestamp(doc._id) : undefined;
+      return cutoff !== undefined ? ([type, cutoff] as const) : undefined;
+    }),
+  );
+
+  return new Map(entries.filter(Boolean) as [string, number][]);
+};
+
 export async function listCollectionsWithLegacy(
   filters: CollectionFilters = {},
   page = 1,
@@ -123,6 +164,9 @@ export async function listCollectionsWithLegacy(
   const items = baseItemsRaw.map(mapCollectionItem);
 
   const typeFilter = filters.type;
+  const legacyCutoffs = shouldIncludeLegacyType(typeFilter)
+    ? await resolveLegacyCutoffs(typeFilter)
+    : new Map<string, number>();
   const byTypeName = new Map<string, Set<string>>();
   const byTypeId = new Map<string, Set<string>>();
   items.forEach((item) => {
@@ -141,10 +185,12 @@ export async function listCollectionsWithLegacy(
       const departmentsRaw = (await Department.find().lean()) as LeanDepartment[];
       const existingNames = byTypeName.get('departments') ?? new Set<string>();
       const existingIds = byTypeId.get('departments') ?? new Set<string>();
+      const cutoff = legacyCutoffs.get('departments');
       departmentsRaw.forEach((dept) => {
         const name = dept.name;
         const id = toStringId(dept._id);
         if (existingNames.has(name) || existingIds.has(id)) return;
+        if (!isLegacyDocument(dept._id, cutoff)) return;
         items.push(mapDepartment(dept));
         existingNames.add(name);
         existingIds.add(id);
@@ -154,10 +200,12 @@ export async function listCollectionsWithLegacy(
       const employeesRaw = (await Employee.find().lean()) as LeanEmployee[];
       const existingNames = byTypeName.get('employees') ?? new Set<string>();
       const existingIds = byTypeId.get('employees') ?? new Set<string>();
+      const cutoff = legacyCutoffs.get('employees');
       employeesRaw.forEach((emp) => {
         const name = emp.name;
         const id = toStringId(emp._id);
         if (existingNames.has(name) || existingIds.has(id)) return;
+        if (!isLegacyDocument(emp._id, cutoff)) return;
         items.push(mapEmployee(emp));
         existingNames.add(name);
         existingIds.add(id);

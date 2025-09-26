@@ -12,6 +12,19 @@ import {
 import CollectionsPage from "./CollectionsPage";
 import type { CollectionItem } from "../../services/collections";
 import { fetchCollectionItems } from "../../services/collections";
+import { settingsUserColumns } from "../../columns/settingsUserColumns";
+import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
+
+const extractHeaderText = (header: unknown): string => {
+  if (typeof header === "string") return header;
+  if (React.isValidElement(header)) {
+    const element = header as React.ReactElement;
+    return React.Children.toArray(element.props.children)
+      .map((child) => (typeof child === "string" ? child : ""))
+      .join("");
+  }
+  return "";
+};
 
 jest.mock("../../services/collections", () => ({
   fetchCollectionItems: jest.fn(),
@@ -30,11 +43,26 @@ jest.mock("./FleetVehiclesTab", () => () => <div data-testid="fleet-tab" />);
 
 jest.mock("../../components/DataTable", () => ({
   __esModule: true,
-  default: ({ data }: { data: Array<Record<string, unknown>> }) => (
+  default: ({
+    data,
+    columns = [],
+  }: {
+    data: Array<Record<string, unknown>>;
+    columns?: Array<{ header?: React.ReactNode }>;
+  }) => (
     <div data-testid="data-table">
-      {data.map((row, index) => (
-        <div key={index}>{(row.name as string) ?? "row"}</div>
-      ))}
+      <div data-testid="data-table-headers">
+        {columns.map((column, index) => (
+          <span data-testid="column-header" key={`header-${index}`}>
+            {extractHeaderText(column.header)}
+          </span>
+        ))}
+      </div>
+      <div data-testid="data-table-rows">
+        {data.map((row, index) => (
+          <div key={index}>{(row.name as string) ?? "row"}</div>
+        ))}
+      </div>
     </div>
   ),
 }));
@@ -237,5 +265,53 @@ describe("CollectionsPage", () => {
     fireEvent.click(fleetsTab);
 
     await screen.findByTestId("fleet-tab");
+  });
+
+  it("отображает колонки пользователей во вкладке 'Пользователь'", async () => {
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+
+    const usersPanel = await screen.findByTestId("tab-content-users");
+
+    await waitFor(() =>
+      expect(within(usersPanel).getAllByTestId("column-header").length).toBeGreaterThan(0),
+    );
+
+    const headerTexts = within(usersPanel)
+      .getAllByTestId("column-header")
+      .map((element) => element.textContent ?? "");
+
+    const expectedHeaders = settingsUserColumns.map((column) =>
+      extractHeaderText(column.header),
+    );
+
+    expect(headerTexts).toEqual(expectedHeaders);
+  });
+
+  it("отображает колонки сотрудников во вкладке 'Сотрудник'", async () => {
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+
+    const employeesPanel = await screen.findByTestId("tab-content-employees");
+
+    await waitFor(() =>
+      expect(within(employeesPanel).getAllByTestId("column-header").length).toBeGreaterThan(0),
+    );
+
+    const headerTexts = within(employeesPanel)
+      .getAllByTestId("column-header")
+      .map((element) => element.textContent ?? "");
+
+    const expectedHeaders = settingsEmployeeColumns.map((column) =>
+      extractHeaderText(column.header),
+    );
+
+    expect(headerTexts).toEqual(expectedHeaders);
   });
 });

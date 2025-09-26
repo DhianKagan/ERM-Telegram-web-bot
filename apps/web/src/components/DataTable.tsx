@@ -44,8 +44,8 @@ interface ColumnMeta {
 }
 
 export const defaultBadgeClassName =
-  "inline-flex items-center justify-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/40";
-export const defaultBadgeWrapperClassName = "flex flex-wrap gap-1.5";
+  "inline-flex min-h-[1.75rem] max-w-full items-center justify-start gap-1 rounded-full border border-slate-200 bg-white px-3 py-0.5 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:ring-slate-700/60";
+export const defaultBadgeWrapperClassName = "flex flex-wrap items-center gap-2";
 
 const extractBadgeItems = (value: React.ReactNode): string[] => {
   const items: string[] = [];
@@ -90,12 +90,16 @@ const renderBadgeContent = (
     return <span className={badgeClassName}>—</span>;
   }
   if (items.length === 1) {
-    return <span className={badgeClassName}>{items[0]}</span>;
+    return (
+      <span className={badgeClassName} title={items[0]}>
+        {items[0]}
+      </span>
+    );
   }
   return (
     <div className={wrapperClassName}>
       {items.map((item, index) => (
-        <span key={`${item}-${index}`} className={badgeClassName}>
+        <span key={`${item}-${index}`} className={badgeClassName} title={item}>
           {item}
         </span>
       ))}

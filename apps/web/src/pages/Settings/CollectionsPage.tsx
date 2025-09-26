@@ -121,8 +121,8 @@ const tabIcons: Record<
   users: KeyIcon,
 };
 
-const settingsBadgeClassName = `${defaultBadgeClassName} whitespace-nowrap`;
-const settingsBadgeWrapperClassName = defaultBadgeWrapperClassName;
+const settingsBadgeClassName = `${defaultBadgeClassName} whitespace-nowrap sm:text-sm`;
+const settingsBadgeWrapperClassName = `${defaultBadgeWrapperClassName} justify-start`;
 
 const renderBadgeList = (items: string[]) => {
   if (!items.length) {
@@ -728,7 +728,7 @@ export default function CollectionsPage() {
   }, [selectedCollection, users]);
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">
       {hint && <div className="text-sm text-red-600">{hint}</div>}
       <Tabs
         value={active}
@@ -760,7 +760,7 @@ export default function CollectionsPage() {
           </select>
         </div>
         <TabsList
-          className="hidden overflow-x-auto rounded-2xl bg-white/80 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/40 dark:ring-slate-700 sm:grid sm:gap-3 sm:p-3 sm:[grid-template-columns:repeat(6,minmax(11rem,1fr))]"
+          className="hidden overflow-x-auto rounded-2xl bg-white/85 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/50 dark:ring-slate-700 sm:grid sm:gap-3 sm:overflow-visible sm:p-3 sm:[grid-template-columns:repeat(6,minmax(11rem,1fr))] lg:p-4 lg:shadow"
         >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];

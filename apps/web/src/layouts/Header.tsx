@@ -9,12 +9,13 @@ import { Bars3Icon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
 export default function Header() {
-  const { toggle, collapsed, open } = useSidebar();
+  const { toggle } = useSidebar();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   return (
     <header
-      className={`border-stroke sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-white px-4 transition-all ${open ? (collapsed ? "lg:ml-20" : "lg:ml-60") : "lg:ml-0"}`}
+      className="border-stroke sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b bg-white/90 px-4 shadow-sm backdrop-blur transition-colors dark:bg-slate-900/90"
+      data-testid="app-header"
     >
       <div className="flex items-center gap-2">
         <button

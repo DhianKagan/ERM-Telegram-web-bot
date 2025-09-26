@@ -30,6 +30,9 @@ interface DataTableProps<T> {
   toolbarChildren?: React.ReactNode;
   showGlobalSearch?: boolean;
   showFilters?: boolean;
+  wrapCellsAsBadges?: boolean;
+  badgeClassName?: string;
+  badgeWrapperClassName?: string;
 }
 
 interface ColumnMeta {
@@ -39,6 +42,66 @@ interface ColumnMeta {
   cellClassName?: string;
   headerClassName?: string;
 }
+
+export const defaultBadgeClassName =
+  "inline-flex items-center justify-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/40";
+export const defaultBadgeWrapperClassName = "flex flex-wrap gap-1.5";
+
+const extractBadgeItems = (value: React.ReactNode): string[] => {
+  const items: string[] = [];
+  const visit = (node: React.ReactNode) => {
+    if (node === null || node === undefined || node === false) return;
+    if (typeof node === "string" || typeof node === "number") {
+      const text = String(node).trim();
+      if (!text) return;
+      const parts = text
+        .split(/[,\n;]/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (parts.length) {
+        items.push(...parts);
+      } else {
+        items.push(text);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (React.isValidElement(node)) {
+      visit(node.props.children);
+      return;
+    }
+    const fallback = String(node).trim();
+    if (fallback) items.push(fallback);
+  };
+  visit(value);
+  return items;
+};
+
+const renderBadgeContent = (
+  content: React.ReactNode,
+  badgeClassName: string,
+  wrapperClassName: string,
+) => {
+  const items = extractBadgeItems(content);
+  if (!items.length) {
+    return <span className={badgeClassName}>—</span>;
+  }
+  if (items.length === 1) {
+    return <span className={badgeClassName}>{items[0]}</span>;
+  }
+  return (
+    <div className={wrapperClassName}>
+      {items.map((item, index) => (
+        <span key={`${item}-${index}`} className={badgeClassName}>
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+};
 
 export default function DataTable<T>({
   columns,
@@ -52,6 +115,9 @@ export default function DataTable<T>({
   toolbarChildren,
   showGlobalSearch = true,
   showFilters = true,
+  wrapCellsAsBadges = false,
+  badgeClassName = defaultBadgeClassName,
+  badgeWrapperClassName = defaultBadgeWrapperClassName,
 }: DataTableProps<T>) {
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -142,11 +208,15 @@ export default function DataTable<T>({
                     ? `${baseSize}px`
                     : undefined;
                 const cellClassName = [
-                  "break-words whitespace-normal",
+                  "break-words whitespace-normal align-top",
                   meta.cellClassName,
                 ]
                   .filter(Boolean)
                   .join(" ");
+                const cellContent = flexRender(
+                  cell.column.columnDef.cell,
+                  cell.getContext(),
+                );
                 return (
                   <TableCell
                     key={cell.id}
@@ -158,7 +228,13 @@ export default function DataTable<T>({
                     className={cellClassName}
                     // фиксируем ширину ячейки данных
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    {wrapCellsAsBadges
+                      ? renderBadgeContent(
+                          cellContent,
+                          badgeClassName,
+                          badgeWrapperClassName,
+                        )
+                      : cellContent}
                   </TableCell>
                 );
               })}

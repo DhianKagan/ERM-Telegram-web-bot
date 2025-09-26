@@ -7,6 +7,7 @@ import {
   type CollectionItem,
 } from "../../services/collections";
 import { fetchRoles } from "../../services/roles";
+import { ROLE_OPTIONS } from "../../utils/roleDisplay";
 
 export interface UserFormData {
   telegram_id?: number;
@@ -135,9 +136,11 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           value={form.role || "user"}
           onChange={(e) => handleRoleChange(e.target.value)}
         >
-          <option value="user">user</option>
-          <option value="manager">manager</option>
-          <option value="admin">admin</option>
+          {ROLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
       <div>

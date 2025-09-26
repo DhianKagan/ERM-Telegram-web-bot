@@ -7,10 +7,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/Tabs";
-import DataTable, {
-  defaultBadgeClassName,
-  defaultBadgeWrapperClassName,
-} from "../../components/DataTable";
+import DataTable from "../../components/DataTable";
 import {
   fetchCollectionItems,
   createCollectionItem,
@@ -41,6 +38,11 @@ import { fetchRoles, type Role } from "../../services/roles";
 import { formatRoleName } from "../../utils/roleDisplay";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "shared";
+import {
+  SETTINGS_BADGE_CLASS,
+  SETTINGS_BADGE_EMPTY,
+  SETTINGS_BADGE_WRAPPER_CLASS,
+} from "./badgeStyles";
 import {
   BuildingOffice2Icon,
   Squares2X2Icon,
@@ -121,31 +123,27 @@ const tabIcons: Record<
   users: KeyIcon,
 };
 
-const EMPTY_BADGE_TEXT = "Нет данных";
-const settingsBadgeClassName = `${defaultBadgeClassName} whitespace-nowrap sm:text-sm`;
-const settingsBadgeWrapperClassName = `${defaultBadgeWrapperClassName} justify-start`;
-
 const renderBadgeList = (items: string[]) => {
   if (!items.length) {
     return (
-      <span className={settingsBadgeClassName} title={EMPTY_BADGE_TEXT}>
-        {EMPTY_BADGE_TEXT}
+      <span className={SETTINGS_BADGE_CLASS} title={SETTINGS_BADGE_EMPTY}>
+        {SETTINGS_BADGE_EMPTY}
       </span>
     );
   }
-    return (
-      <div className={settingsBadgeWrapperClassName}>
-        {items.map((item, index) => (
-          <span
-            key={`${item}-${index}`}
-            className={settingsBadgeClassName}
-            title={item}
-          >
-            {item}
-          </span>
-        ))}
-      </div>
-    );
+  return (
+    <div className={SETTINGS_BADGE_WRAPPER_CLASS}>
+      {items.map((item, index) => (
+        <span
+          key={`${item}-${index}`}
+          className={SETTINGS_BADGE_CLASS}
+          title={item}
+        >
+          {item}
+        </span>
+      ))}
+    </div>
+  );
 };
 
 interface ItemForm {
@@ -532,7 +530,7 @@ export default function CollectionsPage() {
     (item: CollectionItem, type: CollectionKey) => {
       if (type === "departments") {
         const ids = parseIds(item.value);
-        if (!ids.length) return EMPTY_BADGE_TEXT;
+        if (!ids.length) return SETTINGS_BADGE_EMPTY;
         const names = ids
           .map(
             (id) =>
@@ -541,23 +539,23 @@ export default function CollectionsPage() {
               id,
           )
           .filter((name): name is string => Boolean(name));
-        return names.length ? names.join("\n") : EMPTY_BADGE_TEXT;
+        return names.length ? names.join("\n") : SETTINGS_BADGE_EMPTY;
       }
       if (type === "divisions") {
         const departmentName =
           departmentMap.get(item.value) ??
           allDepartments.find((department) => department._id === item.value)?.name ??
           item.value;
-        return departmentName || EMPTY_BADGE_TEXT;
+        return departmentName || SETTINGS_BADGE_EMPTY;
       }
       if (type === "positions") {
         const divisionName =
           divisionMap.get(item.value) ??
           allDivisions.find((division) => division._id === item.value)?.name ??
           item.value;
-        return divisionName || EMPTY_BADGE_TEXT;
+        return divisionName || SETTINGS_BADGE_EMPTY;
       }
-      return item.value || EMPTY_BADGE_TEXT;
+      return item.value || SETTINGS_BADGE_EMPTY;
     },
     [
       allDepartments,
@@ -742,10 +740,10 @@ export default function CollectionsPage() {
 
   const selectedDivisionDepartmentName = useMemo(() => {
     if (!selectedCollection || selectedCollection.type !== "divisions") {
-      return EMPTY_BADGE_TEXT;
+      return SETTINGS_BADGE_EMPTY;
     }
     const departmentId = selectedCollection.value;
-    if (!departmentId) return EMPTY_BADGE_TEXT;
+    if (!departmentId) return SETTINGS_BADGE_EMPTY;
     return (
       departmentMap.get(departmentId) ??
       allDepartments.find((department) => department._id === departmentId)?.name ??
@@ -816,7 +814,7 @@ export default function CollectionsPage() {
           </select>
         </div>
         <TabsList
-          className="hidden overflow-x-auto rounded-2xl bg-white/85 p-2 shadow-inner ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/50 dark:ring-slate-700 sm:grid sm:gap-3 sm:overflow-visible sm:p-3 sm:[grid-template-columns:repeat(6,minmax(11rem,1fr))] lg:p-4 lg:shadow"
+          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(6,minmax(9.5rem,1fr))]"
         >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
@@ -827,7 +825,7 @@ export default function CollectionsPage() {
                 value={t.key}
                 aria-label={t.label}
                 aria-labelledby={labelId}
-                className="group flex h-full min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2 text-center text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100/80 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:flex-col sm:gap-2 sm:px-4 sm:py-3"
+                className="group flex h-full min-h-[3.1rem] w-full items-center justify-center gap-2 rounded-xl border border-transparent px-2.5 py-2 text-center text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:flex-col sm:gap-1.5 sm:px-3 sm:py-2.5"
               >
                 {Icon ? (
                   <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-6" />
@@ -886,7 +884,7 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
+                    className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
@@ -899,13 +897,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                       onClick={() => openUserModal()}
                     >
                       Добавить
@@ -922,16 +920,16 @@ export default function CollectionsPage() {
                     showFilters={false}
                     onRowClick={(row) => openUserModal(row)}
                     wrapCellsAsBadges
-                    badgeClassName={settingsBadgeClassName}
-                    badgeWrapperClassName={settingsBadgeWrapperClassName}
-                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
+                    badgeClassName={SETTINGS_BADGE_CLASS}
+                    badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                    badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                   />
                 </div>
               ) : t.key === "employees" ? (
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
+                    className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
@@ -944,13 +942,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                       onClick={() => openEmployeeModal()}
                     >
                       Добавить
@@ -967,9 +965,9 @@ export default function CollectionsPage() {
                     showFilters={false}
                     onRowClick={(row) => openEmployeeModal(row)}
                     wrapCellsAsBadges
-                    badgeClassName={settingsBadgeClassName}
-                    badgeWrapperClassName={settingsBadgeWrapperClassName}
-                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
+                    badgeClassName={SETTINGS_BADGE_CLASS}
+                    badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                    badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                   />
                 </div>
               ) : t.key === "fleets" ? (
@@ -978,7 +976,7 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                   <form
                     onSubmit={submitCollectionSearch}
-                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3 lg:mt-1"
+                    className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:grid-cols-[minmax(0,18rem)_auto_auto] lg:items-center lg:gap-3"
                   >
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
@@ -993,13 +991,13 @@ export default function CollectionsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="btn btn-blue h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                     >
                       Искать
                     </button>
                     <button
                       type="button"
-                      className="btn btn-green h-10 rounded px-4 text-sm font-semibold lg:h-8 lg:px-3 lg:text-xs"
+                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
                       onClick={() => openCollectionModal()}
                     >
                       Добавить
@@ -1016,9 +1014,9 @@ export default function CollectionsPage() {
                     showFilters={false}
                     onRowClick={(row) => openCollectionModal(row)}
                     wrapCellsAsBadges
-                    badgeClassName={settingsBadgeClassName}
-                    badgeWrapperClassName={settingsBadgeWrapperClassName}
-                    badgeEmptyPlaceholder={EMPTY_BADGE_TEXT}
+                    badgeClassName={SETTINGS_BADGE_CLASS}
+                    badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                    badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                   />
                 </div>
               )}

@@ -11,7 +11,10 @@ import {
 } from "@testing-library/react";
 import CollectionsPage from "./CollectionsPage";
 import type { CollectionItem } from "../../services/collections";
-import { fetchCollectionItems } from "../../services/collections";
+import {
+  fetchCollectionItems,
+  fetchAllCollectionItems,
+} from "../../services/collections";
 import { settingsUserColumns } from "../../columns/settingsUserColumns";
 import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
 
@@ -28,6 +31,7 @@ const extractHeaderText = (header: unknown): string => {
 
 jest.mock("../../services/collections", () => ({
   fetchCollectionItems: jest.fn(),
+  fetchAllCollectionItems: jest.fn(),
   createCollectionItem: jest.fn(),
   updateCollectionItem: jest.fn(),
   removeCollectionItem: jest.fn(),
@@ -168,6 +172,9 @@ describe("CollectionsPage", () => {
   const mockedFetch = fetchCollectionItems as jest.MockedFunction<
     typeof fetchCollectionItems
   >;
+  const mockedFetchAll = fetchAllCollectionItems as jest.MockedFunction<
+    typeof fetchAllCollectionItems
+  >;
   const dataset: Record<
     string,
     Record<string, { items: CollectionItem[]; total: number }>
@@ -214,10 +221,16 @@ describe("CollectionsPage", () => {
 
   beforeEach(() => {
     mockedFetch.mockReset();
+    mockedFetchAll.mockReset();
     mockedFetch.mockImplementation(async (type: string, search = "") => {
       const byType = dataset[type] ?? {};
       const key = search || "";
       return byType[key] ?? byType[""] ?? { items: [], total: 0 };
+    });
+    mockedFetchAll.mockImplementation(async (type: string) => {
+      const byType = dataset[type] ?? {};
+      const defaultEntry = byType[""] ?? { items: [] };
+      return (defaultEntry.items ?? []) as CollectionItem[];
     });
   });
 

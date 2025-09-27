@@ -19,7 +19,7 @@ export class UpdateUserDto {
       body('name').optional().isString(),
       body('phone').optional().isString(),
       body('mobNumber').optional().isString(),
-      body('email').optional().isEmail(),
+      body('email').optional({ checkFalsy: true }).isEmail(),
       body('roleId').optional().isMongoId(),
       body('departmentId').optional().isMongoId(),
       body('divisionId').optional().isMongoId(),

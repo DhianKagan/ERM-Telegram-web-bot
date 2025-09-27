@@ -26,10 +26,18 @@ export interface User {
   permissions?: string[];
   /** Идентификатор роли */
   roleId?: string;
+  /** Название роли, если пришло с сервера */
+  roleName?: string;
   /** Идентификатор департамента */
   departmentId?: string;
+  /** Название департамента */
+  departmentName?: string;
   /** Идентификатор отдела */
   divisionId?: string;
+  /** Название отдела */
+  divisionName?: string;
   /** Идентификатор должности */
   positionId?: string;
+  /** Название должности */
+  positionName?: string;
 }

@@ -162,7 +162,13 @@ const parseIds = (value: string) =>
 const resolveReferenceName = (
   map: Map<string, string>,
   id?: string | null,
+  fallbackName?: string | null,
 ): string => {
+  const directName =
+    typeof fallbackName === "string" && fallbackName.trim().length
+      ? fallbackName.trim()
+      : "";
+  if (directName) return directName;
   if (typeof id !== "string") return "";
   const trimmed = id.trim();
   if (!trimmed) return "";
@@ -762,23 +768,42 @@ export default function CollectionsPage() {
   const employeeRows = useMemo<EmployeeRow[]>(
     () =>
       paginatedUsers.map((user) => {
-        const roleNameFromMap = resolveReferenceName(roleMap, user.roleId);
+        const roleId =
+          typeof user.roleId === "string" ? user.roleId.trim() : "";
+        const departmentId =
+          typeof user.departmentId === "string" ? user.departmentId.trim() : "";
+        const divisionId =
+          typeof user.divisionId === "string" ? user.divisionId.trim() : "";
+        const positionId =
+          typeof user.positionId === "string" ? user.positionId.trim() : "";
+        const roleNameFromMap = resolveReferenceName(
+          roleMap,
+          roleId,
+          user.roleName,
+        );
         const departmentName = resolveReferenceName(
           departmentMap,
-          user.departmentId,
+          departmentId,
+          user.departmentName,
         );
         const divisionName = resolveReferenceName(
           divisionMap,
-          user.divisionId,
+          divisionId,
+          user.divisionName,
         );
         const positionName = resolveReferenceName(
           positionMap,
-          user.positionId,
+          positionId,
+          user.positionName,
         );
         const roleLabel =
           roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
         return {
           ...user,
+          roleId,
+          departmentId,
+          divisionId,
+          positionId,
           roleName: roleLabel,
           departmentName,
           divisionName,

@@ -75,19 +75,44 @@ export default function Profile() {
   const positionMap = useMemo(() => parseCollection(positions), [positions]);
 
   const departmentName = useMemo(() => {
-    if (!user?.departmentId) return "";
-    return departmentMap.get(user.departmentId) || "";
-  }, [departmentMap, user?.departmentId]);
+    const fallback =
+      typeof user?.departmentName === "string"
+        ? user.departmentName.trim()
+        : "";
+    if (fallback) return fallback;
+    const id =
+      typeof user?.departmentId === "string"
+        ? user.departmentId.trim()
+        : "";
+    if (!id) return "";
+    return departmentMap.get(id) || id;
+  }, [departmentMap, user?.departmentId, user?.departmentName]);
 
   const divisionName = useMemo(() => {
-    if (!user?.divisionId) return "";
-    return divisionMap.get(user.divisionId) || "";
-  }, [divisionMap, user?.divisionId]);
+    const fallback =
+      typeof user?.divisionName === "string"
+        ? user.divisionName.trim()
+        : "";
+    if (fallback) return fallback;
+    const id =
+      typeof user?.divisionId === "string" ? user.divisionId.trim() : "";
+    if (!id) return "";
+    return divisionMap.get(id) || id;
+  }, [divisionMap, user?.divisionId, user?.divisionName]);
 
   const positionName = useMemo(() => {
-    if (!user?.positionId) return "";
-    return positionMap.get(user.positionId) || "";
-  }, [positionMap, user?.positionId]);
+    const fallback =
+      typeof user?.positionName === "string"
+        ? user.positionName.trim()
+        : "";
+    if (fallback) return fallback;
+    const id =
+      typeof user?.positionId === "string"
+        ? user.positionId.trim()
+        : "";
+    if (!id) return "";
+    return positionMap.get(id) || id;
+  }, [positionMap, user?.positionId, user?.positionName]);
 
   const updateField = <K extends keyof EditableProfileForm>(
     key: K,

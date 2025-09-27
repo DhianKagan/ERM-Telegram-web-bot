@@ -3,6 +3,7 @@
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
 import type { User } from "../types/user";
+import { normalizeUser } from "./normalizeUser";
 
 type FetchOptions = Parameters<typeof authFetch>[1];
 
@@ -10,7 +11,8 @@ export const getProfile = async (options?: FetchOptions): Promise<User> => {
   const res = await authFetch("/api/v1/auth/profile", options);
   if (!res.ok) throw new Error("unauthorized");
   const data = await res.json();
-  return { ...data, id: String(data.telegram_id ?? "") } as User;
+  const normalized = normalizeUser(data);
+  return { ...normalized, id: String(normalized.telegram_id ?? "") } as User;
 };
 
 interface ProfileData {
@@ -46,7 +48,8 @@ export const updateProfile = async (data: ProfileData): Promise<User> => {
     throw new Error(text || "Не удалось обновить профиль");
   }
   const updated = await res.json();
-  return { ...updated, id: String(updated.telegram_id ?? "") } as User;
+  const normalized = normalizeUser(updated);
+  return { ...normalized, id: String(normalized.telegram_id ?? "") } as User;
 };
 
 export const logout = () =>

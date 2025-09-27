@@ -87,9 +87,6 @@ router.post(
         if (typeof raw !== 'string') return false;
         const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
         const normalized = normalizeValueByType(type, raw);
-        if (type === 'departments') {
-          return true;
-        }
         return normalized.length > 0;
       })
       .withMessage('Значение элемента обязательно'),
@@ -100,7 +97,7 @@ router.post(
       const type = body.type.trim();
       const name = body.name.trim();
       const value = normalizeValueByType(type, body.value);
-      if (!value && type !== 'departments') {
+      if (!value) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка валидации',

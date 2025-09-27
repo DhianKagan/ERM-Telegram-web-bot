@@ -2,6 +2,7 @@
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
 import type { User } from "../types/user";
+import { normalizeUser, normalizeUsers } from "./normalizeUser";
 
 export interface UserDetails extends User {
   email?: string;
@@ -81,13 +82,15 @@ export const fetchUser = async (
     const text = await res.text().catch(() => "");
     throw new Error(text || "Не удалось загрузить пользователя");
   }
-  return res.json();
+  const data = await res.json();
+  return normalizeUser(data) as UserDetails;
 };
 
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await authFetch("/api/v1/users");
   if (response.ok) {
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? (normalizeUsers(data) as User[]) : [];
   }
   const text = await response.text().catch(() => "");
   throw new Error(text || "Не удалось загрузить пользователей");
@@ -122,7 +125,8 @@ export const createUser = (
       }
       throw new Error(message);
     }
-    return r.json();
+    const data = await r.json();
+    return normalizeUser(data);
   });
 };
 
@@ -189,6 +193,7 @@ export const updateUser = (
       }
       throw new Error(message);
     }
-    return r.json();
+    const data = await r.json();
+    return normalizeUser(data) as UserDetails;
   });
 };

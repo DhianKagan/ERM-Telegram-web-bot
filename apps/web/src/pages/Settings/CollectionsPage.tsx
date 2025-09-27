@@ -483,10 +483,10 @@ export default function CollectionsPage() {
       valueToSave = parseIds(form.value).join(",");
     } else {
       valueToSave = form.value.trim();
-    }
-    if (!valueToSave.trim()) {
-      setHint("Заполните значение элемента.");
-      return;
+      if (!valueToSave) {
+        setHint("Заполните значение элемента.");
+        return;
+      }
     }
     try {
       let saved: CollectionItem | null = null;
@@ -1405,7 +1405,6 @@ export default function CollectionsPage() {
               employeeFormMode === "update" ? selectedEmployeeId : undefined
             }
             mode={employeeFormMode}
-            onClose={() => setIsEmployeeModalOpen(false)}
             onSaved={handleEmployeeSaved}
           />
         </div>

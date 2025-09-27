@@ -45,6 +45,21 @@ router.get('/:type', ...base, async (req, res) => {
   res.json(items);
 });
 
+const normalizeDepartmentValue = (raw: string): string =>
+  raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(',');
+
+const normalizeValueByType = (type: string, raw: string): string => {
+  const safeType = type.trim();
+  if (safeType === 'departments') {
+    return normalizeDepartmentValue(raw);
+  }
+  return raw.trim();
+};
+
 router.post(
   '/',
   ...base,
@@ -68,8 +83,12 @@ router.post(
       .isString()
       .withMessage('Некорректное значение элемента')
       .bail()
-      .custom((raw) => {
+      .custom((raw, { req }) => {
         if (typeof raw !== 'string') return false;
+        const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
+        if (type === 'departments') {
+          return true;
+        }
         return raw.trim().length > 0;
       })
       .withMessage('Значение элемента обязательно'),
@@ -77,7 +96,19 @@ router.post(
   async (req, res, next: NextFunction) => {
     try {
       const body = req.body as CollectionItemAttrs;
-      const item = await repo.create(body);
+      const type = body.type.trim();
+      const name = body.name.trim();
+      const value = normalizeValueByType(type, body.value);
+      if (type !== 'departments' && !value) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка валидации',
+          status: 400,
+          detail: 'Значение элемента обязательно',
+        });
+        return;
+      }
+      const item = await repo.create({ type, name, value });
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof MongooseError.ValidationError) {
@@ -113,20 +144,45 @@ router.put(
     body('value')
       .optional()
       .isString()
-      .withMessage('Некорректное значение элемента')
-      .bail()
-      .custom((raw) => {
-        if (typeof raw !== 'string') return false;
-        return raw.trim().length > 0;
-      })
-      .withMessage('Значение элемента не может быть пустым'),
+      .withMessage('Некорректное значение элемента'),
   ]),
   async (req, res, next: NextFunction) => {
     try {
-      const item = await repo.update(
-        req.params.id,
-        req.body as Partial<CollectionItemAttrs>,
+      const existing = await CollectionItem.findById(req.params.id).select(
+        'type',
       );
+      if (!existing) {
+        res.sendStatus(404);
+        return;
+      }
+      const body = req.body as Partial<CollectionItemAttrs>;
+      const payload: Partial<CollectionItemAttrs> = {};
+      if (typeof body.name === 'string') {
+        payload.name = body.name.trim();
+        if (!payload.name) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Ошибка валидации',
+            status: 400,
+            detail: 'Название элемента не может быть пустым',
+          });
+          return;
+        }
+      }
+      if (typeof body.value === 'string') {
+        const normalizedValue = normalizeValueByType(existing.type, body.value);
+        if (existing.type !== 'departments' && !normalizedValue) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Ошибка валидации',
+            status: 400,
+            detail: 'Значение элемента не может быть пустым',
+          });
+          return;
+        }
+        payload.value = normalizedValue;
+      }
+      const item = await repo.update(existing.id, payload);
       if (!item) {
         res.sendStatus(404);
         return;

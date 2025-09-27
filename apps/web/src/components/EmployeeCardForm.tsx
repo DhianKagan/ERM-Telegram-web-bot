@@ -31,7 +31,6 @@ interface EmployeeCardFormProps {
   telegramId?: string;
   className?: string;
   mode?: "create" | "update";
-  onClose?: () => void;
   onSaved?: (user: UserDetails) => void;
 }
 
@@ -77,7 +76,6 @@ export default function EmployeeCardForm({
   telegramId,
   className,
   mode,
-  onClose,
   onSaved,
 }: EmployeeCardFormProps) {
   const { user } = useAuth();
@@ -320,27 +318,15 @@ export default function EmployeeCardForm({
 
   return (
     <div className={clsx("space-y-4", className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">
-            {isCreateMode ? "Новый сотрудник" : "Карточка сотрудника"}
-          </h2>
-          <p className="text-sm text-gray-500">
-            {isCreateMode
-              ? "Заполните данные и сохраните, чтобы создать запись."
-              : "Измените данные и подтвердите сохранение."}
-          </p>
-        </div>
-        {onClose && (
-          <button
-            type="button"
-            className="text-gray-500 transition hover:text-gray-700"
-            aria-label="Закрыть"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        )}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">
+          {isCreateMode ? "Новый сотрудник" : "Карточка сотрудника"}
+        </h2>
+        <p className="text-sm text-gray-500">
+          {isCreateMode
+            ? "Заполните данные и сохраните, чтобы создать запись."
+            : "Измените данные и подтвердите сохранение."}
+        </p>
       </div>
       {loading && <div>Загрузка...</div>}
       {!loading && isCreateMode && prefillError && (

@@ -23,7 +23,6 @@ export default function EmployeeDialogRoute() {
           telegramId={employeeId}
           className="mx-auto max-w-3xl"
           mode="update"
-          onClose={close}
         />
       </Suspense>
     </Modal>

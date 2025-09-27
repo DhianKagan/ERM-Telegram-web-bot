@@ -481,8 +481,12 @@ export default function CollectionsPage() {
     let valueToSave = form.value;
     if (active === "departments") {
       valueToSave = parseIds(form.value).join(",");
-    } else if (active === "divisions" || active === "positions") {
+    } else {
       valueToSave = form.value.trim();
+    }
+    if (!valueToSave.trim()) {
+      setHint("Заполните значение элемента.");
+      return;
     }
     try {
       let saved: CollectionItem | null = null;

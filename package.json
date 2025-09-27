@@ -9,7 +9,7 @@
     "pretest:unit": "pnpm --filter shared build",
     "pretest:api": "pnpm --filter shared build",
     "pretest:e2e": "./scripts/ensure_playwright_browsers.sh && ./scripts/run_playwright_diagnostics.sh && ./scripts/build_with_tmp.sh",
-    "build": "pnpm --filter shared build && pnpm -r --filter '!shared' build && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist --rootDir . --types node && node dist/scripts/db/ensureDefaults.js",
+    "build": "pnpm --filter shared build && pnpm -r --filter '!shared' build && npx tsc scripts/db/ensureDefaults.ts scripts/db/repairCollections.ts --module commonjs --target ES2020 --outDir dist --rootDir . --types node && node dist/scripts/db/ensureDefaults.js",
     "dev": "PNPM_SCRIPT_TIMEOUT=0 pnpm -r dev",
     "lint": "pnpm -r lint",
     "a11y": "ts-node scripts/a11y.ts",
@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
     "prepare-client": "./scripts/build_client.sh",
-    "size": "size-limit"
+    "size": "size-limit",
+    "repair:collections": "node dist/scripts/db/repairCollections.js"
   },
   "devDependencies": {
     "@axe-core/cli": "^4.10.2",

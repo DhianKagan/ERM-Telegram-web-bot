@@ -1,10 +1,9 @@
 // Назначение: запросы к API пользователей
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
-import type { User } from "shared";
+import type { User } from "../types/user";
 
 export interface UserDetails extends User {
-  telegram_username?: string | null;
   email?: string;
   mobNumber?: string;
   name?: string;

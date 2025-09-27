@@ -38,7 +38,7 @@ import {
 import { fetchRoles, type Role } from "../../services/roles";
 import { formatRoleName } from "../../utils/roleDisplay";
 import UserForm, { UserFormData } from "./UserForm";
-import type { User } from "shared";
+import type { User } from "../../types/user";
 import {
   SETTINGS_BADGE_CLASS,
   SETTINGS_BADGE_EMPTY,
@@ -407,7 +407,7 @@ export default function CollectionsPage() {
 
   const mapUserToForm = (user?: User): UserFormData => ({
     telegram_id: user?.telegram_id,
-    username: user?.username ?? "",
+    username: user?.telegram_username ?? user?.username ?? "",
     name: user?.name ?? "",
     phone: user?.phone ?? "",
     mobNumber: user?.mobNumber ?? "",
@@ -744,11 +744,8 @@ export default function CollectionsPage() {
   const totalPages = Math.ceil(total / limit) || 1;
   const filteredUsers = users.filter((u) => {
     const q = userQuery.toLowerCase();
-    return (
-      !q ||
-      u.username?.toLowerCase().includes(q) ||
-      u.name?.toLowerCase().includes(q)
-    );
+    const login = (u.telegram_username ?? u.username ?? "").toLowerCase();
+    return !q || login.includes(q) || u.name?.toLowerCase().includes(q);
   });
   const userTotalPages = Math.ceil(filteredUsers.length / limit) || 1;
   const paginatedUsers = filteredUsers.slice(

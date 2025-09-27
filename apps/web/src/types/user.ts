@@ -3,13 +3,13 @@
 
 export interface User {
   /** Строковый идентификатор пользователя */
-  id: string;
+  id?: string;
   /** Telegram ID */
   telegram_id?: number;
   /** Имя пользователя в Telegram */
   telegram_username?: string | null;
   /** Логин пользователя, совпадает с Telegram ID */
-  username?: string;
+  username?: string | null;
   /** Отображаемое имя */
   name?: string;
   /** Основной телефон */

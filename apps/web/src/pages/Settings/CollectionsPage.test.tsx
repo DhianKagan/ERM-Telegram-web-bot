@@ -2,6 +2,7 @@
 // Назначение файла: проверяет сброс поиска при переключении вкладок настроек.
 // Основные модули: React, @testing-library/react, CollectionsPage.
 import React from "react";
+import "@testing-library/jest-dom";
 import {
   fireEvent,
   render,
@@ -17,6 +18,8 @@ import {
 } from "../../services/collections";
 import { settingsUserColumns } from "../../columns/settingsUserColumns";
 import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
+import { fetchUsers } from "../../services/users";
+import type { User } from "../../types/user";
 
 const extractHeaderText = (header: unknown): string => {
   if (typeof header === "string") return header;
@@ -50,9 +53,18 @@ jest.mock("../../components/DataTable", () => ({
   default: ({
     data,
     columns = [],
+    onRowClick,
   }: {
     data: Array<Record<string, unknown>>;
-    columns?: Array<{ header?: React.ReactNode }>;
+    columns?: Array<{
+      header?: React.ReactNode;
+      accessorKey?: string;
+      cell?: (context: {
+        row: { original: Record<string, unknown> };
+        getValue: () => unknown;
+      }) => React.ReactNode;
+    }>;
+    onRowClick?: (row: Record<string, unknown>) => void;
   }) => (
     <div data-testid="data-table">
       <div data-testid="data-table-headers">
@@ -63,8 +75,48 @@ jest.mock("../../components/DataTable", () => ({
         ))}
       </div>
       <div data-testid="data-table-rows">
-        {data.map((row, index) => (
-          <div key={index}>{(row.name as string) ?? "row"}</div>
+        {data.map((row, rowIndex) => (
+          <div
+            key={rowIndex}
+            role="button"
+            tabIndex={0}
+            data-testid={`data-table-row-${rowIndex}`}
+            onClick={() => onRowClick?.(row)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onRowClick?.(row);
+              }
+            }}
+          >
+            {columns.map((column, columnIndex) => {
+              const key = `cell-${rowIndex}-${columnIndex}`;
+              if (typeof column.cell === "function") {
+                const value = column.cell({
+                  row: { original: row },
+                  getValue: () =>
+                    column.accessorKey
+                      ? (row as Record<string, unknown>)[column.accessorKey]
+                      : undefined,
+                });
+                return (
+                  <span data-testid={key} key={key}>
+                    {value}
+                  </span>
+                );
+              }
+              if (column.accessorKey) {
+                return (
+                  <span data-testid={key} key={key}>
+                    {(row as Record<string, unknown>)[
+                      column.accessorKey
+                    ] as React.ReactNode}
+                  </span>
+                );
+              }
+              return <span data-testid={key} key={key} />;
+            })}
+          </div>
         ))}
       </div>
     </div>
@@ -175,6 +227,7 @@ describe("CollectionsPage", () => {
   const mockedFetchAll = fetchAllCollectionItems as jest.MockedFunction<
     typeof fetchAllCollectionItems
   >;
+  const mockedFetchUsers = fetchUsers as jest.MockedFunction<typeof fetchUsers>;
   const dataset: Record<
     string,
     Record<string, { items: CollectionItem[]; total: number }>
@@ -222,6 +275,7 @@ describe("CollectionsPage", () => {
   beforeEach(() => {
     mockedFetch.mockReset();
     mockedFetchAll.mockReset();
+    mockedFetchUsers.mockReset();
     mockedFetch.mockImplementation(async (type: string, search = "") => {
       const byType = dataset[type] ?? {};
       const key = search || "";
@@ -232,6 +286,7 @@ describe("CollectionsPage", () => {
       const defaultEntry = byType[""] ?? { items: [] };
       return (defaultEntry.items ?? []) as CollectionItem[];
     });
+    mockedFetchUsers.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -333,5 +388,30 @@ describe("CollectionsPage", () => {
     );
 
     expect(headerTexts).toEqual(expectedHeaders);
+  });
+
+  it("показывает фактический логин в таблице и карточке пользователя", async () => {
+    const user: User = {
+      telegram_id: 101,
+      telegram_username: "operator",
+      username: "101",
+      name: "Оператор",
+      role: "user",
+    };
+    mockedFetchUsers.mockResolvedValueOnce([user]);
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+
+    const row = await screen.findByTestId("data-table-row-0");
+    expect(within(row).getByText("operator")).toBeInTheDocument();
+
+    fireEvent.click(row);
+
+    const modal = await screen.findByTestId("modal");
+    expect(within(modal).getByText("operator")).toBeInTheDocument();
   });
 });

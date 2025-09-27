@@ -86,7 +86,6 @@ router.post(
       .custom((raw, { req }) => {
         if (typeof raw !== 'string') return false;
         const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
-        if (type === 'departments') return true;
         const normalized = normalizeValueByType(type, raw);
         return normalized.length > 0;
       })
@@ -98,12 +97,12 @@ router.post(
       const type = body.type.trim();
       const name = body.name.trim();
       const value = normalizeValueByType(type, body.value);
-      if (!value && type !== 'departments') {
+      if (!value) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка валидации',
           status: 400,
-          detail: 'Значение элемента обязательно',
+          detail: 'Поля: value — Значение элемента обязательно',
         });
         return;
       }
@@ -170,12 +169,12 @@ router.put(
       }
       if (typeof body.value === 'string') {
         const normalizedValue = normalizeValueByType(existing.type, body.value);
-        if (!normalizedValue && existing.type !== 'departments') {
+        if (!normalizedValue) {
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Ошибка валидации',
             status: 400,
-            detail: 'Значение элемента не может быть пустым',
+            detail: 'Поля: value — Значение элемента не может быть пустым',
           });
           return;
         }

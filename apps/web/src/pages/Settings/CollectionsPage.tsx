@@ -744,8 +744,14 @@ export default function CollectionsPage() {
   const totalPages = Math.ceil(total / limit) || 1;
   const filteredUsers = users.filter((u) => {
     const q = userQuery.toLowerCase();
-    const login = (u.telegram_username ?? u.username ?? "").toLowerCase();
-    return !q || login.includes(q) || u.name?.toLowerCase().includes(q);
+    const login = (u.username ?? "").toLowerCase();
+    const telegramLogin = u.telegram_username?.toLowerCase() ?? "";
+    return (
+      !q ||
+      login.includes(q) ||
+      telegramLogin.includes(q) ||
+      u.name?.toLowerCase().includes(q)
+    );
   });
   const userTotalPages = Math.ceil(filteredUsers.length / limit) || 1;
   const paginatedUsers = filteredUsers.slice(

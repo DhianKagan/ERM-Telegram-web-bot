@@ -86,9 +86,6 @@ router.post(
       .custom((raw, { req }) => {
         if (typeof raw !== 'string') return false;
         const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
-        if (type === 'departments') {
-          return true;
-        }
         const normalized = normalizeValueByType(type, raw);
         return normalized.length > 0;
       })
@@ -100,7 +97,7 @@ router.post(
       const type = body.type.trim();
       const name = body.name.trim();
       const value = normalizeValueByType(type, body.value);
-      if (type !== 'departments' && !value) {
+      if (!value) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка валидации',
@@ -172,7 +169,7 @@ router.put(
       }
       if (typeof body.value === 'string') {
         const normalizedValue = normalizeValueByType(existing.type, body.value);
-        if (existing.type !== 'departments' && !normalizedValue) {
+        if (!normalizedValue) {
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Ошибка валидации',

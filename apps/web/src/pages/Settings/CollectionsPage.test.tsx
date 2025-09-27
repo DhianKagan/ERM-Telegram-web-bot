@@ -414,4 +414,34 @@ describe("CollectionsPage", () => {
     const modal = await screen.findByTestId("modal");
     expect(within(modal).getByText("operator")).toBeInTheDocument();
   });
+
+  it("возвращает пользователя при поиске по фактическому логину", async () => {
+    const user: User = {
+      telegram_id: 202,
+      telegram_username: "operator",
+      username: "202",
+      name: "Оператор",
+      role: "user",
+    };
+    mockedFetchUsers.mockResolvedValueOnce([user]);
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+
+    const usersPanel = await screen.findByTestId("tab-content-users");
+    const rowsContainer = within(usersPanel).getByTestId("data-table-rows");
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+
+    const searchInput = within(usersPanel).getByPlaceholderText("Имя или логин");
+    fireEvent.change(searchInput, { target: { value: "202" } });
+
+    fireEvent.click(within(usersPanel).getByRole("button", { name: "Искать" }));
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+    expect(within(usersPanel).getByText("operator")).toBeInTheDocument();
+  });
 });

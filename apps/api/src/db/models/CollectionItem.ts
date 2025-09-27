@@ -28,7 +28,21 @@ export interface CollectionItemDocument
 const collectionItemSchema = new Schema<CollectionItemDocument>({
   type: { type: String, required: true },
   name: { type: String, required: true },
-  value: { type: String, required: true },
+  value: {
+    type: String,
+    required(this: CollectionItemDocument) {
+      return this.type !== 'departments';
+    },
+    validate: {
+      validator(this: CollectionItemDocument, value?: string) {
+        if (this.type === 'departments') {
+          return typeof value === 'string';
+        }
+        return typeof value === 'string' && value.trim().length > 0;
+      },
+      message: 'Значение элемента обязательно',
+    },
+  },
   meta: { type: Schema.Types.Mixed, default: undefined },
 });
 

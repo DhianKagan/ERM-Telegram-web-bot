@@ -93,7 +93,16 @@ describe('POST /api/v1/collections', function () {
     assert.equal(response.status, 400, JSON.stringify(response.body));
     assert.equal(response.body.status, 400);
     assert.equal(response.body.title, 'Ошибка валидации');
-    assert.match(String(response.body.detail), /Значение элемента обязательно/);
+    assert.equal(response.body.detail, 'Ошибка валидации');
+    const messages = Array.isArray(response.body.errors)
+      ? response.body.errors
+          .map((error: { msg?: string }) => error?.msg)
+          .filter((msg: string | undefined): msg is string => Boolean(msg))
+      : [];
+    assert.ok(
+      messages.some((msg: string) => /Значение элемента обязательно/.test(msg)),
+      JSON.stringify(response.body),
+    );
   });
 
   it('возвращает 400 для других типов с пустым value', async () => {
@@ -109,5 +118,12 @@ describe('POST /api/v1/collections', function () {
     assert.equal(response.status, 400);
     assert.equal(response.body.status, 400);
     assert.equal(response.body.title, 'Ошибка валидации');
+    assert.equal(response.body.detail, 'Ошибка валидации');
+    if (Array.isArray(response.body.errors) && response.body.errors.length) {
+      const messages = response.body.errors
+        .map((error: { msg?: string }) => error?.msg)
+        .filter((msg: string | undefined): msg is string => Boolean(msg));
+      assert.ok(messages.length > 0, 'Нет сообщений об ошибках');
+    }
   });
 });

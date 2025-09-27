@@ -1,5 +1,6 @@
 // Назначение: запросы к API универсальных коллекций
-// Основные модули: authFetch
+// Основные модули: authFetch, i18n
+import i18n from "../i18n";
 import authFetch from "../utils/authFetch";
 
 export interface CollectionItemMeta {
@@ -31,29 +32,153 @@ export interface CollectionItem {
   meta?: CollectionItemMeta;
 }
 
-const parseErrorMessage = (status: number, body: string) => {
-  let message = "";
+type ProblemValidationError = {
+  msg?: string;
+  message?: string;
+  [key: string]: unknown;
+};
+
+type ProblemResponse = {
+  error?: string;
+  detail?: unknown;
+  message?: string;
+  errors?: ProblemValidationError[];
+};
+
+type ParseErrorOptions = {
+  collectionType?: string;
+};
+
+const validationMessageKeys: Record<string, string> = {
+  "Некорректный тип коллекции": "collections.errors.invalidType",
+  "Тип коллекции обязателен": "collections.errors.typeRequired",
+  "Некорректное название элемента": "collections.errors.invalidName",
+  "Название элемента обязательно": "collections.errors.nameRequired",
+  "Некорректное значение элемента": "collections.errors.invalidValue",
+  "Значение элемента обязательно": "collections.errors.valueRequired",
+  "Значение элемента не может быть пустым": "collections.errors.valueRequired",
+  "Ошибка валидации": "collections.errors.generalValidation",
+};
+
+const typeSpecificValidationKeys: Record<string, Record<string, string>> = {
+  departments: {
+    "Значение элемента обязательно":
+      "collections.errors.departmentsMustHaveDivisions",
+  },
+};
+
+const tryParseJson = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+};
+
+const translateValidationMessage = (
+  raw: string | undefined,
+  options?: ParseErrorOptions,
+): string => {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const collectionType = options?.collectionType;
+  const specificKey =
+    collectionType && typeSpecificValidationKeys[collectionType]?.[trimmed];
+  const key = specificKey ?? validationMessageKeys[trimmed];
+  if (key) return i18n.t(key);
+  return trimmed;
+};
+
+const translateValidationErrors = (
+  errors: ProblemValidationError[] | undefined,
+  options?: ParseErrorOptions,
+): string[] => {
+  if (!errors?.length) return [];
+  const translated = errors
+    .map((error) => {
+      const base =
+        typeof error?.msg === "string"
+          ? error.msg
+          : typeof error?.message === "string"
+            ? error.message
+            : "";
+      return translateValidationMessage(base, options);
+    })
+    .filter(Boolean);
+  if (translated.length) return translated;
+  return [i18n.t("collections.errors.generalValidation")];
+};
+
+const extractMessagesFromPayload = (
+  payload: unknown,
+  options?: ParseErrorOptions,
+): string[] => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) {
+    const asErrors = payload.filter(
+      (item): item is ProblemValidationError =>
+        Boolean(item && typeof item === "object" && "msg" in item),
+    );
+    if (asErrors.length) return translateValidationErrors(asErrors, options);
+    const directStrings = payload
+      .map((item) =>
+        typeof item === "string"
+          ? translateValidationMessage(item, options)
+          : "",
+      )
+      .filter(Boolean);
+    if (directStrings.length) return directStrings;
+  }
+  if (typeof payload === "string") {
+    const parsed = tryParseJson(payload);
+    if (parsed !== undefined) {
+      const nested = extractMessagesFromPayload(parsed, options);
+      if (nested.length) return nested;
+    }
+    const translated = translateValidationMessage(payload, options);
+    return translated ? [translated] : [];
+  }
+  return [];
+};
+
+export const parseErrorMessage = (
+  status: number,
+  body: string,
+  options?: ParseErrorOptions,
+): string => {
+  const fallback =
+    status === 429
+      ? i18n.t("collections.fallback.rateLimited")
+      : status === 403
+        ? i18n.t("collections.fallback.forbidden")
+        : i18n.t("collections.fallback.loadFailed");
+
   if (body) {
-    try {
-      const data = JSON.parse(body) as {
-        error?: string;
-        detail?: string;
-        message?: string;
-      };
-      message = data.error || data.detail || data.message || "";
-    } catch {
-      message = body;
+    const parsed = tryParseJson(body) as ProblemResponse | undefined;
+    if (parsed) {
+      const errorMessages = translateValidationErrors(parsed.errors, options);
+      if (errorMessages.length) {
+        return Array.from(new Set(errorMessages)).join(". ");
+      }
+      const detailMessages = extractMessagesFromPayload(
+        parsed.detail,
+        options,
+      );
+      if (detailMessages.length) {
+        return Array.from(new Set(detailMessages)).join(". ");
+      }
+      const generalMessage =
+        translateValidationMessage(parsed.error, options) ||
+        translateValidationMessage(parsed.message, options);
+      if (generalMessage) return generalMessage;
+    } else {
+      const translated = translateValidationMessage(body, options);
+      if (translated) return translated;
     }
   }
-  if (!message) {
-    message =
-      status === 429
-        ? "Достигнут лимит запросов, попробуйте позже."
-        : status === 403
-          ? "Нет доступа к коллекции"
-          : "Не удалось загрузить элементы";
-  }
-  return message;
+
+  return fallback;
 };
 
 export const fetchCollectionItems = async (
@@ -67,7 +192,7 @@ export const fetchCollectionItems = async (
   );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(parseErrorMessage(res.status, body));
+    throw new Error(parseErrorMessage(res.status, body, { collectionType: type }));
   }
   return res.json();
 };
@@ -127,7 +252,7 @@ export const createCollectionItem = (
   }).then(async (r) => {
     if (!r.ok) {
       const body = await r.text().catch(() => "");
-      throw new Error(parseErrorMessage(r.status, body));
+      throw new Error(parseErrorMessage(r.status, body, { collectionType: type }));
     }
     return r.json();
   });
@@ -135,6 +260,7 @@ export const createCollectionItem = (
 export const updateCollectionItem = (
   id: string,
   data: { name: string; value: string },
+  options?: ParseErrorOptions,
 ) =>
   authFetch(`/api/v1/collections/${id}`, {
     method: "PUT",
@@ -144,7 +270,7 @@ export const updateCollectionItem = (
   }).then(async (r) => {
     if (!r.ok) {
       const body = await r.text().catch(() => "");
-      throw new Error(parseErrorMessage(r.status, body));
+      throw new Error(parseErrorMessage(r.status, body, options));
     }
     return r.json();
   });

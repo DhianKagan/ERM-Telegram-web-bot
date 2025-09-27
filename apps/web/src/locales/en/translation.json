@@ -6,6 +6,23 @@
   "author": "author",
   "cancel": "Cancel",
   "close": "Close",
+  "collections": {
+    "errors": {
+      "departmentsMustHaveDivisions": "Add at least one division to the department",
+      "generalValidation": "Please fix the errors and try again",
+      "invalidName": "Invalid item name",
+      "invalidType": "Invalid collection type",
+      "invalidValue": "Invalid item value",
+      "nameRequired": "Item name is required",
+      "typeRequired": "Collection type is required",
+      "valueRequired": "Item value is required"
+    },
+    "fallback": {
+      "forbidden": "No access to this collection",
+      "loadFailed": "Failed to load items",
+      "rateLimited": "Too many requests, please try again later."
+    }
+  },
   "collapse": "Collapse",
   "comment": "Comment",
   "controller": "Controller",

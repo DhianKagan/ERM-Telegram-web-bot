@@ -8,11 +8,13 @@ import { sendProblem } from '../utils/problem';
 export async function optimize(req: Request, res: Response): Promise<void> {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const errorList = errors.array();
     sendProblem(req, res, {
       type: 'about:blank',
       title: 'Ошибка валидации',
       status: 400,
-      detail: JSON.stringify(errors.array()),
+      detail: 'Ошибка валидации',
+      errors: errorList,
     });
     return;
   }

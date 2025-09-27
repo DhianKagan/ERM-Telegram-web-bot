@@ -93,7 +93,10 @@ describe('POST /api/v1/collections', function () {
     assert.equal(response.status, 400, JSON.stringify(response.body));
     assert.equal(response.body.status, 400);
     assert.equal(response.body.title, 'Ошибка валидации');
-    assert.equal(response.body.detail, 'Ошибка валидации');
+    assert.equal(
+      response.body.detail,
+      'Поля: value — Значение элемента обязательно',
+    );
     const messages = Array.isArray(response.body.errors)
       ? response.body.errors
           .map((error: { msg?: string }) => error?.msg)
@@ -118,7 +121,10 @@ describe('POST /api/v1/collections', function () {
     assert.equal(response.status, 400);
     assert.equal(response.body.status, 400);
     assert.equal(response.body.title, 'Ошибка валидации');
-    assert.equal(response.body.detail, 'Ошибка валидации');
+    assert.equal(
+      response.body.detail,
+      'Поля: value — Значение элемента обязательно',
+    );
     if (Array.isArray(response.body.errors) && response.body.errors.length) {
       const messages = response.body.errors
         .map((error: { msg?: string }) => error?.msg)

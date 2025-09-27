@@ -1,7 +1,7 @@
 // Назначение файла: колонки таблицы сотрудников с отображением связанных названий
-// Основные модули: @tanstack/react-table, shared/types
+// Основные модули: @tanstack/react-table, types/user
 import type { ColumnDef } from "@tanstack/react-table";
-import type { User } from "shared";
+import type { User } from "../types/user";
 import { formatRoleName } from "../utils/roleDisplay";
 
 export interface EmployeeRow extends User {
@@ -19,6 +19,7 @@ export const settingsEmployeeColumns: ColumnDef<EmployeeRow>[] = [
   {
     accessorKey: "username",
     header: "Логин",
+    cell: ({ row }) => row.original.telegram_username ?? row.original.username ?? "",
     meta: { minWidth: "8rem", maxWidth: "16rem" },
   },
   { accessorKey: "name", header: "Имя", meta: { minWidth: "8rem", maxWidth: "16rem" } },

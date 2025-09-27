@@ -1,12 +1,17 @@
 // Назначение файла: колонки таблицы пользователей в настройках
-// Основные модули: @tanstack/react-table, shared/types
+// Основные модули: @tanstack/react-table, types/user
 import type { ColumnDef } from "@tanstack/react-table";
-import type { User } from "shared";
+import type { User } from "../types/user";
 import { formatRoleName } from "../utils/roleDisplay";
 
 export const settingsUserColumns: ColumnDef<User>[] = [
   { accessorKey: "telegram_id", header: "Telegram ID", meta: { minWidth: "8rem" } },
-  { accessorKey: "username", header: "Логин", meta: { minWidth: "8rem", maxWidth: "16rem" } },
+  {
+    accessorKey: "username",
+    header: "Логин",
+    cell: ({ row }) => row.original.telegram_username ?? row.original.username ?? "",
+    meta: { minWidth: "8rem", maxWidth: "16rem" },
+  },
   { accessorKey: "name", header: "Имя", meta: { minWidth: "8rem", maxWidth: "16rem" } },
   { accessorKey: "phone", header: "Телефон", meta: { minWidth: "8rem", maxWidth: "16rem" } },
   { accessorKey: "mobNumber", header: "Моб. номер", meta: { minWidth: "8rem", maxWidth: "16rem" } },

@@ -11,7 +11,7 @@ import { ROLE_OPTIONS } from "../../utils/roleDisplay";
 
 export interface UserFormData {
   telegram_id?: number;
-  username?: string;
+  username: string;
   name?: string;
   phone?: string;
   mobNumber?: string;

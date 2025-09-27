@@ -15,6 +15,7 @@ import type { CollectionItem } from "../../services/collections";
 import {
   fetchCollectionItems,
   fetchAllCollectionItems,
+  createCollectionItem,
 } from "../../services/collections";
 import { settingsUserColumns } from "../../columns/settingsUserColumns";
 import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
@@ -209,11 +210,42 @@ jest.mock("./CollectionForm", () => ({
   __esModule: true,
   default: ({
     form,
+    onChange,
+    onSubmit,
+    readonly,
   }: {
-    form: { name: string };
+    form: { _id?: string; name: string; value?: string };
+    onChange: (next: { _id?: string; name: string; value?: string }) => void;
+    onSubmit: () => void;
     readonly?: boolean;
     readonlyNotice?: string;
-  }) => <div data-testid="collection-form">{form?.name}</div>,
+  }) => (
+    <form
+      data-testid="collection-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!readonly) onSubmit();
+      }}
+    >
+      <input
+        data-testid="collection-name"
+        value={form?.name ?? ""}
+        onChange={(event) =>
+          onChange({ ...(form ?? { name: "", value: "" }), name: event.target.value })
+        }
+        disabled={readonly}
+      />
+      <input
+        data-testid="collection-value"
+        value={form?.value ?? ""}
+        onChange={(event) =>
+          onChange({ ...(form ?? { name: "", value: "" }), value: event.target.value })
+        }
+        disabled={readonly}
+      />
+      <button type="submit">Сохранить</button>
+    </form>
+  ),
 }));
 
 jest.mock("./UserForm", () => ({ form }: { form: { name: string } }) => (
@@ -226,6 +258,9 @@ describe("CollectionsPage", () => {
   >;
   const mockedFetchAll = fetchAllCollectionItems as jest.MockedFunction<
     typeof fetchAllCollectionItems
+  >;
+  const mockedCreate = createCollectionItem as jest.MockedFunction<
+    typeof createCollectionItem
   >;
   const mockedFetchUsers = fetchUsers as jest.MockedFunction<typeof fetchUsers>;
   const dataset: Record<
@@ -275,6 +310,7 @@ describe("CollectionsPage", () => {
   beforeEach(() => {
     mockedFetch.mockReset();
     mockedFetchAll.mockReset();
+    mockedCreate.mockReset();
     mockedFetchUsers.mockReset();
     mockedFetch.mockImplementation(async (type: string, search = "") => {
       const byType = dataset[type] ?? {};
@@ -443,5 +479,34 @@ describe("CollectionsPage", () => {
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
     expect(within(usersPanel).getByText("operator")).toBeInTheDocument();
+  });
+
+  it("показывает подсказку, если департамент сохраняют без отделов", async () => {
+    const { parseErrorMessage } = jest.requireActual(
+      "../../services/collections",
+    ) as typeof import("../../services/collections");
+    mockedCreate.mockImplementationOnce(async () => {
+      const message = parseErrorMessage(
+        400,
+        JSON.stringify({ errors: [{ msg: "Значение элемента обязательно" }] }),
+        { collectionType: "departments" },
+      );
+      throw new Error(message);
+    });
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    const addButtons = screen.getAllByRole("button", { name: "Добавить" });
+    fireEvent.click(addButtons[0]);
+
+    const form = await screen.findByTestId("collection-form");
+    const nameInput = within(form).getByTestId("collection-name");
+    fireEvent.change(nameInput, { target: { value: "Новый департамент" } });
+
+    fireEvent.submit(form);
+
+    await screen.findByText("Добавьте хотя бы один отдел в департамент");
   });
 });

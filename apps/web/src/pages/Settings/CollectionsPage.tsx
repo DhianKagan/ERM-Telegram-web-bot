@@ -494,7 +494,7 @@ export default function CollectionsPage() {
         saved = await updateCollectionItem(form._id, {
           name: trimmedName,
           value: valueToSave,
-        });
+        }, { collectionType: active });
       } else {
         saved = await createCollectionItem(active, {
           name: trimmedName,

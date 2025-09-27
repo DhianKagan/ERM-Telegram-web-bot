@@ -80,7 +80,7 @@ describe('POST /api/v1/collections', function () {
     }
   });
 
-  it('создаёт департамент без связей с пустым value', async () => {
+  it('возвращает 400 для департаментов с пустым value', async () => {
     const response = await request(app)
       .post('/api/v1/collections')
       .set('Authorization', authHeader)
@@ -90,10 +90,10 @@ describe('POST /api/v1/collections', function () {
         value: '',
       });
 
-    assert.equal(response.status, 201, JSON.stringify(response.body));
-    assert.equal(response.body.type, 'departments');
-    assert.equal(response.body.name, 'Без отдела');
-    assert.equal(response.body.value, '');
+    assert.equal(response.status, 400, JSON.stringify(response.body));
+    assert.equal(response.body.status, 400);
+    assert.equal(response.body.title, 'Ошибка валидации');
+    assert.match(String(response.body.detail), /Значение элемента обязательно/);
   });
 
   it('возвращает 400 для других типов с пустым value', async () => {

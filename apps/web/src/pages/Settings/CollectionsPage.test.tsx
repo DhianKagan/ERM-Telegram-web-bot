@@ -384,17 +384,15 @@ describe("CollectionsPage", () => {
       if (type === "positions") return [];
       return [];
     });
-    mockedFetch.mockImplementation(
-      async (type: string, search = "", page = 1, limit = 10) => {
-        if (type === "departments") {
-          return { items: [department], total: 1 };
-        }
-        if (type === "divisions") {
-          return { items: [newDivision], total: 2 };
-        }
-        return { items: [], total: 0 };
-      },
-    );
+    mockedFetch.mockImplementation(async (type: string) => {
+      if (type === "departments") {
+        return { items: [department], total: 1 };
+      }
+      if (type === "divisions") {
+        return { items: [newDivision], total: 2 };
+      }
+      return { items: [], total: 0 };
+    });
 
     render(<CollectionsPage />);
 

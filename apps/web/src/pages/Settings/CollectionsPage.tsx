@@ -159,6 +159,35 @@ const parseIds = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
+const mergeById = <T extends { _id: string }>(
+  current: T[],
+  incoming: T[],
+): T[] => {
+  if (!incoming.length) {
+    return current;
+  }
+  const merged = current.slice();
+  const indexById = new Map<string, number>();
+  merged.forEach((item, index) => {
+    indexById.set(item._id, index);
+  });
+  let changed = false;
+  incoming.forEach((item) => {
+    const index = indexById.get(item._id);
+    if (typeof index === "number") {
+      if (merged[index] !== item) {
+        merged[index] = item;
+        changed = true;
+      }
+      return;
+    }
+    indexById.set(item._id, merged.length);
+    merged.push(item);
+    changed = true;
+  });
+  return changed ? merged : current;
+};
+
 const resolveReferenceName = (
   map: Map<string, string>,
   id?: string | null,
@@ -263,9 +292,15 @@ export default function CollectionsPage() {
       )) as { items: CollectionItem[]; total: number };
       setItems(d.items);
       setTotal(d.total);
-      if (active === "departments") setAllDepartments(d.items);
-      if (active === "divisions") setAllDivisions(d.items);
-      if (active === "positions") setAllPositions(d.items);
+      if (active === "departments") {
+        setAllDepartments((prev) => mergeById(prev, d.items));
+      }
+      if (active === "divisions") {
+        setAllDivisions((prev) => mergeById(prev, d.items));
+      }
+      if (active === "positions") {
+        setAllPositions((prev) => mergeById(prev, d.items));
+      }
       setHint("");
     } catch (error) {
       const message =

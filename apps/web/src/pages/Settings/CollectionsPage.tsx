@@ -157,7 +157,7 @@ const normalizeId = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return "";
   const withoutQuotes = trimmed.replace(/^['"]+|['"]+$/g, "");
-  const withoutBrackets = withoutQuotes.replace(/^[\[]+|[\]]+$/g, "");
+  const withoutBrackets = withoutQuotes.replace(/^\[+|\]+$/g, "");
   const withoutBraces = withoutBrackets.replace(/^[{}]+|[{}]+$/g, "");
   const withoutTrailingComma = withoutBraces.replace(/,+$/g, "");
   return withoutTrailingComma.trim();

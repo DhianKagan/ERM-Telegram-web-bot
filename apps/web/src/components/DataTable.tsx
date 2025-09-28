@@ -42,6 +42,7 @@ interface ColumnMeta {
   width?: string;
   cellClassName?: string;
   headerClassName?: string;
+  renderAsBadges?: boolean;
 }
 
 export const defaultBadgeClassName = [
@@ -234,6 +235,8 @@ export default function DataTable<T>({
                   cell.column.columnDef.cell,
                   cell.getContext(),
                 );
+                const shouldWrapWithBadges =
+                  wrapCellsAsBadges && meta.renderAsBadges !== false;
                 return (
                   <TableCell
                     key={cell.id}
@@ -245,7 +248,7 @@ export default function DataTable<T>({
                     className={cellClassName}
                     // фиксируем ширину ячейки данных
                   >
-                    {wrapCellsAsBadges
+                    {shouldWrapWithBadges
                       ? renderBadgeContent(
                           cellContent,
                           badgeClassName,

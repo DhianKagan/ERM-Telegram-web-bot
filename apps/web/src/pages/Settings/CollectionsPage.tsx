@@ -766,17 +766,17 @@ export default function CollectionsPage() {
   );
 
   const departmentColumns = useMemo(
-    () => buildCollectionColumns(["value", "_id", "type", "metaSummary"]),
+    () => buildCollectionColumns(["value", "type", "metaSummary"]),
     [buildCollectionColumns],
   );
 
   const divisionColumns = useMemo(
-    () => buildCollectionColumns(["value", "_id", "type", "metaSummary"]),
+    () => buildCollectionColumns(["type", "metaSummary"]),
     [buildCollectionColumns],
   );
 
   const positionColumns = useMemo(
-    () => buildCollectionColumns(["value", "_id"]),
+    () => buildCollectionColumns(["type", "metaSummary"]),
     [buildCollectionColumns],
   );
 

@@ -358,6 +358,84 @@ describe("CollectionsPage", () => {
     expect(activeSearch.value).toBe("");
   });
 
+  it("сохраняет все отделы департамента после переключения вкладок", async () => {
+    const department: CollectionItem = {
+      _id: "dep-full",
+      type: "departments",
+      name: "Департамент развития",
+      value: "div-legacy,div-new",
+    };
+    const legacyDivision: CollectionItem = {
+      _id: "div-legacy",
+      type: "divisions",
+      name: "Отдел Легаси",
+      value: "dep-full",
+      meta: { legacy: true },
+    };
+    const newDivision: CollectionItem = {
+      _id: "div-new",
+      type: "divisions",
+      name: "Отдел Новый",
+      value: "dep-full",
+    };
+    mockedFetchAll.mockImplementation(async (type: string) => {
+      if (type === "departments") return [department];
+      if (type === "divisions") return [legacyDivision, newDivision];
+      if (type === "positions") return [];
+      return [];
+    });
+    mockedFetch.mockImplementation(
+      async (type: string, search = "", page = 1, limit = 10) => {
+        if (type === "departments") {
+          return { items: [department], total: 1 };
+        }
+        if (type === "divisions") {
+          return { items: [newDivision], total: 2 };
+        }
+        return { items: [], total: 0 };
+      },
+    );
+
+    render(<CollectionsPage />);
+
+    const departmentsPanel = await screen.findByTestId(
+      "tab-content-departments",
+    );
+    const departmentRow = within(departmentsPanel).getByTestId(
+      "data-table-row-0",
+    );
+    expect(departmentRow).toHaveTextContent("Отдел Легаси");
+    expect(departmentRow).toHaveTextContent("Отдел Новый");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Отдел" }));
+
+    await screen.findByText("Отдел Новый");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Департамент" }));
+
+    const departmentsPanelAfter = await screen.findByTestId(
+      "tab-content-departments",
+    );
+    const departmentRowAfter = within(departmentsPanelAfter).getByTestId(
+      "data-table-row-0",
+    );
+    expect(
+      within(departmentRowAfter).queryByText("div-legacy"),
+    ).not.toBeInTheDocument();
+    expect(departmentRowAfter).toHaveTextContent("Отдел Легаси");
+    expect(departmentRowAfter).toHaveTextContent("Отдел Новый");
+
+    fireEvent.click(departmentRowAfter);
+
+    const modal = await screen.findByTestId("modal");
+    const badgeTexts = within(modal)
+      .getAllByText(/Отдел/, { selector: "span" })
+      .map((element) => element.textContent?.trim());
+    expect(badgeTexts).toEqual(
+      expect.arrayContaining(["Отдел Легаси", "Отдел Новый"]),
+    );
+  });
+
   it("открывает вкладку автопарка", async () => {
     mockedFetch.mockImplementation(async (type: string, search = "") => {
       if (type === "fleets") {

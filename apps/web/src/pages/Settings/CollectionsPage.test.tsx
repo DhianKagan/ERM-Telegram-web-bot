@@ -22,6 +22,10 @@ import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
 import { fetchUsers } from "../../services/users";
 import type { User } from "../../types/user";
 
+jest.mock("../../services/roles", () => ({
+  fetchRoles: jest.fn().mockResolvedValue([]),
+}));
+
 const extractHeaderText = (header: unknown): string => {
   if (typeof header === "string") return header;
   if (React.isValidElement(header)) {
@@ -432,6 +436,90 @@ describe("CollectionsPage", () => {
     expect(badgeTexts).toEqual(
       expect.arrayContaining(["Отдел Легаси", "Отдел Новый"]),
     );
+  });
+
+  it("отображает отделы из JSON-значения и предупреждает о дубликатах", async () => {
+    const jsonDepartment: CollectionItem = {
+      _id: "dep-json",
+      type: "departments",
+      name: "JSON департамент",
+      value: '["div-json-1","div-json-2"]',
+    };
+    const conflictingDepartment: CollectionItem = {
+      _id: "dep-conflict",
+      type: "departments",
+      name: "Конфликтующий департамент",
+      value: "div-json-2",
+    };
+    const divisions: CollectionItem[] = [
+      {
+        _id: "div-json-1",
+        type: "divisions",
+        name: "Отдел JSON 1",
+        value: "dep-json",
+      },
+      {
+        _id: "div-json-2",
+        type: "divisions",
+        name: "Отдел JSON 2",
+        value: "dep-conflict",
+      },
+    ];
+
+    mockedFetchAll.mockImplementation(async (type: string) => {
+      if (type === "departments") {
+        return [jsonDepartment, conflictingDepartment];
+      }
+      if (type === "divisions") {
+        return divisions;
+      }
+      if (type === "positions") {
+        return [];
+      }
+      return [];
+    });
+
+    mockedFetch.mockImplementation(async (type: string) => {
+      if (type === "departments") {
+        return {
+          items: [jsonDepartment, conflictingDepartment],
+          total: 2,
+        };
+      }
+      if (type === "divisions") {
+        return { items: divisions, total: divisions.length };
+      }
+      return { items: [], total: 0 };
+    });
+
+    render(<CollectionsPage />);
+
+    const departmentsPanel = await screen.findByTestId(
+      "tab-content-departments",
+    );
+    const departmentRow = within(departmentsPanel).getByTestId(
+      "data-table-row-0",
+    );
+    expect(departmentRow).toHaveTextContent("Отдел JSON 1");
+    expect(departmentRow).toHaveTextContent("Отдел JSON 2");
+
+    fireEvent.click(departmentRow);
+
+    const modal = await screen.findByTestId("modal");
+    const badgeTexts = within(modal)
+      .getAllByText(/Отдел JSON/, { selector: "span" })
+      .map((element) => element.textContent?.trim());
+    expect(badgeTexts).toEqual(
+      expect.arrayContaining(["Отдел JSON 1", "Отдел JSON 2"]),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Обнаружены дублирующиеся отделы: Отдел JSON 2.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   it("открывает вкладку автопарка", async () => {

@@ -153,11 +153,73 @@ interface ItemForm {
   value: string;
 }
 
-const parseIds = (value: string) =>
-  value
+const normalizeId = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const withoutQuotes = trimmed.replace(/^['"]+|['"]+$/g, "");
+  const withoutBrackets = withoutQuotes.replace(/^[\[]+|[\]]+$/g, "");
+  const withoutBraces = withoutBrackets.replace(/^[{}]+|[{}]+$/g, "");
+  const withoutTrailingComma = withoutBraces.replace(/,+$/g, "");
+  return withoutTrailingComma.trim();
+};
+
+const collectStringIds = (value: unknown): string[] => {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(collectStringIds);
+  }
+  if (value && typeof value === "object") {
+    const result: string[] = [];
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+      if (Array.isArray(entry) || (entry && typeof entry === "object")) {
+        result.push(...collectStringIds(entry));
+        return;
+      }
+      if (typeof entry === "string") {
+        const trimmed = entry.trim();
+        if (!trimmed) return;
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes("id") || !/\s/.test(trimmed)) {
+          result.push(trimmed);
+        }
+        return;
+      }
+      if (typeof entry === "boolean" || typeof entry === "number") {
+        if (entry) {
+          result.push(key);
+        }
+      }
+    });
+    return result;
+  }
+  return [];
+};
+
+const parseIds = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return [] as string[];
+  const shouldParseJson = trimmed.startsWith("[") || trimmed.startsWith("{");
+  if (shouldParseJson) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const extracted = collectStringIds(parsed)
+        .map(normalizeId)
+        .filter(Boolean);
+      if (extracted.length) {
+        return Array.from(new Set(extracted));
+      }
+    } catch {
+      // игнорируем ошибки парсинга и переходим к разбору по разделителю
+    }
+  }
+  const splitted = trimmed
     .split(",")
-    .map((v) => v.trim())
+    .map(normalizeId)
     .filter(Boolean);
+  return Array.from(new Set(splitted));
+};
 
 const mergeById = <T extends { _id: string }>(
   current: T[],
@@ -205,6 +267,7 @@ const resolveReferenceName = (
 };
 
 const USERS_ERROR_HINT = "Не удалось загрузить пользователей";
+const DUPLICATE_DIVISION_HINT_PREFIX = "Обнаружены дублирующиеся отделы";
 
 type CollectionColumn = (typeof collectionColumns)[number];
 
@@ -611,15 +674,47 @@ export default function CollectionsPage() {
     return map;
   }, [allRoles]);
 
-  const divisionOwners = useMemo(() => {
+  const { divisionOwners, duplicateDivisionIds } = useMemo(() => {
     const owners = new Map<string, string>();
+    const duplicates = new Set<string>();
     allDepartments.forEach((department) => {
       parseIds(department.value).forEach((divisionId) => {
-        if (!owners.has(divisionId)) owners.set(divisionId, department._id);
+        const currentOwner = owners.get(divisionId);
+        if (currentOwner && currentOwner !== department._id) {
+          duplicates.add(divisionId);
+          return;
+        }
+        if (!currentOwner) {
+          owners.set(divisionId, department._id);
+        }
       });
     });
-    return owners;
+    return { divisionOwners: owners, duplicateDivisionIds: Array.from(duplicates) };
   }, [allDepartments]);
+
+  const duplicateDivisionHint = useMemo(() => {
+    if (!duplicateDivisionIds.length) return "";
+    const names = duplicateDivisionIds
+      .map(
+        (id) =>
+          divisionMap.get(id) ??
+          allDivisions.find((division) => division._id === id)?.name ??
+          id,
+      )
+      .filter((name): name is string => Boolean(name));
+    const suffix = names.length ? `: ${names.join(", ")}.` : ".";
+    return `${DUPLICATE_DIVISION_HINT_PREFIX}${suffix}`;
+  }, [duplicateDivisionIds, divisionMap, allDivisions]);
+
+  useEffect(() => {
+    if (duplicateDivisionHint) {
+      setHint((prev) => (prev ? prev : duplicateDivisionHint));
+      return;
+    }
+    setHint((prev) =>
+      prev && prev.startsWith(DUPLICATE_DIVISION_HINT_PREFIX) ? "" : prev,
+    );
+  }, [duplicateDivisionHint]);
 
   const getItemDisplayValue = useCallback(
     (item: CollectionItem, type: CollectionKey) => {

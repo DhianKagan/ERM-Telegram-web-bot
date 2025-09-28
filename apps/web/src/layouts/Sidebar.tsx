@@ -23,7 +23,7 @@ const adminItems = [
   { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
   { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
-  { to: "/cp/settings", label: "Управление", icon: Cog6ToothIcon },
+  { to: "/cp/settings", label: "Настройки", icon: Cog6ToothIcon },
   { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
   { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
 ];

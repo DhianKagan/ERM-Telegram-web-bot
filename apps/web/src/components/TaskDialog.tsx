@@ -303,28 +303,33 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     fields.find((f) => f.name === "payment_amount")?.default || "0";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
 
+  const formatInputDate = (value: Date) => {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, "0");
+    const day = `${value.getDate()}`.padStart(2, "0");
+    const hours = `${value.getHours()}`.padStart(2, "0");
+    const minutes = `${value.getMinutes()}`.padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
   const makeDefaultDate = (h: number) => {
     const d = new Date();
     d.setHours(h, 0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    return formatInputDate(d);
   };
   const DEFAULT_START_DATE = makeDefaultDate(8);
-  const DEFAULT_DUE_DATE = new Date(
-    new Date(DEFAULT_START_DATE).getTime() + 24 * 60 * 60 * 1000,
-  )
-    .toISOString()
-    .slice(0, 16);
+  const DEFAULT_DUE_DATE = makeDefaultDate(18);
+  const DEFAULT_DUE_OFFSET_MS =
+    new Date(DEFAULT_DUE_DATE).getTime() - new Date(DEFAULT_START_DATE).getTime();
 
-  const [dueOffset, setDueOffset] = React.useState(24 * 60 * 60 * 1000);
+  const [dueOffset, setDueOffset] = React.useState(DEFAULT_DUE_OFFSET_MS);
   const startDateValue = watch("startDate");
 
   // При изменении даты начала автоматически пересчитываем срок
   React.useEffect(() => {
     if (!startDateValue) return;
-    const newDue = new Date(new Date(startDateValue).getTime() + dueOffset)
-      .toISOString()
-      .slice(0, 16);
-    setValue("dueDate", newDue);
+    const base = new Date(startDateValue);
+    const newDue = new Date(base.getTime() + dueOffset);
+    setValue("dueDate", formatInputDate(newDue));
   }, [startDateValue, dueOffset, setValue]);
 
   // Позволяет вручную редактировать срок и запоминает смещение
@@ -438,19 +443,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         ? (taskData.assignees as (string | number)[]).map(String)
         : [];
       const startDate = taskData.start_date
-        ? new Date(taskData.start_date as string)
-            .toISOString()
-            .slice(0, 16)
+        ? formatInputDate(new Date(taskData.start_date as string))
         : "";
       const dueDate = taskData.due_date
-        ? new Date(taskData.due_date as string)
-            .toISOString()
-            .slice(0, 16)
+        ? formatInputDate(new Date(taskData.due_date as string))
         : "";
       const diff =
         startDate && dueDate
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
-          : 24 * 60 * 60 * 1000;
+          : DEFAULT_DUE_OFFSET_MS;
       setDueOffset(diff);
       reset({
         title: (taskData.title as string) || "",

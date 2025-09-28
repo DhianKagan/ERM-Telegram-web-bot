@@ -14,6 +14,8 @@ if (!process.env.MONGOMS_DOWNLOAD_DIR) {
 
   mkdirSync(downloadDir, { recursive: true });
   process.env.MONGOMS_DOWNLOAD_DIR = downloadDir;
+  process.env.MONGOMS_CACHE_DIR ||= downloadDir;
 }
 
 process.env.MONGOMS_DISABLE_MD5_CHECK ||= '1';
+process.env.MONGOMS_PREFER_GLOBAL_PATH ||= '0';

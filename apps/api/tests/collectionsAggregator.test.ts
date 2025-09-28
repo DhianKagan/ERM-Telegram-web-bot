@@ -60,9 +60,11 @@ describe('Агрегация коллекций', () => {
   it('возвращает департаменты из CollectionItem и Department', async () => {
     const res = await request(app).get('/api/v1/collections').query({ type: 'departments' });
     expect(res.status).toBe(200);
-    expect(res.body.total).toBe(2);
+    expect(res.body.total).toBe(3);
     const names = res.body.items.map((item: { name: string }) => item.name);
-    expect(names).toEqual(expect.arrayContaining(['Каталог департаментов', 'Легаси департамент']));
+    expect(names).toEqual(
+      expect.arrayContaining(['Каталог департаментов', 'Легаси департамент', 'Цех']),
+    );
     const legacy = res.body.items.find(
       (item: { name: string }) => item.name === 'Легаси департамент',
     );

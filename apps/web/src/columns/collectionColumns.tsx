@@ -12,12 +12,12 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: "name",
     header: "Название",
-    meta: { minWidth: "8rem", maxWidth: "16rem" },
+    meta: { minWidth: "8rem", maxWidth: "16rem", renderAsBadges: false },
   },
   {
     accessorKey: "value",
     header: "Значение",
-    meta: { minWidth: "8rem", maxWidth: "20rem" },
+    meta: { minWidth: "8rem", maxWidth: "20rem", renderAsBadges: false },
   },
   {
     accessorKey: "displayValue",
@@ -27,17 +27,17 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: "type",
     header: "Тип",
-    meta: { minWidth: "6rem", maxWidth: "12rem" },
+    meta: { minWidth: "6rem", maxWidth: "12rem", renderAsBadges: false },
   },
   {
     accessorKey: "_id",
     header: "Идентификатор",
-    meta: { minWidth: "10rem", maxWidth: "16rem" },
+    meta: { minWidth: "10rem", maxWidth: "16rem", renderAsBadges: false },
   },
   {
     accessorKey: "metaSummary",
     header: "Доп. сведения",
-    meta: { minWidth: "10rem", maxWidth: "24rem" },
+    meta: { minWidth: "10rem", maxWidth: "24rem", renderAsBadges: false },
   },
 ];
 

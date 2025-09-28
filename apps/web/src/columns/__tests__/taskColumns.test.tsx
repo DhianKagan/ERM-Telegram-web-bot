@@ -81,6 +81,11 @@ describe("taskColumns", () => {
 
     render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
+    const datePart = screen.getByText("05.03.2024");
+    expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
+    expect(
+      within(datePart.closest("time") as HTMLElement).getByText("15:30"),
+    ).toBeInTheDocument();
     const label = screen.getByText(
       "До дедлайна 4 дня 3 часа 30 минут",
     );
@@ -117,6 +122,8 @@ describe("taskColumns", () => {
 
     render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
+    const datePart = screen.getByText("05.03.2024");
+    expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
     const label = screen.getByText(
       "Просрочено на 4 дня 17 часов 45 минут",
     );

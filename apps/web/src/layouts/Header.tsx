@@ -17,10 +17,10 @@ export default function Header() {
     "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:border-primary focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/60 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800";
   return (
     <header
-      className="border-stroke sticky top-0 z-40 w-full border-b bg-white/90 px-4 py-3 shadow-sm backdrop-blur transition-colors dark:bg-slate-900/90"
+      className="border-stroke sticky top-0 z-40 w-full border-b bg-white/90 px-4 py-2 shadow-sm backdrop-blur transition-colors dark:bg-slate-900/90"
       data-testid="app-header"
     >
-      <div className="flex w-full flex-col gap-2">
+      <div className="flex w-full flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             onClick={toggle}
@@ -31,11 +31,13 @@ export default function Header() {
             <Bars3Icon className="h-4 w-4" />
             <span className="hidden sm:inline">{t("menu")}</span>
           </button>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">ERM</h1>
+          <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            ERM
+          </h3>
         </div>
         <nav
           aria-label={t("menu")}
-          className="flex flex-wrap items-center gap-2 self-start sm:self-end"
+          className="flex flex-wrap items-center gap-2"
         >
           <label htmlFor="lang-select" className="sr-only">
             {t("language")}

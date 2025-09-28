@@ -737,12 +737,25 @@ export default function taskColumns(
       cell: (p) => {
         const dueValue = p.getValue<string>();
         const row = p.row.original;
-        return (
+        const countdown = (
           <DeadlineCountdownBadge
             startValue={row.start_date}
             dueValue={row.due_date}
             rawDue={dueValue}
           />
+        );
+        if (!dueValue) {
+          return countdown;
+        }
+        const dateCell = renderDateCell(dueValue);
+        if (typeof dateCell === "string") {
+          return dateCell || countdown;
+        }
+        return (
+          <div className="flex flex-col items-start gap-1">
+            {dateCell}
+            {countdown}
+          </div>
         );
       },
     },

@@ -85,9 +85,9 @@ export default function TasksPage() {
     return <div className="p-4">У вас нет прав для просмотра задач</div>;
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-100">
+      <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
         Панель управления задачами
-      </h1>
+      </h2>
       {loading && <div>Загрузка...</div>}
       <TaskTable
         tasks={tasks}

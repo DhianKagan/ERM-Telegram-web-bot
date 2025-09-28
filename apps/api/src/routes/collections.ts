@@ -87,6 +87,9 @@ router.post(
         if (typeof raw !== 'string') return false;
         const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
         const normalized = normalizeValueByType(type, raw);
+        if (type === 'departments') {
+          return true;
+        }
         return normalized.length > 0;
       })
       .withMessage('Значение элемента обязательно'),
@@ -97,7 +100,7 @@ router.post(
       const type = body.type.trim();
       const name = body.name.trim();
       const value = normalizeValueByType(type, body.value);
-      if (!value) {
+      if (type !== 'departments' && !value) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка валидации',
@@ -169,7 +172,7 @@ router.put(
       }
       if (typeof body.value === 'string') {
         const normalizedValue = normalizeValueByType(existing.type, body.value);
-        if (!normalizedValue) {
+        if (existing.type !== 'departments' && !normalizedValue) {
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Ошибка валидации',

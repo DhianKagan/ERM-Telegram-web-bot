@@ -32,15 +32,37 @@ beforeAll(() => {
   app.use('/api/v1/collections', collectionsRouter);
 });
 
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 afterAll(() => {
   stopScheduler();
   stopQueue();
 });
 
-test('возвращает 400 и не вызывает репозиторий при пустом value', async () => {
+test('создаёт департамент без привязанных отделов', async () => {
+  repo.create.mockResolvedValue({
+    _id: '507f1f77bcf86cd799439011',
+    type: 'departments',
+    name: 'Финансы',
+    value: '',
+  });
   const response = await request(app)
     .post('/api/v1/collections')
     .send({ type: 'departments', name: 'Финансы', value: '' });
+  expect(response.status).toBe(201);
+  expect(repo.create).toHaveBeenCalledWith({
+    type: 'departments',
+    name: 'Финансы',
+    value: '',
+  });
+});
+
+test('возвращает 400 при пустом value для других коллекций', async () => {
+  const response = await request(app)
+    .post('/api/v1/collections')
+    .send({ type: 'divisions', name: 'Продажи', value: '' });
   expect(response.status).toBe(400);
   expect(repo.create).not.toHaveBeenCalled();
   expect(String(response.body.detail)).toContain('value');

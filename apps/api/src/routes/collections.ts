@@ -87,6 +87,9 @@ router.post(
         if (typeof raw !== 'string') return false;
         const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
         const normalized = normalizeValueByType(type, raw);
+        if (type === 'departments') {
+          return true;
+        }
         return normalized.length > 0;
       })
       .withMessage('Значение элемента обязательно'),
@@ -96,8 +99,9 @@ router.post(
       const body = req.body as CollectionItemAttrs;
       const type = body.type.trim();
       const name = body.name.trim();
-      const value = normalizeValueByType(type, body.value);
-      if (!value) {
+      const rawValue = typeof body.value === 'string' ? body.value : '';
+      const value = normalizeValueByType(type, rawValue);
+      if (type !== 'departments' && !value) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка валидации',

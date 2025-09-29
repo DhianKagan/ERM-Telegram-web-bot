@@ -9,7 +9,18 @@ export const register: client.Registry =
   globalSymbols[globalKey] ||
   (globalSymbols[globalKey] = new client.Registry());
 
-client.collectDefaultMetrics({ register });
+const isJest =
+  typeof process !== 'undefined' &&
+  (process.env.NODE_ENV === 'test' ||
+    process.env.JEST_WORKER_ID !== undefined);
+
+let defaultMetricsInterval: NodeJS.Timeout | undefined;
+if (!isJest) {
+  defaultMetricsInterval = client.collectDefaultMetrics({ register }) as
+    | NodeJS.Timeout
+    | undefined;
+  defaultMetricsInterval?.unref?.();
+}
 
 export const httpRequestsTotal = new client.Counter({
   name: 'http_requests_total',

@@ -100,7 +100,9 @@ export async function buildApp(): Promise<express.Express> {
 
   await registerRoutes(app, cookieFlags, pub);
 
-  startDiskMonitor();
+  if (process.env.NODE_ENV !== 'test') {
+    startDiskMonitor();
+  }
 
   return app;
 }

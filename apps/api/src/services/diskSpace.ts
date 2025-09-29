@@ -44,6 +44,16 @@ export async function checkDiskSpace(): Promise<void> {
 }
 
 export function startDiskMonitor(): void {
+  if (
+    typeof process !== 'undefined' &&
+    (process.env.NODE_ENV === 'test' ||
+      process.env.JEST_WORKER_ID !== undefined)
+  ) {
+    return;
+  }
   checkDiskSpace();
-  setInterval(checkDiskSpace, 60 * 60 * 1000);
+  const interval = setInterval(checkDiskSpace, 60 * 60 * 1000);
+  if (typeof interval.unref === 'function') {
+    interval.unref();
+  }
 }

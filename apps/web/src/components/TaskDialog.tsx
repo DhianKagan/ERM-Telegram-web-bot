@@ -31,6 +31,7 @@ import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 import type { Task } from "shared";
 import EmployeeLink from "./EmployeeLink";
+import useDueDateOffset from "../hooks/useDueDateOffset";
 
 interface Props {
   onClose: () => void;
@@ -303,14 +304,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     fields.find((f) => f.name === "payment_amount")?.default || "0";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
 
-  const formatInputDate = (value: Date) => {
+  const formatInputDate = React.useCallback((value: Date) => {
     const year = value.getFullYear();
     const month = `${value.getMonth() + 1}`.padStart(2, "0");
     const day = `${value.getDate()}`.padStart(2, "0");
     const hours = `${value.getHours()}`.padStart(2, "0");
     const minutes = `${value.getMinutes()}`.padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
+  }, []);
   const makeDefaultDate = (h: number) => {
     const d = new Date();
     d.setHours(h, 0, 0, 0);
@@ -321,27 +322,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const DEFAULT_DUE_OFFSET_MS =
     new Date(DEFAULT_DUE_DATE).getTime() - new Date(DEFAULT_START_DATE).getTime();
 
-  const [dueOffset, setDueOffset] = React.useState(DEFAULT_DUE_OFFSET_MS);
   const startDateValue = watch("startDate");
-
-  // При изменении даты начала автоматически пересчитываем срок
-  React.useEffect(() => {
-    if (!startDateValue) return;
-    const base = new Date(startDateValue);
-    const newDue = new Date(base.getTime() + dueOffset);
-    setValue("dueDate", formatInputDate(newDue));
-  }, [startDateValue, dueOffset, setValue]);
-
-  // Позволяет вручную редактировать срок и запоминает смещение
-  const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setValue("dueDate", value);
-    if (startDateValue) {
-      setDueOffset(
-        new Date(value).getTime() - new Date(startDateValue).getTime(),
-      );
-    }
-  };
+  const { setDueOffset, handleDueDateChange } = useDueDateOffset({
+    startDateValue,
+    setValue,
+    defaultOffsetMs: DEFAULT_DUE_OFFSET_MS,
+    formatInputDate,
+  });
 
   const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
   const [comment, setComment] = React.useState("");
@@ -664,7 +651,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCargoVolume("");
       setCargoWeight("");
       setShowDimensions(false);
-      setDueOffset(24 * 60 * 60 * 1000);
+      setDueOffset(DEFAULT_DUE_OFFSET_MS);
     }
   }, [
     id,

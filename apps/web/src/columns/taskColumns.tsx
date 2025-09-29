@@ -269,7 +269,7 @@ const timePartFmt = new Intl.DateTimeFormat("ru-RU", {
   hour12: false,
 });
 
-const parseDateInput = (value?: string) => {
+const parseDateInput = (value?: string | null) => {
   if (!value) {
     return null;
   }
@@ -486,7 +486,7 @@ const formatCompletionOffset = (diffMs: number) => {
 const buildCompletionNote = (
   status: Task["status"] | undefined,
   dueValue?: string,
-  completedValue?: string,
+  completedValue?: string | null,
 ) => {
   if (status !== "Выполнена") {
     return null;

@@ -131,4 +131,45 @@ describe("taskColumns", () => {
     expect(badge).not.toBeNull();
     expect(badge as HTMLElement).toHaveClass("bg-rose-500/30");
   });
+
+  it("фиксирует отсчёт после завершения задачи и показывает примечание", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-07T08:00:00Z"));
+
+    const columns = taskColumns({});
+    const dueColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "due_date",
+    );
+
+    expect(dueColumn).toBeDefined();
+    const cellRenderer = dueColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: "2024-03-01T09:00:00Z",
+      due_date: "2024-03-10T10:00:00Z",
+      completed_at: "2024-03-08T10:00:00Z",
+      status: "Выполнена",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.due_date,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    const note = screen.getByText("Выполнена досрочно на 2 дня", {
+      selector: "span:not(.sr-only)",
+    });
+    expect(note).toBeInTheDocument();
+    const countdownLabel = screen.getByText(
+      "До дедлайна 2 дня 0 часов 0 минут",
+    );
+    expect(countdownLabel).toBeInTheDocument();
+    expect(jest.getTimerCount()).toBe(0);
+  });
 });

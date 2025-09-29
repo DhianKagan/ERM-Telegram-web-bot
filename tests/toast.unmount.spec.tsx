@@ -1,7 +1,13 @@
 /** @jest-environment jsdom */
 // Назначение файла: тест размонтирования ToastProvider.
 // Основные модули: React, @testing-library/react.
-process.env.NODE_ENV = 'development';
+const originalNodeEnv = process.env.NODE_ENV;
+beforeAll(() => {
+  process.env.NODE_ENV = 'development';
+});
+afterAll(() => {
+  process.env.NODE_ENV = originalNodeEnv;
+});
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ToastProvider } from '../apps/web/src/context/ToastContext';

@@ -8,7 +8,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import AlertDialog from "./AlertDialog";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
-import { taskFields as fields } from "shared";
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, taskFields as fields } from "shared";
 import {
   createTask,
   updateTask,
@@ -74,7 +74,12 @@ const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
+
+const formatHistoryInstant = (date: Date): string =>
+  `${historyDateFormatter.format(date).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
 
 const creatorBadgeClass =
   "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2.5 py-1 text-sm font-semibold text-indigo-900 no-underline transition-colors hover:bg-indigo-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30 dark:focus-visible:ring-indigo-200";
@@ -142,15 +147,16 @@ const formatCurrencyDisplay = (value: unknown): string => {
 
 const formatCreatedLabel = (value: string): string => {
   if (!value) return "";
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return value;
-  const date = new Date(parsed);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
+  const parsed = parseIsoDate(value);
+  if (!parsed) return value;
+  return formatHistoryInstant(parsed);
+};
+
+const parseIsoDate = (value?: string | null): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
 };
 
 const formatCoords = (
@@ -218,13 +224,16 @@ const normalizeHistory = (raw: unknown): HistoryItem[] => {
 const formatHistoryDate = (value: string): string => {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value || "";
-  return historyDateFormatter.format(new Date(parsed));
+  return formatHistoryInstant(new Date(parsed));
 };
 
 const formatHistoryValue = (value: unknown): string => {
   if (value === null || value === undefined) return "—";
-  if (value instanceof Date) return historyDateFormatter.format(value);
-  if (typeof value === "string") return value;
+  if (value instanceof Date) return formatHistoryInstant(value);
+  if (typeof value === "string") {
+    const parsed = parseIsoDate(value);
+    return parsed ? formatHistoryInstant(parsed) : value;
+  }
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   try {
     return JSON.stringify(value);
@@ -283,6 +292,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     reset,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -325,15 +335,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     },
     [formatInputDate],
   );
-  const makeDefaultDate = (h: number) => {
-    const d = new Date();
-    d.setHours(h, 0, 0, 0);
-    return formatInputDate(d);
-  };
-  const DEFAULT_START_DATE = makeDefaultDate(8);
-  const DEFAULT_DUE_DATE = makeDefaultDate(18);
-  const DEFAULT_DUE_OFFSET_MS =
-    new Date(DEFAULT_DUE_DATE).getTime() - new Date(DEFAULT_START_DATE).getTime();
+  const parseIsoDateMemo = React.useCallback(parseIsoDate, []);
+  const DEFAULT_DUE_OFFSET_MS = 10 * 60 * 60 * 1000;
+
+  const computeDefaultDates = React.useCallback(
+    (base?: Date) => {
+      const reference = base ? new Date(base) : new Date();
+      const start = formatInputDate(reference);
+      const due = formatInputDate(
+        new Date(reference.getTime() + DEFAULT_DUE_OFFSET_MS),
+      );
+      return { start, due };
+    },
+    [formatInputDate],
+  );
 
   const startDateValue = watch("startDate");
   const { setDueOffset, handleDueDateChange } = useDueDateOffset({
@@ -446,11 +461,42 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       const assignees = Array.isArray(taskData.assignees)
         ? (taskData.assignees as (string | number)[]).map(String)
         : [];
-      const startDate = taskData.start_date
-        ? formatInputDate(new Date(taskData.start_date as string))
+      const rawCreated =
+        ((taskData as Record<string, unknown>).createdAt as string | undefined) ||
+        created ||
+        "";
+      const createdDateValue = parseIsoDateMemo(rawCreated);
+      if (createdDateValue) {
+        setCreated(createdDateValue.toISOString());
+      }
+      const startCandidate = parseIsoDateMemo(
+        (taskData.start_date as string | undefined) ?? null,
+      );
+      const normalizedStartDate = createdDateValue
+        ? startCandidate && startCandidate.getTime() >= createdDateValue.getTime()
+          ? startCandidate
+          : createdDateValue
+        : startCandidate;
+      const startDate = normalizedStartDate
+        ? formatInputDate(normalizedStartDate)
+        : createdDateValue
+        ? formatInputDate(createdDateValue)
         : "";
-      const dueDate = taskData.due_date
-        ? formatInputDate(new Date(taskData.due_date as string))
+      const dueCandidate = parseIsoDateMemo(
+        (taskData.due_date as string | undefined) ?? null,
+      );
+      const normalizedDueDate =
+        normalizedStartDate && dueCandidate
+          ? dueCandidate.getTime() >= normalizedStartDate.getTime()
+            ? dueCandidate
+            : normalizedStartDate
+          : dueCandidate;
+      const dueDate = normalizedDueDate
+        ? formatInputDate(normalizedDueDate)
+        : normalizedStartDate
+        ? formatInputDate(
+            new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
+          )
         : "";
       const diff =
         startDate && dueDate
@@ -559,7 +605,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       DEFAULT_PAYMENT_AMOUNT,
       DEFAULT_STATUS,
       DEFAULT_DUE_OFFSET_MS,
+      created,
       formatInputDate,
+      parseIsoDateMemo,
       reset,
       setDueOffset,
     ],
@@ -624,7 +672,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setHistory(normalizeHistory(t.history));
         });
     } else {
-      setCreated(new Date().toISOString());
+      const createdAt = new Date();
+      const { start: defaultStartDate, due: defaultDueDate } =
+        computeDefaultDates(createdAt);
+      setCreated(createdAt.toISOString());
       setCompletedAt("");
       setHistory([]);
       authFetch("/api/v1/tasks/report/summary")
@@ -651,8 +702,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startLink: "",
         end: "",
         endLink: "",
-        startDate: DEFAULT_START_DATE,
-        dueDate: DEFAULT_DUE_DATE,
+        startDate: defaultStartDate,
+        dueDate: defaultDueDate,
         attachments: [],
         distanceKm: null,
         cargoLength: "",
@@ -666,8 +717,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         title: "",
         description: "",
         assignees: [],
-        startDate: DEFAULT_START_DATE,
-        dueDate: DEFAULT_DUE_DATE,
+        startDate: defaultStartDate,
+        dueDate: defaultDueDate,
       });
       setCargoLength("");
       setCargoWidth("");
@@ -687,9 +738,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_PAYMENT,
     DEFAULT_PAYMENT_AMOUNT,
     DEFAULT_STATUS,
-    DEFAULT_START_DATE,
-    DEFAULT_DUE_DATE,
     DEFAULT_DUE_OFFSET_MS,
+    computeDefaultDates,
     reset,
     setDueOffset,
   ]);
@@ -777,6 +827,20 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const submit = handleSubmit(async (formData) => {
     try {
+      const creationDate = parseIsoDate(created);
+      if (formData.startDate && creationDate) {
+        const parsedStart = parseIsoDate(formData.startDate);
+        if (parsedStart && parsedStart.getTime() < creationDate.getTime()) {
+          setError("startDate", {
+            type: "validate",
+            message: t("startBeforeCreated"),
+          });
+          return;
+        }
+      }
+      const defaults = computeDefaultDates(creationDate ?? undefined);
+      const startInputValue = formData.startDate || defaults.start;
+      const dueInputValue = formData.dueDate || defaults.due;
       const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: taskType,
@@ -792,8 +856,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         start_location_link: startLink,
         end_location: end,
         end_location_link: endLink,
-        start_date: formData.startDate || DEFAULT_START_DATE,
-        due_date: formData.dueDate || DEFAULT_DUE_DATE,
+        start_date: startInputValue,
+        due_date: dueInputValue,
       };
       const amountValue = parseCurrencyInput(paymentAmount);
       if (amountValue === null) {
@@ -1065,6 +1129,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 id="task-dialog-start-date"
                 type="datetime-local"
                 {...register("startDate")}
+                min={formatIsoForInput(created)}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />

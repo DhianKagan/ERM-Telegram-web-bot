@@ -25,6 +25,7 @@ import {
 } from "../services/storage";
 import authFetch from "../utils/authFetch";
 import { showToast } from "../utils/toast";
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from "shared";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
@@ -33,6 +34,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
 
 type PreviewMode = "image" | "video" | "pdf" | "text";
@@ -72,7 +74,7 @@ function formatDate(value?: string): string {
   if (!value) return "—";
   const time = Date.parse(value);
   if (Number.isNaN(time)) return "—";
-  return dateTimeFormatter.format(new Date(time)).replace(", ", " ");
+  return `${dateTimeFormatter.format(new Date(time)).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
 }
 
 export default function StoragePage() {

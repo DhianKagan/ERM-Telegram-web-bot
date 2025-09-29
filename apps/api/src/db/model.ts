@@ -219,6 +219,7 @@ export interface TaskAttrs {
   comments?: Comment[];
   status?: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
   completed_at?: Date | null;
+  in_progress_at?: Date | null;
   completion_result?: 'full' | 'partial' | 'changed';
   cancel_reason?: 'technical' | 'canceled' | 'declined';
   checklist?: ChecklistItem[];
@@ -302,6 +303,7 @@ const taskSchema = new Schema<TaskDocument>(
       default: 'Новая',
     },
     completed_at: Date,
+    in_progress_at: Date,
     completion_result: {
       type: String,
       enum: ['full', 'partial', 'changed'],

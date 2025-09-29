@@ -17,7 +17,12 @@ function stripTags(html: unknown): string {
 }
 
 import userLink from './userLink';
-import type { Task, User } from 'shared';
+import {
+  PROJECT_TIMEZONE,
+  PROJECT_TIMEZONE_LABEL,
+  type Task,
+  type User,
+} from 'shared';
 
 const toPriorityDisplay = (value: string) =>
   /^бессроч/i.test(value.trim()) ? 'До выполнения' : value;
@@ -37,6 +42,16 @@ const weightFormatter = new Intl.NumberFormat('ru-RU', {
 const currencyFormatter = new Intl.NumberFormat('uk-UA', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+});
+
+const taskDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
 
 type TaskData = Task & {
@@ -76,15 +91,17 @@ export default function formatTask(
 
   if (task.due_date) {
     const d = new Date(task.due_date);
+    const formatted = taskDateFormatter.format(d).replace(', ', ' ');
     lines.push(
-      `⏰ *Срок:* \`${mdEscape(new Intl.DateTimeFormat('ru-RU').format(d))}\``,
+      `⏰ *Срок:* \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
     );
   }
 
   if (task.start_date) {
     const d = new Date(task.start_date);
+    const formatted = taskDateFormatter.format(d).replace(', ', ' ');
     lines.push(
-      `🗓 *Начало:* \`${mdEscape(new Intl.DateTimeFormat('ru-RU').format(d))}\``,
+      `🗓 *Начало:* \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
     );
   }
 

@@ -129,17 +129,26 @@ describe("TaskDialog", () => {
     const titleInput = await screen.findByPlaceholderText("title");
     fireEvent.change(titleInput, { target: { value: "Новая задача" } });
 
-    const startInput = screen.getByLabelText("startDate");
-    fireEvent.change(startInput, { target: { value: "2024-02-01T09:00" } });
+    const startInput = screen.getByLabelText("startDate") as HTMLInputElement;
+    const toLocalInputValue = (date: Date) => {
+      const pad = (n: number) => `${n}`.padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
+        date.getMinutes(),
+      )}`;
+    };
+    const now = Date.now();
+    const startValue = toLocalInputValue(new Date(now + 5 * 60_000));
+    fireEvent.change(startInput, { target: { value: startValue } });
 
-    const dueInput = screen.getByLabelText("dueDate");
-    fireEvent.change(dueInput, { target: { value: "2024-02-02T12:30" } });
+    const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+    const dueValueSource = toLocalInputValue(new Date(now + 65 * 60_000));
+    fireEvent.change(dueInput, { target: { value: dueValueSource } });
 
     fireEvent.click(screen.getByText("create"));
 
     await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
     expect(createTaskMock.mock.calls[0][0]).toMatchObject({
-      due_date: "2024-02-02T12:30",
+      due_date: dueValueSource,
     });
   });
 });

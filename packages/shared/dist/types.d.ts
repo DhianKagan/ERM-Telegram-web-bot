@@ -4,6 +4,7 @@ export interface Task {
     title: string;
     status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
     completed_at?: string | null;
+    in_progress_at?: string | null;
     assignees?: number[];
     cargo_length_m?: number;
     cargo_width_m?: number;

@@ -2,6 +2,11 @@
 // Модули: path, dotenv, process
 import path from 'path';
 import dotenv from 'dotenv';
+import { PROJECT_TIMEZONE } from 'shared';
+
+if (!process.env.TZ) {
+  process.env.TZ = PROJECT_TIMEZONE;
+}
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });

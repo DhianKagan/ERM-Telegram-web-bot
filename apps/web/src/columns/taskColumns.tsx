@@ -512,6 +512,8 @@ const buildCompletionNote = (
     : `Выполнена с опозданием на ${offset}`;
 };
 
+// Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
+// eslint-disable-next-line react-refresh/only-export-components
 function DeadlineCountdownBadge({
   startValue,
   dueValue,
@@ -626,6 +628,278 @@ function DeadlineCountdownBadge({
         <span className="sr-only">{completionNote}</span>
       ) : null}
     </span>
+  );
+}
+
+const durationToneClassMap: Record<
+  "completed" | "cancelled" | "active" | "planned" | "idle",
+  string
+> = {
+  completed: `${countdownBadgeBaseClass} bg-emerald-500/25 ring-emerald-500/45 dark:bg-emerald-400/25 dark:ring-emerald-300/45`,
+  cancelled: `${countdownBadgeBaseClass} bg-rose-500/30 ring-rose-500/55 dark:bg-rose-400/30 dark:ring-rose-300/50`,
+  active: `${countdownBadgeBaseClass} bg-amber-500/25 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45`,
+  planned: `${countdownBadgeBaseClass} bg-sky-500/20 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45`,
+  idle: neutralCountdownBadgeClass,
+};
+
+const formatDurationPhrase = (
+  parts: ReturnType<typeof formatCountdownParts>,
+  variant: "completed" | "running",
+) => {
+  const { days, hours, minutes } = parts;
+  if (!days && !hours && !minutes) {
+    return variant === "completed"
+      ? "Задача завершена менее чем за минуту"
+      : "Затрачено менее минуты";
+  }
+  const dayLabel = `${days} ${getRussianPlural(days, [
+    "день",
+    "дня",
+    "дней",
+  ])}`;
+  const hourLabel = `${hours} ${getRussianPlural(hours, [
+    "час",
+    "часа",
+    "часов",
+  ])}`;
+  const minuteLabel = `${minutes} ${getRussianPlural(minutes, [
+    "минута",
+    "минуты",
+    "минут",
+  ])}`;
+  const phrase = `${dayLabel} ${hourLabel} ${minuteLabel}`;
+  return variant === "completed"
+    ? `Задача завершена за ${phrase}`
+    : `Затрачено ${phrase}`;
+};
+
+const buildDurationTitle = (
+  variant: "completed" | "running" | "idle",
+  startValue?: string,
+  endValue?: string,
+  parts?: ReturnType<typeof formatCountdownParts>,
+) => {
+  const titleParts: string[] = [];
+  const startFormatted = startValue ? formatDate(startValue) : null;
+  const endFormatted = endValue ? formatDate(endValue) : null;
+  if (startFormatted) {
+    titleParts.push(`Начало: ${startFormatted.full}`);
+  }
+  if (endFormatted) {
+    titleParts.push(
+      variant === "completed"
+        ? `Завершено: ${endFormatted.full}`
+        : `Текущее время: ${endFormatted.full}`,
+    );
+  }
+  if (parts) {
+    const phrase = formatDurationPhrase(
+      parts,
+      variant === "completed" ? "completed" : "running",
+    );
+    const normalized =
+      variant === "completed"
+        ? phrase.replace(
+            /^Задача завершена за\s/,
+            "Продолжительность: ",
+          )
+        : phrase.replace(/^Затрачено\s/, "Продолжительность: ");
+    titleParts.push(
+      variant === "idle" ? `Продолжительность: ${phrase}` : normalized,
+    );
+  }
+  if (!titleParts.length) {
+    return variant === "idle"
+      ? "Продолжительность появится после указания даты начала"
+      : "Нет данных о продолжительности";
+  }
+  return titleParts.join("\n");
+};
+
+type ActualTimeCellProps = {
+  startValue?: string;
+  completedValue?: string | null;
+  status?: Task["status"];
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+function ActualTimeCell({
+  startValue,
+  completedValue,
+  status,
+}: ActualTimeCellProps) {
+  const startDate = React.useMemo(
+    () => parseDateInput(startValue),
+    [startValue],
+  );
+  const completedDate = React.useMemo(
+    () => parseDateInput(completedValue),
+    [completedValue],
+  );
+  const isFinished = status === "Выполнена" || status === "Отменена";
+  const isCancelled = status === "Отменена";
+
+  const [referenceDate, setReferenceDate] = React.useState<Date>(() => {
+    if (isFinished && completedDate) {
+      return completedDate;
+    }
+    return new Date();
+  });
+
+  React.useEffect(() => {
+    if (!startDate) {
+      return undefined;
+    }
+    if (isFinished) {
+      if (completedDate) {
+        setReferenceDate(completedDate);
+      }
+      return undefined;
+    }
+    const update = () => setReferenceDate(new Date());
+    update();
+    const timer = window.setInterval(update, 60_000);
+    return () => window.clearInterval(timer);
+  }, [isFinished, completedDate, startDate]);
+
+  const effectiveEndDate = isFinished && completedDate
+    ? completedDate
+    : referenceDate;
+  const durationMs = startDate
+    ? Math.max(0, effectiveEndDate.getTime() - startDate.getTime())
+    : null;
+  const durationParts = React.useMemo(
+    () => (durationMs !== null ? formatCountdownParts(durationMs) : null),
+    [durationMs],
+  );
+
+  const endIso = React.useMemo(() => effectiveEndDate.toISOString(), [
+    effectiveEndDate,
+  ]);
+
+  const variant: "completed" | "running" | "idle" = !startDate
+    ? "idle"
+    : isFinished
+    ? "completed"
+    : "running";
+
+  const toneKey: keyof typeof durationToneClassMap = !startDate
+    ? "idle"
+    : isFinished
+    ? isCancelled
+      ? "cancelled"
+      : "completed"
+    : status === "В работе"
+    ? "active"
+    : "planned";
+
+  const label = durationParts
+    ? formatDurationPhrase(
+        durationParts,
+        variant === "completed" ? "completed" : "running",
+      )
+    : variant === "idle"
+    ? "Дата начала не указана"
+    : "Продолжительность появится после начала";
+
+  const durationBadgeTitle = buildDurationTitle(
+    variant,
+    startValue,
+    variant === "completed" ? completedValue ?? undefined : endIso,
+    durationParts ?? undefined,
+  );
+
+  const renderStopBadge = () => {
+    if (isFinished && completedDate && completedValue) {
+      return renderDateCell(completedValue);
+    }
+    if (isFinished) {
+      return (
+        <span className={dateBadgeClass} title="Нет отметки о завершении">
+          <span className="truncate">Нет данных</span>
+        </span>
+      );
+    }
+    if (!startDate) {
+      return (
+        <span className={dateBadgeClass} title="Дата начала отсутствует">
+          <span className="truncate">Нет даты начала</span>
+        </span>
+      );
+    }
+    const placeholder =
+      status === "В работе"
+        ? "В работе"
+        : status === "Новая"
+        ? "Не начата"
+        : "В ожидании";
+    return (
+      <span
+        className={dateBadgeClass}
+        title="Задача ещё не завершена"
+      >
+        <span className="truncate">{placeholder}</span>
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {renderStopBadge()}
+      <span
+        className={`${durationToneClassMap[toneKey]} inline-flex items-center gap-1.5`}
+        title={durationBadgeTitle}
+      >
+        <span className="sr-only">{label}</span>
+        {durationParts ? (
+          <span
+            aria-hidden
+            className="flex items-end gap-1 text-black dark:text-white"
+          >
+            <span className="flex flex-col items-center leading-tight">
+              <span className="text-[0.8rem] font-semibold tabular-nums">
+                {durationParts.paddedDays}
+              </span>
+              <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+                {getRussianPlural(durationParts.days, [
+                  "день",
+                  "дня",
+                  "дней",
+                ])}
+              </span>
+            </span>
+            <span className="flex flex-col items-center leading-tight">
+              <span className="text-[0.8rem] font-semibold tabular-nums">
+                {durationParts.paddedHours}
+              </span>
+              <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+                {getRussianPlural(durationParts.hours, [
+                  "час",
+                  "часа",
+                  "часов",
+                ])}
+              </span>
+            </span>
+            <span className="flex flex-col items-center leading-tight">
+              <span className="text-[0.8rem] font-semibold tabular-nums">
+                {durationParts.paddedMinutes}
+              </span>
+              <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+                {getRussianPlural(durationParts.minutes, [
+                  "минута",
+                  "минуты",
+                  "минут",
+                ])}
+              </span>
+            </span>
+          </span>
+        ) : (
+          <span className="text-xs font-medium text-black dark:text-white">
+            {label}
+          </span>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -883,15 +1157,24 @@ export default function taskColumns(
       },
     },
     {
-      header: "Фактическое время",
+      header: "Время выполнения",
       accessorKey: "completed_at",
       meta: {
-        width: "clamp(9.5rem, 18vw, 14rem)",
-        minWidth: "9rem",
-        maxWidth: "14.5rem",
+        width: "clamp(10.5rem, 20vw, 15.5rem)",
+        minWidth: "10rem",
+        maxWidth: "16.5rem",
         cellClassName: "whitespace-nowrap text-xs sm:text-sm",
       },
-      cell: (p) => renderDateCell(p.getValue<string>()),
+      cell: (p) => {
+        const row = p.row.original;
+        return (
+          <ActualTimeCell
+            startValue={row.start_date}
+            completedValue={p.getValue<string | null>()}
+            status={row.status}
+          />
+        );
+      },
     },
     {
       header: "Тип",

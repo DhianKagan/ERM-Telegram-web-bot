@@ -269,12 +269,17 @@ const timePartFmt = new Intl.DateTimeFormat("ru-RU", {
   hour12: false,
 });
 
-const formatDate = (value?: string) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+const parseDateInput = (value?: string) => {
+  if (!value) {
     return null;
   }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatDate = (value?: string) => {
+  const date = parseDateInput(value);
+  if (!date) return null;
   const full = fullDateTimeFmt.format(date).replace(", ", " ");
   const datePart = datePartFmt.format(date);
   const timePart = timePartFmt.format(date);
@@ -450,28 +455,111 @@ const buildCountdownTitle = (
   return `Выполнить до ${formatted.full}`;
 };
 
+const COMPLETION_THRESHOLD_MS = 60_000;
+
+const formatCompletionOffset = (diffMs: number) => {
+  const absValue = Math.abs(diffMs);
+  if (absValue < COMPLETION_THRESHOLD_MS) {
+    return "менее минуты";
+  }
+  const { days, hours, minutes } = formatCountdownParts(absValue);
+  const parts: string[] = [];
+  if (days) {
+    parts.push(`${days} ${getRussianPlural(days, ["день", "дня", "дней"])}`);
+  }
+  if (hours) {
+    parts.push(
+      `${hours} ${getRussianPlural(hours, ["час", "часа", "часов"])}`,
+    );
+  }
+  if (minutes && parts.length < 2) {
+    parts.push(
+      `${minutes} ${getRussianPlural(minutes, ["минута", "минуты", "минут"])}`,
+    );
+  }
+  if (!parts.length) {
+    return "менее минуты";
+  }
+  return parts.slice(0, 2).join(" ");
+};
+
+const buildCompletionNote = (
+  status: Task["status"] | undefined,
+  dueValue?: string,
+  completedValue?: string,
+) => {
+  if (status !== "Выполнена") {
+    return null;
+  }
+  const dueDate = parseDateInput(dueValue);
+  const completedDate = parseDateInput(completedValue);
+  if (!dueDate || !completedDate) {
+    return null;
+  }
+  const diff = completedDate.getTime() - dueDate.getTime();
+  if (!Number.isFinite(diff)) {
+    return null;
+  }
+  if (Math.abs(diff) < COMPLETION_THRESHOLD_MS) {
+    return "Выполнена точно в срок";
+  }
+  const offset = formatCompletionOffset(diff);
+  if (!offset) {
+    return "Выполнена точно в срок";
+  }
+  return diff < 0
+    ? `Выполнена досрочно на ${offset}`
+    : `Выполнена с опозданием на ${offset}`;
+};
+
 function DeadlineCountdownBadge({
   startValue,
   dueValue,
   rawDue,
+  status,
+  completedAt,
 }: {
   startValue?: string;
   dueValue?: string;
   rawDue?: string;
+  status?: Task["status"];
+  completedAt?: string | null;
 }) {
-  const [now, setNow] = React.useState(() => new Date());
+  const completedDate = React.useMemo(
+    () => parseDateInput(completedAt),
+    [completedAt],
+  );
+  const isCompleted = status === "Выполнена";
+
+  const [now, setNow] = React.useState<Date>(
+    () => completedDate ?? new Date(),
+  );
 
   React.useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    if (isCompleted) {
+      if (completedDate) {
+        setNow(completedDate);
+      }
+      return;
+    }
+    const update = () => setNow(new Date());
+    update();
+    const timer = window.setInterval(update, 60_000);
     return () => window.clearInterval(timer);
-  }, [startValue, dueValue]);
+  }, [isCompleted, completedDate, startValue, dueValue]);
+
+  const referenceDate = completedDate ?? now;
 
   const state = React.useMemo(
-    () => getDeadlineState(startValue, dueValue, now),
-    [startValue, dueValue, now],
+    () => getDeadlineState(startValue, dueValue, referenceDate),
+    [startValue, dueValue, referenceDate],
   );
 
   const formatted = React.useMemo(() => formatDate(dueValue), [dueValue]);
+  const completionNote = React.useMemo(
+    () => buildCompletionNote(status, dueValue, completedAt),
+    [status, dueValue, completedAt],
+  );
 
   if (state.kind === "invalid") {
     return (
@@ -496,7 +584,9 @@ function DeadlineCountdownBadge({
   const className = countdownToneClassMap[toneKey];
   const parts = formatCountdownParts(state.remainingMs);
   const label = buildCountdownLabel(state);
-  const title = buildCountdownTitle(state, formatted, rawDue);
+  const title = completionNote
+    ? `${completionNote}. ${buildCountdownTitle(state, formatted, rawDue)}`
+    : buildCountdownTitle(state, formatted, rawDue);
   return (
     <span
       className={`${className} inline-flex items-center gap-1.5`}
@@ -532,6 +622,9 @@ function DeadlineCountdownBadge({
           </span>
         </span>
       </span>
+      {completionNote ? (
+        <span className="sr-only">{completionNote}</span>
+      ) : null}
     </span>
   );
 }
@@ -737,24 +830,54 @@ export default function taskColumns(
       cell: (p) => {
         const dueValue = p.getValue<string>();
         const row = p.row.original;
+        const completionNote = buildCompletionNote(
+          row.status,
+          row.due_date,
+          row.completed_at,
+        );
+        const noteNode = completionNote ? (
+          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+            {completionNote}
+          </span>
+        ) : null;
         const countdown = (
           <DeadlineCountdownBadge
             startValue={row.start_date}
             dueValue={row.due_date}
             rawDue={dueValue}
+            status={row.status}
+            completedAt={row.completed_at}
           />
         );
         if (!dueValue) {
-          return countdown;
+          if (!noteNode) {
+            return countdown;
+          }
+          return (
+            <div className="flex flex-col items-start gap-1">
+              {countdown}
+              {noteNode}
+            </div>
+          );
         }
         const dateCell = renderDateCell(dueValue);
         if (typeof dateCell === "string") {
-          return dateCell || countdown;
+          if (!dateCell && !noteNode) {
+            return countdown;
+          }
+          return (
+            <div className="flex flex-col items-start gap-1">
+              {dateCell ? <span>{dateCell}</span> : null}
+              {countdown}
+              {noteNode}
+            </div>
+          );
         }
         return (
           <div className="flex flex-col items-start gap-1">
             {dateCell}
             {countdown}
+            {noteNode}
           </div>
         );
       },

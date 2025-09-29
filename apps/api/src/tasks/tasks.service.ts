@@ -240,7 +240,21 @@ class TasksService {
   }
 
   async bulk(ids: string[], data: Partial<TaskDocument>) {
-    await this.repo.bulkUpdate(ids, data);
+    const payload = { ...(data ?? {}) } as Partial<TaskDocument>;
+    if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+      const status = payload.status;
+      const isCompleted = status === 'Выполнена' || status === 'Отменена';
+      if (isCompleted) {
+        if (!Object.prototype.hasOwnProperty.call(payload, 'completed_at')) {
+          payload.completed_at = new Date();
+        } else if (payload.completed_at === undefined) {
+          payload.completed_at = new Date();
+        }
+      } else {
+        payload.completed_at = null;
+      }
+    }
+    await this.repo.bulkUpdate(ids, payload);
     await clearRouteCache();
   }
 

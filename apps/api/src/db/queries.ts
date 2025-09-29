@@ -201,10 +201,21 @@ export async function updateTask(
 
 export async function updateTaskStatus(
   id: string,
-  status: string,
+  status: TaskDocument['status'],
   userId: number,
 ): Promise<TaskDocument | null> {
-  return updateTask(id, { status } as Partial<TaskDocument>, userId);
+  const existing = await Task.findById(id);
+  if (!existing) return null;
+  const isCompleted = status === 'Выполнена' || status === 'Отменена';
+  const wasCompleted =
+    existing.status === 'Выполнена' || existing.status === 'Отменена';
+  const update: Partial<TaskDocument> = { status };
+  if (isCompleted) {
+    update.completed_at = new Date();
+  } else if (existing.completed_at || wasCompleted) {
+    update.completed_at = null;
+  }
+  return updateTask(id, update, userId);
 }
 
 export interface TaskFilters {
@@ -316,15 +327,29 @@ export async function bulkUpdate(
   ids: string[],
   data: Partial<TaskDocument>,
 ): Promise<void> {
+  const payload: Partial<TaskDocument> = { ...data };
+  if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+    const status = payload.status;
+    const isCompleted = status === 'Выполнена' || status === 'Отменена';
+    if (isCompleted) {
+      if (!Object.prototype.hasOwnProperty.call(payload, 'completed_at')) {
+        payload.completed_at = new Date();
+      } else if (payload.completed_at === undefined) {
+        payload.completed_at = new Date();
+      }
+    } else {
+      payload.completed_at = null;
+    }
+  }
   await Task.updateMany(
     { _id: { $in: ids } },
     {
-      $set: data,
+      $set: payload,
       $push: {
         history: {
           changed_at: new Date(),
           changed_by: 0,
-          changes: { from: {}, to: data },
+          changes: { from: {}, to: payload },
         },
       },
     },

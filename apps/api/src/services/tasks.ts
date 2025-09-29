@@ -4,7 +4,8 @@ import * as q from '../db/queries';
 import { getRouteDistance, Point } from './route';
 import { generateRouteLink, type Task } from 'shared';
 
-export type TaskData = Partial<Task> & {
+export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
+  completed_at?: string | Date | null;
   startCoordinates?: Point;
   finishCoordinates?: Point;
   google_route_url?: string;
@@ -64,8 +65,26 @@ export const addTime = (
   userId = 0,
 ): Promise<unknown> => q.addTime(id, minutes, userId);
 
-export const bulk = (ids: string[], data: TaskData = {}): Promise<unknown> =>
-  q.bulkUpdate(ids, data);
+export const bulk = (
+  ids: string[],
+  data: TaskData = {},
+): Promise<unknown> => {
+  const payload = { ...(data ?? {}) };
+  if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+    const status = payload.status;
+    const isCompleted = status === 'Выполнена' || status === 'Отменена';
+    if (isCompleted) {
+      if (!Object.prototype.hasOwnProperty.call(payload, 'completed_at')) {
+        payload.completed_at = new Date();
+      } else if (payload.completed_at === undefined) {
+        payload.completed_at = new Date();
+      }
+    } else {
+      payload.completed_at = null;
+    }
+  }
+  return q.bulkUpdate(ids, payload);
+};
 
 export const summary = (filters: Record<string, unknown>): Promise<unknown> =>
   q.summary(filters);

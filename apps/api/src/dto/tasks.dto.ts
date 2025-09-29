@@ -27,6 +27,9 @@ export class CreateTaskDto {
       body('title').isString().notEmpty(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
+      body('completed_at')
+        .optional({ nullable: true })
+        .isISO8601(),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
       optionalFloatField('cargo_length_m'),
@@ -45,6 +48,9 @@ export class UpdateTaskDto {
       body('title').optional().isString(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
+      body('completed_at')
+        .optional({ nullable: true })
+        .isISO8601(),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),

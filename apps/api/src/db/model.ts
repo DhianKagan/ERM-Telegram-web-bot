@@ -218,7 +218,7 @@ export interface TaskAttrs {
   created_by?: number;
   comments?: Comment[];
   status?: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
-  completed_at?: Date;
+  completed_at?: Date | null;
   completion_result?: 'full' | 'partial' | 'changed';
   cancel_reason?: 'technical' | 'canceled' | 'declined';
   checklist?: ChecklistItem[];

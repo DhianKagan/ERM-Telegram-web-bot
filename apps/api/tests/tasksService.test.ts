@@ -79,3 +79,27 @@ test('create не падает без данных', async () => {
   expect(repo.createTask).toHaveBeenCalledWith({});
   expect(task).toEqual({ id: '1' });
 });
+
+test('bulk выставляет completed_at для финальных статусов', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  await service.bulk(['1'], { status: 'Выполнена' } as any);
+  expect(repo.bulkUpdate).toHaveBeenCalledTimes(1);
+  const payload = repo.bulkUpdate.mock.calls[0][1];
+  expect(payload.status).toBe('Выполнена');
+  expect(payload.completed_at).toBeInstanceOf(Date);
+});
+
+test('bulk сбрасывает completed_at при возврате статуса', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  const date = new Date();
+  await service.bulk(
+    ['1'],
+    { status: 'В работе', completed_at: date } as any,
+  );
+  expect(repo.bulkUpdate).toHaveBeenCalledTimes(1);
+  const payload = repo.bulkUpdate.mock.calls[0][1];
+  expect(payload.status).toBe('В работе');
+  expect(payload.completed_at).toBeNull();
+});

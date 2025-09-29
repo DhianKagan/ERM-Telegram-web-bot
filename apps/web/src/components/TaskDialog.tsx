@@ -1042,10 +1042,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         <>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
-              <label className="block text-sm font-medium">
+              <label className="block text-sm font-medium" htmlFor="task-dialog-start-date">
                 {t("startDate")}
               </label>
               <input
+                id="task-dialog-start-date"
                 type="datetime-local"
                 {...register("startDate")}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1053,10 +1054,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">
+              <label className="block text-sm font-medium" htmlFor="task-dialog-due-date">
                 {t("dueDate")}
               </label>
               <input
+                id="task-dialog-due-date"
                 type="datetime-local"
                 {...register("dueDate", { onChange: handleDueDateChange })}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"

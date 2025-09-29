@@ -15,7 +15,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
 }
 
-export const bot = new Telegraf(botToken!);
+export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);
@@ -133,13 +133,21 @@ function buildTaskEventMessage(task: TaskDocument, action: string): string {
   return `Задача ${identifier} ${action} ${time}`;
 }
 
+const getCallbackData = (
+  callback: Context['callbackQuery'],
+): string | null => {
+  if (!callback) return null;
+  if ('data' in callback && typeof callback.data === 'string') return callback.data;
+  return null;
+};
+
 async function processStatusAction(
   ctx: Context,
   status: 'В работе' | 'Выполнена',
   actionText: string,
   responseMessage: string,
 ) {
-  const data = ctx.callbackQuery?.data;
+  const data = getCallbackData(ctx.callbackQuery);
   const taskId = data?.split(':')[1];
   if (!taskId) {
     await ctx.answerCbQuery('Некорректный идентификатор задачи', {

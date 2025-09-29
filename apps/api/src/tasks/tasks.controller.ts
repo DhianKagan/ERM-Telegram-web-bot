@@ -53,10 +53,11 @@ export default class TasksController {
     const recipients = this.collectNotificationTargets(plain, creatorId);
     const usersRaw = await getUsersMap(Array.from(recipients));
     const users = Object.fromEntries(
-      Object.entries(usersRaw).map(([key, value]) => [
-        Number(key),
-        { name: value.name, username: value.username },
-      ]),
+      Object.entries(usersRaw).map(([key, value]) => {
+        const name = value.name ?? value.username ?? '';
+        const username = value.username ?? '';
+        return [Number(key), { name, username }];
+      }),
     );
     const keyboard = taskStatusKeyboard(id);
     const options: Parameters<typeof bot.telegram.sendMessage>[2] = {

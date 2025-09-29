@@ -13,6 +13,7 @@ jest.mock('telegraf', () => {
     start = jest.fn();
     command = jest.fn();
     hears = jest.fn();
+    action = jest.fn();
     stop = jest.fn();
   }
   return {

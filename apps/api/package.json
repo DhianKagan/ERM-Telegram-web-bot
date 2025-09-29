@@ -36,7 +36,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9",
     "lusca": "^1.7.0",
-    "mongoose": "^8.16.0",
+    "mongoose": "^8.18.2",
     "multer": "^2.0.2",
     "clamscan": "^2.4.0",
     "node-cron": "^4.1.1",

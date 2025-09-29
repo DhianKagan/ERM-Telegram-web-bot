@@ -11,6 +11,7 @@ export interface Task {
   _id: string;
   title: string;
   status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+  completed_at?: string | null;
   assignees?: number[];
   cargo_length_m?: number;
   cargo_width_m?: number;

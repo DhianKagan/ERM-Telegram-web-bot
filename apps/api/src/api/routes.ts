@@ -291,11 +291,24 @@ export default async function registerRoutes(
         });
         return;
       }
-      await updateTaskStatus(req.params.id, req.body.status, userId);
+      const updated = await updateTaskStatus(
+        req.params.id,
+        req.body.status,
+        userId,
+      );
+      if (!updated) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Задача не найдена',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
       await writeLog(
         `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${userId}`,
       );
-      res.json({ status: 'ok' });
+      res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
     }),
   );
 
@@ -309,13 +322,22 @@ export default async function registerRoutes(
       body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
-      await updateTaskStatus(
+      const updated = await updateTaskStatus(
         req.params.id,
         req.body.status,
         Number((req as RequestWithUser).user!.id),
       );
+      if (!updated) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Задача не найдена',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
       await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
-      res.json({ status: 'ok' });
+      res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
     }),
   );
 

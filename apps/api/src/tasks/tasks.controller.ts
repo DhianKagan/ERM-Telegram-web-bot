@@ -8,20 +8,35 @@ import type TasksService from './tasks.service';
 import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
-import type { TaskDocument } from '../db/model';
+import { Task, type TaskDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
-import type { Task } from 'shared';
+import {
+  PROJECT_TIMEZONE,
+  PROJECT_TIMEZONE_LABEL,
+  type Task as SharedTask,
+} from 'shared';
 import { bot } from '../bot/bot';
 import { chatId as groupChatId } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask from '../utils/formatTask';
+import buildChatMessageLink from '../utils/messageLink';
 
-type TaskEx = Task & {
+type TaskEx = SharedTask & {
   controllers?: number[];
   created_by?: number;
   history?: { changed_by: number }[];
 };
+
+const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: PROJECT_TIMEZONE,
+});
 
 @injectable()
 export default class TasksController {
@@ -43,13 +58,51 @@ export default class TasksController {
     return recipients;
   }
 
+  private collectAssignees(task: Partial<TaskDocument>) {
+    const recipients = new Set<number>();
+    const add = (value: unknown) => {
+      const num = Number(value);
+      if (!Number.isNaN(num) && Number.isFinite(num) && num !== 0) {
+        recipients.add(num);
+      }
+    };
+    add(task.assigned_user_id);
+    if (Array.isArray(task.assignees)) task.assignees.forEach(add);
+    return recipients;
+  }
+
+  private getTaskIdentifier(task: Partial<TaskDocument>) {
+    if (task.request_id) return String(task.request_id);
+    if (task.task_number) return String(task.task_number);
+    if (task._id) {
+      if (typeof task._id === 'object' && 'toString' in task._id) {
+        return (task._id as { toString(): string }).toString();
+      }
+      return String(task._id);
+    }
+    return '';
+  }
+
+  private buildActionMessage(
+    task: Partial<TaskDocument>,
+    action: string,
+    at: Date,
+  ): string {
+    const identifier = this.getTaskIdentifier(task);
+    const formatted = taskEventFormatter.format(at).replace(', ', ' ');
+    return `Задача ${identifier} ${action} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
+  }
+
   private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
+    const docId =
+      typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+        ? (task._id as { toString(): string }).toString()
+        : String(task._id ?? '');
     const plain =
       typeof task.toObject === 'function'
         ? (task.toObject() as TaskDocument & Record<string, unknown>)
         : task;
-    const id = String(plain._id ?? plain.id ?? '');
-    if (!id) return;
+    if (!docId) return;
     const recipients = this.collectNotificationTargets(plain, creatorId);
     const usersRaw = await getUsersMap(Array.from(recipients));
     const users = Object.fromEntries(
@@ -59,41 +112,86 @@ export default class TasksController {
         return [Number(key), { name, username }];
       }),
     );
-    const keyboard = taskStatusKeyboard(id);
-    const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
-      parse_mode: 'MarkdownV2',
-      ...keyboard,
-    };
-    if (typeof plain.telegram_topic_id === 'number') {
-      options.message_thread_id = plain.telegram_topic_id;
-    }
-    const message = formatTask(plain as unknown as Task, users);
-    const promises: Promise<unknown>[] = [];
+    const mainKeyboard = taskStatusKeyboard(docId);
+    const message = formatTask(plain as unknown as SharedTask, users);
+    let groupMessageId: number | undefined;
+    let statusMessageId: number | undefined;
+    let messageLink: string | null = null;
+
     if (groupChatId) {
-      promises.push(
-        bot.telegram
-          .sendMessage(groupChatId, message, options)
-          .catch((error) => {
-            console.error('Не удалось отправить уведомление в группу', error);
-          }),
+      try {
+        const groupOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+          parse_mode: 'MarkdownV2',
+          ...mainKeyboard,
+        };
+        if (typeof plain.telegram_topic_id === 'number') {
+          groupOptions.message_thread_id = plain.telegram_topic_id;
+        }
+        const groupMessage = await bot.telegram.sendMessage(
+          groupChatId,
+          message,
+          groupOptions,
+        );
+        groupMessageId = groupMessage?.message_id;
+        messageLink = buildChatMessageLink(groupChatId, groupMessageId);
+        const statusText = this.buildActionMessage(
+          plain,
+          'создана',
+          new Date(
+            (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
+          ),
+        );
+        const statusOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {};
+        if (typeof plain.telegram_topic_id === 'number') {
+          statusOptions.message_thread_id = plain.telegram_topic_id;
+        }
+        if (groupMessageId) {
+          statusOptions.reply_parameters = { message_id: groupMessageId };
+        }
+        const statusMessage = await bot.telegram.sendMessage(
+          groupChatId,
+          statusText,
+          statusOptions,
+        );
+        statusMessageId = statusMessage?.message_id;
+      } catch (error) {
+        console.error('Не удалось отправить уведомление в группу', error);
+      }
+    }
+
+    const assignees = this.collectAssignees(plain);
+    assignees.delete(creatorId);
+    if (messageLink && assignees.size) {
+      const identifier = this.getTaskIdentifier(plain);
+      const dmText = `Вам назначена задача <a href="${messageLink}">${identifier}</a>`;
+      const dmOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+        ...taskStatusKeyboard(docId),
+        parse_mode: 'HTML',
+      };
+      await Promise.allSettled(
+        Array.from(assignees).map((userId) =>
+          bot.telegram
+            .sendMessage(userId, dmText, dmOptions)
+            .catch((error) => {
+              console.error(
+                `Не удалось отправить уведомление пользователю ${userId}`,
+                error,
+              );
+            }),
+        ),
       );
     }
-    recipients.forEach((userId) => {
-      promises.push(
-        bot.telegram
-          .sendMessage(userId, message, {
-            parse_mode: 'MarkdownV2',
-            ...keyboard,
-          })
-          .catch((error) => {
-            console.error(
-              `Не удалось отправить уведомление пользователю ${userId}`,
-              error,
-            );
-          }),
-      );
-    });
-    await Promise.allSettled(promises);
+
+    if (groupMessageId || statusMessageId) {
+      try {
+        await Task.findByIdAndUpdate(docId, {
+          telegram_message_id: groupMessageId,
+          telegram_status_message_id: statusMessageId,
+        }).exec();
+      } catch (error) {
+        console.error('Не удалось сохранить идентификаторы сообщений задачи', error);
+      }
+    }
   }
 
   list = async (req: RequestWithUser, res: Response) => {

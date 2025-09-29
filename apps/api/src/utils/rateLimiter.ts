@@ -108,6 +108,7 @@ export default function createRateLimiter({
     standardHeaders: true,
     legacyHeaders: true,
     skip: ((req: RequestWithUser) =>
+      Boolean(req.user?.id) ||
       hasConfirmedHeader(req.headers['x-confirmed-action']) ||
       Boolean(
         captcha &&

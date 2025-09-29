@@ -41,7 +41,7 @@ exports.taskFields = [
         label: 'Способ оплаты',
         type: 'select',
         options: constants_1.PAYMENT_METHODS,
-        default: constants_1.PAYMENT_METHODS[1],
+        default: constants_1.PAYMENT_METHODS.find((method) => /^без оплаты$/i.test(method.trim())) || constants_1.PAYMENT_METHODS[0],
     },
     {
         name: 'payment_amount',

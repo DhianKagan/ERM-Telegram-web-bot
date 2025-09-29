@@ -264,6 +264,7 @@ const upload = multer({
   fileFilter: sharedFileFilter,
   limits: sharedLimits,
 });
+const inlineUpload = upload.single('upload');
 
 const chunkUpload = multer({
   storage: multer.memoryStorage(),
@@ -283,6 +284,46 @@ const chunkUploadMiddleware: RequestHandler = (req, res, next) => {
     }
     next();
   });
+};
+
+const handleInlineUpload: RequestHandler = async (req, res) => {
+  try {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      res.status(400).json({ error: 'Файл не получен' });
+      return;
+    }
+    if (!file.mimetype.startsWith('image/')) {
+      res.status(400).json({ error: 'Допустимы только изображения' });
+      return;
+    }
+    (req as { files?: Express.Multer.File[] }).files = [file];
+    (req.body as BodyWithAttachments).attachments = [];
+    await new Promise<void>((resolve, reject) => {
+      processUploads(req, res, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+    if (res.headersSent) return;
+    const attachment = (req.body as BodyWithAttachments).attachments?.[0];
+    if (!attachment?.url) {
+      res.status(500).json({ error: 'Не удалось сохранить файл' });
+      return;
+    }
+    res.json({
+      url: `${attachment.url}?mode=inline`,
+      thumbnailUrl: attachment.thumbnailUrl,
+      originalUrl: attachment.url,
+    });
+  } catch (error) {
+    if (res.headersSent) return;
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Не удалось загрузить файл';
+    res.status(500).json({ error: message });
+  }
 };
 
 export const handleChunks: RequestHandler = async (req, res) => {
@@ -407,6 +448,12 @@ router.post(
   authMiddleware(),
   chunkUploadMiddleware,
   handleChunks,
+);
+router.post(
+  '/upload-inline',
+  authMiddleware(),
+  inlineUpload,
+  handleInlineUpload,
 );
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   ['assignees', 'controllers'].forEach((k) => {

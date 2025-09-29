@@ -10,6 +10,7 @@ import { startKeyRotation } from '../services/keyRotation';
 import '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import type { TaskDocument } from '../db/model';
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -118,8 +119,13 @@ bot.hears('Транспорт', sendFleetVehicles);
 const MAX_RETRIES = 5;
 
 const eventTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
+  hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
 
 function buildTaskEventMessage(task: TaskDocument, action: string): string {
@@ -129,8 +135,8 @@ function buildTaskEventMessage(task: TaskDocument, action: string): string {
     (typeof task._id === 'object' && task._id !== null && 'toString' in task._id
       ? (task._id as { toString(): string }).toString()
       : String(task._id));
-  const time = eventTimeFormatter.format(new Date());
-  return `Задача ${identifier} ${action} ${time}`;
+  const time = eventTimeFormatter.format(new Date()).replace(', ', ' ');
+  return `Задача ${identifier} ${action} ${time} (${PROJECT_TIMEZONE_LABEL})`;
 }
 
 const getCallbackData = (

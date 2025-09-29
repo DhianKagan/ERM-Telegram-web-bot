@@ -30,3 +30,6 @@ export const TASK_STATUSES = [
   'Выполнена',
   'Отменена',
 ] as const;
+
+export const PROJECT_TIMEZONE = 'Europe/Kyiv';
+export const PROJECT_TIMEZONE_LABEL = 'GMT+3';

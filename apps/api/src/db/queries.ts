@@ -171,6 +171,18 @@ export async function updateTask(
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  if (Object.prototype.hasOwnProperty.call(data, 'status')) {
+    const nextStatus = data.status as TaskDocument['status'];
+    if (nextStatus === 'В работе') {
+      if (!Object.prototype.hasOwnProperty.call(data, 'in_progress_at')) {
+        (data as Record<string, unknown>).in_progress_at = new Date();
+      } else if ((data as Record<string, unknown>).in_progress_at === undefined) {
+        (data as Record<string, unknown>).in_progress_at = new Date();
+      }
+    } else if (nextStatus === 'Новая') {
+      (data as Record<string, unknown>).in_progress_at = null;
+    }
+  }
   const from: Record<string, unknown> = {};
   const to: Record<string, unknown> = {};
   Object.entries(data).forEach(([k, v]) => {
@@ -210,6 +222,11 @@ export async function updateTaskStatus(
   const wasCompleted =
     existing.status === 'Выполнена' || existing.status === 'Отменена';
   const update: Partial<TaskDocument> = { status };
+  if (status === 'В работе') {
+    update.in_progress_at = new Date();
+  } else if (status === 'Новая') {
+    update.in_progress_at = null;
+  }
   if (isCompleted) {
     update.completed_at = new Date();
   } else if (existing.completed_at || wasCompleted) {
@@ -331,6 +348,11 @@ export async function bulkUpdate(
   if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
     const status = payload.status;
     const isCompleted = status === 'Выполнена' || status === 'Отменена';
+    if (status === 'В работе') {
+      payload.in_progress_at = new Date();
+    } else if (status === 'Новая') {
+      payload.in_progress_at = null;
+    }
     if (isCompleted) {
       if (!Object.prototype.hasOwnProperty.call(payload, 'completed_at')) {
         payload.completed_at = new Date();

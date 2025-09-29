@@ -42,6 +42,7 @@
   "donePartial": "Task partially completed",
   "dragFilesOrSelect": "Drag files here or select",
   "dueBeforeStart": "Due date cannot be before start",
+  "startBeforeCreated": "Start date cannot be earlier than creation date",
   "dueDate": "Due date",
   "edit": "Edit",
   "endPoint": "End point",

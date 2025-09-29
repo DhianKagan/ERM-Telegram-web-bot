@@ -2,7 +2,7 @@
 // Модули: React, @tanstack/react-table, heroicons, EmployeeLink
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { Task } from "shared";
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from "shared";
 import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
 import { getDeadlineState, type DeadlineState } from "./taskDeadline";
@@ -255,18 +255,21 @@ const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
 
 const datePartFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
+  timeZone: PROJECT_TIMEZONE,
 });
 
 const timePartFmt = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+  timeZone: PROJECT_TIMEZONE,
 });
 
 const parseDateInput = (value?: string | null) => {
@@ -280,7 +283,7 @@ const parseDateInput = (value?: string | null) => {
 const formatDate = (value?: string) => {
   const date = parseDateInput(value);
   if (!date) return null;
-  const full = fullDateTimeFmt.format(date).replace(", ", " ");
+  const full = `${fullDateTimeFmt.format(date).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
   const datePart = datePartFmt.format(date);
   const timePart = timePartFmt.format(date);
   return {
@@ -717,20 +720,26 @@ const buildDurationTitle = (
 };
 
 type ActualTimeCellProps = {
-  startValue?: string;
+  progressStartValue?: string | null;
+  plannedStartValue?: string | null;
   completedValue?: string | null;
   status?: Task["status"];
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
 function ActualTimeCell({
-  startValue,
+  progressStartValue,
+  plannedStartValue,
   completedValue,
   status,
 }: ActualTimeCellProps) {
-  const startDate = React.useMemo(
-    () => parseDateInput(startValue),
-    [startValue],
+  const plannedStartDate = React.useMemo(
+    () => parseDateInput(plannedStartValue),
+    [plannedStartValue],
+  );
+  const progressStartDate = React.useMemo(
+    () => parseDateInput(progressStartValue),
+    [progressStartValue],
   );
   const completedDate = React.useMemo(
     () => parseDateInput(completedValue),
@@ -738,6 +747,14 @@ function ActualTimeCell({
   );
   const isFinished = status === "Выполнена" || status === "Отменена";
   const isCancelled = status === "Отменена";
+  const isNotStarted = status === "Новая";
+
+  const timerStartDate = React.useMemo(() => {
+    if (isNotStarted) {
+      return null;
+    }
+    return progressStartDate ?? plannedStartDate ?? null;
+  }, [isNotStarted, progressStartDate, plannedStartDate]);
 
   const [referenceDate, setReferenceDate] = React.useState<Date>(() => {
     if (isFinished && completedDate) {
@@ -747,67 +764,76 @@ function ActualTimeCell({
   });
 
   React.useEffect(() => {
-    if (!startDate) {
-      return undefined;
-    }
     if (isFinished) {
       if (completedDate) {
         setReferenceDate(completedDate);
       }
       return undefined;
     }
+    if (!timerStartDate) {
+      return undefined;
+    }
     const update = () => setReferenceDate(new Date());
     update();
     const timer = window.setInterval(update, 60_000);
     return () => window.clearInterval(timer);
-  }, [isFinished, completedDate, startDate]);
+  }, [isFinished, completedDate, timerStartDate]);
 
   const effectiveEndDate = isFinished && completedDate
     ? completedDate
     : referenceDate;
-  const durationMs = startDate
-    ? Math.max(0, effectiveEndDate.getTime() - startDate.getTime())
+  const durationMs = timerStartDate
+    ? Math.max(0, effectiveEndDate.getTime() - timerStartDate.getTime())
     : null;
-  const durationParts = React.useMemo(
-    () => (durationMs !== null ? formatCountdownParts(durationMs) : null),
-    [durationMs],
-  );
+  const durationParts = React.useMemo(() => {
+    if (isNotStarted) {
+      return formatCountdownParts(0);
+    }
+    return durationMs !== null ? formatCountdownParts(durationMs) : null;
+  }, [durationMs, isNotStarted]);
 
   const endIso = React.useMemo(() => effectiveEndDate.toISOString(), [
     effectiveEndDate,
   ]);
 
-  const variant: "completed" | "running" | "idle" = !startDate
-    ? "idle"
-    : isFinished
-    ? "completed"
-    : "running";
+  const variant: "completed" | "running" | "idle" =
+    isNotStarted || !timerStartDate
+      ? "idle"
+      : isFinished
+      ? "completed"
+      : "running";
 
-  const toneKey: keyof typeof durationToneClassMap = !startDate
-    ? "idle"
-    : isFinished
-    ? isCancelled
-      ? "cancelled"
-      : "completed"
-    : status === "В работе"
-    ? "active"
-    : "planned";
+  const toneKey: keyof typeof durationToneClassMap =
+    isNotStarted || !timerStartDate
+      ? "idle"
+      : isFinished
+      ? isCancelled
+        ? "cancelled"
+        : "completed"
+      : status === "В работе"
+      ? "active"
+      : "planned";
 
-  const label = durationParts
+  const label = isNotStarted
+    ? "Задача ещё не начата"
+    : durationParts
     ? formatDurationPhrase(
         durationParts,
         variant === "completed" ? "completed" : "running",
       )
-    : variant === "idle"
-    ? "Дата начала не указана"
     : "Продолжительность появится после начала";
 
-  const durationBadgeTitle = buildDurationTitle(
-    variant,
-    startValue,
-    variant === "completed" ? completedValue ?? undefined : endIso,
-    durationParts ?? undefined,
-  );
+  const startValueForTooltip =
+    progressStartValue ?? plannedStartValue ?? undefined;
+
+  const durationBadgeTitle = isNotStarted
+    ? "Таймер запустится после перевода задачи в статус «В работе»"
+    : buildDurationTitle(
+        variant,
+        startValueForTooltip,
+        variant === "completed" ? completedValue ?? undefined : endIso,
+        durationParts ?? undefined,
+      );
 
   const renderStopBadge = () => {
     if (isFinished && completedDate && completedValue) {
@@ -820,19 +846,26 @@ function ActualTimeCell({
         </span>
       );
     }
-    if (!startDate) {
+    if (!timerStartDate) {
+      const placeholder =
+        status === "Новая"
+          ? "Не начата"
+          : status === "В работе"
+          ? "В работе"
+          : "В ожидании";
+      const title =
+        status === "Новая"
+          ? "Задача ещё не начата"
+          : status === "В работе"
+          ? "Таймер запустится после фиксации начала"
+          : "Дата начала отсутствует";
       return (
-        <span className={dateBadgeClass} title="Дата начала отсутствует">
-          <span className="truncate">Нет даты начала</span>
+        <span className={dateBadgeClass} title={title}>
+          <span className="truncate">{placeholder}</span>
         </span>
       );
     }
-    const placeholder =
-      status === "В работе"
-        ? "В работе"
-        : status === "Новая"
-        ? "Не начата"
-        : "В ожидании";
+    const placeholder = status === "В работе" ? "В работе" : "В ожидании";
     return (
       <span
         className={dateBadgeClass}
@@ -1169,7 +1202,8 @@ export default function taskColumns(
         const row = p.row.original;
         return (
           <ActualTimeCell
-            startValue={row.start_date}
+            progressStartValue={row.in_progress_at}
+            plannedStartValue={row.start_date}
             completedValue={p.getValue<string | null>()}
             status={row.status}
           />

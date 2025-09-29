@@ -18,13 +18,19 @@ test('сохраняет diff и пользователя', async () => {
   expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
     id,
     expect.objectContaining({
-      $set: { status: 'В работе' },
+      $set: {
+        status: 'В работе',
+        in_progress_at: expect.any(Date),
+      },
       $push: {
         history: expect.objectContaining({
           changed_by: 42,
           changes: {
-            from: { status: 'Новая' },
-            to: { status: 'В работе' },
+            from: expect.objectContaining({ status: 'Новая' }),
+            to: expect.objectContaining({
+              status: 'В работе',
+              in_progress_at: expect.any(Date),
+            }),
           },
           changed_at: expect.any(Date),
         }),

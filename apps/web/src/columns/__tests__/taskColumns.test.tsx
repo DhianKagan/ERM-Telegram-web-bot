@@ -40,7 +40,9 @@ describe("taskColumns", () => {
     } as any);
 
     const tooltip = "Александр Александров, ivanov";
-    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+    const { container } = render(
+      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
+    );
 
     const wrapper = screen.getByTitle(tooltip);
     expect(wrapper).toHaveClass("flex-wrap");
@@ -79,12 +81,14 @@ describe("taskColumns", () => {
       row: { original: row },
     } as any);
 
-    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+    const { container } = render(
+      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
+    );
 
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
     expect(
-      within(datePart.closest("time") as HTMLElement).getByText("15:30"),
+      within(datePart.closest("time") as HTMLElement).getByText("17:30"),
     ).toBeInTheDocument();
     const label = screen.getByText(
       "До дедлайна 4 дня 3 часа 30 минут",
@@ -120,7 +124,9 @@ describe("taskColumns", () => {
       row: { original: row },
     } as any);
 
-    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+    const { container } = render(
+      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
+    );
 
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
@@ -191,6 +197,7 @@ describe("taskColumns", () => {
 
     const row = {
       start_date: "2024-03-01T09:00:00Z",
+      in_progress_at: "2024-03-01T09:00:00Z",
       completed_at: "2024-03-03T10:30:00Z",
       status: "Выполнена",
     } as unknown as TaskRow;
@@ -211,6 +218,47 @@ describe("taskColumns", () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
+  it("отображает нулевой таймер для новой задачи", () => {
+    const columns = taskColumns({});
+    const actualColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "completed_at",
+    );
+
+    expect(actualColumn).toBeDefined();
+    const cellRenderer = actualColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: null,
+      in_progress_at: null,
+      completed_at: null,
+      status: "Новая",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.completed_at,
+      row: { original: row },
+    } as any);
+
+    const { container } = render(
+      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
+    );
+
+    expect(screen.getByText("Задача ещё не начата")).toBeInTheDocument();
+    expect(screen.getByText("Не начата")).toBeInTheDocument();
+    const digits = Array.from(
+      container.querySelectorAll('[aria-hidden="true"] .tabular-nums'),
+    );
+    expect(digits).toHaveLength(3);
+    digits.forEach((node) => {
+      expect(node).toHaveTextContent(/^00$/);
+    });
+  });
+
   it("обновляет затраченное время для задачи в работе", () => {
     jest.useFakeTimers().setSystemTime(new Date("2024-03-01T09:00:00Z"));
 
@@ -229,6 +277,7 @@ describe("taskColumns", () => {
 
     const row = {
       start_date: "2024-03-01T08:00:00Z",
+      in_progress_at: "2024-03-01T09:00:00Z",
       completed_at: null,
       status: "В работе",
     } as unknown as TaskRow;
@@ -238,19 +287,26 @@ describe("taskColumns", () => {
       row: { original: row },
     } as any);
 
-    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
-
-    const runningLabel = screen.getByText(
-      "Затрачено 0 дней 1 час 0 минут",
+    const { container } = render(
+      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
     );
+
+    const runningLabel = screen.getByText("Затрачено менее минуты");
     expect(runningLabel).toBeInTheDocument();
+    const initialDigits = Array.from(
+      container.querySelectorAll('[aria-hidden="true"] .tabular-nums'),
+    );
+    expect(initialDigits).toHaveLength(3);
+    initialDigits.forEach((node) => {
+      expect(node).toHaveTextContent(/^00$/);
+    });
 
     act(() => {
       jest.advanceTimersByTime(60 * 60 * 1000);
     });
 
     const updatedLabel = screen.getByText(
-      "Затрачено 0 дней 2 часа 0 минут",
+      "Затрачено 0 дней 1 час 0 минут",
     );
     expect(updatedLabel).toBeInTheDocument();
     expect(jest.getTimerCount()).toBeGreaterThan(0);

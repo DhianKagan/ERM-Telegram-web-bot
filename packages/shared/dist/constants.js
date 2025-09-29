@@ -2,7 +2,7 @@
 // Назначение: общие константы для задач и пользователей.
 // Модули: отсутствуют
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TASK_STATUSES = exports.PAYMENT_METHODS = exports.TRANSPORT_TYPES = exports.PRIORITIES = exports.TASK_TYPES = void 0;
+exports.PROJECT_TIMEZONE_LABEL = exports.PROJECT_TIMEZONE = exports.TASK_STATUSES = exports.PAYMENT_METHODS = exports.TRANSPORT_TYPES = exports.PRIORITIES = exports.TASK_TYPES = void 0;
 exports.TASK_TYPES = [
     'Доставить',
     'Купить',
@@ -28,3 +28,5 @@ exports.TASK_STATUSES = [
     'Выполнена',
     'Отменена',
 ];
+exports.PROJECT_TIMEZONE = 'Europe/Kyiv';
+exports.PROJECT_TIMEZONE_LABEL = 'GMT+3';

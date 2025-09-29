@@ -44,7 +44,7 @@
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "audit-ci": "^7.1.0",
-    "eslint": "^9.29.0",
+    "eslint": "^9.36.0",
     "express": "^4.19.2",
     "express-rate-limit": "^8.1.0",
     "globals": "^14.0.0",

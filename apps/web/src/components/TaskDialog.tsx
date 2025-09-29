@@ -126,7 +126,8 @@ const currencyFormatter = new Intl.NumberFormat("uk-UA", {
 
 const parseCurrencyInput = (value: string): number | null => {
   if (!value.trim()) return 0;
-  const parsed = parseMetricInput(value);
+  const sanitized = value.replace(/\s*грн\.?/gi, '').trim();
+  const parsed = parseMetricInput(sanitized);
   if (parsed === null) return null;
   if (!Number.isFinite(parsed)) return null;
   return Number(parsed.toFixed(2));
@@ -139,7 +140,10 @@ const formatCurrencyDisplay = (value: unknown): string => {
     const trimmed = value.trim();
     if (!trimmed) return currencyFormatter.format(0);
     const parsed = parseCurrencyInput(trimmed);
-    if (parsed === null) return trimmed;
+    if (parsed === null) {
+      const sanitized = trimmed.replace(/\s*грн\.?/gi, '').trim();
+      return sanitized || currencyFormatter.format(0);
+    }
     return currencyFormatter.format(parsed);
   }
   return currencyFormatter.format(0);
@@ -336,7 +340,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     [formatInputDate],
   );
   const parseIsoDateMemo = React.useCallback(parseIsoDate, []);
-  const DEFAULT_DUE_OFFSET_MS = 10 * 60 * 60 * 1000;
+  const DEFAULT_DUE_OFFSET_MS = 3 * 60 * 60 * 1000;
 
   const computeDefaultDates = React.useCallback(
     (base?: Date) => {
@@ -839,8 +843,42 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         }
       }
       const defaults = computeDefaultDates(creationDate ?? undefined);
-      const startInputValue = formData.startDate || defaults.start;
-      const dueInputValue = formData.dueDate || defaults.due;
+      const initialValues = initialRef.current;
+      let startInputValue = formData.startDate || defaults.start;
+      let dueInputValue = formData.dueDate || defaults.due;
+      const initialStart = initialValues?.startDate || '';
+      const initialDue = initialValues?.dueDate || '';
+      const startUnchanged =
+        (!formData.startDate && !initialStart) ||
+        (formData.startDate && formData.startDate === initialStart);
+      if (startUnchanged) {
+        startInputValue = formatInputDate(new Date());
+      }
+      const dueUnchanged =
+        (!formData.dueDate && !initialDue) ||
+        (formData.dueDate && formData.dueDate === initialDue);
+      if (dueUnchanged) {
+        const startMs = new Date(startInputValue).getTime();
+        const offset =
+          initialStart && initialDue
+            ? new Date(initialDue).getTime() - new Date(initialStart).getTime()
+            : DEFAULT_DUE_OFFSET_MS;
+        if (Number.isFinite(startMs)) {
+          dueInputValue = formatInputDate(new Date(startMs + offset));
+        }
+      }
+      const startMs = new Date(startInputValue).getTime();
+      const dueMs = new Date(dueInputValue).getTime();
+      if (!Number.isNaN(startMs) && !Number.isNaN(dueMs) && dueMs < startMs) {
+        dueInputValue = formatInputDate(
+          new Date(startMs + DEFAULT_DUE_OFFSET_MS),
+        );
+      }
+      if (!Number.isNaN(startMs) && !Number.isNaN(dueMs)) {
+        setDueOffset(dueMs - startMs);
+      }
+      setValue('startDate', startInputValue);
+      setValue('dueDate', dueInputValue);
       const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: taskType,
@@ -1413,15 +1451,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <label className="block text-sm font-medium">
                 {t("paymentAmount")}
               </label>
-              <input
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                onBlur={(e) => setPaymentAmount(formatCurrencyDisplay(e.target.value))}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                placeholder="0"
-                inputMode="decimal"
-                disabled={!editing}
-              />
+              <div
+                className={`flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:border-accentPrimary focus-within:ring focus-within:ring-brand-200 ${
+                  editing ? '' : 'opacity-80'
+                }`}
+              >
+                <input
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  onBlur={(e) =>
+                    setPaymentAmount(formatCurrencyDisplay(e.target.value))
+                  }
+                  className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
+                  placeholder="0"
+                  inputMode="decimal"
+                  disabled={!editing}
+                />
+                <span className="px-2 text-sm font-semibold text-slate-500">
+                  грн
+                </span>
+              </div>
               <p className="mt-1 text-xs text-slate-500">
                 {t("paymentAmountFormat")}
               </p>

@@ -106,7 +106,7 @@ const procurementSchema = new Schema<Procurement>(
     payment_method: {
       type: String,
       enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
-      default: 'Карта',
+      default: 'Без оплаты',
     },
   },
   { _id: false },
@@ -235,6 +235,9 @@ export interface TaskAttrs {
   payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
   payment_amount?: number;
   telegram_topic_id?: number;
+  telegram_message_id?: number;
+  telegram_status_message_id?: number;
+  deadline_reminder_sent_at?: Date;
   time_spent?: number;
   // Произвольные поля задачи
   custom?: Record<string, unknown>;
@@ -331,7 +334,7 @@ const taskSchema = new Schema<TaskDocument>(
     payment_method: {
       type: String,
       enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
-      default: 'Карта',
+      default: 'Без оплаты',
     },
     payment_amount: {
       type: Number,
@@ -340,6 +343,9 @@ const taskSchema = new Schema<TaskDocument>(
     },
 
     telegram_topic_id: Number,
+    telegram_message_id: Number,
+    telegram_status_message_id: Number,
+    deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },
     // Произвольные поля хранятся как объект
     custom: Schema.Types.Mixed,

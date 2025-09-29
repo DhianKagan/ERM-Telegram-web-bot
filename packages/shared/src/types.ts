@@ -21,6 +21,9 @@ export interface Task {
   cargo_weight_kg?: number;
   payment_method?: PaymentMethod;
   payment_amount?: number;
+  telegram_message_id?: number;
+  telegram_status_message_id?: number;
+  deadline_reminder_sent_at?: string;
   [key: string]: unknown;
 }
 

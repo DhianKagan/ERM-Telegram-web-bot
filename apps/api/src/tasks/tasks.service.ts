@@ -154,6 +154,9 @@ class TasksService {
 
   async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
     const payload = data ?? {};
+    if (Object.prototype.hasOwnProperty.call(payload, 'due_date')) {
+      (payload as Record<string, unknown>).deadline_reminder_sent_at = undefined;
+    }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
     try {

@@ -55,7 +55,10 @@ export const taskFields: TaskField[] = [
     label: 'Способ оплаты',
     type: 'select',
     options: PAYMENT_METHODS,
-    default: PAYMENT_METHODS[1],
+    default:
+      (PAYMENT_METHODS as readonly string[]).find((method) =>
+        /^без оплаты$/i.test(method.trim()),
+      ) || PAYMENT_METHODS[0],
   },
   {
     name: 'payment_amount',

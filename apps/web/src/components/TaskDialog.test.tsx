@@ -6,8 +6,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 
+const mockUser = { telegram_id: 99, role: "admin" } as const;
+
 jest.mock("../context/useAuth", () => ({
-  useAuth: () => ({ user: { telegram_id: 99, role: "admin" } }),
+  useAuth: () => ({ user: mockUser }),
 }));
 
 jest.mock("react-i18next", () => ({
@@ -133,7 +135,7 @@ describe("TaskDialog", () => {
     const dueInput = screen.getByLabelText("dueDate");
     fireEvent.change(dueInput, { target: { value: "2024-02-02T12:30" } });
 
-    fireEvent.click(screen.getByText("save"));
+    fireEvent.click(screen.getByText("create"));
 
     await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
     expect(createTaskMock.mock.calls[0][0]).toMatchObject({

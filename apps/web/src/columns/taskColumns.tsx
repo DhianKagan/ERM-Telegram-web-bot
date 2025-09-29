@@ -523,7 +523,7 @@ function DeadlineCountdownBadge({
   dueValue?: string;
   rawDue?: string;
   status?: Task["status"];
-  completedAt?: string;
+  completedAt?: string | null;
 }) {
   const completedDate = React.useMemo(
     () => parseDateInput(completedAt),

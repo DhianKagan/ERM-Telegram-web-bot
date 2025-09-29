@@ -40,9 +40,7 @@ describe("taskColumns", () => {
     } as any);
 
     const tooltip = "Александр Александров, ivanov";
-    const { container } = render(
-      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
-    );
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
     const wrapper = screen.getByTitle(tooltip);
     expect(wrapper).toHaveClass("flex-wrap");
@@ -81,9 +79,7 @@ describe("taskColumns", () => {
       row: { original: row },
     } as any);
 
-    const { container } = render(
-      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
-    );
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
@@ -124,9 +120,7 @@ describe("taskColumns", () => {
       row: { original: row },
     } as any);
 
-    const { container } = render(
-      <MemoryRouter>{cell as React.ReactElement}</MemoryRouter>,
-    );
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
 
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);

@@ -347,7 +347,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       );
       return { start, due };
     },
-    [formatInputDate],
+    [formatInputDate, DEFAULT_DUE_OFFSET_MS],
   );
 
   const startDateValue = watch("startDate");

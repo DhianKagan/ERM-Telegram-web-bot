@@ -760,6 +760,17 @@ export default function taskColumns(
       },
     },
     {
+      header: "Фактическое время",
+      accessorKey: "completed_at",
+      meta: {
+        width: "clamp(9.5rem, 18vw, 14rem)",
+        minWidth: "9rem",
+        maxWidth: "14.5rem",
+        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
+      },
+      cell: (p) => renderDateCell(p.getValue<string>()),
+    },
+    {
       header: "Тип",
       accessorKey: "task_type",
       meta: {

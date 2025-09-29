@@ -49,6 +49,7 @@ interface InitialValues {
   paymentMethod: string;
   paymentAmount: string;
   status: string;
+  completedAt: string;
   creator: string;
   assignees: string[];
   start: string;
@@ -253,6 +254,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const initialRef = React.useRef<InitialValues | null>(null);
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
+  const [completedAt, setCompletedAt] = React.useState("");
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = React.useState(false);
   const taskSchema = z
@@ -426,6 +428,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         (taskData.payment_amount as unknown) ?? DEFAULT_PAYMENT_AMOUNT,
       );
       const curStatus = (taskData.status as string) || DEFAULT_STATUS;
+      const rawCompleted =
+        (taskData as Record<string, unknown>).completed_at ??
+        (taskData as Record<string, unknown>).completedAt;
+      const curCompletedAt = toIsoString(rawCompleted);
       const assignees = Array.isArray(taskData.assignees)
         ? (taskData.assignees as (string | number)[]).map(String)
         : [];
@@ -454,6 +460,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setPaymentMethod(curPayment);
       setPaymentAmount(amountValue);
       setStatus(curStatus);
+      setCompletedAt(curCompletedAt);
       const lengthValue = formatMetricValue(taskData.cargo_length_m);
       const widthValue = formatMetricValue(taskData.cargo_width_m);
       const heightValue = formatMetricValue(taskData.cargo_height_m);
@@ -511,6 +518,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         paymentMethod: curPayment,
         paymentAmount: amountValue,
         status: curStatus,
+        completedAt: curCompletedAt,
         creator: String((taskData.created_by as unknown) || ""),
         assignees,
         start: (taskData.start_location as string) || "",
@@ -603,6 +611,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         });
     } else {
       setCreated(new Date().toISOString());
+      setCompletedAt("");
       setHistory([]);
       authFetch("/api/v1/tasks/report/summary")
         .then((r) => (r.ok ? r.json() : { count: 0 }))
@@ -621,6 +630,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         paymentMethod: DEFAULT_PAYMENT,
         paymentAmount: formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
         status: DEFAULT_STATUS,
+        completedAt: "",
         creator: user ? String(user.telegram_id) : "",
         assignees: [],
         start: "",
@@ -897,6 +907,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setPaymentMethod(d.paymentMethod);
     setPaymentAmount(d.paymentAmount);
     setStatus(d.status);
+    setCompletedAt(d.completedAt);
     setCreator(d.creator);
     setCargoLength(d.cargoLength);
     setCargoWidth(d.cargoWidth);
@@ -944,6 +955,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       updateTaskStatus(id, "Выполнена"),
     ]);
     if (data) {
+      const completedValue = toIsoString(
+        (data as Record<string, unknown>)?.completed_at ??
+          (data as Record<string, unknown>)?.completedAt,
+      );
+      const fallbackCompleted = new Date().toISOString();
+      setCompletedAt(
+        completedValue || fallbackCompleted,
+      );
+      if (initialRef.current) {
+        initialRef.current.status = "Выполнена";
+        initialRef.current.completedAt =
+          completedValue || fallbackCompleted;
+      }
       if (onSave) onSave(data);
     } else {
       setStatus(prev);
@@ -1079,16 +1103,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
-              <label className="block text-sm font-medium">{t("status")}</label>
+              <label className="block text-sm font-medium">
+                {t("taskType")}
+              </label>
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={taskType}
+                onChange={(e) => setTaskType(e.target.value)}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
-                {statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {types.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </select>
@@ -1110,24 +1136,30 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 ))}
               </select>
             </div>
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
-              <label className="block text-sm font-medium">
-                {t("taskType")}
-              </label>
+              <label className="block text-sm font-medium">{t("status")}</label>
               <select
-                value={taskType}
-                onChange={(e) => setTaskType(e.target.value)}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               >
-                {types.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {statuses.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("actualTime")}
+              </label>
+              <input
+                value={completedAt ? formatCreatedLabel(completedAt) : "—"}
+                readOnly
+                className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
+              />
             </div>
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">

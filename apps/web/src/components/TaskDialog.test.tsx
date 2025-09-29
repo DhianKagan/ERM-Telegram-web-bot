@@ -16,7 +16,9 @@ jest.mock("react-i18next", () => ({
 
 jest.mock("./CKEditorPopup", () => () => <div />);
 jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
-  if (open) onConfirm();
+  React.useEffect(() => {
+    if (open) onConfirm();
+  }, [open, onConfirm]);
   return null;
 });
 jest.mock("./AlertDialog", () => () => null);
@@ -56,6 +58,9 @@ const authFetchMock = jest.fn((url: string) => {
       json: async () => ({ task: taskData, users: usersMap }),
     });
   }
+  if (url === "/api/v1/tasks/report/summary") {
+    return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
+  }
   return Promise.resolve({ ok: true, json: async () => ({}) });
 });
 
@@ -64,19 +69,30 @@ jest.mock("../utils/authFetch", () => ({
   default: (url: string) => authFetchMock(url),
 }));
 
+const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({
   ok: true,
   json: async () => ({ ...taskData, _id: "1" }),
 });
 
 jest.mock("../services/tasks", () => ({
-  createTask: jest.fn(),
+  createTask: (...args: any[]) => createTaskMock(...args),
   updateTask: (...args: any[]) => updateTaskMock(...args),
   deleteTask: jest.fn(),
   updateTaskStatus: jest.fn(),
 }));
 
 describe("TaskDialog", () => {
+  beforeEach(() => {
+    authFetchMock.mockClear();
+    createTaskMock.mockReset();
+    updateTaskMock.mockReset();
+    updateTaskMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...taskData, _id: "1" }),
+    });
+  });
+
   it("сохраняет задачу и повторно открывает форму", async () => {
     const renderDialog = () =>
       render(
@@ -98,5 +114,30 @@ describe("TaskDialog", () => {
     unmount();
     renderDialog();
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+  });
+
+  it("передаёт выбранный срок при создании задачи", async () => {
+    createTaskMock.mockResolvedValue({ _id: "new-task" });
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const titleInput = await screen.findByPlaceholderText("title");
+    fireEvent.change(titleInput, { target: { value: "Новая задача" } });
+
+    const startInput = screen.getByLabelText("startDate");
+    fireEvent.change(startInput, { target: { value: "2024-02-01T09:00" } });
+
+    const dueInput = screen.getByLabelText("dueDate");
+    fireEvent.change(dueInput, { target: { value: "2024-02-02T12:30" } });
+
+    fireEvent.click(screen.getByText("save"));
+
+    await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
+    expect(createTaskMock.mock.calls[0][0]).toMatchObject({
+      due_date: "2024-02-02T12:30",
+    });
   });
 });

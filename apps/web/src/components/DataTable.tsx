@@ -1,5 +1,6 @@
 // Назначение файла: универсальная таблица на React Table с серверной пагинацией
 // Модули: React, @tanstack/react-table, ui/table, TableToolbar
+/* eslint-disable react-refresh/only-export-components */
 import React from "react";
 import {
   ColumnDef,

@@ -314,6 +314,17 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     const minutes = `${value.getMinutes()}`.padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }, []);
+  const formatIsoForInput = React.useCallback(
+    (value: string) => {
+      if (!value) return "";
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return "";
+      }
+      return formatInputDate(parsed);
+    },
+    [formatInputDate],
+  );
   const makeDefaultDate = (h: number) => {
     const d = new Date();
     d.setHours(h, 0, 0, 0);
@@ -547,7 +558,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       DEFAULT_PAYMENT,
       DEFAULT_PAYMENT_AMOUNT,
       DEFAULT_STATUS,
+      DEFAULT_DUE_OFFSET_MS,
+      formatInputDate,
       reset,
+      setDueOffset,
     ],
   );
 
@@ -675,7 +689,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_STATUS,
     DEFAULT_START_DATE,
     DEFAULT_DUE_DATE,
+    DEFAULT_DUE_OFFSET_MS,
     reset,
+    setDueOffset,
   ]);
 
   React.useEffect(() => {
@@ -1158,8 +1174,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 {t("actualTime")}
               </label>
               <input
-                value={completedAt ? formatCreatedLabel(completedAt) : "—"}
+                type="datetime-local"
+                value={completedAt ? formatIsoForInput(completedAt) : ""}
                 readOnly
+                placeholder="—"
                 className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
               />
             </div>

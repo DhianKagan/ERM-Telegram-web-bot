@@ -2,7 +2,7 @@
 // Назначение: проверяет колонку исполнителей таблицы задач.
 // Основные модули: React, Testing Library, taskColumns.
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { MemoryRouter } from "react-router-dom";
 import taskColumns, { TaskRow } from "../taskColumns";
@@ -171,5 +171,88 @@ describe("taskColumns", () => {
     );
     expect(countdownLabel).toBeInTheDocument();
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("показывает время выполнения и отметку завершения", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-05T12:00:00Z"));
+
+    const columns = taskColumns({});
+    const actualColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "completed_at",
+    );
+
+    expect(actualColumn).toBeDefined();
+    const cellRenderer = actualColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: "2024-03-01T09:00:00Z",
+      completed_at: "2024-03-03T10:30:00Z",
+      status: "Выполнена",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.completed_at,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    const timeBadge = screen.getByText("03.03.2024").closest("time");
+    expect(timeBadge).toHaveAttribute("dateTime", row.completed_at);
+    const durationLabel = screen.getByText(
+      "Задача завершена за 2 дня 1 час 30 минут",
+    );
+    expect(durationLabel).toBeInTheDocument();
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("обновляет затраченное время для задачи в работе", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-01T09:00:00Z"));
+
+    const columns = taskColumns({});
+    const actualColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "completed_at",
+    );
+
+    expect(actualColumn).toBeDefined();
+    const cellRenderer = actualColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      start_date: "2024-03-01T08:00:00Z",
+      completed_at: null,
+      status: "В работе",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.completed_at,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    const runningLabel = screen.getByText(
+      "Затрачено 0 дней 1 час 0 минут",
+    );
+    expect(runningLabel).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(60 * 60 * 1000);
+    });
+
+    const updatedLabel = screen.getByText(
+      "Затрачено 0 дней 2 часа 0 минут",
+    );
+    expect(updatedLabel).toBeInTheDocument();
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
   });
 });

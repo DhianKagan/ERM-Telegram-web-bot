@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { taskFormSchema as formSchema } from "shared";
 import type { Field } from "../../../api/src/form";
 import authFetch from "../utils/authFetch";
+import { updateTaskStatus } from "../services/tasks";
 
 type Template = { _id: string; name: string; data: Record<string, string> };
 export type TaskFormModernProps = {
@@ -76,6 +77,9 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   customFields = [],
 }) => {
   const [data, setData] = useState<Record<string, string>>(defaultValues);
+  const [statusLoading, setStatusLoading] = useState<"В работе" | "Выполнена" | null>(
+    null,
+  );
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const setField = (name: string, v: string) =>
@@ -118,6 +122,23 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({ formVersion: (formSchema as any).formVersion, ...data });
+  };
+
+  const taskId =
+    data._id || data.id || defaultValues._id || defaultValues.id || "";
+
+  const handleStatusClick = async (nextStatus: "В работе" | "Выполнена") => {
+    if (!taskId) return;
+    setStatusLoading(nextStatus);
+    try {
+      const response = await updateTaskStatus(taskId, nextStatus);
+      if (!response.ok) throw new Error("STATUS_UPDATE_FAILED");
+      setData((prev) => ({ ...prev, status: nextStatus }));
+    } catch (error) {
+      console.error("Не удалось обновить статус задачи", error);
+    } finally {
+      setStatusLoading(null);
+    }
   };
 
   return (
@@ -165,7 +186,27 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
           ))}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {taskId && (
+          <>
+            <button
+              type="button"
+              onClick={() => handleStatusClick("В работе")}
+              disabled={statusLoading !== null}
+              className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-60"
+            >
+              Начать задачу
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStatusClick("Выполнена")}
+              disabled={statusLoading !== null}
+              className="rounded bg-lime-600 px-4 py-2 text-white disabled:opacity-60"
+            >
+              Задача выполнена
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={onCancel}

@@ -12,6 +12,10 @@ import type { TaskDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import type { Task } from 'shared';
+import { bot } from '../bot/bot';
+import { chatId as groupChatId } from '../config';
+import taskStatusKeyboard from '../utils/taskButtons';
+import formatTask from '../utils/formatTask';
 
 type TaskEx = Task & {
   controllers?: number[];
@@ -22,6 +26,74 @@ type TaskEx = Task & {
 @injectable()
 export default class TasksController {
   constructor(@inject(TOKENS.TasksService) private service: TasksService) {}
+
+  private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {
+    const recipients = new Set<number>();
+    const add = (value: unknown) => {
+      const num = Number(value);
+      if (!Number.isNaN(num) && Number.isFinite(num) && num !== 0)
+        recipients.add(num);
+    };
+    add(task.assigned_user_id);
+    if (Array.isArray(task.assignees)) task.assignees.forEach(add);
+    add(task.controller_user_id);
+    if (Array.isArray(task.controllers)) task.controllers.forEach(add);
+    add(task.created_by);
+    if (creatorId !== undefined) add(creatorId);
+    return recipients;
+  }
+
+  private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
+    const plain =
+      typeof task.toObject === 'function'
+        ? (task.toObject() as TaskDocument & Record<string, unknown>)
+        : task;
+    const id = String(plain._id ?? plain.id ?? '');
+    if (!id) return;
+    const recipients = this.collectNotificationTargets(plain, creatorId);
+    const usersRaw = await getUsersMap(Array.from(recipients));
+    const users = Object.fromEntries(
+      Object.entries(usersRaw).map(([key, value]) => [
+        Number(key),
+        { name: value.name, username: value.username },
+      ]),
+    );
+    const keyboard = taskStatusKeyboard(id);
+    const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+      parse_mode: 'MarkdownV2',
+      ...keyboard,
+    };
+    if (typeof plain.telegram_topic_id === 'number') {
+      options.message_thread_id = plain.telegram_topic_id;
+    }
+    const message = formatTask(plain as unknown as Task, users);
+    const promises: Promise<unknown>[] = [];
+    if (groupChatId) {
+      promises.push(
+        bot.telegram
+          .sendMessage(groupChatId, message, options)
+          .catch((error) => {
+            console.error('Не удалось отправить уведомление в группу', error);
+          }),
+      );
+    }
+    recipients.forEach((userId) => {
+      promises.push(
+        bot.telegram
+          .sendMessage(userId, message, {
+            parse_mode: 'MarkdownV2',
+            ...keyboard,
+          })
+          .catch((error) => {
+            console.error(
+              `Не удалось отправить уведомление пользователю ${userId}`,
+              error,
+            );
+          }),
+      );
+    });
+    await Promise.allSettled(promises);
+  }
 
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;
@@ -85,6 +157,9 @@ export default class TasksController {
         `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
       res.status(201).json(task);
+      void this.notifyTaskCreated(task, req.user!.id as number).catch((error) => {
+        console.error('Не удалось отправить уведомление о создании задачи', error);
+      });
     },
   ];
 

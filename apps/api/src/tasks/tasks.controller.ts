@@ -106,6 +106,19 @@ type NormalizedAttachment =
   | { kind: 'image'; url: string }
   | { kind: 'youtube'; url: string; title?: string };
 
+type SendMessageOptions = NonNullable<
+  Parameters<typeof bot.telegram.sendMessage>[2]
+>;
+type EditMessageTextOptions = NonNullable<
+  Parameters<typeof bot.telegram.editMessageText>[4]
+>;
+type SendPhotoOptions = NonNullable<
+  Parameters<typeof bot.telegram.sendPhoto>[2]
+>;
+type SendMediaGroupOptions = NonNullable<
+  Parameters<typeof bot.telegram.sendMediaGroup>[2]
+>;
+
 @injectable()
 export default class TasksController {
   constructor(@inject(TOKENS.TasksService) private service: TasksService) {}
@@ -214,7 +227,7 @@ export default class TasksController {
     if (!attachments.length) return [];
     const sentMessageIds: number[] = [];
     const photoOptionsBase = () => {
-      const options: Parameters<typeof bot.telegram.sendPhoto>[2] = {};
+      const options: SendPhotoOptions = {};
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
       }
@@ -227,7 +240,7 @@ export default class TasksController {
       return options;
     };
     const mediaGroupOptionsBase = () => {
-      const options: Parameters<typeof bot.telegram.sendMediaGroup>[2] = {};
+      const options: SendMediaGroupOptions = {};
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
       }
@@ -240,9 +253,9 @@ export default class TasksController {
       return options;
     };
     const messageOptionsBase = () => {
-      const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+      const options: SendMessageOptions = {
         parse_mode: 'MarkdownV2',
-        disable_web_page_preview: true,
+        link_preview_options: { is_disabled: true },
       };
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
@@ -350,13 +363,16 @@ export default class TasksController {
           messageId,
           undefined,
           text,
-          { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
+          {
+            parse_mode: 'MarkdownV2',
+            link_preview_options: { is_disabled: true },
+          },
         );
         return;
       }
-      const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+      const options: SendMessageOptions = {
         parse_mode: 'MarkdownV2',
-        disable_web_page_preview: true,
+        link_preview_options: { is_disabled: true },
       };
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
@@ -404,25 +420,24 @@ export default class TasksController {
 
     const message = formatTask(plain as unknown as SharedTask, users);
     const keyboard = taskStatusKeyboard(taskId);
-    const editOptions = {
+    const editOptions: EditMessageTextOptions = {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
       reply_markup: keyboard.reply_markup,
-    } as Parameters<typeof bot.telegram.editMessageText>[4];
+    };
     const topicId =
       typeof plain.telegram_topic_id === 'number'
         ? plain.telegram_topic_id
         : undefined;
-    const sendOptionsBase: Record<string, unknown> = {
+    const sendOptionsBase: SendMessageOptions = {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
       reply_markup: keyboard.reply_markup,
     };
     if (typeof topicId === 'number') {
       sendOptionsBase.message_thread_id = topicId;
     }
-    const sendOptions =
-      sendOptionsBase as Parameters<typeof bot.telegram.sendMessage>[2];
+    const sendOptions = sendOptionsBase;
 
     const previousMessageId =
       typeof previousPlain?.telegram_message_id === 'number'
@@ -573,9 +588,9 @@ export default class TasksController {
           typeof plain.telegram_topic_id === 'number'
             ? plain.telegram_topic_id
             : undefined;
-        const groupOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+        const groupOptions: SendMessageOptions = {
           parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true,
+          link_preview_options: { is_disabled: true },
           ...mainKeyboard,
         };
         if (typeof topicId === 'number') {
@@ -608,8 +623,8 @@ export default class TasksController {
             (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
           ),
         );
-        const statusOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
-          disable_web_page_preview: true,
+        const statusOptions: SendMessageOptions = {
+          link_preview_options: { is_disabled: true },
         };
         if (typeof topicId === 'number') {
           statusOptions.message_thread_id = topicId;
@@ -633,10 +648,10 @@ export default class TasksController {
     if (messageLink && assignees.size) {
       const identifier = this.getTaskIdentifier(plain);
       const dmText = `Вам назначена задача <a href="${messageLink}">${identifier}</a>`;
-      const dmOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+      const dmOptions: SendMessageOptions = {
         ...taskStatusKeyboard(docId),
         parse_mode: 'HTML',
-        disable_web_page_preview: true,
+        link_preview_options: { is_disabled: true },
       };
       await Promise.allSettled(
         Array.from(assignees).map((userId) =>

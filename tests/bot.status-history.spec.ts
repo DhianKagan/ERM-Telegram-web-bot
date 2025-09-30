@@ -115,7 +115,10 @@ test('редактирует существующее сообщение ист�
     777,
     undefined,
     '*История изменений*\n• событие',
-    { parse_mode: 'MarkdownV2' },
+    {
+      parse_mode: 'MarkdownV2',
+      link_preview_options: { is_disabled: true },
+    },
   );
   expect(sendMessageMock).not.toHaveBeenCalled();
   expect(updateTaskStatusMessageIdMock).not.toHaveBeenCalled();
@@ -139,7 +142,11 @@ test('создаёт новое сообщение истории и сохра�
   expect(sendMessageMock).toHaveBeenCalledWith(
     -1001234567890,
     '*История изменений*\n• новое событие',
-    { parse_mode: 'MarkdownV2', message_thread_id: 55 },
+    {
+      parse_mode: 'MarkdownV2',
+      message_thread_id: 55,
+      link_preview_options: { is_disabled: true },
+    },
   );
   expect(updateTaskStatusMessageIdMock).toHaveBeenCalledWith('task999', 31337);
   expect(editMessageTextMock).not.toHaveBeenCalled();

@@ -7,6 +7,7 @@ import { ensureWebpackNonce } from "../utils/ensureWebpackNonce";
 import authFetch from "../utils/authFetch";
 import { showToast } from "../utils/toast";
 import { PhotoIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import "@ckeditor/ckeditor5-build-classic/build/translations/ru";
 
 ensureWebpackNonce();
 
@@ -113,6 +114,10 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
   );
   const editorConfig = useMemo(
     () => ({
+      language: {
+        ui: "ru",
+        content: "ru",
+      },
       toolbar: [
         "undo",
         "redo",

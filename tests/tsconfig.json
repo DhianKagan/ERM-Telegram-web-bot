@@ -8,6 +8,12 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["apps/web/src/*"],
+      "shared": ["packages/shared/src"],
+      "shared/*": ["packages/shared/src/*"]
+    },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,

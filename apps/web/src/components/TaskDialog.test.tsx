@@ -118,6 +118,24 @@ describe("TaskDialog", () => {
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
   });
 
+  it("не меняет дату начала при сохранении без правок", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
+    const initialStart = startInput.value;
+
+    fireEvent.click(screen.getByText("save"));
+
+    await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
+    expect(updateTaskMock.mock.calls[0][1]).toMatchObject({
+      start_date: initialStart,
+    });
+  });
+
   it("передаёт выбранный срок при создании задачи", async () => {
     createTaskMock.mockResolvedValue({ _id: "new-task" });
     render(

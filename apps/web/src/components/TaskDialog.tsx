@@ -847,27 +847,41 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       }
       const defaults = computeDefaultDates(creationDate ?? undefined);
       const initialValues = initialRef.current;
-      let startInputValue = formData.startDate || defaults.start;
-      let dueInputValue = formData.dueDate || defaults.due;
-      const initialStart = initialValues?.startDate || '';
-      const initialDue = initialValues?.dueDate || '';
-      const startUnchanged =
-        (!formData.startDate && !initialStart) ||
-        (formData.startDate && formData.startDate === initialStart);
-      if (startUnchanged) {
+      const initialStart = initialValues?.startDate || "";
+      const initialDue = initialValues?.dueDate || "";
+      const startValue = formData.startDate || "";
+      const dueValue = formData.dueDate || "";
+      const isNewTask = !isEdit;
+      const startMatchesInitial =
+        Boolean(startValue) && Boolean(initialStart) && startValue === initialStart;
+      const startCleared = !startValue && Boolean(initialStart) && !isNewTask;
+      let startInputValue = startValue || defaults.start;
+      if (isNewTask) {
+        if (startMatchesInitial || (!startValue && !initialStart)) {
+          startInputValue = formatInputDate(new Date());
+        }
+      } else if (startMatchesInitial) {
+        startInputValue = initialStart;
+      } else if (startCleared) {
         startInputValue = formatInputDate(new Date());
       }
-      const dueUnchanged =
-        (!formData.dueDate && !initialDue) ||
-        (formData.dueDate && formData.dueDate === initialDue);
-      if (dueUnchanged) {
-        const startMs = new Date(startInputValue).getTime();
-        const offset =
-          initialStart && initialDue
-            ? new Date(initialDue).getTime() - new Date(initialStart).getTime()
-            : DEFAULT_DUE_OFFSET_MS;
-        if (Number.isFinite(startMs)) {
-          dueInputValue = formatInputDate(new Date(startMs + offset));
+      let dueInputValue = dueValue || defaults.due;
+      const dueMatchesInitial =
+        Boolean(dueValue) && Boolean(initialDue) && dueValue === initialDue;
+      const dueEmpty = !dueValue;
+      if (!isNewTask && startMatchesInitial && (dueMatchesInitial || (dueEmpty && Boolean(initialDue)))) {
+        dueInputValue = initialDue || dueInputValue;
+      } else {
+        const dueUnchanged = (!dueValue && !initialDue) || dueMatchesInitial;
+        if (dueUnchanged) {
+          const startMs = new Date(startInputValue).getTime();
+          const offset =
+            initialStart && initialDue
+              ? new Date(initialDue).getTime() - new Date(initialStart).getTime()
+              : DEFAULT_DUE_OFFSET_MS;
+          if (Number.isFinite(startMs)) {
+            dueInputValue = formatInputDate(new Date(startMs + offset));
+          }
         }
       }
       const startMs = new Date(startInputValue).getTime();

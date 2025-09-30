@@ -30,6 +30,11 @@ type TaskEx = SharedTask & {
   controllers?: number[];
   created_by?: number;
   history?: { changed_by: number }[];
+  telegram_attachments_message_ids?: number[];
+};
+
+type TaskWithMeta = TaskDocument & {
+  telegram_attachments_message_ids?: number[];
 };
 
 const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -163,13 +168,51 @@ export default class TasksController {
     return result;
   }
 
+  private areNormalizedAttachmentsEqual(
+    previous: NormalizedAttachment[],
+    next: NormalizedAttachment[],
+  ): boolean {
+    if (previous.length !== next.length) return false;
+    return previous.every((item, index) => {
+      const candidate = next[index];
+      if (!candidate) return false;
+      if (item.kind !== candidate.kind) return false;
+      if (item.url !== candidate.url) return false;
+      if (item.kind === 'youtube' && candidate.kind === 'youtube') {
+        return item.title === candidate.title;
+      }
+      return true;
+    });
+  }
+
+  private async deleteAttachmentMessages(
+    chat: string | number,
+    messageIds: number[],
+  ) {
+    if (!messageIds.length) return;
+    await Promise.all(
+      messageIds.map(async (messageId) => {
+        if (!Number.isFinite(messageId)) return;
+        try {
+          await bot.telegram.deleteMessage(chat, messageId);
+        } catch (error) {
+          console.error(
+            `Не удалось удалить сообщение вложений ${messageId}`,
+            error,
+          );
+        }
+      }),
+    );
+  }
+
   private async sendTaskAttachments(
     chat: string | number,
     attachments: NormalizedAttachment[],
     topicId?: number,
     replyTo?: number,
-  ) {
-    if (!attachments.length) return;
+  ): Promise<number[]> {
+    if (!attachments.length) return [];
+    const sentMessageIds: number[] = [];
     const photoOptionsBase = () => {
       const options: Parameters<typeof bot.telegram.sendPhoto>[2] = {};
       if (typeof topicId === 'number') {
@@ -218,17 +261,31 @@ export default class TasksController {
         const chunk = pendingImages.splice(0, 10);
         if (chunk.length === 1) {
           const [item] = chunk;
-          await bot.telegram.sendPhoto(chat, item.url, photoOptionsBase());
+          const response = await bot.telegram.sendPhoto(
+            chat,
+            item.url,
+            photoOptionsBase(),
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
         } else {
           const media = chunk.map((item) => ({
             type: 'photo' as const,
             media: item.url,
           }));
-          await bot.telegram.sendMediaGroup(
+          const response = await bot.telegram.sendMediaGroup(
             chat,
             media,
             mediaGroupOptionsBase(),
           );
+          if (Array.isArray(response)) {
+            response.forEach((entry) => {
+              if (entry?.message_id) {
+                sentMessageIds.push(entry.message_id);
+              }
+            });
+          }
         }
       }
     };
@@ -244,10 +301,18 @@ export default class TasksController {
         const text = `▶️ [${escapeMarkdownV2(label)}](${escapeMarkdownV2(
           attachment.url,
         )})`;
-        await bot.telegram.sendMessage(chat, text, messageOptionsBase());
+        const response = await bot.telegram.sendMessage(
+          chat,
+          text,
+          messageOptionsBase(),
+        );
+        if (response?.message_id) {
+          sentMessageIds.push(response.message_id);
+        }
       }
     }
     await flushImages();
+    return sentMessageIds;
   }
 
   private getTaskIdentifier(task: Partial<TaskDocument>) {
@@ -310,6 +375,170 @@ export default class TasksController {
     }
   }
 
+  private async syncTelegramTaskMessage(
+    taskId: string,
+    previous: (TaskWithMeta & Record<string, unknown>) | null,
+  ) {
+    if (!groupChatId) return;
+    const fresh = await Task.findById(taskId);
+    if (!fresh) return;
+    const plain = (typeof fresh.toObject === 'function'
+      ? (fresh.toObject() as unknown)
+      : (fresh as unknown)) as TaskWithMeta & Record<string, unknown>;
+    const previousPlain = previous;
+
+    const recipients = this.collectNotificationTargets(
+      plain,
+      typeof plain.created_by === 'number' ? plain.created_by : undefined,
+    );
+    const usersRaw = await getUsersMap(Array.from(recipients));
+    const users = Object.fromEntries(
+      Object.entries(usersRaw).map(([key, value]) => {
+        const name = value.name ?? value.username ?? '';
+        const username = value.username ?? '';
+        return [Number(key), { name, username }];
+      }),
+    );
+
+    const message = formatTask(plain as unknown as SharedTask, users);
+    const keyboard = taskStatusKeyboard(taskId);
+    const editOptions = {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true,
+      reply_markup: keyboard.reply_markup,
+    } as Parameters<typeof bot.telegram.editMessageText>[4];
+    const topicId =
+      typeof plain.telegram_topic_id === 'number'
+        ? plain.telegram_topic_id
+        : undefined;
+    const sendOptionsBase: Record<string, unknown> = {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true,
+      reply_markup: keyboard.reply_markup,
+    };
+    if (typeof topicId === 'number') {
+      sendOptionsBase.message_thread_id = topicId;
+    }
+    const sendOptions =
+      sendOptionsBase as Parameters<typeof bot.telegram.sendMessage>[2];
+
+    const previousMessageId =
+      typeof previousPlain?.telegram_message_id === 'number'
+        ? previousPlain.telegram_message_id
+        : undefined;
+    let currentMessageId =
+      typeof plain.telegram_message_id === 'number'
+        ? plain.telegram_message_id
+        : undefined;
+    const updates: Record<string, unknown> = {};
+
+    if (currentMessageId) {
+      try {
+        await bot.telegram.editMessageText(
+          groupChatId,
+          currentMessageId,
+          undefined,
+          message,
+          editOptions,
+        );
+      } catch (error) {
+        console.error('Не удалось обновить сообщение задачи', error);
+        try {
+          const sentMessage = await bot.telegram.sendMessage(
+            groupChatId,
+            message,
+            sendOptions,
+          );
+          if (sentMessage?.message_id) {
+            currentMessageId = sentMessage.message_id;
+            updates.telegram_message_id = sentMessage.message_id;
+          }
+        } catch (sendError) {
+          console.error('Не удалось отправить новое сообщение задачи', sendError);
+          return;
+        }
+      }
+    } else {
+      try {
+        const sentMessage = await bot.telegram.sendMessage(
+          groupChatId,
+          message,
+          sendOptions,
+        );
+        if (sentMessage?.message_id) {
+          currentMessageId = sentMessage.message_id;
+          updates.telegram_message_id = sentMessage.message_id;
+        }
+      } catch (error) {
+        console.error('Не удалось отправить сообщение задачи', error);
+        return;
+      }
+    }
+
+    const previousAttachments = previousPlain
+      ? this.collectSendableAttachments(previousPlain)
+      : [];
+    const nextAttachments = this.collectSendableAttachments(plain);
+    const previousAttachmentMessageIds = Array.isArray(
+      previousPlain?.telegram_attachments_message_ids,
+    )
+      ? previousPlain!.telegram_attachments_message_ids.filter((value) =>
+          typeof value === 'number' && Number.isFinite(value),
+        )
+      : [];
+
+    const messageIdChanged = previousMessageId !== currentMessageId;
+    const attachmentsChanged = !this.areNormalizedAttachmentsEqual(
+      previousAttachments,
+      nextAttachments,
+    );
+
+    if ((messageIdChanged || attachmentsChanged) && previousAttachmentMessageIds.length) {
+      await this.deleteAttachmentMessages(groupChatId, previousAttachmentMessageIds);
+      updates.telegram_attachments_message_ids = [];
+    }
+
+    if (!nextAttachments.length) {
+      if (
+        (messageIdChanged || attachmentsChanged) &&
+        updates.telegram_attachments_message_ids === undefined
+      ) {
+        updates.telegram_attachments_message_ids = [];
+      }
+    } else if (currentMessageId) {
+      if (
+        attachmentsChanged ||
+        messageIdChanged ||
+        !previousAttachmentMessageIds.length
+      ) {
+        try {
+          const ids = await this.sendTaskAttachments(
+            groupChatId,
+            nextAttachments,
+            topicId,
+            currentMessageId,
+          );
+          if (ids.length) {
+            updates.telegram_attachments_message_ids = ids;
+          }
+        } catch (error) {
+          console.error('Не удалось отправить вложения задачи', error);
+        }
+      }
+    }
+
+    if (Object.keys(updates).length) {
+      try {
+        await Task.findByIdAndUpdate(taskId, updates).exec();
+      } catch (error) {
+        console.error(
+          'Не удалось сохранить обновлённые данные Telegram для задачи',
+          error,
+        );
+      }
+    }
+  }
+
   private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
     const docId =
       typeof task._id === 'object' && task._id !== null && 'toString' in task._id
@@ -335,6 +564,7 @@ export default class TasksController {
     let statusMessageId: number | undefined;
     let messageLink: string | null = null;
 
+    let attachmentMessageIds: number[] = [];
     if (groupChatId) {
       try {
         const topicId =
@@ -358,7 +588,7 @@ export default class TasksController {
         const media = this.collectSendableAttachments(plain);
         if (media.length) {
           try {
-            await this.sendTaskAttachments(
+            attachmentMessageIds = await this.sendTaskAttachments(
               groupChatId,
               media,
               topicId,
@@ -416,12 +646,19 @@ export default class TasksController {
       );
     }
 
-    if (groupMessageId || statusMessageId) {
+    const updatePayload: Record<string, unknown> = {};
+    if (groupMessageId) {
+      updatePayload.telegram_message_id = groupMessageId;
+    }
+    if (statusMessageId) {
+      updatePayload.telegram_status_message_id = statusMessageId;
+    }
+    if (attachmentMessageIds && attachmentMessageIds.length) {
+      updatePayload.telegram_attachments_message_ids = attachmentMessageIds;
+    }
+    if (Object.keys(updatePayload).length) {
       try {
-        await Task.findByIdAndUpdate(docId, {
-          telegram_message_id: groupMessageId,
-          telegram_status_message_id: statusMessageId,
-        }).exec();
+        await Task.findByIdAndUpdate(docId, updatePayload).exec();
       } catch (error) {
         console.error('Не удалось сохранить идентификаторы сообщений задачи', error);
       }
@@ -499,6 +736,12 @@ export default class TasksController {
   update = [
     handleValidation,
     async (req: RequestWithUser, res: Response) => {
+      const previousRaw = await Task.findById(req.params.id);
+      const previousTask = previousRaw
+        ? ((typeof previousRaw.toObject === 'function'
+            ? (previousRaw.toObject() as unknown)
+            : (previousRaw as unknown)) as TaskWithMeta & Record<string, unknown>)
+        : null;
       const task = await this.service.update(
         req.params.id,
         req.body as Partial<TaskDocument>,
@@ -522,7 +765,14 @@ export default class TasksController {
           ? (task._id as { toString(): string }).toString()
           : String(task._id ?? '');
       if (docId) {
-        void this.refreshStatusHistoryMessage(docId);
+        void (async () => {
+          await this.refreshStatusHistoryMessage(docId);
+          try {
+            await this.syncTelegramTaskMessage(docId, previousTask);
+          } catch (error) {
+            console.error('Не удалось синхронизировать сообщение задачи', error);
+          }
+        })();
       }
     },
   ];

@@ -184,12 +184,17 @@ async function processStatusAction(
               messageId,
               undefined,
               text,
-              { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
+              {
+                parse_mode: 'MarkdownV2',
+                link_preview_options: { is_disabled: true },
+              },
             );
           } else {
-            const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+            const options: NonNullable<
+              Parameters<typeof bot.telegram.sendMessage>[2]
+            > = {
               parse_mode: 'MarkdownV2',
-              disable_web_page_preview: true,
+              link_preview_options: { is_disabled: true },
             };
             if (typeof topicId === 'number') {
               options.message_thread_id = topicId;

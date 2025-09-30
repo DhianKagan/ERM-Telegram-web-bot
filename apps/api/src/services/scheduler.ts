@@ -159,7 +159,7 @@ export function startScheduler(): void {
                 chat_id: userId,
                 text: messageText,
                 parse_mode: link ? 'HTML' : undefined,
-                disable_web_page_preview: true,
+                link_preview_options: { is_disabled: true },
               }),
             ).catch((error) => {
               console.error(

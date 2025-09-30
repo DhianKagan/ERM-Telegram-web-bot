@@ -43,7 +43,9 @@ const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
 });
 
 const escapeMarkdownV2 = (value: unknown): string =>
-  String(value).replace(/[[\\]_()*~`>#+=|{}.!-]/g, '\\$&');
+  String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
 
 const HTTP_URL_REGEXP = /^https?:\/\//i;
 const YOUTUBE_URL_REGEXP =

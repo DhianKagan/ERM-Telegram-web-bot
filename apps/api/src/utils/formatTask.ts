@@ -1,5 +1,5 @@
-// Форматирование задачи в виде компактного блока MarkdownV2
-// Модули: Intl.DateTimeFormat, userLink
+// Форматирование задачи в виде расширенного блока MarkdownV2
+// Модули: Intl.DateTimeFormat, userLink, config
 
 function mdEscape(str: unknown): string {
   // eslint-disable-next-line no-useless-escape
@@ -23,6 +23,7 @@ import {
   type Task,
   type User,
 } from 'shared';
+import { appUrl as configuredAppUrl } from '../config';
 
 const toPriorityDisplay = (value: string) =>
   /^бессроч/i.test(value.trim()) ? 'До выполнения' : value;
@@ -75,36 +76,93 @@ type TaskData = Task & {
   task_description?: string;
 };
 
+const appUrlBase = configuredAppUrl.replace(/\/+$/, '');
+
+const isMongoLike = (value: unknown): value is { toString(): string } =>
+  Boolean(value && typeof value === 'object' && 'toString' in value);
+
+const toIdentifier = (value: unknown): string | null => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const str = String(value).trim();
+    return str ? str : null;
+  }
+  if (isMongoLike(value)) {
+    const str = value.toString();
+    return str ? str : null;
+  }
+  return null;
+};
+
+const buildTaskLink = (task: TaskData) => {
+  const canonicalId = toIdentifier(task._id) ?? toIdentifier(task.request_id);
+  if (!canonicalId) return null;
+  const displayId =
+    toIdentifier(task.task_number) ||
+    toIdentifier(task.request_id) ||
+    canonicalId;
+  const link = `${appUrlBase}/tasks/${encodeURIComponent(canonicalId)}`;
+  return { displayId, link };
+};
+
 export default function formatTask(
   task: TaskData,
   users: UsersIndex = {},
 ): string {
-  const lines: string[] = [];
-  const idTitle = [task.task_number || task.request_id, task.title]
-    .filter(Boolean)
-    .join(' ');
-  if (idTitle) lines.push(`📌 *Задача:* _${mdEscape(idTitle)}_`);
+  const sections: string[] = [];
 
-  if (task.task_type) {
-    lines.push(`🏷 *Тип:* _${mdEscape(task.task_type)}_`);
-  }
-
-  if (task.due_date) {
-    const d = new Date(task.due_date);
-    const formatted = taskDateFormatter.format(d).replace(', ', ' ');
-    lines.push(
-      `⏰ *Срок:* \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
+  const headerParts: string[] = [];
+  const linkData = buildTaskLink(task);
+  if (linkData) {
+    headerParts.push(
+      `📌 [${mdEscape(linkData.displayId)}](${mdEscape(linkData.link)})`,
     );
+  } else {
+    const fallbackId =
+      toIdentifier(task.task_number) ||
+      toIdentifier(task.request_id) ||
+      toIdentifier(task._id);
+    if (fallbackId) {
+      headerParts.push(`📌 *${mdEscape(fallbackId)}*`);
+    }
+  }
+  if (task.title) {
+    headerParts.push(`*${mdEscape(task.title)}*`);
+  }
+  if (task.task_type) {
+    headerParts.push(`🏷 _${mdEscape(task.task_type)}_`);
+  }
+  if (headerParts.length) {
+    sections.push(headerParts.join('\n'));
   }
 
+  const infoLines: string[] = [];
   if (task.start_date) {
     const d = new Date(task.start_date);
     const formatted = taskDateFormatter.format(d).replace(', ', ' ');
-    lines.push(
-      `🗓 *Начало:* \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
+    infoLines.push(
+      `🗓 Начало: \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
     );
   }
+  if (task.due_date) {
+    const d = new Date(task.due_date);
+    const formatted = taskDateFormatter.format(d).replace(', ', ' ');
+    infoLines.push(
+      `⏰ Срок: \`${mdEscape(`${formatted} ${PROJECT_TIMEZONE_LABEL}`)}\``,
+    );
+  }
+  if (task.priority) {
+    const priority = toPriorityDisplay(task.priority);
+    infoLines.push(`⚡️ Приоритет: _${mdEscape(priority)}_`);
+  }
+  if (task.status) {
+    infoLines.push(`🛠 Статус: _${mdEscape(task.status)}_`);
+  }
+  if (infoLines.length) {
+    sections.push(['🧾 *Информация*', ...infoLines].join('\n'));
+  }
 
+  const logisticsLines: string[] = [];
   const start = task.start_location ? mdEscape(task.start_location) : '';
   const end = task.end_location ? mdEscape(task.end_location) : '';
   const startLink = task.start_location_link
@@ -113,19 +171,30 @@ export default function formatTask(
   const endLink = task.end_location_link
     ? `[${end}](${mdEscape(task.end_location_link)})`
     : end;
-  if (start || end)
-    lines.push(`📍 ${startLink}${start && end ? ' → ' : ''}${endLink}`);
-
-  const extra: string[] = [];
-  if (task.transport_type) extra.push(`🚗 ${mdEscape(task.transport_type)}`);
-  if (task.payment_method) extra.push(`💰 ${mdEscape(task.payment_method)}`);
+  if (start || end) {
+    const arrow = start && end ? ' → ' : '';
+    logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
+  }
+  if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
+    logisticsLines.push(
+      `🗺 Расстояние: ${mdEscape(String(task.route_distance_km))} км`,
+    );
+  }
+  if (task.transport_type) {
+    logisticsLines.push(`🚗 Транспорт: ${mdEscape(task.transport_type)}`);
+  }
+  if (task.payment_method) {
+    logisticsLines.push(`💰 Оплата: ${mdEscape(task.payment_method)}`);
+  }
   if (typeof task.payment_amount === 'number') {
     const formatted = currencyFormatter.format(task.payment_amount);
-    extra.push(`💵 ${mdEscape(formatted)} грн`);
+    logisticsLines.push(`💵 Сумма: ${mdEscape(`${formatted} грн`)}`);
   }
-  if (extra.length) lines.push(extra.join(' • '));
+  if (logisticsLines.length) {
+    sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));
+  }
 
-  const cargoParts: string[] = [];
+  const cargoLines: string[] = [];
   const lengthValue =
     typeof task.cargo_length_m === 'number'
       ? metricFormatter.format(task.cargo_length_m)
@@ -139,68 +208,59 @@ export default function formatTask(
       ? metricFormatter.format(task.cargo_height_m)
       : null;
   if (lengthValue && widthValue && heightValue) {
-    cargoParts.push(`Д×Ш×В: ${lengthValue}×${widthValue}×${heightValue} м`);
+    cargoLines.push(`Д×Ш×В: ${lengthValue}×${widthValue}×${heightValue} м`);
   } else {
-    if (lengthValue) cargoParts.push(`Д: ${lengthValue} м`);
-    if (widthValue) cargoParts.push(`Ш: ${widthValue} м`);
-    if (heightValue) cargoParts.push(`В: ${heightValue} м`);
+    if (lengthValue) cargoLines.push(`Д: ${lengthValue} м`);
+    if (widthValue) cargoLines.push(`Ш: ${widthValue} м`);
+    if (heightValue) cargoLines.push(`В: ${heightValue} м`);
   }
   if (typeof task.cargo_volume_m3 === 'number') {
-    cargoParts.push(
-      `Объём: ${metricFormatter.format(task.cargo_volume_m3)} м³`,
-    );
+    cargoLines.push(`Объём: ${metricFormatter.format(task.cargo_volume_m3)} м³`);
   }
   if (typeof task.cargo_weight_kg === 'number') {
-    cargoParts.push(
-      `Вес: ${weightFormatter.format(task.cargo_weight_kg)} кг`,
-    );
+    cargoLines.push(`Вес: ${weightFormatter.format(task.cargo_weight_kg)} кг`);
   }
-  if (cargoParts.length) {
-    lines.push(`📦 ${cargoParts.map((part) => mdEscape(part)).join(' • ')}`);
-  }
-
-  const ps: string[] = [];
-  if (task.priority) {
-    const priority = toPriorityDisplay(task.priority);
-    ps.push(`*Приоритет:* _${mdEscape(priority)}_`);
-  }
-  if (task.status) ps.push(`🛠 *Статус:* _${mdEscape(task.status)}_`);
-  if (ps.length) lines.push(`🔁 ${ps.join(' • ')}`);
-
-  if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
-    lines.push(
-      `🗺 *Расстояние:* ${mdEscape(String(task.route_distance_km))} км`,
+  if (cargoLines.length) {
+    sections.push(
+      ['🚚 *Груз*', ...cargoLines.map((part) => `• ${mdEscape(part)}`)].join('\n'),
     );
   }
 
+  const peopleLines: string[] = [];
   if (Array.isArray(task.assignees) && task.assignees.length) {
     const links = task.assignees
       .map((id: string | number) =>
         userLink(id, users[id]?.name || users[id]?.username),
       )
       .join(', ');
-    lines.push(`👥 *Исполнители:* ${links}`);
+    peopleLines.push(`👥 Исполнители: ${links}`);
   }
-
   if (Array.isArray(task.controllers) && task.controllers.length) {
     const links = task.controllers
       .map((id: string | number) =>
         userLink(id, users[id]?.name || users[id]?.username),
       )
       .join(', ');
-    lines.push(`🕵 *Контроль:* ${links}`);
+    peopleLines.push(`🕵 Контроль: ${links}`);
   }
-
   if (task.created_by) {
-    lines.push(
-      `👤 *Создатель:* ${userLink(task.created_by, users[task.created_by]?.name || users[task.created_by]?.username)}`,
+    peopleLines.push(
+      `👤 Создатель: ${userLink(
+        task.created_by,
+        users[task.created_by]?.name || users[task.created_by]?.username,
+      )}`,
     );
+  }
+  if (peopleLines.length) {
+    sections.push(['🤝 *Участники*', ...peopleLines].join('\n'));
   }
 
   if (task.task_description) {
     const text = stripTags(task.task_description);
-    if (text.trim()) lines.push(`📝 ${mdEscape(text.trim())}`);
+    if (text.trim()) {
+      sections.push(`📝 *Описание*\n${mdEscape(text.trim())}`);
+    }
   }
 
-  return lines.join('\n');
+  return sections.join('\n\n━━━━━━━━━━━━\n\n');
 }

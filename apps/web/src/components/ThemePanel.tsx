@@ -1,6 +1,8 @@
 // Панель изменения токенов темы
 // Модули: React, useTheme
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import { useTheme } from "../context/useTheme";
 
 export default function ThemePanel() {
@@ -33,9 +35,9 @@ export default function ThemePanel() {
           onChange={(e) => change("background", e.target.value)}
         />
       </label>
-      <button className="btn btn-primary" onClick={save}>
+      <Button onClick={save}>
         Сохранить
-      </button>
+      </Button>
     </div>
   );
 }

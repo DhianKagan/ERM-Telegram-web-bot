@@ -1,8 +1,10 @@
 // Назначение: вкладка автопарка с ручным управлением транспортом
 // Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Modal from "../../components/Modal";
+
+import { Button } from "@/components/ui/button";
 import DataTable from "../../components/DataTable";
+import Modal from "../../components/Modal";
 import { showToast } from "../../utils/toast";
 import {
   listFleetVehicles,
@@ -259,20 +261,21 @@ export default function FleetVehiclesTab() {
               placeholder="Название или номер"
             />
           </label>
-          <button
+          <Button
             type="submit"
-            className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:h-10 sm:w-auto sm:px-3 lg:h-8 lg:text-xs"
+            className="h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:h-10 sm:w-auto sm:px-3 lg:h-8 lg:text-xs"
           >
             Искать
-          </button>
+          </Button>
         </form>
-        <button
+        <Button
           type="button"
-          className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+          variant="success"
+          className="h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
           onClick={openCreate}
         >
           Добавить
-        </button>
+        </Button>
       </div>
       {loading ? <p className="text-sm text-gray-500">Загрузка транспорта…</p> : null}
       {error ? (

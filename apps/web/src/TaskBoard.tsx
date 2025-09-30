@@ -1,8 +1,12 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, @hello-pangea/dnd, сервис задач
-import { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
+
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
 import TaskCard from "./components/TaskCard";
 import TaskDialog from "./components/TaskDialog";
 import { fetchKanban, updateTaskStatus } from "./services/tasks";
@@ -36,18 +40,20 @@ export default function TaskBoard() {
   return (
     <div className="p-4">
       <div className="mb-4 flex flex-col gap-2 md:flex-row">
-        <Link to="/tasks" className="btn-gray">
+        <Link
+          to="/tasks"
+          className={cn(buttonVariants({ variant: "outline" }))}
+        >
           Таблица
         </Link>
-        <button
+        <Button
           onClick={() => {
             params.set("newTask", "1");
             setParams(params);
           }}
-          className="btn-blue"
         >
           Новая задача
-        </button>
+        </Button>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex space-x-4 overflow-x-auto">

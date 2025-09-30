@@ -1,6 +1,8 @@
 // Назначение: модальное окно предупреждения
 // Основные модули: React, Modal
 import React from "react";
+
+import { Button } from "@/components/ui/button";
 import Modal from "./Modal";
 
 interface AlertDialogProps {
@@ -20,9 +22,9 @@ export default function AlertDialog({
     <Modal open={open} onClose={onClose}>
       <p>{message}</p>
       <div className="mt-4 flex justify-end">
-        <button className="btn-blue rounded-full" onClick={onClose}>
+        <Button variant="default" size="pill" onClick={onClose}>
           {closeText}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

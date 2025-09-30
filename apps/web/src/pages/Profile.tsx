@@ -1,6 +1,8 @@
 // Назначение: страница профиля пользователя
 // Основные модули: React, React Router
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+
+import { Button } from "@/components/ui/button";
 import { useAuth } from "../context/useAuth";
 import { updateProfile } from "../services/auth";
 import { fetchCollectionItems, type CollectionItem } from "../services/collections";
@@ -285,21 +287,17 @@ export default function Profile() {
             </label>
           </div>
           <div className="flex gap-3">
-            <button
-              type="submit"
-              className="btn btn-blue"
-              disabled={!isDirty || saving}
-            >
+            <Button type="submit" disabled={!isDirty || saving}>
               {saving ? "Сохранение..." : "Сохранить"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn btn-gray"
+              variant="outline"
               onClick={resetForm}
               disabled={!isDirty || saving}
             >
               Отменить
-            </button>
+            </Button>
           </div>
         </form>
       </div>

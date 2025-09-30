@@ -1,6 +1,8 @@
 // Назначение: модальное окно создания и редактирования транспорта
 // Основные модули: React, ConfirmDialog, services/fleets
 import React, { useEffect, useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import type { FleetVehicleDto } from "shared";
 import type { FleetVehiclePayload } from "../../services/fleets";
@@ -318,26 +320,26 @@ export default function FleetVehicleDialog({
       </label>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <button type="submit" className="btn btn-blue rounded" disabled={saving}>
+        <Button type="submit" disabled={saving}>
           Сохранить
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="btn btn-gray rounded"
+          variant="outline"
           onClick={onClose}
           disabled={saving}
         >
           Отмена
-        </button>
+        </Button>
         {isUpdate && onDelete ? (
-          <button
+          <Button
             type="button"
-            className="btn btn-red rounded"
+            variant="destructive"
             onClick={() => setConfirmDelete(true)}
             disabled={saving}
           >
             Удалить
-          </button>
+          </Button>
         ) : null}
       </div>
       <ConfirmDialog

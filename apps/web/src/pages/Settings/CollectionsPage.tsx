@@ -1,6 +1,8 @@
 // Назначение: страница управления коллекциями настроек
 // Основные модули: React, Tabs, services/collections
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import {
   Tabs,
   TabsList,
@@ -311,6 +313,8 @@ export default function CollectionsPage() {
   const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
     "create",
   );
+  const actionButtonClass =
+    "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
   const selectedCollectionInfo = useMemo(() => {
     if (!selectedCollection?.meta || typeof selectedCollection.meta !== "object") {
       return { readonly: false, notice: undefined as string | undefined };
@@ -1122,19 +1126,20 @@ export default function CollectionsPage() {
                         placeholder="Имя или логин"
                       />
                     </label>
-                    <button
+                    <Button
                       type="submit"
-                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      className={actionButtonClass}
                     >
                       Искать
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      variant="success"
+                      className={actionButtonClass}
                       onClick={() => openUserModal()}
                     >
                       Добавить
-                    </button>
+                    </Button>
                   </form>
                   <DataTable
                     columns={settingsUserColumns}
@@ -1167,19 +1172,20 @@ export default function CollectionsPage() {
                         placeholder="Имя или логин"
                       />
                     </label>
-                    <button
+                    <Button
                       type="submit"
-                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      className={actionButtonClass}
                     >
                       Искать
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      variant="success"
+                      className={actionButtonClass}
                       onClick={() => openEmployeeModal()}
                     >
                       Добавить
-                    </button>
+                    </Button>
                   </form>
                   <DataTable
                     columns={settingsEmployeeColumns}
@@ -1216,19 +1222,20 @@ export default function CollectionsPage() {
                         placeholder="Название или значение"
                       />
                     </label>
-                    <button
+                    <Button
                       type="submit"
-                      className="btn btn-blue h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      className={actionButtonClass}
                     >
                       Искать
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="btn btn-green h-10 w-full max-w-[11rem] rounded px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
+                      variant="success"
+                      className={actionButtonClass}
                       onClick={() => openCollectionModal()}
                     >
                       Добавить
-                    </button>
+                    </Button>
                   </form>
                   <DataTable
                     columns={columnsForType}

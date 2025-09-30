@@ -1,6 +1,8 @@
 // Назначение: форма редактирования пользователя
 // Основные модули: React, ConfirmDialog
 import React from "react";
+
+import { Button } from "@/components/ui/button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import {
   fetchCollectionItems,
@@ -189,16 +191,10 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         </select>
       </div>
       <div className="flex gap-2">
-        <button type="submit" className="btn btn-blue rounded">
-          Сохранить
-        </button>
-        <button
-          type="button"
-          className="btn btn-gray rounded"
-          onClick={onReset}
-        >
+        <Button type="submit">Сохранить</Button>
+        <Button type="button" variant="outline" onClick={onReset}>
           Очистить
-        </button>
+        </Button>
       </div>
       <ConfirmDialog
         open={confirmSave}

@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import clsx from "clsx";
+import { Button } from "@/components/ui/button";
 import ConfirmDialog from "./ConfirmDialog";
 import {
   fetchCollectionItems,
@@ -478,21 +479,17 @@ export default function EmployeeCardForm({
           </div>
           {canEdit && (
             <div className="flex gap-3">
-              <button
-                type="submit"
-                className="btn btn-blue"
-                disabled={!isDirty || saving}
-              >
+              <Button type="submit" disabled={!isDirty || saving}>
                 {saving ? "Сохранение..." : "Сохранить"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="btn btn-gray"
+                variant="outline"
                 onClick={resetChanges}
                 disabled={!isDirty || saving}
               >
                 Очистить
-              </button>
+              </Button>
             </div>
           )}
         </form>

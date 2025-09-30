@@ -1,14 +1,16 @@
 // Назначение: страница списка задач
 // Основные модули: React, контексты аутентификации и уведомлений
 import React from "react";
-import { useToast } from "../context/useToast";
-import authFetch from "../utils/authFetch";
-import { createTask } from "../services/tasks";
-import Spinner from "../components/Spinner";
-import SkeletonCard from "../components/SkeletonCard";
-import Pagination from "../components/Pagination";
+
+import { Button } from "@/components/ui/button";
 import Breadcrumbs from "../components/Breadcrumbs";
+import Pagination from "../components/Pagination";
+import SkeletonCard from "../components/SkeletonCard";
+import Spinner from "../components/Spinner";
 import { useAuth } from "../context/useAuth";
+import { useToast } from "../context/useToast";
+import { createTask } from "../services/tasks";
+import authFetch from "../utils/authFetch";
 import type { Task } from "shared";
 
 type TaskWithDesc = Task & { task_description: string };
@@ -67,12 +69,9 @@ export default function Tasks() {
           className="focus:border-accentPrimary h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none"
           placeholder="Описание"
         />
-        <button
-          type="submit"
-          className="btn btn-blue xsm:w-full flex items-center justify-center"
-        >
+        <Button type="submit" className="xsm:w-full">
           {posting ? <Spinner /> : "Создать"}
-        </button>
+        </Button>
       </form>
       {loading ? (
         <SkeletonCard />

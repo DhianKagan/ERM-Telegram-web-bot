@@ -3,6 +3,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "@/components/ui/button";
+
 type TaskDialogProps = {
   open: boolean;
   onClose: () => void;
@@ -34,25 +36,27 @@ export function TaskDialog({
           >
             {title}
           </h2>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label={t("close")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="hover:bg-gray-100"
           >
             <span aria-hidden>✕</span>
-          </button>
+          </Button>
         </div>
         <div className="h-screen max-h-none overflow-y-auto px-4 py-4 md:px-6 md:py-6">
           {children}
         </div>
         <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t bg-white/90 px-4 py-3 backdrop-blur md:px-6">
-          <button type="button" onClick={onClose} className="btn btn-ghost">
+          <Button type="button" variant="ghost" onClick={onClose}>
             {t("cancel")}
-          </button>
-          <button form="task-form" type="submit" className="btn btn-primary">
+          </Button>
+          <Button form="task-form" type="submit">
             {t("create")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

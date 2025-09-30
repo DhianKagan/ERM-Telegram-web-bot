@@ -42,10 +42,36 @@ const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeZone: PROJECT_TIMEZONE,
 });
 
+const markdownSpecialChars = [
+  '_',
+  '*',
+  '[',
+  ']',
+  '(',
+  ')',
+  '~',
+  '`',
+  '>',
+  '#',
+  '+',
+  '-',
+  '=',
+  '|',
+  '{',
+  '}',
+  '.',
+  '!',
+];
+
+const markdownEscapePattern = new RegExp(
+  `([${markdownSpecialChars.map((char) => `\\${char}`).join('')}])`,
+  'g',
+);
+
 const escapeMarkdownV2 = (value: unknown): string =>
   String(value)
     .replace(/\\/g, '\\\\')
-    .replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+    .replace(markdownEscapePattern, '\\$1');
 
 const HTTP_URL_REGEXP = /^https?:\/\//i;
 const YOUTUBE_URL_REGEXP =

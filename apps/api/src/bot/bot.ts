@@ -10,8 +10,6 @@ import {
   getUser,
   updateTaskStatus,
 } from '../services/service';
-import { startScheduler } from '../services/scheduler';
-import { startKeyRotation } from '../services/keyRotation';
 import '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
@@ -345,13 +343,6 @@ export async function startBot(retry = 0): Promise<void> {
   console.log(
     `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
   );
-}
-
-if (process.env.NODE_ENV !== 'test') {
-  startBot().then(() => {
-    startScheduler();
-    startKeyRotation();
-  });
 }
 
 process.once('SIGINT', () => bot.stop('SIGINT'));

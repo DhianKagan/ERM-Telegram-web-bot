@@ -1,5 +1,5 @@
 // Контроллер задач с использованием TasksService
-// Основные модули: express-validator, services, wgLogEngine
+// Основные модули: express-validator, services, wgLogEngine, taskHistory.service
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -21,6 +21,10 @@ import { chatId as groupChatId } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
+import {
+  getTaskHistoryMessage,
+  updateTaskStatusMessageId,
+} from './taskHistory.service';
 
 type TaskEx = SharedTask & {
   controllers?: number[];
@@ -91,6 +95,44 @@ export default class TasksController {
     const identifier = this.getTaskIdentifier(task);
     const formatted = taskEventFormatter.format(at).replace(', ', ' ');
     return `Задача ${identifier} ${action} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
+  }
+
+  private async refreshStatusHistoryMessage(taskId: string) {
+    if (!groupChatId) return;
+    try {
+      const payload = await getTaskHistoryMessage(taskId);
+      if (!payload) return;
+      const { messageId, text, topicId } = payload;
+      if (messageId) {
+        await bot.telegram.editMessageText(
+          groupChatId,
+          messageId,
+          undefined,
+          text,
+          { parse_mode: 'MarkdownV2' },
+        );
+        return;
+      }
+      const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+        parse_mode: 'MarkdownV2',
+      };
+      if (typeof topicId === 'number') {
+        options.message_thread_id = topicId;
+      }
+      const statusMessage = await bot.telegram.sendMessage(
+        groupChatId,
+        text,
+        options,
+      );
+      if (statusMessage?.message_id) {
+        await updateTaskStatusMessageId(taskId, statusMessage.message_id);
+      }
+    } catch (error) {
+      console.error(
+        `Не удалось обновить историю статусов задачи ${taskId}`,
+        error,
+      );
+    }
   }
 
   private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
@@ -283,6 +325,13 @@ export default class TasksController {
         `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
       res.json(task);
+      const docId =
+        typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+          ? (task._id as { toString(): string }).toString()
+          : String(task._id ?? '');
+      if (docId) {
+        void this.refreshStatusHistoryMessage(docId);
+      }
     },
   ];
 

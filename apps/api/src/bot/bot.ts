@@ -1,5 +1,5 @@
 // Назначение: основной файл Telegram-бота
-// Основные модули: dotenv, telegraf, service, scheduler, config
+// Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
 import { botToken, chatId } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
@@ -9,8 +9,10 @@ import { startScheduler } from '../services/scheduler';
 import { startKeyRotation } from '../services/keyRotation';
 import '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
-import type { TaskDocument } from '../db/model';
-import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
+import {
+  getTaskHistoryMessage,
+  updateTaskStatusMessageId,
+} from '../tasks/taskHistory.service';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -118,27 +120,6 @@ bot.hears('Транспорт', sendFleetVehicles);
 
 const MAX_RETRIES = 5;
 
-const eventTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: PROJECT_TIMEZONE,
-});
-
-function buildTaskEventMessage(task: TaskDocument, action: string): string {
-  const identifier =
-    (task.request_id && String(task.request_id)) ||
-    (task.task_number && String(task.task_number)) ||
-    (typeof task._id === 'object' && task._id !== null && 'toString' in task._id
-      ? (task._id as { toString(): string }).toString()
-      : String(task._id));
-  const time = eventTimeFormatter.format(new Date()).replace(', ', ' ');
-  return `Задача ${identifier} ${action} ${time} (${PROJECT_TIMEZONE_LABEL})`;
-}
-
 const getCallbackData = (
   callback: Context['callbackQuery'],
 ): string | null => {
@@ -150,7 +131,6 @@ const getCallbackData = (
 async function processStatusAction(
   ctx: Context,
   status: 'В работе' | 'Выполнена',
-  actionText: string,
   responseMessage: string,
 ) {
   const data = getCallbackData(ctx.callbackQuery);
@@ -175,7 +155,44 @@ async function processStatusAction(
       return;
     }
     await ctx.answerCbQuery(responseMessage);
-    await ctx.reply(buildTaskEventMessage(task, actionText));
+    const docId =
+      typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+        ? (task._id as { toString(): string }).toString()
+        : String(task._id ?? taskId);
+    if (docId && chatId) {
+      try {
+        const payload = await getTaskHistoryMessage(docId);
+        if (payload) {
+          const { messageId, text, topicId } = payload;
+          if (messageId) {
+            await bot.telegram.editMessageText(
+              chatId,
+              messageId,
+              undefined,
+              text,
+              { parse_mode: 'MarkdownV2' },
+            );
+          } else {
+            const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+              parse_mode: 'MarkdownV2',
+            };
+            if (typeof topicId === 'number') {
+              options.message_thread_id = topicId;
+            }
+            const statusMessage = await bot.telegram.sendMessage(
+              chatId,
+              text,
+              options,
+            );
+            if (statusMessage?.message_id) {
+              await updateTaskStatusMessageId(docId, statusMessage.message_id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Не удалось обновить историю статусов задачи', error);
+      }
+    }
   } catch (error) {
     console.error('Не удалось обновить статус задачи', error);
     await ctx.answerCbQuery('Ошибка обновления статуса задачи', {
@@ -189,7 +206,7 @@ bot.action('task_accept', async (ctx) => {
 });
 
 bot.action(/^task_accept:.+$/, async (ctx) => {
-  await processStatusAction(ctx, 'В работе', 'принята в работу', messages.taskAccepted);
+  await processStatusAction(ctx, 'В работе', messages.taskAccepted);
 });
 
 bot.action('task_done', async (ctx) => {
@@ -197,7 +214,7 @@ bot.action('task_done', async (ctx) => {
 });
 
 bot.action(/^task_done:.+$/, async (ctx) => {
-  await processStatusAction(ctx, 'Выполнена', 'выполнена', messages.taskCompleted);
+  await processStatusAction(ctx, 'Выполнена', messages.taskCompleted);
 });
 
 export async function startBot(retry = 0): Promise<void> {
@@ -231,3 +248,5 @@ if (process.env.NODE_ENV !== 'test') {
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+export { processStatusAction };

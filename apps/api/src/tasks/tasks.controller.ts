@@ -8,7 +8,7 @@ import type TasksService from './tasks.service';
 import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
-import { Task, type TaskDocument } from '../db/model';
+import { Task, type TaskDocument, type Attachment } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import {
@@ -17,7 +17,7 @@ import {
   type Task as SharedTask,
 } from 'shared';
 import { bot } from '../bot/bot';
-import { chatId as groupChatId } from '../config';
+import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
@@ -41,6 +41,37 @@ const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
   hour12: false,
   timeZone: PROJECT_TIMEZONE,
 });
+
+const escapeMarkdownV2 = (value: unknown): string =>
+  String(value).replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+
+const HTTP_URL_REGEXP = /^https?:\/\//i;
+const YOUTUBE_URL_REGEXP =
+  /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\//i;
+
+const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
+
+const toAbsoluteAttachmentUrl = (url: string): string | null => {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (HTTP_URL_REGEXP.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+  if (!attachmentsBaseUrl) {
+    return null;
+  }
+  const normalizedPath = trimmed.startsWith('/')
+    ? trimmed.slice(1)
+    : trimmed;
+  return `${attachmentsBaseUrl}/${normalizedPath}`;
+};
+
+type NormalizedAttachment =
+  | { kind: 'image'; url: string }
+  | { kind: 'youtube'; url: string; title?: string };
 
 @injectable()
 export default class TasksController {
@@ -73,6 +104,122 @@ export default class TasksController {
     add(task.assigned_user_id);
     if (Array.isArray(task.assignees)) task.assignees.forEach(add);
     return recipients;
+  }
+
+  private collectSendableAttachments(task: Partial<TaskDocument>) {
+    if (!Array.isArray(task.attachments) || task.attachments.length === 0) {
+      return [] as NormalizedAttachment[];
+    }
+    const result: NormalizedAttachment[] = [];
+    task.attachments.forEach((attachment: Attachment | null | undefined) => {
+      if (!attachment || typeof attachment.url !== 'string') return;
+      const url = attachment.url.trim();
+      if (!url) return;
+      if (YOUTUBE_URL_REGEXP.test(url)) {
+        const title =
+          typeof attachment.name === 'string' && attachment.name.trim()
+            ? attachment.name.trim()
+            : undefined;
+        result.push({ kind: 'youtube', url, title });
+        return;
+      }
+      const type =
+        typeof attachment.type === 'string'
+          ? attachment.type.trim().toLowerCase()
+          : '';
+      if (!type.startsWith('image/')) return;
+      const absolute = toAbsoluteAttachmentUrl(url);
+      if (!absolute) return;
+      result.push({ kind: 'image', url: absolute });
+    });
+    return result;
+  }
+
+  private async sendTaskAttachments(
+    chat: string | number,
+    attachments: NormalizedAttachment[],
+    topicId?: number,
+    replyTo?: number,
+  ) {
+    if (!attachments.length) return;
+    const photoOptionsBase = () => {
+      const options: Parameters<typeof bot.telegram.sendPhoto>[2] = {};
+      if (typeof topicId === 'number') {
+        options.message_thread_id = topicId;
+      }
+      if (replyTo) {
+        options.reply_parameters = {
+          message_id: replyTo,
+          allow_sending_without_reply: true,
+        };
+      }
+      return options;
+    };
+    const mediaGroupOptionsBase = () => {
+      const options: Parameters<typeof bot.telegram.sendMediaGroup>[2] = {};
+      if (typeof topicId === 'number') {
+        options.message_thread_id = topicId;
+      }
+      if (replyTo) {
+        options.reply_parameters = {
+          message_id: replyTo,
+          allow_sending_without_reply: true,
+        };
+      }
+      return options;
+    };
+    const messageOptionsBase = () => {
+      const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
+        parse_mode: 'MarkdownV2',
+      };
+      if (typeof topicId === 'number') {
+        options.message_thread_id = topicId;
+      }
+      if (replyTo) {
+        options.reply_parameters = {
+          message_id: replyTo,
+          allow_sending_without_reply: true,
+        };
+      }
+      return options;
+    };
+
+    const pendingImages: { url: string }[] = [];
+    const flushImages = async () => {
+      while (pendingImages.length) {
+        const chunk = pendingImages.splice(0, 10);
+        if (chunk.length === 1) {
+          const [item] = chunk;
+          await bot.telegram.sendPhoto(chat, item.url, photoOptionsBase());
+        } else {
+          const media = chunk.map((item) => ({
+            type: 'photo' as const,
+            media: item.url,
+          }));
+          await bot.telegram.sendMediaGroup(
+            chat,
+            media,
+            mediaGroupOptionsBase(),
+          );
+        }
+      }
+    };
+
+    for (const attachment of attachments) {
+      if (attachment.kind === 'image') {
+        pendingImages.push({ url: attachment.url });
+        continue;
+      }
+      await flushImages();
+      if (attachment.kind === 'youtube') {
+        const label = attachment.title ? attachment.title : 'YouTube';
+        const text = `▶️ [${escapeMarkdownV2(label)}](${escapeMarkdownV2(
+          attachment.url,
+        )})`;
+        await bot.telegram.sendMessage(chat, text, messageOptionsBase());
+      }
+    }
+    await flushImages();
   }
 
   private getTaskIdentifier(task: Partial<TaskDocument>) {
@@ -162,12 +309,16 @@ export default class TasksController {
 
     if (groupChatId) {
       try {
+        const topicId =
+          typeof plain.telegram_topic_id === 'number'
+            ? plain.telegram_topic_id
+            : undefined;
         const groupOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
           parse_mode: 'MarkdownV2',
           ...mainKeyboard,
         };
-        if (typeof plain.telegram_topic_id === 'number') {
-          groupOptions.message_thread_id = plain.telegram_topic_id;
+        if (typeof topicId === 'number') {
+          groupOptions.message_thread_id = topicId;
         }
         const groupMessage = await bot.telegram.sendMessage(
           groupChatId,
@@ -176,6 +327,19 @@ export default class TasksController {
         );
         groupMessageId = groupMessage?.message_id;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
+        const media = this.collectSendableAttachments(plain);
+        if (media.length) {
+          try {
+            await this.sendTaskAttachments(
+              groupChatId,
+              media,
+              topicId,
+              groupMessageId,
+            );
+          } catch (error) {
+            console.error('Не удалось отправить вложения задачи', error);
+          }
+        }
         const statusText = this.buildActionMessage(
           plain,
           'создана',
@@ -184,8 +348,8 @@ export default class TasksController {
           ),
         );
         const statusOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {};
-        if (typeof plain.telegram_topic_id === 'number') {
-          statusOptions.message_thread_id = plain.telegram_topic_id;
+        if (typeof topicId === 'number') {
+          statusOptions.message_thread_id = topicId;
         }
         if (groupMessageId) {
           statusOptions.reply_parameters = { message_id: groupMessageId };

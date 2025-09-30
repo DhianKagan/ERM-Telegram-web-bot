@@ -1,4 +1,4 @@
 # Назначение файла: запуск API и бота на Railway отдельными процессами.
 release: pnpm build
 api: node apps/api/dist/server.js
-bot: ./scripts/set_bot_commands.sh && node apps/api/dist/bot/bot.js
+bot: ./scripts/set_bot_commands.sh && node apps/api/dist/bot/runtime.js

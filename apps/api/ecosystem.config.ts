@@ -22,7 +22,7 @@ export default {
     },
     {
       name: 'bot',
-      script: 'dist/bot/bot.js',
+      script: 'dist/bot/runtime.js',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',

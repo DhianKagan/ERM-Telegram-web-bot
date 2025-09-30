@@ -242,6 +242,7 @@ export default class TasksController {
     const messageOptionsBase = () => {
       const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
         parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
       };
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
@@ -349,12 +350,13 @@ export default class TasksController {
           messageId,
           undefined,
           text,
-          { parse_mode: 'MarkdownV2' },
+          { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
         );
         return;
       }
       const options: Parameters<typeof bot.telegram.sendMessage>[2] = {
         parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
       };
       if (typeof topicId === 'number') {
         options.message_thread_id = topicId;
@@ -573,6 +575,7 @@ export default class TasksController {
             : undefined;
         const groupOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
           parse_mode: 'MarkdownV2',
+          disable_web_page_preview: true,
           ...mainKeyboard,
         };
         if (typeof topicId === 'number') {
@@ -605,7 +608,9 @@ export default class TasksController {
             (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
           ),
         );
-        const statusOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {};
+        const statusOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+          disable_web_page_preview: true,
+        };
         if (typeof topicId === 'number') {
           statusOptions.message_thread_id = topicId;
         }
@@ -631,6 +636,7 @@ export default class TasksController {
       const dmOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
         ...taskStatusKeyboard(docId),
         parse_mode: 'HTML',
+        disable_web_page_preview: true,
       };
       await Promise.allSettled(
         Array.from(assignees).map((userId) =>

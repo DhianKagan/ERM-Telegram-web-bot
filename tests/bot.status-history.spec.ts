@@ -35,11 +35,13 @@ jest.mock('telegraf', () => {
 });
 
 const updateTaskStatusMock = jest.fn();
+const getTaskMock = jest.fn();
 
 jest.mock('../apps/api/src/services/service', () => ({
   updateTaskStatus: (...args: unknown[]) => updateTaskStatusMock(...args),
   createUser: jest.fn(),
   getUser: jest.fn(),
+  getTask: (...args: unknown[]) => getTaskMock(...args),
 }));
 
 const getTaskHistoryMessageMock = jest.fn();
@@ -57,6 +59,12 @@ jest.mock('../apps/api/src/services/scheduler', () => ({
 
 jest.mock('../apps/api/src/services/keyRotation', () => ({
   startKeyRotation: jest.fn(),
+}));
+
+jest.mock('../apps/api/src/utils/taskButtons', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({ reply_markup: {} })),
+  taskAcceptConfirmKeyboard: jest.fn(() => ({ reply_markup: {} })),
 }));
 
 jest.mock('../apps/api/src/messages', () => ({
@@ -122,7 +130,7 @@ test('создаёт новое сообщение истории и сохра�
     text: '*История изменений*\n• новое событие',
   });
   sendMessageMock.mockResolvedValue({ message_id: 31337 });
-  const ctx = createContext('task_accept:task999') as Parameters<
+  const ctx = createContext('task_accept_confirm:task999') as Parameters<
     typeof processStatusAction
   >[0];
 

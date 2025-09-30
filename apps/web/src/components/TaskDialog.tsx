@@ -2,6 +2,9 @@
 // Модули: React, DOMPurify, контексты, сервисы задач, shared, EmployeeLink и логов
 import React from "react";
 import DOMPurify from "dompurify";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
 import ConfirmDialog from "./ConfirmDialog";
@@ -1349,7 +1352,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
                     rel="noopener"
-                    className="btn-blue rounded-2xl px-3"
+                    className={cn(
+                      buttonVariants({ variant: "default", size: "sm" }),
+                      "rounded-2xl px-3",
+                    )}
                   >
                     {t("map")}
                   </a>
@@ -1404,7 +1410,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                     target="_blank"
                     rel="noopener"
-                    className="btn-blue rounded-2xl px-3"
+                    className={cn(
+                      buttonVariants({ variant: "default", size: "sm" }),
+                      "rounded-2xl px-3",
+                    )}
                   >
                     {t("map")}
                   </a>
@@ -1620,13 +1629,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                         {a.name}
                       </a>
                     )}
-                    <button
+                    <Button
                       type="button"
-                      className="text-red-500"
+                      variant="ghost"
+                      className="px-0 text-red-500"
                       onClick={() => removeAttachment(a)}
                     >
                       {t("delete")}
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -1639,34 +1649,37 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           />
           {isEdit && history.length > 0 && (
             <div className="mt-2 flex justify-start">
-              <button
+              <Button
                 type="button"
-                className="btn-red rounded-full"
+                variant="destructive"
+                size="pill"
                 onClick={() => setShowHistory(true)}
               >
                 {t("history")}
-              </button>
+              </Button>
             </div>
           )}
           {isEdit && isAdmin && editing && (
             <div className="mt-2 flex justify-start">
-              <button
-                className="btn-red rounded-full"
+              <Button
+                variant="destructive"
+                size="pill"
                 onClick={() => setShowDeleteConfirm(true)}
               >
                 {t("delete")}
-              </button>
+              </Button>
             </div>
           )}
           {editing && (
             <div className="mt-2 flex justify-end">
-              <button
-                className="btn-blue flex items-center justify-center rounded-full"
+              <Button
+                variant="default"
+                size="pill"
                 disabled={isSubmitting}
                 onClick={() => setShowSaveConfirm(true)}
               >
                 {isSubmitting ? <Spinner /> : isEdit ? t("save") : t("create")}
-              </button>
+              </Button>
               <ConfirmDialog
                 open={showSaveConfirm}
                 message={
@@ -1699,18 +1712,26 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           {isEdit && !editing && (
             <>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <button
-                  className={`rounded-lg btn-${status === "В работе" ? "green" : "blue"} ${selectedAction === "accept" ? "ring-accentPrimary ring-2" : ""}`}
+                <Button
+                  className={cn(
+                    "rounded-lg",
+                    selectedAction === "accept" && "ring-accentPrimary ring-2",
+                  )}
+                  variant={status === "В работе" ? "success" : "default"}
                   onClick={() => setShowAcceptConfirm(true)}
                 >
                   {t("accept")}
-                </button>
-                <button
-                  className={`rounded-lg btn-${status === "Выполнена" ? "green" : "blue"} ${selectedAction === "done" ? "ring-accentPrimary ring-2" : ""}`}
+                </Button>
+                <Button
+                  className={cn(
+                    "rounded-lg",
+                    selectedAction === "done" && "ring-accentPrimary ring-2",
+                  )}
+                  variant={status === "Выполнена" ? "success" : "default"}
                   onClick={() => setShowDoneSelect((v) => !v)}
                 >
                   {t("done")}
-                </button>
+                </Button>
               </div>
               {showDoneSelect && (
                 <>
@@ -1848,12 +1869,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 );
               })}
             </ul>
-            <button
-              className="btn-blue mt-2 rounded-lg"
+            <Button
+              className="mt-2 rounded-lg"
               onClick={() => setShowHistory(false)}
             >
               {t("close")}
-            </button>
+            </Button>
           </div>
         </div>
       )}

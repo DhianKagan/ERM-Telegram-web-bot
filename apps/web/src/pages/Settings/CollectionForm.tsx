@@ -1,6 +1,8 @@
 // Назначение: форма элемента коллекции с подтверждением действий
 // Основные модули: React, ConfirmDialog
 import React from "react";
+
+import { Button } from "@/components/ui/button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
 interface ItemForm {
@@ -79,17 +81,13 @@ export default function CollectionForm({
         </p>
       ) : null}
       <div className="flex gap-2">
-        <button
-          type="submit"
-          className="btn btn-blue rounded"
-          disabled={readonly}
-        >
+        <Button type="submit" disabled={readonly}>
           Сохранить
-        </button>
+        </Button>
         {form._id ? (
-          <button
+          <Button
             type="button"
-            className="btn btn-red rounded"
+            variant="destructive"
             disabled={readonly}
             onClick={() => {
               if (readonly) return;
@@ -97,16 +95,16 @@ export default function CollectionForm({
             }}
           >
             Удалить
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
-            className="btn btn-gray rounded"
+            variant="outline"
             onClick={onReset}
             disabled={readonly}
           >
             Очистить
-          </button>
+          </Button>
         )}
       </div>
       <ConfirmDialog

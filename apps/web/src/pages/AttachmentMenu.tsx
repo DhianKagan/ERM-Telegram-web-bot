@@ -1,9 +1,11 @@
 // Страница выбора задачи для Attachment Menu
 // Модули: React, useToast, authFetch, shared
 import React, { useEffect, useState } from "react";
+import type { Task } from "shared";
+
+import { Button } from "@/components/ui/button";
 import { useToast } from "../context/useToast";
 import authFetch from "../utils/authFetch";
-import type { Task } from "shared";
 
 type MenuTask = Task & { task_number: string; createdAt: string };
 
@@ -41,12 +43,14 @@ export default function AttachmentMenu() {
       <ul>
         {tasks.map((t) => (
           <li key={t._id} className="mb-2">
-            <button
+            <Button
               onClick={() => select(t._id)}
-              className="text-blue-600 underline"
+              variant="link"
+              size="sm"
+              className="px-0"
             >
               {`${t.task_number} ${t.createdAt.slice(0, 10)} ${t.title}`}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

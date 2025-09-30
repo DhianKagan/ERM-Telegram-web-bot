@@ -289,21 +289,6 @@
     -webkit-appearance: none;
   }
 
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60;
-  }
-  .btn-blue {
-    @apply bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-200;
-  }
-  .btn-gray {
-    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-200;
-  }
-  .btn-green {
-    @apply bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-200;
-  }
-  .btn-red {
-    @apply bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-200;
-  }
 }
 
 .tableCheckbox:checked ~ span span {
@@ -946,14 +931,5 @@ span.flatpickr-weekday,
   }
   .select {
     @apply bg-white;
-  }
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60;
-  }
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-200;
-  }
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2;
   }
 }

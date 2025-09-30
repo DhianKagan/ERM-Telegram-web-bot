@@ -3,6 +3,7 @@ import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
+import { Button } from "@/components/ui/button";
 import TaskTable from "../components/TaskTable";
 import createMultiRouteLink from "../utils/createMultiRouteLink";
 import L from "leaflet";
@@ -373,14 +374,13 @@ export default function RoutesPage() {
                 ))}
               </select>
             </label>
-            <button
+            <Button
               type="button"
               onClick={refreshFleet}
-              className="btn-blue rounded px-4"
               disabled={!availableVehicles.length || vehiclesLoading}
             >
               {vehiclesLoading ? "Загрузка..." : "Обновить технику"}
-            </button>
+            </Button>
             <label className="flex items-center gap-1 text-sm">
               <input
                 type="checkbox"
@@ -447,15 +447,15 @@ export default function RoutesPage() {
           <option value="angle">angle</option>
           <option value="trip">trip</option>
         </select>
-        <button onClick={calculate} className="btn-blue rounded px-4">
+        <Button onClick={calculate}>
           Просчёт маршрута
-        </button>
-        <button onClick={reset} className="btn-blue rounded px-4">
+        </Button>
+        <Button onClick={reset}>
           Сбросить
-        </button>
-        <button onClick={refreshAll} className="btn-blue rounded px-4">
+        </Button>
+        <Button onClick={refreshAll}>
           Обновить
-        </button>
+        </Button>
       </div>
       {!!links.length && (
         <div className="flex flex-col items-end space-y-1">

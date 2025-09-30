@@ -1,6 +1,8 @@
 // Назначение: модалка подтверждения действий
 // Основные модули: React, Modal
 import React from "react";
+
+import { Button } from "@/components/ui/button";
 import Modal from "./Modal";
 
 interface ConfirmDialogProps {
@@ -24,12 +26,12 @@ export default function ConfirmDialog({
     <Modal open={open} onClose={onCancel}>
       <p>{message}</p>
       <div className="mt-4 flex justify-end gap-2">
-        <button className="btn-gray rounded-full" onClick={onCancel}>
+        <Button variant="outline" size="pill" onClick={onCancel}>
           {cancelText}
-        </button>
-        <button className="btn-red rounded-full" onClick={onConfirm}>
+        </Button>
+        <Button variant="destructive" size="pill" onClick={onConfirm}>
           {confirmText}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

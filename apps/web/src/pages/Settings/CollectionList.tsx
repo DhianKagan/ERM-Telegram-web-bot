@@ -1,6 +1,8 @@
 // Назначение: список элементов коллекции с поиском и пагинацией
 // Основные модули: React, Pagination
 import React from "react";
+
+import { Button } from "@/components/ui/button";
 import Pagination from "../../components/Pagination";
 import type { CollectionItem } from "../../services/collections";
 
@@ -50,12 +52,9 @@ export default function CollectionList({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск"
         />
-        <button
-          type="submit"
-          className="btn btn-blue h-10 rounded px-4 sm:h-9 sm:px-3"
-        >
+        <Button type="submit" className="h-10 px-4 sm:h-9 sm:px-3">
           Искать
-        </button>
+        </Button>
       </form>
       <ul className="divide-y rounded border">
         {items.map((it) => (

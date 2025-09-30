@@ -40,27 +40,174 @@ function resolveAuthor(entry: HistoryEntry, users: UsersMap): string {
   return mdEscape('Система');
 }
 
-function describeAction(entry: HistoryEntry): string | null {
-  const changes = entry.changes?.to || emptyObject;
-  const hasChanges =
-    changes && typeof changes === 'object' && Object.keys(changes).length > 0;
-  if (!hasChanges) {
-    const prev = entry.changes?.from || emptyObject;
-    if (prev && Object.keys(prev).length === 0) {
-      return 'задача создана';
+const fieldNames: Record<string, string> = {
+  status: 'статус',
+  deadline: 'срок',
+  due: 'срок',
+  completed_at: 'выполнено',
+  assignees: 'исполнители',
+  description: 'описание',
+  title: 'название',
+  comment: 'комментарий',
+};
+
+const fieldDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: PROJECT_TIMEZONE,
+});
+
+const numberFormatter = new Intl.NumberFormat('ru-RU');
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeForCompare(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    const parsed = Date.parse(trimmed);
+    if (!Number.isNaN(parsed) && /\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      return new Date(parsed).getTime();
     }
+    return trimmed;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeForCompare(item))
+      .map((item) => (typeof item === 'string' ? item.trim() : item))
+      .sort((a, b) => {
+        const left = typeof a === 'string' ? a : JSON.stringify(a);
+        const right = typeof b === 'string' ? b : JSON.stringify(b);
+        return left.localeCompare(right);
+      });
+  }
+  if (isObject(value)) {
+    return Object.keys(value)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, key) => {
+        acc[key] = normalizeForCompare(value[key]);
+        return acc;
+      }, {});
+  }
+  return value ?? null;
+}
+
+function formatDate(value: Date): string {
+  return fieldDateFormatter.format(value).replace(', ', ' ');
+}
+
+function parseDate(value: unknown): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Date.parse(trimmed);
+    if (Number.isNaN(parsed)) return null;
+    return new Date(parsed);
+  }
+  return null;
+}
+
+function formatPrimitiveValue(value: unknown): string {
+  if (value === null || typeof value === 'undefined') {
+    return '—';
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'да' : 'нет';
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '—';
+    return numberFormatter.format(value);
+  }
+  if (value instanceof Date) {
+    return formatDate(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return '—';
+    const date = parseDate(trimmed);
+    if (date) {
+      return formatDate(date);
+    }
+    return trimmed;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return '—';
+    const items = value
+      .map((item) => formatPrimitiveValue(item))
+      .filter((item) => item && item !== '—');
+    if (!items.length) return '—';
+    return items.join(', ');
+  }
+  if (isObject(value)) {
+    const json = JSON.stringify(value);
+    return json ? json : '—';
+  }
+  return String(value);
+}
+
+function formatFieldName(field: string): string {
+  const key = field.trim();
+  const mapped = fieldNames[key] ?? key.replace(/_/g, ' ');
+  return mdEscape(mapped);
+}
+
+function formatFieldValue(value: unknown): string {
+  const primitive = formatPrimitiveValue(value);
+  return mdEscape(primitive);
+}
+
+export function describeAction(entry: HistoryEntry): string | null {
+  const to = (entry.changes?.to && isObject(entry.changes?.to))
+    ? (entry.changes?.to as Record<string, unknown>)
+    : emptyObject;
+  const from = (entry.changes?.from && isObject(entry.changes?.from))
+    ? (entry.changes?.from as Record<string, unknown>)
+    : emptyObject;
+  const hasChanges = Object.keys(to).length > 0 || Object.keys(from).length > 0;
+  if (!hasChanges) {
+    return 'задача создана';
+  }
+  const keys = Array.from(
+    new Set([...Object.keys(from), ...Object.keys(to)]),
+  ).sort();
+  const updates = keys
+    .map((key) => {
+      const nextValue = to[key];
+      const prevValue = from[key];
+      if (
+        JSON.stringify(normalizeForCompare(nextValue)) ===
+        JSON.stringify(normalizeForCompare(prevValue))
+      ) {
+        return null;
+      }
+      const fieldName = formatFieldName(key);
+      const previous = formatFieldValue(prevValue);
+      const next = formatFieldValue(nextValue);
+      return `${fieldName}: «${previous}» → «${next}»`;
+    })
+    .filter((value): value is string => Boolean(value));
+  if (!updates.length) {
     return null;
   }
-  const status = (changes as Record<string, unknown>).status;
-  if (typeof status === 'string' && status.trim()) {
-    return `статус изменён на «${mdEscape(status.trim())}»`;
-  }
-  const fields = Object.keys(changes as Record<string, unknown>);
-  if (!fields.length) return null;
-  const formatted = fields
-    .map((field) => `«${mdEscape(field)}»`)
-    .join(', ');
-  return `изменены поля ${formatted}`;
+  return updates.join(', ');
 }
 
 function formatHistoryEntry(entry: HistoryEntry, users: UsersMap): string | null {

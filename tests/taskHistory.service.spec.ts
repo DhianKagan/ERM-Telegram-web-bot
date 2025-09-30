@@ -54,6 +54,6 @@ test('возвращает сообщение истории со времене
   expect(result?.text).toContain('*История изменений*');
   const normalized = result?.text.replace(/\\/g, '');
   expect(normalized).toContain(
-    '12.03.2024 12:15 (GMT+3) — статус изменён на «Выполнена» — [Имя](tg://user?id=77)',
+    '12.03.2024 12:15 (GMT+3) — статус: «Новая» → «Выполнена» — [Имя](tg://user?id=77)',
   );
 });

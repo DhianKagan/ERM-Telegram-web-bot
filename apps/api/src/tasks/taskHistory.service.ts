@@ -27,7 +27,7 @@ const emptyObject = Object.freeze({}) as Record<string, unknown>;
 
 function mdEscape(str: unknown): string {
   // eslint-disable-next-line no-useless-escape
-  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}!]/g, '\\$&');
 }
 
 function resolveAuthor(entry: HistoryEntry, users: UsersMap): string {
@@ -58,10 +58,34 @@ const fieldDateFormatter = new Intl.DateTimeFormat('ru-RU', {
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
-  timeZone: PROJECT_TIMEZONE,
+  timeZone: 'UTC',
 });
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
+
+function parseFixedOffset(label: string): number | null {
+  const normalized = label.trim().toUpperCase();
+  const match = /^(?:GMT|UTC)([+-])(\d{1,2})(?::(\d{2}))?$/.exec(normalized);
+  if (!match) {
+    return null;
+  }
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number.parseInt(match[2], 10);
+  const minutes = match[3] ? Number.parseInt(match[3], 10) : 0;
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+  return sign * ((hours * 60 + minutes) * 60 * 1000);
+}
+
+const fixedOffsetMs = parseFixedOffset(PROJECT_TIMEZONE_LABEL);
+
+function applyFixedOffset(date: Date): Date {
+  if (fixedOffsetMs === null) {
+    return date;
+  }
+  return new Date(date.getTime() + fixedOffsetMs);
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -104,7 +128,7 @@ function normalizeForCompare(value: unknown): unknown {
 }
 
 function formatDate(value: Date): string {
-  return fieldDateFormatter.format(value).replace(', ', ' ');
+  return fieldDateFormatter.format(applyFixedOffset(value)).replace(', ', ' ');
 }
 
 function parseDate(value: unknown): Date | null {

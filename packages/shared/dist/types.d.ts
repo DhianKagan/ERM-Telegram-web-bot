@@ -15,6 +15,7 @@ export interface Task {
     payment_amount?: number;
     telegram_message_id?: number;
     telegram_status_message_id?: number;
+    telegram_attachments_message_ids?: number[];
     deadline_reminder_sent_at?: string;
     [key: string]: unknown;
 }

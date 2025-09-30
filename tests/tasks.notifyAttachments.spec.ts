@@ -174,6 +174,7 @@ describe('notifyTaskCreated вложения', () => {
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
       telegram_status_message_id: 303,
+      telegram_attachments_message_ids: [505, 202, 404],
     });
   });
 });

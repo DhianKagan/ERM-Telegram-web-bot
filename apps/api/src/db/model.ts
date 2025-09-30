@@ -237,6 +237,7 @@ export interface TaskAttrs {
   telegram_topic_id?: number;
   telegram_message_id?: number;
   telegram_status_message_id?: number;
+  telegram_attachments_message_ids?: number[];
   deadline_reminder_sent_at?: Date;
   time_spent?: number;
   // Произвольные поля задачи
@@ -345,6 +346,7 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_topic_id: Number,
     telegram_message_id: Number,
     telegram_status_message_id: Number,
+    telegram_attachments_message_ids: [Number],
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },
     // Произвольные поля хранятся как объект

@@ -218,6 +218,21 @@ export async function updateTaskStatus(
 ): Promise<TaskDocument | null> {
   const existing = await Task.findById(id);
   if (!existing) return null;
+  const assignedUserId =
+    typeof existing.assigned_user_id === 'number'
+      ? existing.assigned_user_id
+      : undefined;
+  const assignees = Array.isArray(existing.assignees)
+    ? existing.assignees.map((value) => Number(value))
+    : [];
+  const hasAssignments =
+    typeof assignedUserId === 'number' || assignees.length > 0;
+  const isAllowed =
+    (typeof assignedUserId === 'number' && assignedUserId === userId) ||
+    assignees.includes(userId);
+  if (hasAssignments && !isAllowed) {
+    throw new Error('Нет прав на изменение статуса задачи');
+  }
   const isCompleted = status === 'Выполнена' || status === 'Отменена';
   const wasCompleted =
     existing.status === 'Выполнена' || existing.status === 'Отменена';

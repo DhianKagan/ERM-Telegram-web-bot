@@ -79,4 +79,21 @@ describe('updateTaskStatus', function () {
     assert.equal(reopenedBulk?.status, 'Новая');
     assert.equal(reopenedBulk?.completed_at, null);
   });
+
+  it('запрещает обновление статуса пользователю без назначений', async () => {
+    const task = await Task.create({
+      title: 'restricted',
+      created_by: 1,
+      request_id: 'ERM_TEST',
+      task_number: 'ERM_TEST',
+      assigned_user_id: 77,
+      assignees: [77],
+    });
+    const id = (task._id as Types.ObjectId).toHexString();
+
+    await assert.rejects(
+      () => updateTaskStatus(id, 'В работе', 42),
+      /Нет прав на изменение статуса задачи/,
+    );
+  });
 });

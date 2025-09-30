@@ -14,6 +14,11 @@ const config: Config = {
     '<rootDir>/tests/playwright/',
     '<rootDir>/apps/web/src/types/',
   ],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/apps/web/src/$1',
+    '^shared$': '<rootDir>/packages/shared/src',
+    '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
+  },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',
     '<rootDir>/tests/setupEnv.ts',

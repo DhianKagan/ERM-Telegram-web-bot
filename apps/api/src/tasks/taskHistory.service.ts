@@ -51,6 +51,8 @@ const fieldNames: Record<string, string> = {
   comment: 'комментарий',
 };
 
+const hiddenFields = new Set(['comment']);
+
 const fieldDateFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
   month: '2-digit',
@@ -224,11 +226,27 @@ export function describeAction(entry: HistoryEntry): string | null {
   if (!changedKeys.length) {
     return null;
   }
+  if (changedKeys.some((key) => hiddenFields.has(key))) {
+    return null;
+  }
   if (changedKeys.every((key) => key === 'status')) {
     const fieldName = formatFieldName('status');
     const previous = formatFieldValue(from.status);
     const next = formatFieldValue(to.status);
     return `${fieldName}: «${previous}» → «${next}»`;
+  }
+  const describeField = (key: string): string => {
+    const fieldName = formatFieldName(key);
+    const previous = formatFieldValue(from[key]);
+    const next = formatFieldValue(to[key]);
+    return `${fieldName}: «${previous}» → «${next}»`;
+  };
+  if (changedKeys.length === 1) {
+    return describeField(changedKeys[0]);
+  }
+  const described = changedKeys.map((key) => describeField(key)).filter(Boolean);
+  if (described.length) {
+    return described.join('; ');
   }
   return null;
 }

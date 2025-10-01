@@ -12,6 +12,10 @@ jest.mock('../apps/api/src/config', () => ({
 
 jest.mock('telegraf', () => {
   const keyboard = jest.fn(() => ({ resize: jest.fn(() => ({})) }));
+  const actionHandlers: Array<{
+    trigger: string | RegExp;
+    handler: (ctx: unknown) => Promise<void> | void;
+  }> = [];
   class MockTelegraf {
     telegram = {
       editMessageText: editMessageTextMock,
@@ -22,7 +26,10 @@ jest.mock('telegraf', () => {
     start = jest.fn();
     command = jest.fn();
     hears = jest.fn();
-    action = jest.fn();
+    action = jest.fn((trigger: string | RegExp, handler: (ctx: unknown) => Promise<void> | void) => {
+      actionHandlers.push({ trigger, handler });
+      return this;
+    });
     on = jest.fn();
     use = jest.fn();
     stop = jest.fn();
@@ -31,6 +38,7 @@ jest.mock('telegraf', () => {
     Telegraf: MockTelegraf,
     Markup: { keyboard },
     Context: class {},
+    __getActionHandlers: () => actionHandlers,
   };
 });
 
@@ -61,10 +69,31 @@ jest.mock('../apps/api/src/services/keyRotation', () => ({
   startKeyRotation: jest.fn(),
 }));
 
+const taskStatusKeyboardMock = jest
+  .fn()
+  .mockImplementation((id: string) => ({
+    reply_markup: { inline_keyboard: [[{ callback_data: `status:${id}` }]] },
+  }));
+const taskAcceptConfirmKeyboardMock = jest
+  .fn()
+  .mockImplementation((id: string) => ({
+    reply_markup: { inline_keyboard: [[{ callback_data: `accept:${id}` }]] },
+  }));
+const taskDoneConfirmKeyboardMock = jest
+  .fn()
+  .mockImplementation((id: string) => ({
+    reply_markup: { inline_keyboard: [[{ callback_data: `done:${id}` }]] },
+  }));
+
 jest.mock('../apps/api/src/utils/taskButtons', () => ({
   __esModule: true,
-  default: jest.fn(() => ({ reply_markup: {} })),
-  taskAcceptConfirmKeyboard: jest.fn(() => ({ reply_markup: {} })),
+  default: (...args: unknown[]) => taskStatusKeyboardMock(...(args as [string])),
+  taskAcceptConfirmKeyboard: (
+    ...args: unknown[]
+  ) => taskAcceptConfirmKeyboardMock(...(args as [string])),
+  taskDoneConfirmKeyboard: (
+    ...args: unknown[]
+  ) => taskDoneConfirmKeyboardMock(...(args as [string])),
 }));
 
 jest.mock('../apps/api/src/messages', () => ({
@@ -78,6 +107,14 @@ jest.mock('../apps/api/src/messages', () => ({
   ermLink: 'https://erm',
   noVehicles: 'Нет транспорта',
   vehiclesError: 'Ошибка транспорта',
+  taskStatusPrompt: 'Подтвердите',
+  taskStatusInvalidId: 'Плохой ID',
+  taskStatusUnknownUser: 'Неизвестный пользователь',
+  taskNotFound: 'Нет задачи',
+  taskPermissionError: 'Ошибка прав',
+  taskAssignmentRequired: 'Не ваш таск',
+  taskStatusCanceled: 'Отменено',
+  taskStatusUpdateError: 'Ошибка обновления',
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -89,6 +126,46 @@ function createContext(data: string) {
     from: { id: 42 },
     answerCbQuery: jest.fn(),
   } as unknown;
+}
+
+type ActionHandler = {
+  trigger: string | RegExp;
+  handler: (ctx: unknown) => Promise<void> | void;
+};
+
+function getActionHandlers(): ActionHandler[] {
+  const telegraf = require('telegraf') as {
+    __getActionHandlers(): ActionHandler[];
+  };
+  return telegraf.__getActionHandlers();
+}
+
+function findActionHandler(part: string):
+  | ((ctx: unknown) => Promise<void> | void)
+  | undefined {
+  const actions = getActionHandlers();
+  const regexEntry = actions.find(
+    ({ trigger }) => trigger instanceof RegExp && trigger.source.includes(part),
+  );
+  if (regexEntry) {
+    return regexEntry.handler;
+  }
+  const stringEntry = actions.find(
+    ({ trigger }) => typeof trigger === 'string' && trigger === part,
+  );
+  return stringEntry?.handler;
+}
+
+function createActionContext(data: string, userId: number | null = 42) {
+  const ctx: Record<string, unknown> = {
+    callbackQuery: { data },
+    answerCbQuery: jest.fn(),
+    editMessageReplyMarkup: jest.fn(),
+  };
+  if (userId !== null) {
+    ctx.from = { id: userId };
+  }
+  return ctx;
 }
 
 beforeEach(() => {
@@ -150,4 +227,78 @@ test('создаёт новое сообщение истории и сохра�
   );
   expect(updateTaskStatusMessageIdMock).toHaveBeenCalledWith('task999', 31337);
   expect(editMessageTextMock).not.toHaveBeenCalled();
+});
+
+describe('обработка завершения задачи', () => {
+  test('показывает клавиатуру подтверждения', async () => {
+    const handler = findActionHandler('task_done_prompt');
+    expect(handler).toBeDefined();
+    const ctx = createActionContext('task_done_prompt:task123');
+
+    const fn = handler as (ctx: Record<string, unknown>) => Promise<void>;
+    await fn(ctx);
+
+    expect(taskDoneConfirmKeyboardMock).toHaveBeenCalledWith('task123');
+    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
+      inline_keyboard: [[{ callback_data: 'done:task123' }]],
+    });
+    expect(ctx.answerCbQuery).toHaveBeenCalledWith('Подтвердите');
+  });
+
+  test('отказывает незадействованному пользователю', async () => {
+    const handler = findActionHandler('task_done_confirm');
+    expect(handler).toBeDefined();
+    getTaskMock.mockResolvedValue({
+      _id: 'task321',
+      assigned_user_id: 99,
+      assignees: [],
+    });
+    const ctx = createActionContext('task_done_confirm:task321');
+    const fn = handler as (ctx: Record<string, unknown>) => Promise<void>;
+
+    await fn(ctx);
+
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task321');
+    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
+      inline_keyboard: [[{ callback_data: 'status:task321' }]],
+    });
+    expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Не ваш таск', {
+      show_alert: true,
+    });
+    expect(updateTaskStatusMock).not.toHaveBeenCalled();
+  });
+
+  test('подтверждает завершение назначенному пользователю', async () => {
+    const handler = findActionHandler('task_done_confirm');
+    expect(handler).toBeDefined();
+    getTaskMock.mockResolvedValue({
+      _id: 'task555',
+      assigned_user_id: 42,
+      assignees: [],
+    });
+    updateTaskStatusMock.mockResolvedValue({ _id: 'task555' });
+    const ctx = createActionContext('task_done_confirm:task555');
+    const fn = handler as (ctx: Record<string, unknown>) => Promise<void>;
+
+    await fn(ctx);
+
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task555');
+    expect(updateTaskStatusMock).toHaveBeenCalledWith('task555', 'Выполнена', 42);
+    expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Сделано');
+  });
+
+  test('возвращает клавиатуру после отмены', async () => {
+    const handler = findActionHandler('task_done_cancel');
+    expect(handler).toBeDefined();
+    const ctx = createActionContext('task_done_cancel:task900');
+    const fn = handler as (ctx: Record<string, unknown>) => Promise<void>;
+
+    await fn(ctx);
+
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task900');
+    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
+      inline_keyboard: [[{ callback_data: 'status:task900' }]],
+    });
+    expect(ctx.answerCbQuery).toHaveBeenCalledWith('Отменено');
+  });
 });

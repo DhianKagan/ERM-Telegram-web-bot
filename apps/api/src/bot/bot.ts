@@ -18,6 +18,7 @@ import {
 } from '../tasks/taskHistory.service';
 import taskStatusKeyboard, {
   taskAcceptConfirmKeyboard,
+  taskDoneConfirmKeyboard,
 } from '../utils/taskButtons';
 
 if (process.env.NODE_ENV !== 'production') {
@@ -140,6 +141,44 @@ const getTaskIdFromCallback = (data: string | null): string | null => {
   return taskId || null;
 };
 
+async function ensureUserCanUpdateTask(
+  ctx: Context,
+  taskId: string,
+  userId: number,
+  logContext: string,
+): Promise<boolean> {
+  try {
+    const task = await getTask(taskId);
+    if (!task) {
+      await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
+      return false;
+    }
+    const assignedUserId =
+      typeof task.assigned_user_id === 'number'
+        ? task.assigned_user_id
+        : undefined;
+    const assignees = Array.isArray(task.assignees)
+      ? task.assignees.map((value) => Number(value))
+      : [];
+    const hasAssignments =
+      typeof assignedUserId === 'number' || assignees.length > 0;
+    const isAllowed =
+      (typeof assignedUserId === 'number' && assignedUserId === userId) ||
+      assignees.includes(userId);
+    if (hasAssignments && !isAllowed) {
+      await ctx.answerCbQuery(messages.taskAssignmentRequired, {
+        show_alert: true,
+      });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(logContext, error);
+    await ctx.answerCbQuery(messages.taskPermissionError, { show_alert: true });
+    return false;
+  }
+}
+
 async function processStatusAction(
   ctx: Context,
   status: 'В работе' | 'Выполнена',
@@ -148,14 +187,14 @@ async function processStatusAction(
   const data = getCallbackData(ctx.callbackQuery);
   const taskId = data?.split(':')[1];
   if (!taskId) {
-    await ctx.answerCbQuery('Некорректный идентификатор задачи', {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
       show_alert: true,
     });
     return;
   }
   const userId = ctx.from?.id;
   if (!userId) {
-    await ctx.answerCbQuery('Не удалось определить пользователя', {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
       show_alert: true,
     });
     return;
@@ -163,7 +202,7 @@ async function processStatusAction(
   try {
     const task = await updateTaskStatus(taskId, status, userId);
     if (!task) {
-      await ctx.answerCbQuery('Задача не найдена', { show_alert: true });
+      await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
       return;
     }
     await ctx.answerCbQuery(responseMessage);
@@ -213,7 +252,7 @@ async function processStatusAction(
     }
   } catch (error) {
     console.error('Не удалось обновить статус задачи', error);
-    await ctx.answerCbQuery('Ошибка обновления статуса задачи', {
+    await ctx.answerCbQuery(messages.taskStatusUpdateError, {
       show_alert: true,
     });
   }
@@ -231,14 +270,14 @@ bot.action(/^task_accept_prompt:.+$/, async (ctx) => {
   const data = getCallbackData(ctx.callbackQuery);
   const taskId = getTaskIdFromCallback(data);
   if (!taskId) {
-    await ctx.answerCbQuery('Некорректный идентификатор задачи', {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
       show_alert: true,
     });
     return;
   }
   const keyboard = taskAcceptConfirmKeyboard(taskId);
   await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
-  await ctx.answerCbQuery('Подтвердите изменение статуса');
+  await ctx.answerCbQuery(messages.taskStatusPrompt);
 });
 
 bot.action('task_accept_confirm', async (ctx) => {
@@ -249,7 +288,7 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
   const data = getCallbackData(ctx.callbackQuery);
   const taskId = getTaskIdFromCallback(data);
   if (!taskId) {
-    await ctx.answerCbQuery('Некорректный идентификатор задачи', {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
       show_alert: true,
     });
     return;
@@ -259,38 +298,19 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
 
   const userId = ctx.from?.id;
   if (!userId) {
-    await ctx.answerCbQuery('Не удалось определить пользователя', {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
       show_alert: true,
     });
     return;
   }
-  try {
-    const task = await getTask(taskId);
-    if (!task) {
-      await ctx.answerCbQuery('Задача не найдена', { show_alert: true });
-      return;
-    }
-    const assignedUserId =
-      typeof task.assigned_user_id === 'number'
-        ? task.assigned_user_id
-        : undefined;
-    const assignees = Array.isArray(task.assignees)
-      ? task.assignees.map((value) => Number(value))
-      : [];
-    const hasAssignments =
-      typeof assignedUserId === 'number' || assignees.length > 0;
-    const isAllowed =
-      (typeof assignedUserId === 'number' && assignedUserId === userId) ||
-      assignees.includes(userId);
-    if (hasAssignments && !isAllowed) {
-      await ctx.answerCbQuery('Вы не назначены на эту задачу', {
-        show_alert: true,
-      });
-      return;
-    }
-  } catch (error) {
-    console.error('Не удалось получить задачу перед подтверждением', error);
-    await ctx.answerCbQuery('Ошибка проверки прав', { show_alert: true });
+
+  const canUpdate = await ensureUserCanUpdateTask(
+    ctx,
+    taskId,
+    userId,
+    'Не удалось получить задачу перед подтверждением',
+  );
+  if (!canUpdate) {
     return;
   }
 
@@ -305,18 +325,92 @@ bot.action(/^task_accept_cancel:.+$/, async (ctx) => {
   const data = getCallbackData(ctx.callbackQuery);
   const taskId = getTaskIdFromCallback(data);
   if (!taskId) {
-    await ctx.answerCbQuery('Некорректный идентификатор задачи', {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
       show_alert: true,
     });
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
   await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
-  await ctx.answerCbQuery('Изменение статуса отменено');
+  await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
 bot.action('task_done', async (ctx) => {
   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+});
+
+bot.action('task_done_prompt', async (ctx) => {
+  await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+});
+
+bot.action(/^task_done_prompt:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  const keyboard = taskDoneConfirmKeyboard(taskId);
+  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await ctx.answerCbQuery(messages.taskStatusPrompt);
+});
+
+bot.action('task_done_confirm', async (ctx) => {
+  await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+});
+
+bot.action(/^task_done_confirm:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+
+  const keyboard = taskStatusKeyboard(taskId);
+  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+
+  const canUpdate = await ensureUserCanUpdateTask(
+    ctx,
+    taskId,
+    userId,
+    'Не удалось получить задачу перед завершением',
+  );
+  if (!canUpdate) {
+    return;
+  }
+
+  await processStatusAction(ctx, 'Выполнена', messages.taskCompleted);
+});
+
+bot.action('task_done_cancel', async (ctx) => {
+  await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+});
+
+bot.action(/^task_done_cancel:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  const keyboard = taskStatusKeyboard(taskId);
+  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
 bot.action(/^task_done:.+$/, async (ctx) => {

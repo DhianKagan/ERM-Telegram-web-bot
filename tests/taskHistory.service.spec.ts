@@ -66,8 +66,8 @@ test('экранирует точки в датах и другие специа
         changed_at: new Date('2025-09-30T20:44:00Z'),
         changed_by: 0,
         changes: {
-          from: { comment: 'Старая *версия* #A' },
-          to: { comment: 'Новая версия + улучшения' },
+          from: { title: 'Старая *версия* #A' },
+          to: { title: 'Новая версия + улучшения' },
         },
       },
     ],
@@ -80,7 +80,8 @@ test('экранирует точки в датах и другие специа
   expect(result).not.toBeNull();
   expect(result?.text).toContain('30\\.09\\.2025 23:44');
   expect(result?.text).not.toContain('30.09.2025 23:44');
-  expect(result?.text).toContain('задачу обновил Система');
-  expect(result?.text).not.toContain('Старая \\*версия\\* \\#A');
-  expect(result?.text).not.toContain('Новая версия \\+ улучшения');
+  expect(result?.text).toContain('— Система');
+  expect(result?.text).toContain(
+    'название: «Старая \\*версия\\* \\#A» → «Новая версия \\+ улучшения»',
+  );
 });

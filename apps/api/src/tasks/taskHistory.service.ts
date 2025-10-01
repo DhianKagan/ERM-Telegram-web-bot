@@ -213,31 +213,28 @@ export function describeAction(entry: HistoryEntry): string | null {
   const keys = Array.from(
     new Set([...Object.keys(from), ...Object.keys(to)]),
   ).sort();
-  const updates = keys
-    .map((key) => {
-      const nextValue = to[key];
-      const prevValue = from[key];
-      if (
-        JSON.stringify(normalizeForCompare(nextValue)) ===
-        JSON.stringify(normalizeForCompare(prevValue))
-      ) {
-        return null;
-      }
-      const fieldName = formatFieldName(key);
-      const previous = formatFieldValue(prevValue);
-      const next = formatFieldValue(nextValue);
-      return `${fieldName}: «${previous}» → «${next}»`;
-    })
-    .filter((value): value is string => Boolean(value));
-  if (!updates.length) {
+  const changedKeys = keys.filter((key) => {
+    const nextValue = to[key];
+    const prevValue = from[key];
+    return (
+      JSON.stringify(normalizeForCompare(nextValue)) !==
+      JSON.stringify(normalizeForCompare(prevValue))
+    );
+  });
+  if (!changedKeys.length) {
     return null;
   }
-  return updates.join(', ');
+  if (changedKeys.every((key) => key === 'status')) {
+    const fieldName = formatFieldName('status');
+    const previous = formatFieldValue(from.status);
+    const next = formatFieldValue(to.status);
+    return `${fieldName}: «${previous}» → «${next}»`;
+  }
+  return null;
 }
 
 function formatHistoryEntry(entry: HistoryEntry, users: UsersMap): string | null {
   const action = describeAction(entry);
-  if (!action) return null;
   const at = entry.changed_at ? new Date(entry.changed_at) : new Date();
   if (Number.isNaN(at.getTime())) return null;
   const formatted = historyFormatter.format(at).replace(', ', ' ');
@@ -245,6 +242,9 @@ function formatHistoryEntry(entry: HistoryEntry, users: UsersMap): string | null
     PROJECT_TIMEZONE_LABEL,
   )}\\)`;
   const author = resolveAuthor(entry, users);
+  if (!action) {
+    return `• ${timeWithZone} — задачу обновил ${author}`;
+  }
   return `• ${timeWithZone} — ${action} — ${author}`;
 }
 

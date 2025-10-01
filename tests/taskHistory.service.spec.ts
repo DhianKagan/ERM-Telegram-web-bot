@@ -54,7 +54,7 @@ test('возвращает сообщение истории со времене
   expect(result?.text).toContain('*История изменений*');
   const normalized = result?.text.replace(/\\/g, '');
   expect(normalized).toContain(
-    '12.03.2024 12:15 (GMT+3) — статус: «Новая» → «Выполнена» — [Имя](tg://user?id=77)',
+    '• 12.03.2024 12:15 (GMT+3) — статус: «Новая» → «Выполнена» — [Имя](tg://user?id=77)',
   );
 });
 
@@ -80,7 +80,7 @@ test('экранирует точки в датах и другие специа
   expect(result).not.toBeNull();
   expect(result?.text).toContain('30\\.09\\.2025 23:44');
   expect(result?.text).not.toContain('30.09.2025 23:44');
-  expect(result?.text).toContain('Старая \\*версия\\* \\#A');
-  expect(result?.text).toContain('Новая версия \\+ улучшения');
-  expect(result?.text).toContain('— Система');
+  expect(result?.text).toContain('задачу обновил Система');
+  expect(result?.text).not.toContain('Старая \\*версия\\* \\#A');
+  expect(result?.text).not.toContain('Новая версия \\+ улучшения');
 });

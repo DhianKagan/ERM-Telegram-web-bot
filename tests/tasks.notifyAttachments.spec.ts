@@ -177,5 +177,80 @@ describe('notifyTaskCreated вложения', () => {
       telegram_attachments_message_ids: [505, 202, 404],
     });
   });
+
+  it('добавляет inline-изображения из описания к вложениям', async () => {
+    sendMessageMock.mockImplementation((_chat, text: string) => {
+      if (text.startsWith('Задача')) {
+        return Promise.resolve({ message_id: 404 });
+      }
+      return Promise.resolve({ message_id: 101 });
+    });
+    sendMediaGroupMock.mockResolvedValue([
+      { message_id: 202 },
+      { message_id: 303 },
+    ]);
+    sendPhotoMock.mockResolvedValue({ message_id: 0 });
+
+    const appBaseUrl = (process.env.APP_URL || 'https://example.com').replace(
+      /\/+$/,
+      '',
+    );
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Тестовая задача',
+      telegram_topic_id: 321,
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+      attachments: [],
+      task_description:
+        '<p>Описание.</p><img src="/api/v1/files/inline.png" alt="Чертёж" />' +
+        '<p>Примечание.</p><img src="https://cdn.example.com/pic.jpg" />',
+    };
+
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).notifyTaskCreated(task, 55);
+
+    expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
+    const mediaArgs = sendMediaGroupMock.mock.calls[0];
+    expect(mediaArgs[1]).toEqual([
+      {
+        type: 'photo',
+        media: `${appBaseUrl}/api/v1/files/inline.png?mode=inline`,
+        caption: escapeMd('Чертёж'),
+        parse_mode: 'MarkdownV2',
+      },
+      {
+        type: 'photo',
+        media: 'https://cdn.example.com/pic.jpg?mode=inline',
+      },
+    ]);
+    expect(mediaArgs[2]).toMatchObject({
+      message_thread_id: 321,
+      reply_parameters: {
+        allow_sending_without_reply: true,
+        message_id: 101,
+      },
+    });
+
+    expect(sendPhotoMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      telegram_message_id: 101,
+      telegram_status_message_id: 404,
+      telegram_attachments_message_ids: [202, 303],
+    });
+  });
 });
 

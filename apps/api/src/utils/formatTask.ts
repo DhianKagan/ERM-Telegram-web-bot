@@ -78,6 +78,57 @@ type TaskData = Task & {
 
 const appUrlBase = configuredAppUrl.replace(/\/+$/, '');
 
+type InlineImage = { url: string; alt?: string };
+
+type FormatTaskResult = {
+  text: string;
+  inlineImages: InlineImage[];
+};
+
+const HTTP_URL_REGEXP = /^https?:\/\//i;
+
+const toAbsoluteUrl = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (HTTP_URL_REGEXP.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+  if (!appUrlBase) return trimmed;
+  const normalizedPath = trimmed.startsWith('/')
+    ? trimmed.slice(1)
+    : trimmed;
+  return `${appUrlBase}/${normalizedPath}`;
+};
+
+const ensureInlineMode = (url: string): string => {
+  if (/[?&]mode=inline(?:&|$)/.test(url)) {
+    return url;
+  }
+  return `${url}${url.includes('?') ? '&' : '?'}mode=inline`;
+};
+
+const extractInlineImages = (html: string): {
+  cleanedHtml: string;
+  images: InlineImage[];
+} => {
+  const images: InlineImage[] = [];
+  const cleanedHtml = html.replace(/<img\b[^>]*>/gi, (tag) => {
+    const srcMatch = tag.match(/\ssrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawSrc = srcMatch?.[2] || srcMatch?.[3] || srcMatch?.[4] || '';
+    const absolute = rawSrc ? toAbsoluteUrl(rawSrc) : null;
+    if (!absolute) {
+      return '';
+    }
+    const inlineUrl = ensureInlineMode(absolute);
+    const altMatch = tag.match(/\salt\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawAlt = altMatch?.[2] || altMatch?.[3] || altMatch?.[4] || '';
+    images.push({ url: inlineUrl, alt: rawAlt ? rawAlt.trim() : undefined });
+    return '';
+  });
+  return { cleanedHtml, images };
+};
+
 const isMongoLike = (value: unknown): value is { toString(): string } =>
   Boolean(value && typeof value === 'object' && 'toString' in value);
 
@@ -108,8 +159,9 @@ const buildTaskLink = (task: TaskData) => {
 export default function formatTask(
   task: TaskData,
   users: UsersIndex = {},
-): string {
+): FormatTaskResult {
   const sections: string[] = [];
+  const inlineImages: InlineImage[] = [];
 
   const headerParts: string[] = [];
   const linkData = buildTaskLink(task);
@@ -256,11 +308,34 @@ export default function formatTask(
   }
 
   if (task.task_description) {
-    const text = stripTags(task.task_description);
+    const { cleanedHtml, images } = extractInlineImages(task.task_description);
+    inlineImages.push(...images);
+    const text = stripTags(cleanedHtml);
+    const lines: string[] = [];
     if (text.trim()) {
-      sections.push(`📝 *Описание*\n${mdEscape(text.trim())}`);
+      lines.push(mdEscape(text.trim()));
+    }
+    if (images.length) {
+      const header = images.length > 1 ? 'Изображения' : 'Изображение';
+      if (lines.length) {
+        lines.push('');
+      }
+      lines.push(`🖼 *${mdEscape(header)}*`);
+      images.forEach((image, index) => {
+        const labelBase = image.alt && image.alt.trim()
+          ? image.alt.trim()
+          : `Изображение ${index + 1}`;
+        const label = mdEscape(labelBase);
+        const link = mdEscape(image.url);
+        lines.push(`• [${label}](${link})`);
+      });
+    }
+    if (lines.length) {
+      sections.push(`📝 *Описание*\n${lines.join('\n')}`);
     }
   }
 
-  return sections.join('\n\n━━━━━━━━━━━━\n\n');
+  return { text: sections.join('\n\n━━━━━━━━━━━━\n\n'), inlineImages };
 }
+
+export type { InlineImage, FormatTaskResult };

@@ -136,6 +136,31 @@ describe("TaskDialog", () => {
     });
   });
 
+  it("устанавливает срок на 5 часов позже даты начала по умолчанию", async () => {
+    try {
+      jest.useFakeTimers().setSystemTime(new Date("2024-03-01T10:00:00Z"));
+
+      render(
+        <MemoryRouter>
+          <TaskDialog onClose={() => {}} />
+        </MemoryRouter>,
+      );
+
+      const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
+      const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+
+      expect(startInput.value).not.toBe("");
+      expect(dueInput.value).not.toBe("");
+
+      const startMs = new Date(startInput.value).getTime();
+      const dueMs = new Date(dueInput.value).getTime();
+
+      expect(dueMs - startMs).toBe(5 * 60 * 60 * 1000);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("передаёт выбранный срок при создании задачи", async () => {
     createTaskMock.mockResolvedValue({ _id: "new-task" });
     render(

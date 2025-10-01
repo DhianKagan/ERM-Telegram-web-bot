@@ -55,7 +55,7 @@ describe("getDeadlineState", () => {
 
 describe("formatDurationShort", () => {
   it("возвращает два значимых компонента", () => {
-    expect(formatDurationShort(5 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000)).toBe("5д 3ч");
+    expect(formatDurationShort(5 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000)).toBe("5д 5ч");
   });
 
   it("возвращает минуты при коротком интервале", () => {

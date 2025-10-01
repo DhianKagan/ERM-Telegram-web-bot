@@ -343,7 +343,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     [formatInputDate],
   );
   const parseIsoDateMemo = React.useCallback(parseIsoDate, []);
-  const DEFAULT_DUE_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const DEFAULT_DUE_OFFSET_MS = 5 * 60 * 60 * 1000;
 
   const computeDefaultDates = React.useCallback(
     (base?: Date) => {

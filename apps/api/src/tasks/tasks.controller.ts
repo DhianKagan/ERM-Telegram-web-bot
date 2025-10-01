@@ -514,14 +514,35 @@ export default class TasksController {
     return '';
   }
 
-  private buildActionMessage(
+  private async buildActionMessage(
     task: Partial<TaskDocument>,
     action: string,
     at: Date,
-  ): string {
+    creatorId?: number,
+  ): Promise<string> {
     const identifier = this.getTaskIdentifier(task);
     const formatted = taskEventFormatter.format(at).replace(', ', ' ');
-    return `Задача ${identifier} ${action} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
+    const creator = Number(creatorId);
+    let authorText = 'неизвестным пользователем';
+    if (Number.isFinite(creator) && creator !== 0) {
+      try {
+        const users = await getUsersMap([creator]);
+        const profile = users?.[creator];
+        const name = profile?.name?.trim();
+        const username = profile?.username?.trim();
+        if (name) {
+          authorText = `пользователем ${name}`;
+        } else if (username) {
+          authorText = `пользователем ${username}`;
+        } else {
+          authorText = `пользователем #${creator}`;
+        }
+      } catch (error) {
+        console.error('Не удалось получить автора задачи', error);
+        authorText = `пользователем #${creator}`;
+      }
+    }
+    return `Задача ${identifier} ${action} ${authorText} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
   }
 
   private async refreshStatusHistoryMessage(taskId: string) {
@@ -801,12 +822,13 @@ export default class TasksController {
             console.error('Не удалось отправить вложения задачи', error);
           }
         }
-        const statusText = this.buildActionMessage(
+        const statusText = await this.buildActionMessage(
           plain,
           'создана',
           new Date(
             (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
           ),
+          creatorId,
         );
         const statusOptions: SendMessageOptions = {
           link_preview_options: { is_disabled: true },

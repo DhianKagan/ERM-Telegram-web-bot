@@ -71,7 +71,7 @@ describe("taskColumns", () => {
 
     const row = {
       start_date: "2024-02-28T12:00:00Z",
-      due_date: "2024-03-05T15:30:00Z",
+      due_date: "2024-03-05T17:30:00Z",
     } as unknown as TaskRow;
 
     const cell = cellRenderer?.({
@@ -84,10 +84,10 @@ describe("taskColumns", () => {
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
     expect(
-      within(datePart.closest("time") as HTMLElement).getByText("17:30"),
+      within(datePart.closest("time") as HTMLElement).getByText("19:30"),
     ).toBeInTheDocument();
     const label = screen.getByText(
-      "До дедлайна 4 дня 3 часа 30 минут",
+      "До дедлайна 4 дня 5 часов 30 минут",
     );
     const badge = label.closest("[title]");
     expect(badge).not.toBeNull();
@@ -112,7 +112,7 @@ describe("taskColumns", () => {
 
     const row = {
       start_date: "2024-02-28T12:00:00Z",
-      due_date: "2024-03-05T15:30:00Z",
+      due_date: "2024-03-05T17:30:00Z",
     } as unknown as TaskRow;
 
     const cell = cellRenderer?.({
@@ -125,7 +125,7 @@ describe("taskColumns", () => {
     const datePart = screen.getByText("05.03.2024");
     expect(datePart.closest("time")).toHaveAttribute("dateTime", row.due_date);
     const label = screen.getByText(
-      "Просрочено на 4 дня 17 часов 45 минут",
+      "Просрочено на 4 дня 15 часов 45 минут",
     );
     const badge = label.closest("[title]");
     expect(badge).not.toBeNull();

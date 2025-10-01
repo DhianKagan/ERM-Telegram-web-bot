@@ -30,6 +30,10 @@ export class CreateTaskDto {
       body('completed_at')
         .optional({ nullable: true })
         .isISO8601(),
+      body('assigned_user_id')
+        .customSanitizer(normalizeEmptyNumeric)
+        .optional({ nullable: true })
+        .isNumeric(),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
       optionalFloatField('cargo_length_m'),
@@ -51,6 +55,10 @@ export class UpdateTaskDto {
       body('completed_at')
         .optional({ nullable: true })
         .isISO8601(),
+      body('assigned_user_id')
+        .customSanitizer(normalizeEmptyNumeric)
+        .optional({ nullable: true })
+        .isNumeric(),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),

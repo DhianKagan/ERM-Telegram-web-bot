@@ -456,12 +456,38 @@ router.post(
   handleInlineUpload,
 );
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
-  ['assignees', 'controllers'].forEach((k) => {
-    const v = (req.body as Record<string, unknown>)[k];
-    if (v !== undefined && !Array.isArray(v)) {
-      (req.body as Record<string, unknown>)[k] = [v];
+  const body = req.body as Record<string, unknown>;
+  const assignedRaw =
+    body.assigned_user_id ?? (body as Record<string, unknown>).assignedUserId;
+  if (assignedRaw !== undefined) {
+    const pickValue = Array.isArray(assignedRaw)
+      ? assignedRaw.find(
+          (item) =>
+            item !== null &&
+            item !== undefined &&
+            !(typeof item === 'string' && item.trim().length === 0),
+        )
+      : assignedRaw;
+    if (
+      pickValue === null ||
+      pickValue === undefined ||
+      (typeof pickValue === 'string' && pickValue.trim().length === 0)
+    ) {
+      body.assigned_user_id = null;
+      body.assignees = [];
+    } else {
+      const normalized =
+        typeof pickValue === 'string' ? pickValue.trim() : pickValue;
+      body.assigned_user_id = normalized;
+      body.assignees = [normalized];
     }
-  });
+  } else if (body.assignees !== undefined && !Array.isArray(body.assignees)) {
+    body.assignees = [body.assignees];
+  }
+  const controllersValue = body.controllers;
+  if (controllersValue !== undefined && !Array.isArray(controllersValue)) {
+    body.controllers = [controllersValue];
+  }
   const attachmentsField = (req.body as Record<string, unknown>).attachments;
   if (attachmentsField !== undefined) {
     (req.body as BodyWithAttachments).attachments = readAttachmentsField(

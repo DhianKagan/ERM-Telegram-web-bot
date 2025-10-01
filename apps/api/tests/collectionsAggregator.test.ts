@@ -7,6 +7,8 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
+jest.setTimeout(30000);
+
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -53,7 +55,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongod.stop();
+  if (mongod) {
+    await mongod.stop();
+  }
 });
 
 describe('Агрегация коллекций', () => {

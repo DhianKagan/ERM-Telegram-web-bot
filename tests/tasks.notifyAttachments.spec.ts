@@ -16,17 +16,26 @@ jest.mock('../apps/api/src/bot/bot', () => {
   const sendMessageMock = jest.fn();
   const sendPhotoMock = jest.fn();
   const sendMediaGroupMock = jest.fn();
+  const editMessageTextMock = jest.fn();
+  const editMessageMediaMock = jest.fn();
+  const deleteMessageMock = jest.fn();
   return {
     bot: {
       telegram: {
         sendMessage: sendMessageMock,
         sendPhoto: sendPhotoMock,
         sendMediaGroup: sendMediaGroupMock,
+        editMessageText: editMessageTextMock,
+        editMessageMedia: editMessageMediaMock,
+        deleteMessage: deleteMessageMock,
       },
     },
     __sendMessageMock: sendMessageMock,
     __sendPhotoMock: sendPhotoMock,
     __sendMediaGroupMock: sendMediaGroupMock,
+    __editMessageTextMock: editMessageTextMock,
+    __editMessageMediaMock: editMessageMediaMock,
+    __deleteMessageMock: deleteMessageMock,
   };
 });
 
@@ -34,10 +43,16 @@ const {
   __sendMessageMock: sendMessageMock,
   __sendPhotoMock: sendPhotoMock,
   __sendMediaGroupMock: sendMediaGroupMock,
+  __editMessageTextMock: editMessageTextMock,
+  __editMessageMediaMock: editMessageMediaMock,
+  __deleteMessageMock: deleteMessageMock,
 } = jest.requireMock('../apps/api/src/bot/bot') as {
   __sendMessageMock: jest.Mock;
   __sendPhotoMock: jest.Mock;
   __sendMediaGroupMock: jest.Mock;
+  __editMessageTextMock: jest.Mock;
+  __editMessageMediaMock: jest.Mock;
+  __deleteMessageMock: jest.Mock;
 };
 
 jest.mock('../apps/api/src/utils/taskButtons', () =>
@@ -56,25 +71,33 @@ jest.mock('../apps/api/src/db/model', () => {
   const updateTaskMock = jest.fn(() => ({
     exec: jest.fn().mockResolvedValue(undefined),
   }));
+  const findByIdMock = jest.fn();
   const fileFindByIdMock = jest.fn();
   return {
     Task: {
       findByIdAndUpdate: updateTaskMock,
+      findById: findByIdMock,
     },
     File: {
       findById: fileFindByIdMock,
     },
     __updateTaskMock: updateTaskMock,
+    __taskFindByIdMock: findByIdMock,
     __fileFindByIdMock: fileFindByIdMock,
   };
 });
 
 const {
   __updateTaskMock: updateTaskMock,
+  __taskFindByIdMock: taskFindByIdMock,
   __fileFindByIdMock: fileFindByIdMock,
 } = jest.requireMock(
   '../apps/api/src/db/model',
-) as { __updateTaskMock: jest.Mock; __fileFindByIdMock: jest.Mock };
+) as {
+  __updateTaskMock: jest.Mock;
+  __taskFindByIdMock: jest.Mock;
+  __fileFindByIdMock: jest.Mock;
+};
 
 describe('notifyTaskCreated вложения', () => {
   beforeEach(() => {
@@ -328,6 +351,139 @@ describe('notifyTaskCreated вложения', () => {
       }),
     );
     expect(media).toHaveProperty('source');
+  });
+});
+
+describe('syncTelegramTaskMessage вложения', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('обновляет существующее сообщение вложения без создания нового', async () => {
+    editMessageTextMock.mockResolvedValue(undefined);
+    editMessageMediaMock.mockResolvedValue(undefined);
+    deleteMessageMock.mockResolvedValue(undefined);
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [404],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/new.jpg',
+          type: 'image/jpeg',
+          name: 'new',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+    taskFindByIdMock.mockResolvedValue({
+      toObject: () => ({ ...freshPlain }),
+    });
+
+    const previousState = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [404],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/old.jpg',
+          type: 'image/jpeg',
+          name: 'old',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).syncTelegramTaskMessage(
+      '507f1f77bcf86cd799439011',
+      previousState,
+    );
+
+    expect(taskFindByIdMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(editMessageMediaMock).toHaveBeenCalledTimes(1);
+    expect(editMessageMediaMock.mock.calls[0][1]).toBe(404);
+    expect(deleteMessageMock).not.toHaveBeenCalled();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).not.toHaveBeenCalled();
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).not.toHaveBeenCalled();
+  });
+
+  it('удаляет сообщения вложений при очистке списка', async () => {
+    editMessageTextMock.mockResolvedValue(undefined);
+    deleteMessageMock.mockResolvedValue(undefined);
+    taskFindByIdMock.mockResolvedValue({
+      toObject: () => ({
+        _id: '507f1f77bcf86cd799439011',
+        task_number: 'A-12',
+        title: 'Задача',
+        telegram_message_id: 1001,
+        telegram_attachments_message_ids: [501, 502],
+        telegram_topic_id: 777,
+        attachments: [],
+        assignees: [55],
+        assigned_user_id: 55,
+        created_by: 55,
+        request_id: 'REQ-1',
+        createdAt: '2024-01-01T00:00:00Z',
+      }),
+    });
+
+    const previousState = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [501, 502],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/old.jpg',
+          type: 'image/jpeg',
+        },
+        {
+          url: 'https://cdn.example.com/old2.jpg',
+          type: 'image/jpeg',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).syncTelegramTaskMessage(
+      '507f1f77bcf86cd799439011',
+      previousState,
+    );
+
+    expect(deleteMessageMock).toHaveBeenCalledTimes(2);
+    const deletedIds = deleteMessageMock.mock.calls.map((call) => call[1]);
+    expect(deletedIds.sort()).toEqual([501, 502]);
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({ telegram_attachments_message_ids: [] }),
+    );
   });
 });
 

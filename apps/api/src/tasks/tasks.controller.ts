@@ -180,6 +180,38 @@ export default class TasksController {
     return recipients;
   }
 
+  private async resolvePhotoInputWithCache(
+    url: string,
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<PhotoInput> {
+    if (!url) return url;
+    if (!cache.has(url)) {
+      const info = await this.resolveLocalPhotoInfo(url);
+      cache.set(url, info);
+    }
+    const info = cache.get(url);
+    if (!info) {
+      return url;
+    }
+    try {
+      const descriptor = {
+        source: createReadStream(info.absolutePath),
+        filename: info.filename,
+        ...(info.contentType ? { contentType: info.contentType } : {}),
+      };
+      return descriptor as PhotoInput;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(
+          `Не удалось открыть файл ${info.absolutePath} для отправки в Telegram`,
+          error,
+        );
+      }
+      cache.set(url, null);
+      return url;
+    }
+  }
+
   private normalizeInlineImages(inline: InlineImage[] | undefined) {
     if (!inline?.length) return [] as NormalizedAttachment[];
     const result: NormalizedAttachment[] = [];
@@ -322,6 +354,11 @@ export default class TasksController {
     });
   }
 
+  private areMessageIdListsEqual(left: number[], right: number[]) {
+    if (left.length !== right.length) return false;
+    return left.every((value, index) => right[index] === value);
+  }
+
   private async deleteAttachmentMessages(
     chat: string | number,
     messageIds: number[],
@@ -347,6 +384,7 @@ export default class TasksController {
     attachments: NormalizedAttachment[],
     topicId?: number,
     replyTo?: number,
+    cache?: Map<string, LocalPhotoInfo | null>,
   ): Promise<number[]> {
     if (!attachments.length) return [];
     const sentMessageIds: number[] = [];
@@ -393,35 +431,9 @@ export default class TasksController {
       return options;
     };
 
-    const localPhotoInfoCache = new Map<string, LocalPhotoInfo | null>();
-    const resolvePhotoInput = async (url: string): Promise<PhotoInput> => {
-      if (!url) return url;
-      if (!localPhotoInfoCache.has(url)) {
-        const info = await this.resolveLocalPhotoInfo(url);
-        localPhotoInfoCache.set(url, info);
-      }
-      const info = localPhotoInfoCache.get(url);
-      if (!info) {
-        return url;
-      }
-      try {
-        const descriptor = {
-          source: createReadStream(info.absolutePath),
-          filename: info.filename,
-          ...(info.contentType ? { contentType: info.contentType } : {}),
-        };
-        return descriptor as PhotoInput;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
-          console.error(
-            `Не удалось открыть файл ${info.absolutePath} для отправки в Telegram`,
-            error,
-          );
-        }
-        localPhotoInfoCache.set(url, null);
-        return url;
-      }
-    };
+    const localPhotoInfoCache = cache ?? new Map<string, LocalPhotoInfo | null>();
+    const resolvePhotoInput = (url: string) =>
+      this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
 
     const pendingImages: { url: string; caption?: string }[] = [];
     const flushImages = async () => {
@@ -500,6 +512,125 @@ export default class TasksController {
     }
     await flushImages();
     return sentMessageIds;
+  }
+
+  private async syncAttachmentMessages(
+    chat: string | number,
+    previous: NormalizedAttachment[],
+    next: NormalizedAttachment[],
+    messageIds: number[],
+    topicId?: number,
+    replyTo?: number,
+  ): Promise<number[] | null> {
+    if (!messageIds.length) {
+      return [];
+    }
+    const cache = new Map<string, LocalPhotoInfo | null>();
+    const result: number[] = [];
+    const limit = Math.min(next.length, messageIds.length);
+
+    for (let index = 0; index < limit; index += 1) {
+      const attachment = next[index];
+      const messageId = messageIds[index];
+      if (!Number.isFinite(messageId)) {
+        return null;
+      }
+      const previousAttachment = previous[index];
+      if (previousAttachment && previousAttachment.kind !== attachment.kind) {
+        return null;
+      }
+      if (attachment.kind === 'image') {
+        const previousUrl =
+          previousAttachment && previousAttachment.kind === 'image'
+            ? previousAttachment.url
+            : null;
+        const previousCaption =
+          previousAttachment && previousAttachment.kind === 'image'
+            ? previousAttachment.caption ?? ''
+            : '';
+        const nextCaption = attachment.caption ?? '';
+        const urlChanged = previousUrl !== attachment.url;
+        const captionChanged = previousCaption !== nextCaption;
+        if (!urlChanged && !captionChanged) {
+          result.push(messageId);
+          continue;
+        }
+        try {
+          const media: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
+            type: 'photo',
+            media: await this.resolvePhotoInputWithCache(attachment.url, cache),
+          };
+          if (attachment.caption) {
+            media.caption = escapeMarkdownV2(attachment.caption);
+            media.parse_mode = 'MarkdownV2';
+          } else {
+            media.caption = '';
+          }
+          await bot.telegram.editMessageMedia(
+            chat,
+            messageId,
+            undefined,
+            media,
+          );
+          result.push(messageId);
+        } catch (error) {
+          console.error('Не удалось обновить изображение вложения', error);
+          return null;
+        }
+        continue;
+      }
+      if (attachment.kind === 'youtube') {
+        const previousTitle =
+          previousAttachment && previousAttachment.kind === 'youtube'
+            ? previousAttachment.title ?? ''
+            : '';
+        const previousUrl =
+          previousAttachment && previousAttachment.kind === 'youtube'
+            ? previousAttachment.url
+            : '';
+        if (
+          previousUrl === attachment.url &&
+          previousTitle === (attachment.title ?? '')
+        ) {
+          result.push(messageId);
+          continue;
+        }
+        try {
+          const label = attachment.title ? attachment.title : 'YouTube';
+          const text = `▶️ [${escapeMarkdownV2(label)}](${escapeMarkdownV2(
+            attachment.url,
+          )})`;
+          await bot.telegram.editMessageText(chat, messageId, undefined, text, {
+            parse_mode: 'MarkdownV2',
+            link_preview_options: { is_disabled: true },
+          });
+          result.push(messageId);
+        } catch (error) {
+          console.error('Не удалось обновить ссылку на YouTube', error);
+          return null;
+        }
+        continue;
+      }
+      return null;
+    }
+
+    if (next.length < messageIds.length) {
+      const redundant = messageIds.slice(next.length);
+      await this.deleteAttachmentMessages(chat, redundant);
+    }
+
+    if (next.length > messageIds.length) {
+      const extra = await this.sendTaskAttachments(
+        chat,
+        next.slice(messageIds.length),
+        topicId,
+        replyTo,
+        cache,
+      );
+      result.push(...extra);
+    }
+
+    return result;
   }
 
   private getTaskIdentifier(task: Partial<TaskDocument>) {
@@ -712,24 +843,23 @@ export default class TasksController {
       nextAttachments,
     );
 
-    if ((messageIdChanged || attachmentsChanged) && previousAttachmentMessageIds.length) {
-      await this.deleteAttachmentMessages(groupChatId, previousAttachmentMessageIds);
-      updates.telegram_attachments_message_ids = [];
+    let attachmentMessageIds = [...previousAttachmentMessageIds];
+    let attachmentsListChanged = false;
+
+    if (messageIdChanged && attachmentMessageIds.length) {
+      await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
+      attachmentMessageIds = [];
+      attachmentsListChanged = true;
     }
 
     if (!nextAttachments.length) {
-      if (
-        (messageIdChanged || attachmentsChanged) &&
-        updates.telegram_attachments_message_ids === undefined
-      ) {
-        updates.telegram_attachments_message_ids = [];
+      if (attachmentMessageIds.length) {
+        await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
+        attachmentMessageIds = [];
+        attachmentsListChanged = true;
       }
     } else if (currentMessageId) {
-      if (
-        attachmentsChanged ||
-        messageIdChanged ||
-        !previousAttachmentMessageIds.length
-      ) {
+      if (!attachmentMessageIds.length) {
         try {
           const ids = await this.sendTaskAttachments(
             groupChatId,
@@ -738,12 +868,64 @@ export default class TasksController {
             currentMessageId,
           );
           if (ids.length) {
-            updates.telegram_attachments_message_ids = ids;
+            attachmentMessageIds = ids;
+            attachmentsListChanged = true;
           }
         } catch (error) {
           console.error('Не удалось отправить вложения задачи', error);
         }
+      } else if (attachmentsChanged && !messageIdChanged) {
+        try {
+          const synced = await this.syncAttachmentMessages(
+            groupChatId,
+            previousAttachments,
+            nextAttachments,
+            attachmentMessageIds,
+            topicId,
+            currentMessageId,
+          );
+          if (synced === null) {
+            throw new Error('sync failed');
+          }
+          if (!this.areMessageIdListsEqual(synced, attachmentMessageIds)) {
+            attachmentsListChanged = true;
+          }
+          attachmentMessageIds = synced;
+        } catch (error) {
+          console.error('Не удалось обновить вложения задачи', error);
+          try {
+            await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
+          } catch (cleanupError) {
+            console.error(
+              'Не удалось удалить старые вложения задачи',
+              cleanupError,
+            );
+          }
+          attachmentMessageIds = [];
+          try {
+            const ids = await this.sendTaskAttachments(
+              groupChatId,
+              nextAttachments,
+              topicId,
+              currentMessageId,
+            );
+            attachmentMessageIds = ids;
+          } catch (sendError) {
+            console.error('Не удалось отправить вложения задачи', sendError);
+          }
+          attachmentsListChanged = true;
+        }
       }
+    }
+
+    if (
+      attachmentsListChanged ||
+      !this.areMessageIdListsEqual(
+        attachmentMessageIds,
+        previousAttachmentMessageIds,
+      )
+    ) {
+      updates.telegram_attachments_message_ids = attachmentMessageIds;
     }
 
     if (Object.keys(updates).length) {

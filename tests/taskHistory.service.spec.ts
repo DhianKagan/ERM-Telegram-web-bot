@@ -57,3 +57,30 @@ test('возвращает сообщение истории со времене
     '12.03.2024 12:15 (GMT+3) — статус: «Новая» → «Выполнена» — [Имя](tg://user?id=77)',
   );
 });
+
+test('экранирует точки в датах и другие специальные символы', async () => {
+  const lean = jest.fn().mockResolvedValue({
+    telegram_status_message_id: null,
+    history: [
+      {
+        changed_at: new Date('2025-09-30T20:44:00Z'),
+        changed_by: 0,
+        changes: {
+          from: { comment: 'Старая *версия* #A' },
+          to: { comment: 'Новая версия + улучшения' },
+        },
+      },
+    ],
+  });
+  (Task.findById as jest.Mock).mockReturnValue({ lean });
+  (getUsersMap as jest.Mock).mockResolvedValue({});
+
+  const result = await getTaskHistoryMessage('with-dots');
+
+  expect(result).not.toBeNull();
+  expect(result?.text).toContain('30\\.09\\.2025 23:44');
+  expect(result?.text).not.toContain('30.09.2025 23:44');
+  expect(result?.text).toContain('Старая \\*версия\\* \\#A');
+  expect(result?.text).toContain('Новая версия \\+ улучшения');
+  expect(result?.text).toContain('— Система');
+});

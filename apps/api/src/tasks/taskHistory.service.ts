@@ -27,7 +27,7 @@ const emptyObject = Object.freeze({}) as Record<string, unknown>;
 
 function mdEscape(str: unknown): string {
   // eslint-disable-next-line no-useless-escape
-  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}!]/g, '\\$&');
+  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}!.]/g, '\\$&');
 }
 
 function resolveAuthor(entry: HistoryEntry, users: UsersMap): string {

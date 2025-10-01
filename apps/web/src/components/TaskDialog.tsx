@@ -54,7 +54,7 @@ interface InitialValues {
   status: string;
   completedAt: string;
   creator: string;
-  assignees: string[];
+  assigneeId: string | null;
   start: string;
   startLink: string;
   end: string;
@@ -277,7 +277,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     .object({
       title: z.string().min(1, t("titleRequired")),
       description: z.string().optional(),
-      assignees: z.array(z.string()).default([]),
+      assigneeId: z
+        .union([z.string().trim().min(1), z.literal(null)])
+        .nullish()
+        .default(null),
       startDate: z.string().optional(),
       dueDate: z.string().optional(),
     })
@@ -306,7 +309,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     defaultValues: {
       title: "",
       description: "",
-      assignees: [],
+      assigneeId: null,
       startDate: "",
       dueDate: "",
     },
@@ -465,9 +468,17 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         (taskData as Record<string, unknown>).completed_at ??
         (taskData as Record<string, unknown>).completedAt;
       const curCompletedAt = toIsoString(rawCompleted);
-      const assignees = Array.isArray(taskData.assignees)
-        ? (taskData.assignees as (string | number)[]).map(String)
-        : [];
+      const rawAssignee = Array.isArray(taskData.assignees)
+        ? (taskData.assignees as (string | number | null | undefined)[])[0]
+        : (taskData as Record<string, unknown>).assigned_user_id;
+      const assigneeId = (() => {
+        if (rawAssignee === null || rawAssignee === undefined) return null;
+        if (typeof rawAssignee === "string") {
+          const trimmed = rawAssignee.trim();
+          return trimmed.length > 0 ? trimmed : null;
+        }
+        return String(rawAssignee);
+      })();
       const rawCreated =
         ((taskData as Record<string, unknown>).createdAt as string | undefined) ||
         created ||
@@ -513,7 +524,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       reset({
         title: (taskData.title as string) || "",
         description: (taskData.task_description as string) || "",
-        assignees,
+        assigneeId,
         startDate,
         dueDate,
       });
@@ -584,7 +595,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         status: curStatus,
         completedAt: curCompletedAt,
         creator: String((taskData.created_by as unknown) || ""),
-        assignees,
+        assigneeId,
         start: (taskData.start_location as string) || "",
         startLink: startLocationLink,
         end: (taskData.end_location as string) || "",
@@ -704,7 +715,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         status: DEFAULT_STATUS,
         completedAt: "",
         creator: user ? String(user.telegram_id) : "",
-        assignees: [],
+        assigneeId: null,
         start: "",
         startLink: "",
         end: "",
@@ -723,7 +734,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       reset({
         title: "",
         description: "",
-        assignees: [],
+        assigneeId: null,
         startDate: defaultStartDate,
         dueDate: defaultDueDate,
       });
@@ -906,7 +917,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         payment_method: paymentMethod,
         status,
         created_by: creator,
-        assignees: formData.assignees,
+        assigned_user_id:
+          typeof formData.assigneeId === "string"
+            ? formData.assigneeId.trim()
+            : "",
         start_location: start,
         start_location_link: startLink,
         end_location: end,
@@ -1031,7 +1045,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     reset({
       title: d.title,
       description: d.description,
-      assignees: d.assignees,
+      assigneeId: d.assigneeId,
       startDate: d.startDate,
       dueDate: d.dueDate,
     });
@@ -1304,14 +1318,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <Controller
-              name="assignees"
+              name="assigneeId"
               control={control}
               render={({ field }) => (
                 <MultiUserSelect
                   label={t("assignees")}
                   users={users}
-                  value={(field.value || []).map(String)}
-                  onChange={(v) => field.onChange(v.map(String))}
+                  value={typeof field.value === "string" ? field.value : null}
+                  onChange={field.onChange}
                   disabled={!editing}
                 />
               )}

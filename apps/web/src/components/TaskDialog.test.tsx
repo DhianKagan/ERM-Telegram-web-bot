@@ -38,6 +38,7 @@ const taskData = {
   title: "Task",
   task_description: "",
   assignees: [1],
+  assigned_user_id: 1,
   start_date: "2024-01-01T00:00:00Z",
   due_date: "2024-01-02T00:00:00Z",
   created_by: 99,
@@ -109,7 +110,7 @@ describe("TaskDialog", () => {
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
         "1",
-        expect.objectContaining({ assignees: ["1"] }),
+        expect.objectContaining({ assigned_user_id: "1" }),
       ),
     );
 

@@ -49,4 +49,22 @@ describe('normalizeArrays', () => {
     expect(attachments?.[0]).toMatchObject({ name: 'файл', url: '/api/v1/files/2' });
     expect(next).toHaveBeenCalledTimes(1);
   });
+
+  it('нормализует assigned_user_id и приводит его к массиву assignees', () => {
+    const req = createReq({ assigned_user_id: ' 42 ' });
+    const next = jest.fn() as unknown as NextFunction;
+    normalizeArrays(req, res, next);
+    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBe('42');
+    expect((req.body as { assignees: unknown[] }).assignees).toEqual(['42']);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('очищает назначение при пустом assigned_user_id', () => {
+    const req = createReq({ assigned_user_id: '' });
+    const next = jest.fn() as unknown as NextFunction;
+    normalizeArrays(req, res, next);
+    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBeNull();
+    expect((req.body as { assignees: unknown[] }).assignees).toEqual([]);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
 });

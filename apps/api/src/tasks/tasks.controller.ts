@@ -1,5 +1,8 @@
 // Контроллер задач с использованием TasksService
 // Основные модули: express-validator, services, wgLogEngine, taskHistory.service
+import path from 'node:path';
+import { createReadStream } from 'node:fs';
+import { access } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -8,7 +11,13 @@ import type TasksService from './tasks.service';
 import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
-import { Task, type TaskDocument, type Attachment } from '../db/model';
+import {
+  Task,
+  File,
+  type TaskDocument,
+  type Attachment,
+  type FileDocument,
+} from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import {
@@ -21,6 +30,7 @@ import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
+import { uploadsDir } from '../config/storage';
 import {
   getTaskHistoryMessage,
   updateTaskStatusMessageId,
@@ -78,6 +88,23 @@ const escapeMarkdownV2 = (value: unknown): string =>
     .replace(/\\/g, '\\\\')
     .replace(markdownEscapePattern, '\\$1');
 
+const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
+const uploadsAbsoluteDir = path.resolve(uploadsDir);
+
+const baseAppHost = (() => {
+  try {
+    return new URL(baseAppUrl).host;
+  } catch {
+    return null;
+  }
+})();
+
+type LocalPhotoInfo = {
+  absolutePath: string;
+  filename: string;
+  contentType?: string;
+};
+
 const HTTP_URL_REGEXP = /^https?:\/\//i;
 const YOUTUBE_URL_REGEXP =
   /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\//i;
@@ -118,6 +145,7 @@ type SendPhotoOptions = NonNullable<
 type SendMediaGroupOptions = NonNullable<
   Parameters<typeof bot.telegram.sendMediaGroup>[2]
 >;
+type PhotoInput = Parameters<typeof bot.telegram.sendPhoto>[1];
 
 @injectable()
 export default class TasksController {
@@ -204,6 +232,74 @@ export default class TasksController {
       result.push({ kind: 'image', url: absolute });
     });
     return result;
+  }
+
+  private extractLocalFileId(url: string): string | null {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url, baseAppUrl);
+      if (baseAppHost && parsed.host && parsed.host !== baseAppHost) {
+        return null;
+      }
+      const match = FILE_ID_REGEXP.exec(parsed.pathname);
+      return match ? match[1] : null;
+    } catch {
+      const normalized = url.startsWith('/') ? url : `/${url}`;
+      const match = FILE_ID_REGEXP.exec(normalized);
+      return match ? match[1] : null;
+    }
+  }
+
+  private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
+    const fileId = this.extractLocalFileId(url);
+    if (!fileId) return null;
+    try {
+      const fileModel = File as
+        | (typeof File & {
+            findById?: typeof File.findById;
+          })
+        | undefined;
+      if (!fileModel || typeof fileModel.findById !== 'function') {
+        return null;
+      }
+      const query = fileModel.findById(fileId);
+      const record =
+        query && typeof (query as unknown as { lean?: () => unknown }).lean === 'function'
+          ? await (query as unknown as { lean: () => Promise<FileDocument | null> }).lean()
+          : ((await query) as unknown as FileDocument | null);
+      if (!record || typeof record.path !== 'string' || !record.path.trim()) {
+        return null;
+      }
+      const normalizedPath = record.path.trim();
+      const target = path.resolve(uploadsAbsoluteDir, normalizedPath);
+      const relative = path.relative(uploadsAbsoluteDir, target);
+      if (
+        !relative ||
+        relative.startsWith('..') ||
+        path.isAbsolute(relative)
+      ) {
+        return null;
+      }
+      await access(target);
+      const filenameSource =
+        typeof record.name === 'string' && record.name.trim()
+          ? record.name.trim()
+          : normalizedPath;
+      const filename = path.basename(filenameSource);
+      const contentType =
+        typeof record.type === 'string' && record.type.trim()
+          ? record.type.trim()
+          : undefined;
+      return { absolutePath: target, filename, contentType };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(
+          `Не удалось подготовить файл ${url} для отправки в Telegram`,
+          error,
+        );
+      }
+      return null;
+    }
   }
 
   private areNormalizedAttachmentsEqual(
@@ -297,15 +393,51 @@ export default class TasksController {
       return options;
     };
 
+    const localPhotoInfoCache = new Map<string, LocalPhotoInfo | null>();
+    const resolvePhotoInput = async (url: string): Promise<PhotoInput> => {
+      if (!url) return url;
+      if (!localPhotoInfoCache.has(url)) {
+        const info = await this.resolveLocalPhotoInfo(url);
+        localPhotoInfoCache.set(url, info);
+      }
+      const info = localPhotoInfoCache.get(url);
+      if (!info) {
+        return url;
+      }
+      try {
+        const descriptor = {
+          source: createReadStream(info.absolutePath),
+          filename: info.filename,
+          ...(info.contentType ? { contentType: info.contentType } : {}),
+        };
+        return descriptor as PhotoInput;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+          console.error(
+            `Не удалось открыть файл ${info.absolutePath} для отправки в Telegram`,
+            error,
+          );
+        }
+        localPhotoInfoCache.set(url, null);
+        return url;
+      }
+    };
+
     const pendingImages: { url: string; caption?: string }[] = [];
     const flushImages = async () => {
       while (pendingImages.length) {
         const chunk = pendingImages.splice(0, 10);
-        if (chunk.length === 1) {
-          const [item] = chunk;
+        const prepared = await Promise.all(
+          chunk.map(async (item) => ({
+            media: await resolvePhotoInput(item.url),
+            caption: item.caption,
+          })),
+        );
+        if (prepared.length === 1) {
+          const [item] = prepared;
           const response = await bot.telegram.sendPhoto(
             chat,
-            item.url,
+            item.media,
             (() => {
               const options = photoOptionsBase();
               if (item.caption) {
@@ -319,9 +451,9 @@ export default class TasksController {
             sentMessageIds.push(response.message_id);
           }
         } else {
-          const media = chunk.map((item) => ({
+          const media = prepared.map((item) => ({
             type: 'photo' as const,
-            media: item.url,
+            media: item.media,
             ...(item.caption
               ? {
                   caption: escapeMarkdownV2(item.caption),

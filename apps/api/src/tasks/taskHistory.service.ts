@@ -195,7 +195,8 @@ function formatFieldName(field: string): string {
 
 function formatFieldValue(value: unknown): string {
   const primitive = formatPrimitiveValue(value);
-  return mdEscape(primitive);
+  const escaped = mdEscape(primitive);
+  return escaped.replace(/\\\./g, '.');
 }
 
 export function describeAction(entry: HistoryEntry): string | null {

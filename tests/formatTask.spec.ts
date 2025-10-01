@@ -41,21 +41,43 @@ describe('formatTask', () => {
       202: { name: 'Ольга Сидорова', username: 'olga' },
     };
 
-    const result = formatTask(task as any, users);
+    const { text } = formatTask(task as any, users);
 
     const configuredUrl = process.env.APP_URL || 'https://example.com';
     const baseUrl = escapeMd(configuredUrl.replace(/\/+$/, ''));
     const expectedLink = `📌 [${escapeMd('A-12')}](${baseUrl}/tasks/507f1f77bcf86cd799439011)`;
 
-    expect(result).toContain(expectedLink);
-    expect(result).toContain('🧾 *Информация*');
-    expect(result).toContain('🧭 *Логистика*');
-    expect(result).toContain('🚚 *Груз*');
-    expect(result).toContain('🤝 *Участники*');
-    expect(result).toContain('[Иван Петров](tg://user?id=101)');
-    expect(result).toContain('[Ольга Сидорова](tg://user?id=202)');
-    expect(result).toMatch(/━━━━━━━━━━━━/);
-    expect(result).toContain('📝 *Описание*');
+    expect(text).toContain(expectedLink);
+    expect(text).toContain('🧾 *Информация*');
+    expect(text).toContain('🧭 *Логистика*');
+    expect(text).toContain('🚚 *Груз*');
+    expect(text).toContain('🤝 *Участники*');
+    expect(text).toContain('[Иван Петров](tg://user?id=101)');
+    expect(text).toContain('[Ольга Сидорова](tg://user?id=202)');
+    expect(text).toMatch(/━━━━━━━━━━━━/);
+    expect(text).toContain('📝 *Описание*');
+  });
+
+  it('извлекает изображения из HTML и формирует список ссылок', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      task_description:
+        '<p>Основной текст.</p><img src="/api/v1/files/demo.png" alt="Схема" />',
+    };
+    const { text, inlineImages } = formatTask(task as any, {});
+
+    const configuredUrl = process.env.APP_URL || 'https://example.com';
+    const baseUrl = configuredUrl.replace(/\/+$/, '');
+    const expectedUrl = `${baseUrl}/api/v1/files/demo.png`;
+    const inlineUrl = `${expectedUrl}?mode=inline`;
+
+    expect(inlineImages).toEqual([{ url: inlineUrl, alt: 'Схема' }]);
+    expect(text).toContain('📝 *Описание*');
+    expect(text).toContain(escapeMd('Основной текст.'));
+    expect(text).toContain('🖼 *Изображение*');
+    expect(text).toContain(`[${escapeMd('Схема')}](${escapeMd(inlineUrl)})`);
+    expect(text).not.toContain('<img');
   });
 });
 

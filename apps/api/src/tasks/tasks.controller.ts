@@ -19,7 +19,7 @@ import {
 import { bot } from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
-import formatTask from '../utils/formatTask';
+import formatTask, { type InlineImage } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
 import {
   getTaskHistoryMessage,
@@ -103,7 +103,7 @@ const toAbsoluteAttachmentUrl = (url: string): string | null => {
 };
 
 type NormalizedAttachment =
-  | { kind: 'image'; url: string }
+  | { kind: 'image'; url: string; caption?: string }
   | { kind: 'youtube'; url: string; title?: string };
 
 type SendMessageOptions = NonNullable<
@@ -152,11 +152,36 @@ export default class TasksController {
     return recipients;
   }
 
-  private collectSendableAttachments(task: Partial<TaskDocument>) {
-    if (!Array.isArray(task.attachments) || task.attachments.length === 0) {
-      return [] as NormalizedAttachment[];
-    }
+  private normalizeInlineImages(inline: InlineImage[] | undefined) {
+    if (!inline?.length) return [] as NormalizedAttachment[];
     const result: NormalizedAttachment[] = [];
+    inline.forEach((image) => {
+      if (!image?.url) return;
+      const absolute = toAbsoluteAttachmentUrl(image.url);
+      if (!absolute) return;
+      const hasInlineParam = /[?&]mode=inline(?:&|$)/.test(absolute);
+      const url = hasInlineParam
+        ? absolute
+        : `${absolute}${absolute.includes('?') ? '&' : '?'}mode=inline`;
+      const caption = image.alt && image.alt.trim() ? image.alt.trim() : undefined;
+      const payload: NormalizedAttachment = { kind: 'image', url };
+      if (caption) {
+        payload.caption = caption;
+      }
+      result.push(payload);
+    });
+    return result;
+  }
+
+  private collectSendableAttachments(
+    task: Partial<TaskDocument>,
+    inline: InlineImage[] | undefined,
+  ) {
+    const result: NormalizedAttachment[] = [];
+    result.push(...this.normalizeInlineImages(inline));
+    if (!Array.isArray(task.attachments) || task.attachments.length === 0) {
+      return result;
+    }
     task.attachments.forEach((attachment: Attachment | null | undefined) => {
       if (!attachment || typeof attachment.url !== 'string') return;
       const url = attachment.url.trim();
@@ -193,6 +218,9 @@ export default class TasksController {
       if (item.url !== candidate.url) return false;
       if (item.kind === 'youtube' && candidate.kind === 'youtube') {
         return item.title === candidate.title;
+      }
+      if (item.kind === 'image' && candidate.kind === 'image') {
+        return (item.caption ?? '') === (candidate.caption ?? '');
       }
       return true;
     });
@@ -269,7 +297,7 @@ export default class TasksController {
       return options;
     };
 
-    const pendingImages: { url: string }[] = [];
+    const pendingImages: { url: string; caption?: string }[] = [];
     const flushImages = async () => {
       while (pendingImages.length) {
         const chunk = pendingImages.splice(0, 10);
@@ -278,7 +306,14 @@ export default class TasksController {
           const response = await bot.telegram.sendPhoto(
             chat,
             item.url,
-            photoOptionsBase(),
+            (() => {
+              const options = photoOptionsBase();
+              if (item.caption) {
+                options.caption = escapeMarkdownV2(item.caption);
+                options.parse_mode = 'MarkdownV2';
+              }
+              return options;
+            })(),
           );
           if (response?.message_id) {
             sentMessageIds.push(response.message_id);
@@ -287,6 +322,12 @@ export default class TasksController {
           const media = chunk.map((item) => ({
             type: 'photo' as const,
             media: item.url,
+            ...(item.caption
+              ? {
+                  caption: escapeMarkdownV2(item.caption),
+                  parse_mode: 'MarkdownV2' as const,
+                }
+              : {}),
           }));
           const response = await bot.telegram.sendMediaGroup(
             chat,
@@ -306,7 +347,7 @@ export default class TasksController {
 
     for (const attachment of attachments) {
       if (attachment.kind === 'image') {
-        pendingImages.push({ url: attachment.url });
+        pendingImages.push({ url: attachment.url, caption: attachment.caption });
         continue;
       }
       await flushImages();
@@ -418,7 +459,8 @@ export default class TasksController {
       }),
     );
 
-    const message = formatTask(plain as unknown as SharedTask, users);
+    const formatted = formatTask(plain as unknown as SharedTask, users);
+    const message = formatted.text;
     const keyboard = taskStatusKeyboard(taskId);
     const editOptions: EditMessageTextOptions = {
       parse_mode: 'MarkdownV2',
@@ -492,10 +534,17 @@ export default class TasksController {
       }
     }
 
+    const previousFormatted = previousPlain
+      ? formatTask(previousPlain as unknown as SharedTask, users)
+      : null;
+
     const previousAttachments = previousPlain
-      ? this.collectSendableAttachments(previousPlain)
+      ? this.collectSendableAttachments(previousPlain, previousFormatted?.inlineImages)
       : [];
-    const nextAttachments = this.collectSendableAttachments(plain);
+    const nextAttachments = this.collectSendableAttachments(
+      plain,
+      formatted.inlineImages,
+    );
     const previousAttachmentMessageIds = Array.isArray(
       previousPlain?.telegram_attachments_message_ids,
     )
@@ -576,7 +625,8 @@ export default class TasksController {
       }),
     );
     const mainKeyboard = taskStatusKeyboard(docId);
-    const message = formatTask(plain as unknown as SharedTask, users);
+    const formatted = formatTask(plain as unknown as SharedTask, users);
+    const message = formatted.text;
     let groupMessageId: number | undefined;
     let statusMessageId: number | undefined;
     let messageLink: string | null = null;
@@ -603,7 +653,10 @@ export default class TasksController {
         );
         groupMessageId = groupMessage?.message_id;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        const media = this.collectSendableAttachments(plain);
+        const media = this.collectSendableAttachments(
+          plain,
+          formatted.inlineImages,
+        );
         if (media.length) {
           try {
             attachmentMessageIds = await this.sendTaskAttachments(

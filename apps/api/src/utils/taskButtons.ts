@@ -11,11 +11,20 @@ export function taskAcceptConfirmKeyboard(
   ]);
 }
 
+export function taskDoneConfirmKeyboard(
+  id: string,
+): ReturnType<typeof Markup.inlineKeyboard> {
+  return Markup.inlineKeyboard([
+    Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
+    Markup.button.callback('Отмена', `task_done_cancel:${id}`),
+  ]);
+}
+
 export default function taskStatusKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
   return Markup.inlineKeyboard([
     Markup.button.callback('В работу', `task_accept_prompt:${id}`),
-    Markup.button.callback('Выполнена', `task_done:${id}`),
+    Markup.button.callback('Выполнена', `task_done_prompt:${id}`),
   ]);
 }

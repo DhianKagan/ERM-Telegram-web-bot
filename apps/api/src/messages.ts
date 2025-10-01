@@ -29,7 +29,7 @@ const messages = {
   chooseTask: 'Выберите задачу',
   menuPrompt: 'Выберите действие',
   privateToken: 'Кнопка отправлена вам в личные сообщения',
-  taskCompleted: 'Задача отмечена выполненной',
+  taskCompleted: 'Задача отмечена как выполненная',
   taskAccepted: 'Задача принята в работу',
   taskCanceled: 'Задача отменена',
   enterComment: 'Введите комментарий',
@@ -42,6 +42,14 @@ const messages = {
   help: `Доступные команды:\n/start - запуск бота\n/register - регистрация`,
   noVehicles: 'Транспорт отсутствует',
   vehiclesError: 'Не удалось загрузить транспорт',
+  taskStatusPrompt: 'Подтвердите изменение статуса',
+  taskStatusCanceled: 'Изменение статуса отменено',
+  taskStatusInvalidId: 'Некорректный идентификатор задачи',
+  taskStatusUnknownUser: 'Не удалось определить пользователя',
+  taskNotFound: 'Задача не найдена',
+  taskPermissionError: 'Ошибка проверки прав',
+  taskAssignmentRequired: 'Вы не назначены на эту задачу',
+  taskStatusUpdateError: 'Ошибка обновления статуса задачи',
 } as const;
 
 export default messages;

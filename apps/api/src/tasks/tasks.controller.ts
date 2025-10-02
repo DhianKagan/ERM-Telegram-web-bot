@@ -20,11 +20,7 @@ import {
 } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
-import {
-  PROJECT_TIMEZONE,
-  PROJECT_TIMEZONE_LABEL,
-  type Task as SharedTask,
-} from 'shared';
+import { type Task as SharedTask } from 'shared';
 import { bot } from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
@@ -36,6 +32,11 @@ import {
   updateTaskStatusMessageId,
 } from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';
+import {
+  buildActionMessage,
+  buildLatestHistorySummary,
+  getTaskIdentifier,
+} from './taskMessages';
 
 type TaskEx = SharedTask & {
   controllers?: number[];
@@ -47,16 +48,6 @@ type TaskEx = SharedTask & {
 type TaskWithMeta = TaskDocument & {
   telegram_attachments_message_ids?: number[];
 };
-
-const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: PROJECT_TIMEZONE,
-});
 
 const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
 const uploadsAbsoluteDir = path.resolve(uploadsDir);
@@ -102,6 +93,13 @@ const toAbsoluteAttachmentUrl = (url: string): string | null => {
 type NormalizedAttachment =
   | { kind: 'image'; url: string; caption?: string }
   | { kind: 'youtube'; url: string; title?: string };
+
+type NormalizedImage = Extract<NormalizedAttachment, { kind: 'image' }>;
+
+type TaskMedia = {
+  previewImage: NormalizedImage | null;
+  extras: NormalizedAttachment[];
+};
 
 type SendMessageOptions = NonNullable<
   Parameters<typeof bot.telegram.sendMessage>[2]
@@ -206,34 +204,52 @@ export default class TasksController {
   private collectSendableAttachments(
     task: Partial<TaskDocument>,
     inline: InlineImage[] | undefined,
-  ) {
-    const result: NormalizedAttachment[] = [];
-    result.push(...this.normalizeInlineImages(inline));
-    if (!Array.isArray(task.attachments) || task.attachments.length === 0) {
-      return result;
-    }
-    task.attachments.forEach((attachment: Attachment | null | undefined) => {
-      if (!attachment || typeof attachment.url !== 'string') return;
-      const url = attachment.url.trim();
-      if (!url) return;
-      if (YOUTUBE_URL_REGEXP.test(url)) {
-        const title =
-          typeof attachment.name === 'string' && attachment.name.trim()
-            ? attachment.name.trim()
-            : undefined;
-        result.push({ kind: 'youtube', url, title });
-        return;
-      }
-      const type =
-        typeof attachment.type === 'string'
-          ? attachment.type.trim().toLowerCase()
-          : '';
-      if (!type.startsWith('image/')) return;
-      const absolute = toAbsoluteAttachmentUrl(url);
-      if (!absolute) return;
-      result.push({ kind: 'image', url: absolute });
+  ): TaskMedia {
+    const previewPool: NormalizedImage[] = [];
+    const extras: NormalizedAttachment[] = [];
+    this.normalizeInlineImages(inline).forEach((image) => {
+      previewPool.push(image);
     });
-    return result;
+    if (Array.isArray(task.attachments) && task.attachments.length > 0) {
+      task.attachments.forEach((attachment: Attachment | null | undefined) => {
+        if (!attachment || typeof attachment.url !== 'string') return;
+        const url = attachment.url.trim();
+        if (!url) return;
+        if (YOUTUBE_URL_REGEXP.test(url)) {
+          const title =
+            typeof attachment.name === 'string' && attachment.name.trim()
+              ? attachment.name.trim()
+              : undefined;
+          extras.push({ kind: 'youtube', url, title });
+          return;
+        }
+        const type =
+          typeof attachment.type === 'string'
+            ? attachment.type.trim().toLowerCase()
+            : '';
+        if (!type.startsWith('image/')) return;
+        const absolute = toAbsoluteAttachmentUrl(url);
+        if (!absolute) return;
+        previewPool.push({ kind: 'image', url: absolute });
+      });
+    }
+    return {
+      previewImage: previewPool.length ? previewPool[0] : null,
+      extras,
+    };
+  }
+
+  private createPreviewOptions(
+    image: NormalizedImage | null,
+  ): NonNullable<SendMessageOptions['link_preview_options']> {
+    if (!image) {
+      return { is_disabled: true };
+    }
+    return {
+      url: image.url,
+      prefer_large_media: true,
+      show_above_text: true,
+    };
   }
 
   private extractLocalFileId(url: string): string | null {
@@ -603,49 +619,6 @@ export default class TasksController {
     return result;
   }
 
-  private getTaskIdentifier(task: Partial<TaskDocument>) {
-    if (task.request_id) return String(task.request_id);
-    if (task.task_number) return String(task.task_number);
-    if (task._id) {
-      if (typeof task._id === 'object' && 'toString' in task._id) {
-        return (task._id as { toString(): string }).toString();
-      }
-      return String(task._id);
-    }
-    return '';
-  }
-
-  private async buildActionMessage(
-    task: Partial<TaskDocument>,
-    action: string,
-    at: Date,
-    creatorId?: number,
-  ): Promise<string> {
-    const identifier = this.getTaskIdentifier(task);
-    const formatted = taskEventFormatter.format(at).replace(', ', ' ');
-    const creator = Number(creatorId);
-    let authorText = 'неизвестным пользователем';
-    if (Number.isFinite(creator) && creator !== 0) {
-      try {
-        const users = await getUsersMap([creator]);
-        const profile = users?.[creator];
-        const name = profile?.name?.trim();
-        const username = profile?.username?.trim();
-        if (name) {
-          authorText = `пользователем ${name}`;
-        } else if (username) {
-          authorText = `пользователем ${username}`;
-        } else {
-          authorText = `пользователем #${creator}`;
-        }
-      } catch (error) {
-        console.error('Не удалось получить автора задачи', error);
-        authorText = `пользователем #${creator}`;
-      }
-    }
-    return `Задача ${identifier} ${action} ${authorText} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
-  }
-
   private async refreshStatusHistoryMessage(taskId: string) {
     if (!groupChatId) return;
     try {
@@ -688,6 +661,67 @@ export default class TasksController {
     }
   }
 
+  private async updateTaskStatusSummary(
+    task: TaskWithMeta & Record<string, unknown>,
+  ): Promise<void> {
+    if (!groupChatId) return;
+    const summary = await buildLatestHistorySummary(task);
+    if (!summary) return;
+    const messageId =
+      typeof task.telegram_status_message_id === 'number'
+        ? task.telegram_status_message_id
+        : undefined;
+    const topicId =
+      typeof task.telegram_topic_id === 'number'
+        ? task.telegram_topic_id
+        : undefined;
+    const replyTo =
+      typeof task.telegram_message_id === 'number'
+        ? task.telegram_message_id
+        : undefined;
+    const editOptions: EditMessageTextOptions = {
+      link_preview_options: { is_disabled: true },
+    };
+    const sendOptions: SendMessageOptions = {
+      link_preview_options: { is_disabled: true },
+    };
+    if (typeof topicId === 'number') {
+      sendOptions.message_thread_id = topicId;
+    }
+    if (typeof replyTo === 'number') {
+      sendOptions.reply_parameters = { message_id: replyTo };
+    }
+    if (messageId) {
+      try {
+        await bot.telegram.editMessageText(
+          groupChatId,
+          messageId,
+          undefined,
+          summary,
+          editOptions,
+        );
+        return;
+      } catch (error) {
+        console.error('Не удалось обновить краткое сообщение задачи', error);
+      }
+    }
+    try {
+      const statusMessage = await bot.telegram.sendMessage(
+        groupChatId,
+        summary,
+        sendOptions,
+      );
+      if (statusMessage?.message_id && task._id) {
+        await Task.findByIdAndUpdate(task._id, {
+          telegram_status_message_id: statusMessage.message_id,
+        }).exec();
+        task.telegram_status_message_id = statusMessage.message_id;
+      }
+    } catch (error) {
+      console.error('Не удалось отправить краткое сообщение задачи', error);
+    }
+  }
+
   private async syncTelegramTaskMessage(
     taskId: string,
     previous: (TaskWithMeta & Record<string, unknown>) | null,
@@ -715,10 +749,15 @@ export default class TasksController {
 
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
+    const nextAttachments = this.collectSendableAttachments(
+      plain,
+      formatted.inlineImages,
+    );
     const keyboard = taskStatusKeyboard(taskId);
+    const previewOptions = this.createPreviewOptions(nextAttachments.previewImage);
     const editOptions: EditMessageTextOptions = {
       parse_mode: 'MarkdownV2',
-      link_preview_options: { is_disabled: true },
+      link_preview_options: previewOptions,
       reply_markup: keyboard.reply_markup,
     };
     const topicId =
@@ -727,7 +766,7 @@ export default class TasksController {
         : undefined;
     const sendOptionsBase: SendMessageOptions = {
       parse_mode: 'MarkdownV2',
-      link_preview_options: { is_disabled: true },
+      link_preview_options: previewOptions,
       reply_markup: keyboard.reply_markup,
     };
     if (typeof topicId === 'number') {
@@ -794,11 +833,9 @@ export default class TasksController {
 
     const previousAttachments = previousPlain
       ? this.collectSendableAttachments(previousPlain, previousFormatted?.inlineImages)
-      : [];
-    const nextAttachments = this.collectSendableAttachments(
-      plain,
-      formatted.inlineImages,
-    );
+      : { previewImage: null, extras: [] };
+    const previousExtras = previousAttachments.extras;
+    const nextExtras = nextAttachments.extras;
     const previousAttachmentMessageIds = Array.isArray(
       previousPlain?.telegram_attachments_message_ids,
     )
@@ -809,8 +846,8 @@ export default class TasksController {
 
     const messageIdChanged = previousMessageId !== currentMessageId;
     const attachmentsChanged = !this.areNormalizedAttachmentsEqual(
-      previousAttachments,
-      nextAttachments,
+      previousExtras,
+      nextExtras,
     );
 
     let attachmentMessageIds = [...previousAttachmentMessageIds];
@@ -822,7 +859,7 @@ export default class TasksController {
       attachmentsListChanged = true;
     }
 
-    if (!nextAttachments.length) {
+    if (!nextExtras.length) {
       if (attachmentMessageIds.length) {
         await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
         attachmentMessageIds = [];
@@ -833,7 +870,7 @@ export default class TasksController {
         try {
           const ids = await this.sendTaskAttachments(
             groupChatId,
-            nextAttachments,
+            nextExtras,
             topicId,
             currentMessageId,
           );
@@ -848,8 +885,8 @@ export default class TasksController {
         try {
           const synced = await this.syncAttachmentMessages(
             groupChatId,
-            previousAttachments,
-            nextAttachments,
+            previousExtras,
+            nextExtras,
             attachmentMessageIds,
             topicId,
             currentMessageId,
@@ -875,7 +912,7 @@ export default class TasksController {
           try {
             const ids = await this.sendTaskAttachments(
               groupChatId,
-              nextAttachments,
+              nextExtras,
               topicId,
               currentMessageId,
             );
@@ -887,6 +924,8 @@ export default class TasksController {
         }
       }
     }
+
+    await this.updateTaskStatusSummary(plain);
 
     if (
       attachmentsListChanged ||
@@ -943,9 +982,13 @@ export default class TasksController {
           typeof plain.telegram_topic_id === 'number'
             ? plain.telegram_topic_id
             : undefined;
+        const media = this.collectSendableAttachments(
+          plain,
+          formatted.inlineImages,
+        );
         const groupOptions: SendMessageOptions = {
           parse_mode: 'MarkdownV2',
-          link_preview_options: { is_disabled: true },
+          link_preview_options: this.createPreviewOptions(media.previewImage),
           ...mainKeyboard,
         };
         if (typeof topicId === 'number') {
@@ -958,15 +1001,11 @@ export default class TasksController {
         );
         groupMessageId = groupMessage?.message_id;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        const media = this.collectSendableAttachments(
-          plain,
-          formatted.inlineImages,
-        );
-        if (media.length) {
+        if (media.extras.length) {
           try {
             attachmentMessageIds = await this.sendTaskAttachments(
               groupChatId,
-              media,
+              media.extras,
               topicId,
               groupMessageId,
             );
@@ -974,7 +1013,7 @@ export default class TasksController {
             console.error('Не удалось отправить вложения задачи', error);
           }
         }
-        const statusText = await this.buildActionMessage(
+        const statusText = await buildActionMessage(
           plain,
           'создана',
           new Date(
@@ -1005,7 +1044,7 @@ export default class TasksController {
     const assignees = this.collectAssignees(plain);
     assignees.delete(creatorId);
     if (messageLink && assignees.size) {
-      const identifier = this.getTaskIdentifier(plain);
+      const identifier = getTaskIdentifier(plain);
       const dmText = `Вам назначена задача <a href="${messageLink}">${identifier}</a>`;
       const dmOptions: SendMessageOptions = {
         ...taskStatusKeyboard(docId),

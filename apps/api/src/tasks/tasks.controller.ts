@@ -812,20 +812,26 @@ export default class TasksController {
           editOptions,
         );
       } catch (error) {
-        console.error('Не удалось обновить сообщение задачи', error);
-        try {
-          const sentMessage = await bot.telegram.sendMessage(
-            groupChatId,
-            message,
-            sendOptions,
+        if (this.isMessageNotModifiedError(error)) {
+          console.warn(
+            'Сообщение задачи не изменилось, пропускаем повторную отправку',
           );
-          if (sentMessage?.message_id) {
-            currentMessageId = sentMessage.message_id;
-            updates.telegram_message_id = sentMessage.message_id;
+        } else {
+          console.error('Не удалось обновить сообщение задачи', error);
+          try {
+            const sentMessage = await bot.telegram.sendMessage(
+              groupChatId,
+              message,
+              sendOptions,
+            );
+            if (sentMessage?.message_id) {
+              currentMessageId = sentMessage.message_id;
+              updates.telegram_message_id = sentMessage.message_id;
+            }
+          } catch (sendError) {
+            console.error('Не удалось отправить новое сообщение задачи', sendError);
+            return;
           }
-        } catch (sendError) {
-          console.error('Не удалось отправить новое сообщение задачи', sendError);
-          return;
         }
       }
     } else {
@@ -965,6 +971,26 @@ export default class TasksController {
         );
       }
     }
+  }
+
+  private isMessageNotModifiedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const record = error as Record<string, unknown>;
+    const rawResponse = record.response;
+    const response =
+      rawResponse && typeof rawResponse === 'object'
+        ? (rawResponse as { error_code?: number; description?: unknown })
+        : null;
+    const descriptionRaw =
+      (response?.description ??
+        (typeof record.description === 'string' ? record.description : null)) ??
+      null;
+    const description =
+      typeof descriptionRaw === 'string' ? descriptionRaw.toLowerCase() : '';
+    return (
+      response?.error_code === 400 &&
+      description.includes('message is not modified')
+    );
   }
 
   private async notifyTaskCreated(task: TaskDocument, creatorId: number) {

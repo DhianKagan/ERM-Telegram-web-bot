@@ -16,6 +16,7 @@ import {
   getTaskHistoryMessage,
   updateTaskStatusMessageId,
 } from '../tasks/taskHistory.service';
+import { buildLatestHistorySummary } from '../tasks/taskMessages';
 import taskStatusKeyboard, {
   taskAcceptConfirmKeyboard,
   taskDoneConfirmKeyboard,
@@ -248,6 +249,76 @@ async function processStatusAction(
         }
       } catch (error) {
         console.error('Не удалось обновить историю статусов задачи', error);
+      }
+      try {
+        const summary = await buildLatestHistorySummary(
+          task as Parameters<typeof buildLatestHistorySummary>[0],
+        );
+        if (summary) {
+          const statusMessageId =
+            typeof task.telegram_status_message_id === 'number'
+              ? task.telegram_status_message_id
+              : undefined;
+          const topicId =
+            typeof task.telegram_topic_id === 'number'
+              ? task.telegram_topic_id
+              : undefined;
+          const replyTo =
+            typeof task.telegram_message_id === 'number'
+              ? task.telegram_message_id
+              : undefined;
+          const editOptions: NonNullable<
+            Parameters<typeof bot.telegram.editMessageText>[4]
+          > = {
+            link_preview_options: { is_disabled: true },
+          };
+          const sendOptions: NonNullable<
+            Parameters<typeof bot.telegram.sendMessage>[2]
+          > = {
+            link_preview_options: { is_disabled: true },
+          };
+          if (typeof topicId === 'number') {
+            sendOptions.message_thread_id = topicId;
+          }
+          if (typeof replyTo === 'number') {
+            sendOptions.reply_parameters = { message_id: replyTo };
+          }
+          if (statusMessageId) {
+            try {
+              await bot.telegram.editMessageText(
+                chatId,
+                statusMessageId,
+                undefined,
+                summary,
+                editOptions,
+              );
+            } catch (summaryError) {
+              console.error(
+                'Не удалось обновить краткое сообщение задачи',
+                summaryError,
+              );
+              const sentSummary = await bot.telegram.sendMessage(
+                chatId,
+                summary,
+                sendOptions,
+              );
+              if (sentSummary?.message_id) {
+                await updateTaskStatusMessageId(docId, sentSummary.message_id);
+              }
+            }
+          } else {
+            const sentSummary = await bot.telegram.sendMessage(
+              chatId,
+              summary,
+              sendOptions,
+            );
+            if (sentSummary?.message_id) {
+              await updateTaskStatusMessageId(docId, sentSummary.message_id);
+            }
+          }
+        }
+      } catch (summaryError) {
+        console.error('Не удалось синхронизировать краткое сообщение задачи', summaryError);
       }
     }
   } catch (error) {

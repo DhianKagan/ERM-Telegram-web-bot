@@ -85,3 +85,30 @@ test('экранирует точки в датах и другие специа
     'название: «Старая \\*версия\\* \\#A» → «Новая версия \\+ улучшения»',
   );
 });
+
+test('не снимает экранирование точек в значениях полей', async () => {
+  const lean = jest.fn().mockResolvedValue({
+    telegram_status_message_id: null,
+    history: [
+      {
+        changed_at: new Date('2025-10-01T16:48:00Z'),
+        changed_by: 123,
+        changes: {
+          from: { in_progress_at: null, status: 'Новая' },
+          to: { in_progress_at: '2025-10-01T16:48:00Z', status: 'В работе' },
+        },
+      },
+    ],
+  });
+  (Task.findById as jest.Mock).mockReturnValue({ lean });
+  (getUsersMap as jest.Mock).mockResolvedValue({
+    123: { name: 'Исполнитель', username: 'user123' },
+  });
+
+  const result = await getTaskHistoryMessage('keep-escapes');
+
+  expect(result).not.toBeNull();
+  expect(result?.text).toContain(
+    'in progress at: «—» → «01\\.10\\.2025 19:48»',
+  );
+});

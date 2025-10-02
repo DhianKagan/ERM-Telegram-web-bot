@@ -181,8 +181,8 @@ export default class TasksController {
   }
 
   private normalizeInlineImages(inline: InlineImage[] | undefined) {
-    if (!inline?.length) return [] as NormalizedAttachment[];
-    const result: NormalizedAttachment[] = [];
+    if (!inline?.length) return [] as NormalizedImage[];
+    const result: NormalizedImage[] = [];
     inline.forEach((image) => {
       if (!image?.url) return;
       const absolute = toAbsoluteAttachmentUrl(image.url);
@@ -192,7 +192,7 @@ export default class TasksController {
         ? absolute
         : `${absolute}${absolute.includes('?') ? '&' : '?'}mode=inline`;
       const caption = image.alt && image.alt.trim() ? image.alt.trim() : undefined;
-      const payload: NormalizedAttachment = { kind: 'image', url };
+      const payload: NormalizedImage = { kind: 'image', url };
       if (caption) {
         payload.caption = caption;
       }
@@ -207,9 +207,11 @@ export default class TasksController {
   ): TaskMedia {
     const previewPool: NormalizedImage[] = [];
     const extras: NormalizedAttachment[] = [];
-    this.normalizeInlineImages(inline).forEach((image) => {
+    const registerImage = (image: NormalizedImage) => {
       previewPool.push(image);
-    });
+      extras.push(image);
+    };
+    this.normalizeInlineImages(inline).forEach(registerImage);
     if (Array.isArray(task.attachments) && task.attachments.length > 0) {
       task.attachments.forEach((attachment: Attachment | null | undefined) => {
         if (!attachment || typeof attachment.url !== 'string') return;
@@ -230,7 +232,7 @@ export default class TasksController {
         if (!type.startsWith('image/')) return;
         const absolute = toAbsoluteAttachmentUrl(url);
         if (!absolute) return;
-        previewPool.push({ kind: 'image', url: absolute });
+        registerImage({ kind: 'image', url: absolute });
       });
     }
     return {

@@ -195,9 +195,13 @@ function formatFieldName(field: string): string {
   return mdEscape(mapped);
 }
 
-function formatFieldValue(value: unknown): string {
+function formatFieldValue(value: unknown, field?: string): string {
   const primitive = formatPrimitiveValue(value);
-  return mdEscape(primitive);
+  const escaped = mdEscape(primitive);
+  if (field && (field === 'deadline' || field === 'due' || field === 'completed_at')) {
+    return escaped.replace(/\\\.(?=\d{4}\b)/g, '.');
+  }
+  return escaped;
 }
 
 export function describeAction(entry: HistoryEntry): string | null {
@@ -230,14 +234,14 @@ export function describeAction(entry: HistoryEntry): string | null {
   }
   if (changedKeys.every((key) => key === 'status')) {
     const fieldName = formatFieldName('status');
-    const previous = formatFieldValue(from.status);
-    const next = formatFieldValue(to.status);
+    const previous = formatFieldValue(from.status, 'status');
+    const next = formatFieldValue(to.status, 'status');
     return `${fieldName}: «${previous}» → «${next}»`;
   }
   const describeField = (key: string): string => {
     const fieldName = formatFieldName(key);
-    const previous = formatFieldValue(from[key]);
-    const next = formatFieldValue(to[key]);
+    const previous = formatFieldValue(from[key], key);
+    const next = formatFieldValue(to[key], key);
     return `${fieldName}: «${previous}» → «${next}»`;
   };
   if (changedKeys.length === 1) {

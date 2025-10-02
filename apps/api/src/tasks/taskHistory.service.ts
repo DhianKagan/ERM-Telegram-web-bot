@@ -1,9 +1,10 @@
 // Назначение: формирование текста истории задач для Telegram
-// Основные модули: db/model, db/queries, shared, utils/userLink
+// Основные модули: db/model, db/queries, shared, utils/userLink, utils/mdEscape
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import { Task, type HistoryEntry } from '../db/model';
 import { getUsersMap } from '../db/queries';
 import userLink from '../utils/userLink';
+import { escapeMarkdownV2 as mdEscape } from '../utils/mdEscape';
 
 const historyFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -24,11 +25,6 @@ type UsersMap = Record<
 >;
 
 const emptyObject = Object.freeze({}) as Record<string, unknown>;
-
-function mdEscape(str: unknown): string {
-  // eslint-disable-next-line no-useless-escape
-  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}!.]/g, '\\$&');
-}
 
 function resolveAuthor(entry: HistoryEntry, users: UsersMap): string {
   const id = Number(entry.changed_by);

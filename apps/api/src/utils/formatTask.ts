@@ -1,10 +1,5 @@
 // Форматирование задачи в виде расширенного блока MarkdownV2
-// Модули: Intl.DateTimeFormat, userLink, config
-
-function mdEscape(str: unknown): string {
-  // eslint-disable-next-line no-useless-escape
-  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
-}
+// Основные модули: Intl.DateTimeFormat, userLink, config, mdEscape
 
 function stripTags(html: unknown): string {
   let prev: string;
@@ -17,6 +12,7 @@ function stripTags(html: unknown): string {
 }
 
 import userLink from './userLink';
+import { escapeMarkdownV2 as mdEscape } from './mdEscape';
 import {
   PROJECT_TIMEZONE,
   PROJECT_TIMEZONE_LABEL,

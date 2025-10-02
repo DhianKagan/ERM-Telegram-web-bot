@@ -1,12 +1,9 @@
 // Формирует ссылку tg://user для MarkdownV2
-// Модули: отсутствуют
+// Основные модули: mdEscape
 
-function mdEscape(str: unknown): string {
-  // eslint-disable-next-line no-useless-escape
-  return String(str).replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
-}
+import { escapeMarkdownV2 } from './mdEscape';
 
 export default function userLink(id: number | string, name?: string): string {
   const text = name || String(id);
-  return `[${mdEscape(text)}](tg://user?id=${id})`;
+  return `[${escapeMarkdownV2(text)}](tg://user?id=${id})`;
 }

@@ -34,7 +34,7 @@ import {
 import escapeMarkdownV2 from '../utils/mdEscape';
 import {
   buildActionMessage,
-  buildLatestHistorySummary,
+  buildHistorySummaryLog,
   getTaskIdentifier,
 } from './taskMessages';
 
@@ -235,9 +235,25 @@ export default class TasksController {
         registerImage({ kind: 'image', url: absolute });
       });
     }
+    const previewImage = previewPool.length ? previewPool[0] : null;
+    const extrasWithoutPreview = previewImage
+      ? (() => {
+          let removed = false;
+          return extras.filter((attachment) => {
+            if (attachment.kind !== 'image') {
+              return true;
+            }
+            if (!removed && attachment === previewImage) {
+              removed = true;
+              return false;
+            }
+            return true;
+          });
+        })()
+      : extras;
     return {
-      previewImage: previewPool.length ? previewPool[0] : null,
-      extras,
+      previewImage,
+      extras: extrasWithoutPreview,
     };
   }
 
@@ -667,7 +683,7 @@ export default class TasksController {
     task: TaskWithMeta & Record<string, unknown>,
   ): Promise<void> {
     if (!groupChatId) return;
-    const summary = await buildLatestHistorySummary(task);
+    const summary = await buildHistorySummaryLog(task);
     if (!summary) return;
     const messageId =
       typeof task.telegram_status_message_id === 'number'

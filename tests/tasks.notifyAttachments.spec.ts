@@ -118,9 +118,11 @@ describe('notifyTaskCreated вложения', () => {
       events.push('main');
       return Promise.resolve({ message_id: 101 });
     });
+    const photoQueue = [401, 402];
     sendPhotoMock.mockImplementation(() => {
       events.push('photo');
-      return Promise.resolve({ message_id: 404 });
+      const nextId = photoQueue.shift() ?? 499;
+      return Promise.resolve({ message_id: nextId });
     });
     sendMediaGroupMock.mockImplementation(() => {
       events.push('group');
@@ -164,20 +166,8 @@ describe('notifyTaskCreated вложения', () => {
 
     await (controller as any).notifyTaskCreated(task, 55);
 
-    expect(events).toEqual(['main', 'group', 'youtube', 'photo', 'status']);
-    expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
-    const mediaArgs = sendMediaGroupMock.mock.calls[0];
-    expect(mediaArgs[1]).toEqual([
-      { type: 'photo', media: `${appBaseUrl}/api/v1/files/a.jpg` },
-      { type: 'photo', media: `${appBaseUrl}/files/b.png` },
-    ]);
-    expect(mediaArgs[2]).toMatchObject({
-      message_thread_id: 777,
-      reply_parameters: {
-        message_id: 101,
-        allow_sending_without_reply: true,
-      },
-    });
+    expect(events).toEqual(['main', 'photo', 'youtube', 'photo', 'status']);
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
 
     const [, youtubeText, youtubeOptions] = sendMessageMock.mock.calls[1];
     const expectedYoutubeText = `▶️ [${escapeMd('Видео')}](${escapeMd(
@@ -192,21 +182,23 @@ describe('notifyTaskCreated вложения', () => {
       },
     });
 
-    expect(sendPhotoMock).toHaveBeenCalledWith(
-      expect.anything(),
-      `${appBaseUrl}/api/v1/files/c.gif`,
-      expect.objectContaining({
+    const photoCalls = sendPhotoMock.mock.calls;
+    expect(photoCalls).toHaveLength(2);
+    expect(photoCalls[0][1]).toBe(`${appBaseUrl}/files/b.png`);
+    expect(photoCalls[1][1]).toBe(`${appBaseUrl}/api/v1/files/c.gif`);
+    photoCalls.forEach(([, , options]) => {
+      expect(options).toMatchObject({
         reply_parameters: {
           message_id: 101,
           allow_sending_without_reply: true,
         },
-      }),
-    );
+      });
+    });
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
       telegram_status_message_id: 303,
-      telegram_attachments_message_ids: [505, 202, 404],
+      telegram_attachments_message_ids: [401, 202, 402],
     });
   });
 
@@ -221,7 +213,7 @@ describe('notifyTaskCreated вложения', () => {
       { message_id: 202 },
       { message_id: 303 },
     ]);
-    sendPhotoMock.mockResolvedValue({ message_id: 0 });
+    sendPhotoMock.mockResolvedValue({ message_id: 404 });
 
     const appBaseUrl = (process.env.APP_URL || 'https://example.com').replace(
       /\/+$/,
@@ -255,33 +247,22 @@ describe('notifyTaskCreated вложения', () => {
 
     await (controller as any).notifyTaskCreated(task, 55);
 
-    expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
-    const mediaArgs = sendMediaGroupMock.mock.calls[0];
-    expect(mediaArgs[1]).toEqual([
-      {
-        type: 'photo',
-        media: `${appBaseUrl}/api/v1/files/inline.png?mode=inline`,
-        caption: escapeMd('Чертёж'),
-        parse_mode: 'MarkdownV2',
-      },
-      {
-        type: 'photo',
-        media: 'https://cdn.example.com/pic.jpg?mode=inline',
-      },
-    ]);
-    expect(mediaArgs[2]).toMatchObject({
-      message_thread_id: 321,
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    const [, photoMedia, photoOptions] = sendPhotoMock.mock.calls[0];
+    expect(photoMedia).toBe('https://cdn.example.com/pic.jpg?mode=inline');
+    expect(photoOptions).toMatchObject({
       reply_parameters: {
         allow_sending_without_reply: true,
         message_id: 101,
       },
     });
+    expect(photoOptions).not.toHaveProperty('caption');
 
-    expect(sendPhotoMock).not.toHaveBeenCalled();
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
       telegram_status_message_id: 404,
-      telegram_attachments_message_ids: [202, 303],
+      telegram_attachments_message_ids: [404],
     });
   });
 
@@ -324,7 +305,9 @@ describe('notifyTaskCreated вложения', () => {
       createdAt: '2024-01-01T00:00:00Z',
       attachments: [],
       task_description:
-        '<p>Описание.</p><img src="/api/v1/files/68dccf5809cd3805f91e2fad" alt="Локально" />',
+        '<p>Описание.</p>' +
+        '<img src="https://cdn.example.com/external.jpg" alt="Эскиз" />' +
+        '<img src="/api/v1/files/68dccf5809cd3805f91e2fad" alt="Локально" />',
     };
 
     const task = {
@@ -343,7 +326,7 @@ describe('notifyTaskCreated вложения', () => {
     }
 
     expect(sendPhotoMock).toHaveBeenCalledTimes(1);
-    const [, media] = sendPhotoMock.mock.calls[0];
+    const [, media, options] = sendPhotoMock.mock.calls[0];
     expect(media).toEqual(
       expect.objectContaining({
         filename: 'inline.jpg',
@@ -351,6 +334,12 @@ describe('notifyTaskCreated вложения', () => {
       }),
     );
     expect(media).toHaveProperty('source');
+    expect(options).toMatchObject({
+      reply_parameters: {
+        message_id: 101,
+        allow_sending_without_reply: true,
+      },
+    });
   });
 });
 
@@ -416,13 +405,16 @@ describe('syncTelegramTaskMessage вложения', () => {
     );
 
     expect(taskFindByIdMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
-    expect(editMessageMediaMock).toHaveBeenCalledTimes(1);
-    expect(editMessageMediaMock.mock.calls[0][1]).toBe(404);
-    expect(deleteMessageMock).not.toHaveBeenCalled();
+    expect(editMessageMediaMock).not.toHaveBeenCalled();
+    expect(deleteMessageMock).toHaveBeenCalledTimes(1);
+    expect(deleteMessageMock.mock.calls[0][1]).toBe(404);
     expect(sendMessageMock).not.toHaveBeenCalled();
     expect(sendPhotoMock).not.toHaveBeenCalled();
     expect(sendMediaGroupMock).not.toHaveBeenCalled();
-    expect(updateTaskMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      { telegram_attachments_message_ids: [] },
+    );
   });
 
   it('удаляет сообщения вложений при очистке списка', async () => {

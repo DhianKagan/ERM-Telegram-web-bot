@@ -341,6 +341,86 @@ describe('notifyTaskCreated вложения', () => {
       },
     });
   });
+
+  it('отправляет фото при единственном локальном inline-изображении', async () => {
+    const uploadsRoot = path.resolve(uploadsDir);
+    const tempDir = path.join(uploadsRoot, 'tests-single-inline');
+    const absolutePath = path.join(tempDir, 'single.jpg');
+    const relativePath = path.relative(uploadsRoot, absolutePath);
+
+    await fs.mkdir(tempDir, { recursive: true });
+    await fs.writeFile(absolutePath, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+
+    const fileId = '68dccf5809cd3805f91e2fab';
+    fileFindByIdMock.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          path: relativePath,
+          name: 'single.jpg',
+          type: 'image/jpeg',
+        }),
+    });
+
+    sendMessageMock.mockImplementation((_chat, text: string) => {
+      if (text.startsWith('Задача')) {
+        return Promise.resolve({ message_id: 404 });
+      }
+      return Promise.resolve({ message_id: 101 });
+    });
+    sendPhotoMock.mockResolvedValue({ message_id: 202 });
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Тестовая задача',
+      telegram_topic_id: 321,
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+      attachments: [],
+      task_description:
+        `<p>Описание.</p><img src="/api/v1/files/${fileId}" alt="Локально" />`,
+    };
+
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).notifyTaskCreated(task, 55);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    const [, media, options] = sendPhotoMock.mock.calls[0];
+    expect(media).toEqual(
+      expect.objectContaining({
+        filename: 'single.jpg',
+        contentType: 'image/jpeg',
+      }),
+    );
+    expect(media).toHaveProperty('source');
+    expect(options).toMatchObject({
+      reply_parameters: {
+        message_id: 101,
+        allow_sending_without_reply: true,
+      },
+    });
+    expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
+      telegram_message_id: 101,
+      telegram_status_message_id: 404,
+      telegram_attachments_message_ids: [202],
+    });
+  });
 });
 
 describe('syncTelegramTaskMessage вложения', () => {

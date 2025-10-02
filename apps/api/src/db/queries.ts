@@ -173,13 +173,7 @@ export async function updateTask(
   if (!prev) return null;
   if (Object.prototype.hasOwnProperty.call(data, 'status')) {
     const nextStatus = data.status as TaskDocument['status'];
-    if (nextStatus === 'В работе') {
-      if (!Object.prototype.hasOwnProperty.call(data, 'in_progress_at')) {
-        (data as Record<string, unknown>).in_progress_at = new Date();
-      } else if ((data as Record<string, unknown>).in_progress_at === undefined) {
-        (data as Record<string, unknown>).in_progress_at = new Date();
-      }
-    } else if (nextStatus === 'Новая') {
+    if (nextStatus === 'Новая') {
       (data as Record<string, unknown>).in_progress_at = null;
     }
   }
@@ -192,6 +186,9 @@ export async function updateTask(
       to[k] = v as unknown;
     }
   });
+  if (Object.keys(to).length === 0) {
+    return prev;
+  }
   const entry = {
     changed_at: new Date(),
     changed_by: userId,
@@ -234,17 +231,31 @@ export async function updateTaskStatus(
     throw new Error('Нет прав на изменение статуса задачи');
   }
   const isCompleted = status === 'Выполнена' || status === 'Отменена';
-  const wasCompleted =
-    existing.status === 'Выполнена' || existing.status === 'Отменена';
+  const hasInProgressValue = existing.in_progress_at instanceof Date;
+  const needsInProgressStart = status === 'В работе' && !hasInProgressValue;
+  const needsInProgressReset =
+    status === 'Новая' && existing.in_progress_at != null;
+  const hasCompletedValue = existing.completed_at instanceof Date;
+  const needsCompletedSet = isCompleted && !hasCompletedValue;
+  const needsCompletedReset = !isCompleted && hasCompletedValue;
+  if (
+    existing.status === status &&
+    !needsInProgressStart &&
+    !needsInProgressReset &&
+    !needsCompletedSet &&
+    !needsCompletedReset
+  ) {
+    return existing;
+  }
   const update: Partial<TaskDocument> = { status };
   if (status === 'В работе') {
-    update.in_progress_at = new Date();
-  } else if (status === 'Новая') {
+    update.in_progress_at = existing.in_progress_at ?? new Date();
+  } else if (status === 'Новая' && needsInProgressReset) {
     update.in_progress_at = null;
   }
   if (isCompleted) {
-    update.completed_at = new Date();
-  } else if (existing.completed_at || wasCompleted) {
+    update.completed_at = existing.completed_at ?? new Date();
+  } else if (needsCompletedReset) {
     update.completed_at = null;
   }
   return updateTask(id, update, userId);

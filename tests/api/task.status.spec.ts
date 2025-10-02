@@ -96,4 +96,66 @@ describe('updateTaskStatus', function () {
       /Нет прав на изменение статуса задачи/,
     );
   });
+
+  it('не добавляет историю при повторном переводе в работу', async () => {
+    const task = await Task.create({
+      title: 'repeat in progress',
+      created_by: 1,
+      request_id: 'ERM_REPEAT',
+      task_number: 'ERM_REPEAT',
+    });
+    const id = (task._id as Types.ObjectId).toHexString();
+
+    const first = await updateTaskStatus(id, 'В работе', 42);
+    assert.equal(first?.status, 'В работе');
+    assert.ok(first?.in_progress_at instanceof Date);
+    const historyAfterFirst = first?.history?.length ?? 0;
+    const second = await updateTaskStatus(id, 'В работе', 42);
+    const persisted = await Task.findById(id).lean();
+    assert.ok(second);
+    assert.ok(persisted);
+    assert.equal(second.history?.length, historyAfterFirst);
+    assert.equal(persisted.history?.length, historyAfterFirst);
+    assert.ok(second.in_progress_at instanceof Date);
+    assert.ok(persisted.in_progress_at instanceof Date);
+    assert.equal(
+      (second.in_progress_at as Date).getTime(),
+      (first?.in_progress_at as Date).getTime(),
+    );
+    assert.equal(
+      (persisted.in_progress_at as Date).getTime(),
+      (first?.in_progress_at as Date).getTime(),
+    );
+  });
+
+  it('не добавляет историю при повторном завершении', async () => {
+    const task = await Task.create({
+      title: 'repeat completion',
+      created_by: 1,
+      request_id: 'ERM_REPEAT_DONE',
+      task_number: 'ERM_REPEAT_DONE',
+    });
+    const id = (task._id as Types.ObjectId).toHexString();
+
+    const first = await updateTaskStatus(id, 'Выполнена', 42);
+    assert.equal(first?.status, 'Выполнена');
+    assert.ok(first?.completed_at instanceof Date);
+    const historyAfterFirst = first?.history?.length ?? 0;
+    const second = await updateTaskStatus(id, 'Выполнена', 42);
+    const persisted = await Task.findById(id).lean();
+    assert.ok(second);
+    assert.ok(persisted);
+    assert.equal(second.history?.length, historyAfterFirst);
+    assert.equal(persisted.history?.length, historyAfterFirst);
+    assert.ok(second.completed_at instanceof Date);
+    assert.ok(persisted.completed_at instanceof Date);
+    assert.equal(
+      (second.completed_at as Date).getTime(),
+      (first?.completed_at as Date).getTime(),
+    );
+    assert.equal(
+      (persisted.completed_at as Date).getTime(),
+      (first?.completed_at as Date).getTime(),
+    );
+  });
 });

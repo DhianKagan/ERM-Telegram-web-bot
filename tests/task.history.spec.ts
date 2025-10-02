@@ -20,7 +20,6 @@ test('сохраняет diff и пользователя', async () => {
     expect.objectContaining({
       $set: {
         status: 'В работе',
-        in_progress_at: expect.any(Date),
       },
       $push: {
         history: expect.objectContaining({
@@ -29,7 +28,6 @@ test('сохраняет diff и пользователя', async () => {
             from: expect.objectContaining({ status: 'Новая' }),
             to: expect.objectContaining({
               status: 'В работе',
-              in_progress_at: expect.any(Date),
             }),
           },
           changed_at: expect.any(Date),

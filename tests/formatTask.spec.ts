@@ -1,11 +1,9 @@
 /**
  * Назначение файла: проверка форматирования задач для Telegram.
- * Основные модули: formatTask.
+ * Основные модули: formatTask, mdEscape.
  */
 import formatTask from '../apps/api/src/utils/formatTask';
-
-const escapeMd = (value: string) =>
-  value.replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+import escapeMarkdownV2 from '../apps/api/src/utils/mdEscape';
 
 describe('formatTask', () => {
   it('создаёт расширенный Markdown с кликабельным номером и секциями', () => {
@@ -44,8 +42,8 @@ describe('formatTask', () => {
     const { text } = formatTask(task as any, users);
 
     const configuredUrl = process.env.APP_URL || 'https://example.com';
-    const baseUrl = escapeMd(configuredUrl.replace(/\/+$/, ''));
-    const expectedLink = `📌 [${escapeMd('A-12')}](${baseUrl}/tasks/507f1f77bcf86cd799439011)`;
+    const baseUrl = escapeMarkdownV2(configuredUrl.replace(/\/+$/, ''));
+    const expectedLink = `📌 [${escapeMarkdownV2('A-12')}](${baseUrl}/tasks/507f1f77bcf86cd799439011)`;
 
     expect(text).toContain(expectedLink);
     expect(text).toContain('🧾 *Информация*');
@@ -74,10 +72,51 @@ describe('formatTask', () => {
 
     expect(inlineImages).toEqual([{ url: inlineUrl, alt: 'Схема' }]);
     expect(text).toContain('📝 *Описание*');
-    expect(text).toContain(escapeMd('Основной текст.'));
+    expect(text).toContain(escapeMarkdownV2('Основной текст.'));
     expect(text).toContain('🖼 *Изображение*');
-    expect(text).toContain(`[${escapeMd('Схема')}](${escapeMd(inlineUrl)})`);
+    expect(text).toContain(
+      `[${escapeMarkdownV2('Схема')}](${escapeMarkdownV2(inlineUrl)})`,
+    );
     expect(text).not.toContain('<img');
+  });
+
+  it('экранирует MarkdownV2 символы в тексте, ссылках и вложениях', () => {
+    const textSpecial = '_*[]()~`>#+-=|{}.!\\';
+    const altSpecial = '_*[]()~-.!';
+    const task = {
+      _id: '65f9d82e0f4c446ce93f1fb0',
+      task_number: textSpecial,
+      title: textSpecial,
+      task_description: `<p>${textSpecial}</p><img src="/files/demo.png" alt="${altSpecial}" />`,
+    };
+
+    const { text, inlineImages } = formatTask(task as any, {});
+    const configuredUrl = process.env.APP_URL || 'https://example.com';
+    const baseUrl = configuredUrl.replace(/\/+$/, '');
+    const expectedUrl = `${baseUrl}/files/demo.png`;
+    const inlineUrl = `${expectedUrl}?mode=inline`;
+
+    expect(text).toContain(`📌 [${escapeMarkdownV2(textSpecial)}](`);
+    expect(text).toContain(escapeMarkdownV2(textSpecial));
+    expect(text).not.toContain(textSpecial);
+    const attachmentLine = text
+      .split('\n')
+      .find((line) => line.startsWith('• ['));
+    expect(attachmentLine).toBeDefined();
+    const match = attachmentLine?.match(/^• \[(.+)\]\((.+)\)$/);
+    expect(match).toBeTruthy();
+    const [, labelEncoded, urlEncoded] = match as RegExpMatchArray;
+    const decode = (value: string) =>
+      value.replace(/\\([\\_*\[\]()~`>#+\-=|{}.!])/g, '$1');
+    expect(labelEncoded).toBe(escapeMarkdownV2(altSpecial));
+    expect(decode(labelEncoded)).toBe(altSpecial);
+    expect(urlEncoded).toBe(escapeMarkdownV2(inlineUrl));
+    expect(inlineImages).toEqual([
+      {
+        alt: altSpecial,
+        url: inlineUrl,
+      },
+    ]);
   });
 });
 

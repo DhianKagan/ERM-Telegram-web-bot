@@ -1,5 +1,5 @@
 // Контроллер задач с использованием TasksService
-// Основные модули: express-validator, services, wgLogEngine, taskHistory.service
+// Основные модули: express-validator, services, wgLogEngine, taskHistory.service, utils/mdEscape
 import path from 'node:path';
 import { createReadStream } from 'node:fs';
 import { access } from 'node:fs/promises';
@@ -35,6 +35,7 @@ import {
   getTaskHistoryMessage,
   updateTaskStatusMessageId,
 } from './taskHistory.service';
+import escapeMarkdownV2 from '../utils/mdEscape';
 
 type TaskEx = SharedTask & {
   controllers?: number[];
@@ -56,37 +57,6 @@ const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
   hour12: false,
   timeZone: PROJECT_TIMEZONE,
 });
-
-const markdownSpecialChars = [
-  '_',
-  '*',
-  '[',
-  ']',
-  '(',
-  ')',
-  '~',
-  '`',
-  '>',
-  '#',
-  '+',
-  '-',
-  '=',
-  '|',
-  '{',
-  '}',
-  '.',
-  '!',
-];
-
-const markdownEscapePattern = new RegExp(
-  `([${markdownSpecialChars.map((char) => `\\${char}`).join('')}])`,
-  'g',
-);
-
-const escapeMarkdownV2 = (value: unknown): string =>
-  String(value)
-    .replace(/\\/g, '\\\\')
-    .replace(markdownEscapePattern, '\\$1');
 
 const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
 const uploadsAbsoluteDir = path.resolve(uploadsDir);

@@ -74,9 +74,7 @@ describe('formatTask', () => {
     expect(text).toContain('📝 *Описание*');
     expect(text).toContain(escapeMarkdownV2('Основной текст.'));
     expect(text).toContain('🖼 *Изображение*');
-    expect(text).toContain(
-      `[${escapeMarkdownV2('Схема')}](${escapeMarkdownV2(inlineUrl)})`,
-    );
+    expect(text).toContain(`• ${escapeMarkdownV2('Схема')}`);
     expect(text).not.toContain('<img');
   });
 
@@ -101,16 +99,15 @@ describe('formatTask', () => {
     expect(text).not.toContain(textSpecial);
     const attachmentLine = text
       .split('\n')
-      .find((line) => line.startsWith('• ['));
+      .find((line) => line.startsWith('• '));
     expect(attachmentLine).toBeDefined();
-    const match = attachmentLine?.match(/^• \[(.+)\]\((.+)\)$/);
+    const match = attachmentLine?.match(/^• (.+)$/);
     expect(match).toBeTruthy();
-    const [, labelEncoded, urlEncoded] = match as RegExpMatchArray;
+    const [, labelEncoded] = match as RegExpMatchArray;
     const decode = (value: string) =>
       value.replace(/\\([\\_*\[\]()~`>#+\-=|{}.!])/g, '$1');
     expect(labelEncoded).toBe(escapeMarkdownV2(altSpecial));
     expect(decode(labelEncoded)).toBe(altSpecial);
-    expect(urlEncoded).toBe(escapeMarkdownV2(inlineUrl));
     expect(inlineImages).toEqual([
       {
         alt: altSpecial,

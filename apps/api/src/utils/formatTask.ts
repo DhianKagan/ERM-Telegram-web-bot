@@ -322,8 +322,7 @@ export default function formatTask(
           ? image.alt.trim()
           : `Изображение ${index + 1}`;
         const label = mdEscape(labelBase);
-        const link = mdEscape(image.url);
-        lines.push(`• [${label}](${link})`);
+        lines.push(`• ${label}`);
       });
     }
     if (lines.length) {

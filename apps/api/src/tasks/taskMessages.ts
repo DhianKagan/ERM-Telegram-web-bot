@@ -14,6 +14,26 @@ const taskEventFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeZone: PROJECT_TIMEZONE,
 });
 
+type UserProfile = { name?: string | null; username?: string | null };
+
+const formatAuthorText = (
+  profile: UserProfile | undefined,
+  userId: number,
+): string => {
+  if (!profile) {
+    return `пользователем #${userId}`;
+  }
+  const name = profile.name?.trim();
+  if (name) {
+    return `пользователем ${name}`;
+  }
+  const username = profile.username?.trim();
+  if (username) {
+    return `пользователем ${username}`;
+  }
+  return `пользователем #${userId}`;
+};
+
 const trimString = (value: unknown): string | null => {
   if (value === undefined || value === null) return null;
   const str = String(value).trim();
@@ -54,15 +74,7 @@ export async function buildActionMessage(
     try {
       const users = await getUsersMap([creator]);
       const profile = users?.[creator];
-      const name = profile?.name?.trim();
-      const username = profile?.username?.trim();
-      if (name) {
-        authorText = `пользователем ${name}`;
-      } else if (username) {
-        authorText = `пользователем ${username}`;
-      } else {
-        authorText = `пользователем #${creator}`;
-      }
+      authorText = formatAuthorText(profile, creator);
     } catch (error) {
       console.error('Не удалось получить автора задачи', error);
       authorText = `пользователем #${creator}`;
@@ -111,4 +123,66 @@ export async function buildLatestHistorySummary(
     changedAt,
     Number.isFinite(changedBy) ? changedBy : undefined,
   );
+}
+
+export async function buildHistorySummaryLog(
+  task: Partial<TaskDocument> & { history?: HistoryEntry[] } & Record<string, unknown>,
+): Promise<string | null> {
+  const history = Array.isArray(task.history) ? task.history : [];
+  if (!history.length) {
+    return null;
+  }
+  const identifier = getTaskIdentifier(task);
+  const userIds = new Set<number>();
+  history.forEach((entry) => {
+    const changedBy = Number(entry.changed_by);
+    if (Number.isFinite(changedBy) && changedBy !== 0) {
+      userIds.add(changedBy);
+    }
+  });
+  let userProfiles: Record<number, UserProfile> = {};
+  if (userIds.size) {
+    try {
+      const users = await getUsersMap(Array.from(userIds));
+      Object.entries(users || {}).forEach(([key, value]) => {
+        const numericId = Number(key);
+        if (Number.isFinite(numericId)) {
+          userProfiles[numericId] = {
+            name: value?.name,
+            username: value?.username,
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Не удалось получить авторов истории задачи', error);
+    }
+  }
+  const lines = history
+    .map((entry) => {
+      const action = resolveHistoryAction(entry);
+      if (!action) {
+        return null;
+      }
+      const changedAt =
+        entry.changed_at instanceof Date
+          ? entry.changed_at
+          : entry.changed_at
+          ? new Date(entry.changed_at)
+          : new Date();
+      if (Number.isNaN(changedAt.getTime())) {
+        return null;
+      }
+      const formatted = taskEventFormatter.format(changedAt).replace(', ', ' ');
+      const changedBy = Number(entry.changed_by);
+      let authorText = 'неизвестным пользователем';
+      if (Number.isFinite(changedBy) && changedBy !== 0) {
+        authorText = formatAuthorText(userProfiles[changedBy], changedBy);
+      }
+      return `Задача ${identifier} ${action} ${authorText} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
+    })
+    .filter((line): line is string => Boolean(line));
+  if (!lines.length) {
+    return null;
+  }
+  return lines.join('\n');
 }

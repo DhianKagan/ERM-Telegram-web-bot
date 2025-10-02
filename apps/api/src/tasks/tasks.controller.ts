@@ -236,21 +236,24 @@ export default class TasksController {
       });
     }
     const previewImage = previewPool.length ? previewPool[0] : null;
-    const extrasWithoutPreview = previewImage
-      ? (() => {
-          let removed = false;
-          return extras.filter((attachment) => {
-            if (attachment.kind !== 'image') {
+    const shouldKeepPreviewInExtras =
+      !!previewImage && this.extractLocalFileId(previewImage.url) !== null;
+    const extrasWithoutPreview =
+      previewImage && !shouldKeepPreviewInExtras
+        ? (() => {
+            let removed = false;
+            return extras.filter((attachment) => {
+              if (attachment.kind !== 'image') {
+                return true;
+              }
+              if (!removed && attachment === previewImage) {
+                removed = true;
+                return false;
+              }
               return true;
-            }
-            if (!removed && attachment === previewImage) {
-              removed = true;
-              return false;
-            }
-            return true;
-          });
-        })()
-      : extras;
+            });
+          })()
+        : extras;
     return {
       previewImage,
       extras: extrasWithoutPreview,

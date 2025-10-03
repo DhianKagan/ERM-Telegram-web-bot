@@ -309,6 +309,69 @@ describe('notifyTaskCreated вложения', () => {
     });
   });
 
+  it('отправляет крупный PNG как документ', async () => {
+    sendMessageMock.mockImplementation((_chat, text: string) => {
+      if (text.startsWith('Задача')) {
+        return Promise.resolve({ message_id: 202 });
+      }
+      return Promise.resolve({ message_id: 101 });
+    });
+
+    sendDocumentMock.mockResolvedValue({ message_id: 303 });
+
+    const attachments = [
+      {
+        url: 'https://cdn.example.com/large.png',
+        type: 'image/png',
+        name: 'large.png',
+        size: 12 * 1024 * 1024,
+      },
+    ];
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439099',
+      task_number: 'C-56',
+      title: 'Отправка крупных вложений',
+      attachments,
+      telegram_topic_id: 777,
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-3',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).notifyTaskCreated(task, 55);
+
+    expect(sendPhotoMock).not.toHaveBeenCalled();
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).toHaveBeenCalledTimes(1);
+    const [chat, media, options] = sendDocumentMock.mock.calls[0];
+    expect(typeof chat === 'number' || typeof chat === 'string').toBe(true);
+    expect(media).toBe('https://cdn.example.com/large.png');
+    expect(options).toMatchObject({
+      reply_parameters: {
+        message_id: 101,
+        allow_sending_without_reply: true,
+      },
+    });
+
+    expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439099', {
+      telegram_message_id: 101,
+      telegram_status_message_id: 202,
+      telegram_attachments_message_ids: [303],
+    });
+  });
+
   it('добавляет inline-изображения из описания к вложениям', async () => {
     sendMessageMock.mockImplementation((_chat, text: string) => {
       if (text.startsWith('Задача')) {

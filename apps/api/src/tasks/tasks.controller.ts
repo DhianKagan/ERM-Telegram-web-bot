@@ -98,6 +98,7 @@ type NormalizedAttachment =
       caption?: string;
       mimeType?: string;
       name?: string;
+      size?: number;
     }
   | { kind: 'youtube'; url: string; title?: string };
 
@@ -133,6 +134,8 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
   'image/webp',
   'image/gif',
 ]);
+
+const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
 
 @injectable()
 export default class TasksController {
@@ -252,19 +255,34 @@ export default class TasksController {
         const absolute = toAbsoluteAttachmentUrl(url);
         if (!absolute) return;
         const [mimeType] = type.split(';', 1);
-        if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
-          registerImage({ kind: 'image', url: absolute });
-          return;
-        }
         const name =
           typeof attachment.name === 'string' && attachment.name.trim()
             ? attachment.name.trim()
             : undefined;
+        const size =
+          typeof attachment.size === 'number' && Number.isFinite(attachment.size)
+            ? attachment.size
+            : undefined;
+        if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
+          if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
+            extras.push({
+              kind: 'unsupported-image',
+              url: absolute,
+              mimeType,
+              name,
+              size,
+            });
+            return;
+          }
+          registerImage({ kind: 'image', url: absolute });
+          return;
+        }
         extras.push({
           kind: 'unsupported-image',
           url: absolute,
           mimeType,
           name,
+          ...(size !== undefined ? { size } : {}),
         });
       });
     }

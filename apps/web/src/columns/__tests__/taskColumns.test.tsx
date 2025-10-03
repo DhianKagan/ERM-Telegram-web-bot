@@ -132,10 +132,15 @@ describe("taskColumns", () => {
     expect(badge as HTMLElement).toHaveClass("bg-rose-500/30");
   });
 
-  it("фиксирует отсчёт после завершения задачи и показывает примечание", () => {
+  it("фиксирует отсчёт после завершения задачи и выводит примечание под названием", () => {
     jest.useFakeTimers().setSystemTime(new Date("2024-03-07T08:00:00Z"));
 
     const columns = taskColumns({});
+    const titleColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "title",
+    );
     const dueColumn = columns.find(
       (col): col is typeof col & { accessorKey: string } =>
         typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
@@ -143,30 +148,52 @@ describe("taskColumns", () => {
     );
 
     expect(dueColumn).toBeDefined();
+    expect(titleColumn).toBeDefined();
     const cellRenderer = dueColumn?.cell as
       | ((context: any) => React.ReactNode)
       | undefined;
+    const titleRenderer = titleColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
     expect(cellRenderer).toBeDefined();
+    expect(titleRenderer).toBeDefined();
 
     const row = {
       start_date: "2024-03-01T09:00:00Z",
       due_date: "2024-03-10T10:00:00Z",
       completed_at: "2024-03-08T10:00:00Z",
       status: "Выполнена",
+      title: "Задача с изображением",
     } as unknown as TaskRow;
 
-    const cell = cellRenderer?.({
+    const dueCell = cellRenderer?.({
       getValue: () => row.due_date,
       row: { original: row },
     } as any);
+    const titleCell = titleRenderer?.({
+      getValue: () => row.title,
+      row: { original: row },
+    } as any);
 
-    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <div data-testid="title-cell">{titleCell as React.ReactElement}</div>
+        <div data-testid="due-cell">{dueCell as React.ReactElement}</div>
+      </MemoryRouter>,
+    );
 
-    const note = screen.getByText("Выполнена досрочно на 2 дня", {
-      selector: "span:not(.sr-only)",
-    });
-    expect(note).toBeInTheDocument();
-    const countdownLabel = screen.getByText(
+    const titleContainer = screen.getByTestId("title-cell");
+    expect(
+      within(titleContainer).getByText("Выполнена досрочно на 2 дня"),
+    ).toBeInTheDocument();
+
+    const dueContainer = screen.getByTestId("due-cell");
+    expect(
+      within(dueContainer).queryByText("Выполнена досрочно на 2 дня", {
+        selector: "span:not(.sr-only)",
+      }),
+    ).toBeNull();
+    const countdownLabel = within(dueContainer).getByText(
       "До дедлайна 2 дня 0 часов 0 минут",
     );
     expect(countdownLabel).toBeInTheDocument();

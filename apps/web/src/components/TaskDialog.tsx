@@ -260,8 +260,33 @@ const hasDimensionValues = (
     (value) => typeof value === "string" && value.trim().length > 0,
   );
 
+const START_OFFSET_MS = 60 * 60 * 1000;
+
+const coerceTaskId = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const str = String(value).trim();
+    return str ? str : null;
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toString" in value &&
+    typeof (value as { toString(): unknown }).toString === "function"
+  ) {
+    const str = String((value as { toString(): unknown }).toString()).trim();
+    return str ? str : null;
+  }
+  return null;
+};
+
 export default function TaskDialog({ onClose, onSave, id }: Props) {
-  const isEdit = Boolean(id);
+  const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
+    () => id ?? null,
+  );
+  const isEdit = Boolean(resolvedTaskId);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canEditAll = isAdmin || user?.role === "manager";
@@ -351,11 +376,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const computeDefaultDates = React.useCallback(
     (base?: Date) => {
       const reference = base ? new Date(base) : new Date();
-      const start = formatInputDate(reference);
-      const due = formatInputDate(
-        new Date(reference.getTime() + DEFAULT_DUE_OFFSET_MS),
+      const plannedStart = new Date(reference.getTime() + START_OFFSET_MS);
+      const dueReference = new Date(
+        plannedStart.getTime() + DEFAULT_DUE_OFFSET_MS,
       );
-      return { start, due };
+      return {
+        start: formatInputDate(plannedStart),
+        due: formatInputDate(dueReference),
+      };
     },
     [formatInputDate, DEFAULT_DUE_OFFSET_MS],
   );
@@ -416,6 +444,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   // выбранная кнопка действия
   const [selectedAction, setSelectedAction] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [startDateNotice, setStartDateNotice] = React.useState<string | null>(
+    null,
+  );
+  React.useEffect(() => {
+    if (id) {
+      setResolvedTaskId(id);
+    }
+  }, [id]);
   const { ref: titleFieldRef, ...titleFieldRest } = register("title");
   const titleValue = watch("title");
   const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -614,6 +650,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         cargoWeight: weightValue,
         showDimensions: hasDims,
       };
+      setStartDateNotice(null);
+      const fetchedId =
+        coerceTaskId((taskData as Record<string, unknown>)._id) ||
+        coerceTaskId((taskData as Record<string, unknown>).id);
+      if (fetchedId) {
+        setResolvedTaskId(fetchedId);
+      }
     },
     [
       DEFAULT_TASK_TYPE,
@@ -669,9 +712,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
   React.useEffect(() => {
+    const targetId = id ?? resolvedTaskId;
     setEditing(true);
-    if (isEdit && id) {
-      authFetch(`/api/v1/tasks/${id}`)
+    if (isEdit && targetId) {
+      authFetch(`/api/v1/tasks/${targetId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (!d) return;
@@ -688,6 +732,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setRequestId(t.task_number || t.request_id);
           setCreated(new Date(t.createdAt).toISOString());
           setHistory(normalizeHistory(t.history));
+          setResolvedTaskId((prev) => prev ?? coerceTaskId(t._id));
+          setStartDateNotice(null);
         });
     } else {
       const createdAt = new Date();
@@ -696,6 +742,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCreated(createdAt.toISOString());
       setCompletedAt("");
       setHistory([]);
+      setResolvedTaskId(null);
       authFetch("/api/v1/tasks/report/summary")
         .then((r) => (r.ok ? r.json() : { count: 0 }))
         .then((s) => {
@@ -703,6 +750,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setRequestId(`ERM_${num}`);
         });
       setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
+      const startInstant = parseIsoDate(defaultStartDate);
+      setStartDateNotice(
+        startInstant ? formatHistoryInstant(startInstant) : null,
+      );
       initialRef.current = {
         title: "",
         taskType: DEFAULT_TASK_TYPE,
@@ -749,6 +800,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [
     id,
     isEdit,
+    resolvedTaskId,
     user,
     DEFAULT_TASK_TYPE,
     DEFAULT_PRIORITY,
@@ -761,6 +813,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     reset,
     setDueOffset,
   ]);
+
+  React.useEffect(() => {
+    if (isEdit) {
+      if (startDateNotice) {
+        setStartDateNotice(null);
+      }
+      return;
+    }
+    const initialStart = initialRef.current?.startDate;
+    if (!initialStart || !startDateNotice) {
+      return;
+    }
+    if (startDateValue && startDateValue !== initialStart) {
+      setStartDateNotice(null);
+    }
+  }, [isEdit, startDateNotice, startDateValue]);
 
   React.useEffect(() => {
     if (canEditAll) {
@@ -777,15 +845,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [user, canEditAll]);
 
   React.useEffect(() => {
-    if (!isEdit || !id) return;
-    authFetch(`/api/v1/tasks/${id}`)
+    const targetId = id ?? resolvedTaskId;
+    if (!isEdit || !targetId) return;
+    authFetch(`/api/v1/tasks/${targetId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;
         const t = d.task || d;
         applyTaskDetails(t, d.users as Record<string, UserBrief>);
       });
-  }, [id, isEdit, applyTaskDetails]);
+  }, [id, resolvedTaskId, isEdit, applyTaskDetails]);
 
   const handleStartLink = async (v: string) => {
     setStartLink(v);
@@ -958,15 +1027,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       if (routeLink) payload.google_route_url = routeLink;
       const sendPayload = { ...payload, attachments };
       let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
-      let savedId = id || "";
-      if (isEdit && id) {
-        const response = await updateTask(id, sendPayload);
+      let savedId = resolvedTaskId || "";
+      if (isEdit && resolvedTaskId) {
+        const response = await updateTask(resolvedTaskId, sendPayload);
         if (!response.ok) throw new Error("SAVE_FAILED");
         const updated = (await response.json()) as
           | (Partial<Task> & Record<string, unknown>)
           | null;
         savedTask = updated;
-        savedId = (updated?._id as string) || id;
+        savedId = (updated?._id as string) || resolvedTaskId;
       } else {
         const created = await createTask(sendPayload);
         if (!created) throw new Error("SAVE_FAILED");
@@ -981,6 +1050,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         users?: Record<string, UserBrief>;
       } | null = null;
       if (savedId) {
+        setResolvedTaskId(savedId);
         try {
           detail = await authFetch(`/api/v1/tasks/${savedId}`).then((r) =>
             r.ok ? r.json() : null,
@@ -1032,8 +1102,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [pendingDoneOption, setPendingDoneOption] = React.useState("");
 
   const handleDelete = async () => {
-    if (!id) return;
-    await deleteTask(id);
+    if (!resolvedTaskId) return;
+    await deleteTask(resolvedTaskId);
     if (onSave) onSave(null);
     onClose();
     setAlertMsg(t("taskDeleted"));
@@ -1073,14 +1143,14 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const acceptTask = async () => {
-    if (!id) return;
+    if (!resolvedTaskId) return;
     const prev = status;
     setStatus("В работе");
     const [data] = await Promise.all([
-      updateTask(id, { status: "В работе" }).then((r) =>
+      updateTask(resolvedTaskId, { status: "В работе" }).then((r) =>
         r.ok ? r.json() : null,
       ),
-      updateTaskStatus(id, "В работе"),
+      updateTaskStatus(resolvedTaskId, "В работе"),
     ]);
     if (data) {
       if (onSave) onSave(data);
@@ -1092,16 +1162,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const completeTask = async (opt: string) => {
-    if (!id) return;
+    if (!resolvedTaskId) return;
     const prev = status;
     setStatus("Выполнена");
     const [data] = await Promise.all([
-      updateTask(id, {
+      updateTask(resolvedTaskId, {
         status: "Выполнена",
         completed_at: new Date().toISOString(),
         completion_result: opt,
       }).then((r) => (r.ok ? r.json() : null)),
-      updateTaskStatus(id, "Выполнена"),
+      updateTaskStatus(resolvedTaskId, "Выполнена"),
     ]);
     if (data) {
       const completedValue = toIsoString(
@@ -1202,6 +1272,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing}
               />
+              {!isEdit && startDateNotice ? (
+                <p className="mt-1 text-xs font-medium text-amber-600">
+                  {t("startDateAutoNotice", { date: startDateNotice })}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="block text-sm font-medium" htmlFor="task-dialog-due-date">

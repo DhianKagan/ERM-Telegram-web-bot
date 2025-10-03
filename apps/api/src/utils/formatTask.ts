@@ -1,16 +1,8 @@
 // Форматирование задачи в виде расширенного блока MarkdownV2
-// Основные модули: Intl.DateTimeFormat, userLink, config, mdEscape
+// Основные модули: Intl.DateTimeFormat, userLink, config, mdEscape, htmlparser2
 
-function stripTags(html: unknown): string {
-  let prev: string;
-  let out = String(html);
-  do {
-    prev = out;
-    out = out.replace(/<[^>]*>/g, '');
-  } while (out !== prev);
-  return out;
-}
-
+import { parseDocument } from 'htmlparser2';
+import type { DataNode, Element, Node as DomNode } from 'domhandler';
 import userLink from './userLink';
 import { escapeMarkdownV2 as mdEscape } from './mdEscape';
 import {
@@ -188,6 +180,175 @@ const ensureInlineMode = (url: string): string => {
     return url;
   }
   return `${url}${url.includes('?') ? '&' : '?'}mode=inline`;
+};
+
+type ListState = { type: 'ul' | 'ol'; index: number };
+
+type RenderContext = {
+  listStack: ListState[];
+  inPre: boolean;
+};
+
+const escapeInlineCode = (value: string) => value.replace(/[\\`]/g, '\\$&');
+
+const renderNodes = (nodes: DomNode[] | undefined, context: RenderContext): string => {
+  if (!nodes?.length) return '';
+  return nodes
+    .map((node) => renderNode(node, context))
+    .filter(Boolean)
+    .join('');
+};
+
+const wrapInline = (value: string, wrapper: string) => {
+  const trimmed = value.trim();
+  return trimmed ? `${wrapper}${trimmed}${wrapper}` : '';
+};
+
+const renderNode = (node: DomNode, context: RenderContext): string => {
+  if (node.type === 'text') {
+    const data = (node as DataNode).data ?? '';
+    if (!data) return '';
+    if (context.inPre) {
+      return data;
+    }
+    const normalized = data.replace(/\s+/g, ' ');
+    if (!normalized.trim()) {
+      return normalized.trim() ? normalized : ' ';
+    }
+    return mdEscape(normalized);
+  }
+  if (node.type !== 'tag') {
+    return '';
+  }
+  const element = node as Element;
+  const name = element.name.toLowerCase();
+  switch (name) {
+    case 'br':
+      return '\n';
+    case 'p':
+    case 'div':
+    case 'section':
+    case 'article':
+    case 'header':
+    case 'footer':
+    case 'main':
+    case 'aside': {
+      const body = renderNodes(element.children as DomNode[], context).trim();
+      return body ? `\n${body}\n\n` : '\n';
+    }
+    case 'strong':
+    case 'b':
+      return wrapInline(renderNodes(element.children as DomNode[], context), '*');
+    case 'em':
+    case 'i':
+      return wrapInline(renderNodes(element.children as DomNode[], context), '_');
+    case 'u':
+      return wrapInline(renderNodes(element.children as DomNode[], context), '__');
+    case 's':
+    case 'del':
+    case 'strike':
+      return wrapInline(renderNodes(element.children as DomNode[], context), '~');
+    case 'code': {
+      const content = renderNodes(element.children as DomNode[], {
+        ...context,
+        inPre: context.inPre,
+      });
+      if (context.inPre) {
+        return escapeInlineCode(content);
+      }
+      const trimmed = content.trim();
+      return trimmed ? `\`${escapeInlineCode(trimmed)}\`` : '';
+    }
+    case 'pre': {
+      const preContent = renderNodes(element.children as DomNode[], {
+        ...context,
+        inPre: true,
+      })
+        .replace(/\r\n?/g, '\n')
+        .trim();
+      if (!preContent) {
+        return '';
+      }
+      return `\n\`\`\`\n${preContent}\n\`\`\`\n\n`;
+    }
+    case 'ul':
+    case 'ol': {
+      const nextContext: RenderContext = {
+        ...context,
+        listStack: [...context.listStack, { type: name as 'ul' | 'ol', index: 0 }],
+      };
+      const items = (element.children as DomNode[]).map((child) =>
+        renderNode(child, nextContext),
+      );
+      const content = items.filter((item) => item.trim().length > 0).join('\n');
+      return content ? `\n${content}\n` : '';
+    }
+    case 'li': {
+      const stack = context.listStack;
+      const current = stack[stack.length - 1];
+      if (current) {
+        current.index += 1;
+      }
+      const body = renderNodes(element.children as DomNode[], context).trim();
+      if (!body) return '';
+      const indent = '  '.repeat(Math.max(stack.length - 1, 0));
+      const marker =
+        current && current.type === 'ol'
+          ? `${current.index}. `
+          : '• ';
+      const lines = body.split(/\n+/);
+      const firstLine = `${indent}${marker}${lines[0].trimStart()}`;
+      const rest = lines
+        .slice(1)
+        .map((line) => `${indent}  ${line.trimStart()}`)
+        .join('\n');
+      return rest ? `${firstLine}\n${rest}` : firstLine;
+    }
+    case 'blockquote': {
+      const content = renderNodes(element.children as DomNode[], context).trim();
+      if (!content) return '';
+      return (
+        '\n' +
+        content
+          .split('\n')
+          .map((line) => `> ${line.trim()}`)
+          .join('\n') +
+        '\n\n'
+      );
+    }
+    case 'a': {
+      const href = element.attribs?.href?.trim();
+      const labelRaw = renderNodes(element.children as DomNode[], context).trim();
+      if (!href) {
+        return labelRaw;
+      }
+      const label = labelRaw || mdEscape(href);
+      return `[${label}](${mdEscape(href)})`;
+    }
+    default:
+      return renderNodes(element.children as DomNode[], context);
+  }
+};
+
+const finalizeMarkdown = (value: string): string =>
+  value
+    .replace(/\u00a0/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\s+$/g, '')
+    .replace(/^\s+/g, '')
+    .trim();
+
+const convertHtmlToMarkdown = (html: string): string => {
+  const trimmed = typeof html === 'string' ? html.trim() : '';
+  if (!trimmed) return '';
+  const document = parseDocument(trimmed, { decodeEntities: true });
+  const rendered = renderNodes(document.children as DomNode[], {
+    listStack: [],
+    inPre: false,
+  });
+  return finalizeMarkdown(rendered);
 };
 
 const extractInlineImages = (html: string): {
@@ -405,10 +566,10 @@ export default function formatTask(
   if (task.task_description) {
     const { cleanedHtml, images } = extractInlineImages(task.task_description);
     inlineImages.push(...images);
-    const text = stripTags(cleanedHtml);
     const lines: string[] = [];
-    if (text.trim()) {
-      lines.push(mdEscape(text.trim()));
+    const formattedDescription = convertHtmlToMarkdown(cleanedHtml);
+    if (formattedDescription) {
+      lines.push(formattedDescription);
     }
     if (images.length) {
       const header = images.length > 1 ? 'Изображения' : 'Изображение';

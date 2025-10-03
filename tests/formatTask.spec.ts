@@ -133,5 +133,21 @@ describe('formatTask', () => {
     expect(headerLines[1]).toBe('Выполнена с опозданием на 2 дня 2 часа');
     expect(headerSection).toContain('Выполнена с опозданием на 2 дня 2 часа');
   });
+
+  it('конвертирует форматирование описания из HTML в MarkdownV2', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439055',
+      task_number: 'FMT-01',
+      task_description:
+        '<p><strong>Важно:</strong> завершить проверку</p><ul><li>Подготовить отчёт</li><li><em>Согласовать</em> детали</li></ul>',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const descriptionSection = text.split('📝 *Описание*')[1];
+
+    expect(descriptionSection).toContain('*Важно:* завершить проверку');
+    expect(descriptionSection).toContain('• Подготовить отчёт');
+    expect(descriptionSection).toContain('• _Согласовать_ детали');
+  });
 });
 

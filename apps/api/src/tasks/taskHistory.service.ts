@@ -191,19 +191,9 @@ function formatFieldName(field: string): string {
   return mdEscape(mapped);
 }
 
-const dateFieldNames = new Set(['deadline', 'due', 'completed_at']);
-
-function isDateField(field: string | undefined): boolean {
-  return field ? dateFieldNames.has(field) : false;
-}
-
-function formatFieldValue(value: unknown, field?: string): string {
+function formatFieldValue(value: unknown): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
-
-  if (isDateField(field)) {
-    return escaped.replace(/\\\.(?=\d{4}\b)/g, '.');
-  }
 
   return escaped;
 }
@@ -238,14 +228,14 @@ export function describeAction(entry: HistoryEntry): string | null {
   }
   if (changedKeys.every((key) => key === 'status')) {
     const fieldName = formatFieldName('status');
-    const previous = formatFieldValue(from.status, 'status');
-    const next = formatFieldValue(to.status, 'status');
+    const previous = formatFieldValue(from.status);
+    const next = formatFieldValue(to.status);
     return `${fieldName}: «${previous}» → «${next}»`;
   }
   const describeField = (key: string): string => {
     const fieldName = formatFieldName(key);
-    const previous = formatFieldValue(from[key], key);
-    const next = formatFieldValue(to[key], key);
+    const previous = formatFieldValue(from[key]);
+    const next = formatFieldValue(to[key]);
     return `${fieldName}: «${previous}» → «${next}»`;
   };
   if (changedKeys.length === 1) {

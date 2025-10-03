@@ -16,6 +16,7 @@ jest.mock('../apps/api/src/bot/bot', () => {
   const sendMessageMock = jest.fn();
   const sendPhotoMock = jest.fn();
   const sendMediaGroupMock = jest.fn();
+  const sendDocumentMock = jest.fn();
   const editMessageTextMock = jest.fn();
   const editMessageMediaMock = jest.fn();
   const deleteMessageMock = jest.fn();
@@ -25,6 +26,7 @@ jest.mock('../apps/api/src/bot/bot', () => {
         sendMessage: sendMessageMock,
         sendPhoto: sendPhotoMock,
         sendMediaGroup: sendMediaGroupMock,
+        sendDocument: sendDocumentMock,
         editMessageText: editMessageTextMock,
         editMessageMedia: editMessageMediaMock,
         deleteMessage: deleteMessageMock,
@@ -33,6 +35,7 @@ jest.mock('../apps/api/src/bot/bot', () => {
     __sendMessageMock: sendMessageMock,
     __sendPhotoMock: sendPhotoMock,
     __sendMediaGroupMock: sendMediaGroupMock,
+    __sendDocumentMock: sendDocumentMock,
     __editMessageTextMock: editMessageTextMock,
     __editMessageMediaMock: editMessageMediaMock,
     __deleteMessageMock: deleteMessageMock,
@@ -43,6 +46,7 @@ const {
   __sendMessageMock: sendMessageMock,
   __sendPhotoMock: sendPhotoMock,
   __sendMediaGroupMock: sendMediaGroupMock,
+  __sendDocumentMock: sendDocumentMock,
   __editMessageTextMock: editMessageTextMock,
   __editMessageMediaMock: editMessageMediaMock,
   __deleteMessageMock: deleteMessageMock,
@@ -50,6 +54,7 @@ const {
   __sendMessageMock: jest.Mock;
   __sendPhotoMock: jest.Mock;
   __sendMediaGroupMock: jest.Mock;
+  __sendDocumentMock: jest.Mock;
   __editMessageTextMock: jest.Mock;
   __editMessageMediaMock: jest.Mock;
   __deleteMessageMock: jest.Mock;
@@ -168,6 +173,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(events).toEqual(['main', 'photo', 'youtube', 'photo', 'status']);
     expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).not.toHaveBeenCalled();
 
     const [, youtubeText, youtubeOptions] = sendMessageMock.mock.calls[1];
     const expectedYoutubeText = `▶️ [${escapeMd('Видео')}](${escapeMd(
@@ -199,6 +205,107 @@ describe('notifyTaskCreated вложения', () => {
       telegram_message_id: 101,
       telegram_status_message_id: 303,
       telegram_attachments_message_ids: [401, 202, 402],
+    });
+  });
+
+  it('переходит на sendDocument для неподдерживаемых типов изображений', async () => {
+    const events: string[] = [];
+    sendMessageMock.mockImplementation((_chat, text: string) => {
+      if (text.startsWith('Задача')) {
+        events.push('status');
+        return Promise.resolve({ message_id: 303 });
+      }
+      events.push('main');
+      return Promise.resolve({ message_id: 101 });
+    });
+    const photoQueue = [401, 499];
+    sendPhotoMock.mockImplementation(() => {
+      events.push('photo');
+      const nextId = photoQueue.shift() ?? 450;
+      return Promise.resolve({ message_id: nextId });
+    });
+    const documentQueue = [601, 602];
+    sendDocumentMock.mockImplementation(() => {
+      events.push('document');
+      const nextId = documentQueue.shift() ?? 699;
+      return Promise.resolve({ message_id: nextId });
+    });
+
+    const appBaseUrl = (process.env.APP_URL || 'https://example.com').replace(
+      /\/+$/,
+      '',
+    );
+
+    const attachments = [
+      {
+        url: '/api/v1/files/68dccf5809cd3805f91e2fab',
+        type: 'image/jpeg',
+        name: 'preview.jpg',
+      },
+      { url: '/api/v1/files/raw.heic', type: 'image/heic', name: 'raw.heic' },
+      {
+        url: 'https://cdn.example.com/vector.svg',
+        type: 'image/svg+xml',
+        name: 'vector.svg',
+      },
+      { url: '/files/result.png', type: 'image/png', name: 'result.png' },
+    ];
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439012',
+      task_number: 'B-34',
+      title: 'Fallback изображений',
+      attachments,
+      telegram_topic_id: 888,
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-2',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).notifyTaskCreated(task, 55);
+
+    expect(events).toEqual([
+      'main',
+      'photo',
+      'document',
+      'document',
+      'photo',
+      'status',
+    ]);
+    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).toHaveBeenCalledTimes(2);
+
+    const documentCalls = sendDocumentMock.mock.calls;
+    expect(documentCalls[0][1]).toBe(`${appBaseUrl}/api/v1/files/raw.heic`);
+    expect(documentCalls[1][1]).toBe('https://cdn.example.com/vector.svg');
+    documentCalls.forEach(([, , options]) => {
+      expect(options).toMatchObject({
+        reply_parameters: {
+          message_id: 101,
+          allow_sending_without_reply: true,
+        },
+      });
+    });
+
+    const photoCalls = sendPhotoMock.mock.calls;
+    expect(photoCalls).toHaveLength(2);
+    expect(photoCalls[1][1]).toBe(`${appBaseUrl}/files/result.png`);
+
+    expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439012', {
+      telegram_message_id: 101,
+      telegram_status_message_id: 303,
+      telegram_attachments_message_ids: [401, 601, 602, 499],
     });
   });
 

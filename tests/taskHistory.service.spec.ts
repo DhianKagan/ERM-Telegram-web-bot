@@ -35,7 +35,7 @@ beforeEach(() => {
 
 test('возвращает сообщение истории со временем, действием и автором', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: 555,
+    telegram_history_message_id: 555,
     telegram_topic_id: 42,
     history: [
       {
@@ -73,7 +73,7 @@ test('возвращает сообщение истории со времене
 
 test('форматирует срок без лишнего экранирования годов', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: null,
+    telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2023-11-02T12:30:00Z'),
@@ -97,7 +97,7 @@ test('форматирует срок без лишнего экранирова
 
 test('форматирует 03.10.2025 15:35 без ошибок Markdown', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: null,
+    telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2025-10-03T12:35:00Z'),
@@ -124,7 +124,7 @@ test('форматирует 03.10.2025 15:35 без ошибок Markdown', asy
 
 test('экранирует точки в датах и другие специальные символы', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: null,
+    telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2025-09-30T20:44:00Z'),
@@ -152,7 +152,7 @@ test('экранирует точки в датах и другие специа
 
 test('не снимает экранирование точек в значениях полей', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: null,
+    telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2025-10-01T16:48:00Z'),
@@ -178,7 +178,7 @@ test('не снимает экранирование точек в значен�
 
 test('экранирует точки в поле выполнено', async () => {
   const lean = jest.fn().mockResolvedValue({
-    telegram_status_message_id: null,
+    telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2025-10-02T15:09:00Z'),

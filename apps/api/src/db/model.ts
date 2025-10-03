@@ -236,7 +236,12 @@ export interface TaskAttrs {
   payment_amount?: number;
   telegram_topic_id?: number;
   telegram_message_id?: number;
+  // Устаревшее поле, сохраняем для совместимости миграции
   telegram_status_message_id?: number;
+  // Сообщение с подробной историей задачи
+  telegram_history_message_id?: number;
+  // Краткое сводное сообщение по задаче
+  telegram_summary_message_id?: number;
   telegram_attachments_message_ids?: number[];
   deadline_reminder_sent_at?: Date;
   time_spent?: number;
@@ -346,6 +351,8 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_topic_id: Number,
     telegram_message_id: Number,
     telegram_status_message_id: Number,
+    telegram_history_message_id: Number,
+    telegram_summary_message_id: Number,
     telegram_attachments_message_ids: [Number],
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },

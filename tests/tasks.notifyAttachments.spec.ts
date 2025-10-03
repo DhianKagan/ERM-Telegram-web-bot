@@ -620,6 +620,172 @@ describe('syncTelegramTaskMessage вложения', () => {
     jest.clearAllMocks();
   });
 
+  it('обновляет изображение через editMessageMedia без пересоздания сообщений', async () => {
+    editMessageTextMock.mockResolvedValue(undefined);
+    editMessageMediaMock.mockResolvedValue({});
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [404],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/new-preview.jpg',
+          type: 'image/jpeg',
+          name: 'new-preview',
+        },
+        {
+          url: 'https://cdn.example.com/new-extra.jpg',
+          type: 'image/jpeg',
+          name: 'new-extra',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+    taskFindByIdMock.mockResolvedValue({
+      toObject: () => ({ ...freshPlain }),
+    });
+
+    const previousState = {
+      ...freshPlain,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/old-preview.jpg',
+          type: 'image/jpeg',
+          name: 'old-preview',
+        },
+        {
+          url: 'https://cdn.example.com/old-extra.jpg',
+          type: 'image/jpeg',
+          name: 'old-extra',
+        },
+      ],
+    };
+
+    const controller = new TasksController({} as any);
+
+    const previousExtras = (controller as any).collectSendableAttachments(
+      previousState,
+      undefined,
+    );
+    const nextExtras = (controller as any).collectSendableAttachments(
+      freshPlain,
+      undefined,
+    );
+    expect(previousExtras.extras).toEqual([
+      { kind: 'image', url: 'https://cdn.example.com/old-extra.jpg' },
+    ]);
+    expect(nextExtras.extras).toEqual([
+      { kind: 'image', url: 'https://cdn.example.com/new-extra.jpg' },
+    ]);
+
+    await (controller as any).syncTelegramTaskMessage(
+      '507f1f77bcf86cd799439011',
+      previousState,
+    );
+
+    expect(editMessageMediaMock).toHaveBeenCalledTimes(1);
+    const [chat, messageId, , media] = editMessageMediaMock.mock.calls[0];
+    expect(chat).toBe(process.env.CHAT_ID);
+    expect(messageId).toBe(404);
+    expect(media).toMatchObject({
+      type: 'photo',
+      media: 'https://cdn.example.com/new-extra.jpg',
+    });
+    expect(deleteMessageMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).not.toHaveBeenCalled();
+  });
+
+  it('переотправляет вложения при ошибке editMessageMedia', async () => {
+    editMessageTextMock.mockResolvedValue(undefined);
+    editMessageMediaMock.mockRejectedValue(new Error('Bad Request: INTERNAL_ERROR'));
+    deleteMessageMock.mockResolvedValue(undefined);
+    sendPhotoMock.mockResolvedValue({ message_id: 601 });
+
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [404],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/new-preview.jpg',
+          type: 'image/jpeg',
+          name: 'new-preview',
+        },
+        {
+          url: 'https://cdn.example.com/new-extra.jpg',
+          type: 'image/jpeg',
+          name: 'new-extra',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+    taskFindByIdMock.mockResolvedValue({
+      toObject: () => ({ ...freshPlain }),
+    });
+
+    const previousState = {
+      ...freshPlain,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/old-preview.jpg',
+          type: 'image/jpeg',
+          name: 'old-preview',
+        },
+        {
+          url: 'https://cdn.example.com/old-extra.jpg',
+          type: 'image/jpeg',
+          name: 'old-extra',
+        },
+      ],
+    };
+
+    const controller = new TasksController({} as any);
+
+    const previousExtras = (controller as any).collectSendableAttachments(
+      previousState,
+      undefined,
+    );
+    const nextExtras = (controller as any).collectSendableAttachments(
+      freshPlain,
+      undefined,
+    );
+    expect(previousExtras.extras).toEqual([
+      { kind: 'image', url: 'https://cdn.example.com/old-extra.jpg' },
+    ]);
+    expect(nextExtras.extras).toEqual([
+      { kind: 'image', url: 'https://cdn.example.com/new-extra.jpg' },
+    ]);
+
+    await (controller as any).syncTelegramTaskMessage(
+      '507f1f77bcf86cd799439011',
+      previousState,
+    );
+
+    expect(editMessageMediaMock).toHaveBeenCalledTimes(1);
+    expect(deleteMessageMock).toHaveBeenCalledWith(expect.anything(), 404);
+    expect(deleteMessageMock).toHaveBeenCalledTimes(1);
+    expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    expect(updateTaskMock).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({ telegram_attachments_message_ids: [601] }),
+    );
+  });
+
   it('обновляет существующее сообщение вложения без создания нового', async () => {
     editMessageTextMock.mockResolvedValue(undefined);
     editMessageMediaMock.mockResolvedValue(undefined);

@@ -119,9 +119,6 @@ type EditMessageTextOptions = NonNullable<
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
 >;
-type SendMediaGroupOptions = NonNullable<
-  Parameters<typeof bot.telegram.sendMediaGroup>[2]
->;
 type SendDocumentOptions = NonNullable<
   Parameters<typeof bot.telegram.sendDocument>[2]
 >;
@@ -525,19 +522,6 @@ export default class TasksController {
       }
       return options;
     };
-    const mediaGroupOptionsBase = () => {
-      const options: SendMediaGroupOptions = {};
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      if (replyTo) {
-        options.reply_parameters = {
-          message_id: replyTo,
-          allow_sending_without_reply: true,
-        };
-      }
-      return options;
-    };
     const messageOptionsBase = () => {
       const options: SendMessageOptions = {
         parse_mode: 'MarkdownV2',
@@ -572,36 +556,40 @@ export default class TasksController {
     const resolvePhotoInput = (url: string) =>
       this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
 
+    // Telegram разрешает обновлять медиа в альбоме только при сохранении типа,
+    // поэтому изображения отправляем по одному сообщению, чтобы editMessageMedia
+    // гарантированно работал для набора collectSendableAttachments.
     const pendingImages: { url: string; caption?: string }[] = [];
     const flushImages = async () => {
-      const sendSingleImage = async (
-        original: { url: string; caption?: string },
-        resolved?: PhotoInput,
-      ) => {
-        const caption = original.caption;
-        const sendPhotoAttempt = async (media: PhotoInput) => {
+      while (pendingImages.length) {
+        const current = pendingImages.shift();
+        if (!current) {
+          continue;
+        }
+        const caption = current.caption;
+        const sendPhotoAttempt = async () => {
           const options = photoOptionsBase();
           if (caption) {
             options.caption = escapeMarkdownV2(caption);
             options.parse_mode = 'MarkdownV2';
           }
+          const media = await resolvePhotoInput(current.url);
           const response = await bot.telegram.sendPhoto(chat, media, options);
           if (response?.message_id) {
             sentMessageIds.push(response.message_id);
           }
         };
         try {
-          await sendPhotoAttempt(resolved ?? (await resolvePhotoInput(original.url)));
-          return;
+          await sendPhotoAttempt();
+          continue;
         } catch (error) {
           const photoErrorCode = this.extractPhotoErrorCode(error);
           if (!photoErrorCode) {
             throw error;
           }
           console.warn(
-            `Telegram не смог обработать изображение (код: ${photoErrorCode}), ` +
-              'отправляем как документ',
-            original.url,
+            `Telegram не смог обработать изображение (код: ${photoErrorCode}), отправляем как документ`,
+            current.url,
             error,
           );
           const documentOptions = documentOptionsBase();
@@ -609,7 +597,7 @@ export default class TasksController {
             documentOptions.caption = escapeMarkdownV2(caption);
             documentOptions.parse_mode = 'MarkdownV2';
           }
-          const fallback = await resolvePhotoInput(original.url);
+          const fallback = await resolvePhotoInput(current.url);
           const response = await bot.telegram.sendDocument(
             chat,
             fallback,
@@ -617,58 +605,6 @@ export default class TasksController {
           );
           if (response?.message_id) {
             sentMessageIds.push(response.message_id);
-          }
-          return;
-        }
-      };
-
-      while (pendingImages.length) {
-        const chunk = pendingImages.splice(0, 10);
-        const prepared = await Promise.all(
-          chunk.map(async (item) => ({
-            original: item,
-            media: await resolvePhotoInput(item.url),
-          })),
-        );
-        if (prepared.length === 1) {
-          const [single] = prepared;
-          await sendSingleImage(single.original, single.media);
-          continue;
-        }
-        const media = prepared.map((item) => ({
-          type: 'photo' as const,
-          media: item.media,
-          ...(item.original.caption
-            ? {
-                caption: escapeMarkdownV2(item.original.caption),
-                parse_mode: 'MarkdownV2' as const,
-              }
-            : {}),
-        }));
-        try {
-          const response = await bot.telegram.sendMediaGroup(
-            chat,
-            media,
-            mediaGroupOptionsBase(),
-          );
-          if (Array.isArray(response)) {
-            response.forEach((entry) => {
-              if (entry?.message_id) {
-                sentMessageIds.push(entry.message_id);
-              }
-            });
-          }
-        } catch (error) {
-          const photoErrorCode = this.extractPhotoErrorCode(error);
-          if (!photoErrorCode) {
-            throw error;
-          }
-          console.warn(
-            `Telegram не смог обработать медиагруппу (код: ${photoErrorCode}), отправляем изображения по одному`,
-            error,
-          );
-          for (const item of chunk) {
-            await sendSingleImage(item);
           }
         }
       }

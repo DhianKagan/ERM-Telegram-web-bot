@@ -730,7 +730,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             return list;
           });
           setRequestId(t.task_number || t.request_id);
-          setCreated(new Date(t.createdAt).toISOString());
+          const createdSource =
+            ((t as Record<string, unknown>).createdAt as unknown) ??
+            ((t as Record<string, unknown>).created_at as unknown) ??
+            null;
+          const createdIso = toIsoString(createdSource);
+          const createdDate = parseIsoDateMemo(createdIso);
+          if (createdDate) {
+            setCreated(createdDate.toISOString());
+          } else if (createdIso) {
+            setCreated(createdIso);
+          } else {
+            setCreated((prev) => prev || new Date().toISOString());
+          }
           setHistory(normalizeHistory(t.history));
           setResolvedTaskId((prev) => prev ?? coerceTaskId(t._id));
           setStartDateNotice(null);
@@ -810,6 +822,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     DEFAULT_STATUS,
     DEFAULT_DUE_OFFSET_MS,
     computeDefaultDates,
+    parseIsoDateMemo,
     reset,
     setDueOffset,
   ]);

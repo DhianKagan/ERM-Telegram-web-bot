@@ -340,23 +340,69 @@ export default class TasksController {
     }
   }
 
-  private isImageProcessFailedError(error: unknown): boolean {
+  private readonly botApiPhotoErrorPatterns: RegExp[] = [
+    /\bIMAGE_PROCESS_FAILED\b/,
+    /\bPHOTO_[A-Z_]+\b/,
+    /\bFILE_TOO_BIG\b/,
+    /\bFILE_UPLOAD_[A-Z_]+\b/,
+    /\bFILE_SIZE_[A-Z_]+\b/,
+  ];
+
+  private extractPhotoErrorCode(error: unknown): string | null {
     if (!error || typeof error !== 'object') {
-      return false;
+      return null;
     }
-    const { response, description, message } = error as {
+    const {
+      response,
+      description,
+      message,
+      cause,
+    } = error as {
       response?: { description?: unknown };
       description?: unknown;
       message?: unknown;
+      cause?: unknown;
     };
-    const candidates = [
-      typeof response?.description === 'string' ? response.description : null,
-      typeof description === 'string' ? description : null,
-      typeof message === 'string' ? message : null,
-    ];
-    return candidates.some(
-      (candidate) => candidate !== null && candidate.includes('IMAGE_PROCESS_FAILED'),
-    );
+    const candidates = new Set<string>();
+    if (typeof response?.description === 'string') {
+      candidates.add(response.description);
+    }
+    if (typeof description === 'string') {
+      candidates.add(description);
+    }
+    if (typeof message === 'string') {
+      candidates.add(message);
+    }
+    if (error instanceof Error && typeof error.message === 'string') {
+      candidates.add(error.message);
+    }
+    const causeDescription =
+      cause && typeof cause === 'object'
+        ? (cause as { description?: unknown; message?: unknown }).description
+        : undefined;
+    if (typeof causeDescription === 'string') {
+      candidates.add(causeDescription);
+    }
+    const causeMessage =
+      cause && typeof cause === 'object'
+        ? (cause as { message?: unknown }).message
+        : undefined;
+    if (typeof causeMessage === 'string') {
+      candidates.add(causeMessage);
+    }
+    for (const candidate of candidates) {
+      for (const pattern of this.botApiPhotoErrorPatterns) {
+        const match = candidate.match(pattern);
+        if (match && match[0]) {
+          return match[0];
+        }
+      }
+    }
+    return null;
+  }
+
+  private isImageProcessFailedError(error: unknown): boolean {
+    return this.extractPhotoErrorCode(error) !== null;
   }
 
   private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
@@ -547,28 +593,31 @@ export default class TasksController {
           await sendPhotoAttempt(resolved ?? (await resolvePhotoInput(original.url)));
           return;
         } catch (error) {
-          if (!this.isImageProcessFailedError(error)) {
+          const photoErrorCode = this.extractPhotoErrorCode(error);
+          if (!photoErrorCode) {
             throw error;
           }
           console.warn(
-            'Telegram не смог обработать изображение, отправляем как документ',
+            `Telegram не смог обработать изображение (код: ${photoErrorCode}), ` +
+              'отправляем как документ',
             original.url,
             error,
           );
-        }
-        const documentOptions = documentOptionsBase();
-        if (caption) {
-          documentOptions.caption = escapeMarkdownV2(caption);
-          documentOptions.parse_mode = 'MarkdownV2';
-        }
-        const fallback = await resolvePhotoInput(original.url);
-        const response = await bot.telegram.sendDocument(
-          chat,
-          fallback,
-          documentOptions,
-        );
-        if (response?.message_id) {
-          sentMessageIds.push(response.message_id);
+          const documentOptions = documentOptionsBase();
+          if (caption) {
+            documentOptions.caption = escapeMarkdownV2(caption);
+            documentOptions.parse_mode = 'MarkdownV2';
+          }
+          const fallback = await resolvePhotoInput(original.url);
+          const response = await bot.telegram.sendDocument(
+            chat,
+            fallback,
+            documentOptions,
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+          return;
         }
       };
 
@@ -609,11 +658,12 @@ export default class TasksController {
             });
           }
         } catch (error) {
-          if (!this.isImageProcessFailedError(error)) {
+          const photoErrorCode = this.extractPhotoErrorCode(error);
+          if (!photoErrorCode) {
             throw error;
           }
           console.warn(
-            'Telegram не смог обработать медиагруппу, отправляем изображения по одному',
+            `Telegram не смог обработать медиагруппу (код: ${photoErrorCode}), отправляем изображения по одному`,
             error,
           );
           for (const item of chunk) {

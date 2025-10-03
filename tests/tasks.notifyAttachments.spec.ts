@@ -309,6 +309,28 @@ describe('notifyTaskCreated вложения', () => {
     });
   });
 
+  it('отправляет изображение документом при ошибке PHOTO_INVALID_DIMENSIONS', async () => {
+    const error = new Error('Bad Request: PHOTO_INVALID_DIMENSIONS');
+    (error as Error & { response?: { description?: string } }).response = {
+      description: 'Bad Request: PHOTO_INVALID_DIMENSIONS',
+    };
+    sendPhotoMock.mockImplementationOnce(async () => {
+      throw error;
+    });
+    sendDocumentMock.mockResolvedValue({ message_id: 704 });
+
+    const controller = new TasksController({} as any);
+
+    const result = await (controller as any).sendTaskAttachments(
+      123,
+      [{ kind: 'image', url: 'https://cdn.example.com/problem.jpg' }],
+    );
+
+    expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    expect(sendDocumentMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual([704]);
+  });
+
   it('отправляет крупный PNG как документ', async () => {
     sendMessageMock.mockImplementation((_chat, text: string) => {
       if (text.startsWith('Задача')) {

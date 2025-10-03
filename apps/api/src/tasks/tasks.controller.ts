@@ -322,6 +322,25 @@ export default class TasksController {
     }
   }
 
+  private isImageProcessFailedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+    const { response, description, message } = error as {
+      response?: { description?: unknown };
+      description?: unknown;
+      message?: unknown;
+    };
+    const candidates = [
+      typeof response?.description === 'string' ? response.description : null,
+      typeof description === 'string' ? description : null,
+      typeof message === 'string' ? message : null,
+    ];
+    return candidates.some(
+      (candidate) => candidate !== null && candidate.includes('IMAGE_PROCESS_FAILED'),
+    );
+  }
+
   private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
     const fileId = this.extractLocalFileId(url);
     if (!fileId) return null;
@@ -490,42 +509,75 @@ export default class TasksController {
 
     const pendingImages: { url: string; caption?: string }[] = [];
     const flushImages = async () => {
+      const sendSingleImage = async (
+        original: { url: string; caption?: string },
+        resolved?: PhotoInput,
+      ) => {
+        const caption = original.caption;
+        const sendPhotoAttempt = async (media: PhotoInput) => {
+          const options = photoOptionsBase();
+          if (caption) {
+            options.caption = escapeMarkdownV2(caption);
+            options.parse_mode = 'MarkdownV2';
+          }
+          const response = await bot.telegram.sendPhoto(chat, media, options);
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+        };
+        try {
+          await sendPhotoAttempt(resolved ?? (await resolvePhotoInput(original.url)));
+          return;
+        } catch (error) {
+          if (!this.isImageProcessFailedError(error)) {
+            throw error;
+          }
+          console.warn(
+            'Telegram не смог обработать изображение, отправляем как документ',
+            original.url,
+            error,
+          );
+        }
+        const documentOptions = documentOptionsBase();
+        if (caption) {
+          documentOptions.caption = escapeMarkdownV2(caption);
+          documentOptions.parse_mode = 'MarkdownV2';
+        }
+        const fallback = await resolvePhotoInput(original.url);
+        const response = await bot.telegram.sendDocument(
+          chat,
+          fallback,
+          documentOptions,
+        );
+        if (response?.message_id) {
+          sentMessageIds.push(response.message_id);
+        }
+      };
+
       while (pendingImages.length) {
         const chunk = pendingImages.splice(0, 10);
         const prepared = await Promise.all(
           chunk.map(async (item) => ({
+            original: item,
             media: await resolvePhotoInput(item.url),
-            caption: item.caption,
           })),
         );
         if (prepared.length === 1) {
-          const [item] = prepared;
-          const response = await bot.telegram.sendPhoto(
-            chat,
-            item.media,
-            (() => {
-              const options = photoOptionsBase();
-              if (item.caption) {
-                options.caption = escapeMarkdownV2(item.caption);
-                options.parse_mode = 'MarkdownV2';
+          const [single] = prepared;
+          await sendSingleImage(single.original, single.media);
+          continue;
+        }
+        const media = prepared.map((item) => ({
+          type: 'photo' as const,
+          media: item.media,
+          ...(item.original.caption
+            ? {
+                caption: escapeMarkdownV2(item.original.caption),
+                parse_mode: 'MarkdownV2' as const,
               }
-              return options;
-            })(),
-          );
-          if (response?.message_id) {
-            sentMessageIds.push(response.message_id);
-          }
-        } else {
-          const media = prepared.map((item) => ({
-            type: 'photo' as const,
-            media: item.media,
-            ...(item.caption
-              ? {
-                  caption: escapeMarkdownV2(item.caption),
-                  parse_mode: 'MarkdownV2' as const,
-                }
-              : {}),
-          }));
+            : {}),
+        }));
+        try {
           const response = await bot.telegram.sendMediaGroup(
             chat,
             media,
@@ -537,6 +589,17 @@ export default class TasksController {
                 sentMessageIds.push(entry.message_id);
               }
             });
+          }
+        } catch (error) {
+          if (!this.isImageProcessFailedError(error)) {
+            throw error;
+          }
+          console.warn(
+            'Telegram не смог обработать медиагруппу, отправляем изображения по одному',
+            error,
+          );
+          for (const item of chunk) {
+            await sendSingleImage(item);
           }
         }
       }

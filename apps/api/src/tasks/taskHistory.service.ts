@@ -194,9 +194,6 @@ function formatFieldName(field: string): string {
 function formatFieldValue(value: unknown, field?: string): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
-  if (field && (field === 'deadline' || field === 'due' || field === 'completed_at')) {
-    return escaped.replace(/\\\.(?=\d{4}\b)/g, '.');
-  }
   return escaped;
 }
 

@@ -73,6 +73,7 @@
   "settings": "Settings",
   "selectOption": "Select option",
   "startDate": "Start date",
+  "startDateAutoNotice": "Start date is set automatically: {{date}}",
   "startPoint": "Start point",
   "status": "Status",
   "task": "Task",

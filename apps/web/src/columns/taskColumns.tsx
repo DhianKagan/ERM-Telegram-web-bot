@@ -139,6 +139,9 @@ const normalizePriorityLabel = (value: string) => {
   return trimmed;
 };
 
+const completionNoteTextClass =
+  "text-[11px] font-medium text-slate-600 dark:text-slate-300";
+
 const typeBadgeClassMap: Record<string, string> = {
   доставить: buildBadgeClass(
     "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
@@ -1017,10 +1020,21 @@ export default function taskColumns(
       cell: (p) => {
         const v = p.getValue<string>() || "";
         const compact = compactText(v, 72);
+        const row = p.row.original as TaskRow;
+        const completionNote = buildCompletionNote(
+          row.status,
+          row.due_date,
+          row.completed_at,
+        );
         return (
-          <span title={v} className={titleBadgeClass}>
-            <span className="truncate">{compact}</span>
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <span title={v} className={titleBadgeClass}>
+              <span className="truncate">{compact}</span>
+            </span>
+            {completionNote ? (
+              <span className={completionNoteTextClass}>{completionNote}</span>
+            ) : null}
+          </div>
         );
       },
     },
@@ -1137,16 +1151,6 @@ export default function taskColumns(
       cell: (p) => {
         const dueValue = p.getValue<string>();
         const row = p.row.original;
-        const completionNote = buildCompletionNote(
-          row.status,
-          row.due_date,
-          row.completed_at,
-        );
-        const noteNode = completionNote ? (
-          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-            {completionNote}
-          </span>
-        ) : null;
         const countdown = (
           <DeadlineCountdownBadge
             startValue={row.start_date}
@@ -1157,26 +1161,17 @@ export default function taskColumns(
           />
         );
         if (!dueValue) {
-          if (!noteNode) {
-            return countdown;
-          }
-          return (
-            <div className="flex flex-col items-start gap-1">
-              {countdown}
-              {noteNode}
-            </div>
-          );
+          return countdown;
         }
         const dateCell = renderDateCell(dueValue);
         if (typeof dateCell === "string") {
-          if (!dateCell && !noteNode) {
+          if (!dateCell) {
             return countdown;
           }
           return (
             <div className="flex flex-col items-start gap-1">
               {dateCell ? <span>{dateCell}</span> : null}
               {countdown}
-              {noteNode}
             </div>
           );
         }
@@ -1184,7 +1179,6 @@ export default function taskColumns(
           <div className="flex flex-col items-start gap-1">
             {dateCell}
             {countdown}
-            {noteNode}
           </div>
         );
       },

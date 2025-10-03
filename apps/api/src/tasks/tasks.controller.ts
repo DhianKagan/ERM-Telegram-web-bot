@@ -1,8 +1,10 @@
 // Контроллер задач с использованием TasksService
 // Основные модули: express-validator, services, wgLogEngine, taskHistory.service, utils/mdEscape
 import path from 'node:path';
+import os from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access } from 'node:fs/promises';
+import { access, mkdir, stat, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -38,6 +40,7 @@ import {
   buildHistorySummaryLog,
   getTaskIdentifier,
 } from './taskMessages';
+import sharp from 'sharp';
 
 type TaskEx = SharedTask & {
   controllers?: number[];
@@ -65,6 +68,7 @@ type LocalPhotoInfo = {
   absolutePath: string;
   filename: string;
   contentType?: string;
+  size?: number;
 };
 
 const HTTP_URL_REGEXP = /^https?:\/\//i;
@@ -175,12 +179,15 @@ export default class TasksController {
     if (!url) return url;
     if (!cache.has(url)) {
       const info = await this.resolveLocalPhotoInfo(url);
-      cache.set(url, info);
+      const prepared = info ? await this.ensurePhotoWithinLimit(info) : info;
+      cache.set(url, prepared);
     }
-    const info = cache.get(url);
+    let info = cache.get(url);
     if (!info) {
       return url;
     }
+    info = await this.ensurePhotoWithinLimit(info);
+    cache.set(url, info);
     try {
       const descriptor = {
         source: createReadStream(info.absolutePath),
@@ -263,13 +270,18 @@ export default class TasksController {
             : undefined;
         if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
           if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
-            extras.push({
-              kind: 'unsupported-image',
-              url: absolute,
-              mimeType,
-              name,
-              size,
-            });
+            const localId = this.extractLocalFileId(absolute);
+            if (!localId) {
+              extras.push({
+                kind: 'unsupported-image',
+                url: absolute,
+                mimeType,
+                name,
+                size,
+              });
+              return;
+            }
+            registerImage({ kind: 'image', url: absolute });
             return;
           }
           registerImage({ kind: 'image', url: absolute });
@@ -307,6 +319,106 @@ export default class TasksController {
       previewImage,
       extras: extrasWithoutPreview,
     };
+  }
+
+  private async ensurePhotoWithinLimit(
+    info: LocalPhotoInfo,
+  ): Promise<LocalPhotoInfo> {
+    try {
+      let current = info;
+      let currentSize = current.size;
+      if (currentSize === undefined) {
+        try {
+          const fileStat = await stat(current.absolutePath);
+          currentSize = fileStat.size;
+          current = { ...current, size: currentSize };
+        } catch (error) {
+          console.error(
+            'Не удалось определить размер изображения для Telegram',
+            current.absolutePath,
+            error,
+          );
+        }
+      }
+      if (currentSize !== undefined && currentSize <= MAX_PHOTO_SIZE_BYTES) {
+        return current;
+      }
+      const compressed = await this.createCompressedPhoto(current);
+      return compressed ?? current;
+    } catch (error) {
+      console.error(
+        'Не удалось подготовить изображение для Telegram',
+        info.absolutePath,
+        error,
+      );
+      return info;
+    }
+  }
+
+  private async createCompressedPhoto(
+    info: LocalPhotoInfo,
+  ): Promise<LocalPhotoInfo | null> {
+    try {
+      const metadata = await sharp(info.absolutePath).metadata();
+      const baseWidth = metadata.width ?? null;
+      const hasAlpha = metadata.hasAlpha === true;
+      let width = baseWidth ?? null;
+      let quality = 90;
+      let buffer: Buffer | null = null;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        let pipeline = sharp(info.absolutePath);
+        if (width && baseWidth && width < baseWidth) {
+          pipeline = pipeline.resize({
+            width,
+            fit: 'inside',
+            withoutEnlargement: true,
+          });
+        }
+        if (hasAlpha) {
+          pipeline = pipeline.flatten({ background: '#ffffff' });
+        }
+        pipeline = pipeline.jpeg({ quality, progressive: true });
+        buffer = await pipeline.toBuffer();
+        if (buffer.length <= MAX_PHOTO_SIZE_BYTES) {
+          break;
+        }
+        if (quality > 45) {
+          quality = Math.max(40, quality - 15);
+          continue;
+        }
+        if (width && width > 640) {
+          width = Math.max(640, Math.floor(width * 0.85));
+          continue;
+        }
+        if (width && width > 320) {
+          width = Math.max(320, Math.floor(width * 0.8));
+          continue;
+        }
+        break;
+      }
+      if (!buffer || buffer.length > MAX_PHOTO_SIZE_BYTES) {
+        return null;
+      }
+      const cacheDir = path.join(os.tmpdir(), 'erm-telegram-images');
+      await mkdir(cacheDir, { recursive: true });
+      const tempName = `${randomBytes(12).toString('hex')}.jpg`;
+      const outputPath = path.join(cacheDir, tempName);
+      await writeFile(outputPath, buffer);
+      const finalName = `${path.parse(info.filename).name}-compressed.jpg`;
+      return {
+        absolutePath: outputPath,
+        filename: finalName,
+        contentType: 'image/jpeg',
+        size: buffer.length,
+      };
+    } catch (error) {
+      console.error(
+        'Не удалось сжать изображение для Telegram',
+        info.absolutePath,
+        error,
+      );
+      return null;
+    }
   }
 
   private createPreviewOptions(
@@ -443,7 +555,23 @@ export default class TasksController {
         typeof record.type === 'string' && record.type.trim()
           ? record.type.trim()
           : undefined;
-      return { absolutePath: target, filename, contentType };
+      let size =
+        typeof record.size === 'number' && Number.isFinite(record.size)
+          ? record.size
+          : undefined;
+      if (size === undefined) {
+        try {
+          const fileStat = await stat(target);
+          size = fileStat.size;
+        } catch (error) {
+          console.error(
+            'Не удалось получить размер файла вложения',
+            target,
+            error,
+          );
+        }
+      }
+      return { absolutePath: target, filename, contentType, size };
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
         console.error(

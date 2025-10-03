@@ -190,6 +190,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.5
+      domhandler:
+        specifier: ^5.0.3
+        version: 5.0.3
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
@@ -214,6 +217,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      htmlparser2:
+        specifier: ^10.0.0
+        version: 10.0.0
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -3810,6 +3816,7 @@ packages:
 
   '@telegram-apps/sdk-react@3.3.6':
     resolution: {integrity: sha512-v9y2eKoDmud04XNXEELnrE23lWN/Nav+Idfvzo+ilXU+bg8VDIYpECiGwfTUS50nZsJowrtcWOc/TystsZMYKA==}
+    deprecated: The package is unsupported anymore. Use @tma.js/sdk-react instead
     peerDependencies:
       '@types/react': ^17.0.0 || ^18.0.0 || ^19.0.0
       react: 18.2.0
@@ -3819,6 +3826,7 @@ packages:
 
   '@telegram-apps/sdk@3.11.4':
     resolution: {integrity: sha512-en2yRVhKJwzKfT4TOAG8fwaZHAqB2CfMCE0AY7mx55+UKlPCDdRN2BVUOxdYabUoxglJUquCUpNWr4TXIeAfng==}
+    deprecated: The package is unsupported anymore. Use @tma.js/sdk instead
 
   '@telegram-apps/signals@1.1.2':
     resolution: {integrity: sha512-1P1kdCLX7MfETGPxH7f3UZKIsdE7Tz5S7QmN4Km1sbYQMakD5Bi1NecSMR7/wnHp50gWMI1JzENcMtCEmouhSg==}
@@ -4950,8 +4958,8 @@ packages:
     engines: {node: '>=12.13.0'}
     hasBin: true
 
-  chromedriver@140.0.4:
-    resolution: {integrity: sha512-/NUoxYBNkJeoNj1B5ux3KxGShITlxJctkbApgVAa3ZC8EvCLKaBclwU3/IEj5MJHnBJzqOVDxs/eTyaF9k2fOg==}
+  chromedriver@141.0.0:
+    resolution: {integrity: sha512-w0U5jyWlLaRHV+dhaSikDz4x0qOwZcbles2HBu4oRdd+Eq7M43Uns4eoP/6dKu9Uc5ppcK9gA/E9GHROGXhgPg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -10466,7 +10474,7 @@ snapshots:
     dependencies:
       '@axe-core/webdriverjs': 4.10.2(selenium-webdriver@4.22.0)
       axe-core: 4.10.3
-      chromedriver: 140.0.4
+      chromedriver: 141.0.0
       colors: 1.4.0
       commander: 9.5.0
       dotenv: 16.6.1
@@ -12004,6 +12012,8 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.3
       '@ckeditor/ckeditor5-upload': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-alignment@46.0.2':
     dependencies:
@@ -12348,6 +12358,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-classic@41.4.2':
     dependencies:
@@ -12393,6 +12405,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-inline@46.0.2':
     dependencies:
@@ -12422,8 +12436,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-multi-root@46.0.3':
     dependencies:
@@ -12538,6 +12550,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.2':
     dependencies:
@@ -12547,8 +12561,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.3':
     dependencies:
@@ -12646,6 +12658,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-html-embed@46.0.2':
     dependencies:
@@ -12681,8 +12695,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-html-support@46.0.3':
     dependencies:
@@ -12761,8 +12773,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-indent@46.0.3':
     dependencies:
@@ -12849,8 +12859,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@46.0.3':
     dependencies:
@@ -12947,8 +12955,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-mention@46.0.2':
     dependencies:
@@ -12985,8 +12991,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-page-break@46.0.2':
     dependencies:
@@ -13005,8 +13009,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-paragraph@41.4.2':
     dependencies:
@@ -13075,8 +13077,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-restricted-editing@46.0.2':
     dependencies:
@@ -13127,8 +13127,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-source-editing@46.0.2':
     dependencies:
@@ -13177,8 +13175,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-style@46.0.3':
     dependencies:
@@ -13191,8 +13187,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-table@41.4.2':
     dependencies:
@@ -13225,8 +13219,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-theme-lark@46.0.2':
     dependencies:
@@ -13278,8 +13270,6 @@ snapshots:
       color-parse: 2.0.2
       es-toolkit: 1.39.5
       vanilla-colorful: 0.7.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-ui@46.0.3':
     dependencies:
@@ -13330,8 +13320,6 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-ui': 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-utils@46.0.3':
     dependencies:
@@ -13347,8 +13335,6 @@ snapshots:
       '@ckeditor/ckeditor5-engine': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-watchdog@46.0.3':
     dependencies:
@@ -13397,8 +13383,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -14307,7 +14291,7 @@ snapshots:
 
   '@lhci/utils@0.15.1(encoding@0.1.13)':
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@5.5.0)
       isomorphic-fetch: 3.0.0(encoding@0.1.13)
       js-yaml: 3.14.1
       lighthouse: 12.6.1
@@ -17123,7 +17107,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  chromedriver@140.0.4:
+  chromedriver@141.0.0:
     dependencies:
       '@testim/chrome-version': 1.1.4
       axios: 1.12.2
@@ -21518,7 +21502,7 @@ snapshots:
   proxy-agent@6.5.0:
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@5.5.0)
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       lru-cache: 7.18.3

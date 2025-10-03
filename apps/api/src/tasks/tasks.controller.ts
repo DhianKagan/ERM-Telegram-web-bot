@@ -92,6 +92,13 @@ const toAbsoluteAttachmentUrl = (url: string): string | null => {
 
 type NormalizedAttachment =
   | { kind: 'image'; url: string; caption?: string }
+  | {
+      kind: 'unsupported-image';
+      url: string;
+      caption?: string;
+      mimeType?: string;
+      name?: string;
+    }
   | { kind: 'youtube'; url: string; title?: string };
 
 type NormalizedImage = Extract<NormalizedAttachment, { kind: 'image' }>;
@@ -113,7 +120,19 @@ type SendPhotoOptions = NonNullable<
 type SendMediaGroupOptions = NonNullable<
   Parameters<typeof bot.telegram.sendMediaGroup>[2]
 >;
+type SendDocumentOptions = NonNullable<
+  Parameters<typeof bot.telegram.sendDocument>[2]
+>;
 type PhotoInput = Parameters<typeof bot.telegram.sendPhoto>[1];
+
+const SUPPORTED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
 
 @injectable()
 export default class TasksController {
@@ -232,7 +251,21 @@ export default class TasksController {
         if (!type.startsWith('image/')) return;
         const absolute = toAbsoluteAttachmentUrl(url);
         if (!absolute) return;
-        registerImage({ kind: 'image', url: absolute });
+        const [mimeType] = type.split(';', 1);
+        if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
+          registerImage({ kind: 'image', url: absolute });
+          return;
+        }
+        const name =
+          typeof attachment.name === 'string' && attachment.name.trim()
+            ? attachment.name.trim()
+            : undefined;
+        extras.push({
+          kind: 'unsupported-image',
+          url: absolute,
+          mimeType,
+          name,
+        });
       });
     }
     const previewImage = previewPool.length ? previewPool[0] : null;
@@ -437,6 +470,19 @@ export default class TasksController {
       }
       return options;
     };
+    const documentOptionsBase = () => {
+      const options: SendDocumentOptions = {};
+      if (typeof topicId === 'number') {
+        options.message_thread_id = topicId;
+      }
+      if (replyTo) {
+        options.reply_parameters = {
+          message_id: replyTo,
+          allow_sending_without_reply: true,
+        };
+      }
+      return options;
+    };
 
     const localPhotoInfoCache = cache ?? new Map<string, LocalPhotoInfo | null>();
     const resolvePhotoInput = (url: string) =>
@@ -502,6 +548,33 @@ export default class TasksController {
         continue;
       }
       await flushImages();
+      if (attachment.kind === 'unsupported-image') {
+        try {
+          const response = await bot.telegram.sendDocument(
+            chat,
+            await resolvePhotoInput(attachment.url),
+            (() => {
+              const options = documentOptionsBase();
+              if (attachment.caption) {
+                options.caption = escapeMarkdownV2(attachment.caption);
+                options.parse_mode = 'MarkdownV2';
+              }
+              return options;
+            })(),
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+        } catch (error) {
+          console.error(
+            'Не удалось отправить неподдерживаемое изображение как документ',
+            attachment.mimeType ?? 'unknown',
+            attachment.name ?? attachment.url,
+            error,
+          );
+        }
+        continue;
+      }
       if (attachment.kind === 'youtube') {
         const label = attachment.title ? attachment.title : 'YouTube';
         const text = `▶️ [${escapeMarkdownV2(label)}](${escapeMarkdownV2(
@@ -582,6 +655,49 @@ export default class TasksController {
           result.push(messageId);
         } catch (error) {
           console.error('Не удалось обновить изображение вложения', error);
+          return null;
+        }
+        continue;
+      }
+      if (attachment.kind === 'unsupported-image') {
+        const previousEntry =
+          previousAttachment && previousAttachment.kind === 'unsupported-image'
+            ? previousAttachment
+            : null;
+        const previousUrl = previousEntry ? previousEntry.url : null;
+        const previousCaption = previousEntry?.caption ?? '';
+        const previousMime = previousEntry?.mimeType ?? '';
+        const previousName = previousEntry?.name ?? '';
+        const nextCaption = attachment.caption ?? '';
+        const nextMime = attachment.mimeType ?? '';
+        const nextName = attachment.name ?? '';
+        const urlChanged = previousUrl !== attachment.url;
+        const captionChanged = previousCaption !== nextCaption;
+        const metaChanged = previousMime !== nextMime || previousName !== nextName;
+        if (!urlChanged && !captionChanged && !metaChanged) {
+          result.push(messageId);
+          continue;
+        }
+        try {
+          const media: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
+            type: 'document',
+            media: await this.resolvePhotoInputWithCache(attachment.url, cache),
+          };
+          if (attachment.caption) {
+            media.caption = escapeMarkdownV2(attachment.caption);
+            media.parse_mode = 'MarkdownV2';
+          } else {
+            media.caption = '';
+          }
+          await bot.telegram.editMessageMedia(chat, messageId, undefined, media);
+          result.push(messageId);
+        } catch (error) {
+          console.error(
+            'Не удалось обновить вложение неподдерживаемого изображения',
+            attachment.mimeType ?? 'unknown',
+            attachment.name ?? attachment.url,
+            error,
+          );
           return null;
         }
         continue;

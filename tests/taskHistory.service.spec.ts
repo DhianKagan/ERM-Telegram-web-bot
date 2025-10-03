@@ -112,3 +112,30 @@ test('не снимает экранирование точек в значен�
     'in progress at: «—» → «01\\.10\\.2025 19:48»',
   );
 });
+
+test('экранирует точки в поле выполнено', async () => {
+  const lean = jest.fn().mockResolvedValue({
+    telegram_status_message_id: null,
+    history: [
+      {
+        changed_at: new Date('2025-10-02T15:09:00Z'),
+        changed_by: 321,
+        changes: {
+          from: { completed_at: null, status: 'В работе' },
+          to: { completed_at: '2025-10-02T15:09:00Z', status: 'Выполнена' },
+        },
+      },
+    ],
+  });
+  (Task.findById as jest.Mock).mockReturnValue({ lean });
+  (getUsersMap as jest.Mock).mockResolvedValue({
+    321: { name: 'Ответственный', username: 'user321' },
+  });
+
+  const result = await getTaskHistoryMessage('completed-at');
+
+  expect(result).not.toBeNull();
+  expect(result?.text).toContain(
+    'выполнено: «—» → «02\\.10\\.2025 18:09»',
+  );
+});

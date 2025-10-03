@@ -61,8 +61,38 @@ if (cookieDomainEnv) {
   }
 }
 
+const botApiUrlBlockedHosts = new Set([
+  'github.com',
+  'www.github.com',
+  'raw.githubusercontent.com',
+  'gist.github.com',
+]);
+
+let botApiUrlValue: string | undefined;
+const botApiUrlRaw = (process.env.BOT_API_URL || '').trim();
+if (botApiUrlRaw) {
+  try {
+    const parsed = new URL(botApiUrlRaw);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('BOT_API_URL должен начинаться с http:// или https://');
+    }
+    if (botApiUrlBlockedHosts.has(parsed.hostname)) {
+      console.warn(
+        `BOT_API_URL указывает на неподдерживаемый хост (${parsed.hostname}), используем https://api.telegram.org`,
+      );
+    } else {
+      botApiUrlValue = botApiUrlRaw.replace(/\/+$/, '');
+    }
+  } catch (error) {
+    console.warn(
+      'BOT_API_URL имеет неверный формат, используем значение по умолчанию',
+      error,
+    );
+  }
+}
+
 export const botToken = process.env.BOT_TOKEN;
-export const botApiUrl = process.env.BOT_API_URL;
+export const botApiUrl = botApiUrlValue;
 export const chatId = process.env.CHAT_ID;
 export const jwtSecret = process.env.JWT_SECRET;
 export const mongoUrl = mongoUrlEnv;

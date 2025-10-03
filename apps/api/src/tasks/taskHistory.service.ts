@@ -191,9 +191,20 @@ function formatFieldName(field: string): string {
   return mdEscape(mapped);
 }
 
+const dateFieldNames = new Set(['deadline', 'due', 'completed_at']);
+
+function isDateField(field: string | undefined): boolean {
+  return field ? dateFieldNames.has(field) : false;
+}
+
 function formatFieldValue(value: unknown, field?: string): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
+
+  if (isDateField(field)) {
+    return escaped.replace(/\\\.(?=\d{4}\b)/g, '.');
+  }
+
   return escaped;
 }
 

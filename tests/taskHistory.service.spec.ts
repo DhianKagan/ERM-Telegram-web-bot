@@ -16,6 +16,19 @@ jest.mock('../apps/api/src/db/queries', () => ({
 const { Task } = require('../apps/api/src/db/model');
 const { getUsersMap } = require('../apps/api/src/db/queries');
 
+function hasInvalidTelegramEscapes(text: string): boolean {
+  const allowed = '_*[]()~`>#+-=|{}.!\\';
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === '\\') {
+      const next = text[i + 1];
+      if (!next || !allowed.includes(next)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -78,9 +91,35 @@ test('форматирует срок без лишнего экранирова
   const result = await getTaskHistoryMessage('deadline-update');
 
   expect(result).not.toBeNull();
-  expect(result?.text).toContain(
-    'срок: «01\\.11.2023 13:00» → «02\\.11.2023 15:30»',
-  );
+  const text = result?.text ?? '';
+  expect(text).toMatch(/срок: «01\\.11\\.2023 13:00» → «02\\.11\\.2023 15:30»/);
+});
+
+test('форматирует 03.10.2025 15:35 без ошибок Markdown', async () => {
+  const lean = jest.fn().mockResolvedValue({
+    telegram_status_message_id: null,
+    history: [
+      {
+        changed_at: new Date('2025-10-03T12:35:00Z'),
+        changed_by: 0,
+        changes: {
+          from: { deadline: '2025-10-02T09:15:00Z' },
+          to: { deadline: '2025-10-03T12:35:00Z' },
+        },
+      },
+    ],
+  });
+  (Task.findById as jest.Mock).mockReturnValue({ lean });
+  (getUsersMap as jest.Mock).mockResolvedValue({});
+
+  const result = await getTaskHistoryMessage('deadline-check');
+
+  expect(result).not.toBeNull();
+  const text = result?.text ?? '';
+  expect(text).toContain('03\\.10\\.2025 15:35');
+  expect(hasInvalidTelegramEscapes(text)).toBe(false);
+  const normalized = text.replace(/\\/g, '');
+  expect(normalized).toContain('03.10.2025 15:35');
 });
 
 test('экранирует точки в датах и другие специальные символы', async () => {
@@ -133,9 +172,8 @@ test('не снимает экранирование точек в значен�
   const result = await getTaskHistoryMessage('keep-escapes');
 
   expect(result).not.toBeNull();
-  expect(result?.text).toContain(
-    'in progress at: «—» → «01\\.10.2025 19:48»',
-  );
+  const text = result?.text ?? '';
+  expect(text).toMatch(/in progress at: «—» → «01\\.10\\.2025 19:48»/);
 });
 
 test('экранирует точки в поле выполнено', async () => {
@@ -160,7 +198,6 @@ test('экранирует точки в поле выполнено', async () 
   const result = await getTaskHistoryMessage('completed-at');
 
   expect(result).not.toBeNull();
-  expect(result?.text).toContain(
-    'выполнено: «—» → «02\\.10.2025 18:09»',
-  );
+  const text = result?.text ?? '';
+  expect(text).toMatch(/выполнено: «—» → «02\\.10\\.2025 18:09»/);
 });

@@ -120,6 +120,12 @@ type SendMessageOptions = NonNullable<
 type EditMessageTextOptions = NonNullable<
   Parameters<typeof bot.telegram.editMessageText>[4]
 >;
+
+type TaskMessageSendResult = {
+  messageId: number | undefined;
+  usedPreview: boolean;
+  cache: Map<string, LocalPhotoInfo | null>;
+};
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
 >;
@@ -321,6 +327,116 @@ export default class TasksController {
     };
   }
 
+  private async sendTaskMessageWithPreview(
+    chat: string | number,
+    message: string,
+    media: TaskMedia,
+    keyboard: ReturnType<typeof taskStatusKeyboard>,
+    topicId?: number,
+  ): Promise<TaskMessageSendResult> {
+    const cache = new Map<string, LocalPhotoInfo | null>();
+    const preview = media.previewImage;
+    if (preview) {
+      try {
+        const options: SendPhotoOptions = {
+          caption: message,
+          parse_mode: 'MarkdownV2',
+          ...keyboard,
+        };
+        if (typeof topicId === 'number') {
+          options.message_thread_id = topicId;
+        }
+        const photo = await this.resolvePhotoInputWithCache(preview.url, cache);
+        const response = await bot.telegram.sendPhoto(chat, photo, options);
+        return {
+          messageId: response?.message_id,
+          usedPreview: true,
+          cache,
+        };
+      } catch (error) {
+        if (!this.shouldFallbackToTextMessage(error)) {
+          throw error;
+        }
+        console.warn(
+          'Не удалось отправить задачу как фото, используем текстовый формат',
+          error,
+        );
+      }
+    }
+    const options: SendMessageOptions = {
+      parse_mode: 'MarkdownV2',
+      link_preview_options: preview
+        ? this.createPreviewOptions(preview)
+        : { is_disabled: true },
+      ...keyboard,
+    };
+    if (typeof topicId === 'number') {
+      options.message_thread_id = topicId;
+    }
+    const response = await bot.telegram.sendMessage(chat, message, options);
+    return {
+      messageId: response?.message_id,
+      usedPreview: false,
+      cache,
+    };
+  }
+
+  private async editTaskMessageWithPreview(
+    chat: string | number,
+    messageId: number,
+    message: string,
+    media: TaskMedia,
+    keyboard: ReturnType<typeof taskStatusKeyboard>,
+  ): Promise<{ success: boolean; usedPreview: boolean; cache: Map<string, LocalPhotoInfo | null> }>
+  {
+    const cache = new Map<string, LocalPhotoInfo | null>();
+    const preview = media.previewImage;
+    if (preview) {
+      try {
+        const editMedia: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
+          type: 'photo',
+          media: await this.resolvePhotoInputWithCache(preview.url, cache),
+          caption: message,
+          parse_mode: 'MarkdownV2',
+        };
+        await bot.telegram.editMessageMedia(chat, messageId, undefined, editMedia, {
+          ...keyboard,
+        });
+        return { success: true, usedPreview: true, cache };
+      } catch (error) {
+        if (this.isMessageNotModifiedError(error)) {
+          return { success: true, usedPreview: true, cache };
+        }
+        if (this.isMediaMessageTypeError(error)) {
+          // Сообщение не является медиа, пробуем текстовое обновление ниже.
+        } else if (this.shouldFallbackToTextMessage(error)) {
+          console.warn(
+            'Не удалось обновить сообщение задачи как фото, пробуем текст',
+            error,
+          );
+        } else {
+          console.error('Не удалось обновить сообщение задачи (фото)', error);
+          return { success: false, usedPreview: false, cache };
+        }
+      }
+    }
+    try {
+      await bot.telegram.editMessageText(chat, messageId, undefined, message, {
+        parse_mode: 'MarkdownV2',
+        link_preview_options: preview
+          ? this.createPreviewOptions(preview)
+          : { is_disabled: true },
+        ...keyboard,
+      });
+      return { success: true, usedPreview: false, cache };
+    } catch (error) {
+      if (this.isMessageNotModifiedError(error)) {
+        return { success: true, usedPreview: false, cache };
+      }
+      return { success: false, usedPreview: false, cache };
+    }
+  }
+
   private async ensurePhotoWithinLimit(
     info: LocalPhotoInfo,
   ): Promise<LocalPhotoInfo> {
@@ -513,6 +629,42 @@ export default class TasksController {
 
   private isImageProcessFailedError(error: unknown): boolean {
     return this.extractPhotoErrorCode(error) !== null;
+  }
+
+  private isCaptionTooLongError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const { description, message } = error as {
+      description?: unknown;
+      message?: unknown;
+    };
+    const descriptionText =
+      typeof description === 'string' ? description.toLowerCase() : '';
+    const messageText = typeof message === 'string' ? message.toLowerCase() : '';
+    return (
+      descriptionText.includes('caption is too long') ||
+      messageText.includes('caption is too long')
+    );
+  }
+
+  private isMediaMessageTypeError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const { description, message } = error as {
+      description?: unknown;
+      message?: unknown;
+    };
+    const descriptionText =
+      typeof description === 'string' ? description.toLowerCase() : '';
+    const messageText = typeof message === 'string' ? message.toLowerCase() : '';
+    return (
+      descriptionText.includes('message is not a media message') ||
+      messageText.includes('message is not a media message')
+    );
+  }
+
+  private shouldFallbackToTextMessage(error: unknown): boolean {
+    return (
+      this.isImageProcessFailedError(error) || this.isCaptionTooLongError(error)
+    );
   }
 
   private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
@@ -797,11 +949,12 @@ export default class TasksController {
     messageIds: number[],
     topicId?: number,
     replyTo?: number,
+    cacheOverride?: Map<string, LocalPhotoInfo | null>,
   ): Promise<number[] | null> {
     if (!messageIds.length) {
       return [];
     }
-    const cache = new Map<string, LocalPhotoInfo | null>();
+    const cache = cacheOverride ?? new Map<string, LocalPhotoInfo | null>();
     const result: number[] = [];
     const limit = Math.min(next.length, messageIds.length);
 
@@ -1093,25 +1246,10 @@ export default class TasksController {
       formatted.inlineImages,
     );
     const keyboard = taskStatusKeyboard(taskId);
-    const previewOptions = this.createPreviewOptions(nextAttachments.previewImage);
-    const editOptions: EditMessageTextOptions = {
-      parse_mode: 'MarkdownV2',
-      link_preview_options: previewOptions,
-      reply_markup: keyboard.reply_markup,
-    };
     const topicId =
       typeof plain.telegram_topic_id === 'number'
         ? plain.telegram_topic_id
         : undefined;
-    const sendOptionsBase: SendMessageOptions = {
-      parse_mode: 'MarkdownV2',
-      link_preview_options: previewOptions,
-      reply_markup: keyboard.reply_markup,
-    };
-    if (typeof topicId === 'number') {
-      sendOptionsBase.message_thread_id = topicId;
-    }
-    const sendOptions = sendOptionsBase;
 
     const previousMessageId =
       typeof previousPlain?.telegram_message_id === 'number'
@@ -1123,53 +1261,63 @@ export default class TasksController {
         : undefined;
     const updates: Record<string, unknown> = {};
 
+    let messageResult: TaskMessageSendResult | null = null;
     if (currentMessageId) {
-      try {
-        await bot.telegram.editMessageText(
-          groupChatId,
-          currentMessageId,
-          undefined,
-          message,
-          editOptions,
-        );
-      } catch (error) {
-        if (this.isMessageNotModifiedError(error)) {
-          console.warn(
-            'Сообщение задачи не изменилось, пропускаем повторную отправку',
+      const editResult = await this.editTaskMessageWithPreview(
+        groupChatId,
+        currentMessageId,
+        message,
+        nextAttachments,
+        keyboard,
+      );
+      if (editResult.success) {
+        messageResult = {
+          messageId: currentMessageId,
+          usedPreview: editResult.usedPreview,
+          cache: editResult.cache,
+        };
+      } else {
+        console.error('Не удалось обновить сообщение задачи, отправляем заново');
+        try {
+          const sendResult = await this.sendTaskMessageWithPreview(
+            groupChatId,
+            message,
+            nextAttachments,
+            keyboard,
+            topicId,
           );
-        } else {
-          console.error('Не удалось обновить сообщение задачи', error);
-          try {
-            const sentMessage = await bot.telegram.sendMessage(
-              groupChatId,
-              message,
-              sendOptions,
-            );
-            if (sentMessage?.message_id) {
-              currentMessageId = sentMessage.message_id;
-              updates.telegram_message_id = sentMessage.message_id;
-            }
-          } catch (sendError) {
-            console.error('Не удалось отправить новое сообщение задачи', sendError);
-            return;
+          currentMessageId = sendResult.messageId;
+          if (sendResult.messageId) {
+            updates.telegram_message_id = sendResult.messageId;
           }
+          messageResult = sendResult;
+        } catch (sendError) {
+          console.error('Не удалось отправить новое сообщение задачи', sendError);
+          return;
         }
       }
     } else {
       try {
-        const sentMessage = await bot.telegram.sendMessage(
+        const sendResult = await this.sendTaskMessageWithPreview(
           groupChatId,
           message,
-          sendOptions,
+          nextAttachments,
+          keyboard,
+          topicId,
         );
-        if (sentMessage?.message_id) {
-          currentMessageId = sentMessage.message_id;
-          updates.telegram_message_id = sentMessage.message_id;
+        currentMessageId = sendResult.messageId;
+        if (sendResult.messageId) {
+          updates.telegram_message_id = sendResult.messageId;
         }
+        messageResult = sendResult;
       } catch (error) {
         console.error('Не удалось отправить сообщение задачи', error);
         return;
       }
+    }
+
+    if (!messageResult) {
+      return;
     }
 
     const previousFormatted = previousPlain
@@ -1179,8 +1327,19 @@ export default class TasksController {
     const previousAttachments = previousPlain
       ? this.collectSendableAttachments(previousPlain, previousFormatted?.inlineImages)
       : { previewImage: null, extras: [] };
-    const previousExtras = previousAttachments.extras;
-    const nextExtras = nextAttachments.extras;
+    const previousExtrasRaw = previousAttachments.extras;
+    const nextExtrasRaw = nextAttachments.extras;
+    const previousExtras = previousAttachments.previewImage
+      ? previousExtrasRaw.filter(
+          (attachment) => attachment !== previousAttachments.previewImage,
+        )
+      : previousExtrasRaw;
+    const nextExtras =
+      messageResult.usedPreview && nextAttachments.previewImage
+        ? nextExtrasRaw.filter(
+            (attachment) => attachment !== nextAttachments.previewImage,
+          )
+        : nextExtrasRaw;
     const previousAttachmentMessageIds = Array.isArray(
       previousPlain?.telegram_attachments_message_ids,
     )
@@ -1218,6 +1377,7 @@ export default class TasksController {
             nextExtras,
             topicId,
             currentMessageId,
+            messageResult.cache,
           );
           if (ids.length) {
             attachmentMessageIds = ids;
@@ -1235,6 +1395,7 @@ export default class TasksController {
             attachmentMessageIds,
             topicId,
             currentMessageId,
+            messageResult.cache,
           );
           if (synced === null) {
             throw new Error('sync failed');
@@ -1260,6 +1421,7 @@ export default class TasksController {
               nextExtras,
               topicId,
               currentMessageId,
+              messageResult.cache,
             );
             attachmentMessageIds = ids;
           } catch (sendError) {
@@ -1351,28 +1513,26 @@ export default class TasksController {
           plain,
           formatted.inlineImages,
         );
-        const groupOptions: SendMessageOptions = {
-          parse_mode: 'MarkdownV2',
-          link_preview_options: this.createPreviewOptions(media.previewImage),
-          ...mainKeyboard,
-        };
-        if (typeof topicId === 'number') {
-          groupOptions.message_thread_id = topicId;
-        }
-        const groupMessage = await bot.telegram.sendMessage(
+        const sendResult = await this.sendTaskMessageWithPreview(
           groupChatId,
           message,
-          groupOptions,
+          media,
+          mainKeyboard,
+          topicId,
         );
-        groupMessageId = groupMessage?.message_id;
+        groupMessageId = sendResult.messageId;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        if (media.extras.length) {
+        const extras = sendResult.usedPreview
+          ? media.extras.filter((attachment) => attachment !== media.previewImage)
+          : media.extras;
+        if (groupMessageId && extras.length) {
           try {
             attachmentMessageIds = await this.sendTaskAttachments(
               groupChatId,
-              media.extras,
+              extras,
               topicId,
               groupMessageId,
+              sendResult.cache,
             );
           } catch (error) {
             console.error('Не удалось отправить вложения задачи', error);

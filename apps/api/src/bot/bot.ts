@@ -14,7 +14,8 @@ import '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
   getTaskHistoryMessage,
-  updateTaskStatusMessageId,
+  updateTaskHistoryMessageId,
+  updateTaskSummaryMessageId,
 } from '../tasks/taskHistory.service';
 import { buildLatestHistorySummary } from '../tasks/taskMessages';
 import taskStatusKeyboard, {
@@ -243,7 +244,7 @@ async function processStatusAction(
               options,
             );
             if (statusMessage?.message_id) {
-              await updateTaskStatusMessageId(docId, statusMessage.message_id);
+              await updateTaskHistoryMessageId(docId, statusMessage.message_id);
             }
           }
         }
@@ -256,7 +257,9 @@ async function processStatusAction(
         );
         if (summary) {
           const statusMessageId =
-            typeof task.telegram_status_message_id === 'number'
+            typeof task.telegram_summary_message_id === 'number'
+              ? task.telegram_summary_message_id
+              : typeof task.telegram_status_message_id === 'number'
               ? task.telegram_status_message_id
               : undefined;
           const topicId =
@@ -303,7 +306,7 @@ async function processStatusAction(
                 sendOptions,
               );
               if (sentSummary?.message_id) {
-                await updateTaskStatusMessageId(docId, sentSummary.message_id);
+                await updateTaskSummaryMessageId(docId, sentSummary.message_id);
               }
             }
           } else {
@@ -313,7 +316,7 @@ async function processStatusAction(
               sendOptions,
             );
             if (sentSummary?.message_id) {
-              await updateTaskStatusMessageId(docId, sentSummary.message_id);
+              await updateTaskSummaryMessageId(docId, sentSummary.message_id);
             }
           }
         }

@@ -203,7 +203,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
-      telegram_status_message_id: 303,
+      telegram_history_message_id: 303,
       telegram_attachments_message_ids: [401, 202, 402],
     });
   });
@@ -304,7 +304,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439012', {
       telegram_message_id: 101,
-      telegram_status_message_id: 303,
+      telegram_history_message_id: 303,
       telegram_attachments_message_ids: [401, 601, 602, 499],
     });
   });
@@ -389,7 +389,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439099', {
       telegram_message_id: 101,
-      telegram_status_message_id: 202,
+      telegram_history_message_id: 202,
       telegram_attachments_message_ids: [303],
     });
   });
@@ -453,7 +453,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
-      telegram_status_message_id: 404,
+      telegram_history_message_id: 404,
       telegram_attachments_message_ids: [404],
     });
   });
@@ -609,7 +609,7 @@ describe('notifyTaskCreated вложения', () => {
     });
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
-      telegram_status_message_id: 404,
+      telegram_history_message_id: 404,
       telegram_attachments_message_ids: [202],
     });
   });

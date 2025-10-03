@@ -29,7 +29,8 @@ import buildChatMessageLink from '../utils/messageLink';
 import { uploadsDir } from '../config/storage';
 import {
   getTaskHistoryMessage,
-  updateTaskStatusMessageId,
+  updateTaskHistoryMessageId,
+  updateTaskSummaryMessageId,
 } from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';
 import {
@@ -919,7 +920,7 @@ export default class TasksController {
         options,
       );
       if (statusMessage?.message_id) {
-        await updateTaskStatusMessageId(taskId, statusMessage.message_id);
+        await updateTaskHistoryMessageId(taskId, statusMessage.message_id);
       }
     } catch (error) {
       console.error(
@@ -936,7 +937,9 @@ export default class TasksController {
     const summary = await buildHistorySummaryLog(task);
     if (!summary) return;
     const messageId =
-      typeof task.telegram_status_message_id === 'number'
+      typeof task.telegram_summary_message_id === 'number'
+        ? task.telegram_summary_message_id
+        : typeof task.telegram_status_message_id === 'number'
         ? task.telegram_status_message_id
         : undefined;
     const topicId =
@@ -980,10 +983,14 @@ export default class TasksController {
         sendOptions,
       );
       if (statusMessage?.message_id && task._id) {
-        await Task.findByIdAndUpdate(task._id, {
-          telegram_status_message_id: statusMessage.message_id,
-        }).exec();
-        task.telegram_status_message_id = statusMessage.message_id;
+        const docId =
+          typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+            ? (task._id as { toString(): string }).toString()
+            : String(task._id);
+        if (docId) {
+          await updateTaskSummaryMessageId(docId, statusMessage.message_id);
+        }
+        task.telegram_summary_message_id = statusMessage.message_id;
       }
     } catch (error) {
       console.error('Не удалось отправить краткое сообщение задачи', error);
@@ -1364,7 +1371,7 @@ export default class TasksController {
       updatePayload.telegram_message_id = groupMessageId;
     }
     if (statusMessageId) {
-      updatePayload.telegram_status_message_id = statusMessageId;
+      updatePayload.telegram_history_message_id = statusMessageId;
     }
     if (attachmentMessageIds && attachmentMessageIds.length) {
       updatePayload.telegram_attachments_message_ids = attachmentMessageIds;

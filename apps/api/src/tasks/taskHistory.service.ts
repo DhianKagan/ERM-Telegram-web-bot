@@ -200,9 +200,11 @@ function isDateField(field: string | undefined): boolean {
 function formatFieldValue(value: unknown, field?: string): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
+
   if (isDateField(field)) {
     return escaped.replace(/\\\.(?=\d{4}\b)/g, '.');
   }
+
   return escaped;
 }
 

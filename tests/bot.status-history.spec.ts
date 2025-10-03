@@ -54,14 +54,11 @@ jest.mock('../apps/api/src/services/service', () => ({
 
 const getTaskHistoryMessageMock = jest.fn();
 const updateTaskHistoryMessageIdMock = jest.fn();
-const updateTaskSummaryMessageIdMock = jest.fn();
 
 jest.mock('../apps/api/src/tasks/taskHistory.service', () => ({
   getTaskHistoryMessage: (...args: unknown[]) => getTaskHistoryMessageMock(...args),
   updateTaskHistoryMessageId: (...args: unknown[]) =>
     updateTaskHistoryMessageIdMock(...args),
-  updateTaskSummaryMessageId: (...args: unknown[]) =>
-    updateTaskSummaryMessageIdMock(...args),
 }));
 
 jest.mock('../apps/api/src/services/scheduler', () => ({
@@ -201,8 +198,7 @@ test('редактирует существующее сообщение ист�
     },
   );
   expect(sendMessageMock).not.toHaveBeenCalled();
-  expect(updateTaskHistoryMessageIdMock).not.toHaveBeenCalled();
-  expect(updateTaskSummaryMessageIdMock).not.toHaveBeenCalled();
+  expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task123', 777);
 });
 
 test('создаёт новое сообщение истории и сохраняет идентификатор', async () => {
@@ -230,8 +226,26 @@ test('создаёт новое сообщение истории и сохра�
     },
   );
   expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task999', 31337);
-  expect(updateTaskSummaryMessageIdMock).not.toHaveBeenCalled();
   expect(editMessageTextMock).not.toHaveBeenCalled();
+});
+
+test('при завершении задачи отправляет только обновлённую историю', async () => {
+  updateTaskStatusMock.mockResolvedValue({ _id: 'task777' });
+  getTaskHistoryMessageMock.mockResolvedValue({
+    taskId: 'task777',
+    messageId: null,
+    text: '*История изменений*\\n• завершение',
+  });
+  sendMessageMock.mockResolvedValue({ message_id: 451 });
+  const ctx = createContext('task_done_confirm:task777') as Parameters<
+    typeof processStatusAction
+  >[0];
+
+  await processStatusAction(ctx, 'Выполнена', 'Сделано');
+
+  expect(sendMessageMock).toHaveBeenCalledTimes(1);
+  expect(editMessageTextMock).not.toHaveBeenCalled();
+  expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task777', 451);
 });
 
 describe('обработка завершения задачи', () => {

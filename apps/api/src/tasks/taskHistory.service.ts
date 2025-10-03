@@ -345,7 +345,10 @@ export async function updateTaskHistoryMessageId(
   if (!taskId || !Number.isFinite(messageId)) return;
   await Task.findByIdAndUpdate(taskId, {
     $set: { telegram_history_message_id: messageId },
-    $unset: { telegram_status_message_id: '' },
+    $unset: {
+      telegram_status_message_id: '',
+      telegram_summary_message_id: '',
+    },
   }).exec();
 }
 

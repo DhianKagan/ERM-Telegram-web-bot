@@ -191,14 +191,36 @@ function formatFieldName(field: string): string {
   return mdEscape(mapped);
 }
 
-function formatFieldValue(value: unknown): string {
+interface FormatFieldValueOptions {
+  escapeDatesFully?: boolean;
+}
+
+function formatFieldValue(
+  value: unknown,
+  options: FormatFieldValueOptions = {},
+): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
+
+  const isFormattedDate = primitive
+    .split(', ')
+    .every((part) => /^\d{2}\.\d{2}\.\d{4}(?: \d{2}:\d{2})?$/.test(part));
+
+  if (isFormattedDate && !options.escapeDatesFully) {
+    return escaped.replace(/\\\.(\d{4})(?!\d)/g, '.$1');
+  }
 
   return escaped;
 }
 
-export function describeAction(entry: HistoryEntry): string | null {
+interface DescribeActionOptions {
+  escapeDatesFully?: boolean;
+}
+
+export function describeAction(
+  entry: HistoryEntry,
+  options: DescribeActionOptions = {},
+): string | null {
   const to = (entry.changes?.to && isObject(entry.changes?.to))
     ? (entry.changes?.to as Record<string, unknown>)
     : emptyObject;
@@ -228,14 +250,14 @@ export function describeAction(entry: HistoryEntry): string | null {
   }
   if (changedKeys.every((key) => key === 'status')) {
     const fieldName = formatFieldName('status');
-    const previous = formatFieldValue(from.status);
-    const next = formatFieldValue(to.status);
+    const previous = formatFieldValue(from.status, options);
+    const next = formatFieldValue(to.status, options);
     return `${fieldName}: «${previous}» → «${next}»`;
   }
   const describeField = (key: string): string => {
     const fieldName = formatFieldName(key);
-    const previous = formatFieldValue(from[key]);
-    const next = formatFieldValue(to[key]);
+    const previous = formatFieldValue(from[key], options);
+    const next = formatFieldValue(to[key], options);
     return `${fieldName}: «${previous}» → «${next}»`;
   };
   if (changedKeys.length === 1) {
@@ -248,8 +270,11 @@ export function describeAction(entry: HistoryEntry): string | null {
   return null;
 }
 
-function formatHistoryEntry(entry: HistoryEntry, users: UsersMap): string | null {
-  const action = describeAction(entry);
+function formatHistoryEntry(
+  entry: HistoryEntry,
+  users: UsersMap,
+): string | null {
+  const action = describeAction(entry, { escapeDatesFully: true });
   const at = entry.changed_at ? new Date(entry.changed_at) : new Date();
   if (Number.isNaN(at.getTime())) return null;
   const formatted = historyFormatter.format(at).replace(', ', ' ');

@@ -195,6 +195,10 @@ function formatFieldValue(value: unknown): string {
   const primitive = formatPrimitiveValue(value);
   const escaped = mdEscape(primitive);
 
+  if (/^\d{2}\.\d{2}\.\d{4}/.test(primitive)) {
+    return escaped.replace(/\\\.(?=\d{4}(?:\D|$))/g, '.');
+  }
+
   return escaped;
 }
 

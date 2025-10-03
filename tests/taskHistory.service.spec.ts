@@ -58,6 +58,31 @@ test('возвращает сообщение истории со времене
   );
 });
 
+test('форматирует срок без лишнего экранирования годов', async () => {
+  const lean = jest.fn().mockResolvedValue({
+    telegram_status_message_id: null,
+    history: [
+      {
+        changed_at: new Date('2023-11-02T12:30:00Z'),
+        changed_by: 0,
+        changes: {
+          from: { deadline: '2023-11-01T10:00:00Z' },
+          to: { deadline: '2023-11-02T12:30:00Z' },
+        },
+      },
+    ],
+  });
+  (Task.findById as jest.Mock).mockReturnValue({ lean });
+  (getUsersMap as jest.Mock).mockResolvedValue({});
+
+  const result = await getTaskHistoryMessage('deadline-update');
+
+  expect(result).not.toBeNull();
+  expect(result?.text).toContain(
+    'срок: «01\\.11.2023 13:00» → «02\\.11.2023 15:30»',
+  );
+});
+
 test('экранирует точки в датах и другие специальные символы', async () => {
   const lean = jest.fn().mockResolvedValue({
     telegram_status_message_id: null,
@@ -109,7 +134,7 @@ test('не снимает экранирование точек в значен�
 
   expect(result).not.toBeNull();
   expect(result?.text).toContain(
-    'in progress at: «—» → «01\\.10\\.2025 19:48»',
+    'in progress at: «—» → «01\\.10.2025 19:48»',
   );
 });
 
@@ -136,6 +161,6 @@ test('экранирует точки в поле выполнено', async () 
 
   expect(result).not.toBeNull();
   expect(result?.text).toContain(
-    'выполнено: «—» → «02\\.10\\.2025 18:09»',
+    'выполнено: «—» → «02\\.10.2025 18:09»',
   );
 });

@@ -115,5 +115,23 @@ describe('formatTask', () => {
       },
     ]);
   });
+
+  it('добавляет заметку о сроках выполнения для завершённой задачи', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439099',
+      task_number: 'FIN-99',
+      title: 'Контроль сдачи отчёта',
+      status: 'Выполнена',
+      due_date: '2024-04-01T10:00:00Z',
+      completed_at: '2024-04-03T12:00:00Z',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const [headerSection] = text.split('\n\n━━━━━━━━━━━━\n\n');
+    const headerLines = headerSection.split('\n');
+
+    expect(headerLines[1]).toBe('Выполнена с опозданием на 2 дня 2 часа');
+    expect(headerSection).toContain('Выполнена с опозданием на 2 дня 2 часа');
+  });
 });
 

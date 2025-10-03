@@ -51,6 +51,92 @@ const taskDateFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeZone: PROJECT_TIMEZONE,
 });
 
+const COMPLETION_THRESHOLD_MS = 60_000;
+const MS_IN_MINUTE = 60 * 1000;
+const MINUTES_IN_DAY = 24 * 60;
+
+const parseDateInput = (value?: string | Date | null): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const candidate = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(candidate.getTime()) ? null : candidate;
+};
+
+const getRussianPlural = (
+  value: number,
+  forms: [string, string, string],
+) => {
+  const absValue = Math.abs(value) % 100;
+  if (absValue >= 11 && absValue <= 14) {
+    return forms[2];
+  }
+  const lastDigit = absValue % 10;
+  if (lastDigit === 1) {
+    return forms[0];
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return forms[1];
+  }
+  return forms[2];
+};
+
+const formatCompletionOffset = (diffMs: number): string | null => {
+  const absValue = Math.abs(diffMs);
+  if (absValue < COMPLETION_THRESHOLD_MS) {
+    return 'менее минуты';
+  }
+  const totalMinutes = Math.max(0, Math.floor(absValue / MS_IN_MINUTE));
+  const days = Math.floor(totalMinutes / MINUTES_IN_DAY);
+  const hours = Math.floor((totalMinutes % MINUTES_IN_DAY) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days) {
+    parts.push(`${days} ${getRussianPlural(days, ['день', 'дня', 'дней'])}`);
+  }
+  if (hours) {
+    parts.push(`${hours} ${getRussianPlural(hours, ['час', 'часа', 'часов'])}`);
+  }
+  if (minutes && parts.length < 2) {
+    parts.push(
+      `${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`,
+    );
+  }
+  if (!parts.length) {
+    return 'менее минуты';
+  }
+  return parts.slice(0, 2).join(' ');
+};
+
+const buildCompletionNote = (
+  status: Task['status'] | undefined,
+  dueValue?: string | Date,
+  completedValue?: string | Date | null,
+) => {
+  if (status !== 'Выполнена') {
+    return null;
+  }
+  const dueDate = parseDateInput(dueValue);
+  const completedDate = parseDateInput(completedValue);
+  if (!dueDate || !completedDate) {
+    return null;
+  }
+  const diff = completedDate.getTime() - dueDate.getTime();
+  if (!Number.isFinite(diff)) {
+    return null;
+  }
+  if (Math.abs(diff) < COMPLETION_THRESHOLD_MS) {
+    return 'Выполнена точно в срок';
+  }
+  const offset = formatCompletionOffset(diff);
+  if (!offset) {
+    return 'Выполнена точно в срок';
+  }
+  return diff < 0
+    ? `Выполнена досрочно на ${offset}`
+    : `Выполнена с опозданием на ${offset}`;
+};
+
 type TaskData = Task & {
   request_id?: string;
   task_number?: string;
@@ -161,21 +247,34 @@ export default function formatTask(
 
   const headerParts: string[] = [];
   const linkData = buildTaskLink(task);
+  let idLine: string | null = null;
   if (linkData) {
-    headerParts.push(
-      `📌 [${mdEscape(linkData.displayId)}](${mdEscape(linkData.link)})`,
-    );
+    idLine = `📌 [${mdEscape(linkData.displayId)}](${mdEscape(linkData.link)})`;
   } else {
     const fallbackId =
       toIdentifier(task.task_number) ||
       toIdentifier(task.request_id) ||
       toIdentifier(task._id);
     if (fallbackId) {
-      headerParts.push(`📌 *${mdEscape(fallbackId)}*`);
+      idLine = `📌 *${mdEscape(fallbackId)}*`;
     }
   }
-  if (task.title) {
-    headerParts.push(`*${mdEscape(task.title)}*`);
+  const titleLine = task.title ? `*${mdEscape(task.title)}*` : null;
+  if (idLine) {
+    headerParts.push(idLine);
+  } else if (titleLine) {
+    headerParts.push(titleLine);
+  }
+  const completionNote = buildCompletionNote(
+    task.status,
+    task.due_date,
+    task.completed_at,
+  );
+  if (completionNote) {
+    headerParts.push(mdEscape(completionNote));
+  }
+  if (titleLine && idLine) {
+    headerParts.push(titleLine);
   }
   if (task.task_type) {
     headerParts.push(`🏷 _${mdEscape(task.task_type)}_`);

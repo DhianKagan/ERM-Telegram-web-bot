@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -113,6 +113,49 @@ type TaskMedia = {
   previewImage: NormalizedImage | null;
   extras: NormalizedAttachment[];
   collageCandidates: NormalizedImage[];
+};
+
+type CollageCell = {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+};
+
+type CollageLayout = {
+  width: number;
+  height: number;
+  cells: CollageCell[];
+};
+
+const COLLAGE_LAYOUTS: Record<number, CollageLayout> = {
+  2: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { width: 600, height: 900, left: 0, top: 0 },
+      { width: 600, height: 900, left: 600, top: 0 },
+    ],
+  },
+  3: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { width: 600, height: 900, left: 0, top: 0 },
+      { width: 600, height: 450, left: 600, top: 0 },
+      { width: 600, height: 450, left: 600, top: 450 },
+    ],
+  },
+  4: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { width: 600, height: 450, left: 0, top: 0 },
+      { width: 600, height: 450, left: 600, top: 0 },
+      { width: 600, height: 450, left: 0, top: 450 },
+      { width: 600, height: 450, left: 600, top: 450 },
+    ],
+  },
 };
 
 type SendMessageOptions = NonNullable<

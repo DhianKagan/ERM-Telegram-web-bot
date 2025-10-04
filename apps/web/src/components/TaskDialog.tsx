@@ -1,5 +1,5 @@
 // Общая форма создания и редактирования задач
-// Модули: React, DOMPurify, контексты, сервисы задач, shared, EmployeeLink и логов
+// Модули: React, DOMPurify, контексты, сервисы задач, shared, EmployeeLink, логирование, coerceTaskId
 import React from "react";
 import DOMPurify from "dompurify";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -35,6 +35,7 @@ import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 import type { Task } from "shared";
 import EmployeeLink from "./EmployeeLink";
 import useDueDateOffset from "../hooks/useDueDateOffset";
+import coerceTaskId from "../utils/coerceTaskId";
 
 interface Props {
   onClose: () => void;
@@ -261,26 +262,6 @@ const hasDimensionValues = (
   );
 
 const START_OFFSET_MS = 60 * 60 * 1000;
-
-const coerceTaskId = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const str = String(value).trim();
-    return str ? str : null;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "toString" in value &&
-    typeof (value as { toString(): unknown }).toString === "function"
-  ) {
-    const str = String((value as { toString(): unknown }).toString()).trim();
-    return str ? str : null;
-  }
-  return null;
-};
 
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(

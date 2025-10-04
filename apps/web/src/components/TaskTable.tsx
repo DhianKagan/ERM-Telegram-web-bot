@@ -1,9 +1,10 @@
 // Назначение файла: таблица задач на основе DataTable
-// Основные модули: React, DataTable (лениво), taskColumns, useTasks
+// Основные модули: React, DataTable (лениво), taskColumns, useTasks, coerceTaskId
 import React, { lazy, Suspense } from "react";
 const DataTable = lazy(() => import("./DataTable"));
 import taskColumns, { TaskRow } from "../columns/taskColumns";
 import useTasks from "../context/useTasks";
+import coerceTaskId from "../utils/coerceTaskId";
 
 interface TaskTableProps {
   tasks: TaskRow[];
@@ -39,7 +40,7 @@ export default function TaskTable({
 
   return (
     <Suspense fallback={<div>Загрузка таблицы...</div>}>
-      <DataTable
+      <DataTable<TaskRow>
         columns={columns}
         data={tasks.filter((t) => {
           if (
@@ -65,7 +66,14 @@ export default function TaskTable({
         pageSize={25}
         pageCount={pageCount}
         onPageChange={onPageChange}
-        onRowClick={(row) => onRowClick?.((row as TaskRow)._id)}
+        onRowClick={(row) => {
+          const original = row as TaskRow & Record<string, unknown>;
+          const normalizedId =
+            coerceTaskId(original._id) || coerceTaskId(original.id);
+          if (normalizedId) {
+            onRowClick?.(normalizedId);
+          }
+        }}
         toolbarChildren={
           <>
             {typeof onMineChange === "function" && (

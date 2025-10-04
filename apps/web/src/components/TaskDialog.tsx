@@ -925,6 +925,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     }
   }, [startCoordinates, finishCoordinates]);
 
+  const toNumericValue = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
   const submit = handleSubmit(async (formData) => {
     try {
       const creationDate = parseIsoDate(created);
@@ -938,33 +951,32 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           return;
         }
       }
-      const defaults = computeDefaultDates(creationDate ?? undefined);
       const initialValues = initialRef.current;
       const initialStart = initialValues?.startDate || "";
       const initialDue = initialValues?.dueDate || "";
       const startValue = formData.startDate || "";
       const dueValue = formData.dueDate || "";
       const isNewTask = !isEdit;
-      const startMatchesInitial =
-        Boolean(startValue) && Boolean(initialStart) && startValue === initialStart;
-      const startCleared = !startValue && Boolean(initialStart) && !isNewTask;
-      let startInputValue = startValue || defaults.start;
+      let startInputValue = startValue;
+      let dueInputValue = dueValue;
+      let shouldSetStart = false;
+      let shouldSetDue = false;
+      let shouldIncludeStart = false;
+      let shouldIncludeDue = false;
       if (isNewTask) {
+        const defaults = computeDefaultDates(creationDate ?? undefined);
+        const startMatchesInitial =
+          Boolean(startValue) && Boolean(initialStart) && startValue === initialStart;
+        const startCleared = !startValue && Boolean(initialStart);
+        startInputValue = startValue || defaults.start;
         if (startMatchesInitial || (!startValue && !initialStart)) {
           startInputValue = formatInputDate(new Date());
+        } else if (startCleared) {
+          startInputValue = formatInputDate(new Date());
         }
-      } else if (startMatchesInitial) {
-        startInputValue = initialStart;
-      } else if (startCleared) {
-        startInputValue = formatInputDate(new Date());
-      }
-      let dueInputValue = dueValue || defaults.due;
-      const dueMatchesInitial =
-        Boolean(dueValue) && Boolean(initialDue) && dueValue === initialDue;
-      const dueEmpty = !dueValue;
-      if (!isNewTask && startMatchesInitial && (dueMatchesInitial || (dueEmpty && Boolean(initialDue)))) {
-        dueInputValue = initialDue || dueInputValue;
-      } else {
+        const dueMatchesInitial =
+          Boolean(dueValue) && Boolean(initialDue) && dueValue === initialDue;
+        dueInputValue = dueValue || defaults.due;
         const dueUnchanged = (!dueValue && !initialDue) || dueMatchesInitial;
         if (dueUnchanged) {
           const startMs = new Date(startInputValue).getTime();
@@ -976,19 +988,59 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             dueInputValue = formatInputDate(new Date(startMs + offset));
           }
         }
+        shouldSetStart = true;
+        shouldSetDue = true;
+        shouldIncludeStart = true;
+        shouldIncludeDue = true;
+      } else {
+        const startChanged = startValue !== initialStart;
+        const dueChanged = dueValue !== initialDue;
+        if (!startChanged) {
+          startInputValue = initialStart;
+        }
+        if (!dueChanged) {
+          dueInputValue = initialDue;
+        }
+        if (startChanged) {
+          shouldSetStart = true;
+          shouldIncludeStart = true;
+        }
+        if (dueChanged) {
+          shouldSetDue = true;
+          shouldIncludeDue = true;
+        }
       }
-      const startMs = new Date(startInputValue).getTime();
-      const dueMs = new Date(dueInputValue).getTime();
+      let startMs = Number.NaN;
+      let dueMs = Number.NaN;
+      if (startInputValue) {
+        startMs = new Date(startInputValue).getTime();
+      }
+      if (dueInputValue) {
+        dueMs = new Date(dueInputValue).getTime();
+      }
       if (!Number.isNaN(startMs) && !Number.isNaN(dueMs) && dueMs < startMs) {
-        dueInputValue = formatInputDate(
-          new Date(startMs + DEFAULT_DUE_OFFSET_MS),
-        );
+        dueInputValue = formatInputDate(new Date(startMs + DEFAULT_DUE_OFFSET_MS));
+        shouldSetDue = true;
+        shouldIncludeDue = true;
+        dueMs = new Date(dueInputValue).getTime();
       }
       if (!Number.isNaN(startMs) && !Number.isNaN(dueMs)) {
         setDueOffset(dueMs - startMs);
       }
-      setValue('startDate', startInputValue);
-      setValue('dueDate', dueInputValue);
+      if (shouldSetStart) {
+        setValue('startDate', startInputValue);
+      }
+      if (shouldSetDue) {
+        setValue('dueDate', dueInputValue);
+      }
+      const assignedRaw =
+        typeof formData.assigneeId === "string"
+          ? formData.assigneeId.trim()
+          : formData.assigneeId != null
+            ? String(formData.assigneeId)
+            : "";
+      const assignedNumeric = assignedRaw ? toNumericValue(assignedRaw) : null;
+      const assignedValue = assignedNumeric !== null ? assignedNumeric : "";
       const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: taskType,
@@ -998,18 +1050,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         transport_type: transportType,
         payment_method: paymentMethod,
         status,
-        created_by: creator,
-        assigned_user_id:
-          typeof formData.assigneeId === "string"
-            ? formData.assigneeId.trim()
-            : "",
+        created_by: toNumericValue(creator),
+        assigned_user_id: assignedValue,
         start_location: start,
         start_location_link: startLink,
         end_location: end,
         end_location_link: endLink,
-        start_date: startInputValue,
-        due_date: dueInputValue,
       };
+      if (!isNewTask && payload.created_by === null) {
+        delete payload.created_by;
+      }
+      if (shouldIncludeStart) {
+        payload.start_date = startInputValue || "";
+      }
+      if (shouldIncludeDue) {
+        payload.due_date = dueInputValue || "";
+      }
       const amountValue = parseCurrencyInput(paymentAmount);
       if (amountValue === null) {
         setAlertMsg(t("paymentAmountInvalid"));
@@ -1083,7 +1139,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         if (createdAtRaw) {
           const createdDate = new Date(createdAtRaw);
           if (!Number.isNaN(createdDate.getTime())) {
-          setCreated(createdDate.toISOString());
+            setCreated(createdDate.toISOString());
           }
         }
         const detailTask = detail?.task as Record<string, unknown> | undefined;

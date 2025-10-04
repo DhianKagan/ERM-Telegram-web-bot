@@ -219,30 +219,17 @@ const PRIORITY_COLOR_FALLBACK: BadgeStyle = {
   ring: { color: PRIMARY_HEX, opacity: 0.3 },
 };
 
-const toHex = (value: string) =>
-  value.startsWith('#') ? value.toUpperCase() : `#${value.toUpperCase()}`;
-
-const formatColorWithOpacity = ({ color, opacity }: BadgeColor): string => {
-  const hex = toHex(color);
-  if (typeof opacity !== 'number') {
-    return hex;
-  }
-  const clamped = Math.max(0, Math.min(opacity, 1));
-  const percentage = Math.round(clamped * 100);
-  return `${hex} · ${percentage}%`;
-};
-
 type EmojiColorEntry = { emoji: string; rgb: [number, number, number] };
 
 const COLOR_EMOJI_PALETTE: EmojiColorEntry[] = [
-  { emoji: '🟥', rgb: [244, 67, 54] },
+  { emoji: '⚪', rgb: [248, 250, 252] },
+  { emoji: '🟡', rgb: [250, 204, 21] },
+  { emoji: '🟢', rgb: [34, 197, 94] },
+  { emoji: '🔴', rgb: [239, 68, 68] },
+  { emoji: '🟥', rgb: [244, 63, 94] },
   { emoji: '🟧', rgb: [249, 115, 22] },
-  { emoji: '🟨', rgb: [250, 204, 21] },
-  { emoji: '🟩', rgb: [34, 197, 94] },
   { emoji: '🟦', rgb: [59, 130, 246] },
-  { emoji: '🟪', rgb: [168, 85, 247] },
   { emoji: '⬜', rgb: [241, 245, 249] },
-  { emoji: '⬛', rgb: [30, 41, 59] },
 ];
 
 const hexToRgb = (value: string): [number, number, number] | null => {
@@ -288,21 +275,9 @@ const pickColorEmoji = (value: string): string | null => {
   return best ? best.emoji : null;
 };
 
-const describeColor = (label: string, color: BadgeColor): string => {
-  const emoji = pickColorEmoji(color.color);
-  const body = formatColorWithOpacity(color);
-  return `${emoji ? `${emoji} ` : ''}${label} ${body}`;
-};
-
-const describeBadgeStyle = (style: BadgeStyle): string => {
-  const parts = [describeColor('заливка', style.fill)];
-  if (style.ring) {
-    parts.push(describeColor('контур', style.ring));
-  }
-  return parts.join('; ');
-};
-
-const describeStatusColor = (value: string | undefined | null): string | null => {
+const resolveStatusStyle = (
+  value: string | undefined | null,
+): BadgeStyle | null => {
   if (!value) {
     return null;
   }
@@ -310,14 +285,12 @@ const describeStatusColor = (value: string | undefined | null): string | null =>
   if (!trimmed) {
     return null;
   }
-  const style = STATUS_COLOR_MAP[trimmed];
-  if (!style) {
-    return null;
-  }
-  return describeBadgeStyle(style);
+  return STATUS_COLOR_MAP[trimmed] ?? null;
 };
 
-const describePriorityColor = (value: string | undefined | null): string | null => {
+const resolvePriorityStyle = (
+  value: string | undefined | null,
+): BadgeStyle | null => {
   if (!value) {
     return null;
   }
@@ -327,14 +300,27 @@ const describePriorityColor = (value: string | undefined | null): string | null 
   }
   const normalized = trimmed.toLowerCase();
   if (PRIORITY_COLOR_MAP[normalized]) {
-    return describeBadgeStyle(PRIORITY_COLOR_MAP[normalized]);
+    return PRIORITY_COLOR_MAP[normalized];
   }
   for (const rule of PRIORITY_COLOR_RULES) {
     if (rule.test(normalized)) {
-      return describeBadgeStyle(rule.style);
+      return rule.style;
     }
   }
-  return describeBadgeStyle(PRIORITY_COLOR_FALLBACK);
+  return PRIORITY_COLOR_FALLBACK;
+};
+
+const emphasizeValue = (
+  value: string,
+  style: BadgeStyle | null,
+  options: { fallbackEmoji?: string } = {},
+): string => {
+  const emojiCandidate =
+    style?.fill?.color ? pickColorEmoji(style.fill.color) : null;
+  const emoji = emojiCandidate ?? options.fallbackEmoji ?? '';
+  const escaped = mdEscape(value);
+  const prefix = emoji ? `${emoji} ` : '';
+  return `*${prefix}${escaped}*`;
 };
 
 type TaskData = Task & {
@@ -681,16 +667,12 @@ export default function formatTask(
   }
   if (task.priority) {
     const priority = toPriorityDisplay(task.priority);
-    const priorityColor = describePriorityColor(task.priority);
-    const prioritySuffix = priorityColor
-      ? ` — ${mdEscape(priorityColor)}`
-      : '';
-    infoLines.push(`⚡️ Приоритет: _${mdEscape(priority)}_${prioritySuffix}`);
+    const priorityStyle = resolvePriorityStyle(task.priority);
+    infoLines.push(`⚡️ Приоритет: ${emphasizeValue(priority, priorityStyle)}`);
   }
   if (task.status) {
-    const statusColor = describeStatusColor(task.status);
-    const statusSuffix = statusColor ? ` — ${mdEscape(statusColor)}` : '';
-    infoLines.push(`🛠 Статус: _${mdEscape(task.status)}_${statusSuffix}`);
+    const statusStyle = resolveStatusStyle(task.status);
+    infoLines.push(`🛠 Статус: ${emphasizeValue(task.status, statusStyle)}`);
   }
   if (infoLines.length) {
     sections.push(['🧾 *Информация*', ...infoLines].join('\n'));
@@ -710,19 +692,24 @@ export default function formatTask(
     logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
   }
   if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
-    logisticsLines.push(
-      `🗺 Расстояние: ${mdEscape(String(task.route_distance_km))} км`,
-    );
+    const distanceValue = `${String(task.route_distance_km)} км`;
+    logisticsLines.push(`🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`);
   }
   if (task.transport_type) {
-    logisticsLines.push(`🚗 Транспорт: ${mdEscape(task.transport_type)}`);
+    logisticsLines.push(
+      `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
+    );
   }
   if (task.payment_method) {
-    logisticsLines.push(`💰 Оплата: ${mdEscape(task.payment_method)}`);
+    logisticsLines.push(
+      `💰 Оплата: ${emphasizeValue(String(task.payment_method), null)}`,
+    );
   }
   if (typeof task.payment_amount === 'number') {
     const formatted = currencyFormatter.format(task.payment_amount);
-    logisticsLines.push(`💵 Сумма: ${mdEscape(`${formatted} грн`)}`);
+    logisticsLines.push(
+      `💵 Сумма: ${emphasizeValue(`${formatted} грн`, null)}`,
+    );
   }
   if (logisticsLines.length) {
     sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));

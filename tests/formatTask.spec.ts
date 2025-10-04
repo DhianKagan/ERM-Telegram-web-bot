@@ -47,13 +47,17 @@ describe('formatTask', () => {
 
     expect(text).toContain(expectedLink);
     expect(text).toContain('🧾 *Информация*');
-    expect(text).toContain(
-      '⚡️ Приоритет: _Срочно_ — 🟥 заливка \\#F43F5E · 20%; 🟥 контур \\#F43F5E · 40%',
-    );
-    expect(text).toContain(
-      '🛠 Статус: _Новая_ — 🟦 заливка \\#465FFF · 70%; 🟦 контур \\#2563EB · 30%',
-    );
+    expect(text).toContain('⚡️ Приоритет: *🟥 Срочно*');
+    expect(text).toContain('🛠 Статус: *🟦 Новая*');
     expect(text).toContain('🧭 *Логистика*');
+    expect(text).toContain('🗺 Расстояние: *125 км*');
+    expect(text).toContain('🚗 Транспорт: *Грузовой*');
+    expect(text).toContain('💰 Оплата: *Безнал*');
+    const formattedAmount = new Intl.NumberFormat('uk-UA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(1500);
+    expect(text).toContain(`💵 Сумма: *${formattedAmount} грн*`);
     expect(text).toContain('🚚 *Груз*');
     expect(text).toContain('🤝 *Участники*');
     expect(text).toContain('[Иван Петров](tg://user?id=101)');

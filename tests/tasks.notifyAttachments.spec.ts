@@ -8,6 +8,7 @@ import { promises as fs } from 'node:fs';
 import type { TaskDocument } from '../apps/api/src/db/model';
 import TasksController from '../apps/api/src/tasks/tasks.controller';
 import { uploadsDir } from '../apps/api/src/config/storage';
+import sharp from 'sharp';
 
 const escapeMd = (value: string) =>
   value.replace(/[\\_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
@@ -115,6 +116,7 @@ describe('notifyTaskCreated вложения', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     updateOneMock.mockClear();
+    fileFindByIdMock.mockReset();
   });
 
   it('отправляет изображения медиа-группой и превью YouTube в исходном порядке', async () => {
@@ -519,6 +521,123 @@ describe('notifyTaskCreated вложения', () => {
       telegram_history_message_id: 404,
       telegram_attachments_message_ids: [505],
     });
+  });
+
+  it('создаёт временный коллаж из нескольких локальных изображений для превью', async () => {
+    const uploadsRoot = path.resolve(uploadsDir);
+    const tempDir = path.join(uploadsRoot, 'tests-collage-preview');
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const fileIds = [
+      '68dccf5809cd3805f91e2fa1',
+      '68dccf5809cd3805f91e2fa2',
+    ];
+
+    const createImage = async (filename: string, color: string) => {
+      const absolutePath = path.join(tempDir, filename);
+      await sharp({
+        create: {
+          width: 640,
+          height: 480,
+          channels: 3,
+          background: color,
+        },
+      })
+        .jpeg({ quality: 90 })
+        .toFile(absolutePath);
+      const relative = path.relative(uploadsRoot, absolutePath);
+      const stats = await fs.stat(absolutePath);
+      return { absolutePath, relative, size: stats.size };
+    };
+
+    const [firstImage, secondImage] = await Promise.all([
+      createImage('first.jpg', '#ff0000'),
+      createImage('second.jpg', '#0000ff'),
+    ]);
+
+    const docById = new Map<string, { path: string; name: string; type: string; size: number }>([
+      [
+        fileIds[0],
+        {
+          path: firstImage.relative.split(path.sep).join('/'),
+          name: 'first.jpg',
+          type: 'image/jpeg',
+          size: firstImage.size,
+        },
+      ],
+      [
+        fileIds[1],
+        {
+          path: secondImage.relative.split(path.sep).join('/'),
+          name: 'second.jpg',
+          type: 'image/jpeg',
+          size: secondImage.size,
+        },
+      ],
+    ]);
+
+    fileFindByIdMock.mockImplementation((id: string) => ({
+      lean: () => Promise.resolve(docById.get(id) ?? null),
+    }));
+
+    sendMessageMock.mockImplementation((_chat, text: string) => {
+      if (text.startsWith('Задача')) {
+        return Promise.resolve({ message_id: 404 });
+      }
+      return Promise.resolve({ message_id: 303 });
+    });
+
+    let mainPreview: unknown = null;
+    sendPhotoMock.mockImplementation((_chat, media, options) => {
+      if (!options?.reply_parameters) {
+        mainPreview = media;
+        return Promise.resolve({ message_id: 101 });
+      }
+      return Promise.resolve({ message_id: 501 });
+    });
+    sendMediaGroupMock.mockResolvedValue([
+      { message_id: 601 },
+      { message_id: 602 },
+    ]);
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439099',
+      task_number: 'C-77',
+      title: 'Задача с изображениями',
+      telegram_topic_id: 777,
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-77',
+      createdAt: '2024-02-01T00:00:00Z',
+      attachments: [
+        { url: `/api/v1/files/${fileIds[0]}`, type: 'image/jpeg', name: 'first.jpg' },
+        { url: `/api/v1/files/${fileIds[1]}`, type: 'image/jpeg', name: 'second.jpg' },
+      ],
+      task_description: '<p>Проверяем коллаж</p>',
+    };
+
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).notifyTaskCreated(task, 55);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+
+    expect(mainPreview).not.toBeNull();
+    expect(typeof mainPreview).toBe('object');
+    const descriptor = mainPreview as { filename?: string; contentType?: string };
+    expect(descriptor.filename).toMatch(/^collage_.*\.jpg$/);
+    expect(descriptor.contentType).toBe('image/jpeg');
+    expect(Object.prototype.hasOwnProperty.call(descriptor, 'source')).toBe(true);
   });
 
   it('использует локальный файл для одиночного inline-изображения', async () => {

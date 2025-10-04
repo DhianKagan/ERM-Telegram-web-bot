@@ -232,10 +232,72 @@ const formatColorWithOpacity = ({ color, opacity }: BadgeColor): string => {
   return `${hex} · ${percentage}%`;
 };
 
+type EmojiColorEntry = { emoji: string; rgb: [number, number, number] };
+
+const COLOR_EMOJI_PALETTE: EmojiColorEntry[] = [
+  { emoji: '🟥', rgb: [244, 67, 54] },
+  { emoji: '🟧', rgb: [249, 115, 22] },
+  { emoji: '🟨', rgb: [250, 204, 21] },
+  { emoji: '🟩', rgb: [34, 197, 94] },
+  { emoji: '🟦', rgb: [59, 130, 246] },
+  { emoji: '🟪', rgb: [168, 85, 247] },
+  { emoji: '⬜', rgb: [241, 245, 249] },
+  { emoji: '⬛', rgb: [30, 41, 59] },
+];
+
+const hexToRgb = (value: string): [number, number, number] | null => {
+  const trimmed = value.trim().replace(/^#/, '');
+  if (trimmed.length !== 3 && trimmed.length !== 6) {
+    return null;
+  }
+  const normalized =
+    trimmed.length === 3
+      ? trimmed
+          .split('')
+          .map((char) => char + char)
+          .join('')
+      : trimmed;
+  const parsed = Number.parseInt(normalized, 16);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+  const r = (parsed >> 16) & 0xff;
+  const g = (parsed >> 8) & 0xff;
+  const b = parsed & 0xff;
+  return [r, g, b];
+};
+
+const pickColorEmoji = (value: string): string | null => {
+  const rgb = hexToRgb(value);
+  if (!rgb) {
+    return null;
+  }
+  let best: EmojiColorEntry | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of COLOR_EMOJI_PALETTE) {
+    const [cr, cg, cb] = candidate.rgb;
+    const distance =
+      (rgb[0] - cr) * (rgb[0] - cr) +
+      (rgb[1] - cg) * (rgb[1] - cg) +
+      (rgb[2] - cb) * (rgb[2] - cb);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+    }
+  }
+  return best ? best.emoji : null;
+};
+
+const describeColor = (label: string, color: BadgeColor): string => {
+  const emoji = pickColorEmoji(color.color);
+  const body = formatColorWithOpacity(color);
+  return `${emoji ? `${emoji} ` : ''}${label} ${body}`;
+};
+
 const describeBadgeStyle = (style: BadgeStyle): string => {
-  const parts = [`заливка ${formatColorWithOpacity(style.fill)}`];
+  const parts = [describeColor('заливка', style.fill)];
   if (style.ring) {
-    parts.push(`контур ${formatColorWithOpacity(style.ring)}`);
+    parts.push(describeColor('контур', style.ring));
   }
   return parts.join('; ');
 };

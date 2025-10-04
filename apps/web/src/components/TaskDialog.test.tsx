@@ -128,12 +128,16 @@ describe("TaskDialog", () => {
 
     const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
     const initialStart = startInput.value;
+    const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+    const initialDue = dueInput.value;
 
     fireEvent.click(screen.getByText("save"));
 
     await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
     expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("start_date");
     expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("due_date");
+    expect(startInput.value).toBe(initialStart);
+    expect(dueInput.value).toBe(initialDue);
   });
 
   it("устанавливает срок на 5 часов позже даты начала по умолчанию", async () => {

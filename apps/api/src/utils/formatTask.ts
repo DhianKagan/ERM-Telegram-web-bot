@@ -198,7 +198,7 @@ const preserveConsecutiveSpaces = (value: string): string =>
     if (!prev || !next || /\s/.test(prev) || /\s/.test(next)) {
       return ' ';
     }
-    return ` ${' '.repeat(match.length - 1)}`;
+    return ` ${'\u00a0'.repeat(match.length - 1)}`;
   });
 
 const renderNodes = (nodes: DomNode[] | undefined, context: RenderContext): string => {
@@ -224,9 +224,9 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
     const normalized = preserveConsecutiveSpaces(
       data.replace(/\r\n?/g, ' ').replace(/\t/g, ' '),
     );
-    const compact = normalized.replace(/ /g, ' ').trim();
+    const compact = normalized.replace(/\u00a0/g, ' ').trim();
     if (!compact) {
-      return normalized.includes(' ') ? normalized : ' ';
+      return normalized.includes('\u00a0') ? normalized : ' ';
     }
     return mdEscape(normalized);
   }

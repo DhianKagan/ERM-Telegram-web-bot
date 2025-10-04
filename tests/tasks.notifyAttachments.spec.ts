@@ -1238,7 +1238,9 @@ describe('syncTelegramTaskMessage вложения', () => {
     expect(mainChat).toBe(process.env.CHAT_ID);
     expect(mainMessageId).toBe(1001);
     expect(mainMedia).toMatchObject({ type: 'photo', media: 'https://cdn.example.com/new.jpg' });
-    expect(mainExtra).toMatchObject({ inline_keyboard: [] });
+    expect(mainExtra).toMatchObject({
+      reply_markup: { inline_keyboard: [] },
+    });
     expect(deleteMessageMock).toHaveBeenCalledTimes(1);
     expect(deleteMessageMock.mock.calls[0][1]).toBe(404);
     expect(sendMessageMock).not.toHaveBeenCalled();

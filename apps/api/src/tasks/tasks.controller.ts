@@ -399,6 +399,7 @@ export default class TasksController {
   ): Promise<TaskMessageSendResult> {
     const cache = new Map<string, LocalPhotoInfo | null>();
     const uniqueCandidates: NormalizedImage[] = [];
+    const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
     if (media.collageCandidates.length >= 2) {
       const seen = new Set<string>();
       for (const candidate of media.collageCandidates) {
@@ -444,7 +445,7 @@ export default class TasksController {
         const firstMessage = Array.isArray(response) ? response[0] : undefined;
         const messageId = firstMessage?.message_id;
         if (messageId && keyboard) {
-          const replyMarkup = this.extractKeyboardMarkup(keyboard);
+          const replyMarkup = keyboardMarkup ?? this.extractKeyboardMarkup(keyboard);
           try {
             await bot.telegram.editMessageCaption(chat, messageId, undefined, message, {
               parse_mode: 'MarkdownV2',
@@ -499,7 +500,7 @@ export default class TasksController {
         const options: SendPhotoOptions = {
           caption: message,
           parse_mode: 'MarkdownV2',
-          ...keyboard,
+          ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
         };
         if (typeof topicId === 'number') {
           options.message_thread_id = topicId;
@@ -532,7 +533,7 @@ export default class TasksController {
       link_preview_options: media.previewImage
         ? this.createPreviewOptions(media.previewImage)
         : { is_disabled: true },
-      ...keyboard,
+      ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
     };
     if (typeof topicId === 'number') {
       options.message_thread_id = topicId;
@@ -560,6 +561,7 @@ export default class TasksController {
   }>
   {
     const cache = new Map<string, LocalPhotoInfo | null>();
+    const replyMarkup = this.extractKeyboardMarkup(keyboard);
     const prepared = await this.preparePreviewMedia(media, cache);
     if (prepared) {
       const { photo, cleanup, sourceUrl } = prepared;
@@ -570,9 +572,13 @@ export default class TasksController {
           caption: message,
           parse_mode: 'MarkdownV2',
         };
-        await bot.telegram.editMessageMedia(chat, messageId, undefined, editMedia, {
-          ...keyboard,
-        });
+        await bot.telegram.editMessageMedia(
+          chat,
+          messageId,
+          undefined,
+          editMedia,
+          replyMarkup ? { reply_markup: replyMarkup } : undefined,
+        );
         if (cleanup) {
           await cleanup();
         }
@@ -613,7 +619,7 @@ export default class TasksController {
         link_preview_options: media.previewImage
           ? this.createPreviewOptions(media.previewImage)
           : { is_disabled: true },
-        ...keyboard,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       });
       return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
     } catch (error) {

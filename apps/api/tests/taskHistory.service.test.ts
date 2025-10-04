@@ -9,7 +9,10 @@ describe('describeAction', () => {
         to: { status: 'В работе' },
       },
     };
-    expect(describeAction(entry)).toBe('статус: «Назначена» → «В работе»');
+    expect(describeAction(entry)).toEqual({
+      kind: 'status',
+      details: 'статус: «Назначена» → «В работе»',
+    });
   });
 
   test('форматирует изменение даты', () => {
@@ -19,9 +22,7 @@ describe('describeAction', () => {
         to: { deadline: '2023-11-02T12:30:00.000Z' },
       },
     };
-    expect(describeAction(entry)).toBe(
-      'срок: «01\\.11.2023 13:00» → «02\\.11.2023 15:30»',
-    );
+    expect(describeAction(entry)).toEqual({ kind: 'updated', details: null });
   });
 
   test('форматирует изменение текстового поля', () => {
@@ -31,8 +32,6 @@ describe('describeAction', () => {
         to: { description: 'новое значение' },
       },
     };
-    expect(describeAction(entry)).toBe(
-      'описание: «старое \\_значение\\_» → «новое значение»',
-    );
+    expect(describeAction(entry)).toEqual({ kind: 'updated', details: null });
   });
 });

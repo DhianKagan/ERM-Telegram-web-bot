@@ -217,10 +217,17 @@ interface DescribeActionOptions {
   escapeDatesFully?: boolean;
 }
 
+export type ActionKind = 'created' | 'status' | 'updated';
+
+export interface ActionDescription {
+  kind: ActionKind;
+  details: string | null;
+}
+
 export function describeAction(
   entry: HistoryEntry,
   options: DescribeActionOptions = {},
-): string | null {
+): ActionDescription {
   const to = (entry.changes?.to && isObject(entry.changes?.to))
     ? (entry.changes?.to as Record<string, unknown>)
     : emptyObject;
@@ -229,7 +236,7 @@ export function describeAction(
     : emptyObject;
   const hasChanges = Object.keys(to).length > 0 || Object.keys(from).length > 0;
   if (!hasChanges) {
-    return 'задача создана';
+    return { kind: 'created', details: 'задача создана' };
   }
   const keys = Array.from(
     new Set([...Object.keys(from), ...Object.keys(to)]),
@@ -243,31 +250,18 @@ export function describeAction(
     );
   });
   if (!changedKeys.length) {
-    return null;
+    return { kind: 'updated', details: null };
   }
   if (changedKeys.some((key) => hiddenFields.has(key))) {
-    return null;
+    return { kind: 'updated', details: null };
   }
-  if (changedKeys.every((key) => key === 'status')) {
+  if (changedKeys.includes('status')) {
     const fieldName = formatFieldName('status');
     const previous = formatFieldValue(from.status, options);
     const next = formatFieldValue(to.status, options);
-    return `${fieldName}: «${previous}» → «${next}»`;
+    return { kind: 'status', details: `${fieldName}: «${previous}» → «${next}»` };
   }
-  const describeField = (key: string): string => {
-    const fieldName = formatFieldName(key);
-    const previous = formatFieldValue(from[key], options);
-    const next = formatFieldValue(to[key], options);
-    return `${fieldName}: «${previous}» → «${next}»`;
-  };
-  if (changedKeys.length === 1) {
-    return describeField(changedKeys[0]);
-  }
-  const described = changedKeys.map((key) => describeField(key)).filter(Boolean);
-  if (described.length) {
-    return described.join('; ');
-  }
-  return null;
+  return { kind: 'updated', details: null };
 }
 
 function formatHistoryEntry(
@@ -282,10 +276,14 @@ function formatHistoryEntry(
     PROJECT_TIMEZONE_LABEL,
   )}\\)`;
   const author = resolveAuthor(entry, users);
-  if (!action) {
-    return `• ${timeWithZone} — задачу обновил ${author}`;
+  const prefix = `• ${timeWithZone} — `;
+  if (action.kind === 'status' && action.details) {
+    return `${prefix}${action.details} — ${author}`;
   }
-  return `• ${timeWithZone} — ${action} — ${author}`;
+  if (action.kind === 'created' && action.details) {
+    return `${prefix}${action.details} — ${author}`;
+  }
+  return `${prefix}задачу обновил ${author}`;
 }
 
 export interface TaskHistoryMessage {

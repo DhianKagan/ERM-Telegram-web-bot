@@ -48,10 +48,10 @@ describe('formatTask', () => {
     expect(text).toContain(expectedLink);
     expect(text).toContain('🧾 *Информация*');
     expect(text).toContain(
-      '⚡️ Приоритет: _Срочно_ — заливка \\#F43F5E · 20%; контур \\#F43F5E · 40%',
+      '⚡️ Приоритет: _Срочно_ — 🟥 заливка \\#F43F5E · 20%; 🟥 контур \\#F43F5E · 40%',
     );
     expect(text).toContain(
-      '🛠 Статус: _Новая_ — заливка \\#465FFF · 70%; контур \\#2563EB · 30%',
+      '🛠 Статус: _Новая_ — 🟦 заливка \\#465FFF · 70%; 🟦 контур \\#2563EB · 30%',
     );
     expect(text).toContain('🧭 *Логистика*');
     expect(text).toContain('🚚 *Груз*');

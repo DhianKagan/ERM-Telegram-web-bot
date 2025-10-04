@@ -1859,10 +1859,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 }
                 confirmText={isEdit ? t("save") : t("create")}
                 cancelText={t("cancel")}
-                onConfirm={() => {
+                onConfirm={async () => {
                   setShowSaveConfirm(false);
                   setIsSubmitting(true);
-                  submit();
+                  await submit();
                 }}
                 onCancel={() => setShowSaveConfirm(false)}
               />

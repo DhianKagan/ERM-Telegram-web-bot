@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -112,6 +112,7 @@ type NormalizedImage = Extract<NormalizedAttachment, { kind: 'image' }>;
 type TaskMedia = {
   previewImage: NormalizedImage | null;
   extras: NormalizedAttachment[];
+  collageCandidates: NormalizedImage[];
 };
 
 type SendMessageOptions = NonNullable<
@@ -125,6 +126,7 @@ type TaskMessageSendResult = {
   messageId: number | undefined;
   usedPreview: boolean;
   cache: Map<string, LocalPhotoInfo | null>;
+  previewSourceUrl?: string;
 };
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
@@ -144,6 +146,40 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
 ]);
 
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
+
+type CollageCell = { left: number; top: number; width: number; height: number };
+
+type CollageLayout = { width: number; height: number; cells: CollageCell[] };
+
+const COLLAGE_LAYOUTS: Record<number, CollageLayout> = {
+  2: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { left: 0, top: 0, width: 600, height: 900 },
+      { left: 600, top: 0, width: 600, height: 900 },
+    ],
+  },
+  3: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { left: 0, top: 0, width: 600, height: 450 },
+      { left: 600, top: 0, width: 600, height: 450 },
+      { left: 0, top: 450, width: 1200, height: 450 },
+    ],
+  },
+  4: {
+    width: 1200,
+    height: 900,
+    cells: [
+      { left: 0, top: 0, width: 600, height: 450 },
+      { left: 600, top: 0, width: 600, height: 450 },
+      { left: 0, top: 450, width: 600, height: 450 },
+      { left: 600, top: 450, width: 600, height: 450 },
+    ],
+  },
+};
 
 @injectable()
 export default class TasksController {
@@ -240,9 +276,13 @@ export default class TasksController {
   ): TaskMedia {
     const previewPool: NormalizedImage[] = [];
     const extras: NormalizedAttachment[] = [];
+    const collageCandidates: NormalizedImage[] = [];
     const registerImage = (image: NormalizedImage) => {
       previewPool.push(image);
       extras.push(image);
+      if (this.extractLocalFileId(image.url)) {
+        collageCandidates.push(image);
+      }
     };
     this.normalizeInlineImages(inline).forEach(registerImage);
     if (Array.isArray(task.attachments) && task.attachments.length > 0) {
@@ -324,6 +364,7 @@ export default class TasksController {
     return {
       previewImage,
       extras: extrasWithoutPreview,
+      collageCandidates,
     };
   }
 
@@ -335,8 +376,9 @@ export default class TasksController {
     topicId?: number,
   ): Promise<TaskMessageSendResult> {
     const cache = new Map<string, LocalPhotoInfo | null>();
-    const preview = media.previewImage;
-    if (preview) {
+    const prepared = await this.preparePreviewMedia(media, cache);
+    if (prepared) {
+      const { photo, cleanup, sourceUrl } = prepared;
       try {
         const options: SendPhotoOptions = {
           caption: message,
@@ -346,14 +388,20 @@ export default class TasksController {
         if (typeof topicId === 'number') {
           options.message_thread_id = topicId;
         }
-        const photo = await this.resolvePhotoInputWithCache(preview.url, cache);
         const response = await bot.telegram.sendPhoto(chat, photo, options);
+        if (cleanup) {
+          await cleanup();
+        }
         return {
           messageId: response?.message_id,
           usedPreview: true,
           cache,
+          previewSourceUrl: sourceUrl,
         };
       } catch (error) {
+        if (cleanup) {
+          await cleanup().catch(() => undefined);
+        }
         if (!this.shouldFallbackToTextMessage(error)) {
           throw error;
         }
@@ -365,8 +413,8 @@ export default class TasksController {
     }
     const options: SendMessageOptions = {
       parse_mode: 'MarkdownV2',
-      link_preview_options: preview
-        ? this.createPreviewOptions(preview)
+      link_preview_options: media.previewImage
+        ? this.createPreviewOptions(media.previewImage)
         : { is_disabled: true },
       ...keyboard,
     };
@@ -378,6 +426,7 @@ export default class TasksController {
       messageId: response?.message_id,
       usedPreview: false,
       cache,
+      previewSourceUrl: undefined,
     };
   }
 
@@ -387,25 +436,37 @@ export default class TasksController {
     message: string,
     media: TaskMedia,
     keyboard: ReturnType<typeof taskStatusKeyboard>,
-  ): Promise<{ success: boolean; usedPreview: boolean; cache: Map<string, LocalPhotoInfo | null> }>
+  ): Promise<{
+    success: boolean;
+    usedPreview: boolean;
+    cache: Map<string, LocalPhotoInfo | null>;
+    previewSourceUrl?: string;
+  }>
   {
     const cache = new Map<string, LocalPhotoInfo | null>();
-    const preview = media.previewImage;
-    if (preview) {
+    const prepared = await this.preparePreviewMedia(media, cache);
+    if (prepared) {
+      const { photo, cleanup, sourceUrl } = prepared;
       try {
         const editMedia: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
           type: 'photo',
-          media: await this.resolvePhotoInputWithCache(preview.url, cache),
+          media: photo,
           caption: message,
           parse_mode: 'MarkdownV2',
         };
         await bot.telegram.editMessageMedia(chat, messageId, undefined, editMedia, {
           ...keyboard,
         });
-        return { success: true, usedPreview: true, cache };
+        if (cleanup) {
+          await cleanup();
+        }
+        return { success: true, usedPreview: true, cache, previewSourceUrl: sourceUrl };
       } catch (error) {
+        if (cleanup) {
+          await cleanup().catch(() => undefined);
+        }
         if (this.isMessageNotModifiedError(error)) {
-          return { success: true, usedPreview: true, cache };
+          return { success: true, usedPreview: true, cache, previewSourceUrl: sourceUrl };
         }
         if (this.isMediaMessageTypeError(error)) {
           // Сообщение не является медиа, пробуем текстовое обновление ниже.
@@ -423,8 +484,8 @@ export default class TasksController {
     try {
       await bot.telegram.editMessageText(chat, messageId, undefined, message, {
         parse_mode: 'MarkdownV2',
-        link_preview_options: preview
-          ? this.createPreviewOptions(preview)
+        link_preview_options: media.previewImage
+          ? this.createPreviewOptions(media.previewImage)
           : { is_disabled: true },
         ...keyboard,
       });
@@ -534,6 +595,130 @@ export default class TasksController {
         error,
       );
       return null;
+    }
+  }
+
+  private getCollageLayout(count: number): CollageLayout | null {
+    if (count < 2) {
+      return null;
+    }
+    const normalized = Math.min(Math.max(count, 2), 4);
+    return COLLAGE_LAYOUTS[normalized] ?? null;
+  }
+
+  private async createCollageFromCandidates(
+    candidates: NormalizedImage[],
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<{ key: string; cleanup: () => Promise<void> } | null> {
+    try {
+      const seen = new Set<string>();
+      const infos: LocalPhotoInfo[] = [];
+      for (const candidate of candidates) {
+        if (!candidate?.url || seen.has(candidate.url)) {
+          continue;
+        }
+        seen.add(candidate.url);
+        let info = cache.get(candidate.url) ?? null;
+        if (!cache.has(candidate.url)) {
+          info = (await this.resolveLocalPhotoInfo(candidate.url)) ?? null;
+          cache.set(candidate.url, info);
+        }
+        if (info) {
+          infos.push(info);
+        }
+        if (infos.length >= 4) {
+          break;
+        }
+      }
+      if (infos.length < 2) {
+        return null;
+      }
+      const layout = this.getCollageLayout(infos.length);
+      if (!layout) {
+        return null;
+      }
+      const composites = await Promise.all(
+        infos.map(async (info, index) => {
+          const cell = layout.cells[index];
+          const buffer = await sharp(info.absolutePath)
+            .resize(cell.width, cell.height, {
+              fit: 'cover',
+              position: 'attention',
+            })
+            .jpeg({ quality: 85 })
+            .toBuffer();
+          return { input: buffer, left: cell.left, top: cell.top };
+        }),
+      );
+      const outputDir = path.join(os.tmpdir(), 'erm-task-collages');
+      await mkdir(outputDir, { recursive: true });
+      const filename = `collage_${Date.now()}_${randomBytes(6).toString('hex')}.jpg`;
+      const target = path.join(outputDir, filename);
+      await sharp({
+        create: {
+          width: layout.width,
+          height: layout.height,
+          channels: 3,
+          background: '#ffffff',
+        },
+      })
+        .composite(composites)
+        .jpeg({ quality: 82 })
+        .toFile(target);
+      const fileStat = await stat(target);
+      const key = `local-collage:${filename}`;
+      cache.set(key, {
+        absolutePath: target,
+        filename,
+        contentType: 'image/jpeg',
+        size: fileStat.size,
+      });
+      return {
+        key,
+        cleanup: async () => {
+          cache.delete(key);
+          await unlink(target).catch(() => undefined);
+        },
+      };
+    } catch (error) {
+      console.error('Не удалось создать коллаж вложений', error);
+      return null;
+    }
+  }
+
+  private async preparePreviewMedia(
+    media: TaskMedia,
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<
+    | { photo: PhotoInput; sourceUrl: string; cleanup?: () => Promise<void> }
+    | null
+  > {
+    const preview = media.previewImage;
+    if (!preview) {
+      return null;
+    }
+    let collage: { key: string; cleanup: () => Promise<void> } | null = null;
+    if (media.collageCandidates.length >= 2) {
+      collage = await this.createCollageFromCandidates(media.collageCandidates, cache);
+    }
+    const sourceUrl = collage?.key ?? preview.url;
+    try {
+      const photo = await this.resolvePhotoInputWithCache(sourceUrl, cache);
+      return { photo, sourceUrl, cleanup: collage?.cleanup };
+    } catch (error) {
+      if (collage) {
+        await collage.cleanup().catch(() => undefined);
+        console.warn(
+          'Не удалось подготовить коллаж вложений, используем исходное фото',
+          error,
+        );
+        const fallbackPhoto = await this.resolvePhotoInputWithCache(
+          preview.url,
+          cache,
+        );
+        return { photo: fallbackPhoto, sourceUrl: preview.url };
+      }
+      throw error;
     }
   }
 
@@ -1453,6 +1638,7 @@ export default class TasksController {
           messageId: currentMessageId,
           usedPreview: editResult.usedPreview,
           cache: editResult.cache,
+          previewSourceUrl: editResult.previewSourceUrl,
         };
       } else {
         console.error('Не удалось обновить сообщение задачи, отправляем заново');
@@ -1528,20 +1714,28 @@ export default class TasksController {
 
     const previousAttachments = previousPlain
       ? this.collectSendableAttachments(previousPlain, previousFormatted?.inlineImages)
-      : { previewImage: null, extras: [] };
+      : { previewImage: null, extras: [], collageCandidates: [] };
     const previousExtrasRaw = previousAttachments.extras;
     const nextExtrasRaw = nextAttachments.extras;
-    const previousExtras = previousAttachments.previewImage
+    const previousPreviewUrl =
+      previousAttachments.collageCandidates.length >= 2
+        ? null
+        : previousAttachments.previewImage?.url ?? null;
+    const previousExtras = previousPreviewUrl
       ? previousExtrasRaw.filter(
-          (attachment) => attachment !== previousAttachments.previewImage,
+          (attachment) =>
+            attachment.kind !== 'image' || attachment.url !== previousPreviewUrl,
         )
       : previousExtrasRaw;
-    const nextExtras =
-      messageResult.usedPreview && nextAttachments.previewImage
-        ? nextExtrasRaw.filter(
-            (attachment) => attachment !== nextAttachments.previewImage,
-          )
-        : nextExtrasRaw;
+    const nextPreviewUrl = messageResult.usedPreview
+      ? messageResult.previewSourceUrl ?? nextAttachments.previewImage?.url ?? null
+      : null;
+    const nextExtras = nextPreviewUrl
+      ? nextExtrasRaw.filter(
+          (attachment) =>
+            attachment.kind !== 'image' || attachment.url !== nextPreviewUrl,
+        )
+      : nextExtrasRaw;
     const previousAttachmentMessageIds = Array.isArray(
       previousPlain?.telegram_attachments_message_ids,
     )
@@ -1734,8 +1928,14 @@ export default class TasksController {
         );
         groupMessageId = sendResult.messageId;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        const extras = sendResult.usedPreview
-          ? media.extras.filter((attachment) => attachment !== media.previewImage)
+        const previewUrl = sendResult.usedPreview
+          ? sendResult.previewSourceUrl ?? media.previewImage?.url ?? null
+          : null;
+        const extras = previewUrl
+          ? media.extras.filter(
+              (attachment) =>
+                attachment.kind !== 'image' || attachment.url !== previewUrl,
+            )
           : media.extras;
         if (groupMessageId && extras.length) {
           try {

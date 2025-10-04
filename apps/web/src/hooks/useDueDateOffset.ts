@@ -16,6 +16,7 @@ interface UseDueDateOffsetParams<TFormValues extends FormValuesWithDueDate> {
   setValue: UseFormSetValue<TFormValues>;
   formatInputDate: (value: Date) => string;
   defaultOffsetMs: number;
+  autoSync?: boolean;
 }
 
 interface UseDueDateOffsetResult<TFormValues extends FormValuesWithDueDate> {
@@ -27,10 +28,17 @@ interface UseDueDateOffsetResult<TFormValues extends FormValuesWithDueDate> {
 const useDueDateOffset = <TFormValues extends FormValuesWithDueDate>(
   params: UseDueDateOffsetParams<TFormValues>,
 ): UseDueDateOffsetResult<TFormValues> => {
-  const { startDateValue, setValue, formatInputDate, defaultOffsetMs } = params;
+  const {
+    startDateValue,
+    setValue,
+    formatInputDate,
+    defaultOffsetMs,
+    autoSync = true,
+  } = params;
   const [dueOffset, setDueOffset] = React.useState(defaultOffsetMs);
 
   React.useEffect(() => {
+    if (!autoSync) return;
     if (!startDateValue) return;
     if (!Number.isFinite(dueOffset)) return;
     const start = new Date(startDateValue);
@@ -42,7 +50,7 @@ const useDueDateOffset = <TFormValues extends FormValuesWithDueDate>(
       "dueDate" as Path<TFormValues>,
       formatInputDate(nextDue) as PathValue<TFormValues, Path<TFormValues>>,
     );
-  }, [startDateValue, dueOffset, setValue, formatInputDate]);
+  }, [startDateValue, dueOffset, setValue, formatInputDate, autoSync]);
 
   const handleDueDateChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

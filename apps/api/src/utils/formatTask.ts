@@ -571,20 +571,6 @@ export default function formatTask(
     if (formattedDescription) {
       lines.push(formattedDescription);
     }
-    if (images.length) {
-      const header = images.length > 1 ? 'Изображения' : 'Изображение';
-      if (lines.length) {
-        lines.push('');
-      }
-      lines.push(`🖼 *${mdEscape(header)}*`);
-      images.forEach((image, index) => {
-        const labelBase = image.alt && image.alt.trim()
-          ? image.alt.trim()
-          : `Изображение ${index + 1}`;
-        const label = mdEscape(labelBase);
-        lines.push(`• ${label}`);
-      });
-    }
     if (lines.length) {
       sections.push(`📝 *Описание*\n${lines.join('\n')}`);
     }

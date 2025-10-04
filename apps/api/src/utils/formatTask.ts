@@ -191,6 +191,16 @@ type RenderContext = {
 
 const escapeInlineCode = (value: string) => value.replace(/[\\`]/g, '\\$&');
 
+const preserveConsecutiveSpaces = (value: string): string =>
+  value.replace(/ {2,}/g, (match, offset, full) => {
+    const prev = full[offset - 1];
+    const next = full[offset + match.length];
+    if (!prev || !next || /\s/.test(prev) || /\s/.test(next)) {
+      return ' ';
+    }
+    return ` ${' '.repeat(match.length - 1)}`;
+  });
+
 const renderNodes = (nodes: DomNode[] | undefined, context: RenderContext): string => {
   if (!nodes?.length) return '';
   return nodes
@@ -211,9 +221,12 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
     if (context.inPre) {
       return data;
     }
-    const normalized = data.replace(/\s+/g, ' ');
-    if (!normalized.trim()) {
-      return normalized.trim() ? normalized : ' ';
+    const normalized = preserveConsecutiveSpaces(
+      data.replace(/\r\n?/g, ' ').replace(/\t/g, ' '),
+    );
+    const compact = normalized.replace(/ /g, ' ').trim();
+    if (!compact) {
+      return normalized.includes(' ') ? normalized : ' ';
     }
     return mdEscape(normalized);
   }
@@ -332,7 +345,6 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
 
 const finalizeMarkdown = (value: string): string =>
   value
-    .replace(/\u00a0/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
@@ -573,17 +585,6 @@ export default function formatTask(
     }
     if (lines.length) {
       sections.push(`📝 *Описание*\n${lines.join('\n')}`);
-    }
-    if (images.length) {
-      const title = images.length === 1 ? 'Изображение' : 'Изображения';
-      const attachmentLines = images.map((image, index) => {
-        const rawLabel = image.alt?.trim();
-        const label = rawLabel && rawLabel.length
-          ? rawLabel
-          : `Вложение ${index + 1}`;
-        return `• ${mdEscape(label)}`;
-      });
-      sections.push([`🖼 *${title}*`, ...attachmentLines].join('\n'));
     }
   }
 

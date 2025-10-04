@@ -73,8 +73,7 @@ describe('formatTask', () => {
     expect(inlineImages).toEqual([{ url: inlineUrl, alt: 'Схема' }]);
     expect(text).toContain('📝 *Описание*');
     expect(text).toContain(escapeMarkdownV2('Основной текст.'));
-    expect(text).toContain('🖼 *Изображение*');
-    expect(text).toContain(`• ${escapeMarkdownV2('Схема')}`);
+    expect(text).not.toContain('🖼 *Изображение*');
     expect(text).not.toContain('<img');
   });
 
@@ -97,23 +96,27 @@ describe('formatTask', () => {
     expect(text).toContain(`📌 [${escapeMarkdownV2(textSpecial)}](`);
     expect(text).toContain(escapeMarkdownV2(textSpecial));
     expect(text).not.toContain(textSpecial);
-    const attachmentLine = text
-      .split('\n')
-      .find((line) => line.startsWith('• '));
-    expect(attachmentLine).toBeDefined();
-    const match = attachmentLine?.match(/^• (.+)$/);
-    expect(match).toBeTruthy();
-    const [, labelEncoded] = match as RegExpMatchArray;
-    const decode = (value: string) =>
-      value.replace(/\\([\\_*\[\]()~`>#+\-=|{}.!])/g, '$1');
-    expect(labelEncoded).toBe(escapeMarkdownV2(altSpecial));
-    expect(decode(labelEncoded)).toBe(altSpecial);
+    expect(text).not.toContain('🖼 *Изображение*');
     expect(inlineImages).toEqual([
       {
         alt: altSpecial,
         url: inlineUrl,
       },
     ]);
+  });
+
+  it('сохраняет последовательности пробелов в описании', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439066',
+      task_number: 'SPACE-01',
+      task_description: '<p>Проверяем  двойной   пробел</p>',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const descriptionSection = text.split('📝 *Описание*')[1];
+
+    const expected = `Проверяем  двойной   пробел`;
+    expect(descriptionSection).toContain(expected);
   });
 
   it('добавляет заметку о сроках выполнения для завершённой задачи', () => {

@@ -33,7 +33,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('возвращает сообщение истории со временем, действием и автором', async () => {
+test('возвращает сообщение истории со статусом, деталями и автором', async () => {
   const lean = jest.fn().mockResolvedValue({
     telegram_history_message_id: 555,
     telegram_topic_id: 42,
@@ -71,7 +71,7 @@ test('возвращает сообщение истории со времене
   );
 });
 
-test('форматирует срок без лишнего экранирования годов', async () => {
+test('для обновления срока отправляет короткое сообщение и безопасный Markdown', async () => {
   const lean = jest.fn().mockResolvedValue({
     telegram_history_message_id: null,
     history: [
@@ -92,74 +92,21 @@ test('форматирует срок без лишнего экранирова
 
   expect(result).not.toBeNull();
   const text = result?.text ?? '';
-  expect(text).toMatch(/срок: «01\\.11\\.2023 13:00» → «02\\.11\\.2023 15:30»/);
-});
-
-test('форматирует 03.10.2025 15:35 без ошибок Markdown', async () => {
-  const lean = jest.fn().mockResolvedValue({
-    telegram_history_message_id: null,
-    history: [
-      {
-        changed_at: new Date('2025-10-03T12:35:00Z'),
-        changed_by: 0,
-        changes: {
-          from: { deadline: '2025-10-02T09:15:00Z' },
-          to: { deadline: '2025-10-03T12:35:00Z' },
-        },
-      },
-    ],
-  });
-  (Task.findById as jest.Mock).mockReturnValue({ lean });
-  (getUsersMap as jest.Mock).mockResolvedValue({});
-
-  const result = await getTaskHistoryMessage('deadline-check');
-
-  expect(result).not.toBeNull();
-  const text = result?.text ?? '';
-  expect(text).toContain('03\\.10\\.2025 15:35');
+  expect(text).toContain('— задачу обновил Система');
+  expect(text).not.toContain('срок:');
   expect(hasInvalidTelegramEscapes(text)).toBe(false);
-  const normalized = text.replace(/\\/g, '');
-  expect(normalized).toContain('03.10.2025 15:35');
 });
 
-test('экранирует точки в датах и другие специальные символы', async () => {
+test('для текстового обновления использует короткое сообщение и ссылку на автора', async () => {
   const lean = jest.fn().mockResolvedValue({
     telegram_history_message_id: null,
     history: [
       {
         changed_at: new Date('2025-09-30T20:44:00Z'),
-        changed_by: 0,
+        changed_by: 123,
         changes: {
           from: { title: 'Старая *версия* #A' },
           to: { title: 'Новая версия + улучшения' },
-        },
-      },
-    ],
-  });
-  (Task.findById as jest.Mock).mockReturnValue({ lean });
-  (getUsersMap as jest.Mock).mockResolvedValue({});
-
-  const result = await getTaskHistoryMessage('with-dots');
-
-  expect(result).not.toBeNull();
-  expect(result?.text).toContain('30\\.09\\.2025 23:44');
-  expect(result?.text).not.toContain('30.09.2025 23:44');
-  expect(result?.text).toContain('— Система');
-  expect(result?.text).toContain(
-    'название: «Старая \\*версия\\* \\#A» → «Новая версия \\+ улучшения»',
-  );
-});
-
-test('не снимает экранирование точек в значениях полей', async () => {
-  const lean = jest.fn().mockResolvedValue({
-    telegram_history_message_id: null,
-    history: [
-      {
-        changed_at: new Date('2025-10-01T16:48:00Z'),
-        changed_by: 123,
-        changes: {
-          from: { in_progress_at: null, status: 'Новая' },
-          to: { in_progress_at: '2025-10-01T16:48:00Z', status: 'В работе' },
         },
       },
     ],
@@ -169,35 +116,15 @@ test('не снимает экранирование точек в значен�
     123: { name: 'Исполнитель', username: 'user123' },
   });
 
-  const result = await getTaskHistoryMessage('keep-escapes');
+  const result = await getTaskHistoryMessage('with-dots');
 
   expect(result).not.toBeNull();
   const text = result?.text ?? '';
-  expect(text).toMatch(/in progress at: «—» → «01\\.10\\.2025 19:48»/);
-});
-
-test('экранирует точки в поле выполнено', async () => {
-  const lean = jest.fn().mockResolvedValue({
-    telegram_history_message_id: null,
-    history: [
-      {
-        changed_at: new Date('2025-10-02T15:09:00Z'),
-        changed_by: 321,
-        changes: {
-          from: { completed_at: null, status: 'В работе' },
-          to: { completed_at: '2025-10-02T15:09:00Z', status: 'Выполнена' },
-        },
-      },
-    ],
-  });
-  (Task.findById as jest.Mock).mockReturnValue({ lean });
-  (getUsersMap as jest.Mock).mockResolvedValue({
-    321: { name: 'Ответственный', username: 'user321' },
-  });
-
-  const result = await getTaskHistoryMessage('completed-at');
-
-  expect(result).not.toBeNull();
-  const text = result?.text ?? '';
-  expect(text).toMatch(/выполнено: «—» → «02\\.10\\.2025 18:09»/);
+  expect(text).toContain('30\\.09\\.2025 23:44');
+  expect(hasInvalidTelegramEscapes(text)).toBe(false);
+  const normalized = text.replace(/\\/g, '');
+  expect(normalized).toContain(
+    '• 30.09.2025 23:44 (GMT+3) — задачу обновил [Исполнитель](tg://user?id=123)',
+  );
+  expect(normalized).not.toContain('название:');
 });

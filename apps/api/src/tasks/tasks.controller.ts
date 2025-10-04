@@ -231,8 +231,21 @@ export default class TasksController {
     info = await this.ensurePhotoWithinLimit(info);
     cache.set(url, info);
     try {
+      const stream = createReadStream(info.absolutePath);
+      await new Promise<void>((resolve, reject) => {
+        const handleOpen = () => {
+          stream.off('error', handleError);
+          resolve();
+        };
+        const handleError = (streamError: NodeJS.ErrnoException) => {
+          stream.off('open', handleOpen);
+          reject(streamError);
+        };
+        stream.once('open', handleOpen);
+        stream.once('error', handleError);
+      });
       const descriptor = {
-        source: createReadStream(info.absolutePath),
+        source: stream,
         filename: info.filename,
         ...(info.contentType ? { contentType: info.contentType } : {}),
       };
@@ -654,7 +667,7 @@ export default class TasksController {
       await mkdir(outputDir, { recursive: true });
       const filename = `collage_${Date.now()}_${randomBytes(6).toString('hex')}.jpg`;
       const target = path.join(outputDir, filename);
-      await sharp({
+      const outputBuffer = await sharp({
         create: {
           width: layout.width,
           height: layout.height,
@@ -664,14 +677,14 @@ export default class TasksController {
       })
         .composite(composites)
         .jpeg({ quality: 82 })
-        .toFile(target);
-      const fileStat = await stat(target);
+        .toBuffer();
+      await writeFile(target, outputBuffer);
       const key = `local-collage:${filename}`;
       cache.set(key, {
         absolutePath: target,
         filename,
         contentType: 'image/jpeg',
-        size: fileStat.size,
+        size: outputBuffer.length,
       });
       return {
         key,

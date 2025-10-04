@@ -152,5 +152,19 @@ describe('formatTask', () => {
     expect(descriptionSection).toContain('• Подготовить отчёт');
     expect(descriptionSection).toContain('• _Согласовать_ детали');
   });
+
+  it('экранирует маркер нумерованного списка, предотвращая ошибку 400 Telegram', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439077',
+      task_number: 'OL-01',
+      task_description: '<ol><li>Первое действие</li><li>Второе действие</li></ol>',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const descriptionSection = text.split('📝 *Описание*')[1];
+
+    expect(descriptionSection).toContain('1\\. Первое действие');
+    expect(descriptionSection).toContain('2\\. Второе действие');
+  });
 });
 

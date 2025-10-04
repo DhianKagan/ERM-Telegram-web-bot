@@ -787,12 +787,8 @@ export default class TasksController {
       return null;
     }
     const sourceUrl = preview.url;
-    try {
-      const photo = await this.resolvePhotoInputWithCache(sourceUrl, cache);
-      return { photo, sourceUrl };
-    } catch (error) {
-      throw error;
-    }
+    const photo = await this.resolvePhotoInputWithCache(sourceUrl, cache);
+    return { photo, sourceUrl };
   }
 
   private createPreviewOptions(

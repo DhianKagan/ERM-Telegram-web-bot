@@ -623,80 +623,85 @@ export default class TasksController {
     candidates: NormalizedImage[],
     cache: Map<string, LocalPhotoInfo | null>,
   ): Promise<{ key: string; cleanup: () => Promise<void> } | null> {
-    try {
-      const seen = new Set<string>();
-      const infos: LocalPhotoInfo[] = [];
-      for (const candidate of candidates) {
-        if (!candidate?.url || seen.has(candidate.url)) {
-          continue;
-        }
-        seen.add(candidate.url);
-        let info = cache.get(candidate.url) ?? null;
-        if (!cache.has(candidate.url)) {
-          info = (await this.resolveLocalPhotoInfo(candidate.url)) ?? null;
-          cache.set(candidate.url, info);
-        }
-        if (info) {
-          infos.push(info);
-        }
-        if (infos.length >= 4) {
-          break;
-        }
-      }
-      if (infos.length < 2) {
-        return null;
-      }
-      const layout = this.getCollageLayout(infos.length);
-      if (!layout) {
-        return null;
-      }
-      const composites = await Promise.all(
-        infos.map(async (info, index) => {
-          const cell = layout.cells[index];
-          const buffer = await sharp(info.absolutePath)
-            .resize(cell.width, cell.height, {
-              fit: 'cover',
-              position: 'attention',
-            })
-            .jpeg({ quality: 85 })
-            .toBuffer();
-          return { input: buffer, left: cell.left, top: cell.top };
-        }),
-      );
-      const outputDir = path.join(os.tmpdir(), 'erm-task-collages');
-      await mkdir(outputDir, { recursive: true });
-      const filename = `collage_${Date.now()}_${randomBytes(6).toString('hex')}.jpg`;
-      const target = path.join(outputDir, filename);
-      const outputBuffer = await sharp({
-        create: {
-          width: layout.width,
-          height: layout.height,
-          channels: 3,
-          background: '#ffffff',
-        },
-      })
-        .composite(composites)
-        .jpeg({ quality: 82 })
-        .toBuffer();
-      await writeFile(target, outputBuffer);
-      const key = `local-collage:${filename}`;
-      cache.set(key, {
-        absolutePath: target,
-        filename,
-        contentType: 'image/jpeg',
-        size: outputBuffer.length,
-      });
-      return {
-        key,
-        cleanup: async () => {
-          cache.delete(key);
-          await unlink(target).catch(() => undefined);
-        },
-      };
-    } catch (error) {
+    return this.buildCollageFromCandidates(candidates, cache).catch((error) => {
       console.error('Не удалось создать коллаж вложений', error);
       return null;
+    });
+  }
+
+  private async buildCollageFromCandidates(
+    candidates: NormalizedImage[],
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<{ key: string; cleanup: () => Promise<void> } | null> {
+    const seen = new Set<string>();
+    const infos: LocalPhotoInfo[] = [];
+    for (const candidate of candidates) {
+      if (!candidate?.url || seen.has(candidate.url)) {
+        continue;
+      }
+      seen.add(candidate.url);
+      let info = cache.get(candidate.url) ?? null;
+      if (!cache.has(candidate.url)) {
+        info = (await this.resolveLocalPhotoInfo(candidate.url)) ?? null;
+        cache.set(candidate.url, info);
+      }
+      if (info) {
+        infos.push(info);
+      }
+      if (infos.length >= 4) {
+        break;
+      }
     }
+    if (infos.length < 2) {
+      return null;
+    }
+    const layout = this.getCollageLayout(infos.length);
+    if (!layout) {
+      return null;
+    }
+    const composites = await Promise.all(
+      infos.map(async (info, index) => {
+        const cell = layout.cells[index];
+        const buffer = await sharp(info.absolutePath)
+          .resize(cell.width, cell.height, {
+            fit: 'cover',
+            position: 'attention',
+          })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        return { input: buffer, left: cell.left, top: cell.top };
+      }),
+    );
+    const outputDir = path.join(os.tmpdir(), 'erm-task-collages');
+    await mkdir(outputDir, { recursive: true });
+    const filename = `collage_${Date.now()}_${randomBytes(6).toString('hex')}.jpg`;
+    const target = path.join(outputDir, filename);
+    const outputBuffer = await sharp({
+      create: {
+        width: layout.width,
+        height: layout.height,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .composite(composites)
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    await writeFile(target, outputBuffer);
+    const key = `local-collage:${filename}`;
+    cache.set(key, {
+      absolutePath: target,
+      filename,
+      contentType: 'image/jpeg',
+      size: outputBuffer.length,
+    });
+    return {
+      key,
+      cleanup: async () => {
+        cache.delete(key);
+        await unlink(target).catch(() => undefined);
+      },
+    };
   }
 
   private async preparePreviewMedia(

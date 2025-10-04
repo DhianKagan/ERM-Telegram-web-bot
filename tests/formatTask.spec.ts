@@ -49,6 +49,7 @@ describe('formatTask', () => {
     expect(text).toContain('🧾 *Информация*');
     expect(text).toContain('⚡️ Приоритет: *🟥 Срочно*');
     expect(text).toContain('🛠 Статус: *🟦 Новая*');
+    expect(text).toContain('🏷 *Доставить*');
     expect(text).toContain('🧭 *Логистика*');
     expect(text).toContain('🗺 Расстояние: *125 км*');
     expect(text).toContain('🚗 Транспорт: *Грузовой*');
@@ -59,6 +60,26 @@ describe('formatTask', () => {
     }).format(1500);
     expect(text).toContain(`💵 Сумма: *${formattedAmount} грн*`);
     expect(text).toContain('🚚 *Груз*');
+    const metricFormatter = new Intl.NumberFormat('ru-RU', {
+      maximumFractionDigits: 3,
+      minimumFractionDigits: 0,
+    });
+    const weightFormatter = new Intl.NumberFormat('ru-RU', {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    });
+    const dimensionsValue = `${metricFormatter.format(2.5)}×${metricFormatter.format(1.2)}×${metricFormatter.format(1)} м`;
+    const volumeValue = `${metricFormatter.format(3.5)} м³`;
+    const weightValue = `${weightFormatter.format(180)} кг`;
+    expect(text).toContain(
+      `• *${escapeMarkdownV2('Д×Ш×В')}*: *${escapeMarkdownV2(dimensionsValue)}*`,
+    );
+    expect(text).toContain(
+      `• *${escapeMarkdownV2('Объём')}*: *${escapeMarkdownV2(volumeValue)}*`,
+    );
+    expect(text).toContain(
+      `• *${escapeMarkdownV2('Вес')}*: *${escapeMarkdownV2(weightValue)}*`,
+    );
     expect(text).toContain('🤝 *Участники*');
     expect(text).toContain('[Иван Петров](tg://user?id=101)');
     expect(text).toContain('[Ольга Сидорова](tg://user?id=202)');

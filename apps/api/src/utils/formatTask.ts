@@ -644,7 +644,7 @@ export default function formatTask(
     headerParts.push(titleLine);
   }
   if (task.task_type) {
-    headerParts.push(`🏷 _${mdEscape(task.task_type)}_`);
+    headerParts.push(`🏷 *${mdEscape(task.task_type)}*`);
   }
   if (headerParts.length) {
     sections.push(headerParts.join('\n'));
@@ -715,7 +715,7 @@ export default function formatTask(
     sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));
   }
 
-  const cargoLines: string[] = [];
+  const cargoEntries: { label: string; value: string }[] = [];
   const lengthValue =
     typeof task.cargo_length_m === 'number'
       ? metricFormatter.format(task.cargo_length_m)
@@ -729,21 +729,36 @@ export default function formatTask(
       ? metricFormatter.format(task.cargo_height_m)
       : null;
   if (lengthValue && widthValue && heightValue) {
-    cargoLines.push(`Д×Ш×В: ${lengthValue}×${widthValue}×${heightValue} м`);
+    cargoEntries.push({
+      label: 'Д×Ш×В',
+      value: `${lengthValue}×${widthValue}×${heightValue} м`,
+    });
   } else {
-    if (lengthValue) cargoLines.push(`Д: ${lengthValue} м`);
-    if (widthValue) cargoLines.push(`Ш: ${widthValue} м`);
-    if (heightValue) cargoLines.push(`В: ${heightValue} м`);
+    if (lengthValue) cargoEntries.push({ label: 'Д', value: `${lengthValue} м` });
+    if (widthValue) cargoEntries.push({ label: 'Ш', value: `${widthValue} м` });
+    if (heightValue) cargoEntries.push({ label: 'В', value: `${heightValue} м` });
   }
   if (typeof task.cargo_volume_m3 === 'number') {
-    cargoLines.push(`Объём: ${metricFormatter.format(task.cargo_volume_m3)} м³`);
+    cargoEntries.push({
+      label: 'Объём',
+      value: `${metricFormatter.format(task.cargo_volume_m3)} м³`,
+    });
   }
   if (typeof task.cargo_weight_kg === 'number') {
-    cargoLines.push(`Вес: ${weightFormatter.format(task.cargo_weight_kg)} кг`);
+    cargoEntries.push({
+      label: 'Вес',
+      value: `${weightFormatter.format(task.cargo_weight_kg)} кг`,
+    });
   }
-  if (cargoLines.length) {
+  if (cargoEntries.length) {
     sections.push(
-      ['🚚 *Груз*', ...cargoLines.map((part) => `• ${mdEscape(part)}`)].join('\n'),
+      [
+        '🚚 *Груз*',
+        ...cargoEntries.map(
+          ({ label, value }) =>
+            `• *${mdEscape(label)}*: *${mdEscape(value)}*`,
+        ),
+      ].join('\n'),
     );
   }
 

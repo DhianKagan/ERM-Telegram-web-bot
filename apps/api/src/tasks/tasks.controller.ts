@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, stat, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -126,7 +126,7 @@ type TaskMessageSendResult = {
   messageId: number | undefined;
   usedPreview: boolean;
   cache: Map<string, LocalPhotoInfo | null>;
-  previewSourceUrl?: string;
+  previewSourceUrls?: string[];
 };
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
@@ -146,40 +146,6 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
 ]);
 
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
-
-type CollageCell = { left: number; top: number; width: number; height: number };
-
-type CollageLayout = { width: number; height: number; cells: CollageCell[] };
-
-const COLLAGE_LAYOUTS: Record<number, CollageLayout> = {
-  2: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { left: 0, top: 0, width: 600, height: 900 },
-      { left: 600, top: 0, width: 600, height: 900 },
-    ],
-  },
-  3: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { left: 0, top: 0, width: 600, height: 450 },
-      { left: 600, top: 0, width: 600, height: 450 },
-      { left: 0, top: 450, width: 1200, height: 450 },
-    ],
-  },
-  4: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { left: 0, top: 0, width: 600, height: 450 },
-      { left: 600, top: 0, width: 600, height: 450 },
-      { left: 0, top: 450, width: 600, height: 450 },
-      { left: 600, top: 450, width: 600, height: 450 },
-    ],
-  },
-};
 
 @injectable()
 export default class TasksController {
@@ -389,6 +355,100 @@ export default class TasksController {
     topicId?: number,
   ): Promise<TaskMessageSendResult> {
     const cache = new Map<string, LocalPhotoInfo | null>();
+    const uniqueCandidates: NormalizedImage[] = [];
+    if (media.collageCandidates.length >= 2) {
+      const seen = new Set<string>();
+      for (const candidate of media.collageCandidates) {
+        if (!candidate?.url || seen.has(candidate.url)) {
+          continue;
+        }
+        seen.add(candidate.url);
+        uniqueCandidates.push(candidate);
+        if (uniqueCandidates.length >= 10) {
+          break;
+        }
+      }
+    }
+    if (uniqueCandidates.length >= 2) {
+      try {
+        const mediaGroup = await Promise.all(
+          uniqueCandidates.map(async (candidate, index) => {
+            const descriptor: Parameters<
+              typeof bot.telegram.sendMediaGroup
+            >[1][number] = {
+              type: 'photo',
+              media: await this.resolvePhotoInputWithCache(candidate.url, cache),
+            };
+            if (index === 0) {
+              descriptor.caption = message;
+              descriptor.parse_mode = 'MarkdownV2';
+            } else if (candidate.caption) {
+              descriptor.caption = escapeMarkdownV2(candidate.caption);
+              descriptor.parse_mode = 'MarkdownV2';
+            }
+            return descriptor;
+          }),
+        );
+        const options: Parameters<typeof bot.telegram.sendMediaGroup>[2] = {};
+        if (typeof topicId === 'number') {
+          options.message_thread_id = topicId;
+        }
+        const response = await bot.telegram.sendMediaGroup(
+          chat,
+          mediaGroup,
+          options,
+        );
+        const firstMessage = Array.isArray(response) ? response[0] : undefined;
+        const messageId = firstMessage?.message_id;
+        if (messageId && keyboard) {
+          const replyMarkup = this.extractKeyboardMarkup(keyboard);
+          try {
+            await bot.telegram.editMessageCaption(chat, messageId, undefined, message, {
+              parse_mode: 'MarkdownV2',
+              ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+            });
+          } catch (error) {
+            if (!this.isMessageNotModifiedError(error)) {
+              console.error(
+                'Не удалось обновить подпись первого сообщения медиа-группы',
+                error,
+              );
+            }
+          }
+          if (replyMarkup) {
+            try {
+              await bot.telegram.editMessageReplyMarkup(
+                chat,
+                messageId,
+                undefined,
+                replyMarkup,
+              );
+            } catch (error) {
+              if (!this.isMessageNotModifiedError(error)) {
+                console.error(
+                  'Не удалось применить клавиатуру к первому сообщению медиа-группы',
+                  error,
+                );
+              }
+            }
+          }
+        }
+        if (!messageId) {
+          throw new Error('Telegram не вернул идентификатор первого сообщения');
+        }
+        return {
+          messageId,
+          usedPreview: true,
+          cache,
+          previewSourceUrls: uniqueCandidates.map((item) => item.url),
+        };
+      } catch (error) {
+        console.warn(
+          'Не удалось отправить медиа-группу для превью, используем одиночное фото',
+          error,
+        );
+      }
+    }
     const prepared = await this.preparePreviewMedia(media, cache);
     if (prepared) {
       const { photo, cleanup, sourceUrl } = prepared;
@@ -409,7 +469,7 @@ export default class TasksController {
           messageId: response?.message_id,
           usedPreview: true,
           cache,
-          previewSourceUrl: sourceUrl,
+          previewSourceUrls: [sourceUrl],
         };
       } catch (error) {
         if (cleanup) {
@@ -439,7 +499,7 @@ export default class TasksController {
       messageId: response?.message_id,
       usedPreview: false,
       cache,
-      previewSourceUrl: undefined,
+      previewSourceUrls: undefined,
     };
   }
 
@@ -453,7 +513,7 @@ export default class TasksController {
     success: boolean;
     usedPreview: boolean;
     cache: Map<string, LocalPhotoInfo | null>;
-    previewSourceUrl?: string;
+    previewSourceUrls?: string[];
   }>
   {
     const cache = new Map<string, LocalPhotoInfo | null>();
@@ -473,13 +533,23 @@ export default class TasksController {
         if (cleanup) {
           await cleanup();
         }
-        return { success: true, usedPreview: true, cache, previewSourceUrl: sourceUrl };
+        return {
+          success: true,
+          usedPreview: true,
+          cache,
+          previewSourceUrls: [sourceUrl],
+        };
       } catch (error) {
         if (cleanup) {
           await cleanup().catch(() => undefined);
         }
         if (this.isMessageNotModifiedError(error)) {
-          return { success: true, usedPreview: true, cache, previewSourceUrl: sourceUrl };
+          return {
+            success: true,
+            usedPreview: true,
+            cache,
+            previewSourceUrls: [sourceUrl],
+          };
         }
         if (this.isMediaMessageTypeError(error)) {
           // Сообщение не является медиа, пробуем текстовое обновление ниже.
@@ -502,12 +572,12 @@ export default class TasksController {
           : { is_disabled: true },
         ...keyboard,
       });
-      return { success: true, usedPreview: false, cache };
+      return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
     } catch (error) {
       if (this.isMessageNotModifiedError(error)) {
-        return { success: true, usedPreview: false, cache };
+        return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
       }
-      return { success: false, usedPreview: false, cache };
+      return { success: false, usedPreview: false, cache, previewSourceUrls: undefined };
     }
   }
 
@@ -704,6 +774,7 @@ export default class TasksController {
     };
   }
 
+
   private async preparePreviewMedia(
     media: TaskMedia,
     cache: Map<string, LocalPhotoInfo | null>,
@@ -715,27 +786,11 @@ export default class TasksController {
     if (!preview) {
       return null;
     }
-    let collage: { key: string; cleanup: () => Promise<void> } | null = null;
-    if (media.collageCandidates.length >= 2) {
-      collage = await this.createCollageFromCandidates(media.collageCandidates, cache);
-    }
-    const sourceUrl = collage?.key ?? preview.url;
+    const sourceUrl = preview.url;
     try {
       const photo = await this.resolvePhotoInputWithCache(sourceUrl, cache);
-      return { photo, sourceUrl, cleanup: collage?.cleanup };
+      return { photo, sourceUrl };
     } catch (error) {
-      if (collage) {
-        await collage.cleanup().catch(() => undefined);
-        console.warn(
-          'Не удалось подготовить коллаж вложений, используем исходное фото',
-          error,
-        );
-        const fallbackPhoto = await this.resolvePhotoInputWithCache(
-          preview.url,
-          cache,
-        );
-        return { photo: fallbackPhoto, sourceUrl: preview.url };
-      }
       throw error;
     }
   }
@@ -751,6 +806,29 @@ export default class TasksController {
       prefer_large_media: true,
       show_above_text: true,
     };
+  }
+
+  private extractKeyboardMarkup(
+    keyboard: ReturnType<typeof taskStatusKeyboard>,
+  ): Parameters<typeof bot.telegram.editMessageReplyMarkup>[3] | undefined {
+    if (!keyboard || typeof keyboard !== 'object') {
+      return undefined;
+    }
+    const candidate = keyboard as {
+      reply_markup?: unknown;
+      inline_keyboard?: unknown;
+    };
+    if (candidate.reply_markup && typeof candidate.reply_markup === 'object') {
+      return candidate.reply_markup as Parameters<
+        typeof bot.telegram.editMessageReplyMarkup
+      >[3];
+    }
+    if (Array.isArray(candidate.inline_keyboard)) {
+      return {
+        inline_keyboard: candidate.inline_keyboard,
+      } as Parameters<typeof bot.telegram.editMessageReplyMarkup>[3];
+    }
+    return undefined;
   }
 
   private extractLocalFileId(url: string): string | null {
@@ -1656,7 +1734,7 @@ export default class TasksController {
           messageId: currentMessageId,
           usedPreview: editResult.usedPreview,
           cache: editResult.cache,
-          previewSourceUrl: editResult.previewSourceUrl,
+          previewSourceUrls: editResult.previewSourceUrls,
         };
       } else {
         console.error('Не удалось обновить сообщение задачи, отправляем заново');
@@ -1735,23 +1813,35 @@ export default class TasksController {
       : { previewImage: null, extras: [], collageCandidates: [] };
     const previousExtrasRaw = previousAttachments.extras;
     const nextExtrasRaw = nextAttachments.extras;
-    const previousPreviewUrl =
+    const previousPreviewUrls =
       previousAttachments.collageCandidates.length >= 2
-        ? null
-        : previousAttachments.previewImage?.url ?? null;
-    const previousExtras = previousPreviewUrl
+        ? previousAttachments.collageCandidates.map((item) => item.url)
+        : previousAttachments.previewImage?.url
+          ? [previousAttachments.previewImage.url]
+          : [];
+    const previousPreviewSet = new Set(
+      previousPreviewUrls.filter((value): value is string => !!value),
+    );
+    const previousExtras = previousPreviewSet.size
       ? previousExtrasRaw.filter(
           (attachment) =>
-            attachment.kind !== 'image' || attachment.url !== previousPreviewUrl,
+            attachment.kind !== 'image' || !previousPreviewSet.has(attachment.url),
         )
       : previousExtrasRaw;
-    const nextPreviewUrl = messageResult.usedPreview
-      ? messageResult.previewSourceUrl ?? nextAttachments.previewImage?.url ?? null
-      : null;
-    const nextExtras = nextPreviewUrl
+    const nextPreviewUrls = messageResult.usedPreview
+      ? messageResult.previewSourceUrls && messageResult.previewSourceUrls.length
+        ? messageResult.previewSourceUrls
+        : nextAttachments.previewImage?.url
+          ? [nextAttachments.previewImage.url]
+          : []
+      : [];
+    const nextPreviewSet = new Set(
+      nextPreviewUrls.filter((value): value is string => !!value),
+    );
+    const nextExtras = nextPreviewSet.size
       ? nextExtrasRaw.filter(
           (attachment) =>
-            attachment.kind !== 'image' || attachment.url !== nextPreviewUrl,
+            attachment.kind !== 'image' || !nextPreviewSet.has(attachment.url),
         )
       : nextExtrasRaw;
     const previousAttachmentMessageIds = Array.isArray(
@@ -1946,13 +2036,20 @@ export default class TasksController {
         );
         groupMessageId = sendResult.messageId;
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        const previewUrl = sendResult.usedPreview
-          ? sendResult.previewSourceUrl ?? media.previewImage?.url ?? null
-          : null;
-        const extras = previewUrl
+        const previewUrls = sendResult.usedPreview
+          ? sendResult.previewSourceUrls && sendResult.previewSourceUrls.length
+            ? sendResult.previewSourceUrls
+            : media.previewImage?.url
+              ? [media.previewImage.url]
+              : []
+          : [];
+        const previewSet = new Set(
+          previewUrls.filter((value): value is string => !!value),
+        );
+        const extras = previewSet.size
           ? media.extras.filter(
               (attachment) =>
-                attachment.kind !== 'image' || attachment.url !== previewUrl,
+                attachment.kind !== 'image' || !previewSet.has(attachment.url),
             )
           : media.extras;
         if (groupMessageId && extras.length) {

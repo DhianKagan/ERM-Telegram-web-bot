@@ -293,6 +293,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const initialRef = React.useRef<InitialValues | null>(null);
+  const [initialDates, setInitialDates] = React.useState<{ start: string; due: string }>(
+    { start: "", due: "" },
+  );
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
   const [completedAt, setCompletedAt] = React.useState("");
@@ -389,11 +392,23 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   );
 
   const startDateValue = watch("startDate");
+  const dueDateValue = watch("dueDate");
+  const shouldAutoSyncDueDate = React.useMemo(() => {
+    if (!startDateValue) return false;
+    if (!isEdit) return true;
+    const currentDue = typeof dueDateValue === "string" ? dueDateValue : "";
+    const initialDue = initialDates.due;
+    if (!initialDue) {
+      return currentDue.trim().length === 0;
+    }
+    return currentDue === initialDue;
+  }, [startDateValue, isEdit, dueDateValue, initialDates.due]);
   const { setDueOffset, handleDueDateChange } = useDueDateOffset({
     startDateValue,
     setValue,
     defaultOffsetMs: DEFAULT_DUE_OFFSET_MS,
     formatInputDate,
+    autoSync: shouldAutoSyncDueDate,
   });
 
   const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
@@ -557,6 +572,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
           : DEFAULT_DUE_OFFSET_MS;
       setDueOffset(diff);
+      setInitialDates({ start: startDate, due: dueDate });
       reset({
         title: (taskData.title as string) || "",
         description: (taskData.task_description as string) || "",
@@ -671,6 +687,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       parseIsoDateMemo,
       reset,
       setDueOffset,
+      setInitialDates,
     ],
   );
 
@@ -794,6 +811,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         cargoWeight: "",
         showDimensions: false,
       };
+      setInitialDates({ start: defaultStartDate, due: defaultDueDate });
       reset({
         title: "",
         description: "",
@@ -825,6 +843,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     parseIsoDateMemo,
     reset,
     setDueOffset,
+    setInitialDates,
   ]);
 
   React.useEffect(() => {

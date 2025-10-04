@@ -1012,10 +1012,10 @@ export default function taskColumns(
       header: "Название",
       accessorKey: "title",
       meta: {
-        width: "clamp(6rem, 16vw, 13rem)",
-        minWidth: "5rem",
-        maxWidth: "13rem",
-        cellClassName: "whitespace-nowrap",
+        width: "clamp(8rem, 18vw, 18rem)",
+        minWidth: "7rem",
+        maxWidth: "18rem",
+        cellClassName: "align-top",
       },
       cell: (p) => {
         const v = p.getValue<string>() || "";
@@ -1028,8 +1028,21 @@ export default function taskColumns(
         );
         return (
           <div className="flex flex-col items-start gap-1">
-            <span title={v} className={titleBadgeClass}>
-              <span className="truncate">{compact}</span>
+            <span
+              title={v}
+              className={`${titleBadgeClass} whitespace-normal`}
+            >
+              <span
+                className="block max-w-full break-words text-left leading-snug"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {compact}
+              </span>
             </span>
             {completionNote ? (
               <span className={completionNoteTextClass}>{completionNote}</span>

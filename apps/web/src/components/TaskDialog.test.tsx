@@ -110,7 +110,7 @@ describe("TaskDialog", () => {
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
         "1",
-        expect.objectContaining({ assigned_user_id: "1" }),
+        expect.objectContaining({ assigned_user_id: 1 }),
       ),
     );
 
@@ -132,9 +132,8 @@ describe("TaskDialog", () => {
     fireEvent.click(screen.getByText("save"));
 
     await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
-    expect(updateTaskMock.mock.calls[0][1]).toMatchObject({
-      start_date: initialStart,
-    });
+    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("start_date");
+    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("due_date");
   });
 
   it("устанавливает срок на 5 часов позже даты начала по умолчанию", async () => {

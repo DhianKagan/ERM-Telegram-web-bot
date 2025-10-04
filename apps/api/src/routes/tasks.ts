@@ -561,8 +561,6 @@ router.patch(
   upload.any(),
   processUploads,
   normalizeArrays,
-  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
-  rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),
   checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),

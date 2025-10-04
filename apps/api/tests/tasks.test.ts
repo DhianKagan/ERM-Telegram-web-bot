@@ -144,6 +144,15 @@ test('обновление задачи', async () => {
   expect(res.body.status).toBe('Выполнена');
 });
 
+test('обновление задачи доступно назначенному пользователю без прав менеджера', async () => {
+  const res = await request(app)
+    .patch(`/api/v1/tasks/${id}`)
+    .set('x-access', String(1))
+    .send({ title: 'Обновлённая задача' });
+  expect(res.status).toBe(200);
+  expect(res.body.title).toBe('Обновлённая задача');
+});
+
 test('обновление с очисткой габаритов проходит валидацию', async () => {
   const res = await request(app)
     .patch(`/api/v1/tasks/${id}`)

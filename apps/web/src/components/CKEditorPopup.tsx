@@ -226,11 +226,11 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
             </p>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-2">
-          <span className="text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-2">
+          <span className="hidden text-xs text-slate-500 sm:block">
             Поддерживает списки, таблицы, изображения и ссылки.
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
             {value && (
               <Button
                 type="button"
@@ -294,30 +294,24 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
                 onChange={(_event, editor) => setDraft(editor.getData())}
               />
             </React.Suspense>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">
-                Перетащите изображение в редактор или вставьте его из буфера
-                обмена.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
-                  Отмена
-                </Button>
-                <Button
-                  type="button"
-                  variant="default"
-                  onClick={() => {
-                    onChange?.(draft);
-                    setOpen(false);
-                  }}
-                >
-                  Сохранить
-                </Button>
-              </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => {
+                  onChange?.(draft);
+                  setOpen(false);
+                }}
+              >
+                Сохранить
+              </Button>
             </div>
           </div>
         </Modal>

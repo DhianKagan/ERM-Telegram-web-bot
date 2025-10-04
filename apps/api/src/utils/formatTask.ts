@@ -129,6 +129,152 @@ const buildCompletionNote = (
     : `Выполнена с опозданием на ${offset}`;
 };
 
+type BadgeColor = {
+  color: string;
+  opacity?: number;
+};
+
+type BadgeStyle = {
+  fill: BadgeColor;
+  ring?: BadgeColor;
+};
+
+const ACCENT_HEX = '#465fff';
+const PRIMARY_HEX = '#2563eb';
+const DESTRUCTIVE_HEX = '#f04438';
+const ROSE_500_HEX = '#f43f5e';
+const SKY_500_HEX = '#0ea5e9';
+const SLATE_500_HEX = '#64748b';
+
+const STATUS_COLOR_MAP: Record<string, BadgeStyle> = {
+  Новая: {
+    fill: { color: ACCENT_HEX, opacity: 0.7 },
+    ring: { color: PRIMARY_HEX, opacity: 0.3 },
+  },
+  'В работе': {
+    fill: { color: ACCENT_HEX, opacity: 0.8 },
+    ring: { color: PRIMARY_HEX, opacity: 0.4 },
+  },
+  Выполнена: {
+    fill: { color: ACCENT_HEX, opacity: 0.5 },
+    ring: { color: PRIMARY_HEX, opacity: 0.2 },
+  },
+  Отменена: {
+    fill: { color: ACCENT_HEX, opacity: 0.4 },
+    ring: { color: DESTRUCTIVE_HEX, opacity: 0.4 },
+  },
+};
+
+const PRIORITY_COLOR_MAP: Record<string, BadgeStyle> = {
+  'срочно': {
+    fill: { color: ROSE_500_HEX, opacity: 0.2 },
+    ring: { color: ROSE_500_HEX, opacity: 0.4 },
+  },
+  'в течение дня': {
+    fill: { color: SKY_500_HEX, opacity: 0.2 },
+    ring: { color: SKY_500_HEX, opacity: 0.4 },
+  },
+  'до выполнения': {
+    fill: { color: SLATE_500_HEX, opacity: 0.25 },
+    ring: { color: SLATE_500_HEX, opacity: 0.45 },
+  },
+};
+
+const PRIORITY_COLOR_RULES: {
+  test(value: string): boolean;
+  style: BadgeStyle;
+}[] = [
+  {
+    test: (value) => /сроч|urgent/.test(value),
+    style: {
+      fill: { color: ACCENT_HEX, opacity: 0.8 },
+      ring: { color: DESTRUCTIVE_HEX, opacity: 0.4 },
+    },
+  },
+  {
+    test: (value) => /высок|повыш|high/.test(value),
+    style: {
+      fill: { color: ACCENT_HEX, opacity: 0.75 },
+      ring: { color: PRIMARY_HEX, opacity: 0.4 },
+    },
+  },
+  {
+    test: (value) => /низк|бесср|без\s+срок|до\s+выполн|low|minor/.test(value),
+    style: {
+      fill: { color: ACCENT_HEX, opacity: 0.5 },
+      ring: { color: PRIMARY_HEX, opacity: 0.2 },
+    },
+  },
+  {
+    test: (value) => /обыч|дня|сутк|norm|stand/.test(value),
+    style: {
+      fill: { color: ACCENT_HEX, opacity: 0.65 },
+      ring: { color: PRIMARY_HEX, opacity: 0.3 },
+    },
+  },
+];
+
+const PRIORITY_COLOR_FALLBACK: BadgeStyle = {
+  fill: { color: ACCENT_HEX, opacity: 0.6 },
+  ring: { color: PRIMARY_HEX, opacity: 0.3 },
+};
+
+const toHex = (value: string) =>
+  value.startsWith('#') ? value.toUpperCase() : `#${value.toUpperCase()}`;
+
+const formatColorWithOpacity = ({ color, opacity }: BadgeColor): string => {
+  const hex = toHex(color);
+  if (typeof opacity !== 'number') {
+    return hex;
+  }
+  const clamped = Math.max(0, Math.min(opacity, 1));
+  const percentage = Math.round(clamped * 100);
+  return `${hex} · ${percentage}%`;
+};
+
+const describeBadgeStyle = (style: BadgeStyle): string => {
+  const parts = [`заливка ${formatColorWithOpacity(style.fill)}`];
+  if (style.ring) {
+    parts.push(`контур ${formatColorWithOpacity(style.ring)}`);
+  }
+  return parts.join('; ');
+};
+
+const describeStatusColor = (value: string | undefined | null): string | null => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const style = STATUS_COLOR_MAP[trimmed];
+  if (!style) {
+    return null;
+  }
+  return describeBadgeStyle(style);
+};
+
+const describePriorityColor = (value: string | undefined | null): string | null => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.toLowerCase();
+  if (PRIORITY_COLOR_MAP[normalized]) {
+    return describeBadgeStyle(PRIORITY_COLOR_MAP[normalized]);
+  }
+  for (const rule of PRIORITY_COLOR_RULES) {
+    if (rule.test(normalized)) {
+      return describeBadgeStyle(rule.style);
+    }
+  }
+  return describeBadgeStyle(PRIORITY_COLOR_FALLBACK);
+};
+
 type TaskData = Task & {
   request_id?: string;
   task_number?: string;
@@ -473,10 +619,16 @@ export default function formatTask(
   }
   if (task.priority) {
     const priority = toPriorityDisplay(task.priority);
-    infoLines.push(`⚡️ Приоритет: _${mdEscape(priority)}_`);
+    const priorityColor = describePriorityColor(task.priority);
+    const prioritySuffix = priorityColor
+      ? ` — ${mdEscape(priorityColor)}`
+      : '';
+    infoLines.push(`⚡️ Приоритет: _${mdEscape(priority)}_${prioritySuffix}`);
   }
   if (task.status) {
-    infoLines.push(`🛠 Статус: _${mdEscape(task.status)}_`);
+    const statusColor = describeStatusColor(task.status);
+    const statusSuffix = statusColor ? ` — ${mdEscape(statusColor)}` : '';
+    infoLines.push(`🛠 Статус: _${mdEscape(task.status)}_${statusSuffix}`);
   }
   if (infoLines.length) {
     sections.push(['🧾 *Информация*', ...infoLines].join('\n'));

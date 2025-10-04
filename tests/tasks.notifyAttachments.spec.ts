@@ -131,7 +131,7 @@ describe('notifyTaskCreated вложения', () => {
       events.push('unknown-message');
       return Promise.resolve({ message_id: 999 });
     });
-    const photoQueue = [101, 401, 402];
+    const photoQueue = [101, 601];
     sendPhotoMock.mockImplementation((_chat, _media, options) => {
       if (options?.reply_parameters?.message_id) {
         events.push('photo');
@@ -143,7 +143,10 @@ describe('notifyTaskCreated вложения', () => {
     });
     sendMediaGroupMock.mockImplementation(() => {
       events.push('group');
-      return Promise.resolve([{ message_id: 505 }]);
+      return Promise.resolve([
+        { message_id: 401 },
+        { message_id: 402 },
+      ]);
     });
 
     const appBaseUrl = (process.env.APP_URL || 'https://example.com').replace(
@@ -154,6 +157,7 @@ describe('notifyTaskCreated вложения', () => {
     const attachments = [
       { url: '/api/v1/files/a.jpg', type: 'image/jpeg', name: 'a.jpg' },
       { url: '/files/b.png', type: 'image/png', name: 'b.png' },
+      { url: '/files/d.png', type: 'image/png', name: 'd.png' },
       { url: 'https://youtu.be/demo', type: 'text/html', name: 'Видео' },
       { url: '/api/v1/files/c.gif', type: 'image/gif', name: 'c.gif' },
       { url: 'https://example.com/doc.pdf', type: 'application/pdf' },
@@ -183,8 +187,8 @@ describe('notifyTaskCreated вложения', () => {
 
     await (controller as any).notifyTaskCreated(task, 55);
 
-    expect(events).toEqual(['main-photo', 'photo', 'youtube', 'photo', 'status']);
-    expect(sendMediaGroupMock).not.toHaveBeenCalled();
+    expect(events).toEqual(['main-photo', 'group', 'youtube', 'photo', 'status']);
+    expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
     expect(sendDocumentMock).not.toHaveBeenCalled();
 
     const [, youtubeText, youtubeOptions] = sendMessageMock.mock.calls[0];
@@ -201,7 +205,7 @@ describe('notifyTaskCreated вложения', () => {
     });
 
     const photoCalls = sendPhotoMock.mock.calls;
-    expect(photoCalls).toHaveLength(3);
+    expect(photoCalls).toHaveLength(2);
     const [mainChat, mainMedia, mainOptions] = photoCalls[0];
     expect(typeof mainChat === 'number' || typeof mainChat === 'string').toBe(true);
     expect(mainMedia).toBe(`${appBaseUrl}/api/v1/files/a.jpg`);
@@ -211,21 +215,40 @@ describe('notifyTaskCreated вложения', () => {
     });
     expect(mainOptions).not.toHaveProperty('reply_parameters');
 
-    expect(photoCalls[1][1]).toBe(`${appBaseUrl}/files/b.png`);
-    expect(photoCalls[2][1]).toBe(`${appBaseUrl}/api/v1/files/c.gif`);
-    [photoCalls[1], photoCalls[2]].forEach(([, , options]) => {
-      expect(options).toMatchObject({
-        reply_parameters: {
-          message_id: 101,
-          allow_sending_without_reply: true,
-        },
-      });
+    const [, secondMedia, secondOptions] = photoCalls[1];
+    expect(secondMedia).toBe(`${appBaseUrl}/api/v1/files/c.gif`);
+    expect(secondOptions).toMatchObject({
+      reply_parameters: {
+        message_id: 101,
+        allow_sending_without_reply: true,
+      },
+    });
+
+    const mediaGroupCall = sendMediaGroupMock.mock.calls[0];
+    expect(mediaGroupCall).toBeDefined();
+    const [groupChat, mediaGroup, groupOptions] = mediaGroupCall;
+    expect(groupChat).toBe(mainChat);
+    expect(Array.isArray(mediaGroup)).toBe(true);
+    expect(mediaGroup).toHaveLength(2);
+    expect(mediaGroup?.[0]).toMatchObject({
+      type: 'photo',
+      media: `${appBaseUrl}/files/b.png`,
+    });
+    expect(mediaGroup?.[1]).toMatchObject({
+      type: 'photo',
+      media: `${appBaseUrl}/files/d.png`,
+    });
+    expect(groupOptions).toMatchObject({
+      reply_parameters: {
+        message_id: 101,
+        allow_sending_without_reply: true,
+      },
     });
 
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
       telegram_history_message_id: 303,
-      telegram_attachments_message_ids: [401, 202, 402],
+      telegram_attachments_message_ids: [401, 402, 202, 601],
     });
   });
 

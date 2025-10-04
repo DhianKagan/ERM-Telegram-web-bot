@@ -574,6 +574,17 @@ export default function formatTask(
     if (lines.length) {
       sections.push(`📝 *Описание*\n${lines.join('\n')}`);
     }
+    if (images.length) {
+      const title = images.length === 1 ? 'Изображение' : 'Изображения';
+      const attachmentLines = images.map((image, index) => {
+        const rawLabel = image.alt?.trim();
+        const label = rawLabel && rawLabel.length
+          ? rawLabel
+          : `Вложение ${index + 1}`;
+        return `• ${mdEscape(label)}`;
+      });
+      sections.push([`🖼 *${title}*`, ...attachmentLines].join('\n'));
+    }
   }
 
   return { text: sections.join('\n\n━━━━━━━━━━━━\n\n'), inlineImages };

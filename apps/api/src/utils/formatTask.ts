@@ -307,7 +307,7 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
       const indent = '  '.repeat(Math.max(stack.length - 1, 0));
       const marker =
         current && current.type === 'ol'
-          ? `${current.index}. `
+          ? `${current.index}\\. `
           : '• ';
       const lines = body.split(/\n+/);
       const firstLine = `${indent}${marker}${lines[0].trimStart()}`;

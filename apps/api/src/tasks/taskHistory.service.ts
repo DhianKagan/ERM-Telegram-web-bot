@@ -355,9 +355,29 @@ export async function updateTaskHistoryMessageId(
 export async function updateTaskSummaryMessageId(
   taskId: string,
   messageId: number,
-): Promise<void> {
-  if (!taskId || !Number.isFinite(messageId)) return;
-  await Task.findByIdAndUpdate(taskId, {
+  previousMessageId: number | null = null,
+): Promise<boolean> {
+  if (!taskId || !Number.isFinite(messageId)) return false;
+  const filter: Record<string, unknown> = { _id: taskId };
+  if (typeof previousMessageId === 'number') {
+    filter.telegram_summary_message_id = previousMessageId;
+  } else {
+    filter.$or = [
+      { telegram_summary_message_id: { $exists: false } },
+      { telegram_summary_message_id: null },
+    ];
+  }
+  const result = await Task.updateOne(filter, {
     $set: { telegram_summary_message_id: messageId },
   }).exec();
+  const matched =
+    (typeof result === 'object' && result !== null && 'matchedCount' in result
+      ? Number((result as { matchedCount: number }).matchedCount)
+      : typeof result === 'object' && result !== null && 'n' in result
+      ? Number((result as { n: number }).n)
+      : 0) || 0;
+  if (matched === 0) {
+    return false;
+  }
+  return true;
 }

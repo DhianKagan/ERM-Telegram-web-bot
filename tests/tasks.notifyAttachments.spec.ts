@@ -78,10 +78,14 @@ jest.mock('../apps/api/src/db/model', () => {
   }));
   const findByIdMock = jest.fn();
   const fileFindByIdMock = jest.fn();
+  const updateOneMock = jest.fn(() => ({
+    exec: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+  }));
   return {
     Task: {
       findByIdAndUpdate: updateTaskMock,
       findById: findByIdMock,
+      updateOne: updateOneMock,
     },
     File: {
       findById: fileFindByIdMock,
@@ -89,6 +93,7 @@ jest.mock('../apps/api/src/db/model', () => {
     __updateTaskMock: updateTaskMock,
     __taskFindByIdMock: findByIdMock,
     __fileFindByIdMock: fileFindByIdMock,
+    __updateOneMock: updateOneMock,
   };
 });
 
@@ -96,17 +101,20 @@ const {
   __updateTaskMock: updateTaskMock,
   __taskFindByIdMock: taskFindByIdMock,
   __fileFindByIdMock: fileFindByIdMock,
+  __updateOneMock: updateOneMock,
 } = jest.requireMock(
   '../apps/api/src/db/model',
 ) as {
   __updateTaskMock: jest.Mock;
   __taskFindByIdMock: jest.Mock;
   __fileFindByIdMock: jest.Mock;
+  __updateOneMock: jest.Mock;
 };
 
 describe('notifyTaskCreated вложения', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    updateOneMock.mockClear();
   });
 
   it('отправляет изображения медиа-группой и превью YouTube в исходном порядке', async () => {
@@ -651,9 +659,113 @@ describe('notifyTaskCreated вложения', () => {
   });
 });
 
+describe('syncTelegramTaskMessage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    updateOneMock.mockClear();
+  });
+
+  it('удаляет старое сообщение перед сохранением нового идентификатора', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const previous = {
+      telegram_message_id: 111,
+      telegram_topic_id: 777,
+    } as Record<string, unknown>;
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439012',
+      telegram_message_id: 111,
+      telegram_topic_id: 777,
+      assigned_user_id: 55,
+      assignees: [55],
+      created_by: 55,
+      attachments: [],
+      title: 'Проверка',
+      task_number: 'A-42',
+      status: 'new',
+      history: [],
+    };
+    taskFindByIdMock.mockResolvedValueOnce({
+      toObject() {
+        return { ...freshPlain } as unknown as TaskDocument;
+      },
+    });
+    editMessageTextMock.mockRejectedValueOnce(new Error('cannot edit'));
+    sendMessageMock.mockResolvedValueOnce({ message_id: 222 });
+    deleteMessageMock.mockResolvedValueOnce(undefined);
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).syncTelegramTaskMessage(freshPlain._id, {
+        ...previous,
+      });
+
+      expect(deleteMessageMock).toHaveBeenCalledWith(process.env.CHAT_ID, 111);
+      expect(updateOneMock).toHaveBeenCalledTimes(1);
+      const [filter, update] = updateOneMock.mock.calls[0];
+      expect(filter).toMatchObject({
+        _id: freshPlain._id,
+        telegram_message_id: 111,
+      });
+      expect(update).toMatchObject({
+        $set: { telegram_message_id: 222 },
+      });
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('не перезаписывает идентификатор при ошибке удаления старого сообщения', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const previous = {
+      telegram_message_id: 333,
+      telegram_topic_id: 888,
+    } as Record<string, unknown>;
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439013',
+      telegram_message_id: 333,
+      telegram_topic_id: 888,
+      assigned_user_id: 55,
+      assignees: [55],
+      created_by: 55,
+      attachments: [],
+      title: 'Отказ удаления',
+      task_number: 'B-17',
+      status: 'new',
+      history: [],
+    };
+    taskFindByIdMock.mockResolvedValueOnce({
+      toObject() {
+        return { ...freshPlain } as unknown as TaskDocument;
+      },
+    });
+    editMessageTextMock.mockRejectedValueOnce(new Error('cannot edit'));
+    sendMessageMock.mockResolvedValueOnce({ message_id: 444 });
+    deleteMessageMock.mockRejectedValueOnce(new Error('message not found'));
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).syncTelegramTaskMessage(freshPlain._id, {
+        ...previous,
+      });
+
+      expect(deleteMessageMock).toHaveBeenCalledWith(process.env.CHAT_ID, 333);
+      expect(updateOneMock).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Пропускаем сохранение нового telegram_message_id из-за ошибки удаления',
+        { taskId: freshPlain._id },
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+});
+
 describe('syncTelegramTaskMessage вложения', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    updateOneMock.mockClear();
   });
 
   it('обновляет изображение через editMessageMedia без пересоздания сообщений', async () => {
@@ -825,8 +937,17 @@ describe('syncTelegramTaskMessage вложения', () => {
     );
 
     expect(editMessageMediaMock).toHaveBeenCalledTimes(1);
-    expect(deleteMessageMock).toHaveBeenCalledWith(expect.anything(), 404);
-    expect(deleteMessageMock).toHaveBeenCalledTimes(1);
+    expect(deleteMessageMock).toHaveBeenNthCalledWith(
+      1,
+      process.env.CHAT_ID,
+      1001,
+    );
+    expect(deleteMessageMock).toHaveBeenNthCalledWith(
+      2,
+      process.env.CHAT_ID,
+      404,
+    );
+    expect(deleteMessageMock).toHaveBeenCalledTimes(2);
     expect(sendPhotoMock).toHaveBeenCalledTimes(2);
     const [mainCall, attachmentCall] = sendPhotoMock.mock.calls;
     expect(mainCall[2]).not.toHaveProperty('reply_parameters');
@@ -836,13 +957,18 @@ describe('syncTelegramTaskMessage вложения', () => {
         allow_sending_without_reply: true,
       },
     });
-    expect(updateTaskMock).toHaveBeenCalledWith(
-      '507f1f77bcf86cd799439011',
-      expect.objectContaining({
+    expect(updateOneMock).toHaveBeenCalledTimes(1);
+    const [updateFilter, updatePayload] = updateOneMock.mock.calls[0];
+    expect(updateFilter).toMatchObject({
+      _id: '507f1f77bcf86cd799439011',
+      telegram_message_id: 1001,
+    });
+    expect(updatePayload).toMatchObject({
+      $set: {
         telegram_message_id: 1002,
         telegram_attachments_message_ids: [601],
-      }),
-    );
+      },
+    });
   });
 
   it('обновляет существующее сообщение вложения без создания нового', async () => {
@@ -914,9 +1040,11 @@ describe('syncTelegramTaskMessage вложения', () => {
     expect(sendMessageMock).not.toHaveBeenCalled();
     expect(sendPhotoMock).not.toHaveBeenCalled();
     expect(sendMediaGroupMock).not.toHaveBeenCalled();
-    expect(updateTaskMock).toHaveBeenCalledWith(
-      '507f1f77bcf86cd799439011',
-      { telegram_attachments_message_ids: [] },
+    expect(updateOneMock).toHaveBeenCalledWith(
+      { _id: '507f1f77bcf86cd799439011' },
+      expect.objectContaining({
+        $set: { telegram_attachments_message_ids: [] },
+      }),
     );
   });
 
@@ -975,9 +1103,11 @@ describe('syncTelegramTaskMessage вложения', () => {
     const deletedIds = deleteMessageMock.mock.calls.map((call) => call[1]);
     expect(deletedIds.sort()).toEqual([501, 502]);
     expect(sendMessageMock).not.toHaveBeenCalled();
-    expect(updateTaskMock).toHaveBeenCalledWith(
-      '507f1f77bcf86cd799439011',
-      expect.objectContaining({ telegram_attachments_message_ids: [] }),
+    expect(updateOneMock).toHaveBeenCalledWith(
+      { _id: '507f1f77bcf86cd799439011' },
+      expect.objectContaining({
+        $set: { telegram_attachments_message_ids: [] },
+      }),
     );
   });
 });

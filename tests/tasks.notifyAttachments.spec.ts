@@ -294,6 +294,7 @@ describe('notifyTaskCreated вложения', () => {
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 111,
       telegram_history_message_id: 303,
+      telegram_preview_message_ids: [111, 112],
       telegram_attachments_message_ids: [211, 212, 202],
     });
   });
@@ -409,6 +410,7 @@ describe('notifyTaskCreated вложения', () => {
       expect.objectContaining({
         telegram_message_id: 101,
         telegram_history_message_id: 303,
+        telegram_preview_message_ids: [101],
         telegram_attachments_message_ids: [601, 602, 401],
       }),
     );
@@ -563,6 +565,7 @@ describe('notifyTaskCreated вложения', () => {
     expect(updateTaskMock).toHaveBeenCalledWith('507f1f77bcf86cd799439011', {
       telegram_message_id: 101,
       telegram_history_message_id: 404,
+      telegram_preview_message_ids: [101],
       telegram_attachments_message_ids: [505],
     });
   });
@@ -855,6 +858,7 @@ describe('notifyTaskCreated вложения', () => {
       expect.objectContaining({
         telegram_message_id: 101,
         telegram_history_message_id: 404,
+        telegram_preview_message_ids: [101],
       }),
     );
     expect(
@@ -945,7 +949,7 @@ describe('syncTelegramTaskMessage', () => {
     });
     editMessageTextMock.mockRejectedValueOnce(new Error('cannot edit'));
     sendMessageMock.mockResolvedValueOnce({ message_id: 444 });
-    deleteMessageMock.mockRejectedValueOnce(new Error('message not found'));
+    deleteMessageMock.mockRejectedValue(new Error('message not found'));
 
     const controller = new TasksController({} as any);
 
@@ -1170,6 +1174,7 @@ describe('syncTelegramTaskMessage вложения', () => {
     expect(updatePayload).toMatchObject({
       $set: {
         telegram_message_id: 1002,
+        telegram_preview_message_ids: [1002],
         telegram_attachments_message_ids: [601],
       },
     });
@@ -1315,6 +1320,220 @@ describe('syncTelegramTaskMessage вложения', () => {
         $set: { telegram_attachments_message_ids: [] },
       }),
     );
+  });
+
+  it('удаляет фотографии превью медиа-группы без «висячих» сообщений', async () => {
+    const uploadsRoot = path.resolve(uploadsDir);
+    const tempDir = path.join(uploadsRoot, 'tests-preview-cleanup-sync');
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const createImage = async (filename: string, color: string) => {
+      const absolutePath = path.join(tempDir, filename);
+      await sharp({
+        create: {
+          width: 640,
+          height: 480,
+          channels: 3,
+          background: color,
+        },
+      })
+        .jpeg({ quality: 90 })
+        .toFile(absolutePath);
+      const relative = path.relative(uploadsRoot, absolutePath);
+      const stats = await fs.stat(absolutePath);
+      return { relative, size: stats.size };
+    };
+
+    const [oldFirst, oldSecond, nextFirst, nextSecond] = await Promise.all([
+      createImage('old-first.jpg', '#111111'),
+      createImage('old-second.jpg', '#222222'),
+      createImage('next-first.jpg', '#333333'),
+      createImage('next-second.jpg', '#444444'),
+    ]);
+
+    editMessageMediaMock.mockRejectedValueOnce(new Error('cannot edit media'));
+    sendMediaGroupMock.mockResolvedValueOnce([
+      { message_id: 801 },
+      { message_id: 802 },
+    ]);
+    deleteMessageMock.mockResolvedValue(undefined);
+
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439022',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 701,
+      telegram_preview_message_ids: [701, 702],
+      telegram_attachments_message_ids: [],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: `/api/v1/files/${nextFirst.relative}`,
+          type: 'image/jpeg',
+          name: 'next-first.jpg',
+          size: nextFirst.size,
+        },
+        {
+          url: `/api/v1/files/${nextSecond.relative}`,
+          type: 'image/jpeg',
+          name: 'next-second.jpg',
+          size: nextSecond.size,
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    } as Record<string, unknown>;
+
+    taskFindByIdMock.mockResolvedValueOnce({
+      toObject() {
+        return { ...freshPlain } as unknown as TaskDocument;
+      },
+    });
+
+    const previousState = {
+      ...freshPlain,
+      attachments: [
+        {
+          url: `/api/v1/files/${oldFirst.relative}`,
+          type: 'image/jpeg',
+          name: 'old-first.jpg',
+          size: oldFirst.size,
+        },
+        {
+          url: `/api/v1/files/${oldSecond.relative}`,
+          type: 'image/jpeg',
+          name: 'old-second.jpg',
+          size: oldSecond.size,
+        },
+      ],
+    } as Record<string, unknown>;
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).syncTelegramTaskMessage(
+        '507f1f77bcf86cd799439022',
+        previousState,
+      );
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+
+    const deletedIds = deleteMessageMock.mock.calls.map((call) => call[1]);
+    expect(deletedIds).toEqual(expect.arrayContaining([701, 702]));
+    const previewDeletionCalls = deleteMessageMock.mock.calls.filter(([, id]) =>
+      id === 701 || id === 702,
+    );
+    expect(previewDeletionCalls).toHaveLength(2);
+    expect(updateOneMock).toHaveBeenCalledTimes(1);
+    const [updateFilter, updatePayload] = updateOneMock.mock.calls[0];
+    expect(updateFilter).toMatchObject({ _id: '507f1f77bcf86cd799439022' });
+    expect(updatePayload).toHaveProperty('$set');
+    const setPayload = (updatePayload as { $set: Record<string, unknown> }).$set;
+    const previewIds = (setPayload.telegram_preview_message_ids ?? []) as number[];
+    expect(Array.isArray(previewIds)).toBe(true);
+    expect(previewIds.length).toBeGreaterThan(0);
+    expect(previewIds).toEqual(expect.not.arrayContaining([701, 702]));
+    if (typeof setPayload.telegram_message_id === 'number') {
+      expect(previewIds).toEqual(
+        expect.arrayContaining([setPayload.telegram_message_id as number]),
+      );
+    }
+  });
+
+  it('очищает лишние фото при удалении превью из двух локальных изображений', async () => {
+    const uploadsRoot = path.resolve(uploadsDir);
+    const tempDir = path.join(uploadsRoot, 'tests-preview-remove-local');
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const createImage = async (filename: string, color: string) => {
+      const absolutePath = path.join(tempDir, filename);
+      await sharp({
+        create: {
+          width: 640,
+          height: 480,
+          channels: 3,
+          background: color,
+        },
+      })
+        .jpeg({ quality: 92 })
+        .toFile(absolutePath);
+      const relative = path.relative(uploadsRoot, absolutePath);
+      const stats = await fs.stat(absolutePath);
+      return { relative, size: stats.size };
+    };
+
+    const [first, second] = await Promise.all([
+      createImage('first-local.jpg', '#550000'),
+      createImage('second-local.jpg', '#005555'),
+    ]);
+
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439099',
+      task_number: 'A-13',
+      title: 'Обновление задачи',
+      telegram_message_id: 901,
+      telegram_preview_message_ids: [],
+      telegram_attachments_message_ids: [],
+      telegram_topic_id: 777,
+      attachments: [],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-2',
+      createdAt: '2024-01-01T00:00:00Z',
+    } as Record<string, unknown>;
+
+    taskFindByIdMock.mockResolvedValueOnce({
+      toObject() {
+        return { ...freshPlain } as unknown as TaskDocument;
+      },
+    });
+
+    const previousState = {
+      ...freshPlain,
+      telegram_preview_message_ids: [901, 902],
+      attachments: [
+        {
+          url: `/api/v1/files/${first.relative}`,
+          type: 'image/jpeg',
+          name: 'first-local.jpg',
+          size: first.size,
+        },
+        {
+          url: `/api/v1/files/${second.relative}`,
+          type: 'image/jpeg',
+          name: 'second-local.jpg',
+          size: second.size,
+        },
+      ],
+    } as Record<string, unknown>;
+
+    const controller = new TasksController({} as any);
+
+    try {
+      await (controller as any).syncTelegramTaskMessage(
+        '507f1f77bcf86cd799439099',
+        previousState,
+      );
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+
+    const deletedIds = deleteMessageMock.mock.calls.map((call) => call[1]);
+    expect(deletedIds).toEqual(expect.arrayContaining([902]));
+    expect(deletedIds).toEqual(expect.not.arrayContaining([901]));
+    expect(updateOneMock).toHaveBeenCalledTimes(1);
+    const [filter, payload] = updateOneMock.mock.calls[0];
+    expect(filter).toMatchObject({ _id: '507f1f77bcf86cd799439099' });
+    expect(payload).toHaveProperty('$set');
+    const setPayload = (payload as { $set: Record<string, unknown> }).$set;
+    const previewIds = (setPayload.telegram_preview_message_ids ?? []) as number[];
+    expect(Array.isArray(previewIds)).toBe(true);
+    expect(previewIds).toEqual([901]);
   });
 });
 

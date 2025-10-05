@@ -47,10 +47,12 @@ type TaskEx = SharedTask & {
   created_by?: number;
   history?: { changed_by: number }[];
   telegram_attachments_message_ids?: number[];
+  telegram_preview_message_ids?: number[];
 };
 
 type TaskWithMeta = TaskDocument & {
   telegram_attachments_message_ids?: number[];
+  telegram_preview_message_ids?: number[];
 };
 
 const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
@@ -170,6 +172,7 @@ type TaskMessageSendResult = {
   usedPreview: boolean;
   cache: Map<string, LocalPhotoInfo | null>;
   previewSourceUrls?: string[];
+  previewMessageIds?: number[];
 };
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
@@ -451,7 +454,15 @@ export default class TasksController {
           mediaGroup,
           options,
         );
-        const firstMessage = Array.isArray(response) ? response[0] : undefined;
+        const responseList = Array.isArray(response) ? response : [];
+        const previewMessageIds = responseList
+          .map((item) =>
+            item && typeof item.message_id === 'number' ? item.message_id : null,
+          )
+          .filter(
+            (value): value is number => value !== null && Number.isFinite(value),
+          );
+        const firstMessage = responseList[0];
         const messageId = firstMessage?.message_id;
         if (messageId && keyboard) {
           const replyMarkup = keyboardMarkup ?? this.extractKeyboardMarkup(keyboard);
@@ -494,6 +505,7 @@ export default class TasksController {
           usedPreview: true,
           cache,
           previewSourceUrls: uniqueCandidates.map((item) => item.url),
+          previewMessageIds,
         };
       } catch (error) {
         console.warn(
@@ -523,6 +535,10 @@ export default class TasksController {
           usedPreview: true,
           cache,
           previewSourceUrls: [sourceUrl],
+          previewMessageIds:
+            typeof response?.message_id === 'number'
+              ? [response.message_id]
+              : undefined,
         };
       } catch (error) {
         if (cleanup) {
@@ -553,6 +569,7 @@ export default class TasksController {
       usedPreview: false,
       cache,
       previewSourceUrls: undefined,
+      previewMessageIds: undefined,
     };
   }
 
@@ -1439,17 +1456,42 @@ export default class TasksController {
     topicId?: number,
     replyTo?: number,
     cacheOverride?: Map<string, LocalPhotoInfo | null>,
+    previewMessageIds?: number[],
   ): Promise<number[] | null> {
-    if (!messageIds.length) {
+    const normalizedMessageIds = messageIds.filter((value): value is number =>
+      typeof value === 'number' && Number.isFinite(value),
+    );
+    const previewIdSet = new Set(
+      (previewMessageIds ?? []).filter(
+        (value): value is number => typeof value === 'number' && Number.isFinite(value),
+      ),
+    );
+    const previewOnlyIds = normalizedMessageIds.filter((id) => previewIdSet.has(id));
+    const nonPreviewIds = normalizedMessageIds.filter((id) => !previewIdSet.has(id));
+    if (!next.length) {
+      if (previewOnlyIds.length) {
+        await this.deleteAttachmentMessages(chat, previewOnlyIds);
+      }
       return [];
     }
     const cache = cacheOverride ?? new Map<string, LocalPhotoInfo | null>();
     const result: number[] = [];
-    const limit = Math.min(next.length, messageIds.length);
+    if (!nonPreviewIds.length) {
+      const extra = await this.sendTaskAttachments(
+        chat,
+        next,
+        topicId,
+        replyTo,
+        cache,
+      );
+      result.push(...extra);
+      return result;
+    }
+    const limit = Math.min(next.length, nonPreviewIds.length);
 
     for (let index = 0; index < limit; index += 1) {
       const attachment = next[index];
-      const messageId = messageIds[index];
+      const messageId = nonPreviewIds[index];
       if (!Number.isFinite(messageId)) {
         return null;
       }
@@ -1575,15 +1617,15 @@ export default class TasksController {
       return null;
     }
 
-    if (next.length < messageIds.length) {
-      const redundant = messageIds.slice(next.length);
+    if (next.length < nonPreviewIds.length) {
+      const redundant = nonPreviewIds.slice(next.length);
       await this.deleteAttachmentMessages(chat, redundant);
     }
 
-    if (next.length > messageIds.length) {
+    if (next.length > nonPreviewIds.length) {
       const extra = await this.sendTaskAttachments(
         chat,
-        next.slice(messageIds.length),
+        next.slice(nonPreviewIds.length),
         topicId,
         replyTo,
         cache,
@@ -1773,6 +1815,26 @@ export default class TasksController {
     let messageIdGuard: number | null | undefined;
     let canPersistNewMessageId =
       typeof previousMessageId === 'number' ? false : true;
+    let previousMessageDeletedBeforeResend = false;
+
+    const normalizeMessageIds = (value: unknown): number[] =>
+      Array.isArray(value)
+        ? value
+            .map((item) =>
+              typeof item === 'number' && Number.isFinite(item) ? item : null,
+            )
+            .filter((item): item is number => item !== null)
+        : [];
+
+    const previousAttachmentMessageIds = normalizeMessageIds(
+      previousPlain?.telegram_attachments_message_ids,
+    );
+    const previousPreviewMessageIds = normalizeMessageIds(
+      previousPlain?.telegram_preview_message_ids,
+    );
+    const currentPreviewMessageIds = normalizeMessageIds(
+      plain.telegram_preview_message_ids,
+    );
 
     let messageResult: TaskMessageSendResult | null = null;
     if (currentMessageId) {
@@ -1789,10 +1851,33 @@ export default class TasksController {
           usedPreview: editResult.usedPreview,
           cache: editResult.cache,
           previewSourceUrls: editResult.previewSourceUrls,
+          previewMessageIds:
+            editResult.usedPreview && currentPreviewMessageIds.length
+              ? currentPreviewMessageIds
+              : undefined,
         };
       } else {
         console.error('Не удалось обновить сообщение задачи, отправляем заново');
         try {
+          const previewIdsToDelete = new Set([
+            ...previousPreviewMessageIds,
+            ...currentPreviewMessageIds,
+          ]);
+          if (previousMessageId) {
+            previousMessageDeletedBeforeResend = await this.deleteTaskMessageSafely(
+              groupChatId,
+              previousMessageId,
+              previousTopicId,
+              topicId,
+            );
+            previewIdsToDelete.delete(previousMessageId);
+          }
+          if (previewIdsToDelete.size) {
+            await this.deleteAttachmentMessages(
+              groupChatId,
+              Array.from(previewIdsToDelete),
+            );
+          }
           const sendResult = await this.sendTaskMessageWithPreview(
             groupChatId,
             message,
@@ -1804,7 +1889,8 @@ export default class TasksController {
           if (
             sendResult.messageId &&
             previousMessageId &&
-            sendResult.messageId !== previousMessageId
+            sendResult.messageId !== previousMessageId &&
+            !previousMessageDeletedBeforeResend
           ) {
             const deleted = await this.deleteTaskMessageSafely(
               groupChatId,
@@ -1815,6 +1901,8 @@ export default class TasksController {
             if (deleted) {
               canPersistNewMessageId = true;
             }
+          } else if (previousMessageDeletedBeforeResend) {
+            canPersistNewMessageId = true;
           }
           messageResult = sendResult;
         } catch (sendError) {
@@ -1824,6 +1912,25 @@ export default class TasksController {
       }
     } else {
       try {
+        const previewIdsToDelete = new Set([
+          ...previousPreviewMessageIds,
+          ...currentPreviewMessageIds,
+        ]);
+        if (previousMessageId) {
+          previousMessageDeletedBeforeResend = await this.deleteTaskMessageSafely(
+            groupChatId,
+            previousMessageId,
+            previousTopicId,
+            topicId,
+          );
+          previewIdsToDelete.delete(previousMessageId);
+        }
+        if (previewIdsToDelete.size) {
+          await this.deleteAttachmentMessages(
+            groupChatId,
+            Array.from(previewIdsToDelete),
+          );
+        }
         const sendResult = await this.sendTaskMessageWithPreview(
           groupChatId,
           message,
@@ -1835,7 +1942,8 @@ export default class TasksController {
         if (
           sendResult.messageId &&
           previousMessageId &&
-          sendResult.messageId !== previousMessageId
+          sendResult.messageId !== previousMessageId &&
+          !previousMessageDeletedBeforeResend
         ) {
           const deleted = await this.deleteTaskMessageSafely(
             groupChatId,
@@ -1846,6 +1954,8 @@ export default class TasksController {
           if (deleted) {
             canPersistNewMessageId = true;
           }
+        } else if (previousMessageDeletedBeforeResend) {
+          canPersistNewMessageId = true;
         }
         messageResult = sendResult;
       } catch (error) {
@@ -1898,13 +2008,8 @@ export default class TasksController {
             attachment.kind !== 'image' || !nextPreviewSet.has(attachment.url),
         )
       : nextExtrasRaw;
-    const previousAttachmentMessageIds = Array.isArray(
-      previousPlain?.telegram_attachments_message_ids,
-    )
-      ? previousPlain!.telegram_attachments_message_ids.filter((value) =>
-          typeof value === 'number' && Number.isFinite(value),
-        )
-      : [];
+    let previewMessageIds = [...previousPreviewMessageIds];
+    const previewIdsToRemove: number[] = [];
 
     const messageIdChanged = previousMessageId !== currentMessageId;
     const attachmentsChanged = !this.areNormalizedAttachmentsEqual(
@@ -1914,6 +2019,35 @@ export default class TasksController {
 
     let attachmentMessageIds = [...previousAttachmentMessageIds];
     let attachmentsListChanged = false;
+    let previewListChanged = false;
+
+    if (messageResult.previewMessageIds && messageResult.previewMessageIds.length) {
+      const normalizedPreview = normalizeMessageIds(
+        messageResult.previewMessageIds,
+      );
+      if (!this.areMessageIdListsEqual(normalizedPreview, previewMessageIds)) {
+        previewListChanged = true;
+      }
+      previewMessageIds = normalizedPreview;
+    } else if (!messageResult.usedPreview && previewMessageIds.length) {
+      const removable = previewMessageIds.filter(
+        (id) =>
+          typeof currentMessageId === 'number' ? id !== currentMessageId : true,
+      );
+      if (removable.length) {
+        previewIdsToRemove.push(...removable);
+      }
+      previewMessageIds =
+        typeof currentMessageId === 'number' &&
+        previousPreviewMessageIds.includes(currentMessageId)
+          ? [currentMessageId]
+          : [];
+      previewListChanged = true;
+    }
+
+    if (previewIdsToRemove.length) {
+      await this.deleteAttachmentMessages(groupChatId, previewIdsToRemove);
+    }
 
     if (messageIdChanged && attachmentMessageIds.length) {
       await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
@@ -1926,6 +2060,18 @@ export default class TasksController {
         await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
         attachmentMessageIds = [];
         attachmentsListChanged = true;
+      }
+      if (previewMessageIds.length) {
+        const removablePreviewIds = previewMessageIds.filter(
+          (id) => id !== currentMessageId,
+        );
+        if (removablePreviewIds.length) {
+          await this.deleteAttachmentMessages(groupChatId, removablePreviewIds);
+          previewMessageIds = previewMessageIds.filter(
+            (id) => id === currentMessageId,
+          );
+          previewListChanged = true;
+        }
       }
     } else if (currentMessageId) {
       if (!attachmentMessageIds.length) {
@@ -1946,6 +2092,9 @@ export default class TasksController {
         }
       } else if (attachmentsChanged && !messageIdChanged) {
         try {
+          const previewIdsForSync = Array.from(
+            new Set([...previousPreviewMessageIds, ...previewMessageIds]),
+          );
           const synced = await this.syncAttachmentMessages(
             groupChatId,
             previousExtras,
@@ -1954,6 +2103,7 @@ export default class TasksController {
             topicId,
             currentMessageId,
             messageResult.cache,
+            previewIdsForSync,
           );
           if (synced === null) {
             throw new Error('sync failed');
@@ -2001,6 +2151,18 @@ export default class TasksController {
 
     if (attachmentsShouldPersist && (!messageIdChanged || canPersistNewMessageId)) {
       updatesToSet.telegram_attachments_message_ids = attachmentMessageIds;
+    }
+
+    const previewShouldPersist =
+      previewListChanged ||
+      !this.areMessageIdListsEqual(previewMessageIds, previousPreviewMessageIds);
+
+    if (previewShouldPersist && (!messageIdChanged || canPersistNewMessageId)) {
+      if (previewMessageIds.length) {
+        updatesToSet.telegram_preview_message_ids = previewMessageIds;
+      } else {
+        updatesToUnset.telegram_preview_message_ids = '';
+      }
     }
 
     if (messageIdChanged && currentMessageId && canPersistNewMessageId) {
@@ -2071,6 +2233,7 @@ export default class TasksController {
     let messageLink: string | null = null;
 
     let attachmentMessageIds: number[] = [];
+    let previewMessageIds: number[] = [];
     if (groupChatId) {
       try {
         const topicId =
@@ -2089,6 +2252,7 @@ export default class TasksController {
           topicId,
         );
         groupMessageId = sendResult.messageId;
+        previewMessageIds = sendResult.previewMessageIds ?? [];
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
         const previewUrls = sendResult.usedPreview
           ? sendResult.previewSourceUrls && sendResult.previewSourceUrls.length
@@ -2180,6 +2344,9 @@ export default class TasksController {
     }
     if (attachmentMessageIds && attachmentMessageIds.length) {
       updatePayload.telegram_attachments_message_ids = attachmentMessageIds;
+    }
+    if (previewMessageIds.length) {
+      updatePayload.telegram_preview_message_ids = previewMessageIds;
     }
     if (Object.keys(updatePayload).length) {
       try {

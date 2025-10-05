@@ -626,12 +626,24 @@ export default function formatTask(
       idLine = `📌 *${mdEscape(fallbackId)}*`;
     }
   }
-  const titleLine = task.title ? `*${mdEscape(task.title)}*` : null;
+
   if (idLine) {
     headerParts.push(idLine);
-  } else if (titleLine) {
-    headerParts.push(titleLine);
   }
+
+  if (task.task_type) {
+    headerParts.push(`🏷 Тип задачи: *${mdEscape(task.task_type)}*`);
+  }
+
+  if (task.title) {
+    headerParts.push(`📣 *${mdEscape(task.title)}*`);
+  } else if (!idLine) {
+    const fallbackTitle = toIdentifier(task.task_number);
+    if (fallbackTitle) {
+      headerParts.push(`📣 *${mdEscape(fallbackTitle)}*`);
+    }
+  }
+
   const completionNote = buildCompletionNote(
     task.status,
     task.due_date,
@@ -639,12 +651,6 @@ export default function formatTask(
   );
   if (completionNote) {
     headerParts.push(mdEscape(completionNote));
-  }
-  if (titleLine && idLine) {
-    headerParts.push(titleLine);
-  }
-  if (task.task_type) {
-    headerParts.push(`🏷 *${mdEscape(task.task_type)}*`);
   }
   if (headerParts.length) {
     sections.push(headerParts.join('\n'));

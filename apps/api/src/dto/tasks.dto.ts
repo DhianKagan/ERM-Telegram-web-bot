@@ -13,6 +13,17 @@ const optionalFloatField = (field: string) =>
     .customSanitizer(normalizeEmptyNumeric)
     .optional({ nullable: true })
     .isFloat({ min: 0 });
+
+const hasAssignedExecutor = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+};
+
+const hasAssigneeList = (value: unknown): boolean =>
+  Array.isArray(value) && value.length > 0;
+
+const executorsRequiredMessage = 'Укажите хотя бы одного исполнителя';
 const statusField = taskFields.find((f) => f.name === 'status');
 const statusList: readonly string[] = statusField?.options ?? [
   'Новая',
@@ -36,6 +47,21 @@ export class CreateTaskDto {
         .isNumeric(),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
+      body()
+        .custom((_value, { req }) => {
+          const { assignees, assigned_user_id: assignedUserId } = req.body as {
+            assignees?: unknown;
+            assigned_user_id?: unknown;
+          };
+          if (
+            hasAssigneeList(assignees) ||
+            hasAssignedExecutor(assignedUserId)
+          ) {
+            return true;
+          }
+          throw new Error(executorsRequiredMessage);
+        })
+        .withMessage(executorsRequiredMessage),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),
@@ -59,6 +85,24 @@ export class UpdateTaskDto {
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
         .isNumeric(),
+      body()
+        .custom((_value, { req }) => {
+          const { assignees, assigned_user_id: assignedUserId } = req.body as {
+            assignees?: unknown;
+            assigned_user_id?: unknown;
+          };
+          if (typeof assignees === 'undefined' && typeof assignedUserId === 'undefined') {
+            return true;
+          }
+          if (
+            hasAssigneeList(assignees) ||
+            hasAssignedExecutor(assignedUserId)
+          ) {
+            return true;
+          }
+          throw new Error(executorsRequiredMessage);
+        })
+        .withMessage(executorsRequiredMessage),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),

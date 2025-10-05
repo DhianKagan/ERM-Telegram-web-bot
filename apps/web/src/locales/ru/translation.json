@@ -2,6 +2,7 @@
   "accept": "Принять",
   "adminPanel": "Админка",
   "assignees": "Исполнитель(и)",
+  "assigneeRequiredError": "Укажите хотя бы одного исполнителя",
   "attachments": "Вложения",
   "author": "автор",
   "cancel": "Отмена",

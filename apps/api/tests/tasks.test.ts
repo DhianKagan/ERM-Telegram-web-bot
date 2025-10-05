@@ -92,6 +92,7 @@ test('создание задачи возвращает 201', async () => {
     .send({
       formVersion: 1,
       title: 'T',
+      assigned_user_id: 1,
       start_location_link: 'https://maps.google.com',
       end_location_link: 'https://maps.google.com',
       startCoordinates: { lat: 1, lng: 2 },
@@ -104,11 +105,28 @@ test('создание задачи возвращает 201', async () => {
   const expectedUrl = generateRouteLink({ lat: 1, lng: 2 }, { lat: 3, lng: 4 });
   expect(Task.create).toHaveBeenCalledWith(
     expect.objectContaining({
+      assigned_user_id: 1,
+      assignees: [1],
       start_date: '2025-01-01T10:00',
       google_route_url: expectedUrl,
       route_distance_km: 1,
     }),
   );
+});
+
+test('создание задачи без исполнителей возвращает 400', async () => {
+  const res = await request(app)
+    .post('/api/v1/tasks')
+    .send({
+      formVersion: 1,
+      title: 'T',
+      assignees: [''],
+    });
+  expect(res.status).toBe(400);
+  const messages = Array.isArray(res.body?.errors)
+    ? res.body.errors.map((err) => err.msg)
+    : [];
+  expect(messages).toContain('Укажите хотя бы одного исполнителя');
 });
 
 test('создание задачи через multipart', async () => {

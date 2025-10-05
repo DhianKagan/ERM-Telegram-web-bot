@@ -601,7 +601,7 @@ const buildTaskLink = (task: TaskData) => {
     toIdentifier(task.task_number) ||
     toIdentifier(task.request_id) ||
     canonicalId;
-  const link = `${appUrlBase}/tasks/${encodeURIComponent(canonicalId)}`;
+  const link = `${appUrlBase}/tasks?task=${encodeURIComponent(canonicalId)}`;
   return { displayId, link };
 };
 

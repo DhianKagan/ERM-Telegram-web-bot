@@ -27,7 +27,7 @@ import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import createRouteLink from "../utils/createRouteLink";
 import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileUploader from "./FileUploader";
 import Spinner from "./Spinner";
@@ -55,7 +55,7 @@ interface InitialValues {
   status: string;
   completedAt: string;
   creator: string;
-  assigneeId: string | null;
+  assigneeId: string;
   start: string;
   startLink: string;
   end: string;
@@ -286,6 +286,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
   const initialRef = React.useRef<InitialValues | null>(null);
+  const hasAutofilledAssignee = React.useRef(false);
   const [initialDates, setInitialDates] = React.useState<{ start: string; due: string }>(
     { start: "", due: "" },
   );
@@ -298,10 +299,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     .object({
       title: z.string().min(1, t("titleRequired")),
       description: z.string().optional(),
-      assigneeId: z
-        .union([z.string().trim().min(1), z.literal(null)])
-        .nullish()
-        .default(null),
+      assigneeId: z.string().trim().min(1, t("assigneeRequiredError")),
       startDate: z.string().optional(),
       dueDate: z.string().optional(),
     })
@@ -330,7 +328,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     defaultValues: {
       title: "",
       description: "",
-      assigneeId: null,
+      assigneeId: user ? String(user.telegram_id) : "",
       startDate: "",
       dueDate: "",
     },
@@ -386,6 +384,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
 
   const startDateValue = watch("startDate");
   const dueDateValue = watch("dueDate");
+  const assigneeValue = watch("assigneeId");
   const shouldAutoSyncDueDate = React.useMemo(() => {
     if (!startDateValue) return false;
     if (!isEdit) return true;
@@ -515,10 +514,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         ? (taskData.assignees as (string | number | null | undefined)[])[0]
         : (taskData as Record<string, unknown>).assigned_user_id;
       const assigneeId = (() => {
-        if (rawAssignee === null || rawAssignee === undefined) return null;
+        if (rawAssignee === null || rawAssignee === undefined) return "";
         if (typeof rawAssignee === "string") {
           const trimmed = rawAssignee.trim();
-          return trimmed.length > 0 ? trimmed : null;
+          return trimmed.length > 0 ? trimmed : "";
         }
         return String(rawAssignee);
       })();
@@ -572,6 +571,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         startDate,
         dueDate,
       });
+      hasAutofilledAssignee.current = true;
       setTaskType(curTaskType);
       setComment((taskData.comment as string) || "");
       setPriority(curPriority);
@@ -791,7 +791,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         status: DEFAULT_STATUS,
         completedAt: "",
         creator: user ? String(user.telegram_id) : "",
-        assigneeId: null,
+        assigneeId: user ? String(user.telegram_id) : "",
         start: "",
         startLink: "",
         end: "",
@@ -811,10 +811,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       reset({
         title: "",
         description: "",
-        assigneeId: null,
+        assigneeId: user ? String(user.telegram_id) : "",
         startDate: defaultStartDate,
         dueDate: defaultDueDate,
       });
+      hasAutofilledAssignee.current = false;
       setCargoLength("");
       setCargoWidth("");
       setCargoHeight("");
@@ -873,6 +874,35 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setUsers([user as UserBrief]);
     }
   }, [user, canEditAll]);
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    const current =
+      typeof assigneeValue === "string" ? assigneeValue.trim() : "";
+    const hasCurrentOption =
+      current.length > 0 &&
+      users.some((candidate) => String(candidate.telegram_id) === current);
+    if (current && hasCurrentOption) {
+      hasAutofilledAssignee.current = true;
+      return;
+    }
+    if (hasAutofilledAssignee.current) return;
+    const preferred =
+      (user &&
+        users.find((candidate) => candidate.telegram_id === user.telegram_id)) ||
+      users[0];
+    if (!preferred) return;
+    const candidateId = String(preferred.telegram_id);
+    if (!candidateId) return;
+    setValue("assigneeId", candidateId, {
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+    if (initialRef.current) {
+      initialRef.current.assigneeId = candidateId;
+    }
+    hasAutofilledAssignee.current = true;
+  }, [assigneeValue, isEdit, user, users, setValue]);
 
   React.useEffect(() => {
     const targetId = effectiveTaskId;
@@ -1057,11 +1087,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       const assignedRaw =
         typeof formData.assigneeId === "string"
           ? formData.assigneeId.trim()
-          : formData.assigneeId != null
-            ? String(formData.assigneeId)
-            : "";
-      const assignedNumeric = assignedRaw ? toNumericValue(assignedRaw) : null;
-      const assignedValue = assignedNumeric !== null ? assignedNumeric : "";
+          : "";
+      if (!assignedRaw) {
+        setError("assigneeId", {
+          type: "required",
+          message: t("assigneeRequiredError"),
+        });
+        return;
+      }
+      const assignedNumeric = toNumericValue(assignedRaw);
+      const assignedValue = assignedNumeric !== null ? assignedNumeric : assignedRaw;
       const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: taskType,
@@ -1499,9 +1534,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 <MultiUserSelect
                   label={t("assignees")}
                   users={users}
-                  value={typeof field.value === "string" ? field.value : null}
-                  onChange={field.onChange}
+                  value={
+                    typeof field.value === "string" && field.value.trim().length > 0
+                      ? field.value.trim()
+                      : null
+                  }
+                  onChange={(val) => field.onChange(val ?? "")}
+                  onBlur={field.onBlur}
                   disabled={!editing}
+                  required
+                  placeholder={t("assigneeSelectPlaceholder")}
+                  hint={!errors.assigneeId ? t("assigneeSelectHint") : undefined}
+                  error={errors.assigneeId?.message ?? null}
                 />
               )}
             />
@@ -1893,7 +1937,22 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 onConfirm={async () => {
                   setShowSaveConfirm(false);
                   setIsSubmitting(true);
-                  await submit();
+                  try {
+                    await submit();
+                  } catch (error) {
+                    if (error instanceof ZodError) {
+                      error.issues.forEach((issue) => {
+                        if (issue.path[0] === "assigneeId") {
+                          setError("assigneeId", {
+                            type: issue.code,
+                            message: issue.message,
+                          });
+                        }
+                      });
+                    }
+                    console.warn("Не удалось сохранить задачу", error);
+                    setIsSubmitting(false);
+                  }
                 }}
                 onCancel={() => setShowSaveConfirm(false)}
               />

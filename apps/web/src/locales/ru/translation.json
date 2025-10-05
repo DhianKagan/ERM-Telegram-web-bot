@@ -3,6 +3,8 @@
   "adminPanel": "Админка",
   "assignees": "Исполнитель(и)",
   "assigneeRequiredError": "Укажите хотя бы одного исполнителя",
+  "assigneeSelectPlaceholder": "Выберите исполнителя",
+  "assigneeSelectHint": "Исполнитель обязателен для сохранения задачи",
   "attachments": "Вложения",
   "author": "автор",
   "cancel": "Отмена",

@@ -25,6 +25,33 @@ jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
 });
 jest.mock("./AlertDialog", () => () => null);
 
+jest.mock("./MultiUserSelect", () => ({
+  users,
+  value,
+  onChange,
+  onBlur,
+  label,
+  error,
+}: any) => (
+  <label>
+    <span>{label}</span>
+    <select
+      data-testid="assignee"
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value || null)}
+      onBlur={onBlur}
+    >
+      <option value="">—</option>
+      {users.map((user: any) => (
+        <option key={user.telegram_id} value={String(user.telegram_id)}>
+          {user.name || user.telegram_username || user.username || user.telegram_id}
+        </option>
+      ))}
+    </select>
+    {error ? <div role="alert">{error}</div> : null}
+  </label>
+));
+
 const users = [
   { telegram_id: 1, name: "Alice" },
   { telegram_id: 2, name: "Bob" },
@@ -92,6 +119,7 @@ describe("TaskDialog", () => {
     authFetchMock.mockReset();
     authFetchMock.mockImplementation(defaultAuthFetch);
     createTaskMock.mockReset();
+    createTaskMock.mockResolvedValue({ ...taskData, _id: "2", id: "2" });
     updateTaskMock.mockReset();
     updateTaskMock.mockResolvedValue({
       ok: true,
@@ -272,11 +300,63 @@ describe("TaskDialog", () => {
     const dueValueSource = toLocalInputValue(new Date(now + 65 * 60_000));
     fireEvent.change(dueInput, { target: { value: dueValueSource } });
 
-    fireEvent.click(screen.getByText("create"));
+    const submitButton = screen.getByRole("button", { name: "create" });
+    fireEvent.click(submitButton);
 
     await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
     expect(createTaskMock.mock.calls[0][0]).toMatchObject({
       due_date: dueValueSource,
     });
+  });
+
+  it("отклоняет сохранение без исполнителя", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    const titleInput = screen.getByPlaceholderText("title");
+    fireEvent.change(titleInput, { target: { value: "New delivery" } });
+
+    const assigneeSelect = await screen.findByTestId("assignee");
+    fireEvent.change(assigneeSelect, { target: { value: "" } });
+
+    const submitButton = screen.getByRole("button", { name: "create" });
+    fireEvent.click(submitButton);
+
+    const errorMessage = await screen.findByText("assigneeRequiredError");
+    expect(errorMessage.textContent ?? "").toContain("assigneeRequiredError");
+    await waitFor(() => expect(createTaskMock).not.toHaveBeenCalled());
+  });
+
+  it("создаёт задачу с выбранным исполнителем", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    const titleInput = screen.getByPlaceholderText("title");
+    fireEvent.change(titleInput, { target: { value: "Deliver docs" } });
+
+    const assigneeSelect = await screen.findByTestId("assignee");
+    fireEvent.change(assigneeSelect, { target: { value: "2" } });
+
+    const submitButton = screen.getByRole("button", { name: "create" });
+    fireEvent.click(submitButton);
+
+    await waitFor(() =>
+      expect(createTaskMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Deliver docs",
+          assigned_user_id: 2,
+        }),
+      ),
+    );
   });
 });

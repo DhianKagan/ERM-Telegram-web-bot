@@ -3,6 +3,8 @@
   "adminPanel": "Admin panel",
   "assignees": "Assignee(s)",
   "assigneeRequiredError": "Select at least one assignee",
+  "assigneeSelectPlaceholder": "Select assignee",
+  "assigneeSelectHint": "Pick a responsible user before saving the task",
   "attachments": "Attachments",
   "author": "author",
   "cancel": "Cancel",

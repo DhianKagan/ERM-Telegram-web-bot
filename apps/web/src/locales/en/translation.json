@@ -2,6 +2,7 @@
   "accept": "Accept",
   "adminPanel": "Admin panel",
   "assignees": "Assignee(s)",
+  "assigneeRequiredError": "Select at least one assignee",
   "attachments": "Attachments",
   "author": "author",
   "cancel": "Cancel",

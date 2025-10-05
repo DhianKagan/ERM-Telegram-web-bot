@@ -481,8 +481,19 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
       body.assigned_user_id = normalized;
       body.assignees = [normalized];
     }
-  } else if (body.assignees !== undefined && !Array.isArray(body.assignees)) {
-    body.assignees = [body.assignees];
+  } else if (body.assignees !== undefined) {
+    const rawAssignees = Array.isArray(body.assignees)
+      ? body.assignees
+      : [body.assignees];
+    const normalizedAssignees = rawAssignees
+      .map((item) => (typeof item === 'string' ? item.trim() : item))
+      .filter(
+        (item) =>
+          item !== null &&
+          item !== undefined &&
+          !(typeof item === 'string' && item.length === 0),
+      );
+    body.assignees = normalizedAssignees;
   }
   const controllersValue = body.controllers;
   if (controllersValue !== undefined && !Array.isArray(controllersValue)) {

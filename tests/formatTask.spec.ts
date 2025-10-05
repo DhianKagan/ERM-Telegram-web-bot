@@ -51,7 +51,8 @@ describe('formatTask', () => {
     expect(text).toContain('🧾 *Информация*');
     expect(text).toContain('⚡️ Приоритет: *🟥 Срочно*');
     expect(text).toContain('🛠 Статус: *🟦 Новая*');
-    expect(text).toContain('🏷 *Доставить*');
+    expect(text).toContain('🏷 Тип задачи: *Доставить*');
+    expect(text).toContain('📣 *Доставка труб*');
     expect(text).toContain('🧭 *Логистика*');
     expect(text).toContain('🗺 Расстояние: *125 км*');
     expect(text).toContain('🚗 Транспорт: *Грузовой*');
@@ -89,6 +90,30 @@ describe('formatTask', () => {
     expect(text).toContain('📝 *Описание*');
   });
 
+  it('выстраивает заголовок в нужном порядке', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439041',
+      task_number: 'ORD-77',
+      request_id: 'REQ-77',
+      title: 'Проверка формы',
+      task_type: 'Контроль',
+      status: 'Выполнена',
+      due_date: '2024-01-01T10:00:00Z',
+      completed_at: '2024-01-01T12:00:00Z',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const [headerSection] = text.split('\n\n━━━━━━━━━━━━\n\n');
+    const headerLines = headerSection.split('\n');
+
+    expect(headerLines.slice(0, 4)).toEqual([
+      expect.stringMatching(/^📌 /),
+      '🏷 Тип задачи: *Контроль*',
+      '📣 *Проверка формы*',
+      'Выполнена с опозданием на 2 часа',
+    ]);
+  });
+
   it('извлекает изображения из HTML и формирует список ссылок', () => {
     const task = {
       _id: '507f1f77bcf86cd799439011',
@@ -117,6 +142,7 @@ describe('formatTask', () => {
       _id: '65f9d82e0f4c446ce93f1fb0',
       task_number: textSpecial,
       title: textSpecial,
+      task_type: textSpecial,
       task_description: `<p>${textSpecial}</p><img src="/files/demo.png" alt="${altSpecial}" />`,
     };
 
@@ -128,6 +154,7 @@ describe('formatTask', () => {
 
     expect(text).toContain(`📌 [${escapeMarkdownV2(textSpecial)}](`);
     expect(text).toContain(escapeMarkdownV2(textSpecial));
+    expect(text).toContain(`🏷 Тип задачи: *${escapeMarkdownV2(textSpecial)}*`);
     expect(text).not.toContain(textSpecial);
     expect(text).not.toContain('🖼 *Изображение*');
     expect(inlineImages).toEqual([
@@ -166,8 +193,25 @@ describe('formatTask', () => {
     const [headerSection] = text.split('\n\n━━━━━━━━━━━━\n\n');
     const headerLines = headerSection.split('\n');
 
-    expect(headerLines[1]).toBe('Выполнена с опозданием на 2 дня 2 часа');
-    expect(headerSection).toContain('Выполнена с опозданием на 2 дня 2 часа');
+    expect(headerLines[0]).toMatch(/^📌 /);
+    expect(headerLines[1]).toBe('📣 *Контроль сдачи отчёта*');
+    expect(headerLines[2]).toBe('Выполнена с опозданием на 2 дня 2 часа');
+  });
+
+  it('корректно обрабатывает отсутствие типа задачи и названия', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439122',
+      task_number: 'NO_*[]()TITLE',
+    };
+
+    const { text } = formatTask(task as any, {});
+    const headerLines = text.split('\n');
+
+    expect(headerLines).toHaveLength(1);
+    expect(headerLines[0]).toContain('📌');
+    expect(headerLines[0]).toContain(escapeMarkdownV2('NO_*[]()TITLE'));
+    expect(headerLines[0]).not.toContain('Тип задачи');
+    expect(headerLines[0]).not.toContain('📣');
   });
 
   it('конвертирует форматирование описания из HTML в MarkdownV2', () => {

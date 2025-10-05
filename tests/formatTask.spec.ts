@@ -42,8 +42,10 @@ describe('formatTask', () => {
     const { text } = formatTask(task as any, users);
 
     const configuredUrl = process.env.APP_URL || 'https://example.com';
-    const baseUrl = escapeMarkdownV2(configuredUrl.replace(/\/+$/, ''));
-    const expectedLink = `📌 [${escapeMarkdownV2('A-12')}](${baseUrl}/tasks/507f1f77bcf86cd799439011)`;
+    const baseUrl = configuredUrl.replace(/\/+$/, '');
+    const expectedLink = `📌 [${escapeMarkdownV2('A-12')}](${escapeMarkdownV2(
+      `${baseUrl}/tasks?task=507f1f77bcf86cd799439011`,
+    )})`;
 
     expect(text).toContain(expectedLink);
     expect(text).toContain('🧾 *Информация*');

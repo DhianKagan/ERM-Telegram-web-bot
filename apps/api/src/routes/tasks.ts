@@ -455,6 +455,17 @@ router.post(
   inlineUpload,
   handleInlineUpload,
 );
+function normalizeUserId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return undefined;
+}
+
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   const body = req.body as Record<string, unknown>;
   const requestUserId = (req as RequestWithUser).user?.id;
@@ -463,12 +474,7 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
     (body as Record<string, unknown>).assignedUserId !== undefined;
   const hasAssignees = body.assignees !== undefined;
 
-  const normalizedId =
-    typeof requestUserId === 'string'
-      ? requestUserId.trim()
-      : typeof requestUserId === 'number' && Number.isFinite(requestUserId)
-        ? String(requestUserId)
-        : undefined;
+  const normalizedId = normalizeUserId(requestUserId);
 
   if (
     req.method === 'POST' &&

@@ -242,6 +242,7 @@ export interface TaskAttrs {
   telegram_history_message_id?: number;
   // Краткое сводное сообщение по задаче
   telegram_summary_message_id?: number;
+  telegram_preview_message_ids?: number[];
   telegram_attachments_message_ids?: number[];
   deadline_reminder_sent_at?: Date;
   time_spent?: number;
@@ -353,6 +354,7 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_status_message_id: Number,
     telegram_history_message_id: Number,
     telegram_summary_message_id: Number,
+    telegram_preview_message_ids: [Number],
     telegram_attachments_message_ids: [Number],
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },

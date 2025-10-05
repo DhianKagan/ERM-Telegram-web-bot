@@ -17,6 +17,7 @@ export interface Task {
     telegram_status_message_id?: number;
     telegram_history_message_id?: number;
     telegram_summary_message_id?: number;
+    telegram_preview_message_ids?: number[];
     telegram_attachments_message_ids?: number[];
     deadline_reminder_sent_at?: string;
     [key: string]: unknown;

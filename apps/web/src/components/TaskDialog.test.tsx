@@ -48,7 +48,7 @@ const taskData = {
   history: [],
 };
 
-const authFetchMock = jest.fn((url: string) => {
+const defaultAuthFetch = (url: string) => {
   if (url === "/api/v1/collections/departments") {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
@@ -65,7 +65,9 @@ const authFetchMock = jest.fn((url: string) => {
     return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
   }
   return Promise.resolve({ ok: true, json: async () => ({}) });
-});
+};
+
+const authFetchMock = jest.fn(defaultAuthFetch);
 
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
@@ -87,7 +89,8 @@ jest.mock("../services/tasks", () => ({
 
 describe("TaskDialog", () => {
   beforeEach(() => {
-    authFetchMock.mockClear();
+    authFetchMock.mockReset();
+    authFetchMock.mockImplementation(defaultAuthFetch);
     createTaskMock.mockReset();
     updateTaskMock.mockReset();
     updateTaskMock.mockResolvedValue({
@@ -117,6 +120,50 @@ describe("TaskDialog", () => {
     unmount();
     renderDialog();
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+  });
+
+  it("обновляет ObjectId после открытия по request_id", async () => {
+    const requestId = "ERM_000042";
+    const objectId = "507f1f77bcf86cd799439011";
+    const taskWithIds = {
+      ...taskData,
+      _id: objectId,
+      id: objectId,
+      request_id: requestId,
+      task_number: requestId,
+    };
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === `/api/v1/tasks/${requestId}`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ task: taskWithIds, users: usersMap }),
+        });
+      }
+      if (url === `/api/v1/tasks/${objectId}`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ task: taskWithIds, users: usersMap }),
+        });
+      }
+      return defaultAuthFetch(url);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id={requestId} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("save"));
+
+    await waitFor(() =>
+      expect(updateTaskMock).toHaveBeenCalledWith(
+        objectId,
+        expect.any(Object),
+      ),
+    );
   });
 
   it("не меняет дату начала при сохранении без правок", async () => {

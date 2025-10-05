@@ -267,7 +267,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
     () => id ?? null,
   );
-  const isEdit = Boolean(resolvedTaskId);
+  const commitResolvedTaskId = React.useCallback((candidate?: string | null) => {
+    setResolvedTaskId((prev) => {
+      const canonical = coerceTaskId(candidate);
+      if (canonical) return canonical;
+      if (prev) return prev;
+      return candidate ?? null;
+    });
+  }, []);
+  const effectiveTaskId = React.useMemo(
+    () => coerceTaskId(resolvedTaskId ?? id ?? null) ?? resolvedTaskId ?? id ?? null,
+    [resolvedTaskId, id],
+  );
+  const isEdit = Boolean(effectiveTaskId);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canEditAll = isAdmin || user?.role === "manager";
@@ -444,10 +456,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     null,
   );
   React.useEffect(() => {
-    if (id) {
-      setResolvedTaskId(id);
-    }
-  }, [id]);
+    if (!id) return;
+    commitResolvedTaskId(id);
+  }, [id, commitResolvedTaskId]);
   const { ref: titleFieldRef, ...titleFieldRest } = register("title");
   const titleValue = watch("title");
   const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -648,12 +659,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         showDimensions: hasDims,
       };
       setStartDateNotice(null);
-      const fetchedId =
-        coerceTaskId((taskData as Record<string, unknown>)._id) ||
-        coerceTaskId((taskData as Record<string, unknown>).id);
-      if (fetchedId) {
-        setResolvedTaskId(fetchedId);
-      }
+      commitResolvedTaskId(
+        ((taskData as Record<string, unknown>)._id as string | undefined) ??
+          ((taskData as Record<string, unknown>).id as string | undefined) ??
+          null,
+      );
     },
     [
       DEFAULT_TASK_TYPE,
@@ -669,6 +679,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       reset,
       setDueOffset,
       setInitialDates,
+      commitResolvedTaskId,
     ],
   );
 
@@ -710,7 +721,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
   React.useEffect(() => {
-    const targetId = id ?? resolvedTaskId;
+    const targetId = effectiveTaskId;
     setEditing(true);
     if (isEdit && targetId) {
       authFetch(`/api/v1/tasks/${targetId}`)
@@ -742,7 +753,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             setCreated((prev) => prev || new Date().toISOString());
           }
           setHistory(normalizeHistory(t.history));
-          setResolvedTaskId((prev) => prev ?? coerceTaskId(t._id));
+          commitResolvedTaskId(
+            ((t as Record<string, unknown>)._id as string | undefined) ??
+              ((t as Record<string, unknown>).id as string | undefined) ??
+              null,
+          );
           setStartDateNotice(null);
         });
     } else {
@@ -825,6 +840,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     reset,
     setDueOffset,
     setInitialDates,
+    commitResolvedTaskId,
+    effectiveTaskId,
   ]);
 
   React.useEffect(() => {
@@ -858,7 +875,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [user, canEditAll]);
 
   React.useEffect(() => {
-    const targetId = id ?? resolvedTaskId;
+    const targetId = effectiveTaskId;
     if (!isEdit || !targetId) return;
     authFetch(`/api/v1/tasks/${targetId}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -867,7 +884,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         const t = d.task || d;
         applyTaskDetails(t, d.users as Record<string, UserBrief>);
       });
-  }, [id, resolvedTaskId, isEdit, applyTaskDetails]);
+  }, [effectiveTaskId, isEdit, applyTaskDetails]);
 
   const handleStartLink = async (v: string) => {
     setStartLink(v);
@@ -1096,32 +1113,39 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       if (routeLink) payload.google_route_url = routeLink;
       const sendPayload = { ...payload, attachments };
       let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
-      let savedId = resolvedTaskId || "";
-      if (isEdit && resolvedTaskId) {
-        const response = await updateTask(resolvedTaskId, sendPayload);
+      const currentTaskId = effectiveTaskId ?? "";
+      let savedId = currentTaskId;
+      if (isEdit && currentTaskId) {
+        const response = await updateTask(currentTaskId, sendPayload);
         if (!response.ok) throw new Error("SAVE_FAILED");
         const updated = (await response.json()) as
           | (Partial<Task> & Record<string, unknown>)
           | null;
         savedTask = updated;
-        savedId = (updated?._id as string) || resolvedTaskId;
+        const updatedIdCandidate =
+          ((updated as Record<string, unknown>)._id as string | undefined) ??
+          ((updated as Record<string, unknown>).id as string | undefined) ??
+          currentTaskId;
+        savedId = coerceTaskId(updatedIdCandidate) ?? updatedIdCandidate ?? "";
       } else {
         const created = await createTask(sendPayload);
         if (!created) throw new Error("SAVE_FAILED");
         savedTask = created as Partial<Task> & Record<string, unknown>;
-        savedId =
-          ((created as Record<string, unknown>)._id as string) ||
-          ((created as Record<string, unknown>).id as string) ||
+        const createdIdCandidate =
+          ((created as Record<string, unknown>)._id as string | undefined) ??
+          ((created as Record<string, unknown>).id as string | undefined) ??
           savedId;
+        savedId = coerceTaskId(createdIdCandidate) ?? createdIdCandidate ?? "";
       }
       let detail: {
         task?: Record<string, unknown>;
         users?: Record<string, UserBrief>;
       } | null = null;
       if (savedId) {
-        setResolvedTaskId(savedId);
+        commitResolvedTaskId(savedId);
         try {
-          detail = await authFetch(`/api/v1/tasks/${savedId}`).then((r) =>
+          const fetchId = coerceTaskId(savedId) ?? savedId;
+          detail = await authFetch(`/api/v1/tasks/${fetchId}`).then((r) =>
             r.ok ? r.json() : null,
           );
         } catch {
@@ -1171,8 +1195,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [pendingDoneOption, setPendingDoneOption] = React.useState("");
 
   const handleDelete = async () => {
-    if (!resolvedTaskId) return;
-    await deleteTask(resolvedTaskId);
+    const targetId = effectiveTaskId;
+    if (!targetId) return;
+    await deleteTask(targetId);
     if (onSave) onSave(null);
     onClose();
     setAlertMsg(t("taskDeleted"));
@@ -1212,14 +1237,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const acceptTask = async () => {
-    if (!resolvedTaskId) return;
+    const targetId = effectiveTaskId;
+    if (!targetId) return;
     const prev = status;
     setStatus("В работе");
     const [data] = await Promise.all([
-      updateTask(resolvedTaskId, { status: "В работе" }).then((r) =>
+      updateTask(targetId, { status: "В работе" }).then((r) =>
         r.ok ? r.json() : null,
       ),
-      updateTaskStatus(resolvedTaskId, "В работе"),
+      updateTaskStatus(targetId, "В работе"),
     ]);
     if (data) {
       if (onSave) onSave(data);
@@ -1231,16 +1257,17 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   };
 
   const completeTask = async (opt: string) => {
-    if (!resolvedTaskId) return;
+    const targetId = effectiveTaskId;
+    if (!targetId) return;
     const prev = status;
     setStatus("Выполнена");
     const [data] = await Promise.all([
-      updateTask(resolvedTaskId, {
+      updateTask(targetId, {
         status: "Выполнена",
         completed_at: new Date().toISOString(),
         completion_result: opt,
       }).then((r) => (r.ok ? r.json() : null)),
-      updateTaskStatus(resolvedTaskId, "Выполнена"),
+      updateTaskStatus(targetId, "Выполнена"),
     ]);
     if (data) {
       const completedValue = toIsoString(

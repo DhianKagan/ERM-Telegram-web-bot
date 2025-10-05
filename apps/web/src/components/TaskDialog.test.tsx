@@ -174,8 +174,10 @@ describe("TaskDialog", () => {
     );
 
     const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
+    await waitFor(() => expect(startInput.value).not.toBe(""));
     const initialStart = startInput.value;
     const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+    await waitFor(() => expect(dueInput.value).not.toBe(""));
     const initialDue = dueInput.value;
 
     fireEvent.click(screen.getByText("save"));
@@ -186,6 +188,38 @@ describe("TaskDialog", () => {
     expect(startInput.value).toBe(initialStart);
     expect(dueInput.value).toBe(initialDue);
   });
+
+  it(
+    "не блокирует сохранение, если дата создания отличается только секундами",
+    async () => {
+      const withSeconds = {
+        ...taskData,
+        createdAt: "2024-01-01T00:00:30Z",
+        start_date: "2024-01-01T00:00:30Z",
+      };
+      authFetchMock.mockImplementation((url: string) => {
+        if (url === "/api/v1/tasks/1") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ task: withSeconds, users: usersMap }),
+          });
+        }
+        return defaultAuthFetch(url);
+      });
+
+      render(
+        <MemoryRouter>
+          <TaskDialog onClose={() => {}} id="1" />
+        </MemoryRouter>,
+      );
+
+      expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+      fireEvent.click(screen.getByText("save"));
+
+      await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
+    },
+  );
 
   it("устанавливает срок на 5 часов позже даты начала по умолчанию", async () => {
     try {

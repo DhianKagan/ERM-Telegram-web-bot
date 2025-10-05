@@ -299,9 +299,18 @@ export default class TasksController {
     const previewPool: NormalizedImage[] = [];
     const extras: NormalizedAttachment[] = [];
     const collageCandidates: NormalizedImage[] = [];
+    const extrasSeen = new Set<string>();
+    const registerExtra = (attachment: NormalizedAttachment) => {
+      const key = `${attachment.kind}:${attachment.url}`;
+      if (extrasSeen.has(key)) {
+        return;
+      }
+      extrasSeen.add(key);
+      extras.push(attachment);
+    };
     const registerImage = (image: NormalizedImage) => {
       previewPool.push(image);
-      extras.push(image);
+      registerExtra(image);
       if (this.extractLocalFileId(image.url)) {
         collageCandidates.push(image);
       }
@@ -317,7 +326,7 @@ export default class TasksController {
             typeof attachment.name === 'string' && attachment.name.trim()
               ? attachment.name.trim()
               : undefined;
-          extras.push({ kind: 'youtube', url, title });
+          registerExtra({ kind: 'youtube', url, title });
           return;
         }
         const type =
@@ -340,7 +349,7 @@ export default class TasksController {
           if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
             const localId = this.extractLocalFileId(absolute);
             if (!localId) {
-              extras.push({
+              registerExtra({
                 kind: 'unsupported-image',
                 url: absolute,
                 mimeType,
@@ -355,7 +364,7 @@ export default class TasksController {
           registerImage({ kind: 'image', url: absolute });
           return;
         }
-        extras.push({
+        registerExtra({
           kind: 'unsupported-image',
           url: absolute,
           mimeType,

@@ -960,12 +960,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       const creationDate = parseIsoDate(created);
       if (formData.startDate && creationDate) {
         const parsedStart = parseIsoDate(formData.startDate);
-        if (parsedStart && parsedStart.getTime() < creationDate.getTime()) {
+        if (parsedStart) {
+          const startMinutes = Math.floor(parsedStart.getTime() / 60000);
+          const createdMinutes = Math.floor(creationDate.getTime() / 60000);
+          if (startMinutes < createdMinutes) {
           setError("startDate", {
             type: "validate",
             message: t("startBeforeCreated"),
           });
           return;
+        }
         }
       }
       const initialValues = initialRef.current;

@@ -923,51 +923,121 @@ describe('syncTelegramTaskMessage', () => {
     }
   });
 
-  it('не перезаписывает идентификатор при ошибке удаления старого сообщения', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const previous = {
-      telegram_message_id: 333,
-      telegram_topic_id: 888,
-    } as Record<string, unknown>;
-    const freshPlain = {
-      _id: '507f1f77bcf86cd799439013',
-      telegram_message_id: 333,
-      telegram_topic_id: 888,
-      assigned_user_id: 55,
-      assignees: [55],
-      created_by: 55,
-      attachments: [],
-      title: 'Отказ удаления',
-      task_number: 'B-17',
-      status: 'new',
-      history: [],
-    };
-    taskFindByIdMock.mockResolvedValueOnce({
-      toObject() {
-        return { ...freshPlain } as unknown as TaskDocument;
-      },
-    });
-    editMessageTextMock.mockRejectedValueOnce(new Error('cannot edit'));
-    sendMessageMock.mockResolvedValueOnce({ message_id: 444 });
-    deleteMessageMock.mockRejectedValue(new Error('message not found'));
-
-    const controller = new TasksController({} as any);
-
-    try {
-      await (controller as any).syncTelegramTaskMessage(freshPlain._id, {
-        ...previous,
+  it(
+    'сохраняет новый идентификатор, вложения и cleanup при ошибке удаления старого сообщения',
+    async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const previous = {
+        telegram_message_id: 333,
+        telegram_topic_id: 888,
+        telegram_attachments_message_ids: [777],
+        attachments: [
+          {
+            url: 'https://cdn.example.com/old-extra.jpg',
+            type: 'image/jpeg',
+            name: 'old-extra',
+          },
+        ],
+      } as Record<string, unknown>;
+      const freshPlain = {
+        _id: '507f1f77bcf86cd799439013',
+        telegram_message_id: 333,
+        telegram_topic_id: 888,
+        telegram_attachments_message_ids: [777],
+        telegram_preview_message_ids: [],
+        assigned_user_id: 55,
+        assignees: [55],
+        created_by: 55,
+        attachments: [
+          {
+            url: 'https://cdn.example.com/new-preview.jpg',
+            type: 'image/jpeg',
+            name: 'new-preview',
+          },
+          {
+            url: 'https://cdn.example.com/new-extra.jpg',
+            type: 'image/jpeg',
+            name: 'new-extra',
+          },
+        ],
+        title: 'Отказ удаления',
+        task_number: 'B-17',
+        status: 'new',
+        history: [],
+      };
+      taskFindByIdMock.mockResolvedValueOnce({
+        toObject() {
+          return { ...freshPlain } as unknown as TaskDocument;
+        },
       });
+      editMessageTextMock.mockRejectedValueOnce(new Error('cannot edit'));
+      const preparePreviewMediaSpy = jest
+        .spyOn(TasksController.prototype as any, 'preparePreviewMedia')
+        .mockResolvedValue(null);
+      const sendTaskMessageWithPreviewSpy = jest
+        .spyOn(TasksController.prototype as any, 'sendTaskMessageWithPreview')
+        .mockResolvedValue({
+          messageId: 444,
+          usedPreview: false,
+          cache: new Map(),
+        });
+      const sendTaskAttachmentsSpy = jest
+        .spyOn(TasksController.prototype as any, 'sendTaskAttachments')
+        .mockResolvedValue([901, 902]);
+      const deleteAttachmentMessagesSpy = jest
+        .spyOn(TasksController.prototype as any, 'deleteAttachmentMessages')
+        .mockResolvedValue(undefined);
+      const deleteTaskMessageSafelySpy = jest
+        .spyOn(TasksController.prototype as any, 'deleteTaskMessageSafely')
+        .mockResolvedValue(false);
 
-      expect(deleteMessageMock).toHaveBeenCalledWith(process.env.CHAT_ID, 333);
-      expect(updateOneMock).not.toHaveBeenCalled();
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Пропускаем сохранение нового telegram_message_id из-за ошибки удаления',
-        { taskId: freshPlain._id },
-      );
-    } finally {
-      warnSpy.mockRestore();
-    }
-  });
+      const controller = new TasksController({} as any);
+
+      try {
+        await (controller as any).syncTelegramTaskMessage(freshPlain._id, {
+          ...previous,
+        });
+
+        expect(deleteTaskMessageSafelySpy).toHaveBeenCalled();
+        expect(updateOneMock).toHaveBeenCalledTimes(1);
+        const [filter, update] = updateOneMock.mock.calls[0];
+        expect(filter).toMatchObject({
+          _id: freshPlain._id,
+          telegram_message_id: 333,
+        });
+        expect(update).toHaveProperty('$set.telegram_message_id', 444);
+        expect(update).toHaveProperty('$set.telegram_attachments_message_ids');
+        expect(update.$set.telegram_attachments_message_ids).toEqual([901, 902]);
+        expect(update).toHaveProperty('$set.telegram_message_cleanup');
+        expect(update.$set.telegram_message_cleanup).toMatchObject({
+          chat_id: process.env.CHAT_ID,
+          message_id: 333,
+          new_message_id: 444,
+          reason: 'delete-failed',
+        });
+        expect(update.$set.telegram_message_cleanup.attempted_at).toEqual(
+          expect.any(String),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Не удалось удалить предыдущее сообщение задачи, требуется ручная очистка',
+          expect.objectContaining({
+            taskId: freshPlain._id,
+            cleanup: expect.objectContaining({
+              message_id: 333,
+              new_message_id: 444,
+            }),
+          }),
+        );
+      } finally {
+        warnSpy.mockRestore();
+        sendTaskMessageWithPreviewSpy.mockRestore();
+        sendTaskAttachmentsSpy.mockRestore();
+        deleteAttachmentMessagesSpy.mockRestore();
+        deleteTaskMessageSafelySpy.mockRestore();
+        preparePreviewMediaSpy.mockRestore();
+      }
+    },
+  );
 });
 
 describe('syncTelegramTaskMessage вложения', () => {

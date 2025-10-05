@@ -42,17 +42,29 @@ import {
 } from './taskMessages';
 import sharp from 'sharp';
 
+type TelegramMessageCleanupMeta = {
+  chat_id: string | number;
+  message_id: number;
+  topic_id?: number;
+  attempted_topic_id?: number;
+  new_message_id?: number;
+  reason: 'delete-failed' | 'topic-mismatch';
+  attempted_at: string;
+};
+
 type TaskEx = SharedTask & {
   controllers?: number[];
   created_by?: number;
   history?: { changed_by: number }[];
   telegram_attachments_message_ids?: number[];
   telegram_preview_message_ids?: number[];
+  telegram_message_cleanup?: TelegramMessageCleanupMeta;
 };
 
 type TaskWithMeta = TaskDocument & {
   telegram_attachments_message_ids?: number[];
   telegram_preview_message_ids?: number[];
+  telegram_message_cleanup?: TelegramMessageCleanupMeta;
 };
 
 const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
@@ -1824,6 +1836,55 @@ export default class TasksController {
     let canPersistNewMessageId =
       typeof previousMessageId === 'number' ? false : true;
     let previousMessageDeletedBeforeResend = false;
+    const previousCleanupMeta =
+      typeof previousPlain?.telegram_message_cleanup === 'object'
+        ? ({
+            ...(previousPlain
+              .telegram_message_cleanup as TelegramMessageCleanupMeta),
+          } as TelegramMessageCleanupMeta)
+        : null;
+    let cleanupMeta: TelegramMessageCleanupMeta | null = null;
+
+    const markCleanupNeeded = (
+      messageId: number,
+      expectedTopic?: number,
+      actualTopic?: number,
+    ) => {
+      if (!Number.isFinite(messageId)) {
+        return;
+      }
+      const reason: TelegramMessageCleanupMeta['reason'] = this.areTopicsEqual(
+        expectedTopic,
+        actualTopic,
+      )
+        ? 'delete-failed'
+        : 'topic-mismatch';
+      const payload: TelegramMessageCleanupMeta = {
+        chat_id: groupChatId as string | number,
+        message_id: messageId,
+        reason,
+        attempted_at:
+          cleanupMeta?.attempted_at ??
+          previousCleanupMeta?.attempted_at ??
+          new Date().toISOString(),
+      };
+      if (typeof expectedTopic === 'number') {
+        payload.topic_id = expectedTopic;
+      }
+      if (
+        typeof actualTopic === 'number' &&
+        !this.areTopicsEqual(expectedTopic, actualTopic)
+      ) {
+        payload.attempted_topic_id = actualTopic;
+      }
+      if (cleanupMeta?.new_message_id) {
+        payload.new_message_id = cleanupMeta.new_message_id;
+      } else if (previousCleanupMeta?.new_message_id) {
+        payload.new_message_id = previousCleanupMeta.new_message_id;
+      }
+      cleanupMeta = payload;
+      canPersistNewMessageId = true;
+    };
 
     const normalizeMessageIds = (value: unknown): number[] =>
       Array.isArray(value)
@@ -1878,6 +1939,9 @@ export default class TasksController {
               previousTopicId,
               topicId,
             );
+            if (!previousMessageDeletedBeforeResend) {
+              markCleanupNeeded(previousMessageId, previousTopicId, topicId);
+            }
             previewIdsToDelete.delete(previousMessageId);
           }
           if (previewIdsToDelete.size) {
@@ -1894,24 +1958,26 @@ export default class TasksController {
             topicId,
           );
           currentMessageId = sendResult.messageId;
-          if (
-            sendResult.messageId &&
-            previousMessageId &&
-            sendResult.messageId !== previousMessageId &&
-            !previousMessageDeletedBeforeResend
-          ) {
-            const deleted = await this.deleteTaskMessageSafely(
-              groupChatId,
-              previousMessageId,
-              previousTopicId,
-              topicId,
-            );
-            if (deleted) {
-              canPersistNewMessageId = true;
-            }
-          } else if (previousMessageDeletedBeforeResend) {
+        if (
+          sendResult.messageId &&
+          previousMessageId &&
+          sendResult.messageId !== previousMessageId &&
+          !previousMessageDeletedBeforeResend
+        ) {
+          const deleted = await this.deleteTaskMessageSafely(
+            groupChatId,
+            previousMessageId,
+            previousTopicId,
+            topicId,
+          );
+          if (deleted) {
             canPersistNewMessageId = true;
+          } else {
+            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
           }
+        } else if (previousMessageDeletedBeforeResend) {
+          canPersistNewMessageId = true;
+        }
           messageResult = sendResult;
         } catch (sendError) {
           console.error('Не удалось отправить новое сообщение задачи', sendError);
@@ -1931,6 +1997,9 @@ export default class TasksController {
             previousTopicId,
             topicId,
           );
+          if (!previousMessageDeletedBeforeResend) {
+            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
+          }
           previewIdsToDelete.delete(previousMessageId);
         }
         if (previewIdsToDelete.size) {
@@ -1961,6 +2030,8 @@ export default class TasksController {
           );
           if (deleted) {
             canPersistNewMessageId = true;
+          } else {
+            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
           }
         } else if (previousMessageDeletedBeforeResend) {
           canPersistNewMessageId = true;
@@ -2173,6 +2244,11 @@ export default class TasksController {
       }
     }
 
+    if (cleanupMeta && typeof currentMessageId === 'number') {
+      (cleanupMeta as TelegramMessageCleanupMeta).new_message_id =
+        currentMessageId;
+    }
+
     if (messageIdChanged && currentMessageId && canPersistNewMessageId) {
       updatesToSet.telegram_message_id = currentMessageId;
       messageIdGuard =
@@ -2181,6 +2257,19 @@ export default class TasksController {
       console.warn(
         'Пропускаем сохранение нового telegram_message_id из-за ошибки удаления',
         { taskId },
+      );
+    }
+
+    if (cleanupMeta) {
+      updatesToSet.telegram_message_cleanup = cleanupMeta;
+    } else if (previousCleanupMeta) {
+      updatesToUnset.telegram_message_cleanup = '';
+    }
+
+    if (cleanupMeta) {
+      console.warn(
+        'Не удалось удалить предыдущее сообщение задачи, требуется ручная очистка',
+        { taskId, cleanup: cleanupMeta },
       );
     }
 

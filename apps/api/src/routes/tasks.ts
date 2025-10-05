@@ -457,6 +457,30 @@ router.post(
 );
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   const body = req.body as Record<string, unknown>;
+  const requestUserId = (req as RequestWithUser).user?.id;
+  const hasAssignedUserId =
+    body.assigned_user_id !== undefined ||
+    (body as Record<string, unknown>).assignedUserId !== undefined;
+  const hasAssignees = body.assignees !== undefined;
+
+  const normalizedId =
+    typeof requestUserId === 'string'
+      ? requestUserId.trim()
+      : typeof requestUserId === 'number' && Number.isFinite(requestUserId)
+        ? String(requestUserId)
+        : undefined;
+
+  if (
+    req.method === 'POST' &&
+    !hasAssignedUserId &&
+    !hasAssignees &&
+    normalizedId &&
+    normalizedId.length > 0
+  ) {
+    body.assigned_user_id = normalizedId;
+    body.assignees = [normalizedId];
+  }
+
   const assignedRaw =
     body.assigned_user_id ?? (body as Record<string, unknown>).assignedUserId;
   if (assignedRaw !== undefined) {

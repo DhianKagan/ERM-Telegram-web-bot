@@ -1069,6 +1069,84 @@ describe('syncTelegramTaskMessage вложения', () => {
     expect(updateTaskMock).not.toHaveBeenCalled();
   });
 
+  it('не пересоздаёт вложение при ответе message is not modified', async () => {
+    editMessageTextMock.mockResolvedValue(undefined);
+    editMessageMediaMock
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            'Bad Request: message is not modified: specified new message content and reply markup are exactly the same',
+          ),
+          {
+            response: {
+              ok: false,
+              error_code: 400,
+              description:
+                'Bad Request: message is not modified: specified new message content and reply markup are exactly the same',
+            },
+          },
+        ),
+      );
+
+    const freshPlain = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Задача',
+      telegram_message_id: 1001,
+      telegram_attachments_message_ids: [404],
+      telegram_topic_id: 777,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/new-preview.jpg',
+          type: 'image/jpeg',
+          name: 'new-preview',
+        },
+        {
+          url: 'https://cdn.example.com/new-extra.jpg',
+          type: 'image/jpeg',
+          name: 'new-extra',
+        },
+      ],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      request_id: 'REQ-1',
+      createdAt: '2024-01-01T00:00:00Z',
+    };
+    taskFindByIdMock.mockResolvedValue({
+      toObject: () => ({ ...freshPlain }),
+    });
+
+    const previousState = {
+      ...freshPlain,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/old-preview.jpg',
+          type: 'image/jpeg',
+          name: 'old-preview',
+        },
+        {
+          url: 'https://cdn.example.com/old-extra.jpg',
+          type: 'image/jpeg',
+          name: 'old-extra',
+        },
+      ],
+    };
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).syncTelegramTaskMessage(
+      '507f1f77bcf86cd799439011',
+      previousState,
+    );
+
+    expect(editMessageMediaMock).toHaveBeenCalledTimes(2);
+    expect(deleteMessageMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).not.toHaveBeenCalled();
+    expect(updateTaskMock).not.toHaveBeenCalled();
+  });
+
   it('переотправляет вложения при ошибке editMessageMedia', async () => {
     editMessageTextMock.mockResolvedValue(undefined);
     editMessageMediaMock.mockRejectedValue(new Error('Bad Request: INTERNAL_ERROR'));

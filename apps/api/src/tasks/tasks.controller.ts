@@ -1534,6 +1534,10 @@ export default class TasksController {
           );
           result.push(messageId);
         } catch (error) {
+          if (this.isMessageNotModifiedError(error)) {
+            result.push(messageId);
+            continue;
+          }
           console.error('Не удалось обновить изображение вложения', error);
           return null;
         }
@@ -1572,6 +1576,10 @@ export default class TasksController {
           await bot.telegram.editMessageMedia(chat, messageId, undefined, media);
           result.push(messageId);
         } catch (error) {
+          if (this.isMessageNotModifiedError(error)) {
+            result.push(messageId);
+            continue;
+          }
           console.error(
             'Не удалось обновить вложение неподдерживаемого изображения',
             attachment.mimeType ?? 'unknown',

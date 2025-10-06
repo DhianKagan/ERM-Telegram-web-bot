@@ -32,6 +32,8 @@ const messages = {
   taskCompleted: 'Задача отмечена как выполненная',
   taskAccepted: 'Задача принята в работу',
   taskCanceled: 'Задача отменена',
+  taskCancelForbidden:
+    'Статус «Отменена» может установить только создатель задачи в веб-интерфейсе.',
   enterComment: 'Введите комментарий',
   taskDeleted: 'Задача удалена',
   taskForm: 'Поля новой задачи:',
@@ -51,7 +53,7 @@ const messages = {
   taskAssignmentRequired: 'Вы не назначены на эту задачу',
   taskStatusUpdateError: 'Ошибка обновления статуса задачи',
   taskCompletedLock:
-    'Задача уже выполнена. В Telegram можно только отменить выполнение.',
+    'Задача уже выполнена. Изменение статуса доступно только через веб-интерфейс после отмены.',
 } as const;
 
 export default messages;

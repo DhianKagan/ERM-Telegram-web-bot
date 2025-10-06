@@ -148,20 +148,20 @@ const SLATE_500_HEX = '#64748b';
 
 const STATUS_COLOR_MAP: Record<string, BadgeStyle> = {
   Новая: {
-    fill: { color: ACCENT_HEX, opacity: 0.7 },
-    ring: { color: PRIMARY_HEX, opacity: 0.3 },
+    fill: { color: '#3b82f6', opacity: 0.75 },
+    ring: { color: PRIMARY_HEX, opacity: 0.35 },
   },
   'В работе': {
-    fill: { color: ACCENT_HEX, opacity: 0.8 },
-    ring: { color: PRIMARY_HEX, opacity: 0.4 },
+    fill: { color: '#22c55e', opacity: 0.75 },
+    ring: { color: '#16a34a', opacity: 0.4 },
   },
   Выполнена: {
-    fill: { color: ACCENT_HEX, opacity: 0.5 },
-    ring: { color: PRIMARY_HEX, opacity: 0.2 },
+    fill: { color: '#facc15', opacity: 0.75 },
+    ring: { color: '#eab308', opacity: 0.4 },
   },
   Отменена: {
-    fill: { color: ACCENT_HEX, opacity: 0.4 },
-    ring: { color: DESTRUCTIVE_HEX, opacity: 0.4 },
+    fill: { color: DESTRUCTIVE_HEX, opacity: 0.7 },
+    ring: { color: DESTRUCTIVE_HEX, opacity: 0.45 },
   },
 };
 

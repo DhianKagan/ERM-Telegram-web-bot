@@ -1,7 +1,7 @@
 // Назначение: основной файл Telegram-бота
 // Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
-import { botToken, chatId } from '../config';
+import { appUrl, botToken, chatId } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import type {
   InlineKeyboardMarkup,
@@ -277,6 +277,43 @@ const statusDisplayMap: Record<SharedTask['status'], string> = {
   Отменена: '⛔️ Отменена',
 };
 
+const APP_URL_BASE = (appUrl || '').replace(/\/+$/, '');
+
+const toTaskIdentifier = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const normalized = String(value).trim();
+    return normalized ? normalized : null;
+  }
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toString' in value &&
+    typeof (value as { toString(): unknown }).toString === 'function'
+  ) {
+    return toTaskIdentifier((value as { toString(): unknown }).toString());
+  }
+  return null;
+};
+
+export const buildTaskAppLink = (
+  task: Record<string, unknown>,
+): string | null => {
+  if (!APP_URL_BASE) {
+    return null;
+  }
+  const canonicalId =
+    toTaskIdentifier(task._id) ??
+    toTaskIdentifier(task.request_id) ??
+    toTaskIdentifier(task.task_number);
+  if (!canonicalId) {
+    return null;
+  }
+  return `${APP_URL_BASE}/tasks?task=${encodeURIComponent(canonicalId)}`;
+};
+
 const htmlEscape = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
@@ -382,6 +419,7 @@ export const buildDirectTaskMessage = (
   task: Record<string, unknown> & { status?: SharedTask['status'] },
   link: string | null,
   users: Record<number, { name: string; username: string }>,
+  appLink: string | null = null,
 ): string => {
   const lines: string[] = [];
   const identifier = getTaskIdentifier(task);
@@ -455,18 +493,29 @@ export const buildDirectTaskMessage = (
   if (assignees.length) {
     lines.push(`Исполнители: ${assignees.join(', ')}`);
   }
+  if (appLink) {
+    lines.push(
+      `Веб-версия: <a href="${htmlEscape(appLink)}">Открыть задачу</a>`,
+    );
+  }
   return lines.join('\n');
 };
 
 export const buildDirectTaskKeyboard = (
   link: string | null | undefined,
+  appLink: string | null | undefined = null,
 ): ReturnType<typeof Markup.inlineKeyboard> | undefined => {
-  if (!link) {
+  const row: InlineKeyboardButton[] = [];
+  if (appLink) {
+    row.push({ text: 'Открыть в веб-версии', url: appLink });
+  }
+  if (link) {
+    row.push({ text: 'Открыть в чате', url: link });
+  }
+  if (!row.length) {
     return undefined;
   }
-  return Markup.inlineKeyboard([
-    Markup.button.url('Перейти к задаче', link),
-  ]);
+  return Markup.inlineKeyboard([row]);
 };
 
 type TaskPresentation = SharedTask &
@@ -637,7 +686,8 @@ async function refreshTaskKeyboard(
   const messageId = toNumericId(plain?.telegram_message_id ?? null);
   const link = buildChatMessageLink(chatId, messageId ?? undefined);
   if (ctx.chat?.type === 'private') {
-    const keyboard = buildDirectTaskKeyboard(link);
+    const appLink = plain ? buildTaskAppLink(plain) : null;
+    const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
     const keyboard = taskStatusKeyboard(taskId, status);
@@ -734,13 +784,15 @@ async function processStatusAction(
     } as TaskPresentation;
     const messageId = toNumericId(plainForView?.telegram_message_id ?? null);
     const link = buildChatMessageLink(chatId, messageId ?? undefined);
+    const appLink = plainForView ? buildTaskAppLink(plainForView) : null;
     if (ctx.chat?.type === 'private') {
-      const keyboard = buildDirectTaskKeyboard(link);
+      const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);
       const inlineMarkup = keyboard?.reply_markup ?? undefined;
       const dmText = buildDirectTaskMessage(
         plainForView,
         link,
         presentation.users,
+        appLink,
       );
       try {
         await ctx.editMessageText(dmText, {

@@ -23,7 +23,12 @@ import {
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
-import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
+import {
+  bot,
+  buildTaskAppLink,
+  buildDirectTaskKeyboard,
+  buildDirectTaskMessage,
+} from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
@@ -2033,12 +2038,14 @@ export default class TasksController {
     const assignees = this.collectAssignees(plain);
     assignees.delete(creatorId);
     if (assignees.size) {
+      const appLink = buildTaskAppLink(plain);
       const dmText = buildDirectTaskMessage(
         plain,
         messageLink,
         users,
+        appLink,
       );
-      const dmKeyboard = buildDirectTaskKeyboard(messageLink);
+      const dmKeyboard = buildDirectTaskKeyboard(messageLink, appLink ?? undefined);
       const dmOptions: SendMessageOptions = {
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },

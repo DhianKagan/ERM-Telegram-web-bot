@@ -1,5 +1,5 @@
 // Роуты задач: CRUD, время, массовые действия, миниатюры вложений, chunk-upload
-// Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg, clamscan, wgLogEngine
+// Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg, clamdjs, wgLogEngine
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';

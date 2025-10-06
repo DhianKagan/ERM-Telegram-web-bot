@@ -1,16 +1,22 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, dotenv, path
+/// <reference path="../../apps/web/src/types/mongoose.d.ts" />
 import * as path from 'path'; // модуль для работы с путями
+import type { ConnectOptions, Model } from 'mongoose';
 
-const dotenv: any = (() => {
+interface DotenvModule {
+  config: (options?: { path?: string }) => void;
+}
+
+const dotenv: DotenvModule = (() => {
   try {
-    return require('dotenv');
+    return require('dotenv') as DotenvModule;
   } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv'));
+    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv')) as DotenvModule;
   }
 })();
 
-const mongoose: any = (() => {
+const mongoose: typeof import('mongoose') = (() => {
   try {
     return require('mongoose');
   } catch {
@@ -32,11 +38,16 @@ const mongoUrl = (
   ''
 ).trim();
 
-const roleSchema = new mongoose.Schema({
+interface RoleRecord {
+  name?: string;
+  permissions?: string[];
+}
+
+const roleSchema = new mongoose.Schema<RoleRecord>({
   name: String,
   permissions: [String],
 });
-const Role = mongoose.model('Role', roleSchema);
+const Role: Model<RoleRecord> = mongoose.model<RoleRecord>('Role', roleSchema);
 
 async function ensureDefaults(): Promise<void> {
   if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
@@ -48,7 +59,7 @@ async function ensureDefaults(): Promise<void> {
   try {
     await mongoose.connect(mongoUrl, {
       serverSelectionTimeoutMS: timeout,
-    });
+    } satisfies ConnectOptions);
     const db = mongoose.connection.db;
     if (!db) throw new Error('нет доступа к db');
     await db.admin().ping();

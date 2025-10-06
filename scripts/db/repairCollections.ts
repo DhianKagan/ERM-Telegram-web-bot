@@ -1,16 +1,34 @@
 // Назначение файла: восстановление целостности коллекций департаментов, отделов и должностей.
 // Основные модули: mongoose, dotenv, path.
+/// <reference path="../../apps/web/src/types/mongoose.d.ts" />
+/// <reference path="../../apps/web/src/types/mongodb.d.ts" />
 import * as path from 'path';
+import type { AnyBulkWriteOperation } from 'mongodb';
+import type {
+  Model,
+  Schema as MongooseSchema,
+  Types as MongooseTypes,
+} from 'mongoose';
 
-const dotenv: any = (() => {
+interface DotenvModule {
+  config: (options: { path: string }) => void;
+}
+
+const loadDotenv = (): DotenvModule => {
   try {
-    return require('dotenv');
+    return require('dotenv') as DotenvModule;
   } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv'));
+    return require(
+      path.resolve(process.cwd(), 'apps/api/node_modules/dotenv'),
+    ) as DotenvModule;
   }
-})();
+};
 
-const mongoose = (() => {
+const dotenv = loadDotenv();
+
+type MongooseModule = typeof import('mongoose');
+
+const mongoose: MongooseModule = (() => {
   try {
     return require('mongoose');
   } catch {
@@ -38,13 +56,7 @@ const TYPE_LABELS: Record<string, string> = {
   positions: 'должность',
 };
 
-interface LeanCollectionItem {
-  _id: unknown;
-  type: string;
-  name: string;
-  value: string;
-  meta?: Record<string, unknown> | null;
-}
+type LeanCollectionItem = CollectionItemDoc;
 
 interface ReferenceDoc {
   _id: unknown;
@@ -58,7 +70,17 @@ interface ReferenceDoc {
   positionId?: unknown;
 }
 
-const collectionItemSchema = new Schema(
+interface CollectionItemRecord {
+  _id?: MongooseTypes.ObjectId | string;
+  type: string;
+  name: string;
+  value: string;
+  meta?: Record<string, unknown>;
+}
+
+type CollectionItemDoc = CollectionItemRecord & { _id: MongooseTypes.ObjectId };
+
+const collectionItemSchema = new Schema<CollectionItemDoc>(
   {
     type: { type: String, required: true },
     name: { type: String, required: true },
@@ -68,7 +90,19 @@ const collectionItemSchema = new Schema(
   { strict: false },
 );
 
-const userSchema = new Schema(
+interface UserRecord {
+  telegram_id?: number;
+  username?: string | null;
+  name?: string | null;
+  departmentId?: MongooseTypes.ObjectId;
+  divisionId?: MongooseTypes.ObjectId;
+  positionId?: MongooseTypes.ObjectId;
+}
+
+type ReferenceDocument = ReferenceDoc & { _id: MongooseTypes.ObjectId };
+type UserDoc = ReferenceDocument & UserRecord;
+
+const userSchema = new Schema<UserDoc>(
   {
     telegram_id: Number,
     username: String,
@@ -80,7 +114,17 @@ const userSchema = new Schema(
   { strict: false },
 );
 
-const taskSchema = new Schema(
+interface TaskRecord {
+  title?: string | null;
+  task_number?: string | null;
+  departmentId?: MongooseTypes.ObjectId;
+  divisionId?: MongooseTypes.ObjectId;
+  positionId?: MongooseTypes.ObjectId;
+}
+
+type TaskDoc = ReferenceDocument & TaskRecord;
+
+const taskSchema = new Schema<TaskDoc>(
   {
     title: String,
     task_number: String,
@@ -91,7 +135,16 @@ const taskSchema = new Schema(
   { strict: false },
 );
 
-const employeeSchema = new Schema(
+interface EmployeeRecord {
+  name?: string | null;
+  departmentId?: MongooseTypes.ObjectId;
+  divisionId?: MongooseTypes.ObjectId;
+  positionId?: MongooseTypes.ObjectId;
+}
+
+type EmployeeDoc = ReferenceDocument & EmployeeRecord;
+
+const employeeSchema = new Schema<EmployeeDoc>(
   {
     name: String,
     departmentId: Schema.Types.ObjectId,
@@ -107,18 +160,29 @@ type RepairCounters = {
   cleared: number;
 };
 
-function ensureModel(name: string, schema: unknown, collection?: string) {
-  return (mongoose.models[name] as any) ?? mongoose.model(name, schema, collection);
+function ensureModel<T>(
+  name: string,
+  schema: MongooseSchema<T>,
+  collection?: string,
+): Model<T> {
+  const existing = mongoose.models[name] as Model<T> | undefined;
+  if (existing) return existing;
+  return mongoose.model<T>(name, schema, collection);
 }
 
-const CollectionItem = ensureModel('CollectionItem', collectionItemSchema);
-const User = ensureModel('User', userSchema);
-const Task = ensureModel('Task', taskSchema);
-const Employee = ensureModel('Employee', employeeSchema);
+const CollectionItem = ensureModel<CollectionItemDoc>(
+  'CollectionItem',
+  collectionItemSchema,
+);
+const User = ensureModel<UserDoc>('User', userSchema);
+const Task = ensureModel<TaskDoc>('Task', taskSchema);
+const Employee = ensureModel<EmployeeDoc>('Employee', employeeSchema);
 
 const toObjectIdHex = (value: unknown): string | undefined => {
   if (!value) return undefined;
-  if (value instanceof Types.ObjectId) return (value as any).toHexString();
+  if (value instanceof Types.ObjectId) {
+    return (value as MongooseTypes.ObjectId).toHexString();
+  }
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
@@ -129,8 +193,8 @@ const toObjectIdHex = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const toObjectId = (value: unknown): any => {
-  if (value instanceof Types.ObjectId) return value;
+const toObjectId = (value: unknown): MongooseTypes.ObjectId | undefined => {
+  if (value instanceof Types.ObjectId) return value as MongooseTypes.ObjectId;
   if (typeof value === 'string' && Types.ObjectId.isValid(value.trim())) {
     return new Types.ObjectId(value.trim());
   }
@@ -155,8 +219,8 @@ const describeContext = (doc: ReferenceDoc, entity: string): string => {
 };
 
 const registerItem = (
-  store: Map<string, Map<string, LeanCollectionItem>>,
-  doc: LeanCollectionItem,
+  store: Map<string, Map<string, CollectionItemDoc>>,
+  doc: CollectionItemDoc,
 ) => {
   if (!TARGET_TYPES.has(doc.type)) return;
   const id = toObjectIdHex(doc._id);
@@ -175,12 +239,13 @@ const registerItem = (
 };
 
 const normalizeCollectionItems = async (
-  store: Map<string, Map<string, LeanCollectionItem>>,
+  store: Map<string, Map<string, CollectionItemDoc>>,
 ): Promise<number> => {
-  const items = (await CollectionItem.find({ type: { $in: Array.from(TARGET_TYPES) } })
-    .lean()) as LeanCollectionItem[];
-  const operations: any[] = [];
-  items.forEach((item) => {
+  const items = await CollectionItem.find({
+    type: { $in: Array.from(TARGET_TYPES) },
+  }).lean<CollectionItemDoc>();
+  const operations: AnyBulkWriteOperation<CollectionItemDoc>[] = [];
+  items.forEach((item: CollectionItemDoc) => {
     const id = toObjectIdHex(item._id);
     if (!id) return;
     const trimmedName = typeof item.name === 'string' ? item.name.trim() : '';
@@ -210,7 +275,7 @@ const normalizeCollectionItems = async (
 };
 
 const ensureCollectionItem = async (
-  store: Map<string, Map<string, LeanCollectionItem>>,
+  store: Map<string, Map<string, CollectionItemDoc>>,
   type: string,
   value: unknown,
   context: string,
@@ -247,19 +312,19 @@ const ensureCollectionItem = async (
     value: idHex,
     meta,
   });
-  const lean = (created.toObject?.() ?? created) as LeanCollectionItem;
+  const lean = created.toObject();
   registerItem(store, lean);
   return 'created';
 };
 
-const processReferences = async (
-  store: Map<string, Map<string, LeanCollectionItem>>,
-  Model: any,
+const processReferences = async <T extends ReferenceDocument>(
+  store: Map<string, Map<string, CollectionItemDoc>>,
+  Model: Model<T>,
   entity: string,
 ): Promise<{ restored: number; cleared: number }> => {
-  const docs = (await Model.find().lean()) as ReferenceDoc[];
+  const docs = await Model.find().lean<T>();
   if (!docs.length) return { restored: 0, cleared: 0 };
-  const updates: any[] = [];
+  const updates: AnyBulkWriteOperation<T>[] = [];
   let restored = 0;
   let cleared = 0;
   for (const doc of docs) {
@@ -310,7 +375,7 @@ export async function repairCollections(): Promise<RepairCounters> {
   }
 
   try {
-    const store = new Map<string, Map<string, LeanCollectionItem>>();
+    const store = new Map<string, Map<string, CollectionItemDoc>>();
     const normalized = await normalizeCollectionItems(store);
     const userResult = await processReferences(store, User, 'user');
     const taskResult = await processReferences(store, Task, 'task');

@@ -6,6 +6,7 @@ import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from "shared";
 import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
 import { getDeadlineState, type DeadlineState } from "./taskDeadline";
+import type { User as AppUser } from "../types/user";
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
@@ -324,7 +325,20 @@ const compactText = (value: string, maxLength: number) => {
   return `${shortened}…`;
 };
 
-export type TaskRow = Task & Record<string, any>;
+export interface TaskRow extends Task {
+  id: string;
+  created_by?: number | string | null;
+  createdBy?: number | string | null;
+  creator?: number | string | null;
+  assigned_user_id?: number | null;
+  assignees?: number[];
+  start_date?: string | null;
+  due_date?: string | null;
+  start_location?: string | null;
+  start_location_link?: string | null;
+  end_location?: string | null;
+  end_location_link?: string | null;
+}
 
 type CountdownLikeState = Extract<
   DeadlineState,
@@ -940,9 +954,9 @@ function ActualTimeCell({
 }
 
 export default function taskColumns(
-  users: Record<number, any>,
-): ColumnDef<TaskRow, any>[] {
-  const cols: ColumnDef<TaskRow, any>[] = [
+  users: Record<number, AppUser>,
+): ColumnDef<TaskRow>[] {
+  const cols: ColumnDef<TaskRow>[] = [
     {
       header: "Номер",
       accessorKey: "task_number",
@@ -1023,8 +1037,8 @@ export default function taskColumns(
         const row = p.row.original as TaskRow;
         const completionNote = buildCompletionNote(
           row.status,
-          row.due_date,
-          row.completed_at,
+          row.due_date ?? undefined,
+          row.completed_at ?? undefined,
         );
         return (
           <div className="flex flex-col items-start gap-1">
@@ -1060,11 +1074,11 @@ export default function taskColumns(
         maxWidth: "13rem",
       },
       cell: ({ row }) => {
-        const ids: number[] =
-          row.original.assignees ||
-          (row.original.assigned_user_id
-            ? [row.original.assigned_user_id]
-            : []);
+        const ids = Array.isArray(row.original.assignees)
+          ? row.original.assignees
+          : typeof row.original.assigned_user_id === "number"
+          ? [row.original.assigned_user_id]
+          : [];
         if (!ids.length) {
           return <span className="text-muted-foreground">—</span>;
         }
@@ -1166,11 +1180,11 @@ export default function taskColumns(
         const row = p.row.original;
         const countdown = (
           <DeadlineCountdownBadge
-            startValue={row.start_date}
-            dueValue={row.due_date}
+            startValue={row.start_date ?? undefined}
+            dueValue={row.due_date ?? undefined}
             rawDue={dueValue}
             status={row.status}
-            completedAt={row.completed_at}
+            completedAt={row.completed_at ?? undefined}
           />
         );
         if (!dueValue) {
@@ -1209,9 +1223,9 @@ export default function taskColumns(
         const row = p.row.original;
         return (
           <ActualTimeCell
-            progressStartValue={row.in_progress_at}
-            plannedStartValue={row.start_date}
-            completedValue={p.getValue<string | null>()}
+            progressStartValue={row.in_progress_at ?? undefined}
+            plannedStartValue={row.start_date ?? undefined}
+            completedValue={p.getValue<string | null>() ?? undefined}
             status={row.status}
           />
         );
@@ -1251,11 +1265,11 @@ export default function taskColumns(
         cellClassName: "whitespace-nowrap",
       },
       cell: ({ row }) => {
-        const name = row.original.start_location || "";
+        const name = row.original.start_location ?? "";
         const trimmed = name.trim();
         const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
         const compact = compactText(firstToken, 24);
-        const link = row.original.start_location_link;
+        const link = row.original.start_location_link ?? undefined;
         return link ? (
           <a
             href={link}
@@ -1283,11 +1297,11 @@ export default function taskColumns(
         cellClassName: "whitespace-nowrap",
       },
       cell: ({ row }) => {
-        const name = row.original.end_location || "";
+        const name = row.original.end_location ?? "";
         const trimmed = name.trim();
         const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
         const compact = compactText(firstToken, 24);
-        const link = row.original.end_location_link;
+        const link = row.original.end_location_link ?? undefined;
         return link ? (
           <a
             href={link}

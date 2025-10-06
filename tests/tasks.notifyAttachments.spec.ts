@@ -299,6 +299,62 @@ describe('notifyTaskCreated вложения', () => {
     });
   });
 
+  it('переходит на текстовое уведомление, если подпись превью превышает лимит', async () => {
+    const longDescription = `<p>${'Очень длинное описание '.repeat(80)}</p>`;
+    const attachments = [
+      {
+        url: '/api/v1/files/68dccf5809cd3805f91e2fbd',
+        type: 'image/jpeg',
+        name: 'preview.jpg',
+      },
+    ];
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439021',
+      task_number: 'LONG-1',
+      title: 'Задача с длинным описанием',
+      telegram_topic_id: 321,
+      attachments,
+      assignees: [55],
+      created_by: 55,
+      task_description: longDescription,
+      createdAt: '2024-02-02T00:00:00Z',
+    };
+    const task = {
+      ...plainTask,
+      toObject() {
+        return { ...plainTask } as unknown as TaskDocument;
+      },
+    } as unknown as TaskDocument;
+
+    const controller = new TasksController({} as any);
+
+    await (controller as any).notifyTaskCreated(task, 55);
+
+    const markdownCalls = sendMessageMock.mock.calls.filter((call) => {
+      const [, , options] = call;
+      return options && options.parse_mode === 'MarkdownV2';
+    });
+    expect(markdownCalls).toHaveLength(1);
+    const [, mainTextRaw] = markdownCalls[0];
+    expect(typeof mainTextRaw).toBe('string');
+    const mainText = mainTextRaw as string;
+    expect(Array.from(mainText).length).toBeGreaterThan(1024);
+
+    const previewPhotoCalls = sendPhotoMock.mock.calls.filter((call) => {
+      const [, , options] = call;
+      return options && options.caption === mainText;
+    });
+    expect(previewPhotoCalls).toHaveLength(0);
+
+    const previewGroupCalls = sendMediaGroupMock.mock.calls.filter((call) => {
+      const [, media] = call;
+      if (!Array.isArray(media) || !media.length) return false;
+      const first = media[0];
+      return first && typeof first === 'object' && 'caption' in first && first.caption === mainText;
+    });
+    expect(previewGroupCalls).toHaveLength(0);
+  });
+
   it('переходит на sendDocument для неподдерживаемых типов изображений', async () => {
     const events: string[] = [];
     sendMessageMock.mockImplementation((_chat, text: string) => {

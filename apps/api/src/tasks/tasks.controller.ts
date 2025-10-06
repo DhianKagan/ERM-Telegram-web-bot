@@ -74,6 +74,8 @@ const baseAppHost = (() => {
   }
 })();
 
+const TELEGRAM_CAPTION_LIMIT = 1024;
+
 type LocalPhotoInfo = {
   absolutePath: string;
   filename: string;
@@ -420,6 +422,12 @@ export default class TasksController {
     const cache = new Map<string, LocalPhotoInfo | null>();
     const uniqueCandidates: NormalizedImage[] = [];
     const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
+    const captionFitsLimit = this.isCaptionWithinLimit(message);
+    if (!captionFitsLimit) {
+      console.warn(
+        'Подпись задачи превышает лимит Telegram, отправляем текстовое уведомление без превью',
+      );
+    }
     if (media.collageCandidates.length >= 2) {
       const seen = new Set<string>();
       for (const candidate of media.collageCandidates) {
@@ -433,7 +441,7 @@ export default class TasksController {
         }
       }
     }
-    if (uniqueCandidates.length >= 2) {
+    if (captionFitsLimit && uniqueCandidates.length >= 2) {
       try {
         const mediaGroup = await Promise.all(
           uniqueCandidates.map(async (candidate, index) => {
@@ -522,43 +530,45 @@ export default class TasksController {
         );
       }
     }
-    const prepared = await this.preparePreviewMedia(media, cache);
-    if (prepared) {
-      const { photo, cleanup, sourceUrl } = prepared;
-      try {
-        const options: SendPhotoOptions = {
-          caption: message,
-          parse_mode: 'MarkdownV2',
-          ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
-        };
-        if (typeof topicId === 'number') {
-          options.message_thread_id = topicId;
+    if (captionFitsLimit) {
+      const prepared = await this.preparePreviewMedia(media, cache);
+      if (prepared) {
+        const { photo, cleanup, sourceUrl } = prepared;
+        try {
+          const options: SendPhotoOptions = {
+            caption: message,
+            parse_mode: 'MarkdownV2',
+            ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
+          };
+          if (typeof topicId === 'number') {
+            options.message_thread_id = topicId;
+          }
+          const response = await bot.telegram.sendPhoto(chat, photo, options);
+          if (cleanup) {
+            await cleanup();
+          }
+          return {
+            messageId: response?.message_id,
+            usedPreview: true,
+            cache,
+            previewSourceUrls: [sourceUrl],
+            previewMessageIds:
+              typeof response?.message_id === 'number'
+                ? [response.message_id]
+                : undefined,
+          };
+        } catch (error) {
+          if (cleanup) {
+            await cleanup().catch(() => undefined);
+          }
+          if (!this.shouldFallbackToTextMessage(error)) {
+            throw error;
+          }
+          console.warn(
+            'Не удалось отправить задачу как фото, используем текстовый формат',
+            error,
+          );
         }
-        const response = await bot.telegram.sendPhoto(chat, photo, options);
-        if (cleanup) {
-          await cleanup();
-        }
-        return {
-          messageId: response?.message_id,
-          usedPreview: true,
-          cache,
-          previewSourceUrls: [sourceUrl],
-          previewMessageIds:
-            typeof response?.message_id === 'number'
-              ? [response.message_id]
-              : undefined,
-        };
-      } catch (error) {
-        if (cleanup) {
-          await cleanup().catch(() => undefined);
-        }
-        if (!this.shouldFallbackToTextMessage(error)) {
-          throw error;
-        }
-        console.warn(
-          'Не удалось отправить задачу как фото, используем текстовый формат',
-          error,
-        );
       }
     }
     const options: SendMessageOptions = {
@@ -596,54 +606,62 @@ export default class TasksController {
   {
     const cache = new Map<string, LocalPhotoInfo | null>();
     const replyMarkup = this.extractKeyboardMarkup(keyboard);
-    const prepared = await this.preparePreviewMedia(media, cache);
-    if (prepared) {
-      const { photo, cleanup, sourceUrl } = prepared;
-      try {
-        const editMedia: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
-          type: 'photo',
-          media: photo,
-          caption: message,
-          parse_mode: 'MarkdownV2',
-        };
-        await bot.telegram.editMessageMedia(
-          chat,
-          messageId,
-          undefined,
-          editMedia,
-          replyMarkup ? { reply_markup: replyMarkup } : undefined,
-        );
-        if (cleanup) {
-          await cleanup();
-        }
-        return {
-          success: true,
-          usedPreview: true,
-          cache,
-          previewSourceUrls: [sourceUrl],
-        };
-      } catch (error) {
-        if (cleanup) {
-          await cleanup().catch(() => undefined);
-        }
-        if (this.isMessageNotModifiedError(error)) {
+    const captionFitsLimit = this.isCaptionWithinLimit(message);
+    if (!captionFitsLimit) {
+      console.warn(
+        'Новая версия задачи превышает лимит подписи Telegram, обновляем текстом',
+      );
+    }
+    if (captionFitsLimit) {
+      const prepared = await this.preparePreviewMedia(media, cache);
+      if (prepared) {
+        const { photo, cleanup, sourceUrl } = prepared;
+        try {
+          const editMedia: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
+            type: 'photo',
+            media: photo,
+            caption: message,
+            parse_mode: 'MarkdownV2',
+          };
+          await bot.telegram.editMessageMedia(
+            chat,
+            messageId,
+            undefined,
+            editMedia,
+            replyMarkup ? { reply_markup: replyMarkup } : undefined,
+          );
+          if (cleanup) {
+            await cleanup();
+          }
           return {
             success: true,
             usedPreview: true,
             cache,
             previewSourceUrls: [sourceUrl],
           };
-        }
-        if (this.isMediaMessageTypeError(error)) {
-          // Сообщение не является медиа, пробуем текстовое обновление ниже.
-        } else if (this.shouldFallbackToTextMessage(error)) {
-          console.warn(
-            'Не удалось обновить сообщение задачи как фото, пробуем текст',
-            error,
-          );
-        } else {
-          console.error('Не удалось обновить сообщение задачи (фото)', error);
-          return { success: false, usedPreview: false, cache };
+        } catch (error) {
+          if (cleanup) {
+            await cleanup().catch(() => undefined);
+          }
+          if (this.isMessageNotModifiedError(error)) {
+            return {
+              success: true,
+              usedPreview: true,
+              cache,
+              previewSourceUrls: [sourceUrl],
+            };
+          }
+          if (this.isMediaMessageTypeError(error)) {
+            // Сообщение не является медиа, пробуем текстовое обновление ниже.
+          } else if (this.shouldFallbackToTextMessage(error)) {
+            console.warn(
+              'Не удалось обновить сообщение задачи как фото, пробуем текст',
+              error,
+            );
+          } else {
+            console.error('Не удалось обновить сообщение задачи (фото)', error);
+            return { success: false, usedPreview: false, cache };
+          }
         }
       }
     }
@@ -1004,6 +1022,13 @@ export default class TasksController {
       descriptionText.includes('caption is too long') ||
       messageText.includes('caption is too long')
     );
+  }
+
+  private isCaptionWithinLimit(text: string): boolean {
+    if (!text) {
+      return true;
+    }
+    return Array.from(text).length <= TELEGRAM_CAPTION_LIMIT;
   }
 
   private isMediaMessageTypeError(error: unknown): boolean {

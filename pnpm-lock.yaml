@@ -175,9 +175,9 @@ importers:
       '@wgtechlabs/log-engine':
         specifier: ^2.2.0
         version: 2.2.0
-      clamscan:
-        specifier: ^2.4.0
-        version: 2.4.0
+      clamdjs:
+        specifier: ^1.0.2
+        version: 1.0.2
       compression:
         specifier: ^1.8.1
         version: 1.8.1
@@ -4988,9 +4988,8 @@ packages:
   ckeditor5@46.0.3:
     resolution: {integrity: sha512-BGadZ1td6emWnNVbX40nygpxZMAYQvtC/wRhdhedJpjqmwXQmwLte9Y9RZg+lnomrEiLiaxzFsz1j4I6u2fBnA==}
 
-  clamscan@2.4.0:
-    resolution: {integrity: sha512-XBOxUiGOcQGuKmCn5qaM5rIK153fGCwsvJMbjVtcnNJ+j/YHrSj2gKNjyP65yr/E8JsKTTDtKYFG++p7Lzigyw==}
-    engines: {node: '>=16.0.0'}
+  clamdjs@1.0.2:
+    resolution: {integrity: sha512-gVnX5ySMULvwYL2ykZQnP4UK4nIK7ftG6z015drJyOFgWpsqXt1Hcq4fMyPwM8LLsxfgfYKLiZi288xuTfmZBQ==}
 
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
@@ -17266,7 +17265,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  clamscan@2.4.0: {}
+  clamdjs@1.0.2: {}
 
   class-variance-authority@0.7.1:
     dependencies:

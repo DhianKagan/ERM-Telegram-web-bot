@@ -3,6 +3,10 @@
 import 'dotenv/config';
 import { botToken, chatId } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
+import type {
+  InlineKeyboardMarkup,
+  InlineKeyboardButton,
+} from 'telegraf/typings/core/types/typegram';
 import messages from '../messages';
 import {
   createUser,
@@ -41,6 +45,115 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught exception in bot:', err);
   process.exit(1);
 });
+
+function normalizeInlineKeyboard(
+  markup: InlineKeyboardMarkup | undefined,
+): ReadonlyArray<
+  ReadonlyArray<Record<string, unknown>>
+> | undefined {
+  if (!markup || typeof markup !== 'object') {
+    return markup === undefined ? undefined : [];
+  }
+  const inline = Array.isArray(markup.inline_keyboard)
+    ? markup.inline_keyboard
+    : null;
+  if (!inline) {
+    return undefined;
+  }
+  return inline.map((row) =>
+    row
+      .filter((button): button is InlineKeyboardButton =>
+        Boolean(button && typeof button === 'object'),
+      )
+      .map((button) => normalizeButton(button)),
+  );
+}
+
+function normalizeButton(button: InlineKeyboardButton): Record<string, unknown> {
+  const plain = button as unknown as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(plain)
+      .filter(([, value]) => typeof value !== 'undefined')
+      .sort(([a], [b]) => (a > b ? 1 : a < b ? -1 : 0)),
+  );
+}
+
+function areInlineKeyboardsEqual(
+  nextMarkup: InlineKeyboardMarkup | undefined,
+  currentMarkup: InlineKeyboardMarkup | undefined,
+): boolean {
+  if (!nextMarkup && !currentMarkup) {
+    return true;
+  }
+  if (!nextMarkup || !currentMarkup) {
+    return false;
+  }
+  const next = normalizeInlineKeyboard(nextMarkup);
+  const current = normalizeInlineKeyboard(currentMarkup);
+  if (!next || !current) {
+    return false;
+  }
+  return JSON.stringify(next) === JSON.stringify(current);
+}
+
+function isMessageNotModifiedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as Record<string, unknown>;
+  const responseRaw = record.response;
+  const response =
+    responseRaw && typeof responseRaw === 'object'
+      ? (responseRaw as { error_code?: number; description?: unknown })
+      : null;
+  const descriptionSource =
+    typeof response?.description === 'string'
+      ? response.description
+      : typeof record.description === 'string'
+        ? record.description
+        : '';
+  const description = descriptionSource.toLowerCase();
+  return (
+    response?.error_code === 400 &&
+    description.includes('message is not modified')
+  );
+}
+
+async function updateMessageReplyMarkup(
+  ctx: Context,
+  markup: InlineKeyboardMarkup | undefined,
+): Promise<void> {
+  const existingMarkup = extractInlineKeyboardMarkup(ctx);
+  if (areInlineKeyboardsEqual(markup, existingMarkup)) {
+    return;
+  }
+  try {
+    await ctx.editMessageReplyMarkup(markup);
+  } catch (error) {
+    if (isMessageNotModifiedError(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function extractInlineKeyboardMarkup(ctx: Context):
+  | InlineKeyboardMarkup
+  | undefined {
+  const rawMessage = ctx.callbackQuery?.message;
+  if (!rawMessage || typeof rawMessage !== 'object') {
+    return undefined;
+  }
+  const candidate = rawMessage as { reply_markup?: unknown };
+  const markup = candidate.reply_markup;
+  if (!markup || typeof markup !== 'object') {
+    return undefined;
+  }
+  const maybeKeyboard = markup as { inline_keyboard?: unknown };
+  return Array.isArray(maybeKeyboard.inline_keyboard)
+    ? (markup as InlineKeyboardMarkup)
+    : undefined;
+}
 
 async function showMainMenu(ctx: Context): Promise<void> {
   await ctx.reply(
@@ -495,7 +608,7 @@ async function processStatusAction(
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
@@ -561,7 +674,7 @@ async function processStatusAction(
         console.warn('Не удалось обновить личное уведомление задачи', error);
         if (keyboard.reply_markup) {
           try {
-            await ctx.editMessageReplyMarkup(keyboard.reply_markup);
+            await updateMessageReplyMarkup(ctx, keyboard.reply_markup);
           } catch (updateError) {
             console.warn('Не удалось обновить клавиатуру уведомления', updateError);
           }
@@ -569,7 +682,7 @@ async function processStatusAction(
       }
     } else if (keyboard.reply_markup) {
       try {
-        await ctx.editMessageReplyMarkup(keyboard.reply_markup);
+        await updateMessageReplyMarkup(ctx, keyboard.reply_markup);
       } catch (error) {
         console.warn('Не удалось обновить клавиатуру статуса', error);
       }
@@ -644,7 +757,7 @@ bot.action(/^task_accept_prompt:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskAcceptConfirmKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusPrompt);
 });
 
@@ -662,7 +775,7 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
@@ -698,7 +811,7 @@ bot.action(/^task_accept_cancel:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
@@ -720,7 +833,7 @@ bot.action(/^task_done_prompt:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskDoneConfirmKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusPrompt);
 });
 
@@ -738,7 +851,7 @@ bot.action(/^task_done_confirm:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
@@ -774,7 +887,7 @@ bot.action(/^task_done_cancel:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
@@ -800,7 +913,7 @@ bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskCancelConfirmKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusPrompt);
 });
 
@@ -853,7 +966,7 @@ bot.action(/^task_cancel_cancel:.+$/, async (ctx) => {
     return;
   }
   const keyboard = taskStatusKeyboard(taskId);
-  await ctx.editMessageReplyMarkup(keyboard.reply_markup ?? undefined);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 

@@ -173,9 +173,17 @@ function findActionHandler(part: string):
   return stringEntry?.handler;
 }
 
-function createActionContext(data: string, userId: number | null = 42) {
+function createActionContext(
+  data: string,
+  userId: number | null = 42,
+  replyMarkup?: Record<string, unknown>,
+) {
+  const callbackQuery: Record<string, unknown> = { data };
+  if (replyMarkup) {
+    callbackQuery.message = { reply_markup: replyMarkup };
+  }
   const ctx: Record<string, unknown> = {
-    callbackQuery: { data },
+    callbackQuery,
     answerCbQuery: jest.fn(),
     editMessageReplyMarkup: jest.fn(),
   };
@@ -244,6 +252,49 @@ test('создаёт новое сообщение истории и сохра�
   );
   expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task999', 31337);
   expect(editMessageTextMock).not.toHaveBeenCalled();
+});
+
+test('не редактирует клавиатуру при повторном подтверждении', async () => {
+  const handler = findActionHandler('task_accept_confirm');
+  expect(handler).toBeDefined();
+  const markup = {
+    inline_keyboard: [
+      [
+        { callback_data: 'task_accept_prompt:task123', text: 'В работу' },
+        { callback_data: 'task_done_prompt:task123', text: 'Выполнена' },
+        { callback_data: 'task_cancel_prompt:task123', text: 'Отменить' },
+      ],
+    ],
+  };
+  taskStatusKeyboardMock
+    .mockReturnValueOnce({ reply_markup: markup })
+    .mockReturnValueOnce({ reply_markup: markup });
+  getTaskMock.mockResolvedValue({
+    _id: 'task123',
+    assigned_user_id: 42,
+    assignees: [],
+  });
+  updateTaskStatusMock.mockResolvedValue({ _id: 'task123' });
+  getTaskHistoryMessageMock.mockResolvedValue({
+    taskId: 'task123',
+    messageId: 111,
+    text: '*История изменений*\n• событие',
+  });
+  const ctx = createActionContext(
+    'task_accept_confirm:task123',
+    42,
+    markup,
+  );
+  (ctx as { chat?: { type: string } }).chat = { type: 'private' };
+  (ctx as { editMessageText?: jest.Mock }).editMessageText = jest
+    .fn()
+    .mockResolvedValue(undefined);
+  const fn = handler as (ctx: Record<string, unknown>) => Promise<void>;
+
+  await fn(ctx);
+
+  expect(ctx.editMessageReplyMarkup).not.toHaveBeenCalled();
+  expect(updateTaskStatusMock).toHaveBeenCalledWith('task123', 'В работе', 42);
 });
 
 test('при завершении задачи отправляет только обновлённую историю', async () => {

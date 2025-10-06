@@ -388,7 +388,7 @@ describe('обработка завершения задачи', () => {
 
     await fn(ctx);
 
-    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task555', undefined);
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task555', 'Выполнена');
     expect(updateTaskStatusMock).toHaveBeenCalledWith('task555', 'Выполнена', 42);
     expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Сделано');
   });

@@ -33,6 +33,81 @@ interface AuthFetchOptions extends FetchOptions {
   confirmed?: boolean;
 }
 
+type NormalizedXhrBody = Document | globalThis.XMLHttpRequestBodyInit | null;
+
+const isDocument = (value: unknown): value is Document =>
+  typeof Document !== "undefined" && value instanceof Document;
+
+const isFormData = (value: unknown): value is FormData =>
+  typeof FormData !== "undefined" && value instanceof FormData;
+
+const isUrlSearchParams = (value: unknown): value is URLSearchParams =>
+  typeof URLSearchParams !== "undefined" && value instanceof URLSearchParams;
+
+const isBlob = (value: unknown): value is Blob =>
+  typeof Blob !== "undefined" && value instanceof Blob;
+
+const isArrayBuffer = (value: unknown): value is ArrayBuffer =>
+  typeof ArrayBuffer !== "undefined" && value instanceof ArrayBuffer;
+
+const isSharedArrayBuffer = (value: unknown): value is SharedArrayBuffer =>
+  typeof SharedArrayBuffer !== "undefined" && value instanceof SharedArrayBuffer;
+
+const isDataView = (value: unknown): value is DataView =>
+  typeof DataView !== "undefined" && value instanceof DataView;
+
+const isBufferView = (value: unknown): value is ArrayBufferView =>
+  typeof ArrayBuffer !== "undefined" &&
+  typeof value === "object" &&
+  value !== null &&
+  ArrayBuffer.isView(value) &&
+  !(value instanceof DataView);
+
+const cloneBufferSegment = (
+  buffer: ArrayBufferLike,
+  byteOffset: number,
+  byteLength: number,
+): ArrayBuffer => {
+  const safeLength = Math.max(0, Math.min(byteLength, buffer.byteLength - byteOffset));
+  const target = new Uint8Array(safeLength);
+  target.set(new Uint8Array(buffer, byteOffset, safeLength));
+  return target.buffer;
+};
+
+const normalizeXhrBody = (body: FetchOptions["body"]): NormalizedXhrBody => {
+  if (body == null) {
+    return null;
+  }
+  if (
+    typeof ReadableStream !== "undefined" &&
+    body instanceof ReadableStream
+  ) {
+    return null;
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  if (isDocument(body) || isBlob(body) || isFormData(body) || isUrlSearchParams(body)) {
+    return body;
+  }
+  if (isSharedArrayBuffer(body)) {
+    return cloneBufferSegment(body, 0, body.byteLength);
+  }
+  if (isArrayBuffer(body)) {
+    return body;
+  }
+  if (isDataView(body)) {
+    return cloneBufferSegment(body.buffer, body.byteOffset, body.byteLength);
+  }
+  if (isBufferView(body)) {
+    if (isArrayBuffer(body.buffer)) {
+      return body as unknown as globalThis.XMLHttpRequestBodyInit;
+    }
+    return cloneBufferSegment(body.buffer, body.byteOffset, body.byteLength);
+  }
+  return body as unknown as globalThis.XMLHttpRequestBodyInit;
+};
+
 async function sendRequest(
   url: string,
   opts: FetchOptions,
@@ -69,7 +144,16 @@ async function sendRequest(
       };
       xhr.onerror = () => reject(new TypeError("Network request failed"));
       xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
-      xhr.send(opts.body as any);
+      const body = opts.body ?? null;
+      if (
+        body &&
+        typeof ReadableStream !== "undefined" &&
+        body instanceof ReadableStream
+      ) {
+        xhr.send();
+      } else {
+        xhr.send(normalizeXhrBody(body));
+      }
     });
   }
   return fetch(url, opts);

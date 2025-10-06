@@ -23,7 +23,7 @@ import {
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
-import { bot, buildDirectTaskMessage } from '../bot/bot';
+import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
@@ -2448,15 +2448,13 @@ export default class TasksController {
         messageLink,
         users,
       );
+      const dmKeyboard = buildDirectTaskKeyboard(messageLink);
       const dmOptions: SendMessageOptions = {
-        ...taskStatusKeyboard(
-          docId,
-          typeof plain.status === 'string'
-            ? (plain.status as SharedTask['status'])
-            : undefined,
-        ),
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },
+        ...(dmKeyboard?.reply_markup
+          ? { reply_markup: dmKeyboard.reply_markup }
+          : {}),
       };
       await Promise.allSettled(
         Array.from(assignees).map((userId) =>

@@ -61,9 +61,5 @@ export default function taskStatusKeyboard(
       resolveStatusLabel('Выполнена', currentStatus),
       `task_done_prompt:${id}`,
     ),
-    Markup.button.callback(
-      resolveStatusLabel('Отменена', currentStatus),
-      `task_cancel_prompt:${id}`,
-    ),
   ]);
 }

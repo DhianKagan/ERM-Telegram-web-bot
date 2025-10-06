@@ -22,7 +22,6 @@ import {
 } from '../tasks/taskHistory.service';
 import taskStatusKeyboard, {
   taskAcceptConfirmKeyboard,
-  taskCancelConfirmKeyboard,
   taskDoneConfirmKeyboard,
 } from '../utils/taskButtons';
 import buildChatMessageLink from '../utils/messageLink';
@@ -459,6 +458,17 @@ export const buildDirectTaskMessage = (
   return lines.join('\n');
 };
 
+export const buildDirectTaskKeyboard = (
+  link: string | null | undefined,
+): ReturnType<typeof Markup.inlineKeyboard> | undefined => {
+  if (!link) {
+    return undefined;
+  }
+  return Markup.inlineKeyboard([
+    Markup.button.url('Перейти к задаче', link),
+  ]);
+};
+
 type TaskPresentation = SharedTask &
   Record<string, unknown> & { telegram_topic_id?: number };
 
@@ -594,6 +604,57 @@ async function ensureUserCanUpdateTask(
   }
 }
 
+type TaskSnapshot = {
+  plain: TaskPresentation | null;
+  users: Record<number, { name: string; username: string }>;
+};
+
+async function refreshTaskKeyboard(
+  ctx: Context,
+  taskId: string,
+  snapshot?: TaskSnapshot,
+): Promise<TaskSnapshot> {
+  let context: TaskSnapshot = snapshot ?? { plain: null, users: {} };
+  if (!snapshot) {
+    try {
+      const taskDoc = await getTask(taskId);
+      if (taskDoc) {
+        const plainSource =
+          typeof (taskDoc as { toObject?: () => unknown }).toObject === 'function'
+            ? (taskDoc as { toObject(): unknown }).toObject()
+            : (taskDoc as unknown);
+        context = { plain: plainSource as TaskPresentation, users: {} };
+      }
+    } catch (error) {
+      console.error('Не удалось получить задачу для обновления клавиатуры', error);
+    }
+  }
+  const plain = context.plain;
+  const status =
+    typeof plain?.status === 'string'
+      ? (plain.status as SharedTask['status'])
+      : undefined;
+  const messageId = toNumericId(plain?.telegram_message_id ?? null);
+  const link = buildChatMessageLink(chatId, messageId ?? undefined);
+  if (ctx.chat?.type === 'private') {
+    const keyboard = buildDirectTaskKeyboard(link);
+    await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
+  } else {
+    const keyboard = taskStatusKeyboard(taskId, status);
+    await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+  }
+  return context;
+}
+
+async function denyCancellation(ctx: Context, taskId: string): Promise<void> {
+  try {
+    await refreshTaskKeyboard(ctx, taskId);
+  } catch (error) {
+    console.error('Не удалось обновить клавиатуру после запрета отмены', error);
+  }
+  await ctx.answerCbQuery(messages.taskCancelForbidden, { show_alert: true });
+}
+
 async function processStatusAction(
   ctx: Context,
   status: 'В работе' | 'Выполнена' | 'Отменена',
@@ -607,8 +668,6 @@ async function processStatusAction(
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
@@ -616,23 +675,39 @@ async function processStatusAction(
     });
     return;
   }
+  let snapshot: TaskSnapshot = { plain: null, users: {} };
   try {
-    try {
-      const current = await getTask(taskId);
-      const currentStatus = current?.status;
-      if (
-        typeof currentStatus === 'string' &&
-        currentStatus === 'Выполнена' &&
-        status !== 'Отменена' &&
-        status !== 'Выполнена'
-      ) {
-        await ctx.answerCbQuery(messages.taskCompletedLock, {
-          show_alert: true,
-        });
-        return;
+    const current = await getTask(taskId);
+    if (current) {
+      const plainSource =
+        typeof (current as { toObject?: () => unknown }).toObject === 'function'
+          ? (current as { toObject(): unknown }).toObject()
+          : (current as unknown);
+      snapshot = { plain: plainSource as TaskPresentation, users: {} };
+    }
+  } catch (error) {
+    console.error('Не удалось получить задачу перед обновлением статуса', error);
+  }
+  if (status === 'Отменена') {
+    await denyCancellation(ctx, taskId);
+    return;
+  }
+  try {
+    const currentStatus = snapshot.plain?.status;
+    if (
+      typeof currentStatus === 'string' &&
+      currentStatus === 'Выполнена' &&
+      status !== 'Выполнена'
+    ) {
+      try {
+        await refreshTaskKeyboard(ctx, taskId, snapshot);
+      } catch (error) {
+        console.error('Не удалось восстановить клавиатуру статуса', error);
       }
-    } catch (error) {
-      console.error('Не удалось проверить текущий статус задачи', error);
+      await ctx.answerCbQuery(messages.taskCompletedLock, {
+        show_alert: true,
+      });
+      return;
     }
     const task = await updateTaskStatus(taskId, status, userId);
     if (!task) {
@@ -651,14 +726,14 @@ async function processStatusAction(
     const presentation = await syncTaskPresentation(docId, override);
     const appliedStatus =
       (presentation.plain?.status as SharedTask['status'] | undefined) ?? status;
-    const keyboard = taskStatusKeyboard(taskId, appliedStatus);
+    const plainForView = presentation.plain ?? override;
+    const messageId = toNumericId(plainForView?.telegram_message_id ?? null);
+    const link = buildChatMessageLink(chatId, messageId ?? undefined);
     if (ctx.chat?.type === 'private') {
-      const link = buildChatMessageLink(
-        chatId,
-        toNumericId(presentation.plain?.telegram_message_id ?? null) ?? undefined,
-      );
+      const keyboard = buildDirectTaskKeyboard(link);
+      const inlineMarkup = keyboard?.reply_markup ?? undefined;
       const dmText = buildDirectTaskMessage(
-        presentation.plain ?? override,
+        plainForView,
         link,
         presentation.users,
       );
@@ -666,23 +741,25 @@ async function processStatusAction(
         await ctx.editMessageText(dmText, {
           parse_mode: 'HTML',
           link_preview_options: { is_disabled: true },
-          ...(keyboard.reply_markup
-            ? { reply_markup: keyboard.reply_markup }
-            : {}),
+          ...(inlineMarkup ? { reply_markup: inlineMarkup } : {}),
         });
+        if (!inlineMarkup) {
+          await updateMessageReplyMarkup(ctx, undefined);
+        }
       } catch (error) {
         console.warn('Не удалось обновить личное уведомление задачи', error);
-        if (keyboard.reply_markup) {
-          try {
-            await updateMessageReplyMarkup(ctx, keyboard.reply_markup);
-          } catch (updateError) {
-            console.warn('Не удалось обновить клавиатуру уведомления', updateError);
-          }
+        try {
+          await updateMessageReplyMarkup(ctx, inlineMarkup);
+        } catch (updateError) {
+          console.warn('Не удалось обновить клавиатуру уведомления', updateError);
         }
       }
-    } else if (keyboard.reply_markup) {
+    } else {
       try {
-        await updateMessageReplyMarkup(ctx, keyboard.reply_markup);
+        await refreshTaskKeyboard(ctx, taskId, {
+          plain: plainForView,
+          users: presentation.users,
+        });
       } catch (error) {
         console.warn('Не удалось обновить клавиатуру статуса', error);
       }
@@ -692,20 +769,26 @@ async function processStatusAction(
       try {
         const payload = await getTaskHistoryMessage(docId);
         if (payload) {
-          const { messageId, text, topicId } = payload;
-          if (messageId) {
-            await bot.telegram.editMessageText(
-              chatId,
-              messageId,
-              undefined,
-              text,
-              {
-                parse_mode: 'MarkdownV2',
-                link_preview_options: { is_disabled: true },
-              },
-            );
-            if (Number.isFinite(messageId)) {
-              await updateTaskHistoryMessageId(docId, messageId);
+          const { messageId: historyMessageId, text, topicId } = payload;
+          if (historyMessageId) {
+            try {
+              await bot.telegram.editMessageText(
+                chatId,
+                historyMessageId,
+                undefined,
+                text,
+                {
+                  parse_mode: 'MarkdownV2',
+                  link_preview_options: { is_disabled: true },
+                },
+              );
+              if (Number.isFinite(historyMessageId)) {
+                await updateTaskHistoryMessageId(docId, historyMessageId);
+              }
+            } catch (error) {
+              if (!isMessageNotModifiedError(error)) {
+                throw error;
+              }
             }
           } else {
             const options: NonNullable<
@@ -774,13 +857,16 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
       show_alert: true,
     });
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось обновить клавиатуру после неопределённого пользователя', error);
+    }
     return;
   }
 
@@ -791,6 +877,11 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
     'Не удалось получить задачу перед подтверждением',
   );
   if (!canUpdate) {
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось восстановить клавиатуру после отмены подтверждения', error);
+    }
     return;
   }
 
@@ -810,8 +901,11 @@ bot.action(/^task_accept_cancel:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+  try {
+    await refreshTaskKeyboard(ctx, taskId);
+  } catch (error) {
+    console.error('Не удалось восстановить клавиатуру после отмены подтверждения', error);
+  }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
@@ -850,13 +944,16 @@ bot.action(/^task_done_confirm:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   const userId = ctx.from?.id;
   if (!userId) {
     await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
       show_alert: true,
     });
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось обновить клавиатуру после неопределённого пользователя', error);
+    }
     return;
   }
 
@@ -867,6 +964,11 @@ bot.action(/^task_done_confirm:.+$/, async (ctx) => {
     'Не удалось получить задачу перед завершением',
   );
   if (!canUpdate) {
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось восстановить клавиатуру после отказа завершения', error);
+    }
     return;
   }
 
@@ -886,8 +988,11 @@ bot.action(/^task_done_cancel:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+  try {
+    await refreshTaskKeyboard(ctx, taskId);
+  } catch (error) {
+    console.error('Не удалось восстановить клавиатуру после отмены завершения', error);
+  }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
@@ -912,9 +1017,7 @@ bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskCancelConfirmKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
-  await ctx.answerCbQuery(messages.taskStatusPrompt);
+  await denyCancellation(ctx, taskId);
 });
 
 bot.action('task_cancel_confirm', async (ctx) => {
@@ -930,26 +1033,7 @@ bot.action(/^task_cancel_confirm:.+$/, async (ctx) => {
     });
     return;
   }
-
-  const userId = ctx.from?.id;
-  if (!userId) {
-    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
-      show_alert: true,
-    });
-    return;
-  }
-
-  const canUpdate = await ensureUserCanUpdateTask(
-    ctx,
-    taskId,
-    userId,
-    'Не удалось получить задачу перед отменой',
-  );
-  if (!canUpdate) {
-    return;
-  }
-
-  await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
+  await denyCancellation(ctx, taskId);
 });
 
 bot.action('task_cancel_cancel', async (ctx) => {
@@ -965,13 +1049,24 @@ bot.action(/^task_cancel_cancel:.+$/, async (ctx) => {
     });
     return;
   }
-  const keyboard = taskStatusKeyboard(taskId);
-  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+  try {
+    await refreshTaskKeyboard(ctx, taskId);
+  } catch (error) {
+    console.error('Не удалось восстановить клавиатуру после отмены действия', error);
+  }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
 
 bot.action(/^task_cancel:.+$/, async (ctx) => {
-  await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  await denyCancellation(ctx, taskId);
 });
 
 export async function startBot(retry = 0): Promise<void> {

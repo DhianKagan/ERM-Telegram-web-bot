@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, stat, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { handleValidation } from '../utils/validate';
@@ -74,8 +74,6 @@ const baseAppHost = (() => {
   }
 })();
 
-const TELEGRAM_CAPTION_LIMIT = 1024;
-
 type LocalPhotoInfo = {
   absolutePath: string;
   filename: string;
@@ -125,49 +123,6 @@ type TaskMedia = {
   previewImage: NormalizedImage | null;
   extras: NormalizedAttachment[];
   collageCandidates: NormalizedImage[];
-};
-
-type CollageCell = {
-  width: number;
-  height: number;
-  left: number;
-  top: number;
-};
-
-type CollageLayout = {
-  width: number;
-  height: number;
-  cells: CollageCell[];
-};
-
-const COLLAGE_LAYOUTS: Record<number, CollageLayout> = {
-  2: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { width: 600, height: 900, left: 0, top: 0 },
-      { width: 600, height: 900, left: 600, top: 0 },
-    ],
-  },
-  3: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { width: 600, height: 900, left: 0, top: 0 },
-      { width: 600, height: 450, left: 600, top: 0 },
-      { width: 600, height: 450, left: 600, top: 450 },
-    ],
-  },
-  4: {
-    width: 1200,
-    height: 900,
-    cells: [
-      { width: 600, height: 450, left: 0, top: 0 },
-      { width: 600, height: 450, left: 600, top: 0 },
-      { width: 600, height: 450, left: 0, top: 450 },
-      { width: 600, height: 450, left: 600, top: 450 },
-    ],
-  },
 };
 
 type SendMessageOptions = NonNullable<
@@ -387,27 +342,9 @@ export default class TasksController {
       });
     }
     const previewImage = previewPool.length ? previewPool[0] : null;
-    const shouldKeepPreviewInExtras =
-      !!previewImage && this.extractLocalFileId(previewImage.url) !== null;
-    const extrasWithoutPreview =
-      previewImage && !shouldKeepPreviewInExtras
-        ? (() => {
-            let removed = false;
-            return extras.filter((attachment) => {
-              if (attachment.kind !== 'image') {
-                return true;
-              }
-              if (!removed && attachment === previewImage) {
-                removed = true;
-                return false;
-              }
-              return true;
-            });
-          })()
-        : extras;
     return {
       previewImage,
-      extras: extrasWithoutPreview,
+      extras,
       collageCandidates,
     };
   }
@@ -420,162 +357,10 @@ export default class TasksController {
     topicId?: number,
   ): Promise<TaskMessageSendResult> {
     const cache = new Map<string, LocalPhotoInfo | null>();
-    const uniqueCandidates: NormalizedImage[] = [];
     const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
-    const captionFitsLimit = this.isCaptionWithinLimit(message);
-    if (!captionFitsLimit) {
-      console.warn(
-        'Подпись задачи превышает лимит Telegram, отправляем текстовое уведомление без превью',
-      );
-    }
-    if (media.collageCandidates.length >= 2) {
-      const seen = new Set<string>();
-      for (const candidate of media.collageCandidates) {
-        if (!candidate?.url || seen.has(candidate.url)) {
-          continue;
-        }
-        seen.add(candidate.url);
-        uniqueCandidates.push(candidate);
-        if (uniqueCandidates.length >= 10) {
-          break;
-        }
-      }
-    }
-    if (captionFitsLimit && uniqueCandidates.length >= 2) {
-      try {
-        const mediaGroup = await Promise.all(
-          uniqueCandidates.map(async (candidate, index) => {
-            const descriptor: Parameters<
-              typeof bot.telegram.sendMediaGroup
-            >[1][number] = {
-              type: 'photo',
-              media: await this.resolvePhotoInputWithCache(candidate.url, cache),
-            };
-            if (index === 0) {
-              descriptor.caption = message;
-              descriptor.parse_mode = 'MarkdownV2';
-            } else if (candidate.caption) {
-              descriptor.caption = escapeMarkdownV2(candidate.caption);
-              descriptor.parse_mode = 'MarkdownV2';
-            }
-            return descriptor;
-          }),
-        );
-        const options: Parameters<typeof bot.telegram.sendMediaGroup>[2] = {};
-        if (typeof topicId === 'number') {
-          options.message_thread_id = topicId;
-        }
-        const response = await bot.telegram.sendMediaGroup(
-          chat,
-          mediaGroup,
-          options,
-        );
-        const responseList = Array.isArray(response) ? response : [];
-        const previewMessageIds = responseList
-          .map((item) =>
-            item && typeof item.message_id === 'number' ? item.message_id : null,
-          )
-          .filter(
-            (value): value is number => value !== null && Number.isFinite(value),
-          );
-        const firstMessage = responseList[0];
-        const messageId = firstMessage?.message_id;
-        if (messageId && keyboard) {
-          const replyMarkup = keyboardMarkup ?? this.extractKeyboardMarkup(keyboard);
-          try {
-            await bot.telegram.editMessageCaption(chat, messageId, undefined, message, {
-              parse_mode: 'MarkdownV2',
-              ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-            });
-          } catch (error) {
-            if (!this.isMessageNotModifiedError(error)) {
-              console.error(
-                'Не удалось обновить подпись первого сообщения медиа-группы',
-                error,
-              );
-            }
-          }
-          if (replyMarkup) {
-            try {
-              await bot.telegram.editMessageReplyMarkup(
-                chat,
-                messageId,
-                undefined,
-                replyMarkup,
-              );
-            } catch (error) {
-              if (!this.isMessageNotModifiedError(error)) {
-                console.error(
-                  'Не удалось применить клавиатуру к первому сообщению медиа-группы',
-                  error,
-                );
-              }
-            }
-          }
-        }
-        if (!messageId) {
-          throw new Error('Telegram не вернул идентификатор первого сообщения');
-        }
-        return {
-          messageId,
-          usedPreview: true,
-          cache,
-          previewSourceUrls: uniqueCandidates.map((item) => item.url),
-          previewMessageIds,
-        };
-      } catch (error) {
-        console.warn(
-          'Не удалось отправить медиа-группу для превью, используем одиночное фото',
-          error,
-        );
-      }
-    }
-    if (captionFitsLimit) {
-      const prepared = await this.preparePreviewMedia(media, cache);
-      if (prepared) {
-        const { photo, cleanup, sourceUrl } = prepared;
-        try {
-          const options: SendPhotoOptions = {
-            caption: message,
-            parse_mode: 'MarkdownV2',
-            ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
-          };
-          if (typeof topicId === 'number') {
-            options.message_thread_id = topicId;
-          }
-          const response = await bot.telegram.sendPhoto(chat, photo, options);
-          if (cleanup) {
-            await cleanup();
-          }
-          return {
-            messageId: response?.message_id,
-            usedPreview: true,
-            cache,
-            previewSourceUrls: [sourceUrl],
-            previewMessageIds:
-              typeof response?.message_id === 'number'
-                ? [response.message_id]
-                : undefined,
-          };
-        } catch (error) {
-          if (cleanup) {
-            await cleanup().catch(() => undefined);
-          }
-          if (!this.shouldFallbackToTextMessage(error)) {
-            throw error;
-          }
-          console.warn(
-            'Не удалось отправить задачу как фото, используем текстовый формат',
-            error,
-          );
-        }
-      }
-    }
     const options: SendMessageOptions = {
       parse_mode: 'MarkdownV2',
-      link_preview_options: media.previewImage
-        ? this.createPreviewOptions(media.previewImage)
-        : { is_disabled: true },
+      link_preview_options: { is_disabled: true },
       ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
     };
     if (typeof topicId === 'number') {
@@ -606,71 +391,10 @@ export default class TasksController {
   {
     const cache = new Map<string, LocalPhotoInfo | null>();
     const replyMarkup = this.extractKeyboardMarkup(keyboard);
-    const captionFitsLimit = this.isCaptionWithinLimit(message);
-    if (!captionFitsLimit) {
-      console.warn(
-        'Новая версия задачи превышает лимит подписи Telegram, обновляем текстом',
-      );
-    }
-    if (captionFitsLimit) {
-      const prepared = await this.preparePreviewMedia(media, cache);
-      if (prepared) {
-        const { photo, cleanup, sourceUrl } = prepared;
-        try {
-          const editMedia: Parameters<typeof bot.telegram.editMessageMedia>[3] = {
-            type: 'photo',
-            media: photo,
-            caption: message,
-            parse_mode: 'MarkdownV2',
-          };
-          await bot.telegram.editMessageMedia(
-            chat,
-            messageId,
-            undefined,
-            editMedia,
-            replyMarkup ? { reply_markup: replyMarkup } : undefined,
-          );
-          if (cleanup) {
-            await cleanup();
-          }
-          return {
-            success: true,
-            usedPreview: true,
-            cache,
-            previewSourceUrls: [sourceUrl],
-          };
-        } catch (error) {
-          if (cleanup) {
-            await cleanup().catch(() => undefined);
-          }
-          if (this.isMessageNotModifiedError(error)) {
-            return {
-              success: true,
-              usedPreview: true,
-              cache,
-              previewSourceUrls: [sourceUrl],
-            };
-          }
-          if (this.isMediaMessageTypeError(error)) {
-            // Сообщение не является медиа, пробуем текстовое обновление ниже.
-          } else if (this.shouldFallbackToTextMessage(error)) {
-            console.warn(
-              'Не удалось обновить сообщение задачи как фото, пробуем текст',
-              error,
-            );
-          } else {
-            console.error('Не удалось обновить сообщение задачи (фото)', error);
-            return { success: false, usedPreview: false, cache };
-          }
-        }
-      }
-    }
     try {
       await bot.telegram.editMessageText(chat, messageId, undefined, message, {
         parse_mode: 'MarkdownV2',
-        link_preview_options: media.previewImage
-          ? this.createPreviewOptions(media.previewImage)
-          : { is_disabled: true },
+        link_preview_options: { is_disabled: true },
         ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       });
       return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
@@ -780,129 +504,6 @@ export default class TasksController {
       );
       return null;
     }
-  }
-
-  private getCollageLayout(count: number): CollageLayout | null {
-    if (count < 2) {
-      return null;
-    }
-    const normalized = Math.min(Math.max(count, 2), 4);
-    return COLLAGE_LAYOUTS[normalized] ?? null;
-  }
-
-  private async createCollageFromCandidates(
-    candidates: NormalizedImage[],
-    cache: Map<string, LocalPhotoInfo | null>,
-  ): Promise<{ key: string; cleanup: () => Promise<void> } | null> {
-    return this.buildCollageFromCandidates(candidates, cache).catch((error) => {
-      console.error('Не удалось создать коллаж вложений', error);
-      return null;
-    });
-  }
-
-  private async buildCollageFromCandidates(
-    candidates: NormalizedImage[],
-    cache: Map<string, LocalPhotoInfo | null>,
-  ): Promise<{ key: string; cleanup: () => Promise<void> } | null> {
-    const seen = new Set<string>();
-    const infos: LocalPhotoInfo[] = [];
-    for (const candidate of candidates) {
-      if (!candidate?.url || seen.has(candidate.url)) {
-        continue;
-      }
-      seen.add(candidate.url);
-      let info = cache.get(candidate.url) ?? null;
-      if (!cache.has(candidate.url)) {
-        info = (await this.resolveLocalPhotoInfo(candidate.url)) ?? null;
-        cache.set(candidate.url, info);
-      }
-      if (info) {
-        infos.push(info);
-      }
-      if (infos.length >= 4) {
-        break;
-      }
-    }
-    if (infos.length < 2) {
-      return null;
-    }
-    const layout = this.getCollageLayout(infos.length);
-    if (!layout) {
-      return null;
-    }
-    const composites = await Promise.all(
-      infos.map(async (info, index) => {
-        const cell = layout.cells[index];
-        const buffer = await sharp(info.absolutePath)
-          .resize(cell.width, cell.height, {
-            fit: 'cover',
-            position: 'attention',
-          })
-          .jpeg({ quality: 85 })
-          .toBuffer();
-        return { input: buffer, left: cell.left, top: cell.top };
-      }),
-    );
-    const outputDir = path.join(os.tmpdir(), 'erm-task-collages');
-    await mkdir(outputDir, { recursive: true });
-    const filename = `collage_${Date.now()}_${randomBytes(6).toString('hex')}.jpg`;
-    const target = path.join(outputDir, filename);
-    const outputBuffer = await sharp({
-      create: {
-        width: layout.width,
-        height: layout.height,
-        channels: 3,
-        background: '#ffffff',
-      },
-    })
-      .composite(composites)
-      .jpeg({ quality: 82 })
-      .toBuffer();
-    await writeFile(target, outputBuffer);
-    const key = `local-collage:${filename}`;
-    cache.set(key, {
-      absolutePath: target,
-      filename,
-      contentType: 'image/jpeg',
-      size: outputBuffer.length,
-    });
-    return {
-      key,
-      cleanup: async () => {
-        cache.delete(key);
-        await unlink(target).catch(() => undefined);
-      },
-    };
-  }
-
-
-  private async preparePreviewMedia(
-    media: TaskMedia,
-    cache: Map<string, LocalPhotoInfo | null>,
-  ): Promise<
-    | { photo: PhotoInput; sourceUrl: string; cleanup?: () => Promise<void> }
-    | null
-  > {
-    const preview = media.previewImage;
-    if (!preview) {
-      return null;
-    }
-    const sourceUrl = preview.url;
-    const photo = await this.resolvePhotoInputWithCache(sourceUrl, cache);
-    return { photo, sourceUrl };
-  }
-
-  private createPreviewOptions(
-    image: NormalizedImage | null,
-  ): NonNullable<SendMessageOptions['link_preview_options']> {
-    if (!image) {
-      return { is_disabled: true };
-    }
-    return {
-      url: image.url,
-      prefer_large_media: true,
-      show_above_text: true,
-    };
   }
 
   private extractKeyboardMarkup(
@@ -1024,12 +625,6 @@ export default class TasksController {
     );
   }
 
-  private isCaptionWithinLimit(text: string): boolean {
-    if (!text) {
-      return true;
-    }
-    return Array.from(text).length <= TELEGRAM_CAPTION_LIMIT;
-  }
 
   private isMediaMessageTypeError(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
@@ -1046,11 +641,6 @@ export default class TasksController {
     );
   }
 
-  private shouldFallbackToTextMessage(error: unknown): boolean {
-    return (
-      this.isImageProcessFailedError(error) || this.isCaptionTooLongError(error)
-    );
-  }
 
   private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
     const fileId = this.extractLocalFileId(url);

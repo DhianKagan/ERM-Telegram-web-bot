@@ -30,6 +30,7 @@ jest.mock('../apps/api/src/bot/bot', () => {
         deleteMessage: deleteMessageMock,
       },
     },
+    buildTaskAppLink: jest.fn(() => 'https://example.com/tasks?task=507f1f77bcf86cd799439011'),
     buildDirectTaskKeyboard: jest.fn(),
     buildDirectTaskMessage: jest.fn(() => ''),
     __sendMessageMock: sendMessageMock,

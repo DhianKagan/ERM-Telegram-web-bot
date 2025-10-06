@@ -92,7 +92,10 @@ const resolveHistoryAction = (entry: HistoryEntry | undefined): string | null =>
   if (toStatus && toStatus !== fromStatus) {
     return `переведена в статус «${toStatus}»`;
   }
-  return 'обновлена';
+  if (!toStatus && fromStatus && fromStatus !== toStatus) {
+    return 'переведена в статус «без статуса»';
+  }
+  return null;
 };
 
 export async function buildLatestHistorySummary(

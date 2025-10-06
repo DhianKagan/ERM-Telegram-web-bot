@@ -23,7 +23,7 @@ import {
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
-import { bot } from '../bot/bot';
+import { bot, buildDirectTaskMessage } from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
@@ -35,11 +35,7 @@ import {
   updateTaskSummaryMessageId,
 } from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';
-import {
-  buildActionMessage,
-  buildHistorySummaryLog,
-  getTaskIdentifier,
-} from './taskMessages';
+import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 
 type TelegramMessageCleanupMeta = {
@@ -1816,7 +1812,12 @@ export default class TasksController {
       plain,
       formatted.inlineImages,
     );
-    const keyboard = taskStatusKeyboard(taskId);
+    const keyboard = taskStatusKeyboard(
+      taskId,
+      typeof plain.status === 'string'
+        ? (plain.status as SharedTask['status'])
+        : undefined,
+    );
     const topicId = this.normalizeTopicId(plain.telegram_topic_id);
 
     const previousMessageId =
@@ -2308,10 +2309,11 @@ export default class TasksController {
       typeof task._id === 'object' && task._id !== null && 'toString' in task._id
         ? (task._id as { toString(): string }).toString()
         : String(task._id ?? '');
-    const plain =
+    const plain = (
       typeof task.toObject === 'function'
-        ? (task.toObject() as TaskDocument & Record<string, unknown>)
-        : task;
+        ? task.toObject()
+        : (task as unknown)
+    ) as TaskDocument & Record<string, unknown>;
     if (!docId) return;
     const recipients = this.collectNotificationTargets(plain, creatorId);
     const usersRaw = await getUsersMap(Array.from(recipients));
@@ -2322,7 +2324,12 @@ export default class TasksController {
         return [Number(key), { name, username }];
       }),
     );
-    const mainKeyboard = taskStatusKeyboard(docId);
+    const mainKeyboard = taskStatusKeyboard(
+      docId,
+      typeof plain.status === 'string'
+        ? (plain.status as SharedTask['status'])
+        : undefined,
+    );
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
     let groupMessageId: number | undefined;
@@ -2410,11 +2417,19 @@ export default class TasksController {
 
     const assignees = this.collectAssignees(plain);
     assignees.delete(creatorId);
-    if (messageLink && assignees.size) {
-      const identifier = getTaskIdentifier(plain);
-      const dmText = `Вам назначена задача <a href="${messageLink}">${identifier}</a>`;
+    if (assignees.size) {
+      const dmText = buildDirectTaskMessage(
+        plain,
+        messageLink,
+        users,
+      );
       const dmOptions: SendMessageOptions = {
-        ...taskStatusKeyboard(docId),
+        ...taskStatusKeyboard(
+          docId,
+          typeof plain.status === 'string'
+            ? (plain.status as SharedTask['status'])
+            : undefined,
+        ),
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },
       };

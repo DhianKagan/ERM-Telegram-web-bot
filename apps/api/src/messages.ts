@@ -50,6 +50,8 @@ const messages = {
   taskPermissionError: 'Ошибка проверки прав',
   taskAssignmentRequired: 'Вы не назначены на эту задачу',
   taskStatusUpdateError: 'Ошибка обновления статуса задачи',
+  taskCompletedLock:
+    'Задача уже выполнена. В Telegram можно только отменить выполнение.',
 } as const;
 
 export default messages;

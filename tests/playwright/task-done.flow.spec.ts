@@ -44,7 +44,9 @@ test('inline-клавиатура завершения содержит prompt �
   expect(statusMarkup.inline_keyboard).toEqual(
     expect.arrayContaining([
       expect.arrayContaining([
+        expect.objectContaining({ callback_data: 'task_accept_prompt:77' }),
         expect.objectContaining({ callback_data: 'task_done_prompt:77' }),
+        expect.objectContaining({ callback_data: 'task_cancel_prompt:77' }),
       ]),
     ]),
   );

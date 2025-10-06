@@ -4,10 +4,12 @@ const editMessageTextMock = jest.fn();
 const sendMessageMock = jest.fn();
 
 process.env.NODE_ENV = 'test';
+process.env.APP_URL = process.env.APP_URL || 'https://example.com';
 
 jest.mock('../apps/api/src/config', () => ({
   botToken: 'test-token',
   chatId: -1001234567890,
+  appUrl: 'https://example.com',
 }));
 
 jest.mock('telegraf', () => {
@@ -71,8 +73,10 @@ jest.mock('../apps/api/src/services/keyRotation', () => ({
 
 const taskStatusKeyboardMock = jest
   .fn()
-  .mockImplementation((id: string) => ({
-    reply_markup: { inline_keyboard: [[{ callback_data: `status:${id}` }]] },
+  .mockImplementation((id: string, status?: string) => ({
+    reply_markup: {
+      inline_keyboard: [[{ callback_data: `status:${id}`, text: status ?? '' }]],
+    },
   }));
 const taskAcceptConfirmKeyboardMock = jest
   .fn()
@@ -84,16 +88,25 @@ const taskDoneConfirmKeyboardMock = jest
   .mockImplementation((id: string) => ({
     reply_markup: { inline_keyboard: [[{ callback_data: `done:${id}` }]] },
   }));
+const taskCancelConfirmKeyboardMock = jest
+  .fn()
+  .mockImplementation((id: string) => ({
+    reply_markup: { inline_keyboard: [[{ callback_data: `cancel:${id}` }]] },
+  }));
 
 jest.mock('../apps/api/src/utils/taskButtons', () => ({
   __esModule: true,
-  default: (...args: unknown[]) => taskStatusKeyboardMock(...(args as [string])),
+  default: (...args: unknown[]) =>
+    taskStatusKeyboardMock(...(args as [string, string | undefined])),
   taskAcceptConfirmKeyboard: (
     ...args: unknown[]
   ) => taskAcceptConfirmKeyboardMock(...(args as [string])),
   taskDoneConfirmKeyboard: (
     ...args: unknown[]
   ) => taskDoneConfirmKeyboardMock(...(args as [string])),
+  taskCancelConfirmKeyboard: (
+    ...args: unknown[]
+  ) => taskCancelConfirmKeyboardMock(...(args as [string])),
 }));
 
 jest.mock('../apps/api/src/messages', () => ({
@@ -115,6 +128,8 @@ jest.mock('../apps/api/src/messages', () => ({
   taskAssignmentRequired: 'Не ваш таск',
   taskStatusCanceled: 'Отменено',
   taskStatusUpdateError: 'Ошибка обновления',
+  taskCanceled: 'Отменено',
+  taskCompletedLock: 'Только отмена',
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -125,6 +140,8 @@ function createContext(data: string) {
     callbackQuery: { data },
     from: { id: 42 },
     answerCbQuery: jest.fn(),
+    editMessageReplyMarkup: jest.fn(),
+    editMessageText: jest.fn(),
   } as unknown;
 }
 
@@ -279,7 +296,9 @@ describe('обработка завершения задачи', () => {
 
     expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task321');
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
-      inline_keyboard: [[{ callback_data: 'status:task321' }]],
+      inline_keyboard: [
+        [expect.objectContaining({ callback_data: 'status:task321' })],
+      ],
     });
     expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Не ваш таск', {
       show_alert: true,
@@ -316,7 +335,9 @@ describe('обработка завершения задачи', () => {
 
     expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task900');
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
-      inline_keyboard: [[{ callback_data: 'status:task900' }]],
+      inline_keyboard: [
+        [expect.objectContaining({ callback_data: 'status:task900' })],
+      ],
     });
     expect(ctx.answerCbQuery).toHaveBeenCalledWith('Отменено');
   });

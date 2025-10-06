@@ -515,6 +515,10 @@ export const buildDirectTaskKeyboard = (
   if (!row.length) {
     return undefined;
   }
+  if (typeof Markup.inlineKeyboard !== 'function') {
+    console.warn('Пропущено построение inline-клавиатуры: отсутствует поддержка');
+    return undefined;
+  }
   return Markup.inlineKeyboard([row]);
 };
 
@@ -788,6 +792,9 @@ async function processStatusAction(
     if (ctx.chat?.type === 'private') {
       const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);
       const inlineMarkup = keyboard?.reply_markup ?? undefined;
+      if (inlineMarkup) {
+        await updateMessageReplyMarkup(ctx, undefined);
+      }
       const dmText = buildDirectTaskMessage(
         plainForView,
         link,

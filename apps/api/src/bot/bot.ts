@@ -724,9 +724,14 @@ async function processStatusAction(
         : (task as unknown);
     const override = overrideRaw as TaskPresentation;
     const presentation = await syncTaskPresentation(docId, override);
-    const appliedStatus =
-      (presentation.plain?.status as SharedTask['status'] | undefined) ?? status;
-    const plainForView = presentation.plain ?? override;
+    const appliedStatus = (
+      (presentation.plain?.status as SharedTask['status'] | undefined) ?? status
+    ) as SharedTask['status'];
+    const plainForView = {
+      ...override,
+      ...(presentation.plain ?? {}),
+      status: appliedStatus,
+    } as TaskPresentation;
     const messageId = toNumericId(plainForView?.telegram_message_id ?? null);
     const link = buildChatMessageLink(chatId, messageId ?? undefined);
     if (ctx.chat?.type === 'private') {

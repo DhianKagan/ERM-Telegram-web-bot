@@ -1514,11 +1514,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="task-dialog-completed-at"
+              >
                 {t("actualTime")}
               </label>
               <input
                 type="datetime-local"
+                id="task-dialog-completed-at"
+                name="completedAtDisplay"
                 value={completedAt ? formatIsoForInput(completedAt) : ""}
                 readOnly
                 placeholder="—"
@@ -1552,7 +1557,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             <div>
-              <label className="block text-sm font-medium">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="task-start-link"
+              >
                 {t("startPoint")}
               </label>
               {startLink ? (
@@ -1568,6 +1576,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     </a>
                     {startCoordinates && (
                       <input
+                        id="task-start-coordinates"
+                        name="startCoordinatesDisplay"
                         value={formatCoords(startCoordinates)}
                         readOnly
                         className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1589,6 +1599,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ) : (
                 <div className="mt-1 flex gap-2">
                   <input
+                    id="task-start-link"
+                    name="startLink"
                     value={startLink}
                     onChange={(e) => handleStartLink(e.target.value)}
                     placeholder={t("googleMapsLink")}
@@ -1610,7 +1622,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="task-end-link"
+              >
                 {t("endPoint")}
               </label>
               {endLink ? (
@@ -1626,6 +1641,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     </a>
                     {finishCoordinates && (
                       <input
+                        id="task-end-coordinates"
+                        name="endCoordinatesDisplay"
                         value={formatCoords(finishCoordinates)}
                         readOnly
                         className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1647,6 +1664,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               ) : (
                 <div className="mt-1 flex gap-2">
                   <input
+                    id="task-end-link"
+                    name="endLink"
                     value={endLink}
                     onChange={(e) => handleEndLink(e.target.value)}
                     placeholder={t("googleMapsLink")}
@@ -1704,7 +1723,10 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="task-payment-amount"
+              >
                 {t("paymentAmount")}
               </label>
               <div
@@ -1713,6 +1735,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 }`}
               >
                 <input
+                  id="task-payment-amount"
+                  name="paymentAmount"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   onBlur={(e) =>
@@ -1736,6 +1760,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
                 type="checkbox"
+                id="task-show-dimensions"
+                name="showDimensions"
                 className="h-4 w-4"
                 checked={showDimensions}
                 onChange={(e) => handleDimensionsToggle(e.target.checked)}
@@ -1747,10 +1773,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               <div className="space-y-3">
                 <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   <div>
-                    <label className="block text-sm font-medium">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-cargo-length"
+                    >
                       {t("cargoLength")}
                     </label>
                     <input
+                      id="task-cargo-length"
+                      name="cargoLength"
                       value={cargoLength}
                       onChange={(e) => setCargoLength(e.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1760,10 +1791,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-cargo-width"
+                    >
                       {t("cargoWidth")}
                     </label>
                     <input
+                      id="task-cargo-width"
+                      name="cargoWidth"
                       value={cargoWidth}
                       onChange={(e) => setCargoWidth(e.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1773,10 +1809,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-cargo-height"
+                    >
                       {t("cargoHeight")}
                     </label>
                     <input
+                      id="task-cargo-height"
+                      name="cargoHeight"
                       value={cargoHeight}
                       onChange={(e) => setCargoHeight(e.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1788,10 +1829,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 </div>
                 <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   <div>
-                    <label className="block text-sm font-medium">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-cargo-volume"
+                    >
                       {t("cargoVolume")}
                     </label>
                     <input
+                      id="task-cargo-volume"
+                      name="cargoVolume"
                       value={cargoVolume}
                       readOnly
                       className="w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
@@ -1799,10 +1845,15 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-cargo-weight"
+                    >
                       {t("cargoWeight")}
                     </label>
                     <input
+                      id="task-cargo-weight"
+                      name="cargoWeight"
                       value={cargoWeight}
                       onChange={(e) => setCargoWeight(e.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"

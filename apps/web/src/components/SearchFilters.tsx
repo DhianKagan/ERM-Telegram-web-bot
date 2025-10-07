@@ -12,6 +12,16 @@ export default function SearchFilters({ inline = false }: Props) {
   const { filters, setFilters } = useTasks();
   const [local, setLocal] = React.useState(filters);
 
+  const toFieldId = React.useCallback(
+    (prefix: string, value: string) =>
+      `${prefix}-${value}`
+        .toLowerCase()
+        .replace(/[^a-z0-9а-яё]+/gi, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, ""),
+    [],
+  );
+
   const toggle = (key: "status" | "priority", value: string) => {
     setLocal((prev) => {
       const arr = prev[key];
@@ -27,42 +37,62 @@ export default function SearchFilters({ inline = false }: Props) {
         <span className="block text-xs font-semibold uppercase tracking-wide text-gray-600">
           Статус
         </span>
-        {TASK_STATUSES.map((s) => (
-          <label key={s} className="flex items-center gap-1 text-[13px]">
-            <input
-              type="checkbox"
-              checked={local.status.includes(s)}
-              onChange={() => toggle("status", s)}
-            />
-            {s}
-          </label>
-        ))}
+        {TASK_STATUSES.map((s) => {
+          const fieldId = toFieldId("status", s);
+          return (
+            <label
+              key={s}
+              className="flex items-center gap-1 text-[13px]"
+              htmlFor={fieldId}
+            >
+              <input
+                id={fieldId}
+                name="status[]"
+                type="checkbox"
+                checked={local.status.includes(s)}
+                onChange={() => toggle("status", s)}
+              />
+              {s}
+            </label>
+          );
+        })}
       </div>
       <div>
         <span className="block text-xs font-semibold uppercase tracking-wide text-gray-600">
           Приоритет
         </span>
-        {PRIORITIES.map((p) => (
-          <label key={p} className="flex items-center gap-1 text-[13px]">
-            <input
-              type="checkbox"
-              checked={local.priority.includes(p)}
-              onChange={() => toggle("priority", p)}
-            />
-            {p}
-          </label>
-        ))}
+        {PRIORITIES.map((p) => {
+          const fieldId = toFieldId("priority", p);
+          return (
+            <label
+              key={p}
+              className="flex items-center gap-1 text-[13px]"
+              htmlFor={fieldId}
+            >
+              <input
+                id={fieldId}
+                name="priority[]"
+                type="checkbox"
+                checked={local.priority.includes(p)}
+                onChange={() => toggle("priority", p)}
+              />
+              {p}
+            </label>
+          );
+        })}
       </div>
       <div className="flex items-center gap-1.5">
         <input
           type="date"
           className="rounded border px-1.5 py-1 text-[13px]"
+          name="from"
           value={local.from}
           onChange={(e) => setLocal({ ...local, from: e.target.value })}
         />
         <input
           type="date"
           className="rounded border px-1.5 py-1 text-[13px]"
+          name="to"
           value={local.to}
           onChange={(e) => setLocal({ ...local, to: e.target.value })}
         />

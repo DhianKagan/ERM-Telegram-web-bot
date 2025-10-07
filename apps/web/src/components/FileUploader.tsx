@@ -82,6 +82,7 @@ export default function FileUploader({
 }: Props) {
   const [items, setItems] = React.useState<UploadItem[]>([]);
   const { t } = useTranslation();
+  const fileInputId = React.useId();
 
   const handleFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
@@ -203,6 +204,8 @@ export default function FileUploader({
       >
         <p>{t("dragFilesOrSelect")}</p>
         <input
+          id={fileInputId}
+          name="attachments"
           type="file"
           multiple
           onChange={handleChange}

@@ -63,6 +63,7 @@ const EmployeeManager: EmployeeManagerComponent = ({ onSubmit }) => {
       </label>
       <input
         id="employee-name"
+        name="employeeName"
         data-testid="employee-name"
         className="h-10 w-full rounded border px-3"
         value={name}

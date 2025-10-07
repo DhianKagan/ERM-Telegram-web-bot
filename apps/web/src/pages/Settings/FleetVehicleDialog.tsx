@@ -172,6 +172,8 @@ export default function FleetVehicleDialog({
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Название</span>
           <input
+            id="fleet-vehicle-name"
+            name="name"
             className="h-10 w-full rounded border px-3"
             value={form.name}
             onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -182,6 +184,8 @@ export default function FleetVehicleDialog({
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Регистрационный номер</span>
           <input
+            id="fleet-vehicle-registration"
+            name="registrationNumber"
             className="h-10 w-full rounded border px-3 uppercase"
             value={form.registrationNumber}
             onChange={(event) =>
@@ -195,6 +199,8 @@ export default function FleetVehicleDialog({
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Тип транспорта</span>
           <select
+            id="fleet-vehicle-transport-type"
+            name="transportType"
             className="h-10 w-full rounded border px-3"
             value={form.transportType}
             onChange={(event) =>
@@ -212,6 +218,8 @@ export default function FleetVehicleDialog({
           <input
             type="number"
             min="0"
+            id="fleet-vehicle-odometer-initial"
+            name="odometerInitial"
             className="h-10 w-full rounded border px-3"
             value={form.odometerInitial}
             onChange={(event) =>
@@ -226,6 +234,8 @@ export default function FleetVehicleDialog({
           <input
             type="number"
             min="0"
+            id="fleet-vehicle-odometer-current"
+            name="odometerCurrent"
             className="h-10 w-full rounded border px-3"
             value={form.odometerCurrent}
             onChange={(event) =>
@@ -240,6 +250,8 @@ export default function FleetVehicleDialog({
           <input
             type="number"
             min="0"
+            id="fleet-vehicle-mileage-total"
+            name="mileageTotal"
             className="h-10 w-full rounded border px-3"
             value={form.mileageTotal}
             onChange={(event) =>
@@ -252,6 +264,8 @@ export default function FleetVehicleDialog({
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Вид топлива</span>
           <select
+            id="fleet-vehicle-fuel-type"
+            name="fuelType"
             className="h-10 w-full rounded border px-3"
             value={form.fuelType}
             onChange={(event) =>
@@ -268,6 +282,8 @@ export default function FleetVehicleDialog({
           <input
             type="number"
             min="0"
+            id="fleet-vehicle-fuel-refilled"
+            name="fuelRefilled"
             className="h-10 w-full rounded border px-3"
             value={form.fuelRefilled}
             onChange={(event) =>
@@ -283,6 +299,8 @@ export default function FleetVehicleDialog({
             type="number"
             min="0"
             step="0.01"
+            id="fleet-vehicle-fuel-average"
+            name="fuelAverageConsumption"
             className="h-10 w-full rounded border px-3"
             value={form.fuelAverageConsumption}
             onChange={(event) =>
@@ -297,6 +315,8 @@ export default function FleetVehicleDialog({
           <input
             type="number"
             min="0"
+            id="fleet-vehicle-fuel-spent"
+            name="fuelSpentTotal"
             className="h-10 w-full rounded border px-3"
             value={form.fuelSpentTotal}
             onChange={(event) =>
@@ -310,6 +330,8 @@ export default function FleetVehicleDialog({
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">Текущие задачи (ID через запятую или перенос строки)</span>
         <textarea
+          id="fleet-vehicle-current-tasks"
+          name="currentTasks"
           className="min-h-[5rem] w-full rounded border px-3 py-2"
           value={form.currentTasks}
           onChange={(event) =>

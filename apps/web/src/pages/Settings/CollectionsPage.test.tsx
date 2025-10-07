@@ -233,6 +233,8 @@ jest.mock("./CollectionForm", () => ({
     >
       <input
         data-testid="collection-name"
+        id="test-collection-name"
+        name="collectionName"
         value={form?.name ?? ""}
         onChange={(event) =>
           onChange({ ...(form ?? { name: "", value: "" }), name: event.target.value })
@@ -241,6 +243,8 @@ jest.mock("./CollectionForm", () => ({
       />
       <input
         data-testid="collection-value"
+        id="test-collection-value"
+        name="collectionValue"
         value={form?.value ?? ""}
         onChange={(event) =>
           onChange({ ...(form ?? { name: "", value: "" }), value: event.target.value })

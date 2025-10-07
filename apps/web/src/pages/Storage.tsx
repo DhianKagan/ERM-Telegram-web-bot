@@ -134,6 +134,16 @@ export default function StoragePage() {
     return Array.from(types).sort((a, b) => a.localeCompare(b));
   }, [files]);
 
+  const sanitizeId = React.useCallback(
+    (value: string) =>
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9а-яё]+/gi, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, ""),
+    [],
+  );
+
   const applyFilters = React.useCallback(() => {
     setPageIndex(0);
     setFilters({ ...draftFilters });
@@ -332,9 +342,16 @@ export default function StoragePage() {
               )}
               {userOptions.map((id) => {
                 const checked = draftFilters.userId === id;
+                const fieldId = `storage-user-${sanitizeId(String(id))}`;
                 return (
-                  <label key={id} className="flex items-center gap-2 text-sm">
+                  <label
+                    key={id}
+                    className="flex items-center gap-2 text-sm"
+                    htmlFor={fieldId}
+                  >
                     <input
+                      id={fieldId}
+                      name="storageUser"
                       type="checkbox"
                       checked={checked}
                       onChange={() =>
@@ -362,9 +379,16 @@ export default function StoragePage() {
               )}
               {typeOptions.map((type) => {
                 const checked = draftFilters.type === type;
+                const fieldId = `storage-type-${sanitizeId(type)}`;
                 return (
-                  <label key={type} className="flex items-center gap-2 text-sm">
+                  <label
+                    key={type}
+                    className="flex items-center gap-2 text-sm"
+                    htmlFor={fieldId}
+                  >
                     <input
+                      id={fieldId}
+                      name="storageType"
                       type="checkbox"
                       checked={checked}
                       onChange={() =>

@@ -78,6 +78,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">ID</label>
         <input
+          id="settings-user-telegram-id"
+          name="telegramId"
           className="h-10 w-full rounded border px-3"
           value={form.telegram_id ?? ""}
           onChange={(e) =>
@@ -93,6 +95,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">Username</label>
         <input
+          id="settings-user-username"
+          name="username"
           className="h-10 w-full rounded border px-3"
           value={form.username || ""}
           onChange={(e) => onChange({ ...form, username: e.target.value })}
@@ -102,6 +106,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">Имя</label>
         <input
+          id="settings-user-name"
+          name="name"
           className="h-10 w-full rounded border px-3"
           value={form.name || ""}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
@@ -110,6 +116,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">Телефон</label>
         <input
+          id="settings-user-phone"
+          name="phone"
           className="h-10 w-full rounded border px-3"
           value={form.phone || ""}
           onChange={(e) => onChange({ ...form, phone: e.target.value })}
@@ -118,6 +126,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">Доп. телефон</label>
         <input
+          id="settings-user-mob"
+          name="mobNumber"
           className="h-10 w-full rounded border px-3"
           value={form.mobNumber || ""}
           onChange={(e) => onChange({ ...form, mobNumber: e.target.value })}
@@ -126,6 +136,8 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
       <div>
         <label className="block text-sm font-medium">Email</label>
         <input
+          id="settings-user-email"
+          name="email"
           className="h-10 w-full rounded border px-3"
           value={form.email || ""}
           onChange={(e) => onChange({ ...form, email: e.target.value })}

@@ -15,6 +15,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
       <select
         className="rounded border p-1"
         aria-label="Уровень"
+        name="level"
         value={filters.level || ""}
         onChange={(e) => onChange({ ...filters, level: e.target.value })}
       >
@@ -29,6 +30,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         placeholder="Метод"
         aria-label="Метод"
+        name="method"
         value={filters.method || ""}
         onChange={(e) => onChange({ ...filters, method: e.target.value })}
       />
@@ -36,6 +38,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         placeholder="Endpoint"
         aria-label="Endpoint"
+        name="endpoint"
         value={filters.endpoint || ""}
         onChange={(e) => onChange({ ...filters, endpoint: e.target.value })}
       />
@@ -43,6 +46,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         placeholder="Статус"
         aria-label="Статус"
+        name="status"
         value={filters.status || ""}
         onChange={(e) =>
           onChange({ ...filters, status: Number(e.target.value) || undefined })
@@ -52,6 +56,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         placeholder="Содержит текст"
         aria-label="Содержит текст"
+        name="message"
         value={filters.message || ""}
         onChange={(e) => onChange({ ...filters, message: e.target.value })}
       />
@@ -59,6 +64,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         type="date"
         className="rounded border p-1"
         aria-label="От"
+        name="from"
         value={filters.from || ""}
         onChange={(e) => onChange({ ...filters, from: e.target.value })}
       />
@@ -66,12 +72,14 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         type="date"
         className="rounded border p-1"
         aria-label="До"
+        name="to"
         value={filters.to || ""}
         onChange={(e) => onChange({ ...filters, to: e.target.value })}
       />
       <div className="flex items-center gap-1 text-sm">
         <input
           id={noCsrfId}
+          name="noCsrf"
           type="checkbox"
           checked={filters.noCsrf || false}
           onChange={(e) => onChange({ ...filters, noCsrf: e.target.checked })}

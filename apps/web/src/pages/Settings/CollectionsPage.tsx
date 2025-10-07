@@ -1120,6 +1120,8 @@ export default function CollectionsPage() {
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
+                        id="settings-users-search"
+                        name="userSearch"
                         className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
@@ -1166,6 +1168,8 @@ export default function CollectionsPage() {
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
+                        id="settings-employees-search"
+                        name="employeeSearch"
                         className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={userSearchDraft}
                         onChange={(event) => setUserSearchDraft(event.target.value)}
@@ -1214,6 +1218,8 @@ export default function CollectionsPage() {
                     <label className="flex flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
                       <span className="text-sm font-medium">Поиск</span>
                       <input
+                        id="settings-collections-search"
+                        name="collectionSearch"
                         className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
                         value={currentSearchDraft}
                         onChange={(event) =>

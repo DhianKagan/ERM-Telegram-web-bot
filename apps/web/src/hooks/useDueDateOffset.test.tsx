@@ -29,9 +29,14 @@ describe("useDueDateOffset", () => {
       });
       return (
         <form onSubmit={handleSubmit(submitSpy)}>
-          <input data-testid="start" {...register("startDate")} />
+          <input
+            data-testid="start"
+            id="test-start-date"
+            {...register("startDate")}
+          />
           <input
             data-testid="due"
+            id="test-due-date"
             {...register("dueDate", { onChange: handleDueDateChange })}
           />
           <button type="submit">Отправить</button>

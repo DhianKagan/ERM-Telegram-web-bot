@@ -26,8 +26,13 @@ export default function LogViewer() {
     <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Логи</h2>
-        <label className="flex items-center gap-1 text-sm">
+        <label
+          className="flex items-center gap-1 text-sm"
+          htmlFor="log-live-toggle"
+        >
           <input
+            id="log-live-toggle"
+            name="liveUpdates"
             type="checkbox"
             checked={live}
             onChange={(e) => setLive(e.target.checked)}

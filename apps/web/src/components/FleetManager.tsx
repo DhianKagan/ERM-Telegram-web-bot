@@ -54,6 +54,7 @@ const FleetManager: FleetManagerComponent = ({ onSubmit }) => {
       </label>
       <input
         id="fleet-name"
+        name="fleetName"
         data-testid="fleet-name"
         className="h-10 w-full rounded border px-3"
         value={name}
@@ -66,6 +67,7 @@ const FleetManager: FleetManagerComponent = ({ onSubmit }) => {
       <div className="flex gap-2">
         <input
           id="fleet-token"
+          name="fleetToken"
           data-testid="fleet-token"
           className="h-10 w-full rounded border px-3"
           type={showToken ? "text" : "password"}

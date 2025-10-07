@@ -30,6 +30,7 @@ export default function CollectionList({
   searchValue,
 }: Props) {
   const [search, setSearch] = React.useState(searchValue ?? "");
+  const searchInputId = React.useId();
 
   React.useEffect(() => {
     setSearch(searchValue ?? "");
@@ -47,6 +48,8 @@ export default function CollectionList({
         className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center"
       >
         <input
+          id={searchInputId}
+          name="collectionSearch"
           className="h-10 w-full rounded border px-3 sm:h-9 sm:flex-1"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

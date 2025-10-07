@@ -15,6 +15,7 @@ import LogsService from '../logs/logs.service';
 import TaskTemplatesService from '../taskTemplates/taskTemplates.service';
 import queries from '../db/queries';
 import tmaAuthGuard from '../auth/tmaAuth.guard';
+import { bot } from '../bot/bot';
 
 container.register(TOKENS.TasksRepository, { useValue: queries });
 container.register(TOKENS.TasksService, {
@@ -39,7 +40,7 @@ container.register(TOKENS.TelegramApi, { useValue: telegram });
 container.register(TOKENS.SchedulerService, { useValue: scheduler });
 container.register(TOKENS.TmaAuthGuard, { useValue: tmaAuthGuard });
 container.register(TOKENS.TaskSyncController, {
-  useClass: TaskSyncController,
+  useFactory: () => new TaskSyncController(bot),
 });
 
 export { container };

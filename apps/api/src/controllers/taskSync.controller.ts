@@ -1,9 +1,10 @@
 // Назначение: синхронизация задач между вебом и Telegram
 // Основные модули: bot, config, db/model, db/queries, services/service, tasks/taskHistory.service, utils/formatTask, utils/taskButtons
+import 'reflect-metadata';
 import { injectable } from 'tsyringe';
+import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
 import { Task } from '../db/model';
-import { bot } from '../bot/bot';
 import { chatId } from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
@@ -13,7 +14,30 @@ import {
   getTaskHistoryMessage,
   updateTaskHistoryMessageId,
 } from '../tasks/taskHistory.service';
-import type { Task as SharedTask } from 'shared';
+import type { Task as SharedTask, User } from 'shared';
+
+type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
+
+const selectUserField = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
+
+const buildUsersIndex = async (ids: number[]): Promise<UsersIndex> => {
+  if (!ids.length) {
+    return {};
+  }
+  try {
+    const raw = await getUsersMap(ids);
+    const entries = Object.entries(raw ?? {}).map(([key, value]) => {
+      const name = selectUserField(value?.name) || selectUserField(value?.username);
+      const username = selectUserField(value?.username);
+      return [key, { name, username } satisfies Pick<User, 'name' | 'username'>];
+    });
+    return Object.fromEntries(entries) as UsersIndex;
+  } catch (error) {
+    console.error('Не удалось получить данные пользователей задачи', error);
+    return {};
+  }
+};
 
 const isMessageNotModifiedError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -85,6 +109,8 @@ const loadTaskPlain = async (
 
 @injectable()
 export default class TaskSyncController {
+  constructor(private readonly bot: Telegraf<Context>) {}
+
   async onWebTaskUpdate(
     taskId: string,
     override?: TaskDocument | (TaskDocument & Record<string, unknown>) | null,
@@ -129,12 +155,13 @@ export default class TaskSyncController {
       typeof task.status === 'string'
         ? (task.status as SharedTask['status'])
         : undefined;
-    const users = await getUsersMap(collectUserIds(task));
+    const userIds = collectUserIds(task);
+    const users = await buildUsersIndex(userIds);
     const { text } = formatTask(task as unknown as SharedTask, users);
     const keyboard = taskStatusKeyboard(taskId, status);
     const replyMarkup = keyboard.reply_markup ?? undefined;
 
-    const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
+    const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
       parse_mode: 'MarkdownV2',
       link_preview_options: { is_disabled: true },
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
@@ -143,7 +170,7 @@ export default class TaskSyncController {
 
     if (messageId !== null) {
       try {
-        await bot.telegram.editMessageText(
+        await this.bot.telegram.editMessageText(
           chatId,
           messageId,
           undefined,
@@ -156,7 +183,7 @@ export default class TaskSyncController {
           return;
         }
         try {
-          await bot.telegram.deleteMessage(chatId, messageId);
+          await this.bot.telegram.deleteMessage(chatId, messageId);
         } catch (deleteError) {
           console.warn(
             'Не удалось удалить устаревшее сообщение задачи',
@@ -166,7 +193,7 @@ export default class TaskSyncController {
       }
     }
 
-    const sendOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+    const sendOptions: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
       parse_mode: 'MarkdownV2',
       link_preview_options: { is_disabled: true },
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
@@ -174,7 +201,7 @@ export default class TaskSyncController {
     };
 
     try {
-      const sent = await bot.telegram.sendMessage(chatId, text, sendOptions);
+      const sent = await this.bot.telegram.sendMessage(chatId, text, sendOptions);
       if (sent?.message_id) {
         await Task.updateOne(
           { _id: taskId },
@@ -203,14 +230,14 @@ export default class TaskSyncController {
       const payload = await getTaskHistoryMessage(taskId);
       if (!payload) return;
       const { messageId, text, topicId } = payload;
-      const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
+      const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },
         ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
       };
       if (messageId) {
         try {
-          await bot.telegram.editMessageText(
+          await this.bot.telegram.editMessageText(
             chatId,
             messageId,
             undefined,
@@ -224,12 +251,12 @@ export default class TaskSyncController {
           }
         }
       }
-      const sendOptions: Parameters<typeof bot.telegram.sendMessage>[2] = {
+      const sendOptions: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },
         ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
       };
-      const sent = await bot.telegram.sendMessage(chatId, text, sendOptions);
+      const sent = await this.bot.telegram.sendMessage(chatId, text, sendOptions);
       if (sent?.message_id) {
         await updateTaskHistoryMessageId(taskId, sent.message_id);
       }

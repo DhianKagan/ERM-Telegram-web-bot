@@ -36,7 +36,6 @@ import buildChatMessageLink from '../utils/messageLink';
 import { uploadsDir } from '../config/storage';
 import {
   getTaskHistoryMessage,
-  updateTaskHistoryMessageId,
   updateTaskSummaryMessageId,
 } from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';

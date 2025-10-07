@@ -4,6 +4,7 @@ import * as q from '../db/queries';
 import type { TaskDocument } from '../db/model';
 import { getRouteDistance, Point } from './route';
 import { generateRouteLink, type Task } from 'shared';
+import { resolveTaskTypeTopicId } from './taskTypeSettings';
 
 export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   completed_at?: string | Date | null;
@@ -45,6 +46,17 @@ const prepareTaskPayload = (
   return payload;
 };
 
+const applyTaskTypeTopic = async (data: TaskData = {}): Promise<void> => {
+  const type = typeof data.task_type === 'string' ? data.task_type.trim() : '';
+  if (!type) {
+    return;
+  }
+  const topicId = await resolveTaskTypeTopicId(type);
+  if (typeof topicId === 'number') {
+    data.telegram_topic_id = topicId;
+  }
+};
+
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   if (data.startCoordinates && data.finishCoordinates) {
     data.google_route_url = generateRouteLink(
@@ -69,6 +81,7 @@ export const create = async (
 ): Promise<unknown> => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
   await applyRouteInfo(data);
+  await applyTaskTypeTopic(data);
   const payload = prepareTaskPayload(data);
   return q.createTask(payload, userId);
 };
@@ -87,6 +100,9 @@ export const update = async (
   userId = 0,
 ): Promise<unknown> => {
   await applyRouteInfo(data);
+  if (Object.prototype.hasOwnProperty.call(data, 'task_type')) {
+    await applyTaskTypeTopic(data);
+  }
   const payload = prepareTaskPayload(data);
   return q.updateTask(id, payload, userId);
 };

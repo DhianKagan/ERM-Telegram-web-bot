@@ -22,6 +22,7 @@ import CollectionForm from "./CollectionForm";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
+import TaskSettingsTab from "./TaskSettingsTab";
 import {
   collectionColumns,
   type CollectionTableRow,
@@ -53,6 +54,7 @@ import {
   UserGroupIcon,
   TruckIcon,
   KeyIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 const types = [
@@ -85,6 +87,11 @@ const types = [
     key: "users",
     label: "Пользователь",
     description: "Учётные записи в системе",
+  },
+  {
+    key: "tasks",
+    label: "Задачи",
+    description: "Поля формы и темы публикаций",
   },
 ] as const;
 
@@ -124,6 +131,7 @@ const tabIcons: Record<
   employees: UserGroupIcon,
   fleets: TruckIcon,
   users: KeyIcon,
+  tasks: ClipboardDocumentListIcon,
 };
 
 const renderBadgeList = (items: string[]) => {
@@ -270,6 +278,10 @@ const resolveReferenceName = (
 
 const USERS_ERROR_HINT = "Не удалось загрузить пользователей";
 const DUPLICATE_DIVISION_HINT_PREFIX = "Обнаружены дублирующиеся отделы";
+const TASK_SETTINGS_ERROR_HINT = "Не удалось загрузить настройки задач";
+const TASK_FIELD_SAVE_ERROR = "Не удалось сохранить поле задачи";
+const TASK_TYPE_SAVE_ERROR = "Не удалось сохранить тип задачи";
+const TASK_SETTINGS_RESET_ERROR = "Не удалось сбросить настройки задач";
 
 type CollectionColumn = (typeof collectionColumns)[number];
 
@@ -313,6 +325,9 @@ export default function CollectionsPage() {
   const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
     "create",
   );
+  const [taskFieldItems, setTaskFieldItems] = useState<CollectionItem[]>([]);
+  const [taskTypeItems, setTaskTypeItems] = useState<CollectionItem[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const actionButtonClass =
     "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
   const selectedCollectionInfo = useMemo(() => {
@@ -343,7 +358,7 @@ export default function CollectionsPage() {
   }, [active, currentQuery]);
 
   const load = useCallback(async () => {
-    if (active === "users") return;
+    if (active === "users" || active === "tasks") return;
     if (active === "fleets") {
       setItems([]);
       setTotal(0);
@@ -392,6 +407,130 @@ export default function CollectionsPage() {
       setHint(message || USERS_ERROR_HINT);
     }
   }, []);
+
+  const loadTaskSettings = useCallback(async () => {
+    setTasksLoading(true);
+    try {
+      const [fields, types] = await Promise.all([
+        fetchAllCollectionItems("task_fields"),
+        fetchAllCollectionItems("task_types"),
+      ]);
+      setTaskFieldItems(fields);
+      setTaskTypeItems(types);
+      setHint((prev) => (prev === TASK_SETTINGS_ERROR_HINT ? "" : prev));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : TASK_SETTINGS_ERROR_HINT;
+      setTaskFieldItems([]);
+      setTaskTypeItems([]);
+      setHint(message || TASK_SETTINGS_ERROR_HINT);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [setHint]);
+
+  const saveTaskField = useCallback(
+    async (item: CollectionItem, label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) {
+        throw new Error("Название не может быть пустым");
+      }
+      try {
+        if (item.meta?.virtual) {
+          await createCollectionItem("task_fields", {
+            name: item.name,
+            value: trimmed,
+          });
+        } else {
+          await updateCollectionItem(
+            item._id,
+            { name: item.name, value: trimmed },
+            { collectionType: "task_fields" },
+          );
+        }
+        await loadTaskSettings();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : TASK_FIELD_SAVE_ERROR;
+        throw new Error(message || TASK_FIELD_SAVE_ERROR);
+      }
+    },
+    [loadTaskSettings],
+  );
+
+  const resetTaskField = useCallback(
+    async (item: CollectionItem) => {
+      if (item.meta?.virtual) {
+        return;
+      }
+      try {
+        await removeCollectionItem(item._id);
+        await loadTaskSettings();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : TASK_SETTINGS_RESET_ERROR;
+        throw new Error(message || TASK_SETTINGS_RESET_ERROR);
+      }
+    },
+    [loadTaskSettings],
+  );
+
+  const saveTaskType = useCallback(
+    async (
+      item: CollectionItem,
+      payload: { label: string; tg_theme_url: string },
+    ) => {
+      const trimmedLabel = payload.label.trim();
+      if (!trimmedLabel) {
+        throw new Error("Название не может быть пустым");
+      }
+      const trimmedUrl = payload.tg_theme_url.trim();
+      try {
+        if (item.meta?.virtual) {
+          await createCollectionItem("task_types", {
+            name: item.name,
+            value: trimmedLabel,
+            ...(trimmedUrl ? { meta: { tg_theme_url: trimmedUrl } } : {}),
+          });
+        } else {
+          await updateCollectionItem(
+            item._id,
+            {
+              name: item.name,
+              value: trimmedLabel,
+              meta: trimmedUrl
+                ? { tg_theme_url: trimmedUrl }
+                : { tg_theme_url: "" },
+            },
+            { collectionType: "task_types" },
+          );
+        }
+        await loadTaskSettings();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : TASK_TYPE_SAVE_ERROR;
+        throw new Error(message || TASK_TYPE_SAVE_ERROR);
+      }
+    },
+    [loadTaskSettings],
+  );
+
+  const resetTaskType = useCallback(
+    async (item: CollectionItem) => {
+      if (item.meta?.virtual) {
+        return;
+      }
+      try {
+        await removeCollectionItem(item._id);
+        await loadTaskSettings();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : TASK_SETTINGS_RESET_ERROR;
+        throw new Error(message || TASK_SETTINGS_RESET_ERROR);
+      }
+    },
+    [loadTaskSettings],
+  );
 
   useEffect(() => {
     if (active === "users" || active === "employees") {
@@ -462,7 +601,7 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    if (active !== "users") {
+    if (active !== "users" && active !== "tasks") {
       void load();
       if (active !== "fleets") {
         setForm({ name: "", value: "" });
@@ -487,7 +626,12 @@ export default function CollectionsPage() {
     if (active !== "employees") {
       setIsEmployeeModalOpen(false);
     }
-    if (active === "users" || active === "employees" || active === "fleets") {
+    if (
+      active === "users" ||
+      active === "employees" ||
+      active === "fleets" ||
+      active === "tasks"
+    ) {
       setCollectionModalOpen(false);
     }
     if (active !== "users") {
@@ -1045,7 +1189,7 @@ export default function CollectionsPage() {
           </select>
         </div>
         <TabsList
-          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(6,minmax(9.5rem,1fr))]"
+          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]"
         >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
@@ -1159,6 +1303,17 @@ export default function CollectionsPage() {
                     badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                   />
                 </div>
+              ) : t.key === "tasks" ? (
+                <TaskSettingsTab
+                  fields={taskFieldItems}
+                  types={taskTypeItems}
+                  loading={tasksLoading}
+                  onRefresh={loadTaskSettings}
+                  onSaveField={saveTaskField}
+                  onResetField={resetTaskField}
+                  onSaveType={saveTaskType}
+                  onResetType={resetTaskType}
+                />
               ) : t.key === "employees" ? (
                 <div className="space-y-4">
                   <form

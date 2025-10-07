@@ -1,10 +1,12 @@
 // Назначение файла: объединение данных CollectionItem с устаревшими коллекциями.
 // Основные модули: mongoose, модели CollectionItem, Department, Employee.
 import { type FilterQuery } from 'mongoose';
+import { taskFields, TASK_TYPES } from 'shared';
 import { CollectionItem } from '../db/models/CollectionItem';
 import { Department } from '../db/models/department';
 import { Employee } from '../db/models/employee';
 import type { CollectionFilters } from '../db/repos/collectionRepo';
+import { parseTelegramTopicUrl } from '../utils/telegramTopics';
 
 export interface AggregatedCollectionItem {
   _id: string;
@@ -15,6 +17,9 @@ export interface AggregatedCollectionItem {
 }
 
 const SUPPORTED_LEGACY_TYPES = new Set(['departments', 'employees']);
+const TASK_TYPE_ORDER = new Map<string, number>(
+  TASK_TYPES.map((value, index) => [value, index]),
+);
 
 type LeanCollectionItem = {
   _id: unknown;
@@ -40,8 +45,9 @@ type LeanEmployee = {
 
 const toStringId = (value: unknown): string => String(value);
 
-const normalizeMeta = (meta?: Record<string, unknown>): Record<string, unknown> | undefined =>
-  meta ? { ...meta } : undefined;
+const normalizeMeta = (
+  meta?: Record<string, unknown>,
+): Record<string, unknown> | undefined => (meta ? { ...meta } : undefined);
 
 const mapCollectionItem = (doc: LeanCollectionItem): AggregatedCollectionItem => ({
   _id: toStringId(doc._id),
@@ -85,6 +91,123 @@ const mapEmployee = (doc: LeanEmployee): AggregatedCollectionItem => ({
 
 const shouldIncludeLegacyType = (type?: string): boolean =>
   !type || SUPPORTED_LEGACY_TYPES.has(type);
+
+const applyTaskFieldDefaults = (
+  item: AggregatedCollectionItem,
+  order: number,
+  defaults: (typeof taskFields)[number],
+) => {
+  const meta = item.meta ?? {};
+  item.meta = {
+    ...meta,
+    order,
+    defaultLabel: defaults.label,
+    fieldType: defaults.type,
+    required: Boolean(defaults.required),
+    virtual: Boolean(meta.virtual),
+  };
+  if (!item.value) {
+    item.value = defaults.label;
+  }
+};
+
+const applyTaskTypeDefaults = (
+  item: AggregatedCollectionItem,
+  order: number,
+) => {
+  const meta = item.meta ?? {};
+  const url =
+    typeof meta.tg_theme_url === 'string' ? meta.tg_theme_url.trim() : '';
+  const parsed = url ? parseTelegramTopicUrl(url) : null;
+  item.meta = {
+    ...meta,
+    order,
+    defaultLabel: item.name,
+    tg_theme_url: url || undefined,
+    tg_chat_id: parsed?.chatId,
+    tg_topic_id: parsed?.topicId,
+    virtual: Boolean(meta.virtual),
+  };
+  if (!item.value) {
+    item.value = item.name;
+  }
+};
+
+const ensureTaskFieldItems = (items: AggregatedCollectionItem[]) => {
+  const existing = new Map<string, AggregatedCollectionItem>();
+  items
+    .filter((item) => item.type === 'task_fields')
+    .forEach((item) => {
+      existing.set(item.name, item);
+    });
+  taskFields.forEach((field, index) => {
+    const target = existing.get(field.name);
+    if (target) {
+      applyTaskFieldDefaults(target, index, field);
+      return;
+    }
+    const virtual: AggregatedCollectionItem = {
+      _id: `virtual:task_field:${field.name}`,
+      type: 'task_fields',
+      name: field.name,
+      value: field.label,
+      meta: {
+        order: index,
+        defaultLabel: field.label,
+        fieldType: field.type,
+        required: Boolean(field.required),
+        virtual: true,
+      },
+    };
+    items.push(virtual);
+  });
+};
+
+const ensureTaskTypeItems = (items: AggregatedCollectionItem[]) => {
+  const existing = new Map<string, AggregatedCollectionItem>();
+  items
+    .filter((item) => item.type === 'task_types')
+    .forEach((item) => {
+      existing.set(item.name, item);
+    });
+  TASK_TYPES.forEach((typeName, index) => {
+    const target = existing.get(typeName);
+    if (target) {
+      applyTaskTypeDefaults(target, index);
+      return;
+    }
+    const virtual: AggregatedCollectionItem = {
+      _id: `virtual:task_type:${typeName}`,
+      type: 'task_types',
+      name: typeName,
+      value: typeName,
+      meta: {
+        order: index,
+        defaultLabel: typeName,
+        tg_theme_url: undefined,
+        tg_chat_id: undefined,
+        tg_topic_id: undefined,
+        virtual: true,
+      },
+    };
+    items.push(virtual);
+  });
+  items
+    .filter((item) => item.type === 'task_types')
+    .forEach((item) => {
+      const order = TASK_TYPE_ORDER.get(item.name) ?? TASK_TYPES.length;
+      applyTaskTypeDefaults(item, order);
+    });
+};
+
+const compareByOrder = (a?: unknown, b?: unknown): number => {
+  const left = typeof a === 'number' ? a : Number.POSITIVE_INFINITY;
+  const right = typeof b === 'number' ? b : Number.POSITIVE_INFINITY;
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
+};
 
 const matchesFilters = (
   item: AggregatedCollectionItem,
@@ -136,6 +259,13 @@ export async function listCollectionsWithLegacy(
     byTypeId.get(item.type)?.add(item._id);
   });
 
+  if (!typeFilter || typeFilter === 'task_fields') {
+    ensureTaskFieldItems(items);
+  }
+  if (!typeFilter || typeFilter === 'task_types') {
+    ensureTaskTypeItems(items);
+  }
+
   if (shouldIncludeLegacyType(typeFilter)) {
     if (!typeFilter || typeFilter === 'departments') {
       const departmentsRaw = (await Department.find().lean()) as LeanDepartment[];
@@ -167,7 +297,15 @@ export async function listCollectionsWithLegacy(
 
   const filtered = items
     .filter((item) => matchesFilters(item, filters))
-    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    .sort((a, b) => {
+      if (a.type === 'task_fields' && b.type === 'task_fields') {
+        return compareByOrder(a.meta?.order, b.meta?.order);
+      }
+      if (a.type === 'task_types' && b.type === 'task_types') {
+        return compareByOrder(a.meta?.order, b.meta?.order);
+      }
+      return a.name.localeCompare(b.name, 'ru');
+    });
   const paginated = paginate(filtered, page, limit);
 
   return { items: paginated, total: filtered.length };

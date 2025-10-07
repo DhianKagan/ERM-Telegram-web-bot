@@ -39,9 +39,8 @@ container.register(TOKENS.MapsService, { useValue: maps });
 container.register(TOKENS.TelegramApi, { useValue: telegram });
 container.register(TOKENS.SchedulerService, { useValue: scheduler });
 container.register(TOKENS.TmaAuthGuard, { useValue: tmaAuthGuard });
-container.register(TOKENS.TaskSyncController, {
-  useFactory: () => new TaskSyncController(bot),
-});
+container.register(TOKENS.BotInstance, { useValue: bot });
+container.registerSingleton(TOKENS.TaskSyncController, TaskSyncController);
 
 export { container };
 export default container;

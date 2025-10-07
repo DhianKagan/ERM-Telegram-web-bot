@@ -1,6 +1,6 @@
 // Модели MongoDB. Подключение выполняет модуль connection.ts
 // Основные модули: mongoose, slugify, connection
-import mongoose, { Schema, Document, Model, Types } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import slugify from 'slugify';
 import connect from './connection';
 
@@ -386,9 +386,8 @@ taskSchema.pre('init', (doc: Record<string, unknown>) => {
 
 taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
   if (!this.request_id) {
-    const count = await (
-      this.constructor as unknown as Model<TaskDocument>
-    ).countDocuments();
+    const taskModel = mongoose.model<TaskDocument>('Task');
+    const count = await taskModel.countDocuments();
     const num = String(count + 1).padStart(6, '0');
     this.request_id = `ERM_${num}`;
   }
@@ -478,32 +477,15 @@ const logSchema = new Schema<LogDocument>(
   { timestamps: true },
 );
 
-export const Task: Model<TaskDocument> = mongoose.model<TaskDocument>(
-  'Task',
-  taskSchema,
-);
+export const Task = mongoose.model<TaskDocument>('Task', taskSchema);
 // Отдельная коллекция для архивных задач
-export const Archive: Model<TaskDocument> = mongoose.model<TaskDocument>(
-  'Archive',
-  taskSchema,
-  'archives',
-);
-export const Role: Model<RoleDocument> = mongoose.model<RoleDocument>(
-  'Role',
-  roleSchema,
-);
+export const Archive = mongoose.model<TaskDocument>('Archive', taskSchema, 'archives');
+export const Role = mongoose.model<RoleDocument>('Role', roleSchema);
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
-export const User: Model<UserDocument> = mongoose.model<UserDocument>(
-  'User',
-  userSchema,
-  'telegram_users',
-);
-export const Log: Model<LogDocument> = mongoose.model<LogDocument>(
-  'Log',
-  logSchema,
-);
+export const User = mongoose.model<UserDocument>('User', userSchema, 'telegram_users');
+export const Log = mongoose.model<LogDocument>('Log', logSchema);
 
 // Коллекция загруженных файлов
 // Основные модули: mongoose
@@ -531,10 +513,7 @@ const fileSchema = new Schema<FileDocument>({
   uploadedAt: { type: Date, default: Date.now },
 });
 
-export const File: Model<FileDocument> = mongoose.model<FileDocument>(
-  'File',
-  fileSchema,
-);
+export const File = mongoose.model<FileDocument>('File', fileSchema);
 
 // Шаблон задачи хранит предустановленные поля
 // Основные модули: mongoose
@@ -553,5 +532,7 @@ const taskTemplateSchema = new Schema<TaskTemplateDocument>(
   { timestamps: true },
 );
 
-export const TaskTemplate: Model<TaskTemplateDocument> =
-  mongoose.model<TaskTemplateDocument>('TaskTemplate', taskTemplateSchema);
+export const TaskTemplate = mongoose.model<TaskTemplateDocument>(
+  'TaskTemplate',
+  taskTemplateSchema,
+);

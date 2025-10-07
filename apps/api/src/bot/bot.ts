@@ -219,7 +219,7 @@ async function sendFleetVehicles(ctx: Context): Promise<void> {
       await ctx.reply(messages.noVehicles);
       return;
     }
-    const lines = vehicles.map((vehicle) =>
+    const lines = vehicles.map((vehicle: FleetVehicleAttrs) =>
       formatVehicleLine({
         name: vehicle.name,
         registrationNumber: vehicle.registrationNumber,

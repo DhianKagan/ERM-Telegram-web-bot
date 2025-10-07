@@ -1,14 +1,9 @@
 // Назначение файла: восстановление целостности коллекций департаментов, отделов и должностей.
 // Основные модули: mongoose, dotenv, path.
-/// <reference path="../../apps/web/src/types/mongoose.d.ts" />
 /// <reference path="../../apps/web/src/types/mongodb.d.ts" />
 import * as path from 'path';
 import type { AnyBulkWriteOperation } from 'mongodb';
-import type {
-  Model,
-  Schema as MongooseSchema,
-  Types as MongooseTypes,
-} from 'mongoose';
+import type { Schema as MongooseSchema, Types as MongooseTypes } from 'mongoose';
 
 interface DotenvModule {
   config: (options: { path: string }) => void;
@@ -37,6 +32,18 @@ const mongoose: MongooseModule = (() => {
 })();
 
 const { Schema, Types } = mongoose;
+
+interface LeanModel<T> {
+  find(filter?: Record<string, unknown>): {
+    lean(): Promise<T[]>;
+    lean<U>(): Promise<U[]>;
+  };
+  bulkWrite(
+    operations: Array<AnyBulkWriteOperation<T>>,
+    options?: { ordered?: boolean },
+  ): Promise<{ modifiedCount?: number; upsertedCount?: number }>;
+  create(doc: Partial<T>): Promise<T & { toObject(): T }>;
+}
 
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 
@@ -164,10 +171,10 @@ function ensureModel<T>(
   name: string,
   schema: MongooseSchema<T>,
   collection?: string,
-): Model<T> {
-  const existing = mongoose.models[name] as Model<T> | undefined;
+): LeanModel<T> {
+  const existing = mongoose.models[name] as LeanModel<T> | undefined;
   if (existing) return existing;
-  return mongoose.model<T>(name, schema, collection);
+  return mongoose.model<T>(name, schema, collection) as LeanModel<T>;
 }
 
 const CollectionItem = ensureModel<CollectionItemDoc>(
@@ -319,7 +326,7 @@ const ensureCollectionItem = async (
 
 const processReferences = async <T extends ReferenceDocument>(
   store: Map<string, Map<string, CollectionItemDoc>>,
-  Model: Model<T>,
+  Model: LeanModel<T>,
   entity: string,
 ): Promise<{ restored: number; cleared: number }> => {
   const docs = await Model.find().lean<T>();

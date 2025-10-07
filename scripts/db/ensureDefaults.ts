@@ -1,8 +1,7 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, dotenv, path
-/// <reference path="../../apps/web/src/types/mongoose.d.ts" />
 import * as path from 'path'; // модуль для работы с путями
-import type { ConnectOptions, Model } from 'mongoose';
+import type { ConnectOptions } from 'mongoose';
 
 interface DotenvModule {
   config: (options?: { path?: string }) => void;
@@ -47,7 +46,7 @@ const roleSchema = new mongoose.Schema<RoleRecord>({
   name: String,
   permissions: [String],
 });
-const Role: Model<RoleRecord> = mongoose.model<RoleRecord>('Role', roleSchema);
+const Role = mongoose.model<RoleRecord>('Role', roleSchema);
 
 async function ensureDefaults(): Promise<void> {
   if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {

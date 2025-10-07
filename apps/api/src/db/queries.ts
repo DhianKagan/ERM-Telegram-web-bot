@@ -220,7 +220,7 @@ export async function updateTaskStatus(
       ? existing.assigned_user_id
       : undefined;
   const assignees = Array.isArray(existing.assignees)
-    ? existing.assignees.map((value) => Number(value))
+    ? existing.assignees.map((value: unknown) => Number(value))
     : [];
   const hasAssignments =
     typeof assignedUserId === 'number' || assignees.length > 0;
@@ -413,7 +413,7 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
       ? data.created_by
       : 0;
   if (Array.isArray(data.history) && data.history.length > 0) {
-    const normalized = data.history.map((entry) => {
+    const normalized = data.history.map((entry: HistoryEntry | null | undefined) => {
       if (entry && typeof entry === 'object') {
         const withFallback = { ...entry } as HistoryEntry & {
           changed_by?: unknown;
@@ -638,7 +638,7 @@ export async function getUsersMap(
   const numeric = ids.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
   const list = await User.find({ telegram_id: { $in: numeric } });
   const map: Record<number, UserDocument> = {};
-  list.forEach((u) => {
+  list.forEach((u: UserDocument) => {
     map[u.telegram_id] = u;
   });
   return map;
@@ -687,7 +687,10 @@ export interface RoleWithAccess extends RoleAttrs {
 export async function listRoles(): Promise<RoleWithAccess[]> {
   const roles =
     await Role.find().lean<(RoleAttrs & { _id: Types.ObjectId })[]>();
-  return roles.map((r) => ({ ...r, access: accessByRole(r.name || '') }));
+  return roles.map((r: RoleAttrs & { _id: Types.ObjectId }) => ({
+    ...r,
+    access: accessByRole(r.name || ''),
+  }));
 }
 
 export async function getRole(id: string): Promise<RoleDocument | null> {

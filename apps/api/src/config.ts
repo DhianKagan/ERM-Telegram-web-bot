@@ -8,14 +8,42 @@ if (!process.env.TZ) {
   process.env.TZ = PROJECT_TIMEZONE;
 }
 
+const isMochaRun = process.argv.some((arg) => /(^|[\\/])mocha(?:\.c?js)?$/i.test(arg));
+if (!process.env.NODE_ENV && isMochaRun) {
+  process.env.NODE_ENV = 'test';
+}
+
+const nodeEnv = process.env.NODE_ENV || 'development';
+const isTestEnvironment =
+  nodeEnv === 'test' ||
+  Boolean(process.env.VITEST_WORKER_ID) ||
+  Boolean(process.env.JEST_WORKER_ID) ||
+  isMochaRun;
+const strictEnvs = new Set(['production', 'production-build']);
+
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 
 const required = ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'] as const;
-// Пропускаем проверку при сборке без токена
-if (process.env.NODE_ENV !== 'production-build') {
-  for (const k of required) {
-    if (!process.env[k]) throw new Error(`Переменная ${k} не задана`);
+const fallback: Record<(typeof required)[number], string> = {
+  BOT_TOKEN: 'test-bot-token',
+  CHAT_ID: '0',
+  JWT_SECRET: 'test-secret',
+  APP_URL: 'https://localhost',
+};
+
+for (const key of required) {
+  const current = (process.env[key] || '').trim();
+  if (current) {
+    continue;
+  }
+  if (strictEnvs.has(nodeEnv)) {
+    throw new Error(`Переменная ${key} не задана`);
+  }
+  if (isTestEnvironment) {
+    process.env[key] = fallback[key];
+  } else {
+    throw new Error(`Переменная ${key} не задана`);
   }
 }
 

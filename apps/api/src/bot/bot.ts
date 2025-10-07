@@ -855,23 +855,11 @@ async function processStatusAction(
               }
             }
           } else {
-            const options: NonNullable<
-              Parameters<typeof bot.telegram.sendMessage>[2]
-            > = {
-              parse_mode: 'MarkdownV2',
-              link_preview_options: { is_disabled: true },
-            };
-            if (typeof topicId === 'number') {
-              options.message_thread_id = topicId;
-            }
-            const statusMessage = await bot.telegram.sendMessage(
-              chatId,
-              text,
-              options,
+            console.warn(
+              'Пропущено обновление истории статусов: отсутствует message_id для задачи',
+              docId,
+              topicId,
             );
-            if (statusMessage?.message_id) {
-              await updateTaskHistoryMessageId(docId, statusMessage.message_id);
-            }
           }
         }
       } catch (error) {

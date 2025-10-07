@@ -244,7 +244,7 @@ test('редактирует существующее сообщение ист�
   expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task123', 777);
 });
 
-test('создаёт новое сообщение истории и сохраняет идентификатор', async () => {
+test('пропускает отправку истории без сохранённого идентификатора', async () => {
   updateTaskStatusMock.mockResolvedValue({ _id: 'task999' });
   getTaskHistoryMessageMock.mockResolvedValue({
     taskId: 'task999',
@@ -252,23 +252,14 @@ test('создаёт новое сообщение истории и сохра�
     topicId: 55,
     text: '*История изменений*\n• новое событие',
   });
-  sendMessageMock.mockResolvedValue({ message_id: 31337 });
   const ctx = createContext('task_accept_confirm:task999') as Parameters<
     typeof processStatusAction
   >[0];
 
   await processStatusAction(ctx, 'В работе', 'Принято');
 
-  expect(sendMessageMock).toHaveBeenCalledWith(
-    -1001234567890,
-    '*История изменений*\n• новое событие',
-    {
-      parse_mode: 'MarkdownV2',
-      message_thread_id: 55,
-      link_preview_options: { is_disabled: true },
-    },
-  );
-  expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task999', 31337);
+  expect(sendMessageMock).not.toHaveBeenCalled();
+  expect(updateTaskHistoryMessageIdMock).not.toHaveBeenCalled();
   expect(editMessageTextMock).not.toHaveBeenCalled();
 });
 
@@ -314,23 +305,22 @@ test('не редактирует клавиатуру при повторном
   expect(updateTaskStatusMock).toHaveBeenCalledWith('task123', 'В работе', 42);
 });
 
-test('при завершении задачи отправляет только обновлённую историю', async () => {
+test('при завершении задачи пропускает отправку истории без message_id', async () => {
   updateTaskStatusMock.mockResolvedValue({ _id: 'task777' });
   getTaskHistoryMessageMock.mockResolvedValue({
     taskId: 'task777',
     messageId: null,
     text: '*История изменений*\\n• завершение',
   });
-  sendMessageMock.mockResolvedValue({ message_id: 451 });
   const ctx = createContext('task_done_confirm:task777') as Parameters<
     typeof processStatusAction
   >[0];
 
   await processStatusAction(ctx, 'Выполнена', 'Сделано');
 
-  expect(sendMessageMock).toHaveBeenCalledTimes(1);
+  expect(sendMessageMock).not.toHaveBeenCalled();
   expect(editMessageTextMock).not.toHaveBeenCalled();
-  expect(updateTaskHistoryMessageIdMock).toHaveBeenCalledWith('task777', 451);
+  expect(updateTaskHistoryMessageIdMock).not.toHaveBeenCalled();
 });
 
 describe('обработка завершения задачи', () => {

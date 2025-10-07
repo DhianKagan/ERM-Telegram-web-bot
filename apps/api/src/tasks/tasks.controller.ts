@@ -172,7 +172,7 @@ export default class TasksController {
   constructor(
     @inject(TOKENS.TasksService) private service: TasksService,
     @inject(TOKENS.TaskSyncController)
-    private taskSyncController: TaskSyncController = new TaskSyncController(),
+    private taskSyncController: TaskSyncController = new TaskSyncController(bot),
   ) {}
 
   private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {

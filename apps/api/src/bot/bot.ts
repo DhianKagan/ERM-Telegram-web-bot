@@ -38,7 +38,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
-const taskSyncController = new TaskSyncController();
+const taskSyncController = new TaskSyncController(bot);
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);

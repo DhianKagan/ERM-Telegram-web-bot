@@ -13,6 +13,13 @@ process.env.MONGO_DATABASE_URL ||=
 process.env.RETRY_ATTEMPTS ||= '0';
 process.env.SUPPRESS_LOGS ||= '1';
 
+// Увеличиваем тайм-аут буфера операций, чтобы дождаться запуска MongoMemoryServer в CI
+void import('mongoose')
+  .then(({ default: mongoose }) => {
+    mongoose.set('bufferTimeoutMS', 30000);
+  })
+  .catch(() => undefined);
+
 import { TextDecoder, TextEncoder } from 'util';
 (global as any).TextEncoder = TextEncoder;
 (global as any).TextDecoder = TextDecoder as any;

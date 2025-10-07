@@ -35,8 +35,8 @@ const mongoose: MongooseModule = (() => {
 })();
 
 const { Schema, Types } = mongoose;
-type MongoObjectIdCtor = typeof import('mongodb').ObjectId;
-const ObjectIdCtor: MongoObjectIdCtor = Types.ObjectId as unknown as MongoObjectIdCtor;
+type MongoObjectIdCtor = typeof Types.ObjectId;
+const ObjectIdCtor: MongoObjectIdCtor = Types.ObjectId;
 
 type BulkUpdateOperation<T> = {
   updateOne: {

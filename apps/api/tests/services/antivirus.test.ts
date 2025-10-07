@@ -1,4 +1,8 @@
-// Назначение: тесты сервиса антивируса. Модули: jest, clamdjs, wgLogEngine
+// Назначение: тесты сервиса антивируса. Модули: jest, node:fs/promises, clamdjs, wgLogEngine
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promises as fs } from 'node:fs';
 import type { AntivirusConfig } from '../../src/config/antivirus';
 
 const mockPing = jest.fn();
@@ -27,17 +31,12 @@ jest.mock('../../src/services/wgLogEngine', () => ({
   writeLog: mockWriteLog,
 }));
 
-const configMock: AntivirusConfig = {
-  host: '127.0.0.1',
-  port: 3310,
-  timeout: 5000,
-  chunkSize: 64 * 1024,
-  enabled: true,
-  vendor: 'ClamAV',
-};
+let mockConfig: AntivirusConfig;
 
 jest.mock('../../src/config/antivirus', () => ({
-  antivirusConfig: configMock,
+  get antivirusConfig() {
+    return mockConfig;
+  },
 }));
 
 let scanFile: (path: string) => Promise<boolean>;
@@ -58,18 +57,18 @@ beforeEach(async () => {
   mockCreateScanner.mockReset();
   mockCreateScanner.mockImplementation(() => ({ scanFile: mockScanFile }));
   mockVersion.mockResolvedValue('ClamAV test build');
-  Object.assign(configMock, {
+  mockConfig = {
     host: '127.0.0.1',
     port: 3310,
     timeout: 5000,
     chunkSize: 64 * 1024,
     enabled: true,
-    vendor: 'ClamAV' as const,
-  });
+    vendor: 'ClamAV',
+  };
   await loadModule();
 });
 
-test('активирует антивирус и сканирует файл', async () => {
+test('активирует антивирус ClamAV и сканирует файл', async () => {
   mockPing.mockResolvedValue(true);
   mockVersion.mockResolvedValue('ClamAV 1.0.0/27000/Mon Oct 06 12:00:00 2025');
   mockIsCleanReply.mockReturnValue(true);
@@ -89,7 +88,7 @@ test('активирует антивирус и сканирует файл', a
   );
 });
 
-test('фиксирует заражённый файл и блокирует загрузку', async () => {
+test('фиксирует заражённый файл и блокирует загрузку через ClamAV', async () => {
   mockPing.mockResolvedValue(true);
   mockVersion.mockResolvedValue('ClamAV 1.0.0/27000/Mon Oct 06 12:00:00 2025');
   mockIsCleanReply.mockReturnValue(false);
@@ -108,8 +107,15 @@ test('фиксирует заражённый файл и блокирует з�
   );
 });
 
-test('игнорирует сканирование при отключённом антивирусе', async () => {
-  configMock.enabled = false;
+test('игнорирует сканирование при отключённом ClamAV', async () => {
+  mockConfig = {
+    host: '127.0.0.1',
+    port: 3310,
+    timeout: 5000,
+    chunkSize: 64 * 1024,
+    enabled: false,
+    vendor: 'ClamAV',
+  };
   await loadModule();
 
   const result = await scanFile('/tmp/file.txt');
@@ -138,7 +144,7 @@ test('логирует недоступность демона ClamAV', async ()
   );
 });
 
-test('ошибка сканирования блокирует файл и пишет лог', async () => {
+test('ошибка сканирования ClamAV блокирует файл и пишет лог', async () => {
   mockPing.mockResolvedValue(true);
   mockIsCleanReply.mockReturnValue(true);
   mockScanFile.mockImplementationOnce(() => Promise.reject(new Error('socket timeout')));
@@ -157,4 +163,103 @@ test('ошибка сканирования блокирует файл и пи�
       error: 'socket timeout',
     }),
   );
+});
+
+describe('сигнатурный сканер', () => {
+  const createdFiles: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      createdFiles.splice(0).map(async (file) => {
+        try {
+          await fs.unlink(file);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        }
+      }),
+    );
+  });
+
+  async function createTempFile(content: string): Promise<string> {
+    const filePath = join(tmpdir(), `antivirus-${randomUUID()}.txt`);
+    await fs.writeFile(filePath, content);
+    createdFiles.push(filePath);
+    return filePath;
+  }
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockWriteLog.mockResolvedValue(undefined);
+    mockPing.mockReset();
+    mockVersion.mockReset();
+    mockIsCleanReply.mockReset();
+    mockScanFile.mockReset();
+    mockCreateScanner.mockReset();
+    mockConfig = {
+      enabled: true,
+      vendor: 'Signature',
+      maxFileSize: 1024,
+      signatures: ['virus', 'EICAR'],
+    };
+    await loadModule();
+  });
+
+  test('активирует сигнатурный сканер и пропускает безопасный файл', async () => {
+    const file = await createTempFile('просто текст без угроз');
+
+    const result = await scanFile(file);
+
+    expect(result).toBe(true);
+    expect(mockWriteLog).toHaveBeenCalledWith(
+      'Антивирус активирован',
+      'info',
+      expect.objectContaining({ vendor: 'Signature', signatures: 2 }),
+    );
+  });
+
+  test('находит сигнатуру и отклоняет файл', async () => {
+    const file = await createTempFile('файл содержит EICAR-строку и должен быть отклонён');
+
+    const result = await scanFile(file);
+
+    expect(result).toBe(false);
+    expect(mockWriteLog).toHaveBeenCalledWith(
+      'Обнаружен вирус',
+      'warn',
+      expect.objectContaining({ vendor: 'Signature', signature: 'EICAR' }),
+    );
+  });
+
+  test('блокирует файл, превышающий лимит размера', async () => {
+    mockConfig = {
+      enabled: true,
+      vendor: 'Signature',
+      maxFileSize: 8,
+      signatures: ['virus'],
+    };
+    await loadModule();
+    const file = await createTempFile('слишком длинное содержимое');
+
+    const result = await scanFile(file);
+
+    expect(result).toBe(false);
+    expect(mockWriteLog).toHaveBeenCalledWith(
+      'Размер файла превышает лимит сигнатурного сканера',
+      'warn',
+      expect.objectContaining({ vendor: 'Signature' }),
+    );
+  });
+
+  test('возвращает false при ошибке чтения файла', async () => {
+    await loadModule();
+
+    const result = await scanFile('/tmp/unknown.txt');
+
+    expect(result).toBe(false);
+    expect(mockWriteLog).toHaveBeenCalledWith(
+      'Ошибка сканирования',
+      'error',
+      expect.objectContaining({ vendor: 'Signature' }),
+    );
+  });
 });

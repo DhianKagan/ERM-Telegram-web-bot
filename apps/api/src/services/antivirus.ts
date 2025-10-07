@@ -1,6 +1,11 @@
 // Сканирование файлов на вирусы
-// Модули: clamdjs, config/antivirus, wgLogEngine
+// Модули: node:crypto, node:fs/promises, clamdjs, config/antivirus, wgLogEngine
+import { createHash } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
 import clamd from 'clamdjs';
+import path from 'path';
+import { uploadsDir } from '../config/storage';
+import type { AntivirusConfig, ClamAvConfig, SignatureConfig } from '../config/antivirus';
 import { antivirusConfig } from '../config/antivirus';
 import { writeLog } from './wgLogEngine';
 
@@ -10,6 +15,26 @@ let scanner: ClamScanner | null = null;
 let versionInfo: string | null = null;
 let status: 'idle' | 'available' | 'unavailable' | 'disabled' = 'idle';
 let initPromise: Promise<void> | null = null;
+
+const signatureEntries =
+  antivirusConfig.vendor === 'Signature'
+    ? Array.from(new Set((antivirusConfig as SignatureConfig).signatures)).map((value) => ({
+        value,
+        buffer: Buffer.from(value, 'utf-8'),
+      }))
+    : [];
+
+const signatureVersion =
+  antivirusConfig.vendor === 'Signature'
+    ? `SignatureSet/${signatureEntries.length}/${createHash('sha256')
+        .update(signatureEntries.map((entry) => entry.value).join('|'))
+        .digest('hex')
+        .slice(0, 8)}`
+    : null;
+
+function isClamConfig(config: AntivirusConfig): config is ClamAvConfig {
+  return config.vendor === 'ClamAV';
+}
 
 function formatError(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -24,9 +49,16 @@ async function logStatus(
   status = nextStatus;
   const baseMetadata = {
     vendor: antivirusConfig.vendor,
-    host: antivirusConfig.host,
-    port: antivirusConfig.port,
     version: versionInfo ?? undefined,
+    ...(isClamConfig(antivirusConfig)
+      ? {
+          host: antivirusConfig.host,
+          port: antivirusConfig.port,
+        }
+      : {
+          signatures: signatureEntries.length,
+          maxFileSize: antivirusConfig.maxFileSize,
+        }),
     ...metadata,
   };
   if (nextStatus === 'available') {
@@ -45,6 +77,11 @@ async function ensureScanner(): Promise<void> {
     await logStatus('disabled');
     return;
   }
+  if (antivirusConfig.vendor === 'Signature') {
+    versionInfo = signatureVersion;
+    await logStatus('available');
+    return;
+  }
   if (scanner) return;
   if (initPromise) {
     await initPromise;
@@ -52,6 +89,9 @@ async function ensureScanner(): Promise<void> {
   }
   initPromise = (async () => {
     try {
+      if (!isClamConfig(antivirusConfig)) {
+        throw new Error('Конфигурация ClamAV недоступна');
+      }
       const alive = await clamd.ping(
         antivirusConfig.host,
         antivirusConfig.port,
@@ -78,12 +118,49 @@ async function ensureScanner(): Promise<void> {
   }
 }
 
-export async function scanFile(path: string): Promise<boolean> {
+export async function scanFile(filePath: string): Promise<boolean> {
+  // Normalize and validate path is within uploadsDir
+  const normalizedPath = path.resolve(uploadsDir, path.relative(uploadsDir, filePath));
+  if (!normalizedPath.startsWith(path.resolve(uploadsDir) + path.sep)) {
+    throw new Error('INVALID_PATH');
+  }
   await ensureScanner();
-  if (!scanner) return true;
+  if (antivirusConfig.vendor === 'Signature') {
+    try {
+      const fileStat = await stat(normalizedPath);
+      if (fileStat.size > antivirusConfig.maxFileSize) {
+        await writeLog('Размер файла превышает лимит сигнатурного сканера', 'warn', {
+          path,
+          vendor: antivirusConfig.vendor,
+          size: fileStat.size,
+          maxFileSize: antivirusConfig.maxFileSize,
+        });
+        return false;
+      }
+      const content = await readFile(normalizedPath);
+      const match = signatureEntries.find((entry) => content.includes(entry.buffer));
+      if (match) {
+        await writeLog('Обнаружен вирус', 'warn', {
+          path,
+          vendor: antivirusConfig.vendor,
+          signature: match.value,
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      await writeLog('Ошибка сканирования', 'error', {
+        path,
+        vendor: antivirusConfig.vendor,
+        error: formatError(error),
+      });
+      return false;
+    }
+  }
+  if (!scanner || !isClamConfig(antivirusConfig)) return true;
   try {
     const reply = await scanner.scanFile(
-      path,
+      normalizedPath,
       antivirusConfig.timeout,
       antivirusConfig.chunkSize,
     );

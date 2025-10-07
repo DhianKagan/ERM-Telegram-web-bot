@@ -22,6 +22,7 @@ import CollectionForm from "./CollectionForm";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
+import TaskSettingsTab from "./TaskSettingsTab";
 import {
   collectionColumns,
   type CollectionTableRow,
@@ -53,6 +54,7 @@ import {
   UserGroupIcon,
   TruckIcon,
   KeyIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 const types = [
@@ -85,6 +87,11 @@ const types = [
     key: "users",
     label: "Пользователь",
     description: "Учётные записи в системе",
+  },
+  {
+    key: "tasks",
+    label: "Задачи",
+    description: "Поля и каналы уведомлений",
   },
 ] as const;
 
@@ -124,6 +131,7 @@ const tabIcons: Record<
   employees: UserGroupIcon,
   fleets: TruckIcon,
   users: KeyIcon,
+  tasks: ClipboardDocumentListIcon,
 };
 
 const renderBadgeList = (items: string[]) => {
@@ -343,7 +351,7 @@ export default function CollectionsPage() {
   }, [active, currentQuery]);
 
   const load = useCallback(async () => {
-    if (active === "users") return;
+    if (active === "users" || active === "tasks") return;
     if (active === "fleets") {
       setItems([]);
       setTotal(0);
@@ -462,13 +470,18 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    if (active !== "users") {
-      void load();
-      if (active !== "fleets") {
-        setForm({ name: "", value: "" });
-      }
-    } else {
+    if (active === "users") {
       setHint("");
+      return;
+    }
+    if (active === "tasks") {
+      setHint("");
+      setForm({ name: "", value: "" });
+      return;
+    }
+    void load();
+    if (active !== "fleets") {
+      setForm({ name: "", value: "" });
     }
   }, [load, active]);
 
@@ -487,7 +500,12 @@ export default function CollectionsPage() {
     if (active !== "employees") {
       setIsEmployeeModalOpen(false);
     }
-    if (active === "users" || active === "employees" || active === "fleets") {
+    if (
+      active === "users" ||
+      active === "employees" ||
+      active === "fleets" ||
+      active === "tasks"
+    ) {
       setCollectionModalOpen(false);
     }
     if (active !== "users") {
@@ -1045,7 +1063,7 @@ export default function CollectionsPage() {
           </select>
         </div>
         <TabsList
-          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(6,minmax(9.5rem,1fr))]"
+          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]"
         >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
@@ -1083,6 +1101,17 @@ export default function CollectionsPage() {
         </TabsList>
         <div className="flex-1 space-y-6">
           {types.map((t) => {
+            if (t.key === "tasks") {
+              return (
+                <TabsContent
+                  key={t.key}
+                  value={t.key}
+                  className="mt-0 flex flex-col gap-4"
+                >
+                  <TaskSettingsTab />
+                </TabsContent>
+              );
+            }
             const rows: CollectionTableRow[] =
               t.key === "departments" ||
               t.key === "divisions" ||
@@ -1097,21 +1126,21 @@ export default function CollectionsPage() {
                     displayValue: item.value,
                     metaSummary: item.meta ? JSON.stringify(item.meta) : "",
                   }));
-          const columnsForType =
-            t.key === "departments"
-              ? departmentColumns
-              : t.key === "divisions"
-                ? divisionColumns
-                : t.key === "positions"
-                  ? positionColumns
-                  : collectionColumns;
-          return (
-            <TabsContent
-              key={t.key}
-              value={t.key}
-              className="mt-0 flex flex-col gap-4"
-            >
-              {t.key === "users" ? (
+            const columnsForType =
+              t.key === "departments"
+                ? departmentColumns
+                : t.key === "divisions"
+                  ? divisionColumns
+                  : t.key === "positions"
+                    ? positionColumns
+                    : collectionColumns;
+            return (
+              <TabsContent
+                key={t.key}
+                value={t.key}
+                className="mt-0 flex flex-col gap-4"
+              >
+                {t.key === "users" ? (
                 <div className="space-y-4">
                   <form
                     onSubmit={submitUserSearch}

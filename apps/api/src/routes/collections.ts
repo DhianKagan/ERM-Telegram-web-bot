@@ -93,10 +93,14 @@ router.post(
         return normalized.length > 0;
       })
       .withMessage('Значение элемента обязательно'),
+    body('meta')
+      .optional()
+      .custom((value) => !value || typeof value === 'object')
+      .withMessage('Метаданные должны быть объектом'),
   ]),
   async (req, res, next: NextFunction) => {
     try {
-      const body = req.body as CollectionItemAttrs;
+      const body = req.body as CollectionItemAttrs & { meta?: Record<string, unknown> };
       const type = body.type.trim();
       const name = body.name.trim();
       const rawValue = typeof body.value === 'string' ? body.value : '';
@@ -110,7 +114,11 @@ router.post(
         });
         return;
       }
-      const item = await repo.create({ type, name, value });
+      const payload: CollectionItemAttrs = { type, name, value };
+      if (body.meta && typeof body.meta === 'object') {
+        payload.meta = body.meta;
+      }
+      const item = await repo.create(payload);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof MongooseError.ValidationError) {
@@ -147,6 +155,10 @@ router.put(
       .optional()
       .isString()
       .withMessage('Некорректное значение элемента'),
+    body('meta')
+      .optional()
+      .custom((value) => !value || typeof value === 'object')
+      .withMessage('Метаданные должны быть объектом'),
   ]),
   async (req, res, next: NextFunction) => {
     try {
@@ -157,7 +169,9 @@ router.put(
         res.sendStatus(404);
         return;
       }
-      const body = req.body as Partial<CollectionItemAttrs>;
+      const body = req.body as Partial<CollectionItemAttrs> & {
+        meta?: Record<string, unknown> | null;
+      };
       const payload: Partial<CollectionItemAttrs> = {};
       if (typeof body.name === 'string') {
         payload.name = body.name.trim();
@@ -183,6 +197,9 @@ router.put(
           return;
         }
         payload.value = normalizedValue;
+      }
+      if (body.meta && typeof body.meta === 'object') {
+        payload.meta = body.meta;
       }
       const item = await repo.update(existing.id, payload);
       if (!item) {

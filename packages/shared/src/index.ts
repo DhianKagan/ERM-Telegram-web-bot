@@ -16,5 +16,8 @@ export type {
   VehiclePositionDto,
   VehicleSensorDto,
   VehicleTrackPointDto,
+  TaskFieldDisplaySetting,
+  TaskTypeSetting,
+  TaskSettingsResponse,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

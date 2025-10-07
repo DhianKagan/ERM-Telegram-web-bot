@@ -31,6 +31,24 @@ export interface Task {
   [key: string]: unknown;
 }
 
+export interface TaskFieldDisplaySetting {
+  name: string;
+  label: string;
+  defaultLabel: string;
+}
+
+export interface TaskTypeSetting {
+  name: string;
+  label: string;
+  defaultLabel: string;
+  tg_theme_url?: string;
+}
+
+export interface TaskSettingsResponse {
+  fields: TaskFieldDisplaySetting[];
+  types: TaskTypeSetting[];
+}
+
 export interface User {
   telegram_id: number;
   username: string;

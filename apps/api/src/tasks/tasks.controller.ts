@@ -46,6 +46,7 @@ import escapeMarkdownV2 from '../utils/mdEscape';
 import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 import TaskSyncController from '../controllers/taskSync.controller';
+import { resolveTaskTopicId } from '../services/taskSettings';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -1440,7 +1441,20 @@ export default class TasksController {
         ? (plain.status as SharedTask['status'])
         : undefined,
     );
-    const topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    let topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    const updatesToSet: Record<string, unknown> = {};
+    const updatesToUnset: Record<string, unknown> = {};
+    const resolvedTopicId = await resolveTaskTopicId(
+      plain.task_type,
+      groupChatId,
+    );
+    if (
+      typeof resolvedTopicId === 'number' &&
+      !this.areTopicsEqual(topicId, resolvedTopicId)
+    ) {
+      topicId = resolvedTopicId;
+      updatesToSet.telegram_topic_id = resolvedTopicId;
+    }
 
     const previousMessageId =
       typeof previousPlain?.telegram_message_id === 'number'
@@ -1453,8 +1467,6 @@ export default class TasksController {
       typeof plain.telegram_message_id === 'number'
         ? plain.telegram_message_id
         : undefined;
-    const updatesToSet: Record<string, unknown> = {};
-    const updatesToUnset: Record<string, unknown> = {};
     let messageIdGuard: number | null | undefined;
     let canPersistNewMessageId =
       typeof previousMessageId === 'number' ? false : true;

@@ -39,10 +39,14 @@ const { __editMessageTextMock: editMessageTextMock, __sendMessageMock: sendMessa
     __sendMessageMock: jest.Mock;
   };
 
-const { updateTaskSummaryMessageId: updateTaskSummaryMessageIdMock } = jest.requireMock(
-  '../apps/api/src/tasks/taskHistory.service',
-) as {
+const {
+  updateTaskSummaryMessageId: updateTaskSummaryMessageIdMock,
+  updateTaskHistoryMessageId: updateTaskHistoryMessageIdMock,
+  getTaskHistoryMessage: getTaskHistoryMessageMock,
+} = jest.requireMock('../apps/api/src/tasks/taskHistory.service') as {
   updateTaskSummaryMessageId: jest.Mock;
+  updateTaskHistoryMessageId: jest.Mock;
+  getTaskHistoryMessage: jest.Mock;
 };
 
 describe('updateTaskStatusSummary', () => {
@@ -98,6 +102,41 @@ describe('updateTaskStatusSummary', () => {
     expect(editMessageTextMock).toHaveBeenCalledTimes(1);
     expect(sendMessageMock).not.toHaveBeenCalled();
     expect(updateTaskSummaryMessageIdMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('refreshStatusHistoryMessage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.CHAT_ID = '-100200';
+  });
+
+  it('не отправляет новое сообщение истории при отсутствии идентификатора', async () => {
+    const controller = new TasksController({} as any);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    getTaskHistoryMessageMock.mockResolvedValue({
+      taskId: 'history-missing-id',
+      messageId: null,
+      text: '*История изменений*\n• обновление',
+    });
+
+    await (controller as unknown as {
+      refreshStatusHistoryMessage(taskId: string): Promise<void>;
+    }).refreshStatusHistoryMessage('history-missing-id');
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(editMessageTextMock).not.toHaveBeenCalled();
+    expect(updateTaskHistoryMessageIdMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Пропущено обновление истории статусов: отсутствует сохранённый message_id',
+      'history-missing-id',
+      undefined,
+    );
+
+    warnSpy.mockRestore();
   });
 });
 

@@ -1291,21 +1291,12 @@ export default class TasksController {
         );
         return;
       }
-      const options: SendMessageOptions = {
-        parse_mode: 'MarkdownV2',
-        link_preview_options: { is_disabled: true },
-      };
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      const statusMessage = await bot.telegram.sendMessage(
-        groupChatId,
-        text,
-        options,
+      console.warn(
+        'Пропущено обновление истории статусов: отсутствует сохранённый message_id',
+        taskId,
+        topicId,
       );
-      if (statusMessage?.message_id) {
-        await updateTaskHistoryMessageId(taskId, statusMessage.message_id);
-      }
+      return;
     } catch (error) {
       console.error(
         `Не удалось обновить историю статусов задачи ${taskId}`,

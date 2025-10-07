@@ -63,13 +63,15 @@ function parseSignatures(raw: string | undefined): string[] {
 const enabled = parseBooleanFlag(process.env.ANTIVIRUS_ENABLED, true);
 const vendor = parseVendor(process.env.ANTIVIRUS_VENDOR);
 
+let resolvedConfig: AntivirusConfig;
+
 if (vendor === 'ClamAV') {
   const host = process.env.CLAMAV_HOST || '127.0.0.1';
   const port = parsePositiveInt(process.env.CLAMAV_PORT, 3310);
   const timeout = parsePositiveInt(process.env.CLAMAV_TIMEOUT, 5000);
   const chunkSize = parsePositiveInt(process.env.CLAMAV_CHUNK_SIZE, 64 * 1024);
 
-  export const antivirusConfig: AntivirusConfig = {
+  resolvedConfig = {
     vendor,
     enabled,
     host,
@@ -85,10 +87,12 @@ if (vendor === 'ClamAV') {
   ];
   const signatures = customSignatures.length > 0 ? customSignatures : defaultSignatures;
 
-  export const antivirusConfig: AntivirusConfig = {
+  resolvedConfig = {
     vendor,
     enabled,
     maxFileSize,
     signatures,
   };
 }
+
+export const antivirusConfig = resolvedConfig;

@@ -119,10 +119,16 @@ async function ensureScanner(): Promise<void> {
 }
 
 export async function scanFile(filePath: string): Promise<boolean> {
-  // Normalize and validate path is within uploadsDir
-  const normalizedPath = path.resolve(uploadsDir, path.relative(uploadsDir, filePath));
-  if (!normalizedPath.startsWith(path.resolve(uploadsDir) + path.sep)) {
-    throw new Error('INVALID_PATH');
+  const uploadsRoot = path.resolve(uploadsDir);
+  const normalizedPath = path.isAbsolute(filePath)
+    ? path.resolve(filePath)
+    : path.resolve(uploadsRoot, filePath);
+
+  if (!path.isAbsolute(filePath)) {
+    const relative = path.relative(uploadsRoot, normalizedPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      throw new Error('INVALID_PATH');
+    }
   }
   await ensureScanner();
   if (antivirusConfig.vendor === 'Signature') {
@@ -130,7 +136,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
       const fileStat = await stat(normalizedPath);
       if (fileStat.size > antivirusConfig.maxFileSize) {
         await writeLog('Размер файла превышает лимит сигнатурного сканера', 'warn', {
-          path,
+          path: normalizedPath,
           vendor: antivirusConfig.vendor,
           size: fileStat.size,
           maxFileSize: antivirusConfig.maxFileSize,
@@ -141,7 +147,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
       const match = signatureEntries.find((entry) => content.includes(entry.buffer));
       if (match) {
         await writeLog('Обнаружен вирус', 'warn', {
-          path,
+          path: normalizedPath,
           vendor: antivirusConfig.vendor,
           signature: match.value,
         });
@@ -150,7 +156,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
       return true;
     } catch (error) {
       await writeLog('Ошибка сканирования', 'error', {
-        path,
+        path: normalizedPath,
         vendor: antivirusConfig.vendor,
         error: formatError(error),
       });
@@ -167,7 +173,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
     const clean = clamd.isCleanReply(reply);
     if (!clean) {
       await writeLog('Обнаружен вирус', 'warn', {
-        path,
+        path: normalizedPath,
         vendor: antivirusConfig.vendor,
         reply,
       });
@@ -178,7 +184,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
     versionInfo = null;
     status = 'idle';
     await writeLog('Ошибка сканирования', 'error', {
-      path,
+      path: normalizedPath,
       vendor: antivirusConfig.vendor,
       error: formatError(error),
     });

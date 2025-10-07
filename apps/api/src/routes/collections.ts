@@ -13,6 +13,8 @@ import { Task } from '../db/model';
 import { listCollectionsWithLegacy } from '../services/collectionsAggregator';
 import { sendProblem } from '../utils/problem';
 import validate from '../utils/validate';
+import { parseTelegramTopicUrl } from '../utils/telegramTopics';
+import { invalidateTaskTypeSettingsCache } from '../services/taskTypeSettings';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -58,6 +60,40 @@ const normalizeValueByType = (type: string, raw: string): string => {
     return normalizeDepartmentValue(raw);
   }
   return raw.trim();
+};
+
+const TELEGRAM_TOPIC_HINT =
+  'Ссылка на тему Telegram должна иметь формат https://t.me/c/<id>/<topic>';
+
+const prepareMetaByType = (
+  type: string,
+  metaRaw: unknown,
+): { meta?: Record<string, unknown>; error?: string } => {
+  if (type === 'task_types') {
+    if (!metaRaw || typeof metaRaw !== 'object') {
+      return { meta: undefined };
+    }
+    const rawUrl = (metaRaw as { tg_theme_url?: unknown }).tg_theme_url;
+    const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+    if (!url) {
+      return { meta: undefined };
+    }
+    const parsed = parseTelegramTopicUrl(url);
+    if (!parsed) {
+      return { error: TELEGRAM_TOPIC_HINT };
+    }
+    return {
+      meta: {
+        tg_theme_url: url,
+        tg_chat_id: parsed.chatId,
+        tg_topic_id: parsed.topicId,
+      },
+    };
+  }
+  if (!metaRaw || typeof metaRaw !== 'object') {
+    return { meta: undefined };
+  }
+  return { meta: { ...(metaRaw as Record<string, unknown>) } };
 };
 
 router.post(
@@ -110,7 +146,25 @@ router.post(
         });
         return;
       }
-      const item = await repo.create({ type, name, value });
+      const { meta, error: metaError } = prepareMetaByType(type, body.meta);
+      if (metaError) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка валидации',
+          status: 400,
+          detail: metaError,
+        });
+        return;
+      }
+      const item = await repo.create({
+        type,
+        name,
+        value,
+        ...(meta ? { meta } : {}),
+      });
+      if (type === 'task_types') {
+        invalidateTaskTypeSettingsCache();
+      }
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof MongooseError.ValidationError) {
@@ -184,10 +238,29 @@ router.put(
         }
         payload.value = normalizedValue;
       }
+      if (Object.prototype.hasOwnProperty.call(body, 'meta')) {
+        const { meta, error: metaError } = prepareMetaByType(
+          existing.type,
+          body.meta,
+        );
+        if (metaError) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Ошибка валидации',
+            status: 400,
+            detail: metaError,
+          });
+          return;
+        }
+        payload.meta = meta;
+      }
       const item = await repo.update(existing.id, payload);
       if (!item) {
         res.sendStatus(404);
         return;
+      }
+      if (existing.type === 'task_types') {
+        invalidateTaskTypeSettingsCache();
       }
       res.json(item);
     } catch (error) {
@@ -229,7 +302,11 @@ router.delete(
         return;
       }
     }
+    const type = item.type;
     await item.deleteOne();
+    if (type === 'task_types') {
+      invalidateTaskTypeSettingsCache();
+    }
     res.json({ status: 'ok' });
   },
 );

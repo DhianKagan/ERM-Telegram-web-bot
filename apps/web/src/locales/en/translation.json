@@ -16,6 +16,7 @@
       "invalidName": "Invalid item name",
       "invalidType": "Invalid collection type",
       "invalidValue": "Invalid item value",
+      "invalidTelegramTopicUrl": "Enter a topic link in the format https://t.me/c/<id>/<topic>",
       "nameRequired": "Item name is required",
       "typeRequired": "Collection type is required",
       "valueRequired": "Item value is required"

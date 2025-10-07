@@ -46,6 +46,7 @@ import escapeMarkdownV2 from '../utils/mdEscape';
 import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 import TaskSyncController from '../controllers/taskSync.controller';
+import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -780,6 +781,26 @@ export default class TasksController {
     return typeof left === 'undefined' && typeof right === 'undefined';
   }
 
+  private async resolveTaskTopicId(
+    task: Partial<TaskDocument> & Record<string, unknown>,
+  ): Promise<number | undefined> {
+    const direct = this.normalizeTopicId(task.telegram_topic_id);
+    if (typeof direct === 'number') {
+      return direct;
+    }
+    const type =
+      typeof task.task_type === 'string' ? task.task_type.trim() : '';
+    if (!type) {
+      return undefined;
+    }
+    const topicId = await resolveTaskTypeTopicId(type);
+    if (typeof topicId === 'number') {
+      task.telegram_topic_id = topicId;
+      return topicId;
+    }
+    return undefined;
+  }
+
   private async deleteTaskMessageSafely(
     chat: string | number,
     messageId: number,
@@ -1329,7 +1350,7 @@ export default class TasksController {
       typeof task.telegram_summary_message_id === 'number'
         ? task.telegram_summary_message_id
         : undefined;
-    const topicId = this.normalizeTopicId(task.telegram_topic_id);
+    const topicId = await this.resolveTaskTopicId(task);
     const replyTo =
       typeof task.telegram_message_id === 'number'
         ? task.telegram_message_id
@@ -1440,7 +1461,7 @@ export default class TasksController {
         ? (plain.status as SharedTask['status'])
         : undefined,
     );
-    const topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    const topicId = await this.resolveTaskTopicId(plain);
 
     const previousMessageId =
       typeof previousPlain?.telegram_message_id === 'number'

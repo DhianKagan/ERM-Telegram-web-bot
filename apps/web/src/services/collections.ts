@@ -21,6 +21,14 @@ export interface CollectionItemMeta {
   departmentId?: string;
   divisionId?: string;
   positionId?: string;
+  defaultLabel?: string;
+  fieldType?: string;
+  required?: boolean;
+  order?: number;
+  virtual?: boolean;
+  tg_theme_url?: string;
+  tg_chat_id?: string;
+  tg_topic_id?: number;
   [key: string]: unknown;
 }
 
@@ -58,6 +66,8 @@ const validationMessageKeys: Record<string, string> = {
   "Значение элемента обязательно": "collections.errors.valueRequired",
   "Значение элемента не может быть пустым": "collections.errors.valueRequired",
   "Ошибка валидации": "collections.errors.generalValidation",
+  "Ссылка на тему Telegram должна иметь формат https://t.me/c/<id>/<topic>":
+    "collections.errors.invalidTelegramTopicUrl",
 };
 
 const typeSpecificValidationKeys: Record<string, Record<string, string>> = {
@@ -242,7 +252,7 @@ export const fetchAllCollectionItems = async (
 
 export const createCollectionItem = (
   type: string,
-  data: { name: string; value: string },
+  data: { name: string; value: string; meta?: Record<string, unknown> },
 ) =>
   authFetch("/api/v1/collections", {
     method: "POST",
@@ -259,7 +269,7 @@ export const createCollectionItem = (
 
 export const updateCollectionItem = (
   id: string,
-  data: { name: string; value: string },
+  data: { name?: string; value?: string; meta?: Record<string, unknown> },
   options?: ParseErrorOptions,
 ) =>
   authFetch(`/api/v1/collections/${id}`, {

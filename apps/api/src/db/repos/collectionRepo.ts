@@ -54,7 +54,46 @@ export async function update(
   id: string,
   data: Partial<CollectionItemAttrs>,
 ): Promise<CollectionItemDocument | null> {
-  return CollectionItem.findByIdAndUpdate(id, data, { new: true });
+  const set: Record<string, unknown> = {};
+  const unset: Record<string, unknown> = {};
+  if (Object.prototype.hasOwnProperty.call(data, 'type') && data.type !== undefined) {
+    set.type = data.type;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'name')) {
+    if (data.name !== undefined) {
+      set.name = data.name;
+    } else {
+      unset.name = '';
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'value')) {
+    if (data.value !== undefined) {
+      set.value = data.value;
+    } else {
+      unset.value = '';
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'meta')) {
+    if (data.meta === undefined) {
+      unset.meta = '';
+    } else {
+      set.meta = data.meta;
+    }
+  }
+  const updatePayload: Record<string, unknown> = {};
+  if (Object.keys(set).length) {
+    updatePayload.$set = set;
+  }
+  if (Object.keys(unset).length) {
+    updatePayload.$unset = unset;
+  }
+  if (!Object.keys(updatePayload).length) {
+    return CollectionItem.findById(id);
+  }
+  return CollectionItem.findByIdAndUpdate(id, updatePayload, {
+    new: true,
+    runValidators: true,
+  });
 }
 
 export async function remove(

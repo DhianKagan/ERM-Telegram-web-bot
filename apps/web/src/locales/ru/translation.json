@@ -16,6 +16,7 @@
       "invalidName": "Некорректное название элемента",
       "invalidType": "Некорректный тип коллекции",
       "invalidValue": "Некорректное значение элемента",
+      "invalidTelegramTopicUrl": "Введите ссылку на тему в формате https://t.me/c/<id>/<topic>",
       "nameRequired": "Название элемента обязательно",
       "typeRequired": "Тип коллекции обязателен",
       "valueRequired": "Заполните значение элемента"

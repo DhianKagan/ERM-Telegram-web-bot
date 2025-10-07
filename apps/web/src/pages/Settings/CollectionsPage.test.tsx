@@ -594,6 +594,65 @@ describe("CollectionsPage", () => {
     expect(headerTexts).toEqual(expectedHeaders);
   });
 
+  it("отображает настройки задач во вкладке 'Задачи'", async () => {
+    const fieldItems: CollectionItem[] = [
+      {
+        _id: "task-field-title",
+        type: "task_fields",
+        name: "title",
+        value: "Название",
+        meta: {
+          defaultLabel: "Название",
+          fieldType: "text",
+          order: 0,
+          virtual: false,
+        },
+      },
+    ];
+    const typeItems: CollectionItem[] = [
+      {
+        _id: "task-type-perform",
+        type: "task_types",
+        name: "Выполнить",
+        value: "Выполнить",
+        meta: {
+          defaultLabel: "Выполнить",
+          order: 0,
+          tg_theme_url: "https://t.me/c/2705661520/627",
+          tg_chat_id: "-1002705661520",
+          tg_topic_id: 627,
+          virtual: false,
+        },
+      },
+    ];
+
+    mockedFetchAll.mockImplementation(async (type: string) => {
+      if (type === "task_fields") return fieldItems;
+      if (type === "task_types") return typeItems;
+      const byType = dataset[type] ?? {};
+      const defaultEntry = byType[""] ?? { items: [] };
+      return (defaultEntry.items ?? []) as CollectionItem[];
+    });
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Задачи" }));
+
+    await waitFor(() =>
+      expect(mockedFetchAll).toHaveBeenCalledWith("task_fields"),
+    );
+
+    const tasksPanel = await screen.findByTestId("tab-content-tasks");
+    expect(
+      within(tasksPanel).getByLabelText("Название типа Выполнить"),
+    ).toBeInTheDocument();
+    expect(
+      within(tasksPanel).getByPlaceholderText("https://t.me/c/..."),
+    ).toBeInTheDocument();
+  });
+
   it("показывает фактический логин в таблице и карточке пользователя", async () => {
     const user: User = {
       telegram_id: 101,

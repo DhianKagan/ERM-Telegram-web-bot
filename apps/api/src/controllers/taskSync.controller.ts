@@ -16,6 +16,7 @@ import {
   updateTaskHistoryMessageId,
 } from '../tasks/taskHistory.service';
 import type { Task as SharedTask, User } from 'shared';
+import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
@@ -153,7 +154,10 @@ export default class TaskSyncController {
     if (!task) return;
 
     const messageId = toNumericId(task.telegram_message_id);
-    const topicId = toNumericId(task.telegram_topic_id);
+    const configuredTopicId = await resolveTaskTypeTopicId(task.task_type);
+    const topicId =
+      toNumericId(task.telegram_topic_id) ??
+      (typeof configuredTopicId === 'number' ? configuredTopicId : null);
     const status =
       typeof task.status === 'string'
         ? (task.status as SharedTask['status'])

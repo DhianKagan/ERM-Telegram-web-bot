@@ -309,9 +309,11 @@ export async function getTaskHistoryMessage(
     typeof task.telegram_topic_id === 'number'
       ? task.telegram_topic_id
       : undefined;
-  const history = Array.isArray(task.history) ? task.history : [];
+  const historyEntries: HistoryEntry[] = Array.isArray(task.history)
+    ? (task.history as HistoryEntry[])
+    : [];
   const userIds = new Set<number>();
-  history.forEach((entry) => {
+  historyEntries.forEach((entry: HistoryEntry) => {
     const id = Number(entry.changed_by);
     if (Number.isFinite(id) && id !== 0) {
       userIds.add(id);
@@ -327,8 +329,8 @@ export async function getTaskHistoryMessage(
       users[id] = { name: value.name, username: value.username };
     }
   });
-  const lines = history
-    .map((entry) => formatHistoryEntry(entry, users))
+  const lines = historyEntries
+    .map((entry: HistoryEntry) => formatHistoryEntry(entry, users))
     .filter((line): line is string => Boolean(line));
   const header = '*История изменений*';
   const body = lines.length ? lines.join('\n') : mdEscape('Записей нет');

@@ -11,9 +11,13 @@ import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { listFleetVehicles } from "../services/fleets";
-import type { Coords, Task, FleetVehicleDto } from "shared";
+import type { Coords, FleetVehicleDto } from "shared";
+import type { TaskRow } from "../columns/taskColumns";
 
-type RouteTask = Task & Record<string, any>;
+type RouteTask = TaskRow & {
+  startCoordinates?: Coords;
+  finishCoordinates?: Coords;
+};
 
 const TRACK_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 60 * 1000;
@@ -75,11 +79,21 @@ export default function RoutesPage() {
       const raw = Array.isArray(data)
         ? data
         : data.items || data.tasks || data.data || [];
-      const list = raw.map((t: any) => ({
-        id: t._id ?? t.id,
-        _id: t._id ?? t.id,
-        ...t,
-      }));
+      const mapped: Array<RouteTask | null> = raw.map((item: Record<string, unknown>) => {
+        const task = item as RouteTask & { id?: string };
+        const identifier = String(task._id ?? task.id ?? "").trim();
+        if (!identifier) {
+          return null;
+        }
+        return {
+          ...task,
+          id: identifier,
+          _id: identifier,
+        } satisfies RouteTask;
+      });
+      const list = mapped.filter(
+        (task): task is RouteTask => Boolean(task),
+      );
       setTasks(list);
       setSorted(list);
     });
@@ -146,7 +160,7 @@ export default function RoutesPage() {
       r.routes.forEach((route: string[], idx: number) => {
         const tasksPoints = route
           .map((id) => sorted.find((t) => t._id === id))
-          .filter(Boolean) as Task[];
+          .filter((task): task is RouteTask => Boolean(task));
         const points: Coords[] = tasksPoints.flatMap((task) => {
           const start = task.startCoordinates as Coords | undefined;
           const finish = task.finishCoordinates as Coords | undefined;
@@ -476,7 +490,7 @@ export default function RoutesPage() {
         <h3 className="text-lg font-semibold">Задачи</h3>
         <TaskTable
           tasks={tasks}
-          onDataChange={setSorted}
+          onDataChange={(rows) => setSorted(rows as RouteTask[])}
           onRowClick={openTask}
           page={page}
           pageCount={Math.max(1, Math.ceil(tasks.length / 25))}

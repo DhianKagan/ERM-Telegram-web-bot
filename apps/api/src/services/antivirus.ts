@@ -3,6 +3,8 @@
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import clamd from 'clamdjs';
+import path from 'path';
+import { uploadsDir } from '../config/storage';
 import type { AntivirusConfig, ClamAvConfig, SignatureConfig } from '../config/antivirus';
 import { antivirusConfig } from '../config/antivirus';
 import { writeLog } from './wgLogEngine';
@@ -116,11 +118,16 @@ async function ensureScanner(): Promise<void> {
   }
 }
 
-export async function scanFile(path: string): Promise<boolean> {
+export async function scanFile(filePath: string): Promise<boolean> {
+  // Normalize and validate path is within uploadsDir
+  const normalizedPath = path.resolve(uploadsDir, path.relative(uploadsDir, filePath));
+  if (!normalizedPath.startsWith(path.resolve(uploadsDir) + path.sep)) {
+    throw new Error('INVALID_PATH');
+  }
   await ensureScanner();
   if (antivirusConfig.vendor === 'Signature') {
     try {
-      const fileStat = await stat(path);
+      const fileStat = await stat(normalizedPath);
       if (fileStat.size > antivirusConfig.maxFileSize) {
         await writeLog('Размер файла превышает лимит сигнатурного сканера', 'warn', {
           path,
@@ -130,7 +137,7 @@ export async function scanFile(path: string): Promise<boolean> {
         });
         return false;
       }
-      const content = await readFile(path);
+      const content = await readFile(normalizedPath);
       const match = signatureEntries.find((entry) => content.includes(entry.buffer));
       if (match) {
         await writeLog('Обнаружен вирус', 'warn', {
@@ -153,7 +160,7 @@ export async function scanFile(path: string): Promise<boolean> {
   if (!scanner || !isClamConfig(antivirusConfig)) return true;
   try {
     const reply = await scanner.scanFile(
-      path,
+      normalizedPath,
       antivirusConfig.timeout,
       antivirusConfig.chunkSize,
     );

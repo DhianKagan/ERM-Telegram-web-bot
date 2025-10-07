@@ -212,4 +212,57 @@ describe('notifyTaskCreated вложения', () => {
       expect(updateSet.telegram_attachments_message_ids).toEqual([211, 212]);
     }
   });
+
+  it('синхронизирует вложения при обновлении задачи в режиме единого сообщения истории', async () => {
+    const previousTask = {
+      _id: '507f1f77bcf86cd799439011',
+      telegram_message_id: 501,
+      telegram_topic_id: 777,
+      attachments: [],
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      history: [],
+      status: 'Новая',
+    } as unknown as TaskDocument & Record<string, unknown>;
+
+    const updatedTask = {
+      ...previousTask,
+      attachments: [
+        {
+          url: 'https://cdn.example.com/after.jpg',
+          type: 'image/jpeg',
+          name: 'after.jpg',
+        },
+      ],
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    taskFindByIdMock.mockResolvedValue(updatedTask);
+    sendPhotoMock.mockResolvedValueOnce({ message_id: 612 });
+
+    const controller = new TasksController({} as any);
+    await (
+      controller as unknown as {
+        syncTelegramTaskMessage(
+          taskId: string,
+          previous: TaskDocument | null,
+          options?: { skipMessageUpdate?: boolean },
+        ): Promise<void>;
+      }
+    ).syncTelegramTaskMessage('507f1f77bcf86cd799439011', previousTask, {
+      skipMessageUpdate: true,
+    });
+
+    expect(editMessageTextMock).not.toHaveBeenCalled();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    const updateCall = updateOneMock.mock.calls[0];
+    if (updateCall) {
+      const updateSet = (updateCall[1]?.$set ?? {}) as Record<string, unknown>;
+      expect(updateSet.telegram_attachments_message_ids).toEqual([612]);
+    }
+  });
 });

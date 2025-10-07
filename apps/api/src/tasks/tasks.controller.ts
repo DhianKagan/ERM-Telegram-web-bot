@@ -29,7 +29,11 @@ import {
   buildDirectTaskKeyboard,
   buildDirectTaskMessage,
 } from '../bot/bot';
-import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
+import {
+  chatId as groupChatId,
+  appUrl as baseAppUrl,
+  TELEGRAM_SINGLE_HISTORY_MESSAGE,
+} from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
@@ -41,6 +45,7 @@ import {
 import escapeMarkdownV2 from '../utils/mdEscape';
 import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
+import TaskSyncController from '../controllers/taskSync.controller';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -164,7 +169,11 @@ const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
 
 @injectable()
 export default class TasksController {
-  constructor(@inject(TOKENS.TasksService) private service: TasksService) {}
+  constructor(
+    @inject(TOKENS.TasksService) private service: TasksService,
+    @inject(TOKENS.TaskSyncController)
+    private taskSyncController: TaskSyncController = new TaskSyncController(),
+  ) {}
 
   private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {
     const recipients = new Set<number>();
@@ -2183,6 +2192,14 @@ export default class TasksController {
           : String(task._id ?? '');
       if (docId) {
         void (async () => {
+          if (TELEGRAM_SINGLE_HISTORY_MESSAGE) {
+            try {
+              await this.taskSyncController.onWebTaskUpdate(docId, task);
+            } catch (error) {
+              console.error('Не удалось синхронизировать задачу в Telegram', error);
+            }
+            return;
+          }
           await this.refreshStatusHistoryMessage(docId);
           try {
             await this.syncTelegramTaskMessage(docId, previousTask);

@@ -8,6 +8,7 @@ import maps from '../services/maps';
 import * as telegram from '../services/telegramApi';
 import * as scheduler from '../services/scheduler';
 import TasksService from '../tasks/tasks.service';
+import TaskSyncController from '../controllers/taskSync.controller';
 import UsersService from '../users/users.service';
 import RolesService from '../roles/roles.service';
 import LogsService from '../logs/logs.service';
@@ -37,6 +38,9 @@ container.register(TOKENS.MapsService, { useValue: maps });
 container.register(TOKENS.TelegramApi, { useValue: telegram });
 container.register(TOKENS.SchedulerService, { useValue: scheduler });
 container.register(TOKENS.TmaAuthGuard, { useValue: tmaAuthGuard });
+container.register(TOKENS.TaskSyncController, {
+  useClass: TaskSyncController,
+});
 
 export { container };
 export default container;

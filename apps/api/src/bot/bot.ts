@@ -1,7 +1,7 @@
 // Назначение: основной файл Telegram-бота
 // Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
-import { appUrl, botToken, chatId } from '../config';
+import { appUrl, botToken, chatId, TELEGRAM_SINGLE_HISTORY_MESSAGE } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import type {
   InlineKeyboardMarkup,
@@ -30,12 +30,15 @@ import { getUsersMap } from '../db/queries';
 import { buildHistorySummaryLog, getTaskIdentifier } from '../tasks/taskMessages';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
+import TaskSyncController from '../controllers/taskSync.controller';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
 }
 
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
+
+const taskSyncController = new TaskSyncController();
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);
@@ -593,24 +596,26 @@ const syncTaskPresentation = async (
         options,
       );
     }
-    const summaryId = toNumericId(
-      plain.telegram_summary_message_id ?? plain.telegram_status_message_id,
-    );
-    if (summaryId !== null) {
-      const summary = await buildHistorySummaryLog(
-        plain as Parameters<typeof buildHistorySummaryLog>[0],
+    if (!TELEGRAM_SINGLE_HISTORY_MESSAGE) {
+      const summaryId = toNumericId(
+        plain.telegram_summary_message_id ?? plain.telegram_status_message_id,
       );
-      if (summary) {
-        const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
-          link_preview_options: { is_disabled: true },
-        };
-        await bot.telegram.editMessageText(
-          chatId,
-          summaryId,
-          undefined,
-          summary,
-          options,
+      if (summaryId !== null) {
+        const summary = await buildHistorySummaryLog(
+          plain as Parameters<typeof buildHistorySummaryLog>[0],
         );
+        if (summary) {
+          const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
+            link_preview_options: { is_disabled: true },
+          };
+          await bot.telegram.editMessageText(
+            chatId,
+            summaryId,
+            undefined,
+            summary,
+            options,
+          );
+        }
       }
     }
   } catch (error) {
@@ -763,26 +768,47 @@ async function processStatusAction(
       });
       return;
     }
-    const task = await updateTaskStatus(taskId, status, userId);
-    if (!task) {
-      await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
-      return;
+    let docId = taskId;
+    let override: TaskPresentation | null = null;
+    if (TELEGRAM_SINGLE_HISTORY_MESSAGE) {
+      const updatedPlain = await taskSyncController.onTelegramAction(
+        taskId,
+        status,
+        userId,
+      );
+      if (!updatedPlain) {
+        await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
+        return;
+      }
+      docId =
+        typeof updatedPlain._id === 'object' &&
+        updatedPlain._id !== null &&
+        'toString' in updatedPlain._id
+          ? (updatedPlain._id as { toString(): string }).toString()
+          : String((updatedPlain as { _id?: unknown })._id ?? taskId);
+      override = updatedPlain as unknown as TaskPresentation;
+    } else {
+      const task = await updateTaskStatus(taskId, status, userId);
+      if (!task) {
+        await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
+        return;
+      }
+      docId =
+        typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+          ? (task._id as { toString(): string }).toString()
+          : String(task._id ?? taskId);
+      const overrideRaw =
+        typeof (task as { toObject?: () => unknown }).toObject === 'function'
+          ? (task as { toObject(): unknown }).toObject()
+          : (task as unknown);
+      override = overrideRaw as TaskPresentation;
     }
-    const docId =
-      typeof task._id === 'object' && task._id !== null && 'toString' in task._id
-        ? (task._id as { toString(): string }).toString()
-        : String(task._id ?? taskId);
-    const overrideRaw =
-      typeof (task as { toObject?: () => unknown }).toObject === 'function'
-        ? (task as { toObject(): unknown }).toObject()
-        : (task as unknown);
-    const override = overrideRaw as TaskPresentation;
-    const presentation = await syncTaskPresentation(docId, override);
+    const presentation = await syncTaskPresentation(docId, override ?? undefined);
     const appliedStatus = (
       (presentation.plain?.status as SharedTask['status'] | undefined) ?? status
     ) as SharedTask['status'];
     const plainForView = {
-      ...override,
+      ...(override ?? {}),
       ...(presentation.plain ?? {}),
       status: appliedStatus,
     } as TaskPresentation;
@@ -829,7 +855,7 @@ async function processStatusAction(
       }
     }
     await ctx.answerCbQuery(responseMessage);
-    if (docId && chatId) {
+    if (!TELEGRAM_SINGLE_HISTORY_MESSAGE && docId && chatId) {
       try {
         const payload = await getTaskHistoryMessage(docId);
         if (payload) {

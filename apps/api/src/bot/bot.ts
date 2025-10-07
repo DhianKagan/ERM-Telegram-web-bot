@@ -588,13 +588,19 @@ const syncTaskPresentation = async (
         link_preview_options: { is_disabled: true },
         ...(keyboard.reply_markup ? { reply_markup: keyboard.reply_markup } : {}),
       };
-      await bot.telegram.editMessageText(
-        chatId,
-        messageId,
-        undefined,
-        formatted.text,
-        options,
-      );
+      try {
+        await bot.telegram.editMessageText(
+          chatId,
+          messageId,
+          undefined,
+          formatted.text,
+          options,
+        );
+      } catch (error) {
+        if (!isMessageNotModifiedError(error)) {
+          throw error;
+        }
+      }
     }
     if (!TELEGRAM_SINGLE_HISTORY_MESSAGE) {
       const summaryId = toNumericId(
@@ -608,13 +614,19 @@ const syncTaskPresentation = async (
           const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
             link_preview_options: { is_disabled: true },
           };
-          await bot.telegram.editMessageText(
-            chatId,
-            summaryId,
-            undefined,
-            summary,
-            options,
-          );
+          try {
+            await bot.telegram.editMessageText(
+              chatId,
+              summaryId,
+              undefined,
+              summary,
+              options,
+            );
+          } catch (error) {
+            if (!isMessageNotModifiedError(error)) {
+              throw error;
+            }
+          }
         }
       }
     }

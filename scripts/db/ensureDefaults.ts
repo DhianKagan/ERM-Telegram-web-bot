@@ -55,10 +55,13 @@ async function ensureDefaults(): Promise<void> {
   }
 
   const timeout = 5000;
+  const connectOptions: ConnectOptions & {
+    serverSelectionTimeoutMS?: number;
+  } = {
+    serverSelectionTimeoutMS: timeout,
+  };
   try {
-    await mongoose.connect(mongoUrl, {
-      serverSelectionTimeoutMS: timeout,
-    } satisfies ConnectOptions);
+    await mongoose.connect(mongoUrl, connectOptions);
     const db = mongoose.connection.db;
     if (!db) throw new Error('нет доступа к db');
     await db.admin().ping();

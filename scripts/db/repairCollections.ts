@@ -2,8 +2,11 @@
 // Основные модули: mongoose, dotenv, path.
 /// <reference path="../../apps/web/src/types/mongodb.d.ts" />
 import * as path from 'path';
-import type { AnyBulkWriteOperation } from 'mongodb';
-import type { Schema as MongooseSchema, Types as MongooseTypes } from 'mongoose';
+import type {
+  ConnectOptions,
+  Schema as MongooseSchema,
+  Types as MongooseTypes,
+} from 'mongoose';
 
 interface DotenvModule {
   config: (options: { path: string }) => void;
@@ -32,6 +35,17 @@ const mongoose: MongooseModule = (() => {
 })();
 
 const { Schema, Types } = mongoose;
+type MongoObjectIdCtor = typeof import('mongodb').ObjectId;
+const ObjectIdCtor: MongoObjectIdCtor = Types.ObjectId as unknown as MongoObjectIdCtor;
+
+type BulkUpdateOperation<T> = {
+  updateOne: {
+    filter: Record<string, unknown>;
+    update: Record<string, unknown>;
+  };
+};
+
+type LeanBulkWriteOperation<T> = BulkUpdateOperation<T>;
 
 interface LeanModel<T> {
   find(filter?: Record<string, unknown>): {
@@ -39,7 +53,7 @@ interface LeanModel<T> {
     lean<U>(): Promise<U[]>;
   };
   bulkWrite(
-    operations: Array<AnyBulkWriteOperation<T>>,
+    operations: Array<LeanBulkWriteOperation<T>>,
     options?: { ordered?: boolean },
   ): Promise<{ modifiedCount?: number; upsertedCount?: number }>;
   create(doc: Partial<T>): Promise<T & { toObject(): T }>;
@@ -188,13 +202,13 @@ const Employee = ensureModel<EmployeeDoc>('Employee', employeeSchema);
 const toObjectIdHex = (value: unknown): string | undefined => {
   if (!value) return undefined;
   if (value instanceof Types.ObjectId) {
-    return (value as MongooseTypes.ObjectId).toHexString();
+    return value.toString();
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    if (Types.ObjectId.isValid(trimmed)) {
-      return new Types.ObjectId(trimmed).toHexString();
+    if (ObjectIdCtor.isValid(trimmed)) {
+      return new ObjectIdCtor(trimmed).toString();
     }
   }
   return undefined;
@@ -202,8 +216,11 @@ const toObjectIdHex = (value: unknown): string | undefined => {
 
 const toObjectId = (value: unknown): MongooseTypes.ObjectId | undefined => {
   if (value instanceof Types.ObjectId) return value as MongooseTypes.ObjectId;
-  if (typeof value === 'string' && Types.ObjectId.isValid(value.trim())) {
-    return new Types.ObjectId(value.trim());
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (ObjectIdCtor.isValid(trimmed)) {
+      return new ObjectIdCtor(trimmed) as unknown as MongooseTypes.ObjectId;
+    }
   }
   return undefined;
 };
@@ -251,7 +268,7 @@ const normalizeCollectionItems = async (
   const items = await CollectionItem.find({
     type: { $in: Array.from(TARGET_TYPES) },
   }).lean<CollectionItemDoc>();
-  const operations: AnyBulkWriteOperation<CollectionItemDoc>[] = [];
+  const operations: LeanBulkWriteOperation<CollectionItemDoc>[] = [];
   items.forEach((item: CollectionItemDoc) => {
     const id = toObjectIdHex(item._id);
     if (!id) return;
@@ -269,8 +286,8 @@ const normalizeCollectionItems = async (
     if (Object.keys(set).length > 0) {
       operations.push({
         updateOne: {
-          filter: { _id: item._id },
-          update: { $set: set },
+          filter: { _id: item._id } as Record<string, unknown>,
+          update: { $set: set as Record<string, unknown> },
         },
       });
     }
@@ -331,7 +348,7 @@ const processReferences = async <T extends ReferenceDocument>(
 ): Promise<{ restored: number; cleared: number }> => {
   const docs = await Model.find().lean<T>();
   if (!docs.length) return { restored: 0, cleared: 0 };
-  const updates: AnyBulkWriteOperation<T>[] = [];
+  const updates: LeanBulkWriteOperation<T>[] = [];
   let restored = 0;
   let cleared = 0;
   for (const doc of docs) {
@@ -357,10 +374,10 @@ const processReferences = async <T extends ReferenceDocument>(
     if (Object.keys(unset).length > 0) {
       updates.push({
         updateOne: {
-          filter: { _id: doc._id },
-          update: { $unset: unset },
+          filter: { _id: doc._id } as Record<string, unknown>,
+          update: { $unset: unset as Record<string, unknown> },
         },
-      });
+      } as LeanBulkWriteOperation<T>);
     }
   }
   if (updates.length > 0) {
@@ -377,7 +394,10 @@ export async function repairCollections(): Promise<RepairCounters> {
 
   let shouldDisconnect = false;
   if (mongoose.connection.readyState !== 1) {
-    await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
+    const connectOptions: ConnectOptions & {
+      serverSelectionTimeoutMS?: number;
+    } = { serverSelectionTimeoutMS: 5000 };
+    await mongoose.connect(mongoUrl, connectOptions);
     shouldDisconnect = true;
   }
 

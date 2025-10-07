@@ -12,6 +12,7 @@ export const TOKENS = {
   TelegramApi: Symbol('TelegramApi'),
   SchedulerService: Symbol('SchedulerService'),
   TmaAuthGuard: Symbol('TmaAuthGuard'),
+  TaskSyncController: Symbol('TaskSyncController'),
 } as const;
 
 type TokenMap = typeof TOKENS;

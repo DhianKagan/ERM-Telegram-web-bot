@@ -12,6 +12,7 @@ export const TOKENS = {
   TelegramApi: Symbol('TelegramApi'),
   SchedulerService: Symbol('SchedulerService'),
   TmaAuthGuard: Symbol('TmaAuthGuard'),
+  BotInstance: Symbol('BotInstance'),
   TaskSyncController: Symbol('TaskSyncController'),
 } as const;
 

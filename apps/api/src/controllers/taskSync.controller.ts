@@ -1,9 +1,10 @@
 // Назначение: синхронизация задач между вебом и Telegram
 // Основные модули: bot, config, db/model, db/queries, services/service, tasks/taskHistory.service, utils/formatTask, utils/taskButtons
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
+import { injectable, inject } from 'tsyringe';
 import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
+import { TOKENS } from '../di/tokens';
 import { Task } from '../db/model';
 import { chatId } from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
@@ -109,7 +110,9 @@ const loadTaskPlain = async (
 
 @injectable()
 export default class TaskSyncController {
-  constructor(private readonly bot: Telegraf<Context>) {}
+  constructor(
+    @inject(TOKENS.BotInstance) private readonly bot: Telegraf<Context>,
+  ) {}
 
   async onWebTaskUpdate(
     taskId: string,

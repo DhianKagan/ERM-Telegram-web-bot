@@ -1427,6 +1427,7 @@ export default class TasksController {
   private async syncTelegramTaskMessage(
     taskId: string,
     previous: (TaskWithMeta & Record<string, unknown>) | null,
+    options?: { skipMessageUpdate?: boolean },
   ) {
     if (!groupChatId) return;
     const fresh = await Task.findById(taskId);
@@ -1474,6 +1475,9 @@ export default class TasksController {
       typeof plain.telegram_message_id === 'number'
         ? plain.telegram_message_id
         : undefined;
+    const skipMessageUpdate =
+      options?.skipMessageUpdate === true &&
+      typeof currentMessageId === 'number';
     const updatesToSet: Record<string, unknown> = {};
     const updatesToUnset: Record<string, unknown> = {};
     let messageIdGuard: number | null | undefined;
@@ -1550,7 +1554,19 @@ export default class TasksController {
     );
 
     let messageResult: TaskMessageSendResult | null = null;
-    if (currentMessageId) {
+    if (skipMessageUpdate && typeof currentMessageId === 'number') {
+      const cache = new Map<string, LocalPhotoInfo | null>();
+      messageResult = {
+        messageId: currentMessageId,
+        usedPreview: false,
+        cache,
+        previewSourceUrls: undefined,
+        previewMessageIds:
+          currentPreviewMessageIds.length > 0
+            ? currentPreviewMessageIds
+            : undefined,
+      };
+    } else if (currentMessageId) {
       const editResult = await this.editTaskMessageWithPreview(
         groupChatId,
         currentMessageId,
@@ -2213,17 +2229,20 @@ export default class TasksController {
           : String(task._id ?? '');
       if (docId) {
         void (async () => {
-          if (TELEGRAM_SINGLE_HISTORY_MESSAGE) {
+          const skipMessageUpdate = TELEGRAM_SINGLE_HISTORY_MESSAGE;
+          if (skipMessageUpdate) {
             try {
               await this.taskSyncController.onWebTaskUpdate(docId, task);
             } catch (error) {
               console.error('Не удалось синхронизировать задачу в Telegram', error);
             }
-            return;
+          } else {
+            await this.refreshStatusHistoryMessage(docId);
           }
-          await this.refreshStatusHistoryMessage(docId);
           try {
-            await this.syncTelegramTaskMessage(docId, previousTask);
+            await this.syncTelegramTaskMessage(docId, previousTask, {
+              skipMessageUpdate,
+            });
           } catch (error) {
             console.error('Не удалось синхронизировать сообщение задачи', error);
           }

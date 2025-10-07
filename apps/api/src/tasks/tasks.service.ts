@@ -7,6 +7,7 @@ import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
+import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 
 interface TasksRepository {
   createTask(
@@ -124,6 +125,7 @@ class TasksService {
       payload.remind_at = payload.due_date;
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
+    await this.applyTaskTypeTopic(payload);
     try {
       const task =
         userId === undefined
@@ -159,6 +161,7 @@ class TasksService {
     }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
+    await this.applyTaskTypeTopic(payload);
     try {
       const task = await this.repo.updateTask(id, payload, userId);
       await clearRouteCache();
@@ -236,6 +239,28 @@ class TasksService {
     }
   }
 
+  private async applyTaskTypeTopic(data: Partial<TaskDocument> = {}) {
+    const typeValue = data.task_type;
+    if (typeof typeValue !== 'string') {
+      return;
+    }
+    const type = typeValue.trim();
+    if (!type) {
+      return;
+    }
+    try {
+      const topicId = await resolveTaskTypeTopicId(type);
+      if (typeof topicId === 'number') {
+        data.telegram_topic_id = topicId;
+      }
+    } catch (error) {
+      console.error(
+        'Не удалось определить тему Telegram для типа задачи',
+        error,
+      );
+    }
+  }
+
   async addTime(id: string, minutes: number) {
     const task = await this.repo.addTime(id, minutes);
     await clearRouteCache();
@@ -257,6 +282,7 @@ class TasksService {
         payload.completed_at = null;
       }
     }
+    await this.applyTaskTypeTopic(payload);
     await this.repo.bulkUpdate(ids, payload);
     await clearRouteCache();
   }

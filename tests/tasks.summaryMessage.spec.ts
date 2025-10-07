@@ -53,7 +53,22 @@ describe('updateTaskStatusSummary', () => {
 
   it('не создаёт новое сообщение при ответе message is not modified', async () => {
     const controller = new TasksController({} as any);
-    const task = {
+    type TaskStub = {
+      _id: string;
+      task_number: string;
+      telegram_summary_message_id: number;
+      telegram_message_id: number;
+      history: Array<{
+        changed_at: string;
+        changed_by: number;
+        changes: {
+          from: { status: string };
+          to: { status: string };
+        };
+      }>;
+    };
+
+    const task: TaskStub = {
       _id: '507f1f77bcf86cd799439011',
       task_number: 'ERM-100',
       telegram_summary_message_id: 321,
@@ -77,7 +92,7 @@ describe('updateTaskStatusSummary', () => {
     editMessageTextMock.mockRejectedValueOnce(notModifiedError);
 
     await (controller as unknown as {
-      updateTaskStatusSummary(task: typeof task): Promise<void>;
+      updateTaskStatusSummary(task: TaskStub): Promise<void>;
     }).updateTaskStatusSummary(task);
 
     expect(editMessageTextMock).toHaveBeenCalledTimes(1);

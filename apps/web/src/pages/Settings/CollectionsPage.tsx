@@ -22,6 +22,7 @@ import CollectionForm from "./CollectionForm";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
+import TaskSettingsTab from "./TaskSettingsTab";
 import {
   collectionColumns,
   type CollectionTableRow,
@@ -38,6 +39,13 @@ import {
   type UserDetails,
 } from "../../services/users";
 import { fetchRoles, type Role } from "../../services/roles";
+import {
+  fetchTaskSettings,
+  updateTaskFieldLabel,
+  updateTaskTypeTheme,
+  type TaskFieldSettingDto,
+  type TaskTypeSettingDto,
+} from "../../services/taskSettings";
 import { formatRoleName } from "../../utils/roleDisplay";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "../../types/user";
@@ -53,6 +61,7 @@ import {
   UserGroupIcon,
   TruckIcon,
   KeyIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 const types = [
@@ -85,6 +94,11 @@ const types = [
     key: "users",
     label: "Пользователь",
     description: "Учётные записи в системе",
+  },
+  {
+    key: "tasks",
+    label: "Задачи",
+    description: "Поля задач и темы Telegram",
   },
 ] as const;
 
@@ -124,6 +138,7 @@ const tabIcons: Record<
   employees: UserGroupIcon,
   fleets: TruckIcon,
   users: KeyIcon,
+  tasks: ClipboardDocumentListIcon,
 };
 
 const renderBadgeList = (items: string[]) => {
@@ -313,6 +328,13 @@ export default function CollectionsPage() {
   const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
     "create",
   );
+  const [taskSettingsLoading, setTaskSettingsLoading] = useState(false);
+  const [taskFieldSettings, setTaskFieldSettings] = useState<
+    TaskFieldSettingDto[]
+  >([]);
+  const [taskTypeSettings, setTaskTypeSettings] = useState<TaskTypeSettingDto[]>(
+    [],
+  );
   const actionButtonClass =
     "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
   const selectedCollectionInfo = useMemo(() => {
@@ -343,7 +365,7 @@ export default function CollectionsPage() {
   }, [active, currentQuery]);
 
   const load = useCallback(async () => {
-    if (active === "users") return;
+    if (active === "users" || active === "tasks") return;
     if (active === "fleets") {
       setItems([]);
       setTotal(0);
@@ -393,6 +415,80 @@ export default function CollectionsPage() {
     }
   }, []);
 
+  const loadTaskSettings = useCallback(async () => {
+    setTaskSettingsLoading(true);
+    try {
+      const data = await fetchTaskSettings();
+      setTaskFieldSettings(data.fields);
+      setTaskTypeSettings(data.types);
+      setHint("");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить настройки задач";
+      setTaskFieldSettings([]);
+      setTaskTypeSettings([]);
+      setHint(message);
+    } finally {
+      setTaskSettingsLoading(false);
+    }
+  }, []);
+
+  const handleTaskFieldSubmit = useCallback(
+    async (name: string, label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) {
+        const validationError = new Error(
+          "Название поля не может быть пустым",
+        );
+        setHint(validationError.message);
+        throw validationError;
+      }
+      try {
+        await updateTaskFieldLabel(name, trimmed);
+        setTaskFieldSettings((prev) =>
+          prev.map((field) =>
+            field.name === name ? { ...field, label: trimmed } : field,
+          ),
+        );
+        setHint("");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось обновить название поля";
+        setHint(message);
+        throw error instanceof Error ? error : new Error(message);
+      }
+    },
+    [],
+  );
+
+  const handleTaskTypeSubmit = useCallback(
+    async (taskType: string, url: string | null) => {
+      try {
+        const trimmed = url?.trim() ?? "";
+        const payload = await updateTaskTypeTheme(
+          taskType,
+          trimmed.length ? trimmed : null,
+        );
+        setTaskTypeSettings((prev) =>
+          prev.map((item) => (item.taskType === taskType ? payload : item)),
+        );
+        setHint("");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось обновить тему задач";
+        setHint(message);
+        throw error instanceof Error ? error : new Error(message);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (active === "users" || active === "employees") {
       setUserSearchDraft(userQuery);
@@ -404,6 +500,12 @@ export default function CollectionsPage() {
       void loadUsers();
     }
   }, [collectionModalOpen, selectedCollection, loadUsers]);
+
+  useEffect(() => {
+    if (active === "tasks") {
+      void loadTaskSettings();
+    }
+  }, [active, loadTaskSettings]);
 
   useEffect(() => {
     const loadReferenceCollections = async () => {
@@ -487,7 +589,12 @@ export default function CollectionsPage() {
     if (active !== "employees") {
       setIsEmployeeModalOpen(false);
     }
-    if (active === "users" || active === "employees" || active === "fleets") {
+    if (
+      active === "users" ||
+      active === "employees" ||
+      active === "fleets" ||
+      active === "tasks"
+    ) {
       setCollectionModalOpen(false);
     }
     if (active !== "users") {
@@ -1045,7 +1152,7 @@ export default function CollectionsPage() {
           </select>
         </div>
         <TabsList
-          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(6,minmax(9.5rem,1fr))]"
+          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]"
         >
           {types.map((t) => {
             const Icon = tabIcons[t.key as CollectionKey];
@@ -1209,6 +1316,14 @@ export default function CollectionsPage() {
                 </div>
               ) : t.key === "fleets" ? (
                 <FleetVehiclesTab />
+              ) : t.key === "tasks" ? (
+                <TaskSettingsTab
+                  loading={taskSettingsLoading}
+                  fields={taskFieldSettings}
+                  types={taskTypeSettings}
+                  onFieldSubmit={handleTaskFieldSubmit}
+                  onTypeSubmit={handleTaskTypeSubmit}
+                />
               ) : (
                 <div className="space-y-4">
                   <form

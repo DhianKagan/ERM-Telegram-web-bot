@@ -7,6 +7,7 @@ import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
+import { resolveTaskTypeTopicId } from '../services/taskSettings';
 
 interface TasksRepository {
   createTask(
@@ -122,6 +123,15 @@ class TasksService {
     applyIntakeRules(payload);
     if (payload.due_date && !payload.remind_at)
       payload.remind_at = payload.due_date;
+    if (typeof payload.task_type === 'string' && payload.task_type.trim()) {
+      const trimmedType = payload.task_type.trim();
+      const topicId = await resolveTaskTypeTopicId(trimmedType);
+      if (typeof topicId === 'number') {
+        (payload as Record<string, unknown>).telegram_topic_id = topicId;
+      } else {
+        delete (payload as Record<string, unknown>).telegram_topic_id;
+      }
+    }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
     try {
@@ -156,6 +166,18 @@ class TasksService {
     const payload = data ?? {};
     if (Object.prototype.hasOwnProperty.call(payload, 'due_date')) {
       (payload as Record<string, unknown>).deadline_reminder_sent_at = undefined;
+    }
+    if (
+      typeof payload.task_type === 'string' &&
+      payload.task_type.trim().length > 0
+    ) {
+      const trimmedType = payload.task_type.trim();
+      const topicId = await resolveTaskTypeTopicId(trimmedType);
+      if (typeof topicId === 'number') {
+        (payload as Record<string, unknown>).telegram_topic_id = topicId;
+      } else {
+        delete (payload as Record<string, unknown>).telegram_topic_id;
+      }
     }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);

@@ -196,6 +196,7 @@ export default function Profile() {
             <label className="space-y-1 md:col-span-2">
               <span className="block text-sm font-medium">ФИО</span>
               <input
+                name="fullName"
                 className="h-10 w-full rounded border px-3"
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
@@ -205,6 +206,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Телефон</span>
               <input
+                name="phone"
                 className="h-10 w-full rounded border px-3"
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
@@ -215,6 +217,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Email</span>
               <input
+                name="email"
                 className="h-10 w-full rounded border px-3"
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
@@ -225,6 +228,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Доп. телефон</span>
               <input
+                name="additionalPhone"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={additionalPhone}
                 readOnly
@@ -234,6 +238,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Telegram ID</span>
               <input
+                name="telegramId"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={telegramId}
                 readOnly
@@ -243,6 +248,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Username</span>
               <input
+                name="telegramUsername"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={telegramUsername}
                 readOnly
@@ -252,6 +258,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Роль</span>
               <input
+                name="role"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={roleLabel}
                 readOnly
@@ -261,6 +268,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Департамент</span>
               <input
+                name="department"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={departmentName || "—"}
                 readOnly
@@ -270,6 +278,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Отдел</span>
               <input
+                name="division"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={divisionName || "—"}
                 readOnly
@@ -279,6 +288,7 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="block text-sm font-medium">Должность</span>
               <input
+                name="position"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
                 value={positionName || "—"}
                 readOnly

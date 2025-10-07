@@ -77,8 +77,13 @@ export default function TaskTable({
         toolbarChildren={
           <>
             {typeof onMineChange === "function" && (
-              <label className="flex items-center gap-1 text-sm">
+              <label
+                className="flex items-center gap-1 text-sm"
+                htmlFor="task-table-mine"
+              >
                 <input
+                  id="task-table-mine"
+                  name="mineTasks"
                   type="checkbox"
                   checked={mine}
                   onChange={(e) => onMineChange(e.target.checked)}

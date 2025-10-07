@@ -32,6 +32,7 @@ const DepartmentManager: DepartmentManagerComponent = ({ onSubmit }) => {
       </label>
       <input
         id="department-name"
+        name="departmentName"
         data-testid="department-name"
         className="h-10 w-full rounded border px-3"
         value={name}

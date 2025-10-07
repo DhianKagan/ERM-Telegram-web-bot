@@ -18,11 +18,14 @@ const renderField = (
   field: Field,
   value: string,
   setValue: (v: string) => void,
+  inputId: string,
 ) => {
   switch (field.type) {
     case "text":
       return (
         <input
+          id={inputId}
+          name={field.name}
           className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -32,6 +35,8 @@ const renderField = (
     case "textarea":
       return (
         <textarea
+          id={inputId}
+          name={field.name}
           className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -41,6 +46,8 @@ const renderField = (
       return (
         <input
           type="datetime-local"
+          id={inputId}
+          name={field.name}
           className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -50,19 +57,31 @@ const renderField = (
     case "segment":
       return (
         <div className="flex gap-2">
-          {field.options?.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-1">
-              <input
-                type="radio"
-                name={field.name}
-                value={opt.value}
-                checked={value === opt.value}
-                onChange={() => setValue(opt.value)}
-                required={field.required}
-              />
-              {opt.label}
-            </label>
-          ))}
+          {field.options?.map((opt) => {
+            const optionId = `${inputId}-${String(opt.value)
+              .toLowerCase()
+              .replace(/[^a-z0-9а-яё]+/gi, "-")
+              .replace(/-+/g, "-")
+              .replace(/^-|-$/g, "")}`;
+            return (
+              <label
+                key={opt.value}
+                className="flex items-center gap-1"
+                htmlFor={optionId}
+              >
+                <input
+                  type="radio"
+                  name={field.name}
+                  id={optionId}
+                  value={opt.value}
+                  checked={value === opt.value}
+                  onChange={() => setValue(opt.value)}
+                  required={field.required}
+                />
+                {opt.label}
+              </label>
+            );
+          })}
         </div>
       );
     default:
@@ -163,27 +182,39 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
       {formSchema.sections.map((section) => (
         <div key={section.name} className="space-y-4">
           <h2 className="text-lg font-semibold">{section.label}</h2>
-          {section.fields.map((field) => (
-            <div key={field.name} className="space-y-1">
-              <label className="block text-sm font-medium">{field.label}</label>
-              {renderField(field, data[field.name] ?? "", (v) =>
-                setField(field.name, v),
-              )}
-            </div>
-          ))}
+          {section.fields.map((field) => {
+            const fieldId = `task-${field.name}`;
+            return (
+              <div key={field.name} className="space-y-1">
+                <label className="block text-sm font-medium" htmlFor={fieldId}>
+                  {field.label}
+                </label>
+                {renderField(field, data[field.name] ?? "", (v) =>
+                  setField(field.name, v),
+                  fieldId,
+                )}
+              </div>
+            );
+          })}
         </div>
       ))}
       {customFields.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Дополнительно</h2>
-          {customFields.map((field) => (
-            <div key={field.name} className="space-y-1">
-              <label className="block text-sm font-medium">{field.label}</label>
-              {renderField(field, data[field.name] ?? "", (v) =>
-                setField(field.name, v),
-              )}
-            </div>
-          ))}
+          {customFields.map((field) => {
+            const fieldId = `task-${field.name}`;
+            return (
+              <div key={field.name} className="space-y-1">
+                <label className="block text-sm font-medium" htmlFor={fieldId}>
+                  {field.label}
+                </label>
+                {renderField(field, data[field.name] ?? "", (v) =>
+                  setField(field.name, v),
+                  fieldId,
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="flex flex-wrap gap-2">

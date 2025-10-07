@@ -395,8 +395,13 @@ export default function RoutesPage() {
             >
               {vehiclesLoading ? "Загрузка..." : "Обновить технику"}
             </Button>
-            <label className="flex items-center gap-1 text-sm">
+            <label
+              className="flex items-center gap-1 text-sm"
+              htmlFor="routes-with-track"
+            >
               <input
+                id="routes-with-track"
+                name="withTrack"
                 type="checkbox"
                 className="size-4"
                 checked={withTrack}
@@ -404,8 +409,13 @@ export default function RoutesPage() {
               />
               <span>Показывать трек (1 час)</span>
             </label>
-            <label className="flex items-center gap-1 text-sm">
+            <label
+              className="flex items-center gap-1 text-sm"
+              htmlFor="routes-auto-refresh"
+            >
               <input
+                id="routes-auto-refresh"
+                name="autoRefresh"
                 type="checkbox"
                 className="size-4"
                 checked={autoRefresh}

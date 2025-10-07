@@ -255,6 +255,8 @@ export default function FleetVehiclesTab() {
           <label className="flex w-full flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
             <span className="text-sm font-medium">Поиск</span>
             <input
+              id="fleet-vehicles-search"
+              name="fleetVehicleSearch"
               className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
               value={search}
               onChange={(event) => setSearch(event.target.value)}

@@ -23,6 +23,8 @@ export default function ThemePanel() {
         <span className="mr-2">Основной</span>
         <input
           type="color"
+          id="theme-primary"
+          name="themePrimary"
           value={local.primary}
           onChange={(e) => change("primary", e.target.value)}
         />
@@ -31,6 +33,8 @@ export default function ThemePanel() {
         <span className="mr-2">Фон</span>
         <input
           type="color"
+          id="theme-background"
+          name="themeBackground"
           value={local.background}
           onChange={(e) => change("background", e.target.value)}
         />

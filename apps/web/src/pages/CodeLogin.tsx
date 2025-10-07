@@ -49,6 +49,8 @@ export default function CodeLogin() {
   return (
     <form className="flex flex-col gap-2 p-4" onSubmit={sent ? verify : send}>
       <input
+        id="code-login-telegram-id"
+        name="telegramId"
         className="border p-2"
         placeholder="Telegram ID"
         value={telegramId}
@@ -64,6 +66,8 @@ export default function CodeLogin() {
       </a>
       {sent && (
         <input
+          id="code-login-code"
+          name="verificationCode"
           className="border p-2"
           placeholder="Код"
           value={code}

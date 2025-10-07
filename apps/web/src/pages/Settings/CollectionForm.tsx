@@ -52,6 +52,8 @@ export default function CollectionForm({
       <div>
         <label className="block text-sm font-medium">Имя</label>
         <input
+          id="collection-form-name"
+          name="collectionName"
           className="h-10 w-full rounded border px-3"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
@@ -67,6 +69,8 @@ export default function CollectionForm({
           })
         ) : (
           <input
+            id="collection-form-value"
+            name="collectionValue"
             className="h-10 w-full rounded border px-3"
             value={form.value}
             onChange={(e) => onChange({ ...form, value: e.target.value })}

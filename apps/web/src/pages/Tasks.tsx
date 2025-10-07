@@ -63,6 +63,8 @@ export default function Tasks() {
       )}
       <form onSubmit={add} className="flex flex-wrap gap-2">
         <input
+          id="task-create-description"
+          name="taskDescription"
           value={text}
           onChange={(e) => setText(e.target.value)}
           required

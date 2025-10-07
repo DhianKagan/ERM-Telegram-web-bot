@@ -119,8 +119,13 @@ export default function TableToolbar<T>({
                   key={col.id}
                   className="flex items-center justify-between gap-1"
                 >
-                  <label className="flex items-center gap-1 text-xs font-medium sm:text-sm">
+                  <label
+                    className="flex items-center gap-1 text-xs font-medium sm:text-sm"
+                    htmlFor={`table-column-${col.id}`}
+                  >
                     <input
+                      id={`table-column-${col.id}`}
+                      name={`column-${col.id}`}
                       type="checkbox"
                       checked={col.getIsVisible()}
                       onChange={() => toggleColumn(col.id)}

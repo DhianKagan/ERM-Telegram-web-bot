@@ -355,6 +355,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">ID</span>
               <input
+                name="telegramId"
                 className="h-10 w-full rounded border px-3"
                 value={form.telegram_id ?? ""}
                 onChange={(e) =>
@@ -370,6 +371,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">Username</span>
               <input
+                name="username"
                 className="h-10 w-full rounded border px-3"
                 value={form.username || ""}
                 onChange={(e) => updateField("username", e.target.value)}
@@ -380,6 +382,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">Имя</span>
               <input
+                name="name"
                 className="h-10 w-full rounded border px-3"
                 value={form.name || ""}
                 onChange={(e) => updateField("name", e.target.value)}
@@ -389,6 +392,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">Телефон</span>
               <input
+                name="phone"
                 className="h-10 w-full rounded border px-3"
                 value={form.phone || ""}
                 onChange={(e) => updateField("phone", e.target.value)}
@@ -398,6 +402,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">Доп. телефон</span>
               <input
+                name="mobNumber"
                 className="h-10 w-full rounded border px-3"
                 value={form.mobNumber || ""}
                 onChange={(e) => updateField("mobNumber", e.target.value)}
@@ -407,6 +412,7 @@ export default function EmployeeCardForm({
             <label className="space-y-1">
               <span className="block text-sm font-medium">Email</span>
               <input
+                name="email"
                 className="h-10 w-full rounded border px-3"
                 value={form.email || ""}
                 onChange={(e) => updateField("email", e.target.value)}

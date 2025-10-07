@@ -52,16 +52,23 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
 }
 
 const renderField = (field: Field) => {
+  const fieldId = `task-form-${field.name}`;
   switch (field.type) {
     case "text":
       return (
-        <input className="input" name={field.name} required={field.required} />
+        <input
+          id={fieldId}
+          className="input"
+          name={field.name}
+          required={field.required}
+        />
       );
     case "datetime":
       return (
         <input
           type="datetime-local"
           className="input"
+          id={fieldId}
           name={field.name}
           required={field.required}
         />
@@ -70,6 +77,7 @@ const renderField = (field: Field) => {
       return (
         <select
           className="input select"
+          id={fieldId}
           name={field.name}
           required={field.required}
         >
@@ -81,7 +89,13 @@ const renderField = (field: Field) => {
         </select>
       );
     case "textarea":
-      return <textarea className="input min-h-[120px]" name={field.name} />;
+      return (
+        <textarea
+          className="input min-h-[120px]"
+          id={fieldId}
+          name={field.name}
+        />
+      );
     default:
       return null;
   }

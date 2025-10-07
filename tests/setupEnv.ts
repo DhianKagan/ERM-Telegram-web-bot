@@ -3,8 +3,27 @@
  * Основные модули: process, util, mongoose.
  */
 
+import Module from 'module';
+import path from 'path';
 import type { Mongoose } from 'mongoose';
 import { TextDecoder, TextEncoder } from 'util';
+
+const modulePrototype = (Module as unknown as {
+  prototype: NodeJS.Module & {
+    __ermMongoosePatched?: boolean;
+  };
+}).prototype;
+if (!modulePrototype.__ermMongoosePatched) {
+  const appMongoosePath = path.resolve(__dirname, '../apps/api/node_modules/mongoose');
+  const originalRequire = Module.prototype.require;
+  Module.prototype.require = function patchedRequire(id: string) {
+    if (id === 'mongoose') {
+      return originalRequire.call(this, appMongoosePath);
+    }
+    return originalRequire.call(this, id);
+  };
+  modulePrototype.__ermMongoosePatched = true;
+}
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN ||= 'test-bot-token';

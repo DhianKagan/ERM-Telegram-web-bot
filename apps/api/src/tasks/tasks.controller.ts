@@ -1357,18 +1357,21 @@ export default class TasksController {
           editOptions,
         );
         return;
-        } catch (error) {
-          console.error('Не удалось обновить краткое сообщение задачи', error);
-          if (summaryMessageId) {
-            await this.deleteTaskMessageSafely(
-              groupChatId,
-              summaryMessageId,
-              topicId,
-              topicId,
-            );
-          }
+      } catch (error) {
+        if (this.isMessageNotModifiedError(error)) {
+          return;
+        }
+        console.error('Не удалось обновить краткое сообщение задачи', error);
+        if (summaryMessageId) {
+          await this.deleteTaskMessageSafely(
+            groupChatId,
+            summaryMessageId,
+            topicId,
+            topicId,
+          );
         }
       }
+    }
     try {
       const statusMessage = await bot.telegram.sendMessage(
         groupChatId,

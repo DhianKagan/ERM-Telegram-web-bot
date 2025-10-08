@@ -333,8 +333,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [entityKind],
   );
   const t = React.useCallback(
-    (key: string, options?: Parameters<typeof rawT>[1]) =>
-      adaptTaskText(String(rawT(key, options))),
+    (...args: Parameters<typeof rawT>): string =>
+      adaptTaskText(String(rawT(...args))),
     [rawT, adaptTaskText],
   );
   React.useEffect(() => {

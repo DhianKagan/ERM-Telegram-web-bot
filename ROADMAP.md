@@ -3,6 +3,7 @@
 # Дорожная карта проекта
 
 - Конфигурация `nixpacks.toml` обеспечивает успешную сборку на Railway.
+- Реализован архив задач: API `/api/v1/archives`, веб-раздел `/cp/archive`, очистка сообщений при удалении и полное удаление для маски 8.
 - Pretest e2e запускает установку Firefox и Chromium и диагностику `playwright doctor` с запасным `--list`,
   а CI публикует отчёт в сводке job.
 - Роль `admin` = `ACCESS_ADMIN | ACCESS_MANAGER (6)` и наследует права `manager`,

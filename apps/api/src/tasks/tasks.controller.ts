@@ -757,6 +757,26 @@ export default class TasksController {
       .filter((entry): entry is DirectMessageEntry => entry !== null);
   }
 
+  private toMessageId(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  }
+
+  private normalizeMessageIdList(value: unknown): number[] {
+    if (!Array.isArray(value)) return [];
+    return (value as unknown[])
+      .map((item) => this.toMessageId(item))
+      .filter((item): item is number => typeof item === 'number');
+  }
+
   private async deleteDirectMessages(entries: DirectMessageEntry[]): Promise<void> {
     if (!entries.length) return;
     await Promise.all(
@@ -2030,7 +2050,105 @@ export default class TasksController {
   };
 
   remove = async (req: RequestWithUser, res: Response) => {
-    const task = await this.service.remove(req.params.id);
+    const existing = await Task.findById(req.params.id);
+    const plain = existing
+      ? ((typeof existing.toObject === 'function'
+          ? (existing.toObject() as unknown)
+          : (existing as unknown)) as TaskWithMeta & Record<string, unknown>)
+      : null;
+    if (!plain) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Задача не найдена',
+        status: 404,
+        detail: 'Not Found',
+      });
+      return;
+    }
+    const topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    const messageTargets = new Map<
+      number,
+      { expected?: number; actual?: number }
+    >();
+    const registerMessage = (
+      messageId?: number,
+      expectedTopic?: number,
+      actualTopic?: number,
+    ) => {
+      if (typeof messageId !== 'number') return;
+      if (!messageTargets.has(messageId)) {
+        messageTargets.set(messageId, {
+          expected: expectedTopic,
+          actual: actualTopic,
+        });
+      }
+    };
+    registerMessage(this.toMessageId(plain.telegram_message_id), topicId, topicId);
+    registerMessage(
+      this.toMessageId(plain.telegram_history_message_id),
+      topicId,
+      topicId,
+    );
+    registerMessage(
+      this.toMessageId(plain.telegram_status_message_id),
+      topicId,
+      topicId,
+    );
+    registerMessage(
+      this.toMessageId(plain.telegram_summary_message_id),
+      topicId,
+      topicId,
+    );
+    const cleanupMeta = plain.telegram_message_cleanup;
+    if (cleanupMeta && typeof cleanupMeta === 'object') {
+      const cleanupMessageId = this.toMessageId(
+        (cleanupMeta as Record<string, unknown>).message_id,
+      );
+      const cleanupTopicId = this.normalizeTopicId(
+        (cleanupMeta as Record<string, unknown>).topic_id,
+      );
+      const attemptedTopicId = this.normalizeTopicId(
+        (cleanupMeta as Record<string, unknown>).attempted_topic_id,
+      );
+      registerMessage(cleanupMessageId, cleanupTopicId, attemptedTopicId);
+      const newMessageId = this.toMessageId(
+        (cleanupMeta as Record<string, unknown>).new_message_id,
+      );
+      registerMessage(newMessageId, cleanupTopicId, attemptedTopicId);
+    }
+
+    const previewIds = this.normalizeMessageIdList(
+      plain.telegram_preview_message_ids,
+    );
+    const attachmentIds = this.normalizeMessageIdList(
+      plain.telegram_attachments_message_ids,
+    );
+    const directMessages = this.normalizeDirectMessages(
+      plain.telegram_dm_message_ids,
+    );
+
+    if (groupChatId) {
+      const uniquePreviewIds = Array.from(new Set(previewIds));
+      const uniqueAttachmentIds = Array.from(new Set(attachmentIds));
+      await this.deleteAttachmentMessages(groupChatId, uniquePreviewIds);
+      await this.deleteAttachmentMessages(groupChatId, uniqueAttachmentIds);
+      for (const [messageId, meta] of messageTargets.entries()) {
+        await this.deleteTaskMessageSafely(
+          groupChatId,
+          messageId,
+          meta.expected,
+          meta.actual,
+        );
+      }
+    }
+
+    await this.deleteDirectMessages(directMessages);
+
+    const actorId =
+      typeof req.user?.id === 'number' && Number.isFinite(req.user.id)
+        ? req.user.id
+        : undefined;
+    const task = await this.service.remove(req.params.id, actorId);
     if (!task) {
       sendProblem(req, res, {
         type: 'about:blank',

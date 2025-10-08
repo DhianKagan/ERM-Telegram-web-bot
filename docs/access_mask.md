@@ -12,5 +12,6 @@
 Роль `admin` = `ACCESS_ADMIN | ACCESS_MANAGER` (`6`) и наследует права менеджера.
 Удаление задач доступно только при наличии маски `ACCESS_TASK_DELETE = 8`,
 её выставляют вручную в поле `access`.
+Раздел архива задач доступен администраторам с маской `6`, полное удаление из архива требует маски `ACCESS_TASK_DELETE`.
 
 Коллекция `roles` хранит документы `{ name, permissions }`, маска вычисляется функцией `accessByRole(name)` из `apps/api/src/db/queries.ts`. Файл `apps/api/src/utils/accessMask.ts` содержит константы и функцию `hasAccess`. Middleware `checkRole` умеет принимать как строку роли, так и числовую маску. Примеры использования декоратора `Roles` приведены в `docs/permissions.md`.

@@ -14,6 +14,7 @@ export const TOKENS = {
   TmaAuthGuard: Symbol('TmaAuthGuard'),
   BotInstance: Symbol('BotInstance'),
   TaskSyncController: Symbol('TaskSyncController'),
+  ArchivesService: Symbol('ArchivesService'),
 } as const;
 
 type TokenMap = typeof TOKENS;

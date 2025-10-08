@@ -28,7 +28,7 @@ interface TasksRepository {
   addTime(id: string, minutes: number): Promise<TaskDocument | null>;
   bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
   summary(filters: SummaryFilters): Promise<{ count: number; time: number }>;
-  deleteTask(id: string): Promise<TaskDocument | null>;
+  deleteTask(id: string, actorId?: number): Promise<TaskDocument | null>;
   listMentionedTasks(userId: string | number): Promise<TaskDocument[]>;
 }
 
@@ -291,8 +291,8 @@ class TasksService {
     return this.repo.summary(filters);
   }
 
-  async remove(id: string) {
-    const task = await this.repo.deleteTask(id);
+  async remove(id: string, actorId?: number) {
+    const task = await this.repo.deleteTask(id, actorId);
     await clearRouteCache();
     return task;
   }

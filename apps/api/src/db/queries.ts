@@ -7,6 +7,7 @@ import {
   Role,
   File,
   TaskDocument,
+  TaskAttrs,
   UserDocument,
   RoleDocument,
   RoleAttrs,
@@ -410,7 +411,10 @@ export async function bulkUpdate(
   );
 }
 
-export async function deleteTask(id: string): Promise<TaskDocument | null> {
+export async function deleteTask(
+  id: string,
+  actorId?: number,
+): Promise<TaskDocument | null> {
   const doc = await Task.findByIdAndDelete(id);
   if (!doc) return null;
   const data = doc.toObject();
@@ -444,8 +448,76 @@ export async function deleteTask(id: string): Promise<TaskDocument | null> {
   (data as unknown as Record<string, unknown>).task_number = (
     data as unknown as Record<string, unknown>
   ).request_id;
+  (data as unknown as Record<string, unknown>).archived_at = new Date();
+  if (typeof actorId === 'number' && Number.isFinite(actorId)) {
+    (data as unknown as Record<string, unknown>).archived_by = actorId;
+  }
   await Archive.create(data);
   return doc;
+}
+
+type LeanArchiveTask = (TaskAttrs & {
+  _id: Types.ObjectId;
+  archived_at?: Date;
+  archived_by?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}) &
+  Record<string, unknown>;
+
+export interface ArchiveListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export async function listArchivedTasks(
+  params: ArchiveListParams = {},
+): Promise<{
+  items: LeanArchiveTask[];
+  total: number;
+  page: number;
+  pages: number;
+}> {
+  const pageRaw = Number(params.page);
+  const limitRaw = Number(params.limit);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 200) : 25;
+  const filter: Record<string, unknown> = {};
+  const search = typeof params.search === 'string' ? params.search.trim() : '';
+  if (search) {
+    const safe = escapeRegex(search);
+    filter.$or = [
+      { request_id: { $regex: safe, $options: 'i' } },
+      { task_number: { $regex: safe, $options: 'i' } },
+      { title: { $regex: safe, $options: 'i' } },
+    ];
+  }
+  const query = Archive.find(filter)
+    .sort({ archived_at: -1, createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean<LeanArchiveTask[]>();
+  const [items, total] = await Promise.all([
+    query,
+    Archive.countDocuments(filter),
+  ]);
+  const pages = limit > 0 ? Math.ceil(total / limit) : 0;
+  return { items, total, page, pages };
+}
+
+export async function purgeArchivedTasks(ids: string[]): Promise<number> {
+  const normalized = Array.isArray(ids)
+    ? ids
+        .map((id) => (typeof id === 'string' ? id.trim() : ''))
+        .filter((id) => Types.ObjectId.isValid(id))
+        .map((id) => new Types.ObjectId(id))
+    : [];
+  if (!normalized.length) {
+    return 0;
+  }
+  const result = await Archive.deleteMany({ _id: { $in: normalized } });
+  return typeof result.deletedCount === 'number' ? result.deletedCount : 0;
 }
 
 export interface SummaryFilters {
@@ -769,4 +841,6 @@ export default {
   listTaskTemplates,
   deleteTaskTemplate,
   listRoutes,
+  listArchivedTasks,
+  purgeArchivedTasks,
 };

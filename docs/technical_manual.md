@@ -358,6 +358,8 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 | ------------------- | -------------------- | -------------------------------- |
 | Создать задачу      | `createTask()`       | POST `/api/v1/tasks`             |
 | Получить задачи     | `getTasks()`         | GET `/api/v1/tasks`              |
+| Получить архив задач | `listArchivedTasks()` | GET `/api/v1/archives`          |
+| Полное удаление архива | `purgeArchivedTasks()` | POST `/api/v1/archives/purge` |
 | Обновить задачу     | `updateTask()`       | PATCH `/api/v1/tasks/:id`        |
 | Изменить статус     | `updateTaskStatus()` | PATCH `/api/v1/tasks/:id/status` |
 | Массовое обновление | `bulkUpdate()`       | POST `/api/v1/tasks/bulk`        |

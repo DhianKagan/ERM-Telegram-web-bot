@@ -259,6 +259,8 @@ export interface TaskAttrs {
   // Произвольные поля задачи
   custom?: Record<string, unknown>;
   history?: HistoryEntry[];
+  archived_at?: Date;
+  archived_by?: number;
 }
 
 export interface TaskDocument extends TaskAttrs, Document {}
@@ -378,6 +380,8 @@ const taskSchema = new Schema<TaskDocument>(
     // Произвольные поля хранятся как объект
     custom: Schema.Types.Mixed,
     history: [historySchema],
+    archived_at: Date,
+    archived_by: Number,
   },
   { timestamps: true },
 );

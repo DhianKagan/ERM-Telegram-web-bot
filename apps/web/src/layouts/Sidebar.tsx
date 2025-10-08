@@ -5,6 +5,7 @@ import { useSidebar } from "../context/useSidebar";
 import { useAuth } from "../context/useAuth";
 import {
   ClipboardDocumentListIcon,
+  InboxArrowDownIcon,
   RectangleStackIcon,
   ChartPieIcon,
   MapIcon,
@@ -18,6 +19,7 @@ import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
 
 const baseItems = [
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
+  { to: "/requests", label: "Заявки", icon: InboxArrowDownIcon },
   { to: "/profile", label: "Профиль", icon: UserCircleIcon },
 ];
 

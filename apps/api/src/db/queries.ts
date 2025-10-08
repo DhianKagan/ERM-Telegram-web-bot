@@ -14,6 +14,7 @@ import {
   TaskTemplate,
   TaskTemplateDocument,
   HistoryEntry,
+  type TaskKind,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
 import { resolveRoleId } from './roleCache';
@@ -169,6 +170,9 @@ export async function updateTask(
   userId: number,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  if (Object.prototype.hasOwnProperty.call(data, 'kind')) {
+    delete (data as Record<string, unknown>).kind;
+  }
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
@@ -222,6 +226,10 @@ export async function updateTaskStatus(
 ): Promise<TaskDocument | null> {
   const existing = await Task.findById(id);
   if (!existing) return null;
+  const currentStatus =
+    typeof existing.status === 'string'
+      ? (existing.status as TaskDocument['status'])
+      : undefined;
   const assignedUserId =
     typeof existing.assigned_user_id === 'number'
       ? existing.assigned_user_id
@@ -236,6 +244,13 @@ export async function updateTaskStatus(
     assignees.includes(userId);
   if (hasAssignments && !isAllowed) {
     throw new Error('Нет прав на изменение статуса задачи');
+  }
+  if (status === 'Выполнена' && currentStatus && currentStatus !== 'В работе') {
+    const err = new Error(
+      'Статус «Выполнена» доступен только после этапа «В работе»',
+    );
+    (err as Error & { code?: string }).code = 'TASK_STATUS_INVALID';
+    throw err;
   }
   const isCompleted = status === 'Выполнена' || status === 'Отменена';
   const hasInProgressValue = existing.in_progress_at instanceof Date;
@@ -274,6 +289,7 @@ export interface TaskFilters {
   from?: string | Date;
   to?: string | Date;
   kanban?: boolean;
+  kind?: TaskKind;
 }
 
 export async function getTasks(
@@ -293,6 +309,9 @@ export async function getTasks(
     return { tasks: list, total: list.length };
   }
   const q: Record<string, unknown> = {};
+  if (filters.kind === 'task' || filters.kind === 'request') {
+    q.kind = filters.kind;
+  }
   if (filters.status) q.status = { $eq: filters.status };
   if (filters.assignees && Array.isArray(filters.assignees)) {
     q.assignees = {
@@ -378,6 +397,9 @@ export async function bulkUpdate(
   data: Partial<TaskDocument>,
 ): Promise<void> {
   const payload: Partial<TaskDocument> = { ...data };
+  if (Object.prototype.hasOwnProperty.call(payload, 'kind')) {
+    delete (payload as Record<string, unknown>).kind;
+  }
   if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
     const status = payload.status;
     const isCompleted = status === 'Выполнена' || status === 'Отменена';
@@ -525,12 +547,16 @@ export interface SummaryFilters {
   assignees?: number[];
   from?: Date;
   to?: Date;
+  kind?: TaskKind;
 }
 
 export async function summary(
   filters: SummaryFilters = {},
 ): Promise<{ count: number; time: number }> {
   const match: Record<string, unknown> = {};
+  if (filters.kind === 'task' || filters.kind === 'request') {
+    match.kind = filters.kind;
+  }
   if (filters.status) match.status = filters.status;
   if (filters.assignees) match.assignees = { $in: filters.assignees };
   if (filters.from || filters.to) match.createdAt = {} as Record<string, Date>;

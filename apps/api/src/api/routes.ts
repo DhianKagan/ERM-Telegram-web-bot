@@ -324,22 +324,36 @@ export default async function registerRoutes(
       body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена']),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
-      const updated = await updateTaskStatus(
-        req.params.id,
-        req.body.status,
-        Number((req as RequestWithUser).user!.id),
-      );
-      if (!updated) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Задача не найдена',
-          status: 404,
-          detail: 'Not Found',
-        });
-        return;
+      try {
+        const updated = await updateTaskStatus(
+          req.params.id,
+          req.body.status,
+          Number((req as RequestWithUser).user!.id),
+        );
+        if (!updated) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Задача не найдена',
+            status: 404,
+            detail: 'Not Found',
+          });
+          return;
+        }
+        await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
+        res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
+      } catch (error) {
+        const err = error as { message?: string; code?: string };
+        if (err.code === 'TASK_STATUS_INVALID') {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Недопустимый статус',
+            status: 409,
+            detail: err.message || 'Статус задачи изменить нельзя',
+          });
+          return;
+        }
+        throw error;
       }
-      await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
-      res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
     }),
   );
 

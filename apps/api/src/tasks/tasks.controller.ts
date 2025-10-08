@@ -16,6 +16,7 @@ import type { RequestWithUser } from '../types/request';
 import {
   Task,
   File,
+  User,
   type TaskDocument,
   type Attachment,
   type FileDocument,
@@ -42,6 +43,7 @@ import escapeMarkdownV2 from '../utils/mdEscape';
 import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
+import { ACCESS_ADMIN } from '../utils/accessMask';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -54,6 +56,7 @@ type TelegramMessageCleanupMeta = {
 };
 
 type TaskEx = SharedTask & {
+  kind?: 'task' | 'request';
   controllers?: number[];
   created_by?: number;
   history?: { changed_by: number }[];
@@ -91,6 +94,37 @@ const YOUTUBE_URL_REGEXP =
   /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\//i;
 
 const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
+
+const REQUEST_TYPE_NAME = 'Заявка';
+
+const detectTaskKind = (
+  task:
+    | (Partial<TaskDocument> & { kind?: unknown; task_type?: unknown })
+    | Record<string, unknown>
+    | null
+    | undefined,
+): 'task' | 'request' => {
+  if (!task || typeof task !== 'object') {
+    return 'task';
+  }
+  const source = task as Record<string, unknown>;
+  const rawKind =
+    typeof source.kind === 'string' ? source.kind.trim() : '';
+  if (rawKind === 'request') return 'request';
+  const typeValue =
+    typeof source.task_type === 'string' ? source.task_type.trim() : '';
+  return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
+};
+
+const resolveTaskLabel = (kind: 'task' | 'request') =>
+  kind === 'request' ? 'Заявка' : 'Задача';
+
+const hasAdminAccess = (role: unknown, access: unknown): boolean => {
+  const roleName = typeof role === 'string' ? role : '';
+  if (roleName === 'admin') return true;
+  const mask = typeof access === 'number' ? access : 0;
+  return (mask & ACCESS_ADMIN) === ACCESS_ADMIN;
+};
 
 const toAbsoluteAttachmentUrl = (url: string): string | null => {
   const trimmed = url.trim();
@@ -197,6 +231,32 @@ export default class TasksController {
     add(task.assigned_user_id);
     if (Array.isArray(task.assignees)) task.assignees.forEach(add);
     return recipients;
+  }
+
+  private async resolveAdminExecutors(values: unknown[]): Promise<number[]> {
+    const normalized = Array.from(
+      new Set(
+        values
+          .map((value) => Number(value))
+          .filter((id) => Number.isFinite(id) && id > 0),
+      ),
+    );
+    if (!normalized.length) {
+      return [];
+    }
+    const admins = await User.find({
+      telegram_id: { $in: normalized },
+    })
+      .select({ telegram_id: 1, role: 1, access: 1 })
+      .lean<{ telegram_id: number; role?: string; access?: number }[]>();
+    const allowed = admins
+      .filter((candidate) => {
+        if (!candidate) return false;
+        return hasAdminAccess(candidate.role, candidate.access);
+      })
+      .map((candidate) => Number(candidate.telegram_id))
+      .filter((id) => Number.isFinite(id));
+    return Array.from(new Set(allowed));
   }
 
   private async resolvePhotoInputWithCache(
@@ -1860,20 +1920,34 @@ export default class TasksController {
 
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;
+    const normalizedFilters: Record<string, unknown> = { ...filters };
+    let kindFilter: 'task' | 'request' | undefined;
+    if (typeof filters.kind === 'string') {
+      const trimmed = filters.kind.trim();
+      if (trimmed === 'task' || trimmed === 'request') {
+        kindFilter = trimmed;
+        normalizedFilters.kind = trimmed;
+      } else {
+        delete normalizedFilters.kind;
+      }
+    }
     let tasks: TaskEx[];
     let total = 0;
     if (['admin', 'manager'].includes(req.user!.role || '')) {
-      const res = await this.service.get(
-        filters,
+      const result = await this.service.get(
+        normalizedFilters,
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
       );
-      tasks = res.tasks as unknown as TaskEx[];
-      total = res.total;
+      tasks = result.tasks as unknown as TaskEx[];
+      total = result.total;
     } else {
       tasks = (await this.service.mentioned(
         String(req.user!.id),
       )) as unknown as TaskEx[];
+      if (kindFilter) {
+        tasks = tasks.filter((task) => detectTaskKind(task) === kindFilter);
+      }
       total = tasks.length;
     }
     const ids = new Set<number>();
@@ -1912,15 +1986,80 @@ export default class TasksController {
   create = [
     handleValidation,
     async (req: RequestWithUser, res: Response) => {
-      const task = await this.service.create(
-        req.body as Partial<TaskDocument>,
-        req.user!.id as number,
-      );
+      const actorId = Number(req.user!.id);
+      const payload = req.body as Partial<TaskDocument>;
+      const detectedKind = detectTaskKind(payload);
+      if (detectedKind === 'request') {
+        const source: unknown[] = Array.isArray(payload.assignees)
+          ? [...payload.assignees]
+          : [];
+        if (payload.assigned_user_id !== undefined) {
+          source.push(payload.assigned_user_id);
+        }
+        const allowed = await this.resolveAdminExecutors(source);
+        if (!allowed.length) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Исполнители недоступны',
+            status: 403,
+            detail: 'Для заявки можно выбрать только администратора',
+          });
+          return;
+        }
+        payload.kind = 'request';
+        payload.task_type = REQUEST_TYPE_NAME;
+        payload.status = 'Новая';
+        payload.created_by = actorId;
+        payload.assignees = allowed;
+        payload.assigned_user_id = allowed[0];
+      } else {
+        payload.kind = 'task';
+      }
+      const task = await this.service.create(payload, actorId);
+      const label = resolveTaskLabel(detectTaskKind(task));
       await writeLog(
-        `Создана задача ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
+        `Создана ${label.toLowerCase()} ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
       res.status(201).json(task);
-      void this.notifyTaskCreated(task, req.user!.id as number).catch((error) => {
+      void this.notifyTaskCreated(task, actorId).catch((error) => {
+        console.error('Не удалось отправить уведомление о создании задачи', error);
+      });
+    },
+  ];
+
+  createRequest = [
+    handleValidation,
+    async (req: RequestWithUser, res: Response) => {
+      const actorId = Number(req.user!.id);
+      const payload = req.body as Partial<TaskDocument>;
+      const source: unknown[] = Array.isArray(payload.assignees)
+        ? [...payload.assignees]
+        : [];
+      if (payload.assigned_user_id !== undefined) {
+        source.push(payload.assigned_user_id);
+      }
+      const allowed = await this.resolveAdminExecutors(source);
+      if (!allowed.length) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Исполнители недоступны',
+          status: 403,
+          detail: 'Для заявки можно выбрать только администратора',
+        });
+        return;
+      }
+      payload.kind = 'request';
+      payload.task_type = REQUEST_TYPE_NAME;
+      payload.status = 'Новая';
+      payload.created_by = actorId;
+      payload.assignees = allowed;
+      payload.assigned_user_id = allowed[0];
+      const task = await this.service.create(payload, actorId);
+      await writeLog(
+        `Создана заявка ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
+      );
+      res.status(201).json(task);
+      void this.notifyTaskCreated(task, actorId).catch((error) => {
         console.error('Не удалось отправить уведомление о создании задачи', error);
       });
     },
@@ -1943,6 +2082,63 @@ export default class TasksController {
           detail: 'Not Found',
         });
         return;
+      }
+      const nextPayload = req.body as Partial<TaskDocument>;
+      const previousKind = detectTaskKind(previousTask);
+      if (previousKind === 'request') {
+        if (
+          typeof nextPayload.kind === 'string' &&
+          nextPayload.kind.trim() !== 'request'
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Изменение типа запрещено',
+            status: 409,
+            detail: 'Заявку нельзя преобразовать в задачу',
+          });
+          return;
+        }
+        if (
+          Object.prototype.hasOwnProperty.call(nextPayload, 'task_type') &&
+          typeof nextPayload.task_type === 'string' &&
+          nextPayload.task_type.trim() !== REQUEST_TYPE_NAME
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Изменение типа запрещено',
+            status: 409,
+            detail: 'Заявку нельзя преобразовать в задачу',
+          });
+          return;
+        }
+        if (
+          Object.prototype.hasOwnProperty.call(nextPayload, 'assignees') ||
+          Object.prototype.hasOwnProperty.call(nextPayload, 'assigned_user_id')
+        ) {
+          const source: unknown[] = Array.isArray(nextPayload.assignees)
+            ? [...nextPayload.assignees]
+            : [];
+          if (nextPayload.assigned_user_id !== undefined) {
+            source.push(nextPayload.assigned_user_id);
+          }
+          const allowed = await this.resolveAdminExecutors(source);
+          if (!allowed.length) {
+            sendProblem(req, res, {
+              type: 'about:blank',
+              title: 'Исполнители недоступны',
+              status: 403,
+              detail: 'Для заявки можно выбрать только администратора',
+            });
+            return;
+          }
+          nextPayload.assignees = allowed;
+          const assignedNumeric = Number(nextPayload.assigned_user_id);
+          nextPayload.assigned_user_id = allowed.includes(assignedNumeric)
+            ? assignedNumeric
+            : allowed[0];
+        }
+        nextPayload.kind = 'request';
+        nextPayload.task_type = REQUEST_TYPE_NAME;
       }
       const currentStatus =
         typeof previousTask.status === 'string'
@@ -2045,8 +2241,46 @@ export default class TasksController {
     res.json(tasks);
   };
 
+  executors = async (req: RequestWithUser, res: Response) => {
+    const kindParam =
+      typeof req.query.kind === 'string' ? req.query.kind.trim() : '';
+    if (kindParam === 'request') {
+      const admins = await User.find({})
+        .select({ telegram_id: 1, name: 1, username: 1, role: 1, access: 1 })
+        .lean<
+          {
+            telegram_id: number;
+            name?: string;
+            username?: string;
+            role?: string;
+            access?: number;
+          }[]
+        >();
+      const list = admins
+        .filter((candidate) => hasAdminAccess(candidate.role, candidate.access))
+        .map((candidate) => ({
+          telegram_id: candidate.telegram_id,
+          name: candidate.name,
+          username: candidate.username,
+          telegram_username: candidate.username ?? null,
+        }));
+      res.json(list);
+      return;
+    }
+    res.json([]);
+  };
+
   summary = async (req: Request, res: Response) => {
-    res.json(await this.service.summary(req.query));
+    const filters: Record<string, unknown> = { ...req.query };
+    if (typeof filters.kind === 'string') {
+      const trimmed = filters.kind.trim();
+      if (trimmed === 'task' || trimmed === 'request') {
+        filters.kind = trimmed;
+      } else {
+        delete filters.kind;
+      }
+    }
+    res.json(await this.service.summary(filters));
   };
 
   remove = async (req: RequestWithUser, res: Response) => {

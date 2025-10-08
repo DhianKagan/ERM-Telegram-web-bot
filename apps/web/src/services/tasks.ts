@@ -131,13 +131,14 @@ export const updateTaskStatus = (id: string, status: string) =>
     body: JSON.stringify({ status }),
   });
 
-export const createTask = async (
+const submitTask = async (
+  endpoint: string,
   data: Record<string, unknown>,
   files?: FileList | File[],
   onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = buildTaskFormData(data, files);
-  const response = await authFetch("/api/v1/tasks", {
+  const response = await authFetch(endpoint, {
     method: "POST",
     body,
     onProgress,
@@ -157,6 +158,18 @@ export const createTask = async (
   clearTasksCache();
   return result;
 };
+
+export const createTask = async (
+  data: Record<string, unknown>,
+  files?: FileList | File[],
+  onProgress?: (e: ProgressEvent) => void,
+) => submitTask("/api/v1/tasks", data, files, onProgress);
+
+export const createRequest = async (
+  data: Record<string, unknown>,
+  files?: FileList | File[],
+  onProgress?: (e: ProgressEvent) => void,
+) => submitTask("/api/v1/tasks/requests", data, files, onProgress);
 
 export const deleteTask = (id: string) =>
   authFetch(`/api/v1/tasks/${id}`, {
@@ -188,6 +201,23 @@ export const updateTask = async (
 
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));
+
+export const fetchRequestExecutors = (): Promise<User[]> =>
+  authFetch("/api/v1/tasks/executors?kind=request")
+    .then((r) => (r.ok ? r.json() : []))
+    .then((list) =>
+      Array.isArray(list)
+        ? (list as User[]).map((item) => ({
+            telegram_id: item.telegram_id,
+            name: item.name,
+            username: item.username,
+            telegram_username:
+              (item as User & { telegram_username?: string }).telegram_username ??
+              item.username ??
+              null,
+          }))
+        : [],
+    );
 
 export interface TasksResponse {
   tasks: Task[];

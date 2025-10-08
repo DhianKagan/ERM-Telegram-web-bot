@@ -18,6 +18,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ArchiveRoute from "./components/ArchiveRoute";
 
 const TasksPage = lazy(() => import("./pages/TasksPage"));
+const RequestsPage = lazy(() => import("./pages/RequestsPage"));
 const Reports = lazy(() => import("./pages/Reports"));
 const LogsPage = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -71,6 +72,14 @@ function AppShell() {
                 element={
                   <ProtectedRoute>
                     <TasksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/requests"
+                element={
+                  <ProtectedRoute>
+                    <RequestsPage />
                   </ProtectedRoute>
                 }
               />

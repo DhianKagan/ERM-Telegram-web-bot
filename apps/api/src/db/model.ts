@@ -182,7 +182,10 @@ const historySchema = new Schema<HistoryEntry>(
   { _id: false },
 );
 
+export type TaskKind = 'task' | 'request';
+
 export interface TaskAttrs {
+  kind?: TaskKind;
   request_id?: string;
   task_number?: string;
   submission_date?: Date;
@@ -193,7 +196,13 @@ export interface TaskAttrs {
   title: string;
   slug?: string;
   task_description?: string;
-  task_type?: 'Доставить' | 'Купить' | 'Выполнить' | 'Построить' | 'Починить';
+  task_type?:
+    | 'Доставить'
+    | 'Купить'
+    | 'Выполнить'
+    | 'Построить'
+    | 'Починить'
+    | 'Заявка';
   task_type_id?: number;
   start_date?: Date;
   due_date?: Date;
@@ -267,6 +276,11 @@ export interface TaskDocument extends TaskAttrs, Document {}
 
 const taskSchema = new Schema<TaskDocument>(
   {
+    kind: {
+      type: String,
+      enum: ['task', 'request'],
+      default: 'task',
+    },
     request_id: String,
     task_number: String,
     submission_date: Date,
@@ -396,11 +410,28 @@ taskSchema.pre('init', (doc: Record<string, unknown>) => {
 });
 
 taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
+  const normalizedKind = this.kind === 'request' ? 'request' : 'task';
+  this.kind = normalizedKind;
+  const prefix = normalizedKind === 'request' ? 'REQ' : 'ERM';
   if (!this.request_id) {
     const taskModel = mongoose.model<TaskDocument>('Task');
-    const count = await taskModel.countDocuments();
-    const num = String(count + 1).padStart(6, '0');
-    this.request_id = `ERM_${num}`;
+    const requestIdPattern = new RegExp(`^${prefix}_\\d+$`);
+    const [stats] = await taskModel.aggregate<{ max: number }>([
+      { $match: { request_id: requestIdPattern } },
+      {
+        $project: {
+          suffix: {
+            $toInt: {
+              $arrayElemAt: [{ $split: ['$request_id', '_'] }, 1],
+            },
+          },
+        },
+      },
+      { $group: { _id: null, max: { $max: '$suffix' } } },
+    ]);
+    const latestNumber = stats?.max ?? 0;
+    const num = String(latestNumber + 1).padStart(6, '0');
+    this.request_id = `${prefix}_${num}`;
   }
   this.task_number = this.request_id;
   if (!this.title) {

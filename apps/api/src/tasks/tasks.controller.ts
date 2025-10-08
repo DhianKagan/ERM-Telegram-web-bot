@@ -40,7 +40,7 @@ import {
   updateTaskSummaryMessageId,
 } from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';
-import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
+import { buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';

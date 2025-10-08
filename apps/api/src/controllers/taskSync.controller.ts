@@ -62,6 +62,30 @@ const isMessageNotModifiedError = (error: unknown): boolean => {
   );
 };
 
+const isMessageMissingOnDeleteError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const candidate = error as Record<string, unknown> & {
+    response?: { error_code?: number; description?: unknown };
+    description?: unknown;
+    error_code?: unknown;
+  };
+  const errorCode =
+    candidate.response?.error_code ??
+    (typeof candidate.error_code === 'number' ? candidate.error_code : null);
+  if (errorCode !== 400) {
+    return false;
+  }
+  const descriptionSource =
+    typeof candidate.response?.description === 'string'
+      ? candidate.response.description
+      : typeof candidate.description === 'string'
+        ? candidate.description
+        : '';
+  return descriptionSource.toLowerCase().includes('message to delete not found');
+};
+
 const toNumericId = (value: unknown): number | null => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
@@ -192,10 +216,17 @@ export default class TaskSyncController {
         try {
           await this.bot.telegram.deleteMessage(chatId, messageId);
         } catch (deleteError) {
-          console.warn(
-            'Не удалось удалить устаревшее сообщение задачи',
-            deleteError,
-          );
+          if (isMessageMissingOnDeleteError(deleteError)) {
+            console.info(
+              'Устаревшее сообщение задачи уже удалено в Telegram',
+              { chatId, messageId },
+            );
+          } else {
+            console.warn(
+              'Не удалось удалить устаревшее сообщение задачи',
+              deleteError,
+            );
+          }
         }
       }
     }

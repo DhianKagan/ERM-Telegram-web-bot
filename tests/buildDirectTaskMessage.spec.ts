@@ -25,4 +25,17 @@ describe('buildDirectTaskMessage', () => {
       'Веб-версия: <a href="https://example.com/tasks?task=507f1f77bcf86cd799439011">Открыть задачу</a>',
     );
   });
+
+  it('выводит примечание при передаче note', () => {
+    const task = {
+      _id: '507f1f77bcf86cd799439099',
+      title: 'Тест',
+      status: 'В работе',
+      assignees: [],
+    } as const;
+    const text = buildDirectTaskMessage(task as any, null, {}, null, {
+      note: 'Задача обновлена',
+    });
+    expect(text.split('\n')[0]).toBe('<i>Задача обновлена</i>');
+  });
 });

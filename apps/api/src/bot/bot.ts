@@ -423,8 +423,13 @@ export const buildDirectTaskMessage = (
   link: string | null,
   users: Record<number, { name: string; username: string }>,
   appLink: string | null = null,
+  options?: { note?: string | null },
 ): string => {
   const lines: string[] = [];
+  const note = typeof options?.note === 'string' ? options.note.trim() : '';
+  if (note) {
+    lines.push(`<i>${htmlEscape(note)}</i>`);
+  }
   const identifier = getTaskIdentifier(task);
   const title = typeof task.title === 'string' ? task.title.trim() : '';
   const headerContent = (() => {

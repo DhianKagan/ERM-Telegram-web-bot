@@ -11,8 +11,10 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   XMarkIcon,
+  ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
 
 const baseItems = [
   { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
@@ -39,11 +41,25 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const role = user?.role || "user";
+  const access = typeof user?.access === "number" ? user.access : 0;
+  const allowArchive =
+    role === "admin" && hasAccess(access, ARCHIVE_ACCESS);
   const items = React.useMemo(() => {
-    if (role === "admin") return [...baseItems, ...adminItems];
+    if (role === "admin") {
+      const list = [...adminItems];
+      if (allowArchive) {
+        const archiveItem = {
+          to: "/cp/archive",
+          label: "Архив",
+          icon: ArchiveBoxIcon,
+        };
+        list.splice(4, 0, archiveItem);
+      }
+      return [...baseItems, ...list];
+    }
     if (role === "manager") return [...baseItems, ...managerItems];
     return baseItems;
-  }, [role]);
+  }, [role, allowArchive]);
   return (
     <aside
       className={cn(

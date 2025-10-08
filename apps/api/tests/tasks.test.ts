@@ -17,6 +17,25 @@ jest.mock('../src/services/route', () => ({
   clearRouteCache: jest.fn(),
 }));
 
+const mockDeleteMessage = jest.fn().mockResolvedValue(undefined);
+const mockSendMessage = jest.fn().mockResolvedValue({ message_id: 100 });
+const mockEditMessageMedia = jest.fn().mockResolvedValue(undefined);
+const mockEditMessageText = jest.fn().mockResolvedValue(undefined);
+
+jest.mock('../src/bot/bot', () => ({
+  bot: {
+    telegram: {
+      deleteMessage: mockDeleteMessage,
+      sendMessage: mockSendMessage,
+      editMessageMedia: mockEditMessageMedia,
+      editMessageText: mockEditMessageText,
+    },
+  },
+  buildTaskAppLink: jest.fn(() => null),
+  buildDirectTaskKeyboard: jest.fn(() => null),
+  buildDirectTaskMessage: jest.fn(() => ''),
+}));
+
 jest.mock('../src/db/model', () => ({
   Task: {
     create: jest.fn(async (d) => ({
@@ -34,16 +53,28 @@ jest.mock('../src/db/model', () => ({
       time_spent: 0,
       save: jest.fn(),
       history: [],
+      created_by: 1,
+      telegram_topic_id: 777,
+      telegram_message_id: 321,
+      telegram_history_message_id: 322,
+      telegram_summary_message_id: 323,
+      telegram_status_message_id: 324,
+      telegram_preview_message_ids: [401, 402],
+      telegram_attachments_message_ids: [501],
+      telegram_dm_message_ids: [{ user_id: 7, message_id: 601 }],
     })),
+    findByIdAndUpdate: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
     findByIdAndDelete: jest.fn(async () => ({
       _id: '1',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
+      created_by: 1,
       toObject() {
         return {
           _id: '1',
           request_id: 'ERM_000001',
           task_number: 'ERM_000001',
+          created_by: 1,
         };
       },
     })),
@@ -83,6 +114,12 @@ const { Task, Archive } = require('../src/db/model');
 const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
 
 let app;
+beforeEach(() => {
+  mockDeleteMessage.mockClear();
+  mockSendMessage.mockClear();
+  mockEditMessageMedia.mockClear();
+  mockEditMessageText.mockClear();
+});
 beforeAll(() => {
   app = express();
   app.use(express.json());
@@ -242,8 +279,18 @@ test('удаление задачи доступно только уровню 8
     expect.objectContaining({
       request_id: 'ERM_000001-DEL',
       task_number: 'ERM_000001-DEL',
+      archived_at: expect.any(Date),
+      archived_by: 1,
     }),
   );
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 321);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 322);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 323);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 324);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 401);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 402);
+  expect(mockDeleteMessage).toHaveBeenCalledWith('1', 501);
+  expect(mockDeleteMessage).toHaveBeenCalledWith(7, 601);
 });
 
 test('удаление задачи недоступно обычному администратору', async () => {

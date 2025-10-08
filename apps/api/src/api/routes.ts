@@ -41,6 +41,7 @@ import departmentsRouter from '../routes/departments';
 import employeesRouter from '../routes/employees';
 import type { RequestWithUser } from '../types/request';
 import collectionsRouter from '../routes/collections';
+import archivesRouter from '../routes/archives';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -223,6 +224,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/departments`, departmentsRouter);
   app.use(`${prefix}/employees`, employeesRouter);
   app.use(`${prefix}/collections`, collectionsRouter);
+  app.use(`${prefix}/archives`, archivesRouter);
 
   app.get(
     '/api/tma/tasks',

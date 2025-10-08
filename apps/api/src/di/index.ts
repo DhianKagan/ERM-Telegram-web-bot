@@ -13,6 +13,7 @@ import UsersService from '../users/users.service';
 import RolesService from '../roles/roles.service';
 import LogsService from '../logs/logs.service';
 import TaskTemplatesService from '../taskTemplates/taskTemplates.service';
+import ArchivesService from '../archives/archives.service';
 import queries from '../db/queries';
 import tmaAuthGuard from '../auth/tmaAuth.guard';
 import { bot } from '../bot/bot';
@@ -29,6 +30,9 @@ container.register(TOKENS.RolesService, {
 });
 container.register(TOKENS.LogsService, {
   useFactory: (c) => new LogsService(c.resolve(TOKENS.TasksRepository)),
+});
+container.register(TOKENS.ArchivesService, {
+  useFactory: (c) => new ArchivesService(c.resolve(TOKENS.TasksRepository)),
 });
 container.register(TOKENS.TaskTemplatesService, {
   useFactory: (c) =>

@@ -171,6 +171,8 @@ export async function updateTask(
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const shouldAssertStatus =
+    typeof prev.status === 'string' && prev.status === 'Новая';
   if (Object.prototype.hasOwnProperty.call(data, 'status')) {
     const nextStatus = data.status as TaskDocument['status'];
     if (nextStatus === 'Новая') {
@@ -194,8 +196,12 @@ export async function updateTask(
     changed_by: userId,
     changes: { from, to },
   };
-  const updated = await Task.findByIdAndUpdate(
-    id,
+  const query: Record<string, unknown> = { _id: prev._id };
+  if (shouldAssertStatus) {
+    query.status = 'Новая';
+  }
+  const updated = await Task.findOneAndUpdate(
+    query,
     {
       $set: data,
       $push: { history: entry },

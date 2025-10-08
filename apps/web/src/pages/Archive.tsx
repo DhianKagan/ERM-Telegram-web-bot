@@ -52,10 +52,8 @@ export default function ArchivePage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
   const access = typeof user?.access === "number" ? user.access : 0;
-  const canViewArchive =
-    user?.role === "admin" && hasAccess(access, ARCHIVE_ACCESS);
-  const canPurge =
-    user?.role === "admin" && hasAccess(access, ACCESS_TASK_DELETE);
+  const canViewArchive = hasAccess(access, ARCHIVE_ACCESS);
+  const canPurge = hasAccess(access, ACCESS_TASK_DELETE);
 
   const visibleCount = React.useMemo(
     () => rows.filter((row) => row.id).length,

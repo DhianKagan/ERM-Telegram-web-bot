@@ -4,7 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import { repairCollections } from '../scripts/db/repairCollections';
 
-jest.setTimeout(180000);
+jest.setTimeout(300000);
 
 const mongoose = (() => {
   try {

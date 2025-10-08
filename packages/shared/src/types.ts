@@ -22,6 +22,7 @@ export interface Task {
   cargo_height_m?: number;
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
+  logistics_enabled?: boolean;
   payment_method?: PaymentMethod;
   payment_amount?: number;
   telegram_message_id?: number;

@@ -73,7 +73,7 @@ interface InitialValues {
   cargoHeight: string;
   cargoVolume: string;
   cargoWeight: string;
-  showDimensions: boolean;
+  showLogistics: boolean;
 }
 
 const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -475,7 +475,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [cargoHeight, setCargoHeight] = React.useState("");
   const [cargoVolume, setCargoVolume] = React.useState("");
   const [cargoWeight, setCargoWeight] = React.useState("");
-  const [showDimensions, setShowDimensions] = React.useState(false);
+  const [showLogistics, setShowLogistics] = React.useState(false);
   const [creator, setCreator] = React.useState("");
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
@@ -667,14 +667,35 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         volumeValue,
         weightValue,
       );
-      setShowDimensions(hasDims);
-      setCreator(String((taskData.created_by as unknown) || ""));
+      const startLocationValue = (taskData.start_location as string) || "";
+      const endLocationValue = (taskData.end_location as string) || "";
       const startLocationLink = (taskData.start_location_link as string) || "";
       const endLocationLink = (taskData.end_location_link as string) || "";
-      setStart((taskData.start_location as string) || "");
+      const distanceValue =
+        typeof taskData.route_distance_km === "number"
+          ? taskData.route_distance_km
+          : null;
+      const rawLogisticsEnabled =
+        (taskData as Record<string, unknown>).logistics_enabled;
+      const hasLogisticsData = Boolean(
+        startLocationValue ||
+          endLocationValue ||
+          startLocationLink ||
+          endLocationLink ||
+          distanceValue !== null ||
+          curTransport !== DEFAULT_TRANSPORT ||
+          hasDims,
+      );
+      const logisticsEnabled =
+        typeof rawLogisticsEnabled === "boolean"
+          ? rawLogisticsEnabled
+          : hasLogisticsData;
+      setShowLogistics(logisticsEnabled);
+      setCreator(String((taskData.created_by as unknown) || ""));
+      setStart(startLocationValue);
       setStartLink(startLocationLink);
       setStartCoordinates(startLocationLink ? extractCoords(startLocationLink) : null);
-      setEnd((taskData.end_location as string) || "");
+      setEnd(endLocationValue);
       setEndLink(endLocationLink);
       setFinishCoordinates(endLocationLink ? extractCoords(endLocationLink) : null);
       setAttachments(((taskData.attachments as Attachment[]) || []) as Attachment[]);
@@ -689,11 +710,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           return list;
         });
       }
-      setDistanceKm(
-        typeof taskData.route_distance_km === "number"
-          ? taskData.route_distance_km
-          : null,
-      );
+      setDistanceKm(distanceValue);
       initialRef.current = {
         title: (taskData.title as string) || "",
         taskType: curTaskType,
@@ -715,15 +732,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         dueDate,
         attachments: ((taskData.attachments as Attachment[]) || []) as Attachment[],
         distanceKm:
-          typeof taskData.route_distance_km === "number"
-            ? taskData.route_distance_km
-            : null,
+          typeof distanceValue === "number" ? distanceValue : null,
         cargoLength: lengthValue,
         cargoWidth: widthValue,
         cargoHeight: heightValue,
         cargoVolume: volumeValue,
         cargoWeight: weightValue,
-        showDimensions: hasDims,
+        showLogistics: logisticsEnabled,
       };
       setStartDateNotice(null);
       commitResolvedTaskId(
@@ -750,15 +765,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     ],
   );
 
-  const handleDimensionsToggle = (checked: boolean) => {
-    if (!checked) {
-      setCargoLength("");
-      setCargoWidth("");
-      setCargoHeight("");
-      setCargoVolume("");
-      setCargoWeight("");
-    }
-    setShowDimensions(checked);
+  const handleLogisticsToggle = (checked: boolean) => {
+    setShowLogistics(checked);
   };
 
   React.useEffect(() => {
@@ -884,7 +892,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         cargoHeight: "",
         cargoVolume: "",
         cargoWeight: "",
-        showDimensions: false,
+        showLogistics: false,
       };
       setInitialDates({ start: defaultStartDate, due: defaultDueDate });
       reset({
@@ -905,7 +913,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setCargoHeight("");
       setCargoVolume("");
       setCargoWeight("");
-      setShowDimensions(false);
+      setShowLogistics(false);
       setDueOffset(DEFAULT_DUE_OFFSET_MS);
     }
   }, [
@@ -1214,6 +1222,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         start_location_link: startLink,
         end_location: end,
         end_location_link: endLink,
+        logistics_enabled: showLogistics,
       };
       if (!isNewTask && payload.created_by === null) {
         delete payload.created_by;
@@ -1387,7 +1396,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setEndLink(d.endLink);
     setAttachments(d.attachments as Attachment[]);
     setDistanceKm(d.distanceKm);
-    setShowDimensions(d.showDimensions);
+    setShowLogistics(Boolean(d.showLogistics));
   };
 
   const acceptTask = async () => {
@@ -1712,222 +1721,197 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               )}
             />
           </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label
-                className="block text-sm font-medium"
-                htmlFor="task-start-link"
-              >
-                {t("startPoint")}
-              </label>
-              {startLink ? (
-                <div className="flex items-start gap-2">
-                  <div className="flex flex-col gap-1">
-                    <a
-                      href={DOMPurify.sanitize(startLink)}
-                      target="_blank"
-                      rel="noopener"
-                      className="text-accentPrimary underline"
-                    >
-                      {start || t("link")}
-                    </a>
-                    {startCoordinates && (
-                      <input
-                        id="task-start-coordinates"
-                        name="startCoordinatesDisplay"
-                        value={formatCoords(startCoordinates)}
-                        readOnly
-                        className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                        onFocus={(e) => e.currentTarget.select()}
-                        aria-label={t("coordinates")}
-                      />
-                    )}
-                  </div>
-                  {editing && (
-                    <button
-                      type="button"
-                      onClick={() => handleStartLink("")}
-                      className="text-red-600"
-                    >
-                      ✖
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-1 flex gap-2">
-                  <input
-                    id="task-start-link"
-                    name="startLink"
-                    value={startLink}
-                    onChange={(e) => handleStartLink(e.target.value)}
-                    placeholder={t("googleMapsLink")}
-                    className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                    disabled={!editing}
-                  />
-                  <a
-                    href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                    target="_blank"
-                    rel="noopener"
-                    className={cn(
-                      buttonVariants({ variant: "default", size: "sm" }),
-                      "rounded-2xl px-3",
-                    )}
-                  >
-                    {t("map")}
-                  </a>
-                </div>
-              )}
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium"
-                htmlFor="task-end-link"
-              >
-                {t("endPoint")}
-              </label>
-              {endLink ? (
-                <div className="flex items-start gap-2">
-                  <div className="flex flex-col gap-1">
-                    <a
-                      href={DOMPurify.sanitize(endLink)}
-                      target="_blank"
-                      rel="noopener"
-                      className="text-accentPrimary underline"
-                    >
-                      {end || t("link")}
-                    </a>
-                    {finishCoordinates && (
-                      <input
-                        id="task-end-coordinates"
-                        name="endCoordinatesDisplay"
-                        value={formatCoords(finishCoordinates)}
-                        readOnly
-                        className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                        onFocus={(e) => e.currentTarget.select()}
-                        aria-label={t("coordinates")}
-                      />
-                    )}
-                  </div>
-                  {editing && (
-                    <button
-                      type="button"
-                      onClick={() => handleEndLink("")}
-                      className="text-red-600"
-                    >
-                      ✖
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-1 flex gap-2">
-                  <input
-                    id="task-end-link"
-                    name="endLink"
-                    value={endLink}
-                    onChange={(e) => handleEndLink(e.target.value)}
-                    placeholder={t("googleMapsLink")}
-                    className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                    disabled={!editing}
-                  />
-                  <a
-                    href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                    target="_blank"
-                    rel="noopener"
-                    className={cn(
-                      buttonVariants({ variant: "default", size: "sm" }),
-                      "rounded-2xl px-3",
-                    )}
-                  >
-                    {t("map")}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("transportType")}
-              </label>
-              <select
-                value={transportType}
-                onChange={(e) => setTransportType(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                {transports.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("paymentMethod")}
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                {payments.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium"
-                htmlFor="task-payment-amount"
-              >
-                {t("paymentAmount")}
-              </label>
-              <div
-                className={`flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:border-accentPrimary focus-within:ring focus-within:ring-brand-200 ${
-                  editing ? '' : 'opacity-80'
-                }`}
-              >
-                <input
-                  id="task-payment-amount"
-                  name="paymentAmount"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  onBlur={(e) =>
-                    setPaymentAmount(formatCurrencyDisplay(e.target.value))
-                  }
-                  className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
-                  placeholder="0"
-                  inputMode="decimal"
-                  disabled={!editing}
-                />
-                <span className="px-2 text-sm font-semibold text-slate-500">
-                  грн
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {t("paymentAmountFormat")}
-              </p>
-            </div>
-          </div>
           <div className="space-y-3 rounded-md border border-dashed border-gray-300 p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
                 type="checkbox"
-                id="task-show-dimensions"
-                name="showDimensions"
+                id="task-show-logistics"
+                name="showLogistics"
                 className="h-4 w-4"
-                checked={showDimensions}
-                onChange={(e) => handleDimensionsToggle(e.target.checked)}
+                checked={showLogistics}
+                onChange={(e) => handleLogisticsToggle(e.target.checked)}
                 disabled={!editing}
               />
-              {t("enterDimensions")}
+              {t("logisticsToggle")}
             </label>
-            {showDimensions && (
-              <div className="space-y-3">
+            {showLogistics && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                  <div>
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-start-link"
+                    >
+                      {t("startPoint")}
+                    </label>
+                    {startLink ? (
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={DOMPurify.sanitize(startLink)}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-accentPrimary underline"
+                          >
+                            {start || t("link")}
+                          </a>
+                          {startCoordinates && (
+                            <input
+                              id="task-start-coordinates"
+                              name="startCoordinatesDisplay"
+                              value={formatCoords(startCoordinates)}
+                              readOnly
+                              className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                              onFocus={(e) => e.currentTarget.select()}
+                              aria-label={t("coordinates")}
+                            />
+                          )}
+                        </div>
+                        {editing && (
+                          <button
+                            type="button"
+                            onClick={() => handleStartLink("")}
+                            className="text-red-600"
+                          >
+                            ✖
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex gap-2">
+                        <input
+                          id="task-start-link"
+                          name="startLink"
+                          value={startLink}
+                          onChange={(e) => handleStartLink(e.target.value)}
+                          placeholder={t("googleMapsLink")}
+                          className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                          disabled={!editing}
+                        />
+                        <a
+                          href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                          target="_blank"
+                          rel="noopener"
+                          className={cn(
+                            buttonVariants({ variant: "default", size: "sm" }),
+                            "rounded-2xl px-3",
+                          )}
+                        >
+                          {t("map")}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="task-end-link"
+                    >
+                      {t("endPoint")}
+                    </label>
+                    {endLink ? (
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={DOMPurify.sanitize(endLink)}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-accentPrimary underline"
+                          >
+                            {end || t("link")}
+                          </a>
+                          {finishCoordinates && (
+                            <input
+                              id="task-end-coordinates"
+                              name="endCoordinatesDisplay"
+                              value={formatCoords(finishCoordinates)}
+                              readOnly
+                              className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                              onFocus={(e) => e.currentTarget.select()}
+                              aria-label={t("coordinates")}
+                            />
+                          )}
+                        </div>
+                        {editing && (
+                          <button
+                            type="button"
+                            onClick={() => handleEndLink("")}
+                            className="text-red-600"
+                          >
+                            ✖
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex gap-2">
+                        <input
+                          id="task-end-link"
+                          name="endLink"
+                          value={endLink}
+                          onChange={(e) => handleEndLink(e.target.value)}
+                          placeholder={t("googleMapsLink")}
+                          className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                          disabled={!editing}
+                        />
+                        <a
+                          href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                          target="_blank"
+                          rel="noopener"
+                          className={cn(
+                            buttonVariants({ variant: "default", size: "sm" }),
+                            "rounded-2xl px-3",
+                          )}
+                        >
+                          {t("map")}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                  <div>
+                    <label className="block text-sm font-medium">
+                      {t("transportType")}
+                    </label>
+                    <select
+                      value={transportType}
+                      onChange={(e) => setTransportType(e.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                      disabled={!editing}
+                    >
+                      {transports.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {distanceKm !== null && (
+                    <div>
+                      <label className="block text-sm font-medium">
+                        {t("distance")}
+                      </label>
+                      <p>
+                        {distanceKm} {t("km")}
+                      </p>
+                    </div>
+                  )}
+                  {routeLink && (
+                    <div>
+                      <label className="block text-sm font-medium">
+                        {t("route")}
+                      </label>
+                      <a
+                        href={routeLink}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-accentPrimary underline"
+                      >
+                        {t("link")}
+                      </a>
+                    </div>
+                  )}
+                </div>
                 <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   <div>
                     <label
@@ -2024,31 +2008,56 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             )}
           </div>
           <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            {distanceKm !== null && (
-              <div>
-                <label className="block text-sm font-medium">
-                  {t("distance")}
-                </label>
-                <p>
-                  {distanceKm} {t("km")}
-                </p>
+            <div>
+              <label className="block text-sm font-medium">
+                {t("paymentMethod")}
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                disabled={!editing}
+              >
+                {payments.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                className="block text-sm font-medium"
+                htmlFor="task-payment-amount"
+              >
+                {t("paymentAmount")}
+              </label>
+              <div
+                className={`flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:border-accentPrimary focus-within:ring focus-within:ring-brand-200 ${
+                  editing ? '' : 'opacity-80'
+                }`}
+              >
+                <input
+                  id="task-payment-amount"
+                  name="paymentAmount"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  onBlur={(e) =>
+                    setPaymentAmount(formatCurrencyDisplay(e.target.value))
+                  }
+                  className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
+                  placeholder="0"
+                  inputMode="decimal"
+                  disabled={!editing}
+                />
+                <span className="px-2 text-sm font-semibold text-slate-500">
+                  грн
+                </span>
               </div>
-            )}
-            {routeLink && (
-              <div>
-                <label className="block text-sm font-medium">
-                  {t("route")}
-                </label>
-                <a
-                  href={routeLink}
-                  target="_blank"
-                  rel="noopener"
-                  className="text-accentPrimary underline"
-                >
-                  {t("link")}
-                </a>
-              </div>
-            )}
+              <p className="mt-1 text-xs text-slate-500">
+                {t("paymentAmountFormat")}
+              </p>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium">{t("comment")}</label>

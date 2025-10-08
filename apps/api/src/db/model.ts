@@ -241,6 +241,7 @@ export interface TaskAttrs {
   cargo_height_m?: number;
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
+  logistics_enabled?: boolean;
   payment_method?: 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
   payment_amount?: number;
   telegram_topic_id?: number;
@@ -362,6 +363,7 @@ const taskSchema = new Schema<TaskDocument>(
     cargo_height_m: Number,
     cargo_volume_m3: Number,
     cargo_weight_kg: Number,
+    logistics_enabled: { type: Boolean, default: true },
 
     // Способ оплаты допускает отсутствие оплаты
     payment_method: {

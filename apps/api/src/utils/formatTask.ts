@@ -680,47 +680,6 @@ export default function formatTask(
     const statusStyle = resolveStatusStyle(task.status);
     infoLines.push(`🛠 Статус: ${emphasizeValue(task.status, statusStyle)}`);
   }
-  if (infoLines.length) {
-    sections.push(['🧾 *Информация*', ...infoLines].join('\n'));
-  }
-
-  const logisticsLines: string[] = [];
-  const start = task.start_location ? mdEscape(task.start_location) : '';
-  const end = task.end_location ? mdEscape(task.end_location) : '';
-  const startLink = task.start_location_link
-    ? `[${start}](${mdEscape(task.start_location_link)})`
-    : start;
-  const endLink = task.end_location_link
-    ? `[${end}](${mdEscape(task.end_location_link)})`
-    : end;
-  if (start || end) {
-    const arrow = start && end ? ' → ' : '';
-    logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
-  }
-  if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
-    const distanceValue = `${String(task.route_distance_km)} км`;
-    logisticsLines.push(`🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`);
-  }
-  if (task.transport_type) {
-    logisticsLines.push(
-      `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
-    );
-  }
-  if (task.payment_method) {
-    logisticsLines.push(
-      `💰 Оплата: ${emphasizeValue(String(task.payment_method), null)}`,
-    );
-  }
-  if (typeof task.payment_amount === 'number') {
-    const formatted = currencyFormatter.format(task.payment_amount);
-    logisticsLines.push(
-      `💵 Сумма: ${emphasizeValue(`${formatted} грн`, null)}`,
-    );
-  }
-  if (logisticsLines.length) {
-    sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));
-  }
-
   const cargoEntries: { label: string; value: string }[] = [];
   const lengthValue =
     typeof task.cargo_length_m === 'number'
@@ -756,16 +715,55 @@ export default function formatTask(
       value: `${weightFormatter.format(task.cargo_weight_kg)} кг`,
     });
   }
-  if (cargoEntries.length) {
-    sections.push(
-      [
-        '🚚 *Груз*',
-        ...cargoEntries.map(
-          ({ label, value }) =>
-            `• *${mdEscape(label)}*: *${mdEscape(value)}*`,
-        ),
-      ].join('\n'),
+  const logisticsEnabled =
+    typeof task.logistics_enabled === 'boolean'
+      ? task.logistics_enabled
+      : true;
+  if (task.payment_method) {
+    infoLines.push(
+      `💳 Способ оплаты: ${emphasizeValue(String(task.payment_method), null)}`,
     );
+  }
+  if (typeof task.payment_amount === 'number') {
+    const formatted = currencyFormatter.format(task.payment_amount);
+    infoLines.push(
+      `💵 Сумма: ${emphasizeValue(`${formatted} грн`, null)}`,
+    );
+  }
+  if (infoLines.length) {
+    sections.push(['🧾 *Информация*', ...infoLines].join('\n'));
+  }
+  if (logisticsEnabled) {
+    const logisticsLines: string[] = [];
+    const start = task.start_location ? mdEscape(task.start_location) : '';
+    const end = task.end_location ? mdEscape(task.end_location) : '';
+    const startLink = task.start_location_link
+      ? `[${start}](${mdEscape(task.start_location_link)})`
+      : start;
+    const endLink = task.end_location_link
+      ? `[${end}](${mdEscape(task.end_location_link)})`
+      : end;
+    if (start || end) {
+      const arrow = start && end ? ' → ' : '';
+      logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
+    }
+    if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
+      const distanceValue = `${String(task.route_distance_km)} км`;
+      logisticsLines.push(`🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`);
+    }
+    if (task.transport_type) {
+      logisticsLines.push(
+        `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
+      );
+    }
+    if (cargoEntries.length) {
+      cargoEntries.forEach(({ label, value }) => {
+        logisticsLines.push(`📦 *${mdEscape(label)}*: *${mdEscape(value)}*`);
+      });
+    }
+    if (logisticsLines.length) {
+      sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));
+    }
   }
 
   const peopleLines: string[] = [];

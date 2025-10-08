@@ -34,6 +34,7 @@ const messages = {
   taskCanceled: 'Задача отменена',
   taskCancelForbidden:
     'Статус «Отменена» может установить только создатель задачи в веб-интерфейсе.',
+  requestCancelExecutorOnly: 'Отменить заявку может только исполнитель.',
   enterComment: 'Введите комментарий',
   taskDeleted: 'Задача удалена',
   taskForm: 'Поля новой задачи:',

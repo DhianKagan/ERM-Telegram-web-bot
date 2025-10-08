@@ -1643,6 +1643,7 @@ export default class TasksController {
       typeof plain.status === 'string'
         ? (plain.status as SharedTask['status'])
         : undefined,
+      { kind: detectTaskKind(plain) },
     );
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;

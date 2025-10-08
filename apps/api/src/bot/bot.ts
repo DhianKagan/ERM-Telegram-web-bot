@@ -23,6 +23,7 @@ import {
 import taskStatusKeyboard, {
   taskAcceptConfirmKeyboard,
   taskDoneConfirmKeyboard,
+  taskCancelConfirmKeyboard,
 } from '../utils/taskButtons';
 import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
@@ -39,6 +40,7 @@ if (process.env.NODE_ENV !== 'production') {
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
 const taskSyncController = new TaskSyncController(bot);
+const REQUEST_TYPE_NAME = 'Заявка';
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);
@@ -407,6 +409,40 @@ const buildUsersIndex = async (
   }
 };
 
+const detectTaskKind = (
+  task: Record<string, unknown> | null | undefined,
+): 'task' | 'request' => {
+  if (!task) {
+    return 'task';
+  }
+  const rawKind =
+    typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
+  if (rawKind === 'request') {
+    return 'request';
+  }
+  const typeValue =
+    typeof task.task_type === 'string' ? task.task_type.trim() : '';
+  return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
+};
+
+const isTaskExecutor = (
+  task: Record<string, unknown> | null | undefined,
+  userId: number,
+): boolean => {
+  if (!task || !Number.isFinite(userId)) {
+    return false;
+  }
+  const assignedNumeric = Number(task.assigned_user_id);
+  if (Number.isFinite(assignedNumeric) && assignedNumeric === userId) {
+    return true;
+  }
+  const assigneesRaw = Array.isArray(task.assignees) ? task.assignees : [];
+  return assigneesRaw
+    .map((candidate) => Number(candidate))
+    .filter((candidate) => Number.isFinite(candidate))
+    .includes(userId);
+};
+
 const formatCoordinates = (value: unknown): string | null => {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as { lat?: unknown; lng?: unknown };
@@ -587,7 +623,9 @@ const syncTaskPresentation = async (
         : undefined;
     if (messageId !== null) {
       const formatted = formatTask(plain as SharedTask, users);
-      const keyboard = taskStatusKeyboard(taskId, status);
+      const keyboard = taskStatusKeyboard(taskId, status, {
+        kind: detectTaskKind(plain),
+      });
       const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },
@@ -716,19 +754,27 @@ async function refreshTaskKeyboard(
     const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
-    const keyboard = taskStatusKeyboard(taskId, status);
+    const keyboard = taskStatusKeyboard(taskId, status, {
+      kind: detectTaskKind(plain ?? undefined),
+    });
     await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   }
   return context;
 }
 
-async function denyCancellation(ctx: Context, taskId: string): Promise<void> {
+async function denyCancellation(
+  ctx: Context,
+  taskId: string,
+  message?: string,
+): Promise<void> {
   try {
     await refreshTaskKeyboard(ctx, taskId);
   } catch (error) {
     console.error('Не удалось обновить клавиатуру после запрета отмены', error);
   }
-  await ctx.answerCbQuery(messages.taskCancelForbidden, { show_alert: true });
+  await ctx.answerCbQuery(message ?? messages.taskCancelForbidden, {
+    show_alert: true,
+  });
 }
 
 async function processStatusAction(
@@ -765,8 +811,20 @@ async function processStatusAction(
     console.error('Не удалось получить задачу перед обновлением статуса', error);
   }
   if (status === 'Отменена') {
-    await denyCancellation(ctx, taskId);
-    return;
+    const snapshotTask = snapshot.plain;
+    if (!snapshotTask) {
+      await denyCancellation(ctx, taskId);
+      return;
+    }
+    const kind = detectTaskKind(snapshotTask);
+    if (kind !== 'request') {
+      await denyCancellation(ctx, taskId);
+      return;
+    }
+    if (!isTaskExecutor(snapshotTask, userId)) {
+      await denyCancellation(ctx, taskId, messages.requestCancelExecutorOnly);
+      return;
+    }
   }
   try {
     const currentStatus = snapshot.plain?.status;
@@ -1112,7 +1170,31 @@ bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
     });
     return;
   }
-  await denyCancellation(ctx, taskId);
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  const context = await loadTaskContext(taskId);
+  const plain = context.plain;
+  if (!plain) {
+    await denyCancellation(ctx, taskId);
+    return;
+  }
+  const kind = detectTaskKind(plain);
+  if (kind !== 'request') {
+    await denyCancellation(ctx, taskId);
+    return;
+  }
+  if (!isTaskExecutor(plain, userId)) {
+    await denyCancellation(ctx, taskId, messages.requestCancelExecutorOnly);
+    return;
+  }
+  const keyboard = taskCancelConfirmKeyboard(taskId);
+  await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+  await ctx.answerCbQuery(messages.taskStatusPrompt);
 });
 
 bot.action('task_cancel_confirm', async (ctx) => {
@@ -1128,7 +1210,28 @@ bot.action(/^task_cancel_confirm:.+$/, async (ctx) => {
     });
     return;
   }
-  await denyCancellation(ctx, taskId);
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  const canUpdate = await ensureUserCanUpdateTask(
+    ctx,
+    taskId,
+    userId,
+    'Не удалось получить задачу перед отменой',
+  );
+  if (!canUpdate) {
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось восстановить клавиатуру после отказа отмены', error);
+    }
+    return;
+  }
+  await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
 });
 
 bot.action('task_cancel_cancel', async (ctx) => {
@@ -1161,7 +1264,7 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
     });
     return;
   }
-  await denyCancellation(ctx, taskId);
+  await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
 });
 
 export async function startBot(retry = 0): Promise<void> {

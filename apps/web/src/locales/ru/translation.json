@@ -99,6 +99,7 @@
   "titleRequired": "Название обязательно",
   "transportType": "Тип транспорта",
   "enterDimensions": "Ввести габариты",
+  "logisticsToggle": "Логистика",
   "taskCreatedBy": "создал",
   "taskCreatorUnknown": "создал неизвестный автор",
   "cargoLength": "Длина, м",

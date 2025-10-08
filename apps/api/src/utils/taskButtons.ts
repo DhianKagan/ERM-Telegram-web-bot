@@ -4,6 +4,11 @@ import { Markup } from 'telegraf';
 
 type TaskStatus = 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
 
+export interface TaskStatusKeyboardOptions {
+  kind?: 'task' | 'request';
+  allowCancel?: boolean;
+}
+
 const statusButtonLabels: Record<
   Exclude<TaskStatus, 'Новая'>,
   { default: string; active: string }
@@ -51,8 +56,9 @@ export function taskCancelConfirmKeyboard(
 export default function taskStatusKeyboard(
   id: string,
   currentStatus?: TaskStatus,
+  options: TaskStatusKeyboardOptions = {},
 ): ReturnType<typeof Markup.inlineKeyboard> {
-  return Markup.inlineKeyboard([
+  const buttons = [
     Markup.button.callback(
       resolveStatusLabel('В работе', currentStatus),
       `task_accept_prompt:${id}`,
@@ -61,5 +67,14 @@ export default function taskStatusKeyboard(
       resolveStatusLabel('Выполнена', currentStatus),
       `task_done_prompt:${id}`,
     ),
-  ]);
+  ];
+  if (options.allowCancel || options.kind === 'request') {
+    buttons.push(
+      Markup.button.callback(
+        resolveStatusLabel('Отменена', currentStatus),
+        `task_cancel_prompt:${id}`,
+      ),
+    );
+  }
+  return Markup.inlineKeyboard(buttons);
 }

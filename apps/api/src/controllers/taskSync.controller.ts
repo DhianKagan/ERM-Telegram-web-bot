@@ -189,7 +189,13 @@ export default class TaskSyncController {
     const userIds = collectUserIds(task);
     const users = await buildUsersIndex(userIds);
     const { text } = formatTask(task as unknown as SharedTask, users);
-    const keyboard = taskStatusKeyboard(taskId, status);
+    const keyboard = taskStatusKeyboard(taskId, status, {
+      kind:
+        typeof task.kind === 'string' &&
+        (task.kind === 'task' || task.kind === 'request')
+          ? task.kind
+          : undefined,
+    });
     const replyMarkup = keyboard.reply_markup ?? undefined;
 
     const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {

@@ -118,7 +118,7 @@ export class TaskRequestError extends Error {
 }
 
 export const fetchKanban = () =>
-  authFetch("/api/v1/tasks?kanban=true")
+  authFetch("/api/v1/tasks?kanban=true&kind=task")
     .then((r) => (r.ok ? r.json() : []))
     .then((data) => (Array.isArray(data) ? data : data.tasks || []));
 

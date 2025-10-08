@@ -5,7 +5,8 @@
 - Конфигурация `nixpacks.toml` обеспечивает успешную сборку на Railway.
 - Pretest e2e запускает установку Firefox и Chromium и диагностику `playwright doctor` с запасным `--list`,
   а CI публикует отчёт в сводке job.
-- Роль `admin` = `ACCESS_ADMIN | ACCESS_MANAGER (6)` и наследует права `manager`.
+- Роль `admin` = `ACCESS_ADMIN | ACCESS_MANAGER (6)` и наследует права `manager`,
+  удаление задач требует отдельной маски `ACCESS_TASK_DELETE = 8`.
 - Скрипт миграции `addManagerRole.ts` добавляет документ роли менеджера в
   существующие базы данных.
 - Добавлена подсказка на странице задач и FAQ по получению роли менеджера.

@@ -28,8 +28,9 @@ jest.mock('../src/db/model', () => ({
       status: 'Новая',
       time_spent: 0,
     })),
-    findByIdAndUpdate: jest.fn(async (_id, d) => ({ _id, ...(d.$set || d) })),
+    findOneAndUpdate: jest.fn(async (query, d) => ({ _id: query._id, ...(d.$set || d) })),
     findById: jest.fn(async () => ({
+      _id: '1',
       time_spent: 0,
       save: jest.fn(),
       history: [],
@@ -176,7 +177,7 @@ test('обновление с очисткой габаритов проходи
     .patch(`/api/v1/tasks/${id}`)
     .send({ cargo_length_m: '', cargo_weight_kg: '   ' });
   expect(res.status).toBe(200);
-  const [, update] = Task.findByIdAndUpdate.mock.calls.at(-1);
+  const [, update] = Task.findOneAndUpdate.mock.calls.at(-1);
   expect(update.$set).not.toHaveProperty('cargo_length_m', '');
   expect(update.$set).not.toHaveProperty('cargo_weight_kg', '   ');
 });

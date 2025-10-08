@@ -18,6 +18,7 @@ const mockTaskCreate = jest.fn(async (data: any) => ({
 }));
 const mockTaskFindById = jest.fn(async () => ({
   _id: existingTaskId,
+  status: 'Новая',
   attachments: [
     {
       name: 'file.txt',
@@ -29,7 +30,7 @@ const mockTaskFindById = jest.fn(async () => ({
     },
   ],
 }));
-const mockTaskFindByIdAndUpdate = jest.fn(async () => ({
+const mockTaskFindOneAndUpdate = jest.fn(async () => ({
   _id: existingTaskId,
   attachments: [],
 }));
@@ -39,7 +40,7 @@ jest.mock('../src/db/model', () => ({
   Task: {
     create: mockTaskCreate,
     findById: mockTaskFindById,
-    findByIdAndUpdate: mockTaskFindByIdAndUpdate,
+    findOneAndUpdate: mockTaskFindOneAndUpdate,
   },
   Archive: {},
   User: {},
@@ -138,8 +139,9 @@ describe('Привязка вложений к задачам', () => {
       1,
     );
 
-    const call = mockTaskFindByIdAndUpdate.mock.calls[0];
+    const call = mockTaskFindOneAndUpdate.mock.calls[0];
     expect(call).toBeTruthy();
+    expect(call[0]).toMatchObject({ status: 'Новая' });
     const setArg = call[1]?.$set as { attachments?: unknown[] };
     expect(Array.isArray(setArg.attachments)).toBe(true);
     const [attachment] = setArg.attachments as Record<string, unknown>[];

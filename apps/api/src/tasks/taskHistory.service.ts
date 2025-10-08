@@ -300,7 +300,9 @@ export async function getTaskHistoryMessage(
   const task = await Task.findById(taskId).lean();
   if (!task) return null;
   const messageId =
-    typeof task.telegram_history_message_id === 'number'
+    typeof task.telegram_summary_message_id === 'number'
+      ? task.telegram_summary_message_id
+      : typeof task.telegram_history_message_id === 'number'
       ? task.telegram_history_message_id
       : typeof task.telegram_status_message_id === 'number'
       ? task.telegram_status_message_id

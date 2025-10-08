@@ -94,6 +94,7 @@ jest.mock('../apps/api/src/db/model', () => {
   }));
   return {
     Task: {
+      findOneAndUpdate: updateTaskMock,
       findByIdAndUpdate: updateTaskMock,
       findById: taskFindByIdMock,
       updateOne: updateOneMock,

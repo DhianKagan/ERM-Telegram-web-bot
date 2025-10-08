@@ -5,7 +5,7 @@ import { getTaskHistoryMessage } from '../apps/api/src/tasks/taskHistory.service
 jest.mock('../apps/api/src/db/model', () => ({
   Task: {
     findById: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
+    findOneAndUpdate: jest.fn(),
   },
 }));
 

@@ -11,6 +11,9 @@ export interface Task {
   _id: string;
   title: string;
   status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+  kind?: 'task' | 'request';
+  request_id?: string;
+  task_number?: string;
   completed_at?: string | null;
   in_progress_at?: string | null;
   assignees?: number[];

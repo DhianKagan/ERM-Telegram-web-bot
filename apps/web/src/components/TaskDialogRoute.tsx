@@ -14,10 +14,12 @@ export default function TaskDialogRoute() {
   const { refresh } = useTasks();
   const id = coerceTaskId(params.get("task"));
   const create = params.get("newTask");
-  if (!id && !create) return null;
+  const createRequest = params.get("newRequest");
+  if (!id && !create && !createRequest) return null;
   const close = () => {
     params.delete("task");
     params.delete("newTask");
+    params.delete("newRequest");
     navigate({ search: params.toString() }, { replace: true });
   };
   return (
@@ -29,6 +31,7 @@ export default function TaskDialogRoute() {
           onSave={() => {
             refresh();
           }}
+          kind={createRequest ? "request" : undefined}
         />
       </Suspense>
     </Modal>

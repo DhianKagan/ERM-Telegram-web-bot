@@ -325,6 +325,8 @@ const compactText = (value: string, maxLength: number) => {
   return `${shortened}…`;
 };
 
+export type EntityKind = "task" | "request";
+
 export interface TaskRow extends Task {
   id: string;
   created_by?: number | string | null;
@@ -339,6 +341,43 @@ export interface TaskRow extends Task {
   end_location?: string | null;
   end_location_link?: string | null;
 }
+
+type EntityCase = "nominative" | "accusative" | "genitive";
+
+const ENTITY_WORDS: Record<EntityKind, Record<EntityCase, string>> = {
+  task: {
+    nominative: "Задача",
+    accusative: "Задачу",
+    genitive: "задачи",
+  },
+  request: {
+    nominative: "Заявка",
+    accusative: "Заявку",
+    genitive: "заявки",
+  },
+};
+
+const entityWord = (
+  kind: EntityKind,
+  form: EntityCase,
+  options?: { lower?: boolean },
+) => {
+  const base = ENTITY_WORDS[kind][form];
+  return options?.lower ? base.toLowerCase() : base;
+};
+
+const resolveEntityKind = (
+  value: unknown,
+  fallback: EntityKind,
+): EntityKind => {
+  if (typeof value === "string" && value.trim().toLowerCase() === "request") {
+    return "request";
+  }
+  return fallback;
+};
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
 
 type CountdownLikeState = Extract<
   DeadlineState,
@@ -665,11 +704,12 @@ const durationToneClassMap: Record<
 const formatDurationPhrase = (
   parts: ReturnType<typeof formatCountdownParts>,
   variant: "completed" | "running",
+  entityKind: EntityKind,
 ) => {
   const { days, hours, minutes } = parts;
   if (!days && !hours && !minutes) {
     return variant === "completed"
-      ? "Задача завершена менее чем за минуту"
+      ? `${entityWord(entityKind, "nominative")} завершена менее чем за минуту`
       : "Затрачено менее минуты";
   }
   const dayLabel = `${days} ${getRussianPlural(days, [
@@ -689,7 +729,7 @@ const formatDurationPhrase = (
   ])}`;
   const phrase = `${dayLabel} ${hourLabel} ${minuteLabel}`;
   return variant === "completed"
-    ? `Задача завершена за ${phrase}`
+    ? `${entityWord(entityKind, "nominative")} завершена за ${phrase}`
     : `Затрачено ${phrase}`;
 };
 
@@ -698,6 +738,7 @@ const buildDurationTitle = (
   startValue?: string,
   endValue?: string,
   parts?: ReturnType<typeof formatCountdownParts>,
+  entityKind: EntityKind = "task",
 ) => {
   const titleParts: string[] = [];
   const startFormatted = startValue ? formatDate(startValue) : null;
@@ -716,11 +757,16 @@ const buildDurationTitle = (
     const phrase = formatDurationPhrase(
       parts,
       variant === "completed" ? "completed" : "running",
+      entityKind,
     );
     const normalized =
       variant === "completed"
         ? phrase.replace(
-            /^Задача завершена за\s/,
+            new RegExp(
+              `^${escapeRegExp(
+                `${entityWord(entityKind, "nominative")} завершена за `,
+              )}`,
+            ),
             "Продолжительность: ",
           )
         : phrase.replace(/^Затрачено\s/, "Продолжительность: ");
@@ -741,6 +787,7 @@ type ActualTimeCellProps = {
   plannedStartValue?: string | null;
   completedValue?: string | null;
   status?: Task["status"];
+  entityKind: EntityKind;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -749,6 +796,7 @@ function ActualTimeCell({
   plannedStartValue,
   completedValue,
   status,
+  entityKind,
 }: ActualTimeCellProps) {
   const plannedStartDate = React.useMemo(
     () => parseDateInput(plannedStartValue),
@@ -832,11 +880,12 @@ function ActualTimeCell({
       : "planned";
 
   const label = isNotStarted
-    ? "Задача ещё не начата"
+    ? `${entityWord(entityKind, "nominative")} ещё не начата`
     : durationParts
     ? formatDurationPhrase(
         durationParts,
         variant === "completed" ? "completed" : "running",
+        entityKind,
       )
     : "Продолжительность появится после начала";
 
@@ -844,12 +893,13 @@ function ActualTimeCell({
     progressStartValue ?? plannedStartValue ?? undefined;
 
   const durationBadgeTitle = isNotStarted
-    ? "Таймер запустится после перевода задачи в статус «В работе»"
+    ? `Таймер запустится после перевода ${entityWord(entityKind, "genitive", { lower: true })} в статус «В работе»`
     : buildDurationTitle(
         variant,
         startValueForTooltip,
         variant === "completed" ? completedValue ?? undefined : endIso,
         durationParts ?? undefined,
+        entityKind,
       );
 
   const renderStopBadge = () => {
@@ -872,7 +922,7 @@ function ActualTimeCell({
           : "В ожидании";
       const title =
         status === "Новая"
-          ? "Задача ещё не начата"
+          ? `${entityWord(entityKind, "nominative")} ещё не начата`
           : status === "В работе"
           ? "Таймер запустится после фиксации начала"
           : "Дата начала отсутствует";
@@ -886,7 +936,7 @@ function ActualTimeCell({
     return (
       <span
         className={dateBadgeClass}
-        title="Задача ещё не завершена"
+        title={`${entityWord(entityKind, "nominative")} ещё не завершена`}
       >
         <span className="truncate">{placeholder}</span>
       </span>
@@ -955,11 +1005,26 @@ function ActualTimeCell({
 
 export default function taskColumns(
   users: Record<number, AppUser>,
+  defaultKind: EntityKind = "task",
 ): ColumnDef<TaskRow>[] {
   const cols: ColumnDef<TaskRow>[] = [
     {
       header: "Номер",
-      accessorKey: "task_number",
+      id: "number",
+      accessorFn: (row) => {
+        const rowKind = resolveEntityKind(row.kind, defaultKind);
+        const rawValue =
+          rowKind === "request"
+            ? row.request_id || row.task_number || row._id
+            : row.task_number || row.request_id || row._id;
+        if (typeof rawValue === "string") {
+          return rawValue;
+        }
+        if (rawValue === undefined || rawValue === null) {
+          return "";
+        }
+        return String(rawValue);
+      },
       meta: {
         width: "clamp(4.25rem, 8vw, 6.25rem)",
         minWidth: "4rem",
@@ -969,18 +1034,29 @@ export default function taskColumns(
         headerClassName: "whitespace-nowrap text-center sm:text-left",
       },
       cell: (p) => {
-        const value = p.getValue<string>() || "";
-        const numericMatch = value.match(/\d+/);
-        const shortValue = numericMatch ? numericMatch[0] : value;
+        const row = p.row.original as TaskRow;
+        const rowKind = resolveEntityKind(row.kind, defaultKind);
+        const value = (p.getValue<string>() || "").trim();
+        const fallback =
+          rowKind === "request"
+            ? (row.request_id as string | undefined) ??
+              (row.task_number as string | undefined) ??
+              String(row._id)
+            : (row.task_number as string | undefined) ??
+              (row.request_id as string | undefined) ??
+              String(row._id);
+        const display = value || fallback || "";
+        const numericMatch = display.match(/\d+/);
+        const shortValue = numericMatch ? numericMatch[0] : display;
         return (
-          <span className={`${numberBadgeClass} justify-center`} title={value}>
+          <span className={`${numberBadgeClass} justify-center`} title={display}>
             <span className="truncate">{shortValue}</span>
           </span>
         );
       },
     },
     {
-      header: "Задачу создал",
+      header: `${entityWord(defaultKind, "accusative")} создал`,
       accessorKey: "createdAt",
       meta: {
         width: "clamp(9rem, 18vw, 14rem)",
@@ -1221,12 +1297,14 @@ export default function taskColumns(
       },
       cell: (p) => {
         const row = p.row.original;
+        const rowKind = resolveEntityKind(row.kind, defaultKind);
         return (
           <ActualTimeCell
             progressStartValue={row.in_progress_at ?? undefined}
             plannedStartValue={row.start_date ?? undefined}
             completedValue={p.getValue<string | null>() ?? undefined}
             status={row.status}
+            entityKind={rowKind}
           />
         );
       },

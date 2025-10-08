@@ -561,8 +561,16 @@ router.get(
     query('to').optional().isISO8601(),
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1 }),
+    query('kind').optional().isIn(['task', 'request']),
   ] as RequestHandler[],
   ctrl.list as RequestHandler,
+);
+
+router.get(
+  '/executors',
+  authMiddleware(),
+  [query('kind').optional().isIn(['task', 'request'])] as RequestHandler[],
+  ctrl.executors as RequestHandler,
 );
 
 router.get('/mentioned', authMiddleware(), ctrl.mentioned);
@@ -570,7 +578,11 @@ router.get('/mentioned', authMiddleware(), ctrl.mentioned);
 router.get(
   '/report/summary',
   authMiddleware(),
-  [query('from').optional().isISO8601(), query('to').optional().isISO8601()],
+  [
+    query('from').optional().isISO8601(),
+    query('to').optional().isISO8601(),
+    query('kind').optional().isIn(['task', 'request']),
+  ],
   ctrl.summary as RequestHandler,
 );
 
@@ -581,6 +593,17 @@ router.get(
   detailLimiter as unknown as RequestHandler,
   param('id').isMongoId(),
   ctrl.detail as RequestHandler,
+);
+
+router.post(
+  '/requests',
+  authMiddleware(),
+  upload.any(),
+  processUploads,
+  normalizeArrays,
+  ...(taskFormValidators as unknown as RequestHandler[]),
+  ...(validateDto(CreateTaskDto) as RequestHandler[]),
+  ...(ctrl.createRequest as RequestHandler[]),
 );
 
 router.post(

@@ -269,6 +269,9 @@ class TasksService {
 
   async bulk(ids: string[], data: Partial<TaskDocument>) {
     const payload = { ...(data ?? {}) } as Partial<TaskDocument>;
+    if (Object.prototype.hasOwnProperty.call(payload, 'kind')) {
+      delete (payload as Record<string, unknown>).kind;
+    }
     if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
       const status = payload.status;
       const isCompleted = status === 'Выполнена' || status === 'Отменена';

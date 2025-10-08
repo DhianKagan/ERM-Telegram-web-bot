@@ -6,12 +6,15 @@ import taskColumns, { TaskRow } from "../columns/taskColumns";
 import useTasks from "../context/useTasks";
 import coerceTaskId from "../utils/coerceTaskId";
 
+type EntityKind = "task" | "request";
+
 interface TaskTableProps {
   tasks: TaskRow[];
   users?: Record<number, any>;
   page: number;
   pageCount?: number;
   mine?: boolean;
+  entityKind?: EntityKind;
   onPageChange: (p: number) => void;
   onMineChange?: (v: boolean) => void;
   onRowClick?: (id: string) => void;
@@ -25,6 +28,7 @@ export default function TaskTable({
   page,
   pageCount,
   mine = false,
+  entityKind = "task",
   onPageChange,
   onMineChange,
   onRowClick,
@@ -32,7 +36,10 @@ export default function TaskTable({
   onDataChange,
 }: TaskTableProps) {
   const { query, filters } = useTasks();
-  const columns = React.useMemo(() => taskColumns(users), [users]);
+  const columns = React.useMemo(
+    () => taskColumns(users, entityKind),
+    [users, entityKind],
+  );
 
   React.useEffect(() => {
     onDataChange?.(tasks);

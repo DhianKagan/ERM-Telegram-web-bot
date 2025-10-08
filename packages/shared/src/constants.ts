@@ -7,6 +7,7 @@ export const TASK_TYPES = [
   'Выполнить',
   'Построить',
   'Починить',
+  'Заявка',
 ] as const;
 
 export const PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'] as const;

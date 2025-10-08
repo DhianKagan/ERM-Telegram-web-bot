@@ -14,10 +14,12 @@ import { useTranslation } from "react-i18next";
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, taskFields as fields } from "shared";
 import {
   createTask,
+  createRequest,
   updateTask,
   deleteTask,
   updateTaskStatus,
   TaskRequestError,
+  fetchRequestExecutors,
 } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
@@ -42,6 +44,7 @@ interface Props {
   onClose: () => void;
   onSave?: (data: Task | null) => void;
   id?: string;
+  kind?: 'task' | 'request';
 }
 
 interface InitialValues {
@@ -122,6 +125,20 @@ const formatMetricValue = (value: unknown): string => {
     return value;
   }
   return "";
+};
+
+const REQUEST_TYPE_NAME = "Заявка";
+
+const detectTaskKind = (
+  task?: Partial<Task> & Record<string, unknown>,
+): "task" | "request" => {
+  if (!task) return "task";
+  const rawKind =
+    typeof task.kind === "string" ? task.kind.trim().toLowerCase() : "";
+  if (rawKind === "request") return "request";
+  const typeValue =
+    typeof task.task_type === "string" ? task.task_type.trim() : "";
+  return typeValue === REQUEST_TYPE_NAME ? "request" : "task";
 };
 
 const currencyFormatter = new Intl.NumberFormat("uk-UA", {
@@ -265,7 +282,7 @@ const hasDimensionValues = (
 const START_OFFSET_MS = 60 * 60 * 1000;
 const ACCESS_TASK_DELETE = 8;
 
-export default function TaskDialog({ onClose, onSave, id }: Props) {
+export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
     () => id ?? null,
   );
@@ -288,7 +305,43 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     typeof user?.access === "number" &&
     (user.access & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
   const canEditAll = isAdmin || user?.role === "manager";
-  const { t } = useTranslation();
+  const { t: rawT } = useTranslation();
+  const initialKind = React.useMemo(() => kind ?? "task", [kind]);
+  const [entityKind, setEntityKind] = React.useState<"task" | "request">(
+    initialKind,
+  );
+  const adaptTaskText = React.useCallback(
+    (input: string): string => {
+      if (entityKind !== "request") return input;
+      const replacements: [RegExp, string][] = [
+        [/\bЗадачи\b/g, "Заявки"],
+        [/\bзадачи\b/g, "заявки"],
+        [/\bЗадачу\b/g, "Заявку"],
+        [/\bзадачу\b/g, "заявку"],
+        [/\bЗадаче\b/g, "Заявке"],
+        [/\bзадаче\b/g, "заявке"],
+        [/\bЗадачей\b/g, "Заявкой"],
+        [/\bзадачей\b/g, "заявкой"],
+        [/\bЗадача\b/g, "Заявка"],
+        [/\bзадача\b/g, "заявка"],
+      ];
+      return replacements.reduce(
+        (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+        input,
+      );
+    },
+    [entityKind],
+  );
+  const t = React.useCallback(
+    (key: string, options?: Parameters<typeof rawT>[1]) =>
+      adaptTaskText(String(rawT(key, options))),
+    [rawT, adaptTaskText],
+  );
+  React.useEffect(() => {
+    if (kind && kind !== entityKind) {
+      setEntityKind(kind);
+    }
+  }, [kind, entityKind]);
   const [editing, setEditing] = React.useState(true);
   const initialRef = React.useRef<InitialValues | null>(null);
   const hasAutofilledAssignee = React.useRef(false);
@@ -479,6 +532,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     node.style.height = "";
     node.style.height = `${node.scrollHeight}px`;
   }, [titleValue]);
+  React.useEffect(() => {
+    if (!isEdit && entityKind === "request") {
+      setTaskType(REQUEST_TYPE_NAME);
+    }
+  }, [entityKind, isEdit]);
   const resolveUserName = React.useCallback(
     (id: number) => {
       const person = users.find((u) => u.telegram_id === id);
@@ -500,7 +558,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       taskData: Partial<Task> & Record<string, unknown>,
       usersMap?: Record<string, UserBrief>,
     ) => {
+      const detectedKind = detectTaskKind(taskData);
+      setEntityKind(detectedKind);
       const curTaskType = (taskData.task_type as string) || DEFAULT_TASK_TYPE;
+      const normalizedTaskType =
+        detectedKind === "request" ? REQUEST_TYPE_NAME : curTaskType;
       const curPriority =
         normalizePriorityOption(taskData.priority as string) || DEFAULT_PRIORITY;
       const curTransport =
@@ -577,7 +639,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         dueDate,
       });
       hasAutofilledAssignee.current = true;
-      setTaskType(curTaskType);
+      setTaskType(normalizedTaskType);
       setComment((taskData.comment as string) || "");
       setPriority(curPriority);
       setTransportType(curTransport);
@@ -766,6 +828,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           setStartDateNotice(null);
         });
     } else {
+      setEntityKind(initialKind);
       const createdAt = new Date();
       const { start: defaultStartDate, due: defaultDueDate } =
         computeDefaultDates(createdAt);
@@ -773,11 +836,16 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCompletedAt("");
       setHistory([]);
       setResolvedTaskId(null);
-      authFetch("/api/v1/tasks/report/summary")
+      const summaryUrl =
+        initialKind === "request"
+          ? "/api/v1/tasks/report/summary?kind=request"
+          : "/api/v1/tasks/report/summary";
+      authFetch(summaryUrl)
         .then((r) => (r.ok ? r.json() : { count: 0 }))
         .then((s) => {
           const num = String((s.count || 0) + 1).padStart(6, "0");
-          setRequestId(`ERM_${num}`);
+          const prefix = initialKind === "request" ? "REQ" : "ERM";
+          setRequestId(`${prefix}_${num}`);
         });
       setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
       const startInstant = parseIsoDate(defaultStartDate);
@@ -786,7 +854,8 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       );
       initialRef.current = {
         title: "",
-        taskType: DEFAULT_TASK_TYPE,
+        taskType:
+          initialKind === "request" ? REQUEST_TYPE_NAME : DEFAULT_TASK_TYPE,
         description: "",
         comment: "",
         priority: DEFAULT_PRIORITY,
@@ -796,7 +865,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
         status: DEFAULT_STATUS,
         completedAt: "",
         creator: user ? String(user.telegram_id) : "",
-        assigneeId: user ? String(user.telegram_id) : "",
+        assigneeId:
+          initialKind === "request"
+            ? ""
+            : user
+              ? String(user.telegram_id)
+              : "",
         start: "",
         startLink: "",
         end: "",
@@ -816,7 +890,12 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       reset({
         title: "",
         description: "",
-        assigneeId: user ? String(user.telegram_id) : "",
+        assigneeId:
+          initialKind === "request"
+            ? ""
+            : user
+              ? String(user.telegram_id)
+              : "",
         startDate: defaultStartDate,
         dueDate: defaultDueDate,
       });
@@ -848,6 +927,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     setInitialDates,
     commitResolvedTaskId,
     effectiveTaskId,
+    initialKind,
   ]);
 
   React.useEffect(() => {
@@ -867,6 +947,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   }, [isEdit, startDateNotice, startDateValue]);
 
   React.useEffect(() => {
+    if (entityKind === "request") {
+      if (user) {
+        setCreator(String((user as UserBrief).telegram_id));
+      }
+      fetchRequestExecutors()
+        .then((list) => {
+          setUsers(list);
+        })
+        .catch(() => {
+          setUsers([]);
+        });
+      return;
+    }
     if (canEditAll) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
@@ -878,7 +971,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       setCreator(String((user as UserBrief).telegram_id));
       setUsers([user as UserBrief]);
     }
-  }, [user, canEditAll]);
+  }, [user, canEditAll, entityKind]);
 
   React.useEffect(() => {
     if (isEdit) return;
@@ -1104,9 +1197,11 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       }
       const assignedNumeric = toNumericValue(assignedRaw);
       const assignedValue = assignedNumeric !== null ? assignedNumeric : assignedRaw;
+      const resolvedTaskType =
+        entityKind === "request" ? REQUEST_TYPE_NAME : taskType;
       const payload: Record<string, unknown> = {
         title: formData.title,
-        task_type: taskType,
+        task_type: resolvedTaskType,
         task_description: formData.description,
         comment,
         priority,
@@ -1174,7 +1269,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           currentTaskId;
         savedId = coerceTaskId(updatedIdCandidate) ?? updatedIdCandidate ?? "";
       } else {
-        const created = await createTask(sendPayload);
+        const created = await (entityKind === "request"
+          ? createRequest(sendPayload)
+          : createTask(sendPayload));
         if (!created) throw new Error("SAVE_FAILED");
         savedTask = created as Partial<Task> & Record<string, unknown>;
         const createdIdCandidate =
@@ -1526,13 +1623,19 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
+                disabled={!editing || entityKind === "request"}
               >
-                {types.map((t) => (
+                {types
+                  .filter((type) =>
+                    entityKind === "request"
+                      ? type === REQUEST_TYPE_NAME
+                      : true,
+                  )
+                  .map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
-                ))}
+                  ))}
               </select>
             </div>
             <div>

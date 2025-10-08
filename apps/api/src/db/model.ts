@@ -412,11 +412,25 @@ taskSchema.pre('init', (doc: Record<string, unknown>) => {
 taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
   const normalizedKind = this.kind === 'request' ? 'request' : 'task';
   this.kind = normalizedKind;
+  const prefix = normalizedKind === 'request' ? 'REQ' : 'ERM';
   if (!this.request_id) {
     const taskModel = mongoose.model<TaskDocument>('Task');
-    const count = await taskModel.countDocuments({ kind: normalizedKind });
-    const num = String(count + 1).padStart(6, '0');
-    const prefix = normalizedKind === 'request' ? 'REQ' : 'ERM';
+    const requestIdPattern = new RegExp(`^${prefix}_\\d+$`);
+    const [stats] = await taskModel.aggregate<{ max: number }>([
+      { $match: { request_id: requestIdPattern } },
+      {
+        $project: {
+          suffix: {
+            $toInt: {
+              $arrayElemAt: [{ $split: ['$request_id', '_'] }, 1],
+            },
+          },
+        },
+      },
+      { $group: { _id: null, max: { $max: '$suffix' } } },
+    ]);
+    const latestNumber = stats?.max ?? 0;
+    const num = String(latestNumber + 1).padStart(6, '0');
     this.request_id = `${prefix}_${num}`;
   }
   this.task_number = this.request_id;

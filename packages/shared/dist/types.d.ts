@@ -3,6 +3,9 @@ export interface Task {
     _id: string;
     title: string;
     status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+    kind?: 'task' | 'request';
+    request_id?: string;
+    task_number?: string;
     completed_at?: string | null;
     in_progress_at?: string | null;
     assignees?: number[];
@@ -11,6 +14,7 @@ export interface Task {
     cargo_height_m?: number;
     cargo_volume_m3?: number;
     cargo_weight_kg?: number;
+    logistics_enabled?: boolean;
     payment_method?: PaymentMethod;
     payment_amount?: number;
     telegram_message_id?: number;

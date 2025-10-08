@@ -73,11 +73,14 @@ jest.mock('../apps/api/src/services/keyRotation', () => ({
 
 const taskStatusKeyboardMock = jest
   .fn()
-  .mockImplementation((id: string, status?: string) => ({
-    reply_markup: {
-      inline_keyboard: [[{ callback_data: `status:${id}`, text: status ?? '' }]],
-    },
-  }));
+  .mockImplementation(
+    (id: string, status?: string, options?: { kind?: string }) => ({
+      reply_markup: {
+        inline_keyboard: [[{ callback_data: `status:${id}`, text: status ?? '' }]],
+      },
+      options,
+    }),
+  );
 const taskAcceptConfirmKeyboardMock = jest
   .fn()
   .mockImplementation((id: string) => ({
@@ -97,7 +100,9 @@ const taskCancelConfirmKeyboardMock = jest
 jest.mock('../apps/api/src/utils/taskButtons', () => ({
   __esModule: true,
   default: (...args: unknown[]) =>
-    taskStatusKeyboardMock(...(args as [string, string | undefined])),
+    taskStatusKeyboardMock(
+      ...(args as [string, string | undefined, Record<string, unknown> | undefined]),
+    ),
   taskAcceptConfirmKeyboard: (
     ...args: unknown[]
   ) => taskAcceptConfirmKeyboardMock(...(args as [string])),
@@ -352,7 +357,11 @@ describe('обработка завершения задачи', () => {
 
     await fn(ctx);
 
-    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task321', undefined);
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith(
+      'task321',
+      undefined,
+      expect.objectContaining({ kind: 'task' }),
+    );
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
       inline_keyboard: [
         [expect.objectContaining({ callback_data: 'status:task321' })],
@@ -378,7 +387,11 @@ describe('обработка завершения задачи', () => {
 
     await fn(ctx);
 
-    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task555', 'Выполнена');
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith(
+      'task555',
+      'Выполнена',
+      expect.objectContaining({ kind: 'task' }),
+    );
     expect(updateTaskStatusMock).toHaveBeenCalledWith('task555', 'Выполнена', 42);
     expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Сделано');
   });
@@ -391,7 +404,11 @@ describe('обработка завершения задачи', () => {
 
     await fn(ctx);
 
-    expect(taskStatusKeyboardMock).toHaveBeenCalledWith('task900', undefined);
+    expect(taskStatusKeyboardMock).toHaveBeenCalledWith(
+      'task900',
+      undefined,
+      expect.objectContaining({ kind: 'task' }),
+    );
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({
       inline_keyboard: [
         [expect.objectContaining({ callback_data: 'status:task900' })],

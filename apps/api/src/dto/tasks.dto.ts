@@ -62,6 +62,7 @@ export class CreateTaskDto {
           throw new Error(executorsRequiredMessage);
         })
         .withMessage(executorsRequiredMessage),
+      body('logistics_enabled').optional().isBoolean().toBoolean(),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),
@@ -103,6 +104,7 @@ export class UpdateTaskDto {
           throw new Error(executorsRequiredMessage);
         })
         .withMessage(executorsRequiredMessage),
+      body('logistics_enabled').optional().isBoolean().toBoolean(),
       optionalFloatField('cargo_length_m'),
       optionalFloatField('cargo_width_m'),
       optionalFloatField('cargo_height_m'),

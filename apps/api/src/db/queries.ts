@@ -308,7 +308,9 @@ export async function getTasks(
   const isQuery = (v: unknown): v is Query<TaskDocument[], TaskDocument> =>
     typeof v === 'object' && v !== null && 'exec' in v;
   if (filters.kanban) {
-    const res = Task.find({}) as unknown;
+    const kindFilter =
+      filters.kind === 'request' ? 'request' : 'task';
+    const res = Task.find({ kind: kindFilter }) as unknown;
     if (isQuery(res)) {
       const list = await res.sort('-createdAt').exec();
       return { tasks: list, total: list.length };

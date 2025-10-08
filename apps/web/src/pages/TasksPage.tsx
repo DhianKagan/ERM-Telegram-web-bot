@@ -33,7 +33,12 @@ export default function TasksPage() {
   const load = React.useCallback(() => {
     setLoading(true);
     fetchTasks(
-      { page: page + 1, limit: 25, mine: mine ? 1 : undefined },
+      {
+        page: page + 1,
+        limit: 25,
+        mine: mine ? 1 : undefined,
+        kind: "task",
+      },
       user?.telegram_id,
       true,
     )

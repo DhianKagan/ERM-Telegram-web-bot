@@ -664,6 +664,16 @@ const isTaskExecutor = (
     .includes(userId);
 };
 
+const isTaskRelatedUser = (
+  task: Record<string, unknown> | null | undefined,
+  userId: number,
+): boolean => {
+  if (!task || !Number.isFinite(userId)) {
+    return false;
+  }
+  return collectTaskUserIds(task).includes(userId);
+};
+
 const formatCoordinates = (value: unknown): string | null => {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as { lat?: unknown; lng?: unknown };
@@ -1215,7 +1225,25 @@ bot.action(/^task_history:.+$/, async (ctx) => {
       await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
       return;
     }
+    const userId = ctx.from?.id;
+    if (!userId) {
+      await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+        show_alert: true,
+      });
+      return;
+    }
     const plain = toPlainTask(task);
+    if (!isTaskRelatedUser(plain, userId)) {
+      console.warn(
+        'Попытка просмотра истории задачи без назначения',
+        taskId,
+        userId,
+      );
+      await ctx.answerCbQuery(messages.taskAssignmentRequired, {
+        show_alert: true,
+      });
+      return;
+    }
     const summary = await buildHistorySummaryLog(
       plain as Parameters<typeof buildHistorySummaryLog>[0],
     );

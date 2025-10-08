@@ -9,6 +9,7 @@ exports.TASK_TYPES = [
     'Выполнить',
     'Построить',
     'Починить',
+    'Заявка',
 ];
 exports.PRIORITIES = ['Срочно', 'В течение дня', 'До выполнения'];
 exports.TRANSPORT_TYPES = [

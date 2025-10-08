@@ -177,6 +177,7 @@ type TaskMessageSendResult = {
   cache: Map<string, LocalPhotoInfo | null>;
   previewSourceUrls?: string[];
   previewMessageIds?: number[];
+  consumedAttachmentUrls?: string[];
 };
 type SendPhotoOptions = NonNullable<
   Parameters<typeof bot.telegram.sendPhoto>[2]
@@ -428,10 +429,98 @@ export default class TasksController {
     const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
     const preview = media.previewImage;
     const previewUrl = preview?.url;
+    const albumCandidates: NormalizedImage[] = [];
+    const seenAlbumUrls = new Set<string>();
+    if (preview && previewUrl && !seenAlbumUrls.has(previewUrl)) {
+      albumCandidates.push(preview);
+      seenAlbumUrls.add(previewUrl);
+    }
+    media.extras.forEach((attachment) => {
+      if (attachment.kind !== 'image') return;
+      if (!attachment.url || seenAlbumUrls.has(attachment.url)) return;
+      albumCandidates.push(attachment);
+      seenAlbumUrls.add(attachment.url);
+    });
     const baseOptions = () => ({
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
       ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
     });
+    if (albumCandidates.length > 1 && message.length <= 1024) {
+      try {
+        type SendMediaGroupOptions = Parameters<
+          typeof bot.telegram.sendMediaGroup
+        >[2] & {
+          reply_parameters?: {
+            message_id: number;
+            allow_sending_without_reply?: boolean;
+          };
+        };
+        const mediaGroupOptions: SendMediaGroupOptions = {};
+        if (typeof topicId === 'number') {
+          mediaGroupOptions.message_thread_id = topicId;
+        }
+        const selected = albumCandidates.slice(0, 10);
+        const consumedUrls = selected.map((item) => item.url);
+        const mediaGroup = await Promise.all(
+          selected.map(async (item, index) => {
+            const descriptor: Parameters<
+              typeof bot.telegram.sendMediaGroup
+            >[1][number] = {
+              type: 'photo',
+              media: await this.resolvePhotoInputWithCache(item.url, cache),
+            };
+            const caption = index === 0 ? message : item.caption;
+            if (caption) {
+              descriptor.caption =
+                index === 0 ? caption : escapeMarkdownV2(caption);
+              descriptor.parse_mode = 'MarkdownV2';
+            }
+            return descriptor;
+          }),
+        );
+        const response = await bot.telegram.sendMediaGroup(
+          chat,
+          mediaGroup,
+          mediaGroupOptions,
+        );
+        if (!Array.isArray(response) || response.length === 0) {
+          throw new Error('Telegram не вернул сообщения для альбома задачи');
+        }
+        const previewMessageIds = response
+          .map((message) =>
+            typeof message?.message_id === 'number'
+              ? message.message_id
+              : undefined,
+          )
+          .filter((value): value is number => typeof value === 'number');
+        const messageId = previewMessageIds[0];
+        if (!messageId) {
+          throw new Error('Отсутствует идентификатор сообщения альбома задачи');
+        }
+        if (keyboardMarkup) {
+          try {
+            await bot.telegram.editMessageReplyMarkup(
+              chat,
+              messageId,
+              undefined,
+              keyboardMarkup,
+            );
+          } catch (error) {
+            console.error('Не удалось добавить клавиатуру к альбому задачи', error);
+          }
+        }
+        return {
+          messageId,
+          usedPreview: true,
+          cache,
+          previewSourceUrls: consumedUrls,
+          previewMessageIds,
+          consumedAttachmentUrls: consumedUrls,
+        };
+      } catch (error) {
+        console.error('Не удалось отправить альбом задачи', error);
+      }
+    }
     if (previewUrl && message.length <= 1024) {
       try {
         const photoOptions: SendPhotoOptions = {
@@ -446,7 +535,10 @@ export default class TasksController {
           usedPreview: true,
           cache,
           previewSourceUrls: [previewUrl],
-          previewMessageIds: undefined,
+          previewMessageIds: response?.message_id
+            ? [response.message_id]
+            : undefined,
+          consumedAttachmentUrls: [previewUrl],
         };
       } catch (error) {
         console.error('Не удалось отправить задачу с изображением превью', error);
@@ -467,6 +559,7 @@ export default class TasksController {
       cache,
       previewSourceUrls: undefined,
       previewMessageIds: undefined,
+      consumedAttachmentUrls: [],
     };
   }
 
@@ -1685,7 +1778,6 @@ export default class TasksController {
         : [];
 
     let groupMessageId: number | undefined;
-    let statusMessageId: number | undefined;
     let messageLink: string | null = null;
     let attachmentMessageIds: number[] = [];
     let previewMessageIds: number[] = [];
@@ -1755,20 +1847,14 @@ export default class TasksController {
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
-        const previewUrls = sendResult.usedPreview
-          ? sendResult.previewSourceUrls && sendResult.previewSourceUrls.length
-            ? sendResult.previewSourceUrls
-            : media.previewImage?.url
-              ? [media.previewImage.url]
-              : []
-          : [];
-        const previewSet = new Set(
-          previewUrls.filter((value): value is string => Boolean(value)),
+        const consumedUrls = new Set(
+          (sendResult.consumedAttachmentUrls ?? []).filter((url) => Boolean(url)),
         );
-        const extras = previewSet.size
-          ? media.extras.filter(
-              (attachment) =>
-                attachment.kind !== 'image' || !previewSet.has(attachment.url),
+        const extras = consumedUrls.size
+          ? media.extras.filter((attachment) =>
+              attachment.kind === 'image'
+                ? !consumedUrls.has(attachment.url)
+                : true,
             )
           : media.extras;
 
@@ -1786,33 +1872,6 @@ export default class TasksController {
           }
         }
 
-        const statusTimestamp =
-          action === 'создана'
-            ? new Date(
-                (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
-              )
-            : new Date();
-        const statusText = await buildActionMessage(
-          plain,
-          action,
-          statusTimestamp,
-          actorId,
-        );
-        const statusOptions: SendMessageOptions = {
-          link_preview_options: { is_disabled: true },
-        };
-        if (typeof topicId === 'number') {
-          statusOptions.message_thread_id = topicId;
-        }
-        if (groupMessageId) {
-          statusOptions.reply_parameters = { message_id: groupMessageId };
-        }
-        const statusMessage = await bot.telegram.sendMessage(
-          groupChatId,
-          statusText,
-          statusOptions,
-        );
-        statusMessageId = statusMessage?.message_id;
       } catch (error) {
         console.error('Не удалось отправить уведомление в группу', error);
       }
@@ -1823,11 +1882,7 @@ export default class TasksController {
     } else {
       delete plain.telegram_message_id;
     }
-    if (statusMessageId) {
-      plain.telegram_history_message_id = statusMessageId;
-    } else {
-      delete plain.telegram_history_message_id;
-    }
+    delete plain.telegram_history_message_id;
     delete plain.telegram_status_message_id;
     plain.telegram_preview_message_ids = previewMessageIds;
     plain.telegram_attachments_message_ids = attachmentMessageIds;
@@ -1897,11 +1952,7 @@ export default class TasksController {
     } else {
       unsetPayload.telegram_message_id = '';
     }
-    if (statusMessageId) {
-      setPayload.telegram_history_message_id = statusMessageId;
-    } else {
-      unsetPayload.telegram_history_message_id = '';
-    }
+    unsetPayload.telegram_history_message_id = '';
     unsetPayload.telegram_status_message_id = '';
     if (previewMessageIds.length) {
       setPayload.telegram_preview_message_ids = previewMessageIds;

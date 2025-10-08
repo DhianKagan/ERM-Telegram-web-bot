@@ -31,7 +31,7 @@ import { checkFile } from '../utils/fileCheck';
 import { coerceAttachments } from '../utils/attachments';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
-import { ACCESS_ADMIN, ACCESS_MANAGER } from '../utils/accessMask';
+import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -623,7 +623,7 @@ router.delete(
   '/:id',
   authMiddleware(),
   param('id').isMongoId(),
-  Roles(ACCESS_ADMIN) as unknown as RequestHandler, // только админам
+  Roles(ACCESS_TASK_DELETE) as unknown as RequestHandler, // удаление только для уровня 8
   rolesGuard as unknown as RequestHandler,
   checkTaskAccess as unknown as RequestHandler,
   ctrl.remove as RequestHandler,

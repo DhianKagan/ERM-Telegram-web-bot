@@ -3,6 +3,7 @@
 import * as otp from '../services/otp';
 import { generateToken, generateShortToken } from './auth';
 import { getUser, createUser, updateUser, accessByRole } from '../db/queries';
+import { hasAccess, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import { resolveRoleId } from '../db/roleCache';
@@ -74,7 +75,10 @@ async function verifyCode(
         ? 'manager'
         : 'user';
   const access = accessByRole(role);
-  if (u.access !== access) {
+  const currentAccess = typeof u.access === 'number' ? u.access : null;
+  const hasDeleteMask =
+    currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
   const token = generateToken({
@@ -106,7 +110,10 @@ async function verifyInitData(initData: string) {
   }
   const role = user.role || 'user';
   const access = accessByRole(role);
-  if (user.access !== access) {
+  const currentAccess = typeof user.access === 'number' ? user.access : null;
+  const hasDeleteMask =
+    currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
   const token = generateToken({
@@ -130,7 +137,10 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
   }
   const role = user.role || 'user';
   const access = accessByRole(role);
-  if (user.access !== access) {
+  const currentAccess = typeof user.access === 'number' ? user.access : null;
+  const hasDeleteMask =
+    currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
   const token = generateShortToken({

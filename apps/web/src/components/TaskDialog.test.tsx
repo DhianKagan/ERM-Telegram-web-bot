@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 
-const mockUser = { telegram_id: 99, role: "admin" } as const;
+const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
 
 jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: mockUser }),

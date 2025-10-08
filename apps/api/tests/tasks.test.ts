@@ -54,7 +54,8 @@ jest.mock('../src/db/model', () => ({
   Archive: { create: jest.fn(async () => ({})) },
 }));
 
-jest.mock('../src/services/service', () => ({ writeLog: jest.fn() }));
+const mockWriteLog = jest.fn().mockResolvedValue(undefined);
+jest.mock('../src/services/service', () => ({ writeLog: mockWriteLog }));
 
 const queries = require('../src/db/queries');
 jest
@@ -79,6 +80,7 @@ jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 const router = require('../src/routes/tasks').default;
 const { Task, Archive } = require('../src/db/model');
+const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
 
 let app;
 beforeAll(() => {
@@ -231,14 +233,27 @@ test('summary report c фильтром дат', async () => {
   expect(res.body.time).toBe(30);
 });
 
-test('удаление задачи', async () => {
-  const res = await request(app).delete(`/api/v1/tasks/${id}`);
+test('удаление задачи доступно только уровню 8', async () => {
+  const res = await request(app)
+    .delete(`/api/v1/tasks/${id}`)
+    .set('x-access', String(ACCESS_TASK_DELETE));
   expect(res.status).toBe(204);
   expect(Archive.create).toHaveBeenCalledWith(
     expect.objectContaining({
       request_id: 'ERM_000001-DEL',
       task_number: 'ERM_000001-DEL',
     }),
+  );
+});
+
+test('удаление задачи недоступно обычному администратору', async () => {
+  Archive.create.mockClear();
+  const res = await request(app)
+    .delete(`/api/v1/tasks/${id}`)
+    .set('x-access', '6');
+  expect(res.status).toBe(403);
+  expect(Archive.create).not.toHaveBeenCalledWith(
+    expect.objectContaining({ request_id: 'ERM_000001-DEL' }),
   );
 });
 

@@ -263,6 +263,7 @@ const hasDimensionValues = (
   );
 
 const START_OFFSET_MS = 60 * 60 * 1000;
+const ACCESS_TASK_DELETE = 8;
 
 export default function TaskDialog({ onClose, onSave, id }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
@@ -283,6 +284,9 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
   const isEdit = Boolean(effectiveTaskId);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const canDeleteTask =
+    typeof user?.access === "number" &&
+    (user.access & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
   const canEditAll = isAdmin || user?.role === "manager";
   const { t } = useTranslation();
   const [editing, setEditing] = React.useState(true);
@@ -2007,7 +2011,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               </Button>
             </div>
           )}
-          {isEdit && isAdmin && editing && (
+          {isEdit && canDeleteTask && editing && (
             <div className="mt-2 flex justify-start">
               <Button
                 variant="destructive"
@@ -2060,7 +2064,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
               />
             </div>
           )}
-          {isAdmin && (
+          {canDeleteTask && (
             <ConfirmDialog
               open={showDeleteConfirm}
               message={t("deleteTaskQuestion")}

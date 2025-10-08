@@ -245,12 +245,20 @@ export async function updateTaskStatus(
   if (hasAssignments && !isAllowed) {
     throw new Error('Нет прав на изменение статуса задачи');
   }
-  if (status === 'Выполнена' && currentStatus && currentStatus !== 'В работе') {
-    const err = new Error(
-      'Статус «Выполнена» доступен только после этапа «В работе»',
-    );
-    (err as Error & { code?: string }).code = 'TASK_STATUS_INVALID';
-    throw err;
+  if (status === 'Выполнена' && currentStatus) {
+    const allowedCompletionSources: TaskDocument['status'][] = [
+      'Новая',
+      'В работе',
+      'Отменена',
+      'Выполнена',
+    ];
+    if (!allowedCompletionSources.includes(currentStatus)) {
+      const err = new Error(
+        'Статус «Выполнена» доступен только после этапа «В работе»',
+      );
+      (err as Error & { code?: string }).code = 'TASK_STATUS_INVALID';
+      throw err;
+    }
   }
   const isCompleted = status === 'Выполнена' || status === 'Отменена';
   const hasInProgressValue = existing.in_progress_at instanceof Date;

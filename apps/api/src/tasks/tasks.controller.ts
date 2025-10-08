@@ -724,6 +724,12 @@ export default class TasksController {
         try {
           await bot.telegram.deleteMessage(chat, messageId);
         } catch (error) {
+          if (this.isMessageMissingOnDeleteError(error)) {
+            console.info(
+              `Сообщение вложения ${messageId} уже удалено в Telegram`,
+            );
+            return;
+          }
           console.error(
             `Не удалось удалить сообщение вложений ${messageId}`,
             error,
@@ -759,6 +765,12 @@ export default class TasksController {
         try {
           await bot.telegram.deleteMessage(userId, messageId);
         } catch (error) {
+          if (this.isMessageMissingOnDeleteError(error)) {
+            console.info(
+              `Личное сообщение задачи ${messageId} у пользователя ${userId} уже удалено в Telegram`,
+            );
+            return;
+          }
           console.error(
             `Не удалось удалить личное сообщение задачи ${messageId} у пользователя ${userId}`,
             error,
@@ -824,6 +836,12 @@ export default class TasksController {
       await bot.telegram.deleteMessage(chat, messageId);
       return true;
     } catch (error) {
+      if (this.isMessageMissingOnDeleteError(error)) {
+        console.info(
+          `Сообщение ${messageId} задачи уже удалено в Telegram`,
+        );
+        return true;
+      }
       console.error(
         `Не удалось удалить сообщение ${messageId} задачи в Telegram`,
         error,
@@ -1474,6 +1492,30 @@ export default class TasksController {
       response?.error_code === 400 &&
       description.includes('message is not modified')
     );
+  }
+
+  private isMessageMissingOnDeleteError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const record = error as Record<string, unknown>;
+    const rawResponse = record.response;
+    const response =
+      rawResponse && typeof rawResponse === 'object'
+        ? (rawResponse as { error_code?: number; description?: unknown })
+        : null;
+    const errorCode =
+      response?.error_code ??
+      (typeof record.error_code === 'number' ? record.error_code : null);
+    if (errorCode !== 400) {
+      return false;
+    }
+    const descriptionRaw =
+      (response?.description ??
+        (typeof record.description === 'string' ? record.description : null)) ??
+      null;
+    if (typeof descriptionRaw !== 'string') {
+      return false;
+    }
+    return descriptionRaw.toLowerCase().includes('message to delete not found');
   }
 
   private async broadcastTaskSnapshot(

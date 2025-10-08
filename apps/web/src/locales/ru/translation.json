@@ -89,6 +89,8 @@
   "taskDeleted": "Задача удалена",
   "taskNumber": "Номер задачи",
   "taskSaveFailed": "Не удалось сохранить задачу",
+  "taskSaveFailedWithReason": "Не удалось сохранить задачу: {{reason}}",
+  "taskValidationFailed": "Проверьте заполнение обязательных полей",
   "taskSection": "\uD83D\uDD28 Задача",
   "taskTitle": "Название задачи",
   "taskType": "Тип задачи",

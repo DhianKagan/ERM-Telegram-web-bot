@@ -6,6 +6,117 @@ import authFetch from "../utils/authFetch";
 import { buildTaskFormData } from "./buildTaskFormData";
 import type { Task, User } from "shared";
 
+const STATUS_HINTS: Record<number, string> = {
+  400: "Сервер отклонил запрос: проверьте заполненные поля.",
+  401: "Сессия истекла. Перезайдите в систему и повторите попытку.",
+  403: "Недостаточно прав для выполнения операции.",
+  404: "Объект не найден или уже удалён.",
+  409: "Данные устарели. Обновите страницу и попробуйте снова.",
+  413: "Превышен допустимый размер данных или вложений.",
+  422: "Сервер не принял данные. Проверьте обязательные поля.",
+  429: "Превышен лимит запросов. Повторите попытку позже.",
+  500: "Внутренняя ошибка сервера. Попробуйте повторить действие позже.",
+  503: "Сервис временно недоступен. Повторите попытку позже.",
+};
+
+const stripControlCharacters = (message: string): string => {
+  let result = "";
+  for (const char of message) {
+    const code = char.charCodeAt(0);
+    result += code < 32 || code === 127 ? " " : char;
+  }
+  return result;
+};
+
+const sanitizeReason = (message: string): string =>
+  stripControlCharacters(message)
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 400);
+
+const extractReason = async (response: Response): Promise<string> => {
+  let reason = "";
+  try {
+    const data = await response.clone().json();
+    if (data && typeof data === "object") {
+      const payload = data as Record<string, unknown>;
+      if (typeof payload.message === "string") {
+        reason = payload.message;
+      } else if (typeof payload.error === "string") {
+        reason = payload.error;
+      } else if (Array.isArray(payload.errors)) {
+        reason = payload.errors
+          .map((item) => {
+            if (!item) return "";
+            if (typeof item === "string") return item;
+            if (
+              typeof item === "object" &&
+              typeof (item as Record<string, unknown>).message === "string"
+            ) {
+              return (item as Record<string, unknown>).message as string;
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join(", ");
+      }
+    }
+  } catch {
+    reason = "";
+  }
+  if (!reason) {
+    try {
+      const text = await response.text();
+      reason = text.trim().split(/\r?\n/)[0] ?? "";
+    } catch {
+      reason = "";
+    }
+  }
+  const fallback = STATUS_HINTS[response.status];
+  const normalized = sanitizeReason(reason || "");
+  if (normalized) {
+    return normalized;
+  }
+  if (fallback) {
+    return fallback;
+  }
+  if (response.status) {
+    const statusText = sanitizeReason(response.statusText || "");
+    return statusText
+      ? `Код ${response.status}: ${statusText}`
+      : `Код ${response.status}`;
+  }
+  return "Неизвестная ошибка";
+};
+
+export class TaskRequestError extends Error {
+  status: number;
+  statusText: string;
+  rawReason: string;
+
+  constructor({
+    status,
+    statusText,
+    reason,
+  }: {
+    status: number;
+    statusText: string;
+    reason: string;
+  }) {
+    const normalized = sanitizeReason(reason || STATUS_HINTS[status] || "");
+    super(
+      normalized ||
+        (status
+          ? `Код ${status}${statusText ? `: ${sanitizeReason(statusText)}` : ""}`
+          : "Неизвестная ошибка"),
+    );
+    this.name = "TaskRequestError";
+    this.status = status;
+    this.statusText = statusText;
+    this.rawReason = reason;
+  }
+}
+
 export const fetchKanban = () =>
   authFetch("/api/v1/tasks?kanban=true")
     .then((r) => (r.ok ? r.json() : []))
@@ -20,24 +131,31 @@ export const updateTaskStatus = (id: string, status: string) =>
     body: JSON.stringify({ status }),
   });
 
-export const createTask = (
+export const createTask = async (
   data: Record<string, unknown>,
   files?: FileList | File[],
   onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = buildTaskFormData(data, files);
-  return authFetch("/api/v1/tasks", { method: "POST", body, onProgress }).then(
-    async (r) => {
-      if (!r.ok) return null;
-      const result = (await r.json()) as { _id?: string; id?: string };
-      const id = result._id || result.id;
-      if (id && window.Telegram?.WebApp) {
-        window.Telegram.WebApp.sendData(`task_created:${id}`);
-      }
-      clearTasksCache();
-      return result;
-    },
-  );
+  const response = await authFetch("/api/v1/tasks", {
+    method: "POST",
+    body,
+    onProgress,
+  });
+  if (!response.ok) {
+    throw new TaskRequestError({
+      status: response.status,
+      statusText: response.statusText,
+      reason: await extractReason(response),
+    });
+  }
+  const result = (await response.json()) as { _id?: string; id?: string };
+  const id = result._id || result.id;
+  if (id && window.Telegram?.WebApp) {
+    window.Telegram.WebApp.sendData(`task_created:${id}`);
+  }
+  clearTasksCache();
+  return result;
 };
 
 export const deleteTask = (id: string) =>
@@ -45,21 +163,27 @@ export const deleteTask = (id: string) =>
     method: "DELETE",
   });
 
-export const updateTask = (
+export const updateTask = async (
   id: string,
   data: Record<string, unknown>,
   files?: FileList | File[],
   onProgress?: (e: ProgressEvent) => void,
 ) => {
   const body = buildTaskFormData(data, files);
-  return authFetch(`/api/v1/tasks/${id}`, {
+  const response = await authFetch(`/api/v1/tasks/${id}`, {
     method: "PATCH",
     body,
     onProgress,
-  }).then((r) => {
-    if (r.ok) clearTasksCache();
-    return r;
   });
+  if (!response.ok) {
+    throw new TaskRequestError({
+      status: response.status,
+      statusText: response.statusText,
+      reason: await extractReason(response),
+    });
+  }
+  clearTasksCache();
+  return response;
 };
 
 export const fetchMentioned = () =>

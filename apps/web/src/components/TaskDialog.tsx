@@ -17,6 +17,7 @@ import {
   updateTask,
   deleteTask,
   updateTaskStatus,
+  TaskRequestError,
 } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
@@ -994,12 +995,13 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           const startMinutes = Math.floor(parsedStart.getTime() / 60000);
           const createdMinutes = Math.floor(creationDate.getTime() / 60000);
           if (startMinutes < createdMinutes) {
-          setError("startDate", {
-            type: "validate",
-            message: t("startBeforeCreated"),
-          });
-          return;
-        }
+            setError("startDate", {
+              type: "validate",
+              message: t("startBeforeCreated"),
+            });
+            setAlertMsg(t("startBeforeCreated"));
+            return;
+          }
         }
       }
       const initialValues = initialRef.current;
@@ -1093,6 +1095,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
           type: "required",
           message: t("assigneeRequiredError"),
         });
+        setAlertMsg(t("assigneeRequiredError"));
         return;
       }
       const assignedNumeric = toNumericValue(assignedRaw);
@@ -1220,7 +1223,18 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
       if (taskData && onSave) onSave(taskData as Task);
     } catch (e) {
       console.error(e);
-      setAlertMsg(t("taskSaveFailed"));
+      if (e instanceof TaskRequestError) {
+        const reason = e.message.trim();
+        setAlertMsg(
+          reason
+            ? t("taskSaveFailedWithReason", { reason })
+            : t("taskSaveFailed"),
+        );
+      } else if (e instanceof Error && e.message) {
+        setAlertMsg(t("taskSaveFailedWithReason", { reason: e.message }));
+      } else {
+        setAlertMsg(t("taskSaveFailed"));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -1280,19 +1294,37 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (!targetId) return;
     const prev = status;
     setStatus("В работе");
-    const [data] = await Promise.all([
-      updateTask(targetId, { status: "В работе" }).then((r) =>
-        r.ok ? r.json() : null,
-      ),
-      updateTaskStatus(targetId, "В работе"),
-    ]);
-    if (data) {
-      if (onSave) onSave(data);
-    } else {
+    try {
+      const [data] = await Promise.all([
+        updateTask(targetId, { status: "В работе" }).then((r) =>
+          r.ok ? r.json() : null,
+        ),
+        updateTaskStatus(targetId, "В работе"),
+      ]);
+      if (data) {
+        if (onSave) onSave(data);
+      } else {
+        setStatus(prev);
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } catch (error) {
+      console.error(error);
       setStatus(prev);
-      setAlertMsg(t("taskSaveFailed"));
+      if (error instanceof TaskRequestError) {
+        const reason = error.message.trim();
+        setAlertMsg(
+          reason
+            ? t("taskSaveFailedWithReason", { reason })
+            : t("taskSaveFailed"),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+      } else {
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } finally {
+      setSelectedAction("accept");
     }
-    setSelectedAction("accept");
   };
 
   const completeTask = async (opt: string) => {
@@ -1300,35 +1332,53 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (!targetId) return;
     const prev = status;
     setStatus("Выполнена");
-    const [data] = await Promise.all([
-      updateTask(targetId, {
-        status: "Выполнена",
-        completed_at: new Date().toISOString(),
-        completion_result: opt,
-      }).then((r) => (r.ok ? r.json() : null)),
-      updateTaskStatus(targetId, "Выполнена"),
-    ]);
-    if (data) {
-      const completedValue = toIsoString(
-        (data as Record<string, unknown>)?.completed_at ??
-          (data as Record<string, unknown>)?.completedAt,
-      );
-      const fallbackCompleted = new Date().toISOString();
-      setCompletedAt(
-        completedValue || fallbackCompleted,
-      );
-      if (initialRef.current) {
-        initialRef.current.status = "Выполнена";
-        initialRef.current.completedAt =
-          completedValue || fallbackCompleted;
+    try {
+      const [data] = await Promise.all([
+        updateTask(targetId, {
+          status: "Выполнена",
+          completed_at: new Date().toISOString(),
+          completion_result: opt,
+        }).then((r) => (r.ok ? r.json() : null)),
+        updateTaskStatus(targetId, "Выполнена"),
+      ]);
+      if (data) {
+        const completedValue = toIsoString(
+          (data as Record<string, unknown>)?.completed_at ??
+            (data as Record<string, unknown>)?.completedAt,
+        );
+        const fallbackCompleted = new Date().toISOString();
+        setCompletedAt(
+          completedValue || fallbackCompleted,
+        );
+        if (initialRef.current) {
+          initialRef.current.status = "Выполнена";
+          initialRef.current.completedAt =
+            completedValue || fallbackCompleted;
+        }
+        if (onSave) onSave(data);
+      } else {
+        setStatus(prev);
+        setAlertMsg(t("taskSaveFailed"));
       }
-      if (onSave) onSave(data);
-    } else {
+    } catch (error) {
+      console.error(error);
       setStatus(prev);
-      setAlertMsg(t("taskSaveFailed"));
+      if (error instanceof TaskRequestError) {
+        const reason = error.message.trim();
+        setAlertMsg(
+          reason
+            ? t("taskSaveFailedWithReason", { reason })
+            : t("taskSaveFailed"),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+      } else {
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } finally {
+      setShowDoneSelect(false);
+      setSelectedAction("done");
     }
-    setShowDoneSelect(false);
-    setSelectedAction("done");
   };
 
   const creatorId = Number(creator);
@@ -2000,6 +2050,7 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
                           });
                         }
                       });
+                      setAlertMsg(t("taskValidationFailed"));
                     }
                     console.warn("Не удалось сохранить задачу", error);
                     setIsSubmitting(false);

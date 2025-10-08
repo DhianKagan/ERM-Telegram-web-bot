@@ -205,21 +205,31 @@ describe('notifyTaskCreated вложения', () => {
     expect(mediaPayload).toHaveLength(2);
     expect(mediaPayload?.[0]).toMatchObject({ type: 'photo' });
 
-    const updateCall = updateOneMock.mock.calls[0];
+    const updateCall = updateTaskMock.mock.calls[0];
     if (updateCall) {
-      const updateSet = (updateCall[1]?.$set ?? {}) as Record<string, unknown>;
-      expect(updateSet.telegram_preview_message_ids).toBeUndefined();
-      expect(updateSet.telegram_attachments_message_ids).toEqual([211, 212]);
+      const updatePayload = (updateCall[1] ?? {}) as {
+        $set?: Record<string, unknown>;
+        $unset?: Record<string, unknown>;
+      };
+      expect(updatePayload.$set?.telegram_preview_message_ids).toBeUndefined();
+      expect(updatePayload.$set?.telegram_attachments_message_ids).toEqual([211, 212, 401]);
     }
   });
 
-  it('синхронизирует вложения при обновлении задачи в режиме единого сообщения истории', async () => {
+  it('удаляет и пересоздаёт сообщения и вложения при обновлении задачи', async () => {
+    sendMessageMock
+      .mockResolvedValueOnce({ message_id: 701 })
+      .mockResolvedValueOnce({ message_id: 702 })
+      .mockResolvedValueOnce({ message_id: 703 });
+    sendPhotoMock.mockResolvedValueOnce({ message_id: 612 });
+
     const previousTask = {
       _id: '507f1f77bcf86cd799439011',
       telegram_message_id: 501,
       telegram_topic_id: 777,
-      attachments: [],
-      assignees: [55],
+      telegram_attachments_message_ids: [311],
+      telegram_history_message_id: 401,
+      assignees: [55, 77],
       assigned_user_id: 55,
       created_by: 55,
       history: [],
@@ -241,28 +251,42 @@ describe('notifyTaskCreated вложения', () => {
     } as unknown as TaskDocument & { toObject(): unknown };
 
     taskFindByIdMock.mockResolvedValue(updatedTask);
-    sendPhotoMock.mockResolvedValueOnce({ message_id: 612 });
 
     const controller = new TasksController({} as any);
     await (
       controller as unknown as {
-        syncTelegramTaskMessage(
-          taskId: string,
-          previous: TaskDocument | null,
-          options?: { skipMessageUpdate?: boolean },
+        broadcastTaskSnapshot(
+          task: TaskDocument,
+          actorId: number,
+          options?: {
+            previous?: TaskDocument | null;
+            action?: 'создана' | 'обновлена';
+            note?: string | null;
+          },
         ): Promise<void>;
       }
-    ).syncTelegramTaskMessage('507f1f77bcf86cd799439011', previousTask, {
-      skipMessageUpdate: true,
+    ).broadcastTaskSnapshot(updatedTask, 77, {
+      previous: previousTask,
+      action: 'обновлена',
     });
 
-    expect(editMessageTextMock).not.toHaveBeenCalled();
-    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 501);
+    expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 311);
+    expect(sendMessageMock).toHaveBeenCalledTimes(3);
     expect(sendPhotoMock).toHaveBeenCalledTimes(1);
-    const updateCall = updateOneMock.mock.calls[0];
+    const updateCall = updateTaskMock.mock.calls[0];
     if (updateCall) {
-      const updateSet = (updateCall[1]?.$set ?? {}) as Record<string, unknown>;
-      expect(updateSet.telegram_attachments_message_ids).toEqual([612]);
+      const updatePayload = (updateCall[1] ?? {}) as {
+        $set?: Record<string, unknown>;
+        $unset?: Record<string, unknown>;
+      };
+      expect(updatePayload.$set?.telegram_message_id).toBe(701);
+      expect(updatePayload.$set?.telegram_history_message_id).toBe(702);
+      expect(updatePayload.$set?.telegram_attachments_message_ids).toEqual([612]);
+      expect(updatePayload.$set?.telegram_dm_message_ids).toEqual([
+        { user_id: 55, message_id: 703 },
+      ]);
+      expect(updatePayload.$unset?.telegram_message_cleanup).toBe('');
     }
   });
 });

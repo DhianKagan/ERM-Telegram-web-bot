@@ -244,6 +244,7 @@ export interface TaskAttrs {
   telegram_summary_message_id?: number;
   telegram_preview_message_ids?: number[];
   telegram_attachments_message_ids?: number[];
+  telegram_dm_message_ids?: { user_id: number; message_id: number }[];
   telegram_message_cleanup?: {
     chat_id: string | number;
     message_id: number;
@@ -365,6 +366,12 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_summary_message_id: Number,
     telegram_preview_message_ids: [Number],
     telegram_attachments_message_ids: [Number],
+    telegram_dm_message_ids: [
+      {
+        user_id: Number,
+        message_id: Number,
+      },
+    ],
     telegram_message_cleanup: Schema.Types.Mixed,
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },

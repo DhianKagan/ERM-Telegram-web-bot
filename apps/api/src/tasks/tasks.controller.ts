@@ -29,11 +29,7 @@ import {
   buildDirectTaskKeyboard,
   buildDirectTaskMessage,
 } from '../bot/bot';
-import {
-  chatId as groupChatId,
-  appUrl as baseAppUrl,
-  TELEGRAM_SINGLE_HISTORY_MESSAGE,
-} from '../config';
+import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
@@ -45,7 +41,6 @@ import {
 import escapeMarkdownV2 from '../utils/mdEscape';
 import { buildActionMessage, buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
-import TaskSyncController from '../controllers/taskSync.controller';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 
 type TelegramMessageCleanupMeta = {
@@ -156,6 +151,7 @@ type SendDocumentOptions = NonNullable<
   Parameters<typeof bot.telegram.sendDocument>[2]
 >;
 type PhotoInput = Parameters<typeof bot.telegram.sendPhoto>[1];
+type DirectMessageEntry = { user_id: number; message_id: number };
 
 const SUPPORTED_PHOTO_MIME_TYPES = new Set([
   'image/jpeg',
@@ -172,8 +168,6 @@ const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
 export default class TasksController {
   constructor(
     @inject(TOKENS.TasksService) private service: TasksService,
-    @inject(TOKENS.TaskSyncController)
-    private taskSyncController: TaskSyncController = new TaskSyncController(bot),
   ) {}
 
   private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {
@@ -388,36 +382,6 @@ export default class TasksController {
       previewSourceUrls: undefined,
       previewMessageIds: undefined,
     };
-  }
-
-  private async editTaskMessageWithPreview(
-    chat: string | number,
-    messageId: number,
-    message: string,
-    media: TaskMedia,
-    keyboard: ReturnType<typeof taskStatusKeyboard>,
-  ): Promise<{
-    success: boolean;
-    usedPreview: boolean;
-    cache: Map<string, LocalPhotoInfo | null>;
-    previewSourceUrls?: string[];
-  }>
-  {
-    const cache = new Map<string, LocalPhotoInfo | null>();
-    const replyMarkup = this.extractKeyboardMarkup(keyboard);
-    try {
-      await bot.telegram.editMessageText(chat, messageId, undefined, message, {
-        parse_mode: 'MarkdownV2',
-        link_preview_options: { is_disabled: true },
-        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      });
-      return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
-    } catch (error) {
-      if (this.isMessageNotModifiedError(error)) {
-        return { success: true, usedPreview: false, cache, previewSourceUrls: undefined };
-      }
-      return { success: false, usedPreview: false, cache, previewSourceUrls: undefined };
-    }
   }
 
   private async ensurePhotoWithinLimit(
@@ -762,6 +726,41 @@ export default class TasksController {
         } catch (error) {
           console.error(
             `Не удалось удалить сообщение вложений ${messageId}`,
+            error,
+          );
+        }
+      }),
+    );
+  }
+
+  private normalizeDirectMessages(value: unknown): DirectMessageEntry[] {
+    if (!Array.isArray(value)) return [];
+    return (value as unknown[])
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return null;
+        }
+        const record = entry as Record<string, unknown>;
+        const userId = Number(record.user_id);
+        const messageId = Number(record.message_id);
+        if (!Number.isFinite(userId) || !Number.isFinite(messageId)) {
+          return null;
+        }
+        return { user_id: userId, message_id: messageId } satisfies DirectMessageEntry;
+      })
+      .filter((entry): entry is DirectMessageEntry => entry !== null);
+  }
+
+  private async deleteDirectMessages(entries: DirectMessageEntry[]): Promise<void> {
+    if (!entries.length) return;
+    await Promise.all(
+      entries.map(async ({ user_id: userId, message_id: messageId }) => {
+        if (!Number.isFinite(userId) || !Number.isFinite(messageId)) return;
+        try {
+          await bot.telegram.deleteMessage(userId, messageId);
+        } catch (error) {
+          console.error(
+            `Не удалось удалить личное сообщение задачи ${messageId} у пользователя ${userId}`,
             error,
           );
         }
@@ -1336,11 +1335,31 @@ export default class TasksController {
 
   private async updateTaskStatusSummary(
     task: TaskWithMeta & Record<string, unknown>,
+    options?: {
+      forceResend?: boolean;
+      previousSummaryId?: number;
+      previousHistoryId?: number;
+      previousStatusId?: number;
+      previousTopicId?: number;
+    },
   ): Promise<void> {
     if (!groupChatId) return;
     const summary = await buildHistorySummaryLog(task);
     if (!summary) return;
-    const messageId =
+    const forceResend = options?.forceResend === true;
+    const previousTopicId = this.normalizeTopicId(options?.previousTopicId);
+    const topicId = await this.resolveTaskTopicId(task);
+    const cleanupTargets = new Set<number>();
+    if (typeof options?.previousSummaryId === 'number') {
+      cleanupTargets.add(options.previousSummaryId);
+    }
+    if (typeof options?.previousHistoryId === 'number') {
+      cleanupTargets.add(options.previousHistoryId);
+    }
+    if (typeof options?.previousStatusId === 'number') {
+      cleanupTargets.add(options.previousStatusId);
+    }
+    let messageId =
       typeof task.telegram_summary_message_id === 'number'
         ? task.telegram_summary_message_id
         : typeof task.telegram_status_message_id === 'number'
@@ -1350,7 +1369,20 @@ export default class TasksController {
       typeof task.telegram_summary_message_id === 'number'
         ? task.telegram_summary_message_id
         : undefined;
-    const topicId = await this.resolveTaskTopicId(task);
+    if (forceResend) {
+      if (typeof messageId === 'number') {
+        cleanupTargets.add(messageId);
+      }
+      for (const target of cleanupTargets) {
+        await this.deleteTaskMessageSafely(
+          groupChatId,
+          target,
+          previousTopicId,
+          topicId,
+        );
+      }
+      messageId = undefined;
+    }
     const replyTo =
       typeof task.telegram_message_id === 'number'
         ? task.telegram_message_id
@@ -1367,7 +1399,7 @@ export default class TasksController {
     if (typeof replyTo === 'number') {
       sendOptions.reply_parameters = { message_id: replyTo };
     }
-    if (messageId) {
+    if (messageId && !forceResend) {
       try {
         await bot.telegram.editMessageText(
           groupChatId,
@@ -1424,525 +1456,6 @@ export default class TasksController {
     }
   }
 
-  private async syncTelegramTaskMessage(
-    taskId: string,
-    previous: (TaskWithMeta & Record<string, unknown>) | null,
-    options?: { skipMessageUpdate?: boolean },
-  ) {
-    if (!groupChatId) return;
-    const fresh = await Task.findById(taskId);
-    if (!fresh) return;
-    const plain = (typeof fresh.toObject === 'function'
-      ? (fresh.toObject() as unknown)
-      : (fresh as unknown)) as TaskWithMeta & Record<string, unknown>;
-    const previousPlain = previous;
-
-    const recipients = this.collectNotificationTargets(
-      plain,
-      typeof plain.created_by === 'number' ? plain.created_by : undefined,
-    );
-    const usersRaw = await getUsersMap(Array.from(recipients));
-    const users = Object.fromEntries(
-      Object.entries(usersRaw).map(([key, value]) => {
-        const name = value.name ?? value.username ?? '';
-        const username = value.username ?? '';
-        return [Number(key), { name, username }];
-      }),
-    );
-
-    const formatted = formatTask(plain as unknown as SharedTask, users);
-    const message = formatted.text;
-    const nextAttachments = this.collectSendableAttachments(
-      plain,
-      formatted.inlineImages,
-    );
-    const keyboard = taskStatusKeyboard(
-      taskId,
-      typeof plain.status === 'string'
-        ? (plain.status as SharedTask['status'])
-        : undefined,
-    );
-    const topicId = await this.resolveTaskTopicId(plain);
-
-    const previousMessageId =
-      typeof previousPlain?.telegram_message_id === 'number'
-        ? previousPlain.telegram_message_id
-        : undefined;
-    const previousTopicId = this.normalizeTopicId(
-      previousPlain?.telegram_topic_id,
-    );
-    let currentMessageId =
-      typeof plain.telegram_message_id === 'number'
-        ? plain.telegram_message_id
-        : undefined;
-    const skipMessageUpdate =
-      options?.skipMessageUpdate === true &&
-      typeof currentMessageId === 'number';
-    const updatesToSet: Record<string, unknown> = {};
-    const updatesToUnset: Record<string, unknown> = {};
-    let messageIdGuard: number | null | undefined;
-    let canPersistNewMessageId =
-      typeof previousMessageId === 'number' ? false : true;
-    let previousMessageDeletedBeforeResend = false;
-    const previousCleanupMeta =
-      typeof previousPlain?.telegram_message_cleanup === 'object'
-        ? ({
-            ...(previousPlain
-              .telegram_message_cleanup as TelegramMessageCleanupMeta),
-          } as TelegramMessageCleanupMeta)
-        : null;
-    let cleanupMeta: TelegramMessageCleanupMeta | null = null;
-
-    const markCleanupNeeded = (
-      messageId: number,
-      expectedTopic?: number,
-      actualTopic?: number,
-    ) => {
-      if (!Number.isFinite(messageId)) {
-        return;
-      }
-      const reason: TelegramMessageCleanupMeta['reason'] = this.areTopicsEqual(
-        expectedTopic,
-        actualTopic,
-      )
-        ? 'delete-failed'
-        : 'topic-mismatch';
-      const payload: TelegramMessageCleanupMeta = {
-        chat_id: groupChatId as string | number,
-        message_id: messageId,
-        reason,
-        attempted_at:
-          cleanupMeta?.attempted_at ??
-          previousCleanupMeta?.attempted_at ??
-          new Date().toISOString(),
-      };
-      if (typeof expectedTopic === 'number') {
-        payload.topic_id = expectedTopic;
-      }
-      if (
-        typeof actualTopic === 'number' &&
-        !this.areTopicsEqual(expectedTopic, actualTopic)
-      ) {
-        payload.attempted_topic_id = actualTopic;
-      }
-      if (cleanupMeta?.new_message_id) {
-        payload.new_message_id = cleanupMeta.new_message_id;
-      } else if (previousCleanupMeta?.new_message_id) {
-        payload.new_message_id = previousCleanupMeta.new_message_id;
-      }
-      cleanupMeta = payload;
-      canPersistNewMessageId = true;
-    };
-
-    const normalizeMessageIds = (value: unknown): number[] =>
-      Array.isArray(value)
-        ? value
-            .map((item) =>
-              typeof item === 'number' && Number.isFinite(item) ? item : null,
-            )
-            .filter((item): item is number => item !== null)
-        : [];
-
-    const previousAttachmentMessageIds = normalizeMessageIds(
-      previousPlain?.telegram_attachments_message_ids,
-    );
-    const previousPreviewMessageIds = normalizeMessageIds(
-      previousPlain?.telegram_preview_message_ids,
-    );
-    const currentPreviewMessageIds = normalizeMessageIds(
-      plain.telegram_preview_message_ids,
-    );
-
-    let messageResult: TaskMessageSendResult | null = null;
-    if (skipMessageUpdate && typeof currentMessageId === 'number') {
-      const cache = new Map<string, LocalPhotoInfo | null>();
-      messageResult = {
-        messageId: currentMessageId,
-        usedPreview: false,
-        cache,
-        previewSourceUrls: undefined,
-        previewMessageIds:
-          currentPreviewMessageIds.length > 0
-            ? currentPreviewMessageIds
-            : undefined,
-      };
-    } else if (currentMessageId) {
-      const editResult = await this.editTaskMessageWithPreview(
-        groupChatId,
-        currentMessageId,
-        message,
-        nextAttachments,
-        keyboard,
-      );
-      if (editResult.success) {
-        messageResult = {
-          messageId: currentMessageId,
-          usedPreview: editResult.usedPreview,
-          cache: editResult.cache,
-          previewSourceUrls: editResult.previewSourceUrls,
-          previewMessageIds:
-            editResult.usedPreview && currentPreviewMessageIds.length
-              ? currentPreviewMessageIds
-              : undefined,
-        };
-      } else {
-        console.error('Не удалось обновить сообщение задачи, отправляем заново');
-        try {
-          const previewIdsToDelete = new Set([
-            ...previousPreviewMessageIds,
-            ...currentPreviewMessageIds,
-          ]);
-          if (previousMessageId) {
-            previousMessageDeletedBeforeResend = await this.deleteTaskMessageSafely(
-              groupChatId,
-              previousMessageId,
-              previousTopicId,
-              topicId,
-            );
-            if (!previousMessageDeletedBeforeResend) {
-              markCleanupNeeded(previousMessageId, previousTopicId, topicId);
-            }
-            previewIdsToDelete.delete(previousMessageId);
-          }
-          if (previewIdsToDelete.size) {
-            await this.deleteAttachmentMessages(
-              groupChatId,
-              Array.from(previewIdsToDelete),
-            );
-          }
-          const sendResult = await this.sendTaskMessageWithPreview(
-            groupChatId,
-            message,
-            nextAttachments,
-            keyboard,
-            topicId,
-          );
-          currentMessageId = sendResult.messageId;
-        if (
-          sendResult.messageId &&
-          previousMessageId &&
-          sendResult.messageId !== previousMessageId &&
-          !previousMessageDeletedBeforeResend
-        ) {
-          const deleted = await this.deleteTaskMessageSafely(
-            groupChatId,
-            previousMessageId,
-            previousTopicId,
-            topicId,
-          );
-          if (deleted) {
-            canPersistNewMessageId = true;
-          } else {
-            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
-          }
-        } else if (previousMessageDeletedBeforeResend) {
-          canPersistNewMessageId = true;
-        }
-          messageResult = sendResult;
-        } catch (sendError) {
-          console.error('Не удалось отправить новое сообщение задачи', sendError);
-          return;
-        }
-      }
-    } else {
-      try {
-        const previewIdsToDelete = new Set([
-          ...previousPreviewMessageIds,
-          ...currentPreviewMessageIds,
-        ]);
-        if (previousMessageId) {
-          previousMessageDeletedBeforeResend = await this.deleteTaskMessageSafely(
-            groupChatId,
-            previousMessageId,
-            previousTopicId,
-            topicId,
-          );
-          if (!previousMessageDeletedBeforeResend) {
-            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
-          }
-          previewIdsToDelete.delete(previousMessageId);
-        }
-        if (previewIdsToDelete.size) {
-          await this.deleteAttachmentMessages(
-            groupChatId,
-            Array.from(previewIdsToDelete),
-          );
-        }
-        const sendResult = await this.sendTaskMessageWithPreview(
-          groupChatId,
-          message,
-          nextAttachments,
-          keyboard,
-          topicId,
-        );
-        currentMessageId = sendResult.messageId;
-        if (
-          sendResult.messageId &&
-          previousMessageId &&
-          sendResult.messageId !== previousMessageId &&
-          !previousMessageDeletedBeforeResend
-        ) {
-          const deleted = await this.deleteTaskMessageSafely(
-            groupChatId,
-            previousMessageId,
-            previousTopicId,
-            topicId,
-          );
-          if (deleted) {
-            canPersistNewMessageId = true;
-          } else {
-            markCleanupNeeded(previousMessageId, previousTopicId, topicId);
-          }
-        } else if (previousMessageDeletedBeforeResend) {
-          canPersistNewMessageId = true;
-        }
-        messageResult = sendResult;
-      } catch (error) {
-        console.error('Не удалось отправить сообщение задачи', error);
-        return;
-      }
-    }
-
-    if (!messageResult) {
-      return;
-    }
-
-    const previousFormatted = previousPlain
-      ? formatTask(previousPlain as unknown as SharedTask, users)
-      : null;
-
-    const previousAttachments = previousPlain
-      ? this.collectSendableAttachments(previousPlain, previousFormatted?.inlineImages)
-      : { previewImage: null, extras: [], collageCandidates: [] };
-    const previousExtrasRaw = previousAttachments.extras;
-    const nextExtrasRaw = nextAttachments.extras;
-    const previousPreviewUrls =
-      previousAttachments.collageCandidates.length >= 2
-        ? previousAttachments.collageCandidates.map((item) => item.url)
-        : previousAttachments.previewImage?.url
-          ? [previousAttachments.previewImage.url]
-          : [];
-    const previousPreviewSet = new Set(
-      previousPreviewUrls.filter((value): value is string => !!value),
-    );
-    const previousExtras = previousPreviewSet.size
-      ? previousExtrasRaw.filter(
-          (attachment) =>
-            attachment.kind !== 'image' || !previousPreviewSet.has(attachment.url),
-        )
-      : previousExtrasRaw;
-    const nextPreviewUrls = messageResult.usedPreview
-      ? messageResult.previewSourceUrls && messageResult.previewSourceUrls.length
-        ? messageResult.previewSourceUrls
-        : nextAttachments.previewImage?.url
-          ? [nextAttachments.previewImage.url]
-          : []
-      : [];
-    const nextPreviewSet = new Set(
-      nextPreviewUrls.filter((value): value is string => !!value),
-    );
-    const nextExtras = nextPreviewSet.size
-      ? nextExtrasRaw.filter(
-          (attachment) =>
-            attachment.kind !== 'image' || !nextPreviewSet.has(attachment.url),
-        )
-      : nextExtrasRaw;
-    let previewMessageIds = [...previousPreviewMessageIds];
-    const previewIdsToRemove: number[] = [];
-
-    const messageIdChanged = previousMessageId !== currentMessageId;
-    const attachmentsChanged = !this.areNormalizedAttachmentsEqual(
-      previousExtras,
-      nextExtras,
-    );
-
-    let attachmentMessageIds = [...previousAttachmentMessageIds];
-    let attachmentsListChanged = false;
-    let previewListChanged = false;
-
-    if (messageResult.previewMessageIds && messageResult.previewMessageIds.length) {
-      const normalizedPreview = normalizeMessageIds(
-        messageResult.previewMessageIds,
-      );
-      if (!this.areMessageIdListsEqual(normalizedPreview, previewMessageIds)) {
-        previewListChanged = true;
-      }
-      previewMessageIds = normalizedPreview;
-    } else if (!messageResult.usedPreview && previewMessageIds.length) {
-      const removable = previewMessageIds.filter(
-        (id) =>
-          typeof currentMessageId === 'number' ? id !== currentMessageId : true,
-      );
-      if (removable.length) {
-        previewIdsToRemove.push(...removable);
-      }
-      previewMessageIds =
-        typeof currentMessageId === 'number' &&
-        previousPreviewMessageIds.includes(currentMessageId)
-          ? [currentMessageId]
-          : [];
-      previewListChanged = true;
-    }
-
-    if (previewIdsToRemove.length) {
-      await this.deleteAttachmentMessages(groupChatId, previewIdsToRemove);
-    }
-
-    if (messageIdChanged && attachmentMessageIds.length) {
-      await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
-      attachmentMessageIds = [];
-      attachmentsListChanged = true;
-    }
-
-    if (!nextExtras.length) {
-      if (attachmentMessageIds.length) {
-        await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
-        attachmentMessageIds = [];
-        attachmentsListChanged = true;
-      }
-      if (previewMessageIds.length) {
-        const removablePreviewIds = previewMessageIds.filter(
-          (id) => id !== currentMessageId,
-        );
-        if (removablePreviewIds.length) {
-          await this.deleteAttachmentMessages(groupChatId, removablePreviewIds);
-          previewMessageIds = previewMessageIds.filter(
-            (id) => id === currentMessageId,
-          );
-          previewListChanged = true;
-        }
-      }
-    } else if (currentMessageId) {
-      if (!attachmentMessageIds.length) {
-        try {
-          const ids = await this.sendTaskAttachments(
-            groupChatId,
-            nextExtras,
-            topicId,
-            currentMessageId,
-            messageResult.cache,
-          );
-          if (ids.length) {
-            attachmentMessageIds = ids;
-            attachmentsListChanged = true;
-          }
-        } catch (error) {
-          console.error('Не удалось отправить вложения задачи', error);
-        }
-      } else if (attachmentsChanged && !messageIdChanged) {
-        try {
-          const previewIdsForSync = Array.from(
-            new Set([...previousPreviewMessageIds, ...previewMessageIds]),
-          );
-          const synced = await this.syncAttachmentMessages(
-            groupChatId,
-            previousExtras,
-            nextExtras,
-            attachmentMessageIds,
-            topicId,
-            currentMessageId,
-            messageResult.cache,
-            previewIdsForSync,
-          );
-          if (synced === null) {
-            throw new Error('sync failed');
-          }
-          if (!this.areMessageIdListsEqual(synced, attachmentMessageIds)) {
-            attachmentsListChanged = true;
-          }
-          attachmentMessageIds = synced;
-        } catch (error) {
-          console.error('Не удалось обновить вложения задачи', error);
-          try {
-            await this.deleteAttachmentMessages(groupChatId, attachmentMessageIds);
-          } catch (cleanupError) {
-            console.error(
-              'Не удалось удалить старые вложения задачи',
-              cleanupError,
-            );
-          }
-          attachmentMessageIds = [];
-          try {
-            const ids = await this.sendTaskAttachments(
-              groupChatId,
-              nextExtras,
-              topicId,
-              currentMessageId,
-              messageResult.cache,
-            );
-            attachmentMessageIds = ids;
-          } catch (sendError) {
-            console.error('Не удалось отправить вложения задачи', sendError);
-          }
-          attachmentsListChanged = true;
-        }
-      }
-    }
-
-    await this.updateTaskStatusSummary(plain);
-
-    const attachmentsShouldPersist =
-      attachmentsListChanged ||
-      !this.areMessageIdListsEqual(
-        attachmentMessageIds,
-        previousAttachmentMessageIds,
-      );
-
-    if (attachmentsShouldPersist && (!messageIdChanged || canPersistNewMessageId)) {
-      updatesToSet.telegram_attachments_message_ids = attachmentMessageIds;
-    }
-
-    const previewShouldPersist =
-      previewListChanged ||
-      !this.areMessageIdListsEqual(previewMessageIds, previousPreviewMessageIds);
-
-    if (previewShouldPersist && (!messageIdChanged || canPersistNewMessageId)) {
-      if (previewMessageIds.length) {
-        updatesToSet.telegram_preview_message_ids = previewMessageIds;
-      } else {
-        updatesToUnset.telegram_preview_message_ids = '';
-      }
-    }
-
-    if (cleanupMeta && typeof currentMessageId === 'number') {
-      (cleanupMeta as TelegramMessageCleanupMeta).new_message_id =
-        currentMessageId;
-    }
-
-    if (messageIdChanged && currentMessageId && canPersistNewMessageId) {
-      updatesToSet.telegram_message_id = currentMessageId;
-      messageIdGuard =
-        typeof previousMessageId === 'number' ? previousMessageId : null;
-    } else if (messageIdChanged && !canPersistNewMessageId) {
-      console.warn(
-        'Пропускаем сохранение нового telegram_message_id из-за ошибки удаления',
-        { taskId },
-      );
-    }
-
-    if (cleanupMeta) {
-      updatesToSet.telegram_message_cleanup = cleanupMeta;
-    } else if (previousCleanupMeta) {
-      updatesToUnset.telegram_message_cleanup = '';
-    }
-
-    if (cleanupMeta) {
-      console.warn(
-        'Не удалось удалить предыдущее сообщение задачи, требуется ручная очистка',
-        { taskId, cleanup: cleanupMeta },
-      );
-    }
-
-    await this.updateTaskTelegramFields(
-      taskId,
-      updatesToSet,
-      updatesToUnset,
-      typeof messageIdGuard === 'undefined'
-        ? undefined
-        : { field: 'telegram_message_id', previous: messageIdGuard },
-    );
-  }
-
   private isMessageNotModifiedError(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
     const record = error as Record<string, unknown>;
@@ -1963,27 +1476,47 @@ export default class TasksController {
     );
   }
 
-  private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
+  private async broadcastTaskSnapshot(
+    task: TaskDocument,
+    actorId: number,
+    options?: {
+      previous?: (TaskWithMeta & Record<string, unknown>) | null;
+      action?: 'создана' | 'обновлена';
+      note?: string | null;
+    },
+  ) {
     const docId =
       typeof task._id === 'object' && task._id !== null && 'toString' in task._id
         ? (task._id as { toString(): string }).toString()
         : String(task._id ?? '');
+    if (!docId) return;
+
     const plain = (
       typeof task.toObject === 'function'
         ? task.toObject()
         : (task as unknown)
-    ) as TaskDocument & Record<string, unknown>;
-    if (!docId) return;
-    const recipients = this.collectNotificationTargets(plain, creatorId);
-    const usersRaw = await getUsersMap(Array.from(recipients));
-    const users = Object.fromEntries(
-      Object.entries(usersRaw).map(([key, value]) => {
-        const name = value.name ?? value.username ?? '';
-        const username = value.username ?? '';
-        return [Number(key), { name, username }];
-      }),
-    );
-    const mainKeyboard = taskStatusKeyboard(
+    ) as TaskWithMeta & Record<string, unknown>;
+    const previousPlain = options?.previous ?? null;
+    const action = options?.action ?? 'создана';
+    const noteRaw = typeof options?.note === 'string' ? options.note.trim() : '';
+    const dmNote = noteRaw || (action === 'обновлена' ? 'Задачу обновили' : '');
+
+    const recipients = this.collectNotificationTargets(plain, actorId);
+    let users: Record<number, { name: string; username: string }> = {};
+    try {
+      const usersRaw = await getUsersMap(Array.from(recipients));
+      users = Object.fromEntries(
+        Object.entries(usersRaw).map(([key, value]) => {
+          const name = value.name ?? value.username ?? '';
+          const username = value.username ?? '';
+          return [Number(key), { name, username }];
+        }),
+      );
+    } catch (error) {
+      console.error('Не удалось получить данные пользователей задачи', error);
+    }
+
+    const keyboard = taskStatusKeyboard(
       docId,
       typeof plain.status === 'string'
         ? (plain.status as SharedTask['status'])
@@ -1991,18 +1524,74 @@ export default class TasksController {
     );
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
+    const topicId = await this.resolveTaskTopicId(plain);
+    const previousTopicId = this.normalizeTopicId(previousPlain?.telegram_topic_id);
+    const normalizeMessageIds = (value: unknown): number[] =>
+      Array.isArray(value)
+        ? (value as unknown[])
+            .map((item) =>
+              typeof item === 'number' && Number.isFinite(item) ? item : null,
+            )
+            .filter((item): item is number => item !== null)
+        : [];
+
     let groupMessageId: number | undefined;
     let statusMessageId: number | undefined;
     let messageLink: string | null = null;
-
     let attachmentMessageIds: number[] = [];
     let previewMessageIds: number[] = [];
+    let directMessages: DirectMessageEntry[] = [];
+
     if (groupChatId) {
       try {
-        const topicId =
-          typeof plain.telegram_topic_id === 'number'
-            ? plain.telegram_topic_id
-            : undefined;
+        if (previousPlain) {
+          const previousMessageId =
+            typeof previousPlain.telegram_message_id === 'number'
+              ? previousPlain.telegram_message_id
+              : undefined;
+          const previousPreviewIds = normalizeMessageIds(
+            previousPlain.telegram_preview_message_ids,
+          );
+          const previousAttachmentIds = normalizeMessageIds(
+            previousPlain.telegram_attachments_message_ids,
+          );
+          const cleanupTargets = new Set<number>();
+          if (typeof previousPlain.telegram_summary_message_id === 'number') {
+            cleanupTargets.add(previousPlain.telegram_summary_message_id);
+          }
+          if (typeof previousPlain.telegram_history_message_id === 'number') {
+            cleanupTargets.add(previousPlain.telegram_history_message_id);
+          }
+          if (typeof previousPlain.telegram_status_message_id === 'number') {
+            cleanupTargets.add(previousPlain.telegram_status_message_id);
+          }
+          if (previousMessageId) {
+            await this.deleteTaskMessageSafely(
+              groupChatId,
+              previousMessageId,
+              previousTopicId,
+              topicId,
+            );
+          }
+          if (previousPreviewIds.length) {
+            await this.deleteAttachmentMessages(groupChatId, previousPreviewIds);
+          }
+          if (previousAttachmentIds.length) {
+            await this.deleteAttachmentMessages(
+              groupChatId,
+              previousAttachmentIds,
+            );
+          }
+          for (const messageId of cleanupTargets) {
+            await this.deleteTaskMessageSafely(
+              groupChatId,
+              messageId,
+              previousTopicId,
+              topicId,
+            );
+          }
+        }
+
         const media = this.collectSendableAttachments(
           plain,
           formatted.inlineImages,
@@ -2011,7 +1600,7 @@ export default class TasksController {
           groupChatId,
           message,
           media,
-          mainKeyboard,
+          keyboard,
           topicId,
         );
         groupMessageId = sendResult.messageId;
@@ -2025,7 +1614,7 @@ export default class TasksController {
               : []
           : [];
         const previewSet = new Set(
-          previewUrls.filter((value): value is string => !!value),
+          previewUrls.filter((value): value is string => Boolean(value)),
         );
         const extras = previewSet.size
           ? media.extras.filter(
@@ -2033,6 +1622,7 @@ export default class TasksController {
                 attachment.kind !== 'image' || !previewSet.has(attachment.url),
             )
           : media.extras;
+
         if (groupMessageId && extras.length) {
           try {
             attachmentMessageIds = await this.sendTaskAttachments(
@@ -2046,13 +1636,18 @@ export default class TasksController {
             console.error('Не удалось отправить вложения задачи', error);
           }
         }
+
+        const statusTimestamp =
+          action === 'создана'
+            ? new Date(
+                (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
+              )
+            : new Date();
         const statusText = await buildActionMessage(
           plain,
-          'создана',
-          new Date(
-            (plain as { createdAt?: string | Date }).createdAt ?? Date.now(),
-          ),
-          creatorId,
+          action,
+          statusTimestamp,
+          actorId,
         );
         const statusOptions: SendMessageOptions = {
           link_preview_options: { is_disabled: true },
@@ -2074,16 +1669,46 @@ export default class TasksController {
       }
     }
 
+    if (groupMessageId) {
+      plain.telegram_message_id = groupMessageId;
+    } else {
+      delete plain.telegram_message_id;
+    }
+    if (statusMessageId) {
+      plain.telegram_history_message_id = statusMessageId;
+    } else {
+      delete plain.telegram_history_message_id;
+    }
+    delete plain.telegram_status_message_id;
+    plain.telegram_preview_message_ids = previewMessageIds;
+    plain.telegram_attachments_message_ids = attachmentMessageIds;
+
+    await this.updateTaskStatusSummary(plain, {
+      forceResend: true,
+      previousSummaryId:
+        typeof previousPlain?.telegram_summary_message_id === 'number'
+          ? previousPlain.telegram_summary_message_id
+          : undefined,
+      previousHistoryId:
+        typeof previousPlain?.telegram_history_message_id === 'number'
+          ? previousPlain.telegram_history_message_id
+          : undefined,
+      previousStatusId:
+        typeof previousPlain?.telegram_status_message_id === 'number'
+          ? previousPlain.telegram_status_message_id
+          : undefined,
+      previousTopicId,
+    });
+
+    const previousDirectMessages = this.normalizeDirectMessages(
+      previousPlain?.telegram_dm_message_ids,
+    );
+    await this.deleteDirectMessages(previousDirectMessages);
+
     const assignees = this.collectAssignees(plain);
-    assignees.delete(creatorId);
+    assignees.delete(actorId);
     if (assignees.size) {
       const appLink = buildTaskAppLink(plain);
-      const dmText = buildDirectTaskMessage(
-        plain,
-        messageLink,
-        users,
-        appLink,
-      );
       const dmKeyboard = buildDirectTaskKeyboard(messageLink, appLink ?? undefined);
       const dmOptions: SendMessageOptions = {
         parse_mode: 'HTML',
@@ -2092,32 +1717,71 @@ export default class TasksController {
           ? { reply_markup: dmKeyboard.reply_markup }
           : {}),
       };
-      await Promise.allSettled(
-        Array.from(assignees).map((userId) =>
-          bot.telegram
-            .sendMessage(userId, dmText, dmOptions)
-            .catch((error) => {
-              console.error(
-                `Не удалось отправить уведомление пользователю ${userId}`,
-                error,
-              );
-            }),
-        ),
+      const dmText = buildDirectTaskMessage(
+        plain,
+        messageLink,
+        users,
+        appLink,
+        dmNote ? { note: dmNote } : undefined,
       );
+      for (const userId of assignees) {
+        try {
+          const sent = await bot.telegram.sendMessage(userId, dmText, dmOptions);
+          if (sent?.message_id) {
+            directMessages.push({ user_id: userId, message_id: sent.message_id });
+          }
+        } catch (error) {
+          console.error(
+            `Не удалось отправить уведомление пользователю ${userId}`,
+            error,
+          );
+        }
+      }
     }
+    plain.telegram_dm_message_ids = directMessages;
 
-    const updatePayload: Record<string, unknown> = {};
+    const setPayload: Record<string, unknown> = {};
+    const unsetPayload: Record<string, unknown> = {};
+
     if (groupMessageId) {
-      updatePayload.telegram_message_id = groupMessageId;
+      setPayload.telegram_message_id = groupMessageId;
+    } else {
+      unsetPayload.telegram_message_id = '';
     }
     if (statusMessageId) {
-      updatePayload.telegram_history_message_id = statusMessageId;
+      setPayload.telegram_history_message_id = statusMessageId;
+    } else {
+      unsetPayload.telegram_history_message_id = '';
     }
-    if (attachmentMessageIds && attachmentMessageIds.length) {
-      updatePayload.telegram_attachments_message_ids = attachmentMessageIds;
-    }
+    unsetPayload.telegram_status_message_id = '';
     if (previewMessageIds.length) {
-      updatePayload.telegram_preview_message_ids = previewMessageIds;
+      setPayload.telegram_preview_message_ids = previewMessageIds;
+    } else {
+      unsetPayload.telegram_preview_message_ids = '';
+    }
+    if (attachmentMessageIds.length) {
+      setPayload.telegram_attachments_message_ids = attachmentMessageIds;
+    } else {
+      unsetPayload.telegram_attachments_message_ids = '';
+    }
+    if (directMessages.length) {
+      setPayload.telegram_dm_message_ids = directMessages;
+    } else {
+      unsetPayload.telegram_dm_message_ids = '';
+    }
+    if (typeof plain.telegram_summary_message_id === 'number') {
+      setPayload.telegram_summary_message_id = plain.telegram_summary_message_id;
+    } else {
+      unsetPayload.telegram_summary_message_id = '';
+    }
+    unsetPayload.telegram_message_cleanup = '';
+
+    const updatePayload: Record<string, unknown> = {};
+    if (Object.keys(setPayload).length) {
+      updatePayload.$set = setPayload;
+    }
+    if (Object.keys(unsetPayload).length) {
+      updatePayload.$unset = unsetPayload;
     }
     if (Object.keys(updatePayload).length) {
       try {
@@ -2126,6 +1790,10 @@ export default class TasksController {
         console.error('Не удалось сохранить идентификаторы сообщений задачи', error);
       }
     }
+  }
+
+  private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
+    await this.broadcastTaskSnapshot(task, creatorId, { action: 'создана' });
   }
 
   list = async (req: RequestWithUser, res: Response) => {
@@ -2205,6 +1873,28 @@ export default class TasksController {
             ? (previousRaw.toObject() as unknown)
             : (previousRaw as unknown)) as TaskWithMeta & Record<string, unknown>)
         : null;
+      if (!previousTask) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Задача не найдена',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
+      const currentStatus =
+        typeof previousTask.status === 'string'
+          ? (previousTask.status as TaskDocument['status'])
+          : undefined;
+      if (currentStatus && currentStatus !== 'Новая') {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Редактирование запрещено',
+          status: 409,
+          detail: 'Редактирование доступно только для задач в статусе «Новая»',
+        });
+        return;
+      }
       const task = await this.service.update(
         req.params.id,
         req.body as Partial<TaskDocument>,
@@ -2228,25 +1918,12 @@ export default class TasksController {
           ? (task._id as { toString(): string }).toString()
           : String(task._id ?? '');
       if (docId) {
-        void (async () => {
-          const skipMessageUpdate = TELEGRAM_SINGLE_HISTORY_MESSAGE;
-          if (skipMessageUpdate) {
-            try {
-              await this.taskSyncController.onWebTaskUpdate(docId, task);
-            } catch (error) {
-              console.error('Не удалось синхронизировать задачу в Telegram', error);
-            }
-          } else {
-            await this.refreshStatusHistoryMessage(docId);
-          }
-          try {
-            await this.syncTelegramTaskMessage(docId, previousTask, {
-              skipMessageUpdate,
-            });
-          } catch (error) {
-            console.error('Не удалось синхронизировать сообщение задачи', error);
-          }
-        })();
+        void this.broadcastTaskSnapshot(task, req.user!.id as number, {
+          previous: previousTask,
+          action: 'обновлена',
+        }).catch((error) => {
+          console.error('Не удалось обновить сообщения задачи', error);
+        });
       }
     },
   ];

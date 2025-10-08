@@ -20,6 +20,12 @@ test('schema has slug field', () => {
   expect(slug).toBeDefined();
 });
 
+test('enum типов задач включает значение «Заявка»', () => {
+  const taskType = Task.schema.paths.task_type;
+  expect(taskType).toBeDefined();
+  expect(taskType.options.enum).toContain('Заявка');
+});
+
 afterAll(() => {
   stopScheduler();
   stopQueue();

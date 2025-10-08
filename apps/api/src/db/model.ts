@@ -291,10 +291,10 @@ const taskSchema = new Schema<TaskDocument>(
     title: { type: String, required: true },
     slug: String,
     task_description: { type: String, maxlength: 4096 },
-    // Тип задачи пополнился вариантами строительства и ремонта
+    // Тип задачи пополнился вариантами строительства, ремонта и заявок
     task_type: {
       type: String,
-      enum: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить'],
+      enum: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить', 'Заявка'],
     },
     task_type_id: Number,
     start_date: Date,

@@ -1626,46 +1626,51 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
   await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
 });
 
-bot.on('text', async (ctx) => {
-  const userId = ctx.from?.id;
-  if (!userId) {
-    return;
-  }
-  const session = cancelRequestSessions.get(userId);
-  if (!session || session.stage !== 'awaitingReason') {
-    return;
-  }
-  if (ctx.chat?.type !== 'private') {
-    return;
-  }
-  const messageText =
-    typeof ctx.message?.text === 'string' ? ctx.message.text : '';
-  const normalized = messageText.replace(/\r\n/g, '\n').trim();
-  if (!normalized || normalized.length < CANCEL_REASON_MIN_LENGTH) {
-    await ctx.reply(messages.cancelRequestReasonLength);
-    return;
-  }
-  session.reason = normalized;
-  session.stage = 'awaitingConfirm';
-  cancelRequestSessions.set(userId, session);
-  const preview =
-    normalized.length > 500 ? `${normalized.slice(0, 500)}…` : normalized;
-  const keyboard = Markup.inlineKeyboard([
-    [
-      Markup.button.callback(
-        'Подтвердить',
-        `cancel_request_confirm:${session.taskId}`,
-      ),
-      Markup.button.callback('Отмена', `cancel_request_abort:${session.taskId}`),
-    ],
-  ]);
-  await ctx.reply(
-    `${messages.cancelRequestConfirmPrompt}\n\nЗадача: ${session.identifier}\nПричина:\n${preview}`,
-    {
-      reply_markup: keyboard.reply_markup,
-    },
-  );
-});
+const registerTextHandler = bot.on?.bind(bot);
+if (!registerTextHandler) {
+  console.warn('Метод bot.on недоступен, обработчик текстов не будет зарегистрирован');
+} else {
+  registerTextHandler('text', async (ctx) => {
+    const userId = ctx.from?.id;
+    if (!userId) {
+      return;
+    }
+    const session = cancelRequestSessions.get(userId);
+    if (!session || session.stage !== 'awaitingReason') {
+      return;
+    }
+    if (ctx.chat?.type !== 'private') {
+      return;
+    }
+    const messageText =
+      typeof ctx.message?.text === 'string' ? ctx.message.text : '';
+    const normalized = messageText.replace(/\r\n/g, '\n').trim();
+    if (!normalized || normalized.length < CANCEL_REASON_MIN_LENGTH) {
+      await ctx.reply(messages.cancelRequestReasonLength);
+      return;
+    }
+    session.reason = normalized;
+    session.stage = 'awaitingConfirm';
+    cancelRequestSessions.set(userId, session);
+    const preview =
+      normalized.length > 500 ? `${normalized.slice(0, 500)}…` : normalized;
+    const keyboard = Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          'Подтвердить',
+          `cancel_request_confirm:${session.taskId}`,
+        ),
+        Markup.button.callback('Отмена', `cancel_request_abort:${session.taskId}`),
+      ],
+    ]);
+    await ctx.reply(
+      `${messages.cancelRequestConfirmPrompt}\n\nЗадача: ${session.identifier}\nПричина:\n${preview}`,
+      {
+        reply_markup: keyboard.reply_markup,
+      },
+    );
+  });
+}
 
 bot.action(/^cancel_request_confirm:.+$/, async (ctx) => {
   const data = getCallbackData(ctx.callbackQuery);

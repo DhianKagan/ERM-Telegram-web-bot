@@ -1,6 +1,7 @@
 // Назначение: формирование кнопок изменения статуса задачи для чата
 // Модули: telegraf Markup
 import { Markup } from 'telegraf';
+import type { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 
 type TaskStatus = 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
 
@@ -58,7 +59,7 @@ export default function taskStatusKeyboard(
   currentStatus?: TaskStatus,
   options: TaskStatusKeyboardOptions = {},
 ): ReturnType<typeof Markup.inlineKeyboard> {
-  const buttons = [
+  const primaryRow: InlineKeyboardButton[] = [
     Markup.button.callback(
       resolveStatusLabel('В работе', currentStatus),
       `task_accept_prompt:${id}`,
@@ -69,12 +70,22 @@ export default function taskStatusKeyboard(
     ),
   ];
   if (options.allowCancel || options.kind === 'request') {
-    buttons.push(
+    primaryRow.push(
       Markup.button.callback(
         resolveStatusLabel('Отменена', currentStatus),
         `task_cancel_prompt:${id}`,
       ),
     );
   }
-  return Markup.inlineKeyboard(buttons);
+  const rows: InlineKeyboardButton[][] = [primaryRow];
+  const actionsRow: InlineKeyboardButton[] = [
+    Markup.button.callback('История', `task_history:${id}`),
+  ];
+  if (options.kind !== 'request') {
+    actionsRow.push(
+      Markup.button.callback('Заявка на отмену', `task_cancel_request_prompt:${id}`),
+    );
+  }
+  rows.push(actionsRow);
+  return Markup.inlineKeyboard(rows);
 }

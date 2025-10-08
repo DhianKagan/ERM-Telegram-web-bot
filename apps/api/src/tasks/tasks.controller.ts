@@ -426,6 +426,32 @@ export default class TasksController {
   ): Promise<TaskMessageSendResult> {
     const cache = new Map<string, LocalPhotoInfo | null>();
     const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
+    const preview = media.previewImage;
+    const previewUrl = preview?.url;
+    const baseOptions = () => ({
+      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
+    });
+    if (previewUrl && message.length <= 1024) {
+      try {
+        const photoOptions: SendPhotoOptions = {
+          ...baseOptions(),
+          caption: message,
+          parse_mode: 'MarkdownV2',
+        };
+        const photo = await this.resolvePhotoInputWithCache(previewUrl, cache);
+        const response = await bot.telegram.sendPhoto(chat, photo, photoOptions);
+        return {
+          messageId: response?.message_id,
+          usedPreview: true,
+          cache,
+          previewSourceUrls: [previewUrl],
+          previewMessageIds: undefined,
+        };
+      } catch (error) {
+        console.error('Не удалось отправить задачу с изображением превью', error);
+      }
+    }
     const options: SendMessageOptions = {
       parse_mode: 'MarkdownV2',
       link_preview_options: { is_disabled: true },

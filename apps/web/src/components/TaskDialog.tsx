@@ -1294,19 +1294,37 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (!targetId) return;
     const prev = status;
     setStatus("В работе");
-    const [data] = await Promise.all([
-      updateTask(targetId, { status: "В работе" }).then((r) =>
-        r.ok ? r.json() : null,
-      ),
-      updateTaskStatus(targetId, "В работе"),
-    ]);
-    if (data) {
-      if (onSave) onSave(data);
-    } else {
+    try {
+      const [data] = await Promise.all([
+        updateTask(targetId, { status: "В работе" }).then((r) =>
+          r.ok ? r.json() : null,
+        ),
+        updateTaskStatus(targetId, "В работе"),
+      ]);
+      if (data) {
+        if (onSave) onSave(data);
+      } else {
+        setStatus(prev);
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } catch (error) {
+      console.error(error);
       setStatus(prev);
-      setAlertMsg(t("taskSaveFailed"));
+      if (error instanceof TaskRequestError) {
+        const reason = error.message.trim();
+        setAlertMsg(
+          reason
+            ? t("taskSaveFailedWithReason", { reason })
+            : t("taskSaveFailed"),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+      } else {
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } finally {
+      setSelectedAction("accept");
     }
-    setSelectedAction("accept");
   };
 
   const completeTask = async (opt: string) => {
@@ -1314,35 +1332,53 @@ export default function TaskDialog({ onClose, onSave, id }: Props) {
     if (!targetId) return;
     const prev = status;
     setStatus("Выполнена");
-    const [data] = await Promise.all([
-      updateTask(targetId, {
-        status: "Выполнена",
-        completed_at: new Date().toISOString(),
-        completion_result: opt,
-      }).then((r) => (r.ok ? r.json() : null)),
-      updateTaskStatus(targetId, "Выполнена"),
-    ]);
-    if (data) {
-      const completedValue = toIsoString(
-        (data as Record<string, unknown>)?.completed_at ??
-          (data as Record<string, unknown>)?.completedAt,
-      );
-      const fallbackCompleted = new Date().toISOString();
-      setCompletedAt(
-        completedValue || fallbackCompleted,
-      );
-      if (initialRef.current) {
-        initialRef.current.status = "Выполнена";
-        initialRef.current.completedAt =
-          completedValue || fallbackCompleted;
+    try {
+      const [data] = await Promise.all([
+        updateTask(targetId, {
+          status: "Выполнена",
+          completed_at: new Date().toISOString(),
+          completion_result: opt,
+        }).then((r) => (r.ok ? r.json() : null)),
+        updateTaskStatus(targetId, "Выполнена"),
+      ]);
+      if (data) {
+        const completedValue = toIsoString(
+          (data as Record<string, unknown>)?.completed_at ??
+            (data as Record<string, unknown>)?.completedAt,
+        );
+        const fallbackCompleted = new Date().toISOString();
+        setCompletedAt(
+          completedValue || fallbackCompleted,
+        );
+        if (initialRef.current) {
+          initialRef.current.status = "Выполнена";
+          initialRef.current.completedAt =
+            completedValue || fallbackCompleted;
+        }
+        if (onSave) onSave(data);
+      } else {
+        setStatus(prev);
+        setAlertMsg(t("taskSaveFailed"));
       }
-      if (onSave) onSave(data);
-    } else {
+    } catch (error) {
+      console.error(error);
       setStatus(prev);
-      setAlertMsg(t("taskSaveFailed"));
+      if (error instanceof TaskRequestError) {
+        const reason = error.message.trim();
+        setAlertMsg(
+          reason
+            ? t("taskSaveFailedWithReason", { reason })
+            : t("taskSaveFailed"),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+      } else {
+        setAlertMsg(t("taskSaveFailed"));
+      }
+    } finally {
+      setShowDoneSelect(false);
+      setSelectedAction("done");
     }
-    setShowDoneSelect(false);
-    setSelectedAction("done");
   };
 
   const creatorId = Number(creator);

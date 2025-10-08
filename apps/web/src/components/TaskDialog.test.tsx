@@ -107,12 +107,16 @@ const updateTaskMock = jest.fn().mockResolvedValue({
   json: async () => ({ ...taskData, _id: "1" }),
 });
 
-jest.mock("../services/tasks", () => ({
-  createTask: (...args: any[]) => createTaskMock(...args),
-  updateTask: (...args: any[]) => updateTaskMock(...args),
-  deleteTask: jest.fn(),
-  updateTaskStatus: jest.fn(),
-}));
+jest.mock("../services/tasks", () => {
+  const actual = jest.requireActual("../services/tasks");
+  return {
+    ...actual,
+    createTask: (...args: any[]) => createTaskMock(...args),
+    updateTask: (...args: any[]) => updateTaskMock(...args),
+    deleteTask: jest.fn(),
+    updateTaskStatus: jest.fn(),
+  };
+});
 
 describe("TaskDialog", () => {
   beforeEach(() => {

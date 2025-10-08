@@ -9,7 +9,7 @@ import SkeletonCard from "../components/SkeletonCard";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/useAuth";
 import { useToast } from "../context/useToast";
-import { createTask } from "../services/tasks";
+import { createTask, TaskRequestError } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import type { Task } from "shared";
 
@@ -38,13 +38,24 @@ export default function Tasks() {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     setPosting(true);
-    const res = await createTask({ title: text, task_description: text });
-    if (res) {
-      setText("");
-      addToast("Задача создана");
-      setTasks([...tasks, res]);
+    try {
+      const res = await createTask({ title: text, task_description: text });
+      if (res) {
+        setText("");
+        addToast("Задача создана");
+        setTasks([...tasks, res]);
+      }
+    } catch (error) {
+      if (error instanceof TaskRequestError) {
+        addToast(`Не удалось создать задачу: ${error.message}`);
+      } else if (error instanceof Error) {
+        addToast(`Не удалось создать задачу: ${error.message}`);
+      } else {
+        addToast("Не удалось создать задачу");
+      }
+    } finally {
+      setPosting(false);
     }
-    setPosting(false);
   };
 
   const totalPages = Math.ceil(tasks.length / perPage);

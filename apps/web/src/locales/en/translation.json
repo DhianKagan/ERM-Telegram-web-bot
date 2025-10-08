@@ -85,6 +85,8 @@
   "taskDeleted": "Task deleted",
   "taskNumber": "Task number",
   "taskSaveFailed": "Failed to save task",
+  "taskSaveFailedWithReason": "Failed to save task: {{reason}}",
+  "taskValidationFailed": "Check required fields before saving",
   "taskSection": "\uD83D\uDD28 Task",
   "taskTitle": "Task title",
   "taskType": "Task type",

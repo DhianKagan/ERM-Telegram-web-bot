@@ -78,6 +78,8 @@ async function verifyCode(
   const currentAccess = typeof u.access === 'number' ? u.access : null;
   const hasDeleteMask =
     currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  const tokenAccess =
+    hasDeleteMask && currentAccess !== null ? currentAccess | access : access;
   if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
@@ -85,7 +87,7 @@ async function verifyCode(
     id: telegramId,
     username: u.username || '',
     role,
-    access,
+    access: tokenAccess,
   });
   await writeLog(`Вход пользователя ${telegramId}/${u.username}`);
   return token;
@@ -113,6 +115,8 @@ async function verifyInitData(initData: string) {
   const currentAccess = typeof user.access === 'number' ? user.access : null;
   const hasDeleteMask =
     currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  const tokenAccess =
+    hasDeleteMask && currentAccess !== null ? currentAccess | access : access;
   if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
@@ -120,7 +124,7 @@ async function verifyInitData(initData: string) {
     id: telegramId,
     username: user.username || '',
     role,
-    access,
+    access: tokenAccess,
   });
   await writeLog(`Вход пользователя ${telegramId}/${user.username}`);
   return token;
@@ -140,6 +144,8 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
   const currentAccess = typeof user.access === 'number' ? user.access : null;
   const hasDeleteMask =
     currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  const tokenAccess =
+    hasDeleteMask && currentAccess !== null ? currentAccess | access : access;
   if (currentAccess === null || (currentAccess !== access && !hasDeleteMask)) {
     await updateUser(telegramId, { role });
   }
@@ -147,7 +153,7 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
     id: telegramId,
     username: user.username || '',
     role,
-    access,
+    access: tokenAccess,
   });
   await writeLog(`Вход мини-приложения ${telegramId}/${user.username}`);
   return token;

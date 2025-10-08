@@ -47,6 +47,12 @@ test('inline-клавиатура завершения содержит prompt �
         expect.objectContaining({ callback_data: 'task_accept_prompt:77' }),
         expect.objectContaining({ callback_data: 'task_done_prompt:77' }),
       ]),
+      expect.arrayContaining([
+        expect.objectContaining({ callback_data: 'task_history:77' }),
+        expect.objectContaining({
+          callback_data: 'task_cancel_request_prompt:77',
+        }),
+      ]),
     ]),
   );
 

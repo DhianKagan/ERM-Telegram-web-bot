@@ -13,8 +13,10 @@ import {
   getTask,
   getUser,
   updateTaskStatus,
+  writeLog,
 } from '../services/service';
 import '../db/model';
+import type { TaskDocument } from '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
   getTaskHistoryMessage,
@@ -27,7 +29,7 @@ import taskStatusKeyboard, {
 } from '../utils/taskButtons';
 import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
-import { getUsersMap } from '../db/queries';
+import { createTask, getUsersMap } from '../db/queries';
 import { buildHistorySummaryLog, getTaskIdentifier } from '../tasks/taskMessages';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
@@ -41,6 +43,35 @@ export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
 const taskSyncController = new TaskSyncController(bot);
 const REQUEST_TYPE_NAME = 'Заявка';
+
+type CancelRequestStage = 'awaitingReason' | 'awaitingConfirm';
+
+type CancelRequestSession = {
+  taskId: string;
+  actorId: number;
+  identifier: string;
+  reason?: string;
+  stage: CancelRequestStage;
+};
+
+class CancellationRequestError extends Error {
+  constructor(
+    public code:
+      | 'not_found'
+      | 'not_executor'
+      | 'creator_missing'
+      | 'unsupported',
+    message?: string,
+  ) {
+    super(message ?? code);
+    this.name = 'CancellationRequestError';
+  }
+}
+
+const cancelRequestSessions = new Map<number, CancelRequestSession>();
+const HISTORY_ALERT_LIMIT = 190;
+const CANCEL_REASON_MIN_LENGTH = 50;
+const CANCEL_REASON_MAX_LENGTH = 2000;
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in bot:', err);
@@ -121,6 +152,196 @@ function isMessageNotModifiedError(error: unknown): boolean {
     response?.error_code === 400 &&
     description.includes('message is not modified')
   );
+}
+
+function buildHistoryAlert(summary: string): string {
+  const normalizedLines = summary
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (!normalizedLines.length) {
+    return '';
+  }
+  const selected: string[] = [];
+  for (let index = normalizedLines.length - 1; index >= 0; index -= 1) {
+    const current = normalizedLines[index];
+    if (!current) {
+      continue;
+    }
+    if (!selected.length) {
+      selected.unshift(current);
+      continue;
+    }
+    const candidate = [current, ...selected].join('\n');
+    if (candidate.length > HISTORY_ALERT_LIMIT) {
+      break;
+    }
+    selected.unshift(current);
+  }
+  let text = selected.join('\n');
+  if (!text) {
+    return '';
+  }
+  if (text.length > HISTORY_ALERT_LIMIT) {
+    text = `${text.slice(0, HISTORY_ALERT_LIMIT - 1)}…`;
+  }
+  return text;
+}
+
+const htmlEscapeMap: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const htmlEscapePattern = /[&<>"']/g;
+
+const escapeHtml = (value: string): string =>
+  String(value).replace(htmlEscapePattern, (char) => htmlEscapeMap[char] ?? char);
+
+const normalizeReasonText = (reason: string): string => {
+  const normalized = reason.replace(/\r\n/g, '\n').trim();
+  if (normalized.length <= CANCEL_REASON_MAX_LENGTH) {
+    return normalized;
+  }
+  return normalized.slice(0, CANCEL_REASON_MAX_LENGTH);
+};
+
+const formatCancellationDescription = (
+  identifier: string,
+  reason: string,
+  status?: string,
+): string => {
+  const parts: string[] = [];
+  const trimmedIdentifier = identifier.trim();
+  if (trimmedIdentifier) {
+    parts.push(
+      `<p><strong>Задача:</strong> ${escapeHtml(trimmedIdentifier)}</p>`,
+    );
+  }
+  const normalizedReason = reason.replace(/\r?\n/g, '\n');
+  const reasonSegments = normalizedReason
+    .split('\n')
+    .map((segment) => escapeHtml(segment.trim()))
+    .filter((segment) => segment.length > 0);
+  const reasonHtml = reasonSegments.length
+    ? reasonSegments.join('<br />')
+    : escapeHtml(normalizedReason.trim());
+  parts.push(
+    `<p><strong>Причина отмены:</strong><br />${reasonHtml || '—'}</p>`,
+  );
+  const statusTrimmed = typeof status === 'string' ? status.trim() : '';
+  if (statusTrimmed) {
+    parts.push(
+      `<p><strong>Текущий статус:</strong> ${escapeHtml(statusTrimmed)}</p>`,
+    );
+  }
+  return parts.join('');
+};
+
+type CancelRequestContext = {
+  plain: TaskPresentation;
+  creatorId: number;
+  identifier: string;
+  docId: string;
+};
+
+const toPlainTask = (
+  task: TaskDocument | (TaskDocument & Record<string, unknown>),
+): TaskPresentation =>
+  typeof (task as { toObject?: () => unknown }).toObject === 'function'
+    ? ((task as { toObject(): unknown }).toObject() as TaskPresentation)
+    : (task as TaskPresentation);
+
+async function loadCancelRequestContext(
+  taskId: string,
+  actorId: number,
+): Promise<CancelRequestContext> {
+  const task = await getTask(taskId);
+  if (!task) {
+    throw new CancellationRequestError('not_found');
+  }
+  const plain = toPlainTask(task);
+  const kind = detectTaskKind(plain);
+  if (kind !== 'task') {
+    throw new CancellationRequestError('unsupported');
+  }
+  if (!isTaskExecutor(plain, actorId)) {
+    throw new CancellationRequestError('not_executor');
+  }
+  const creatorId = Number(plain.created_by);
+  if (!Number.isFinite(creatorId) || creatorId === 0) {
+    throw new CancellationRequestError('creator_missing');
+  }
+  const identifier =
+    getTaskIdentifier(plain as Parameters<typeof getTaskIdentifier>[0]) || taskId;
+  const docId =
+    typeof plain._id === 'object' &&
+    plain._id !== null &&
+    'toString' in plain._id
+      ? (plain._id as { toString(): string }).toString()
+      : String((plain as { _id?: unknown })._id ?? taskId);
+  return { plain, creatorId, identifier, docId };
+}
+
+async function createCancellationRequestFromTask(
+  taskId: string,
+  actorId: number,
+  reason: string,
+): Promise<{ requestId: string; identifier: string }> {
+  const context = await loadCancelRequestContext(taskId, actorId);
+  const { plain, creatorId, identifier, docId } = context;
+  const normalizedReason = normalizeReasonText(reason);
+  const description = formatCancellationDescription(
+    identifier,
+    normalizedReason,
+    typeof plain.status === 'string' ? plain.status : undefined,
+  );
+  const payload: Partial<TaskDocument> = {
+    title: `Заявка на отмену задачи ${identifier}`,
+    task_description: description,
+    kind: 'request',
+    task_type: REQUEST_TYPE_NAME,
+    status: 'Новая',
+    created_by: actorId,
+    custom: {
+      cancelSource: {
+        taskId: docId,
+        identifier,
+        requestedBy: actorId,
+        requestedAt: new Date().toISOString(),
+      },
+      cancelReason: normalizedReason,
+    },
+  };
+  if (Number.isFinite(creatorId) && creatorId !== 0) {
+    payload.assigned_user_id = creatorId;
+    payload.assignees = [creatorId];
+  }
+  const created = await createTask(payload, actorId);
+  const requestId =
+    typeof created._id === 'object' &&
+    created._id !== null &&
+    'toString' in created._id
+      ? (created._id as { toString(): string }).toString()
+      : String(created._id ?? '');
+  if (requestId) {
+    try {
+      await taskSyncController.onWebTaskUpdate(requestId, created);
+    } catch (error) {
+      console.error('Не удалось синхронизировать заявку на отмену задачи', error);
+    }
+  }
+  try {
+    await writeLog(
+      `Создана заявка ${requestId} пользователем ${actorId}/telegram`,
+    );
+  } catch (error) {
+    console.error('Не удалось записать лог создания заявки', error);
+  }
+  return { requestId, identifier };
 }
 
 async function updateMessageReplyMarkup(
@@ -979,6 +1200,45 @@ bot.action('task_accept', async (ctx) => {
   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
 });
 
+bot.action(/^task_history:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  try {
+    const task = await getTask(taskId);
+    if (!task) {
+      await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
+      return;
+    }
+    const plain = toPlainTask(task);
+    const summary = await buildHistorySummaryLog(
+      plain as Parameters<typeof buildHistorySummaryLog>[0],
+    );
+    if (!summary) {
+      await ctx.answerCbQuery(messages.taskHistoryEmpty, { show_alert: true });
+      return;
+    }
+    const alertText = buildHistoryAlert(summary);
+    if (!alertText) {
+      await ctx.answerCbQuery(messages.taskHistoryEmpty, {
+        show_alert: true,
+      });
+      return;
+    }
+    await ctx.answerCbQuery(alertText, { show_alert: true });
+  } catch (error) {
+    console.error('Не удалось показать историю задачи в Telegram', error);
+    await ctx.answerCbQuery(messages.taskHistoryPopupError, {
+      show_alert: true,
+    });
+  }
+});
+
 bot.action('task_accept_prompt', async (ctx) => {
   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
 });
@@ -1161,6 +1421,77 @@ bot.action('task_cancel_prompt', async (ctx) => {
   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
 });
 
+bot.action('task_cancel_request_prompt', async (ctx) => {
+  await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+});
+
+bot.action(/^task_cancel_request_prompt:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  try {
+    const context = await loadCancelRequestContext(taskId, userId);
+    cancelRequestSessions.set(userId, {
+      taskId,
+      actorId: userId,
+      identifier: context.identifier,
+      stage: 'awaitingReason',
+    });
+    const promptText = `Введите причину отмены для задачи ${context.identifier}. Текст должен содержать не менее ${CANCEL_REASON_MIN_LENGTH} символов.`;
+    const keyboard = Markup.inlineKeyboard([
+      [Markup.button.callback('Отмена', `cancel_request_abort:${taskId}`)],
+    ]);
+    try {
+      await bot.telegram.sendMessage(userId, promptText, {
+        reply_markup: keyboard.reply_markup,
+      });
+    } catch (error) {
+      cancelRequestSessions.delete(userId);
+      console.error('Не удалось отправить запрос причины отмены', error);
+      await ctx.answerCbQuery(messages.cancelRequestStartError, {
+        show_alert: true,
+      });
+      return;
+    }
+    await ctx.answerCbQuery(messages.cancelRequestPrompt);
+  } catch (error) {
+    let response: string = messages.cancelRequestFailed;
+    if (error instanceof CancellationRequestError) {
+      switch (error.code) {
+        case 'not_found':
+          response = messages.taskNotFound;
+          break;
+        case 'not_executor':
+          response = messages.taskAssignmentRequired;
+          break;
+        case 'creator_missing':
+          response = messages.cancelRequestCreatorMissing;
+          break;
+        case 'unsupported':
+          response = messages.cancelRequestUnavailable;
+          break;
+        default:
+          response = messages.cancelRequestFailed;
+      }
+    } else {
+      console.error('Не удалось подготовить заявку на отмену', error);
+    }
+    await ctx.answerCbQuery(response, { show_alert: true });
+  }
+});
+
 bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
   const data = getCallbackData(ctx.callbackQuery);
   const taskId = getTaskIdFromCallback(data);
@@ -1265,6 +1596,136 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
     return;
   }
   await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
+});
+
+bot.on('text', async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) {
+    return;
+  }
+  const session = cancelRequestSessions.get(userId);
+  if (!session || session.stage !== 'awaitingReason') {
+    return;
+  }
+  if (ctx.chat?.type !== 'private') {
+    return;
+  }
+  const messageText =
+    typeof ctx.message?.text === 'string' ? ctx.message.text : '';
+  const normalized = messageText.replace(/\r\n/g, '\n').trim();
+  if (!normalized || normalized.length < CANCEL_REASON_MIN_LENGTH) {
+    await ctx.reply(messages.cancelRequestReasonLength);
+    return;
+  }
+  session.reason = normalized;
+  session.stage = 'awaitingConfirm';
+  cancelRequestSessions.set(userId, session);
+  const preview =
+    normalized.length > 500 ? `${normalized.slice(0, 500)}…` : normalized;
+  const keyboard = Markup.inlineKeyboard([
+    [
+      Markup.button.callback(
+        'Подтвердить',
+        `cancel_request_confirm:${session.taskId}`,
+      ),
+      Markup.button.callback('Отмена', `cancel_request_abort:${session.taskId}`),
+    ],
+  ]);
+  await ctx.reply(
+    `${messages.cancelRequestConfirmPrompt}\n\nЗадача: ${session.identifier}\nПричина:\n${preview}`,
+    {
+      reply_markup: keyboard.reply_markup,
+    },
+  );
+});
+
+bot.action(/^cancel_request_confirm:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  const session = cancelRequestSessions.get(userId);
+  if (!session || session.taskId !== taskId) {
+    await ctx.answerCbQuery(messages.cancelRequestFailed, {
+      show_alert: true,
+    });
+    return;
+  }
+  const reason = session.reason?.trim();
+  if (!reason || reason.length < CANCEL_REASON_MIN_LENGTH) {
+    await ctx.answerCbQuery(messages.cancelRequestReasonLength, {
+      show_alert: true,
+    });
+    return;
+  }
+  try {
+    await createCancellationRequestFromTask(taskId, userId, reason);
+    cancelRequestSessions.delete(userId);
+    try {
+      await ctx.editMessageReplyMarkup(undefined);
+    } catch (error) {
+      console.warn('Не удалось обновить сообщение подтверждения отмены', error);
+    }
+    await ctx.answerCbQuery(messages.cancelRequestSuccess);
+    await ctx.reply(
+      `${messages.cancelRequestSuccess}\nЗадача: ${session.identifier}`,
+    );
+  } catch (error) {
+    let response: string = messages.cancelRequestFailed;
+    if (error instanceof CancellationRequestError) {
+      switch (error.code) {
+        case 'not_found':
+          response = messages.taskNotFound;
+          break;
+        case 'not_executor':
+          response = messages.taskAssignmentRequired;
+          break;
+        case 'creator_missing':
+          response = messages.cancelRequestCreatorMissing;
+          break;
+        case 'unsupported':
+          response = messages.cancelRequestUnavailable;
+          break;
+        default:
+          response = messages.cancelRequestFailed;
+      }
+    } else {
+      console.error('Не удалось создать заявку на отмену задачи', error);
+    }
+    await ctx.answerCbQuery(response, { show_alert: true });
+  }
+});
+
+bot.action(/^cancel_request_abort:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  const userId = ctx.from?.id;
+  if (userId) {
+    const session = cancelRequestSessions.get(userId);
+    if (session && (!taskId || session.taskId === taskId)) {
+      cancelRequestSessions.delete(userId);
+    }
+  }
+  try {
+    await ctx.editMessageReplyMarkup(undefined);
+  } catch (error) {
+    console.warn('Не удалось обновить сообщение отмены заявки', error);
+  }
+  await ctx.answerCbQuery(messages.cancelRequestCanceled);
+  if (ctx.chat?.type === 'private') {
+    await ctx.reply(messages.cancelRequestCanceled);
+  }
 });
 
 export async function startBot(retry = 0): Promise<void> {

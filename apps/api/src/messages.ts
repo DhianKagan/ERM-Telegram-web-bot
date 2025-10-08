@@ -35,6 +35,23 @@ const messages = {
   taskCancelForbidden:
     'Статус «Отменена» может установить только создатель задачи в веб-интерфейсе.',
   requestCancelExecutorOnly: 'Отменить заявку может только исполнитель.',
+  taskHistoryEmpty: 'История изменений отсутствует.',
+  taskHistoryPopupError: 'Не удалось загрузить историю задачи.',
+  cancelRequestPrompt:
+    'Отправьте причину отмены задачи личным сообщением боту.',
+  cancelRequestStartError:
+    'Не удалось отправить запрос на отмену. Напишите боту в личные сообщения.',
+  cancelRequestCreatorMissing:
+    'Не удалось определить автора задачи для назначения заявки.',
+  cancelRequestUnavailable:
+    'Заявку на отмену можно создать только для задач.',
+  cancelRequestReasonLength:
+    'Причина отмены должна содержать не менее 50 символов.',
+  cancelRequestConfirmPrompt:
+    'Проверьте текст причины и подтвердите создание заявки.',
+  cancelRequestCanceled: 'Создание заявки на отмену отменено.',
+  cancelRequestSuccess: 'Заявка на отмену задачи создана.',
+  cancelRequestFailed: 'Не удалось создать заявку на отмену задачи.',
   enterComment: 'Введите комментарий',
   taskDeleted: 'Задача удалена',
   taskForm: 'Поля новой задачи:',

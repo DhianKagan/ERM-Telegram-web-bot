@@ -1901,12 +1901,26 @@ export default class TasksController {
         req.user!.id as number,
       );
       if (!task) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Задача не найдена',
-          status: 404,
-          detail: 'Not Found',
-        });
+        const current = await Task.findById(req.params.id);
+        if (
+          current &&
+          typeof current.status === 'string' &&
+          current.status !== 'Новая'
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Редактирование запрещено',
+            status: 409,
+            detail: 'Редактирование доступно только для задач в статусе «Новая»',
+          });
+        } else {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Задача не найдена',
+            status: 404,
+            detail: 'Not Found',
+          });
+        }
         return;
       }
       await writeLog(

@@ -36,7 +36,7 @@ export default function TasksPage() {
       {
         page: page + 1,
         limit: 25,
-        mine: mine ? 1 : undefined,
+        mine: !isPrivileged || mine ? 1 : undefined,
         kind: "task",
       },
       user?.telegram_id,
@@ -71,6 +71,19 @@ export default function TasksPage() {
 
   React.useEffect(() => {
     if (authLoading) return;
+    if (isPrivileged) return;
+    if (!mine) {
+      setMine(true);
+    }
+    if (params.get("mine") !== "1") {
+      const next = new URLSearchParams(params);
+      next.set("mine", "1");
+      setParams(next, { replace: true });
+    }
+  }, [authLoading, isPrivileged, mine, params, setParams]);
+
+  React.useEffect(() => {
+    if (authLoading) return;
     if (!canView || !user?.access) return;
     load();
     // после загрузки профиля инициируем загрузку задач
@@ -99,14 +112,18 @@ export default function TasksPage() {
         users={userMap}
         page={page}
         pageCount={Math.ceil(total / 25)}
-        mine={mine}
+        mine={isPrivileged ? mine : true}
         onPageChange={setPage}
-        onMineChange={(v) => {
-          setMine(v);
-          if (v) params.set("mine", "1");
-          else params.delete("mine");
-          setParams(params);
-        }}
+        onMineChange={
+          isPrivileged
+            ? (v) => {
+                setMine(v);
+                if (v) params.set("mine", "1");
+                else params.delete("mine");
+                setParams(params);
+              }
+            : undefined
+        }
         onRowClick={(id) => {
           params.set("task", id);
           setParams(params);

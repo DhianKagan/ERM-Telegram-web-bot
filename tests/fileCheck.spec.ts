@@ -12,6 +12,17 @@ describe('Проверка файлов', () => {
     } as Express.Multer.File;
     expect(checkFile(file)).toBe(true);
   });
+  test('проставляет canonical MIME при пустом mimetype', () => {
+    const file = {
+      originalname: 'doc.pdf',
+      mimetype: '',
+    } as Express.Multer.File;
+
+    const result = checkFile(file);
+
+    expect(result).toBe(true);
+    expect(file.mimetype).toBe('application/pdf');
+  });
   test('отклоняет несовпадение', () => {
     const file = {
       originalname: 'a.txt',

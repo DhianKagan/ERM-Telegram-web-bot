@@ -41,6 +41,19 @@ const { jwtSecret } = config;
 // Строго задаём тип секретного ключа JWT
 const secretKey: string = jwtSecret || '';
 
+function sendAuthProblem(res: Response, status: number, detail: string): void {
+  const payload = {
+    type: 'about:blank',
+    title: 'Ошибка авторизации',
+    status,
+    detail,
+  };
+  res
+    .status(status)
+    .type('application/problem+json')
+    .send(JSON.stringify(payload));
+}
+
 export function verifyToken(
   req: RequestWithUser,
   res: Response,
@@ -61,7 +74,11 @@ export function verifyToken(
           path: req.originalUrl,
           status: 403,
         });
-        res.redirect('/login');
+        sendAuthProblem(
+          res,
+          403,
+          'Заголовок авторизации не содержит токен после Bearer.',
+        );
         return;
       }
       fromHeader = true;
@@ -69,7 +86,11 @@ export function verifyToken(
       const part = auth.slice(0, 8);
       writeLog(`Неверный формат токена ${part} ip:${req.ip}`).catch(() => {});
       apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-      res.redirect('/login');
+      sendAuthProblem(
+        res,
+        403,
+        'Заголовок авторизации содержит недопустимые пробелы.',
+      );
       return;
     } else {
       token = auth;
@@ -81,8 +102,8 @@ export function verifyToken(
     writeLog(
       `Отсутствует токен ${req.method} ${req.originalUrl} ip:${req.ip}`,
     ).catch(() => {});
-    apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-    res.redirect('/login');
+    apiErrors.inc({ method: req.method, path: req.originalUrl, status: 401 });
+    sendAuthProblem(res, 401, 'Токен авторизации отсутствует.');
     return;
   }
 
@@ -102,7 +123,11 @@ export function verifyToken(
           path: req.originalUrl,
           status: 401,
         });
-        res.redirect('/login');
+        sendAuthProblem(
+          res,
+          401,
+          'Токен авторизации недействителен или использует неподдерживаемый алгоритм.',
+        );
         return;
       }
       req.user = decoded as RequestWithUser['user'];

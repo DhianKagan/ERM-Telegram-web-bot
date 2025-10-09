@@ -1,5 +1,5 @@
-// Роуты регистрации, входа и профиля
-// Роут только профиля пользователя
+// Роуты регистрации, входа, обновления сессии и профиля
+// Описывает send_code, verify_code, verify_init, logout, refresh и profile
 // Модули: express, auth.controller, middleware/auth
 import { Router, RequestHandler } from 'express';
 import * as authCtrl from '../auth/auth.controller';

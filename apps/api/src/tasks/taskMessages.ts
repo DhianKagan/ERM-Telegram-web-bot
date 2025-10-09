@@ -51,6 +51,14 @@ const resolveIdentifier = (value: unknown): string | null => {
   return null;
 };
 
+const extractStatus = (value: unknown): string | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  return trimString(record.status);
+};
+
 export function getTaskIdentifier(task: Partial<TaskDocument>): string {
   return (
     resolveIdentifier(task.request_id) ||
@@ -85,10 +93,8 @@ export async function buildActionMessage(
 
 const resolveHistoryAction = (entry: HistoryEntry | undefined): string | null => {
   if (!entry) return null;
-  const to = entry.changes?.to ?? {};
-  const from = entry.changes?.from ?? {};
-  const toStatus = trimString((to as Record<string, unknown>).status);
-  const fromStatus = trimString((from as Record<string, unknown>).status);
+  const toStatus = extractStatus(entry.changes?.to);
+  const fromStatus = extractStatus(entry.changes?.from);
   if (toStatus && toStatus !== fromStatus) {
     return `переведена в статус «${toStatus}»`;
   }
@@ -96,6 +102,25 @@ const resolveHistoryAction = (entry: HistoryEntry | undefined): string | null =>
     return 'переведена в статус «без статуса»';
   }
   return null;
+};
+
+const shouldSkipInitialStatusEntry = (
+  entries: HistoryEntry[],
+  index: number,
+): boolean => {
+  if (index !== 0) {
+    return false;
+  }
+  const entry = entries[index];
+  if (!entry) {
+    return false;
+  }
+  const toStatus = extractStatus(entry.changes?.to);
+  if (!toStatus) {
+    return false;
+  }
+  const fromStatus = extractStatus(entry.changes?.from);
+  return !fromStatus;
 };
 
 export async function buildLatestHistorySummary(
@@ -106,6 +131,9 @@ export async function buildLatestHistorySummary(
     return null;
   }
   const latest = history[history.length - 1];
+  if (shouldSkipInitialStatusEntry(history, history.length - 1)) {
+    return null;
+  }
   const action = resolveHistoryAction(latest);
   if (!action) {
     return null;
@@ -161,7 +189,10 @@ export async function buildHistorySummaryLog(
     }
   }
   const lines = history
-    .map((entry) => {
+    .map((entry, index) => {
+      if (shouldSkipInitialStatusEntry(history, index)) {
+        return null;
+      }
       const action = resolveHistoryAction(entry);
       if (!action) {
         return null;

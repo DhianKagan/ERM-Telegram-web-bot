@@ -506,7 +506,20 @@ export default class TasksController {
               keyboardMarkup,
             );
           } catch (error) {
-            console.error('Не удалось добавить клавиатуру к альбому задачи', error);
+            if (this.isMessageNotModifiedError(error)) {
+              console.info(
+                'Пропущено обновление клавиатуры альбома задачи без изменений',
+                {
+                  chat,
+                  messageId,
+                },
+              );
+            } else {
+              console.error(
+                'Не удалось добавить клавиатуру к альбому задачи',
+                error,
+              );
+            }
           }
         }
         return {

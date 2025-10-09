@@ -224,7 +224,12 @@ test('не обращается к истории в чате при обнов�
 
   await processStatusAction(ctx, 'Выполнена', 'Готово');
 
-  expect(updateTaskStatusMock).toHaveBeenCalledWith('task123', 'Выполнена', 42);
+  expect(updateTaskStatusMock).toHaveBeenCalledWith(
+    'task123',
+    'Выполнена',
+    42,
+    expect.objectContaining({ source: 'telegram' }),
+  );
   expect(editMessageTextMock).not.toHaveBeenCalled();
   const historyCalls = sendMessageMock.mock.calls.filter(([, text]) =>
     typeof text === 'string' && text.includes('История изменений'),
@@ -266,7 +271,12 @@ test('не редактирует клавиатуру при повторном
   await fn(ctx);
 
   expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith(undefined);
-  expect(updateTaskStatusMock).toHaveBeenCalledWith('task123', 'В работе', 42);
+  expect(updateTaskStatusMock).toHaveBeenCalledWith(
+    'task123',
+    'В работе',
+    42,
+    expect.objectContaining({ source: 'telegram' }),
+  );
 });
 
 describe('обработка завершения задачи', () => {
@@ -333,7 +343,12 @@ describe('обработка завершения задачи', () => {
       'Выполнена',
       expect.objectContaining({ kind: 'task' }),
     );
-    expect(updateTaskStatusMock).toHaveBeenCalledWith('task555', 'Выполнена', 42);
+    expect(updateTaskStatusMock).toHaveBeenCalledWith(
+      'task555',
+      'Выполнена',
+      42,
+      expect.objectContaining({ source: 'telegram' }),
+    );
     expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Сделано');
   });
 

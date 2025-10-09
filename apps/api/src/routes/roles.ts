@@ -38,8 +38,8 @@ const ctrl = container.resolve(RolesController);
 
 router.get(
   '/',
-  limiter as unknown as RequestHandler,
   authMiddleware(),
+  limiter as unknown as RequestHandler,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   ctrl.list as RequestHandler,
@@ -47,8 +47,8 @@ router.get(
 
 router.patch(
   '/:id',
-  limiter as unknown as RequestHandler,
   authMiddleware(),
+  limiter as unknown as RequestHandler,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),

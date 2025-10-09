@@ -22,7 +22,7 @@ const limiter = createRateLimiter({
   max: 100,
   name: 'collections',
 });
-const base = [limiter as unknown as RequestHandler, authMiddleware()];
+const base = [authMiddleware(), limiter as unknown as RequestHandler];
 
 router.get('/', ...base, async (req, res) => {
   const {

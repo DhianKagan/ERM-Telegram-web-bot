@@ -278,13 +278,27 @@ const chunkUploadMiddleware: RequestHandler = (req, res, next) => {
       const message =
         err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
           ? 'Файл превышает допустимый размер'
-          : (err as Error).message;
+        : (err as Error).message;
       res.status(400).json({ error: message });
       return;
     }
     next();
   });
 };
+
+const detailLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  name: 'task-detail',
+});
+const tasksLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  name: 'tasks',
+});
+
+router.use(authMiddleware());
+router.use(tasksLimiter as unknown as RequestHandler);
 
 const handleInlineUpload: RequestHandler = async (req, res) => {
   try {
@@ -443,18 +457,8 @@ export const handleChunks: RequestHandler = async (req, res) => {
   }
 };
 
-router.post(
-  '/upload-chunk',
-  authMiddleware(),
-  chunkUploadMiddleware,
-  handleChunks,
-);
-router.post(
-  '/upload-inline',
-  authMiddleware(),
-  inlineUpload,
-  handleInlineUpload,
-);
+router.post('/upload-chunk', chunkUploadMiddleware, handleChunks);
+router.post('/upload-inline', inlineUpload, handleInlineUpload);
 function normalizeUserId(value: unknown): string | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -538,22 +542,8 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
   next();
 };
 
-const detailLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  name: 'task-detail',
-});
-const tasksLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  name: 'tasks',
-});
-// Приводим лимитер к типу Express 5
-router.use(tasksLimiter as unknown as RequestHandler);
-
 router.get(
   '/',
-  authMiddleware(),
   [
     query('status').optional().isString(),
     query('assignees').optional().isArray(),
@@ -568,16 +558,14 @@ router.get(
 
 router.get(
   '/executors',
-  authMiddleware(),
   [query('kind').optional().isIn(['task', 'request'])] as RequestHandler[],
   ctrl.executors as RequestHandler,
 );
 
-router.get('/mentioned', authMiddleware(), ctrl.mentioned);
+router.get('/mentioned', ctrl.mentioned);
 
 router.get(
   '/report/summary',
-  authMiddleware(),
   [
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
@@ -588,7 +576,6 @@ router.get(
 
 router.get(
   '/:id',
-  authMiddleware(),
   // Приводим лимитер к типу Express 5
   detailLimiter as unknown as RequestHandler,
   param('id').isMongoId(),
@@ -597,7 +584,6 @@ router.get(
 
 router.post(
   '/requests',
-  authMiddleware(),
   upload.any(),
   processUploads,
   normalizeArrays,
@@ -608,7 +594,6 @@ router.post(
 
 router.post(
   '/',
-  authMiddleware(),
   upload.any(),
   processUploads,
   normalizeArrays,
@@ -621,7 +606,6 @@ router.post(
 
 router.patch(
   '/:id',
-  authMiddleware(),
   upload.any(),
   processUploads,
   normalizeArrays,
@@ -633,7 +617,6 @@ router.patch(
 
 router.patch(
   '/:id/time',
-  authMiddleware(),
   Roles(ACCESS_MANAGER) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('id').isMongoId(),
@@ -644,7 +627,6 @@ router.patch(
 
 router.delete(
   '/:id',
-  authMiddleware(),
   param('id').isMongoId(),
   Roles(ACCESS_TASK_DELETE) as unknown as RequestHandler, // удаление только для уровня 8
   rolesGuard as unknown as RequestHandler,
@@ -654,7 +636,6 @@ router.delete(
 
 router.post(
   '/bulk',
-  authMiddleware(),
   Roles(ACCESS_MANAGER) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   ...(validateDto(BulkStatusDto) as RequestHandler[]),

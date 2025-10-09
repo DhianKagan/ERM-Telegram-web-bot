@@ -18,8 +18,8 @@ const limiter = createRateLimiter({
   name: 'employees',
 });
 const middlewares = [
-  limiter as unknown as RequestHandler,
   authMiddleware(),
+  limiter as unknown as RequestHandler,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
 ];

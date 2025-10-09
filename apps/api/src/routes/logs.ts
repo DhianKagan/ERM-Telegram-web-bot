@@ -22,8 +22,8 @@ const ctrl = container.resolve(LogsController);
 
 router.get(
   '/',
-  limiter as unknown as RequestHandler,
   authMiddleware(),
+  limiter as unknown as RequestHandler,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   query('page').optional().isInt({ min: 1 }) as unknown as RequestHandler,
@@ -33,8 +33,8 @@ router.get(
 
 router.post(
   '/',
-  limiter as unknown as RequestHandler,
   authMiddleware(),
+  limiter as unknown as RequestHandler,
   ...(validateDto(CreateLogDto) as RequestHandler[]),
   ctrl.create as unknown as RequestHandler,
 );

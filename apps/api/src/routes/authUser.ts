@@ -17,41 +17,50 @@ import {
 
 const router: Router = Router();
 const authLimiter = createRateLimiter(rateLimits.auth);
-router.use(authLimiter as unknown as RequestHandler);
 
 router.post(
   '/send_code',
+  authLimiter as unknown as RequestHandler,
   ...(validateDto(SendCodeDto) as RequestHandler[]),
   asyncHandler(authCtrl.sendCode),
 );
 
 router.post(
   '/verify_code',
+  authLimiter as unknown as RequestHandler,
   ...(validateDto(VerifyCodeDto) as RequestHandler[]),
   asyncHandler(authCtrl.verifyCode),
 );
 
 router.post(
   '/verify_init',
+  authLimiter as unknown as RequestHandler,
   ...(validateDto(VerifyInitDto) as RequestHandler[]),
   asyncHandler(authCtrl.verifyInitData),
 );
 
-router.post('/logout', authCtrl.logout as unknown as RequestHandler);
+router.post(
+  '/logout',
+  authLimiter as unknown as RequestHandler,
+  authCtrl.logout as unknown as RequestHandler,
+);
 router.post(
   '/refresh',
   authMiddleware(),
+  authLimiter as unknown as RequestHandler,
   authCtrl.refresh as unknown as RequestHandler,
 );
 
 router.get(
   '/profile',
   authMiddleware(),
+  authLimiter as unknown as RequestHandler,
   authCtrl.profile as unknown as RequestHandler,
 );
 router.patch(
   '/profile',
   authMiddleware(),
+  authLimiter as unknown as RequestHandler,
   ...(validateDto(UpdateProfileDto) as RequestHandler[]),
   asyncHandler(authCtrl.updateProfile),
 );

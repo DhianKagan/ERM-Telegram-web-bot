@@ -293,24 +293,52 @@ export default async function registerRoutes(
         });
         return;
       }
-      const updated = await updateTaskStatus(
-        req.params.id,
-        req.body.status,
-        userId,
-      );
-      if (!updated) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Задача не найдена',
-          status: 404,
-          detail: 'Not Found',
-        });
-        return;
+      try {
+        const updated = await updateTaskStatus(
+          req.params.id,
+          req.body.status,
+          userId,
+          { source: 'telegram' },
+        );
+        if (!updated) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Задача не найдена',
+            status: 404,
+            detail: 'Not Found',
+          });
+          return;
+        }
+        await writeLog(
+          `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${userId}`,
+        );
+        res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
+      } catch (error) {
+        const err = error as { message?: string; code?: string };
+        if (err.code === 'TASK_STATUS_INVALID') {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Недопустимый статус',
+            status: 409,
+            detail: err.message || 'Статус задачи изменить нельзя',
+          });
+          return;
+        }
+        if (
+          err.code === 'TASK_CANCEL_FORBIDDEN' ||
+          err.code === 'TASK_CANCEL_SOURCE_FORBIDDEN' ||
+          err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN'
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: err.message || 'Нет прав для изменения статуса',
+          });
+          return;
+        }
+        throw error;
       }
-      await writeLog(
-        `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${userId}`,
-      );
-      res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
     }),
   );
 
@@ -349,6 +377,19 @@ export default async function registerRoutes(
             title: 'Недопустимый статус',
             status: 409,
             detail: err.message || 'Статус задачи изменить нельзя',
+          });
+          return;
+        }
+        if (
+          err.code === 'TASK_CANCEL_FORBIDDEN' ||
+          err.code === 'TASK_CANCEL_SOURCE_FORBIDDEN' ||
+          err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN'
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: err.message || 'Нет прав для изменения статуса',
           });
           return;
         }

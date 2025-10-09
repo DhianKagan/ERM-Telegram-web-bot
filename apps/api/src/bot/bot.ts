@@ -220,7 +220,7 @@ const formatCancellationDescription = (
     ? reasonSegments.join('<br />')
     : escapeHtml(normalizedReason.trim());
   parts.push(
-    `<p><strong>Причина отмены:</strong><br />${reasonHtml || '—'}</p>`,
+    `<p><strong>Причина удаления:</strong><br />${reasonHtml || '—'}</p>`,
   );
   const statusTrimmed = typeof status === 'string' ? status.trim() : '';
   if (statusTrimmed) {
@@ -290,7 +290,7 @@ async function createCancellationRequestFromTask(
     typeof plain.status === 'string' ? plain.status : undefined,
   );
   const payload: Partial<TaskDocument> = {
-    title: `Заявка на отмену задачи ${identifier}`,
+    title: `Заявка на удаление задачи ${identifier}`,
     task_description: description,
     kind: 'request',
     task_type: REQUEST_TYPE_NAME,
@@ -321,7 +321,7 @@ async function createCancellationRequestFromTask(
     try {
       await taskSyncController.onWebTaskUpdate(requestId, created);
     } catch (error) {
-      console.error('Не удалось синхронизировать заявку на отмену задачи', error);
+      console.error('Не удалось синхронизировать заявку на удаление задачи', error);
     }
   }
   try {
@@ -887,6 +887,7 @@ async function ensureUserCanUpdateTask(
   taskId: string,
   userId: number,
   logContext: string,
+  options: { targetStatus?: 'В работе' | 'Выполнена' | 'Отменена' } = {},
 ): Promise<boolean> {
   try {
     const task = await getTask(taskId);
@@ -906,7 +907,12 @@ async function ensureUserCanUpdateTask(
     const isAllowed =
       (typeof assignedUserId === 'number' && assignedUserId === userId) ||
       assignees.includes(userId);
-    if (hasAssignments && !isAllowed) {
+    const kind = detectTaskKind(task);
+    const creatorId = Number(task.created_by);
+    const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+    const allowCreatorCancellation =
+      options.targetStatus === 'Отменена' && kind === 'request' && isCreator;
+    if (hasAssignments && !isAllowed && !allowCreatorCancellation) {
       await ctx.answerCbQuery(messages.taskAssignmentRequired, {
         show_alert: true,
       });
@@ -1432,7 +1438,7 @@ bot.action(/^task_cancel_request_prompt:.+$/, async (ctx) => {
           response = messages.cancelRequestFailed;
       }
     } else {
-      console.error('Не удалось подготовить заявку на отмену', error);
+      console.error('Не удалось подготовить заявку на удаление', error);
     }
     await ctx.answerCbQuery(response, { show_alert: true });
   }
@@ -1465,7 +1471,8 @@ bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
     await denyCancellation(ctx, taskId);
     return;
   }
-  if (!isTaskExecutor(plain, userId)) {
+  const isCreator = isTaskCreator(plain, userId);
+  if (!isCreator && !isTaskExecutor(plain, userId)) {
     await denyCancellation(ctx, taskId, messages.requestCancelExecutorOnly);
     return;
   }
@@ -1499,6 +1506,7 @@ bot.action(/^task_cancel_confirm:.+$/, async (ctx) => {
     taskId,
     userId,
     'Не удалось получить задачу перед отменой',
+    { targetStatus: 'Отменена' },
   );
   if (!canUpdate) {
     try {
@@ -1539,6 +1547,28 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
     await ctx.answerCbQuery(messages.taskStatusInvalidId, {
       show_alert: true,
     });
+    return;
+  }
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  const canUpdate = await ensureUserCanUpdateTask(
+    ctx,
+    taskId,
+    userId,
+    'Не удалось получить задачу перед отменой',
+    { targetStatus: 'Отменена' },
+  );
+  if (!canUpdate) {
+    try {
+      await refreshTaskKeyboard(ctx, taskId);
+    } catch (error) {
+      console.error('Не удалось восстановить клавиатуру после отказа отмены', error);
+    }
     return;
   }
   await processStatusAction(ctx, 'Отменена', messages.taskCanceled);
@@ -1652,7 +1682,7 @@ bot.action(/^cancel_request_confirm:.+$/, async (ctx) => {
           response = messages.cancelRequestFailed;
       }
     } else {
-      console.error('Не удалось создать заявку на отмену задачи', error);
+      console.error('Не удалось создать заявку на удаление задачи', error);
     }
     await ctx.answerCbQuery(response, { show_alert: true });
   }

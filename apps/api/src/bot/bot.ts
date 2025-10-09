@@ -856,10 +856,7 @@ const syncTaskPresentation = async (
     if (messageId !== null) {
       const formatted = formatTask(plain as SharedTask, users);
       const kind = detectTaskKind(plain);
-      const keyboard = taskStatusKeyboard(taskId, status, {
-        kind,
-        allowCancel: kind === 'task',
-      });
+      const keyboard = taskStatusKeyboard(taskId, status, { kind });
       const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },
@@ -961,10 +958,7 @@ async function refreshTaskKeyboard(
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
     const kind = detectTaskKind(plain ?? undefined);
-    const keyboard = taskStatusKeyboard(taskId, status, {
-      kind,
-      allowCancel: kind === 'task',
-    });
+    const keyboard = taskStatusKeyboard(taskId, status, { kind });
     await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
   }
   return context;

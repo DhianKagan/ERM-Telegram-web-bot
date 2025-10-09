@@ -6,13 +6,14 @@ import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
 import { TOKENS } from '../di/tokens';
 import { Task } from '../db/model';
-import { chatId } from '../config';
+import { chatId, appUrl as baseAppUrl } from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
 import taskStatusKeyboard from '../utils/taskButtons';
 import type { Task as SharedTask, User } from 'shared';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
+import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
@@ -133,9 +134,15 @@ const loadTaskPlain = async (
 
 @injectable()
 export default class TaskSyncController {
+  private readonly mediaHelper: TaskTelegramMedia;
+
   constructor(
     @inject(TOKENS.BotInstance) private readonly bot: Telegraf<Context>,
-  ) {}
+  ) {
+    this.mediaHelper = new TaskTelegramMedia(this.bot, {
+      baseAppUrl: baseAppUrl || '',
+    });
+  }
 
   async onWebTaskUpdate(
     taskId: string,
@@ -183,7 +190,8 @@ export default class TaskSyncController {
         : undefined;
     const userIds = collectUserIds(task);
     const users = await buildUsersIndex(userIds);
-    const { text } = formatTask(task as unknown as SharedTask, users);
+    const formatted = formatTask(task as unknown as SharedTask, users);
+    const { text, inlineImages } = formatted;
     const resolvedKind = (() => {
       const rawKind =
         typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
@@ -196,7 +204,6 @@ export default class TaskSyncController {
     })();
     const keyboard = taskStatusKeyboard(taskId, status, {
       kind: resolvedKind,
-      allowCancel: resolvedKind === 'task',
     });
     const replyMarkup = keyboard.reply_markup ?? undefined;
 
@@ -239,34 +246,87 @@ export default class TaskSyncController {
       }
     }
 
-    const sendOptions: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
-      parse_mode: 'MarkdownV2',
-      link_preview_options: { is_disabled: true },
-      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
-      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-    };
+    const media = this.mediaHelper.collectSendableAttachments(
+      task,
+      inlineImages,
+    );
+    let previewMessageIds: number[] = [];
+    let attachmentMessageIds: number[] = [];
+    let sentMessageId: number | undefined;
 
     try {
-      const sent = await this.bot.telegram.sendMessage(chatId, text, sendOptions);
-      if (sent?.message_id) {
-        await Task.updateOne(
-          { _id: taskId },
-          {
-            $set: { telegram_message_id: sent.message_id },
-            $unset: {
-              telegram_summary_message_id: '',
-              telegram_status_message_id: '',
-            },
-          },
-        ).catch((error) => {
-          console.error(
-            'Не удалось обновить идентификатор сообщения задачи',
-            error,
-          );
-        });
+      const sendResult = await this.mediaHelper.sendTaskMessageWithPreview(
+        chatId,
+        text,
+        media,
+        replyMarkup,
+        typeof topicId === 'number' ? topicId : undefined,
+      );
+      sentMessageId = sendResult.messageId;
+      previewMessageIds = sendResult.previewMessageIds ?? [];
+      if (sentMessageId) {
+        const consumed = new Set(sendResult.consumedAttachmentUrls ?? []);
+        const extras = consumed.size
+          ? media.extras.filter((attachment) =>
+              attachment.kind === 'image'
+                ? !consumed.has(attachment.url)
+                : true,
+            )
+          : media.extras;
+        if (extras.length) {
+          try {
+            attachmentMessageIds = await this.mediaHelper.sendTaskAttachments(
+              chatId,
+              extras,
+              typeof topicId === 'number' ? topicId : undefined,
+              sentMessageId,
+              sendResult.cache,
+            );
+          } catch (error) {
+            console.error('Не удалось отправить вложения задачи', error);
+          }
+        }
       }
     } catch (error) {
       console.error('Не удалось отправить сообщение задачи в Telegram', error);
+      return;
+    }
+
+    const setPayload: Record<string, unknown> = {};
+    const unsetPayload: Record<string, unknown> = {
+      telegram_summary_message_id: '',
+      telegram_status_message_id: '',
+    };
+
+    if (sentMessageId) {
+      setPayload.telegram_message_id = sentMessageId;
+    } else {
+      unsetPayload.telegram_message_id = '';
+    }
+    if (previewMessageIds.length) {
+      setPayload.telegram_preview_message_ids = previewMessageIds;
+    } else {
+      unsetPayload.telegram_preview_message_ids = '';
+    }
+    if (attachmentMessageIds.length) {
+      setPayload.telegram_attachments_message_ids = attachmentMessageIds;
+    } else {
+      unsetPayload.telegram_attachments_message_ids = '';
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+    if (Object.keys(setPayload).length) {
+      updatePayload.$set = setPayload;
+    }
+    if (Object.keys(unsetPayload).length) {
+      updatePayload.$unset = unsetPayload;
+    }
+    if (Object.keys(updatePayload).length) {
+      try {
+        await Task.updateOne({ _id: taskId }, updatePayload).exec();
+      } catch (error) {
+        console.error('Не удалось обновить данные Telegram задачи', error);
+      }
     }
   }
 

@@ -7,7 +7,6 @@ type TaskStatus = 'Новая' | 'В работе' | 'Выполнена' | 'О�
 
 export interface TaskStatusKeyboardOptions {
   kind?: 'task' | 'request';
-  allowCancel?: boolean;
 }
 
 const statusButtonLabels: Record<
@@ -69,7 +68,7 @@ export default function taskStatusKeyboard(
       `task_done_prompt:${id}`,
     ),
   ];
-  if (options.allowCancel || options.kind === 'request') {
+  if (options.kind === 'request') {
     primaryRow.push(
       Markup.button.callback(
         resolveStatusLabel('Отменена', currentStatus),

@@ -391,7 +391,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       dueDate: "",
     },
   });
-  const DEFAULT_TASK_TYPE =
+  const RAW_DEFAULT_TASK_TYPE =
     fields.find((f) => f.name === "task_type")?.default || "";
   const DEFAULT_PRIORITY =
     fields.find((f) => f.name === "priority")?.default || "";
@@ -402,6 +402,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const DEFAULT_PAYMENT_AMOUNT =
     fields.find((f) => f.name === "payment_amount")?.default || "0";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
+  const types = fields.find((f) => f.name === "task_type")?.options || [];
+  const requestTypeOptions = types.filter((type) => type === REQUEST_TYPE_NAME);
+  const taskTypeOptions = types.filter((type) => type !== REQUEST_TYPE_NAME);
+  const DEFAULT_REQUEST_TYPE =
+    requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
+  const DEFAULT_TASK_TYPE =
+    RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME
+      ? RAW_DEFAULT_TASK_TYPE
+      : taskTypeOptions[0] ?? "";
 
   const formatInputDate = React.useCallback((value: Date) => {
     const year = value.getFullYear();
@@ -461,7 +470,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     autoSync: shouldAutoSyncDueDate,
   });
 
-  const [taskType, setTaskType] = React.useState(DEFAULT_TASK_TYPE);
+  const [taskType, setTaskType] = React.useState(
+    initialKind === "request" ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
+  );
   const [comment, setComment] = React.useState("");
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
@@ -489,7 +500,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
-  const types = fields.find((f) => f.name === "task_type")?.options || [];
   const priorities = fields.find((f) => f.name === "priority")?.options || [];
   const transports =
     fields.find((f) => f.name === "transport_type")?.options || [];
@@ -534,9 +544,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [titleValue]);
   React.useEffect(() => {
     if (!isEdit && entityKind === "request") {
-      setTaskType(REQUEST_TYPE_NAME);
+      setTaskType(DEFAULT_REQUEST_TYPE);
     }
-  }, [entityKind, isEdit]);
+  }, [DEFAULT_REQUEST_TYPE, entityKind, isEdit]);
   const resolveUserName = React.useCallback(
     (id: number) => {
       const person = users.find((u) => u.telegram_id === id);
@@ -560,9 +570,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     ) => {
       const detectedKind = detectTaskKind(taskData);
       setEntityKind(detectedKind);
-      const curTaskType = (taskData.task_type as string) || DEFAULT_TASK_TYPE;
-      const normalizedTaskType =
-        detectedKind === "request" ? REQUEST_TYPE_NAME : curTaskType;
+      const rawTaskType =
+        typeof taskData.task_type === "string" ? taskData.task_type : "";
+      const normalizedTaskType = (() => {
+        if (detectedKind === "request") {
+          if (rawTaskType === REQUEST_TYPE_NAME) {
+            return rawTaskType;
+          }
+          return DEFAULT_REQUEST_TYPE;
+        }
+        if (rawTaskType && taskTypeOptions.includes(rawTaskType)) {
+          return rawTaskType;
+        }
+        return DEFAULT_TASK_TYPE;
+      })();
       const curPriority =
         normalizePriorityOption(taskData.priority as string) || DEFAULT_PRIORITY;
       const curTransport =
@@ -713,7 +734,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setDistanceKm(distanceValue);
       initialRef.current = {
         title: (taskData.title as string) || "",
-        taskType: curTaskType,
+        taskType: normalizedTaskType,
         description: (taskData.task_description as string) || "",
         comment: (taskData.comment as string) || "",
         priority: curPriority,
@@ -755,6 +776,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       DEFAULT_PAYMENT_AMOUNT,
       DEFAULT_STATUS,
       DEFAULT_DUE_OFFSET_MS,
+      DEFAULT_REQUEST_TYPE,
+      requestTypeOptions,
+      taskTypeOptions,
       created,
       formatInputDate,
       parseIsoDateMemo,
@@ -863,7 +887,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       initialRef.current = {
         title: "",
         taskType:
-          initialKind === "request" ? REQUEST_TYPE_NAME : DEFAULT_TASK_TYPE,
+          initialKind === "request"
+            ? DEFAULT_REQUEST_TYPE
+            : DEFAULT_TASK_TYPE,
         description: "",
         comment: "",
         priority: DEFAULT_PRIORITY,
@@ -922,6 +948,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     resolvedTaskId,
     user,
     DEFAULT_TASK_TYPE,
+    DEFAULT_REQUEST_TYPE,
     DEFAULT_PRIORITY,
     DEFAULT_TRANSPORT,
     DEFAULT_PAYMENT,
@@ -1206,7 +1233,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const assignedNumeric = toNumericValue(assignedRaw);
       const assignedValue = assignedNumeric !== null ? assignedNumeric : assignedRaw;
       const resolvedTaskType =
-        entityKind === "request" ? REQUEST_TYPE_NAME : taskType;
+        entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
       const payload: Record<string, unknown> = {
         title: formData.title,
         task_type: resolvedTaskType,
@@ -1634,17 +1661,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
                 disabled={!editing || entityKind === "request"}
               >
-                {types
-                  .filter((type) =>
-                    entityKind === "request"
-                      ? type === REQUEST_TYPE_NAME
-                      : true,
-                  )
-                  .map((t) => (
+                {(entityKind === "request"
+                  ? requestTypeOptions
+                  : taskTypeOptions
+                ).map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
-                  ))}
+                ))}
               </select>
             </div>
             <div>

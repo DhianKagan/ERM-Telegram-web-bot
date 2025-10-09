@@ -1,5 +1,5 @@
 // Контроллер задач с использованием TasksService
-// Основные модули: express-validator, services, wgLogEngine, taskHistory.service, utils/mdEscape
+// Основные модули: express-validator, services, wgLogEngine, utils/mdEscape
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -35,12 +35,7 @@ import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, { type InlineImage } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
 import { uploadsDir } from '../config/storage';
-import {
-  getTaskHistoryMessage,
-  updateTaskSummaryMessageId,
-} from './taskHistory.service';
 import escapeMarkdownV2 from '../utils/mdEscape';
-import { buildHistorySummaryLog } from './taskMessages';
 import sharp from 'sharp';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
@@ -166,9 +161,6 @@ type TaskMedia = {
 
 type SendMessageOptions = NonNullable<
   Parameters<typeof bot.telegram.sendMessage>[2]
->;
-type EditMessageTextOptions = NonNullable<
-  Parameters<typeof bot.telegram.editMessageText>[4]
 >;
 
 type TaskMessageSendResult = {
@@ -1530,162 +1522,6 @@ export default class TasksController {
     return result;
   }
 
-  private async refreshStatusHistoryMessage(taskId: string) {
-    if (!groupChatId) return;
-    try {
-      const payload = await getTaskHistoryMessage(taskId);
-      if (!payload) return;
-      const { messageId, text, topicId } = payload;
-      if (messageId) {
-        await bot.telegram.editMessageText(
-          groupChatId,
-          messageId,
-          undefined,
-          text,
-          {
-            parse_mode: 'MarkdownV2',
-            link_preview_options: { is_disabled: true },
-          },
-        );
-        return;
-      }
-      console.warn(
-        'Пропущено обновление истории статусов: отсутствует сохранённый message_id',
-        taskId,
-        topicId,
-      );
-      return;
-    } catch (error) {
-      console.error(
-        `Не удалось обновить историю статусов задачи ${taskId}`,
-        error,
-      );
-    }
-  }
-
-  private async updateTaskStatusSummary(
-    task: TaskWithMeta & Record<string, unknown>,
-    options?: {
-      forceResend?: boolean;
-      previousSummaryId?: number;
-      previousHistoryId?: number;
-      previousStatusId?: number;
-      previousTopicId?: number;
-    },
-  ): Promise<void> {
-    if (!groupChatId) return;
-    const summary = await buildHistorySummaryLog(task);
-    if (!summary) return;
-    const forceResend = options?.forceResend === true;
-    const previousTopicId = this.normalizeTopicId(options?.previousTopicId);
-    const topicId = await this.resolveTaskTopicId(task);
-    const cleanupTargets = new Set<number>();
-    if (typeof options?.previousSummaryId === 'number') {
-      cleanupTargets.add(options.previousSummaryId);
-    }
-    if (typeof options?.previousHistoryId === 'number') {
-      cleanupTargets.add(options.previousHistoryId);
-    }
-    if (typeof options?.previousStatusId === 'number') {
-      cleanupTargets.add(options.previousStatusId);
-    }
-    let messageId =
-      typeof task.telegram_summary_message_id === 'number'
-        ? task.telegram_summary_message_id
-        : typeof task.telegram_status_message_id === 'number'
-        ? task.telegram_status_message_id
-        : undefined;
-    const summaryMessageId =
-      typeof task.telegram_summary_message_id === 'number'
-        ? task.telegram_summary_message_id
-        : undefined;
-    if (forceResend) {
-      if (typeof messageId === 'number') {
-        cleanupTargets.add(messageId);
-      }
-      for (const target of cleanupTargets) {
-        await this.deleteTaskMessageSafely(
-          groupChatId,
-          target,
-          previousTopicId,
-          topicId,
-        );
-      }
-      messageId = undefined;
-    }
-    const replyTo =
-      typeof task.telegram_message_id === 'number'
-        ? task.telegram_message_id
-        : undefined;
-    const editOptions: EditMessageTextOptions = {
-      link_preview_options: { is_disabled: true },
-    };
-    const sendOptions: SendMessageOptions = {
-      link_preview_options: { is_disabled: true },
-    };
-    if (typeof topicId === 'number') {
-      sendOptions.message_thread_id = topicId;
-    }
-    if (typeof replyTo === 'number') {
-      sendOptions.reply_parameters = { message_id: replyTo };
-    }
-    if (messageId && !forceResend) {
-      try {
-        await bot.telegram.editMessageText(
-          groupChatId,
-          messageId,
-          undefined,
-          summary,
-          editOptions,
-        );
-        return;
-      } catch (error) {
-        if (this.isMessageNotModifiedError(error)) {
-          return;
-        }
-        console.error('Не удалось обновить краткое сообщение задачи', error);
-        if (summaryMessageId) {
-          await this.deleteTaskMessageSafely(
-            groupChatId,
-            summaryMessageId,
-            topicId,
-            topicId,
-          );
-        }
-      }
-    }
-    try {
-      const statusMessage = await bot.telegram.sendMessage(
-        groupChatId,
-        summary,
-        sendOptions,
-      );
-      if (statusMessage?.message_id && task._id) {
-        const docId =
-          typeof task._id === 'object' && task._id !== null && 'toString' in task._id
-            ? (task._id as { toString(): string }).toString()
-            : String(task._id);
-        if (docId) {
-          const applied = await updateTaskSummaryMessageId(
-            docId,
-            statusMessage.message_id,
-            typeof summaryMessageId === 'number' ? summaryMessageId : null,
-          );
-          if (!applied) {
-            console.warn(
-              'Значение telegram_summary_message_id было изменено раньше обновления',
-              { taskId: docId },
-            );
-          } else {
-            task.telegram_summary_message_id = statusMessage.message_id;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Не удалось отправить краткое сообщение задачи', error);
-    }
-  }
-
   private isMessageNotModifiedError(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
     const record = error as Record<string, unknown>;
@@ -1770,12 +1606,13 @@ export default class TasksController {
       console.error('Не удалось получить данные пользователей задачи', error);
     }
 
+    const kind = detectTaskKind(plain);
     const keyboard = taskStatusKeyboard(
       docId,
       typeof plain.status === 'string'
         ? (plain.status as SharedTask['status'])
         : undefined,
-      { kind: detectTaskKind(plain) },
+      { kind, allowCancel: kind === 'task' },
     );
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
@@ -1810,9 +1647,6 @@ export default class TasksController {
             previousPlain.telegram_attachments_message_ids,
           );
           const cleanupTargets = new Set<number>();
-          if (typeof previousPlain.telegram_summary_message_id === 'number') {
-            cleanupTargets.add(previousPlain.telegram_summary_message_id);
-          }
           if (typeof previousPlain.telegram_history_message_id === 'number') {
             cleanupTargets.add(previousPlain.telegram_history_message_id);
           }
@@ -1895,27 +1729,11 @@ export default class TasksController {
     } else {
       delete plain.telegram_message_id;
     }
+    delete plain.telegram_summary_message_id;
     delete plain.telegram_history_message_id;
     delete plain.telegram_status_message_id;
     plain.telegram_preview_message_ids = previewMessageIds;
     plain.telegram_attachments_message_ids = attachmentMessageIds;
-
-    await this.updateTaskStatusSummary(plain, {
-      forceResend: true,
-      previousSummaryId:
-        typeof previousPlain?.telegram_summary_message_id === 'number'
-          ? previousPlain.telegram_summary_message_id
-          : undefined,
-      previousHistoryId:
-        typeof previousPlain?.telegram_history_message_id === 'number'
-          ? previousPlain.telegram_history_message_id
-          : undefined,
-      previousStatusId:
-        typeof previousPlain?.telegram_status_message_id === 'number'
-          ? previousPlain.telegram_status_message_id
-          : undefined,
-      previousTopicId,
-    });
 
     const previousDirectMessages = this.normalizeDirectMessages(
       previousPlain?.telegram_dm_message_ids,
@@ -1965,6 +1783,7 @@ export default class TasksController {
     } else {
       unsetPayload.telegram_message_id = '';
     }
+    unsetPayload.telegram_summary_message_id = '';
     unsetPayload.telegram_history_message_id = '';
     unsetPayload.telegram_status_message_id = '';
     if (previewMessageIds.length) {
@@ -1981,11 +1800,6 @@ export default class TasksController {
       setPayload.telegram_dm_message_ids = directMessages;
     } else {
       unsetPayload.telegram_dm_message_ids = '';
-    }
-    if (typeof plain.telegram_summary_message_id === 'number') {
-      setPayload.telegram_summary_message_id = plain.telegram_summary_message_id;
-    } else {
-      unsetPayload.telegram_summary_message_id = '';
     }
     unsetPayload.telegram_message_cleanup = '';
 
@@ -2416,11 +2230,6 @@ export default class TasksController {
     );
     registerMessage(
       this.toMessageId(plain.telegram_status_message_id),
-      topicId,
-      topicId,
-    );
-    registerMessage(
-      this.toMessageId(plain.telegram_summary_message_id),
       topicId,
       topicId,
     );

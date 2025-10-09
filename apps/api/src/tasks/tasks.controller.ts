@@ -2233,6 +2233,11 @@ export default class TasksController {
       topicId,
       topicId,
     );
+    registerMessage(
+      this.toMessageId(plain.telegram_summary_message_id),
+      topicId,
+      topicId,
+    );
     const cleanupMeta = plain.telegram_message_cleanup;
     if (cleanupMeta && typeof cleanupMeta === 'object') {
       const cleanupMessageId = this.toMessageId(

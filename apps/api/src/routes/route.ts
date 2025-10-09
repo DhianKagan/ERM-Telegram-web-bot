@@ -37,8 +37,8 @@ const tableLimiter = createRateLimiter(rateLimits.table);
 
 router.post(
   '/',
-  routeLimiter as unknown as RequestHandler,
   authMiddleware(),
+  routeLimiter as unknown as RequestHandler,
   validate([
     body('start.lat').isFloat(),
     body('start.lng').isFloat(),
@@ -57,8 +57,8 @@ interface TableQuery extends Record<string, string> {
 
 router.get(
   '/table',
-  tableLimiter as unknown as RequestHandler,
   authMiddleware(),
+  tableLimiter as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as TableQuery;
@@ -77,8 +77,8 @@ interface PointQuery extends Record<string, string> {
 }
 router.get(
   '/nearest',
-  routeLimiter as unknown as RequestHandler,
   authMiddleware(),
+  routeLimiter as unknown as RequestHandler,
   validate([query('point').isString()]),
   asyncHandler(async (req, res) => {
     const { point, ...params } = req.query as PointQuery;
@@ -91,8 +91,8 @@ interface PointsQuery extends Record<string, string> {
 }
 router.get(
   '/match',
-  routeLimiter as unknown as RequestHandler,
   authMiddleware(),
+  routeLimiter as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;
@@ -102,8 +102,8 @@ router.get(
 
 router.get(
   '/trip',
-  routeLimiter as unknown as RequestHandler,
   authMiddleware(),
+  routeLimiter as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as PointsQuery;

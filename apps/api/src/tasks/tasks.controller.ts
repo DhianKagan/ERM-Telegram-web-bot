@@ -2058,11 +2058,30 @@ export default class TasksController {
         });
         return;
       }
-      const task = await this.service.update(
-        req.params.id,
-        req.body as Partial<TaskDocument>,
-        req.user!.id as number,
-      );
+      let task: TaskDocument | null;
+      try {
+        task = await this.service.update(
+          req.params.id,
+          req.body as Partial<TaskDocument>,
+          req.user!.id as number,
+        );
+      } catch (error) {
+        const err = error as { code?: string; message?: string };
+        if (
+          err.code === 'TASK_CANCEL_FORBIDDEN' ||
+          err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN' ||
+          err.code === 'TASK_CANCEL_SOURCE_FORBIDDEN'
+        ) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: err.message || 'Нет прав для изменения статуса',
+          });
+          return;
+        }
+        throw error;
+      }
       if (!task) {
         const current = await Task.findById(req.params.id);
         if (

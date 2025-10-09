@@ -183,7 +183,9 @@ export default class TaskSyncController {
     status: TaskDocument['status'],
     userId: number,
   ): Promise<PlainTask | null> {
-    const updated = await updateTaskStatus(taskId, status, userId);
+    const updated = await updateTaskStatus(taskId, status, userId, {
+      source: 'telegram',
+    });
     if (!updated) {
       return null;
     }

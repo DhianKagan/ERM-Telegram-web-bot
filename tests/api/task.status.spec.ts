@@ -158,4 +158,66 @@ describe('updateTaskStatus', function () {
       (first?.completed_at as Date).getTime(),
     );
   });
+
+  it('разрешает отмену задачи только создателю через веб', async () => {
+    const task = await Task.create({
+      title: 'cancel web',
+      created_by: 101,
+      assigned_user_id: 77,
+      assignees: [77],
+    });
+    const id = (task._id as Types.ObjectId).toHexString();
+
+    const updated = await updateTaskStatus(id, 'Отменена', 101);
+    assert.equal(updated?.status, 'Отменена');
+    assert.ok(updated?.completed_at instanceof Date);
+
+    await assert.rejects(
+      () => updateTaskStatus(id, 'Отменена', 77),
+      /Статус «Отменена» может установить только создатель задачи\./,
+    );
+  });
+
+  it('запрещает отмену задачи через Telegram даже создателю', async () => {
+    const task = await Task.create({
+      title: 'cancel telegram',
+      created_by: 202,
+    });
+    const id = (task._id as Types.ObjectId).toHexString();
+
+    await assert.rejects(
+      () => updateTaskStatus(id, 'Отменена', 202, { source: 'telegram' }),
+      /Отмена задачи в Telegram недоступна\. Используйте веб-форму\./,
+    );
+  });
+
+  it('позволяет автору заявки отменить её без назначения', async () => {
+    const request = await Task.create({
+      title: 'request cancel',
+      kind: 'request',
+      task_type: 'Заявка',
+      created_by: 303,
+    });
+    const id = (request._id as Types.ObjectId).toHexString();
+
+    const updated = await updateTaskStatus(id, 'Отменена', 303);
+    assert.equal(updated?.status, 'Отменена');
+  });
+
+  it('запрещает отмену заявки стороннему пользователю', async () => {
+    const request = await Task.create({
+      title: 'request forbid',
+      kind: 'request',
+      task_type: 'Заявка',
+      created_by: 404,
+      assigned_user_id: 505,
+      assignees: [505],
+    });
+    const id = (request._id as Types.ObjectId).toHexString();
+
+    await assert.rejects(
+      () => updateTaskStatus(id, 'Отменена', 909),
+      /Отменить заявку могут только исполнитель или создатель\./,
+    );
+  });
 });

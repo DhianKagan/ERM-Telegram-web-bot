@@ -54,6 +54,25 @@ function normalizeAttachmentsField(
   target.attachments = normalized;
 }
 
+const REQUEST_TYPE_NAME = 'Заявка';
+
+const detectTaskKind = (
+  task: Pick<TaskDocument, 'kind' | 'task_type'>,
+): TaskKind => {
+  const rawKind =
+    typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
+  if (rawKind === 'request') {
+    return 'request';
+  }
+  const typeLabel =
+    typeof task.task_type === 'string' ? task.task_type.trim() : '';
+  return typeLabel === REQUEST_TYPE_NAME ? 'request' : 'task';
+};
+
+export interface UpdateTaskStatusOptions {
+  source?: 'web' | 'telegram';
+}
+
 async function syncTaskAttachments(
   taskId: Types.ObjectId,
   attachments: TaskDocument['attachments'] | undefined,
@@ -176,12 +195,41 @@ export async function updateTask(
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const kind = detectTaskKind(prev);
+  const creatorId = Number(prev.created_by);
+  const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+  const assignedUserId =
+    typeof prev.assigned_user_id === 'number' ? prev.assigned_user_id : undefined;
+  const assignees = Array.isArray(prev.assignees)
+    ? prev.assignees
+        .map((candidate) => Number(candidate))
+        .filter((candidate) => Number.isFinite(candidate))
+    : [];
+  const isExecutor =
+    (typeof assignedUserId === 'number' && assignedUserId === userId) ||
+    assignees.includes(userId);
   const shouldAssertStatus =
     typeof prev.status === 'string' && prev.status === 'Новая';
   if (Object.prototype.hasOwnProperty.call(data, 'status')) {
     const nextStatus = data.status as TaskDocument['status'];
     if (nextStatus === 'Новая') {
       (data as Record<string, unknown>).in_progress_at = null;
+    } else if (nextStatus === 'Отменена') {
+      if (kind === 'task' && !isCreator) {
+        const err = new Error(
+          'Статус «Отменена» может установить только создатель задачи.',
+        );
+        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+        throw err;
+      }
+      if (kind === 'request' && !isCreator && !isExecutor) {
+        const err = new Error(
+          'Отменить заявку могут только исполнитель или создатель.',
+        );
+        (err as Error & { code?: string }).code =
+          'TASK_REQUEST_CANCEL_FORBIDDEN';
+        throw err;
+      }
     }
   }
   const from: Record<string, unknown> = {};
@@ -223,9 +271,12 @@ export async function updateTaskStatus(
   id: string,
   status: TaskDocument['status'],
   userId: number,
+  options: UpdateTaskStatusOptions = {},
 ): Promise<TaskDocument | null> {
   const existing = await Task.findById(id);
   if (!existing) return null;
+  const source = options.source ?? 'web';
+  const kind = detectTaskKind(existing);
   const currentStatus =
     typeof existing.status === 'string'
       ? (existing.status as TaskDocument['status'])
@@ -239,10 +290,45 @@ export async function updateTaskStatus(
     : [];
   const hasAssignments =
     typeof assignedUserId === 'number' || assignees.length > 0;
-  const isAllowed =
+  const isExecutor =
     (typeof assignedUserId === 'number' && assignedUserId === userId) ||
     assignees.includes(userId);
-  if (hasAssignments && !isAllowed) {
+  const creatorId = Number(existing.created_by);
+  const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+  let allowCreatorCancellation = false;
+  if (status === 'Отменена') {
+    if (kind === 'task') {
+      if (!isCreator) {
+        const err = new Error(
+          'Статус «Отменена» может установить только создатель задачи.',
+        );
+        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+        throw err;
+      }
+      if (source !== 'web') {
+        const err = new Error(
+          'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
+        );
+        (err as Error & { code?: string }).code =
+          'TASK_CANCEL_SOURCE_FORBIDDEN';
+        throw err;
+      }
+      allowCreatorCancellation = true;
+    } else {
+      if (!isCreator && !isExecutor) {
+        const err = new Error(
+          'Отменить заявку могут только исполнитель или создатель.',
+        );
+        (err as Error & { code?: string }).code =
+          'TASK_REQUEST_CANCEL_FORBIDDEN';
+        throw err;
+      }
+      if (isCreator) {
+        allowCreatorCancellation = true;
+      }
+    }
+  }
+  if (hasAssignments && !isExecutor && !(status === 'Отменена' && allowCreatorCancellation)) {
     throw new Error('Нет прав на изменение статуса задачи');
   }
   if (status === 'Выполнена' && currentStatus) {

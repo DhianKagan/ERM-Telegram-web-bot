@@ -144,6 +144,33 @@ function isMessageNotModifiedError(error: unknown): boolean {
   );
 }
 
+function isMessageMissingOnEditError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as Record<string, unknown> & {
+    response?: { error_code?: number; description?: unknown };
+    description?: unknown;
+    error_code?: unknown;
+  };
+  const errorCode =
+    typeof record.response?.error_code === 'number'
+      ? record.response.error_code
+      : typeof record.error_code === 'number'
+        ? record.error_code
+        : null;
+  if (errorCode !== 400) {
+    return false;
+  }
+  const descriptionSource =
+    typeof record.response?.description === 'string'
+      ? record.response.description
+      : typeof record.description === 'string'
+        ? record.description
+        : '';
+  return descriptionSource.toLowerCase().includes('message to edit not found');
+}
+
 function buildHistoryAlert(summary: string): string {
   const normalizedLines = summary
     .split('\n')
@@ -346,6 +373,26 @@ async function updateMessageReplyMarkup(
     await ctx.editMessageReplyMarkup(markup);
   } catch (error) {
     if (isMessageNotModifiedError(error)) {
+      return;
+    }
+    if (isMessageMissingOnEditError(error)) {
+      const callback = ctx.callbackQuery;
+      if (callback && typeof callback === 'object' && 'data' in callback) {
+        const rawData = typeof callback.data === 'string' ? callback.data : null;
+        if (rawData) {
+          const [, taskId] = rawData.split(':');
+          if (taskId) {
+            try {
+              await taskSyncController.syncAfterChange(taskId);
+            } catch (syncError) {
+              console.error(
+                'Не удалось пересоздать сообщение задачи после отсутствующей клавиатуры',
+                syncError,
+              );
+            }
+          }
+        }
+      }
       return;
     }
     throw error;
@@ -865,7 +912,30 @@ const syncTaskPresentation = async (
           options,
         );
       } catch (error) {
-        if (!isMessageNotModifiedError(error)) {
+        if (isMessageNotModifiedError(error)) {
+          // Сообщение не изменилось — обновление не требуется
+        } else if (isMessageMissingOnEditError(error)) {
+          console.info(
+            'Сообщение задачи отсутствует в Telegram, выполняем пересинхронизацию',
+            { taskId, messageId },
+          );
+          try {
+            await taskSyncController.syncAfterChange(taskId);
+          } catch (syncError) {
+            console.error(
+              'Не удалось пересоздать сообщение задачи после ошибки editMessageText',
+              syncError,
+            );
+          }
+          try {
+            return await loadTaskContext(taskId);
+          } catch (reloadError) {
+            console.error(
+              'Не удалось обновить контекст задачи после пересинхронизации',
+              reloadError,
+            );
+          }
+        } else {
           throw error;
         }
       }

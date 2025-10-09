@@ -1,5 +1,5 @@
 // Назначение: синхронизация задач между вебом и Telegram
-// Основные модули: bot, config, db/model, db/queries, services/service, tasks/taskHistory.service, utils/formatTask, utils/taskButtons
+// Основные модули: bot, config, db/model, db/queries, services/service, utils/formatTask, utils/taskButtons
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
 import type { Context, Telegraf } from 'telegraf';
@@ -11,14 +11,12 @@ import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
 import taskStatusKeyboard from '../utils/taskButtons';
-import {
-  getTaskHistoryMessage,
-  updateTaskHistoryMessageId,
-} from '../tasks/taskHistory.service';
 import type { Task as SharedTask, User } from 'shared';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
+
+const REQUEST_TYPE_NAME = 'Заявка';
 
 const selectUserField = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
@@ -163,10 +161,7 @@ export default class TaskSyncController {
     taskId: string,
     override?: TaskDocument | (TaskDocument & Record<string, unknown>) | null,
   ): Promise<void> {
-    await Promise.allSettled([
-      this.updateTaskMessage(taskId, override),
-      this.updateHistoryMessage(taskId),
-    ]);
+    await this.updateTaskMessage(taskId, override);
   }
 
   private async updateTaskMessage(
@@ -189,12 +184,19 @@ export default class TaskSyncController {
     const userIds = collectUserIds(task);
     const users = await buildUsersIndex(userIds);
     const { text } = formatTask(task as unknown as SharedTask, users);
+    const resolvedKind = (() => {
+      const rawKind =
+        typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
+      if (rawKind === 'task' || rawKind === 'request') {
+        return rawKind;
+      }
+      const typeValue =
+        typeof task.task_type === 'string' ? task.task_type.trim() : '';
+      return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
+    })();
     const keyboard = taskStatusKeyboard(taskId, status, {
-      kind:
-        typeof task.kind === 'string' &&
-        (task.kind === 'task' || task.kind === 'request')
-          ? task.kind
-          : undefined,
+      kind: resolvedKind,
+      allowCancel: resolvedKind === 'task',
     });
     const replyMarkup = keyboard.reply_markup ?? undefined;
 
@@ -268,44 +270,4 @@ export default class TaskSyncController {
     }
   }
 
-  private async updateHistoryMessage(taskId: string): Promise<void> {
-    if (!chatId) return;
-    try {
-      const payload = await getTaskHistoryMessage(taskId);
-      if (!payload) return;
-      const { messageId, text, topicId } = payload;
-      const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
-        parse_mode: 'MarkdownV2',
-        link_preview_options: { is_disabled: true },
-        ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
-      };
-      if (messageId) {
-        try {
-          await this.bot.telegram.editMessageText(
-            chatId,
-            messageId,
-            undefined,
-            text,
-            options,
-          );
-          return;
-        } catch (error) {
-          if (isMessageNotModifiedError(error)) {
-            return;
-          }
-        }
-      }
-      const sendOptions: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
-        parse_mode: 'MarkdownV2',
-        link_preview_options: { is_disabled: true },
-        ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
-      };
-      const sent = await this.bot.telegram.sendMessage(chatId, text, sendOptions);
-      if (sent?.message_id) {
-        await updateTaskHistoryMessageId(taskId, sent.message_id);
-      }
-    } catch (error) {
-      console.error('Не удалось обновить историю статусов задачи', error);
-    }
-  }
 }

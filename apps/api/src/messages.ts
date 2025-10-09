@@ -33,8 +33,9 @@ const messages = {
   taskAccepted: 'Задача принята в работу',
   taskCanceled: 'Задача отменена',
   taskCancelForbidden:
-    'Статус «Отменена» может установить только создатель задачи в веб-интерфейсе.',
-  requestCancelExecutorOnly: 'Отменить заявку может только исполнитель.',
+    'Статус «Отменена» может установить только создатель задачи.',
+  requestCancelExecutorOnly:
+    'Отменить заявку могут только исполнитель или создатель.',
   taskHistoryEmpty: 'История изменений отсутствует.',
   taskHistoryPopupError: 'Не удалось загрузить историю задачи.',
   cancelRequestPrompt:

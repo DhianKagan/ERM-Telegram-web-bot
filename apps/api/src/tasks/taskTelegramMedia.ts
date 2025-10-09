@@ -5,9 +5,9 @@ import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { access, mkdir, stat, writeFile } from 'node:fs/promises';
-import type { ReadStream } from 'node:fs';
 import sharp from 'sharp';
 import type { Context, Telegraf } from 'telegraf';
+import type { InputFile, InputMediaPhoto } from 'telegraf/types';
 import escapeMarkdownV2 from '../utils/mdEscape';
 import {
   File,
@@ -396,77 +396,77 @@ export class TaskTelegramMedia {
   ): Promise<number[]> {
     if (!attachments.length) return [];
     const sentMessageIds: number[] = [];
-    const photoOptionsBase = () => {
-      const options: Parameters<typeof this.bot.telegram.sendPhoto>[2] = {};
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      if (replyTo) {
-        options.reply_parameters = {
-          message_id: replyTo,
-          allow_sending_without_reply: true,
-        };
-      }
-      return options;
+    type SendPhotoOptions = NonNullable<
+      Parameters<typeof this.bot.telegram.sendPhoto>[2]
+    >;
+    const photoOptionsBase = (): SendPhotoOptions => ({
+      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(replyTo
+        ? {
+            reply_parameters: {
+              message_id: replyTo,
+              allow_sending_without_reply: true,
+            },
+          }
+        : {}),
+    });
+    type SendDocumentOptions = NonNullable<
+      Parameters<typeof this.bot.telegram.sendDocument>[2]
+    > & {
+      link_preview_options?: { is_disabled: boolean };
     };
-    const documentOptionsBase = () => {
-      const options: Parameters<typeof this.bot.telegram.sendDocument>[2] = {
-        link_preview_options: { is_disabled: true },
-      };
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      if (replyTo) {
-        options.reply_parameters = {
-          message_id: replyTo,
-          allow_sending_without_reply: true,
-        };
-      }
-      return options;
-    };
-    const messageOptionsBase = () => {
-      const options: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
-        parse_mode: 'MarkdownV2',
-        link_preview_options: { is_disabled: true },
-      };
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      if (replyTo) {
-        options.reply_parameters = {
-          message_id: replyTo,
-          allow_sending_without_reply: true,
-        };
-      }
-      return options;
-    };
+    const documentOptionsBase = (): SendDocumentOptions => ({
+      link_preview_options: { is_disabled: true },
+      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(replyTo
+        ? {
+            reply_parameters: {
+              message_id: replyTo,
+              allow_sending_without_reply: true,
+            },
+          }
+        : {}),
+    });
+    type SendMessageOptions = NonNullable<
+      Parameters<typeof this.bot.telegram.sendMessage>[2]
+    >;
+    const messageOptionsBase = (): SendMessageOptions => ({
+      parse_mode: 'MarkdownV2',
+      link_preview_options: { is_disabled: true },
+      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(replyTo
+        ? {
+            reply_parameters: {
+              message_id: replyTo,
+              allow_sending_without_reply: true,
+            },
+          }
+        : {}),
+    });
 
     const localPhotoInfoCache = cache ?? new Map<string, LocalPhotoInfo | null>();
     const resolvePhotoInput = (url: string) =>
       this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
 
     const pendingImages: { url: string; caption?: string }[] = [];
-    type SendMediaGroupOptions = Parameters<
-      typeof this.bot.telegram.sendMediaGroup
-    >[2] & {
-      reply_parameters?: {
-        message_id: number;
-        allow_sending_without_reply?: boolean;
-      };
-    };
-    const mediaGroupOptionsBase = () => {
-      const options: SendMediaGroupOptions = {};
-      if (typeof topicId === 'number') {
-        options.message_thread_id = topicId;
-      }
-      if (replyTo) {
-        options.reply_parameters = {
-          message_id: replyTo,
-          allow_sending_without_reply: true,
+    type SendMediaGroupOptions =
+      NonNullable<Parameters<typeof this.bot.telegram.sendMediaGroup>[2]> & {
+        reply_parameters?: {
+          message_id: number;
+          allow_sending_without_reply?: boolean;
         };
-      }
-      return options;
-    };
+      };
+    const mediaGroupOptionsBase = (): SendMediaGroupOptions => ({
+      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(replyTo
+        ? {
+            reply_parameters: {
+              message_id: replyTo,
+              allow_sending_without_reply: true,
+            },
+          }
+        : {}),
+    });
 
     const sendSingleImage = async (current: { url: string; caption?: string }) => {
       const caption = current.caption;
@@ -523,9 +523,7 @@ export class TaskTelegramMedia {
         const batch = pendingImages.splice(0, 10);
         const mediaGroup = await Promise.all(
           batch.map(async (item) => {
-            const descriptor: Parameters<
-              typeof this.bot.telegram.sendMediaGroup
-            >[1][number] = {
+            const descriptor: InputMediaPhoto = {
               type: 'photo',
               media: await resolvePhotoInput(item.url),
             };
@@ -570,17 +568,15 @@ export class TaskTelegramMedia {
       await flushImages();
       if (attachment.kind === 'unsupported-image') {
         try {
+          const options = documentOptionsBase();
+          if (attachment.caption) {
+            options.caption = escapeMarkdownV2(attachment.caption);
+            options.parse_mode = 'MarkdownV2';
+          }
           const response = await this.bot.telegram.sendDocument(
             chat,
             await resolvePhotoInput(attachment.url),
-            (() => {
-              const options = documentOptionsBase();
-              if (attachment.caption) {
-                options.caption = escapeMarkdownV2(attachment.caption);
-                options.parse_mode = 'MarkdownV2';
-              }
-              return options;
-            })(),
+            options,
           );
           if (response?.message_id) {
             sentMessageIds.push(response.message_id);
@@ -678,7 +674,7 @@ export class TaskTelegramMedia {
   private async resolvePhotoInputWithCache(
     url: string,
     cache: Map<string, LocalPhotoInfo | null>,
-  ): Promise<ReadStream | string> {
+  ): Promise<InputFile | string> {
     if (!url) return url;
     if (!cache.has(url)) {
       const info = await this.resolveLocalPhotoInfo(url);
@@ -705,12 +701,12 @@ export class TaskTelegramMedia {
         stream.once('open', handleOpen);
         stream.once('error', handleError);
       });
-      const descriptor = {
+      const descriptor: InputFile = {
         source: stream,
         filename: info.filename,
         ...(info.contentType ? { contentType: info.contentType } : {}),
       };
-      return descriptor as unknown as ReadStream;
+      return descriptor;
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
         console.error(

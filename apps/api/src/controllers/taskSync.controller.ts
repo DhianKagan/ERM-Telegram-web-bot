@@ -202,7 +202,8 @@ export default class TaskSyncController {
     taskId: string,
     override?: TaskDocument | (TaskDocument & Record<string, unknown>) | null,
   ): Promise<void> {
-    if (!chatId) return;
+    const targetChatId = chatId;
+    if (!targetChatId) return;
     const task = await loadTaskPlain(taskId, override);
     if (!task) return;
 
@@ -260,13 +261,13 @@ export default class TaskSyncController {
       mediaMessagesDeleted = true;
       if (previousPreviewMessageIds.length) {
         await this.mediaHelper.deleteAttachmentMessages(
-          chatId,
+          targetChatId,
           previousPreviewMessageIds,
         );
       }
       if (previousAttachmentMessageIds.length) {
         await this.mediaHelper.deleteAttachmentMessages(
-          chatId,
+          targetChatId,
           previousAttachmentMessageIds,
         );
       }
@@ -277,7 +278,7 @@ export default class TaskSyncController {
     if (currentMessageId !== null) {
       try {
         await this.bot.telegram.editMessageText(
-          chatId,
+          targetChatId,
           currentMessageId,
           undefined,
           text,
@@ -286,12 +287,15 @@ export default class TaskSyncController {
       } catch (error) {
         if (!isMessageNotModifiedError(error)) {
           try {
-            await this.bot.telegram.deleteMessage(chatId, currentMessageId);
+            await this.bot.telegram.deleteMessage(
+              targetChatId,
+              currentMessageId,
+            );
           } catch (deleteError) {
             if (isMessageMissingOnDeleteError(deleteError)) {
               console.info(
                 'Устаревшее сообщение задачи уже удалено в Telegram',
-                { chatId, messageId: currentMessageId },
+                { chatId: targetChatId, messageId: currentMessageId },
               );
             } else {
               console.warn(
@@ -315,7 +319,7 @@ export default class TaskSyncController {
     if (currentMessageId === null) {
       try {
         const sendResult = await this.mediaHelper.sendTaskMessageWithPreview(
-          chatId,
+          targetChatId,
           text,
           media,
           replyMarkup,
@@ -335,7 +339,7 @@ export default class TaskSyncController {
           if (extras.length) {
             try {
               attachmentMessageIds = await this.mediaHelper.sendTaskAttachments(
-                chatId,
+                targetChatId,
                 extras,
                 typeof topicId === 'number' ? topicId : undefined,
                 sentMessageId,
@@ -372,7 +376,7 @@ export default class TaskSyncController {
       if (attachmentsToSend.length) {
         try {
           const sentIds = await this.mediaHelper.sendTaskAttachments(
-            chatId,
+            targetChatId,
             attachmentsToSend,
             typeof topicId === 'number' ? topicId : undefined,
             sentMessageId,

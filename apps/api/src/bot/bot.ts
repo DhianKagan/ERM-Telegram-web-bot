@@ -620,59 +620,53 @@ const buildUsersIndex = async (
   }
 };
 
-const detectTaskKind = (
-  task: Record<string, unknown> | null | undefined,
-): 'task' | 'request' => {
-  if (!task) {
+type TaskLike = TaskDocument | Record<string, unknown> | null | undefined;
+
+const detectTaskKind = (task: TaskLike): 'task' | 'request' => {
+  if (!task || typeof task !== 'object') {
     return 'task';
   }
+  const source = task as Record<string, unknown>;
   const rawKind =
-    typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
+    typeof source.kind === 'string' ? source.kind.trim().toLowerCase() : '';
   if (rawKind === 'request') {
     return 'request';
   }
   const typeValue =
-    typeof task.task_type === 'string' ? task.task_type.trim() : '';
+    typeof source.task_type === 'string' ? source.task_type.trim() : '';
   return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
 };
 
-const isTaskExecutor = (
-  task: Record<string, unknown> | null | undefined,
-  userId: number,
-): boolean => {
-  if (!task || !Number.isFinite(userId)) {
+const isTaskExecutor = (task: TaskLike, userId: number): boolean => {
+  if (!task || typeof task !== 'object' || !Number.isFinite(userId)) {
     return false;
   }
-  const assignedNumeric = Number(task.assigned_user_id);
+  const source = task as Record<string, unknown>;
+  const assignedNumeric = Number(source.assigned_user_id);
   if (Number.isFinite(assignedNumeric) && assignedNumeric === userId) {
     return true;
   }
-  const assigneesRaw = Array.isArray(task.assignees) ? task.assignees : [];
+  const assigneesRaw = Array.isArray(source.assignees) ? source.assignees : [];
   return assigneesRaw
     .map((candidate) => Number(candidate))
     .filter((candidate) => Number.isFinite(candidate))
     .includes(userId);
 };
 
-const isTaskCreator = (
-  task: Record<string, unknown> | null | undefined,
-  userId: number,
-): boolean => {
-  if (!task || !Number.isFinite(userId)) {
+const isTaskCreator = (task: TaskLike, userId: number): boolean => {
+  if (!task || typeof task !== 'object' || !Number.isFinite(userId)) {
     return false;
   }
-  const creatorNumeric = Number(task.created_by);
+  const source = task as Record<string, unknown>;
+  const creatorNumeric = Number(source.created_by);
   return Number.isFinite(creatorNumeric) && creatorNumeric === userId;
 };
 
-const isTaskRelatedUser = (
-  task: Record<string, unknown> | null | undefined,
-  userId: number,
-): boolean => {
-  if (!task || !Number.isFinite(userId)) {
+const isTaskRelatedUser = (task: TaskLike, userId: number): boolean => {
+  if (!task || typeof task !== 'object' || !Number.isFinite(userId)) {
     return false;
   }
-  return collectTaskUserIds(task).includes(userId);
+  return collectTaskUserIds(task as Record<string, unknown>).includes(userId);
 };
 
 const formatCoordinates = (value: unknown): string | null => {

@@ -90,6 +90,33 @@ const toNumericId = (value: unknown): number | null => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
+const normalizeMessageIdList = (value: unknown): number[] => {
+  if (Array.isArray(value)) {
+    return (value as unknown[])
+      .map((item) => {
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
+        if (typeof item === 'string') {
+          const parsed = Number(item.trim());
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+      })
+      .filter((item): item is number => item !== null);
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return [value];
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return [parsed];
+    }
+  }
+  return [];
+};
+
 type PlainTask = TaskDocument & Record<string, unknown>;
 
 const collectUserIds = (task: Partial<PlainTask>): number[] => {
@@ -214,82 +241,153 @@ export default class TaskSyncController {
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     };
 
-    if (messageId !== null) {
-      try {
-        await this.bot.telegram.editMessageText(
-          chatId,
-          messageId,
-          undefined,
-          text,
-          options,
-        );
-        return;
-      } catch (error) {
-        if (isMessageNotModifiedError(error)) {
-          return;
-        }
-        try {
-          await this.bot.telegram.deleteMessage(chatId, messageId);
-        } catch (deleteError) {
-          if (isMessageMissingOnDeleteError(deleteError)) {
-            console.info(
-              'Устаревшее сообщение задачи уже удалено в Telegram',
-              { chatId, messageId },
-            );
-          } else {
-            console.warn(
-              'Не удалось удалить устаревшее сообщение задачи',
-              deleteError,
-            );
-          }
-        }
-      }
-    }
-
     const media = this.mediaHelper.collectSendableAttachments(
       task,
       inlineImages,
     );
+    const previousPreviewMessageIds = normalizeMessageIdList(
+      task.telegram_preview_message_ids,
+    );
+    const previousAttachmentMessageIds = normalizeMessageIdList(
+      task.telegram_attachments_message_ids,
+    );
+
+    let mediaMessagesDeleted = false;
+    const ensurePreviousMediaRemoved = async () => {
+      if (mediaMessagesDeleted) {
+        return;
+      }
+      mediaMessagesDeleted = true;
+      if (previousPreviewMessageIds.length) {
+        await this.mediaHelper.deleteAttachmentMessages(
+          chatId,
+          previousPreviewMessageIds,
+        );
+      }
+      if (previousAttachmentMessageIds.length) {
+        await this.mediaHelper.deleteAttachmentMessages(
+          chatId,
+          previousAttachmentMessageIds,
+        );
+      }
+    };
+
+    let currentMessageId = messageId;
+
+    if (currentMessageId !== null) {
+      try {
+        await this.bot.telegram.editMessageText(
+          chatId,
+          currentMessageId,
+          undefined,
+          text,
+          options,
+        );
+      } catch (error) {
+        if (!isMessageNotModifiedError(error)) {
+          try {
+            await this.bot.telegram.deleteMessage(chatId, currentMessageId);
+          } catch (deleteError) {
+            if (isMessageMissingOnDeleteError(deleteError)) {
+              console.info(
+                'Устаревшее сообщение задачи уже удалено в Telegram',
+                { chatId, messageId: currentMessageId },
+              );
+            } else {
+              console.warn(
+                'Не удалось удалить устаревшее сообщение задачи',
+                deleteError,
+              );
+            }
+          }
+          await ensurePreviousMediaRemoved();
+          currentMessageId = null;
+        }
+      }
+    } else {
+      await ensurePreviousMediaRemoved();
+    }
+
     let previewMessageIds: number[] = [];
     let attachmentMessageIds: number[] = [];
     let sentMessageId: number | undefined;
 
-    try {
-      const sendResult = await this.mediaHelper.sendTaskMessageWithPreview(
-        chatId,
-        text,
-        media,
-        replyMarkup,
-        typeof topicId === 'number' ? topicId : undefined,
-      );
-      sentMessageId = sendResult.messageId;
-      previewMessageIds = sendResult.previewMessageIds ?? [];
-      if (sentMessageId) {
-        const consumed = new Set(sendResult.consumedAttachmentUrls ?? []);
-        const extras = consumed.size
-          ? media.extras.filter((attachment) =>
-              attachment.kind === 'image'
-                ? !consumed.has(attachment.url)
-                : true,
-            )
-          : media.extras;
-        if (extras.length) {
-          try {
-            attachmentMessageIds = await this.mediaHelper.sendTaskAttachments(
-              chatId,
-              extras,
-              typeof topicId === 'number' ? topicId : undefined,
-              sentMessageId,
-              sendResult.cache,
-            );
-          } catch (error) {
-            console.error('Не удалось отправить вложения задачи', error);
+    if (currentMessageId === null) {
+      try {
+        const sendResult = await this.mediaHelper.sendTaskMessageWithPreview(
+          chatId,
+          text,
+          media,
+          replyMarkup,
+          typeof topicId === 'number' ? topicId : undefined,
+        );
+        sentMessageId = sendResult.messageId;
+        previewMessageIds = sendResult.previewMessageIds ?? [];
+        if (sentMessageId) {
+          const consumed = new Set(sendResult.consumedAttachmentUrls ?? []);
+          const extras = consumed.size
+            ? media.extras.filter((attachment) =>
+                attachment.kind === 'image'
+                  ? !consumed.has(attachment.url)
+                  : true,
+              )
+            : media.extras;
+          if (extras.length) {
+            try {
+              attachmentMessageIds = await this.mediaHelper.sendTaskAttachments(
+                chatId,
+                extras,
+                typeof topicId === 'number' ? topicId : undefined,
+                sentMessageId,
+                sendResult.cache,
+              );
+            } catch (error) {
+              console.error('Не удалось отправить вложения задачи', error);
+            }
           }
         }
+      } catch (error) {
+        console.error('Не удалось отправить сообщение задачи в Telegram', error);
+        return;
       }
-    } catch (error) {
-      console.error('Не удалось отправить сообщение задачи в Telegram', error);
-      return;
+    } else {
+      await ensurePreviousMediaRemoved();
+      sentMessageId = currentMessageId;
+      const attachmentsToSend = [] as Parameters<
+        TaskTelegramMedia['sendTaskAttachments']
+      >[1];
+      const consumedUrls = new Set<string>();
+      if (media.previewImage?.url) {
+        attachmentsToSend.push(media.previewImage);
+        consumedUrls.add(media.previewImage.url);
+      }
+      const extras = consumedUrls.size
+        ? media.extras.filter((attachment) =>
+            attachment.kind === 'image'
+              ? !consumedUrls.has(attachment.url)
+              : true,
+          )
+        : media.extras;
+      attachmentsToSend.push(...extras);
+      if (attachmentsToSend.length) {
+        try {
+          const sentIds = await this.mediaHelper.sendTaskAttachments(
+            chatId,
+            attachmentsToSend,
+            typeof topicId === 'number' ? topicId : undefined,
+            sentMessageId,
+          );
+          const previewCount = media.previewImage?.url ? 1 : 0;
+          if (previewCount > 0) {
+            previewMessageIds = sentIds.slice(0, previewCount);
+            attachmentMessageIds = sentIds.slice(previewCount);
+          } else {
+            attachmentMessageIds = sentIds;
+          }
+        } catch (error) {
+          console.error('Не удалось обновить вложения задачи', error);
+        }
+      }
     }
 
     const setPayload: Record<string, unknown> = {};

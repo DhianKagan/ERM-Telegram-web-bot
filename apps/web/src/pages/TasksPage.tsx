@@ -76,8 +76,9 @@ export default function TasksPage() {
       setMine(true);
     }
     if (params.get("mine") !== "1") {
-      params.set("mine", "1");
-      setParams(params);
+      const next = new URLSearchParams(params);
+      next.set("mine", "1");
+      setParams(next, { replace: true });
     }
   }, [authLoading, isPrivileged, mine, params, setParams]);
 

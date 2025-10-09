@@ -36,10 +36,15 @@ beforeAll(() => {
   app.get('/secure', verifyToken, (_req, res) => res.send('OK'));
 });
 
-test('без токена перенаправляет на /login', async () => {
+test('без токена возвращает problem+json с 401', async () => {
   const res = await request(app).get('/secure');
-  expect(res.status).toBe(302);
-  expect(res.headers.location).toBe('/login');
+  expect(res.status).toBe(401);
+  expect(res.headers['content-type']).toContain('application/problem+json');
+  expect(res.body).toMatchObject({
+    status: 401,
+    title: 'Ошибка авторизации',
+    detail: 'Токен авторизации отсутствует.',
+  });
 });
 
 test('с валидным токеном 200', async () => {
@@ -49,13 +54,17 @@ test('с валидным токеном 200', async () => {
   expect(res.headers['set-cookie']).toBeDefined();
 });
 
-test('токен с другим алгоритмом перенаправляет на /login', async () => {
+test('токен с другим алгоритмом возвращает problem+json', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET, {
     algorithm: 'HS512',
   });
   const res = await request(app).get('/secure').set('Cookie', `token=${token}`);
-  expect(res.status).toBe(302);
-  expect(res.headers.location).toBe('/login');
+  expect(res.status).toBe(401);
+  expect(res.headers['content-type']).toContain('application/problem+json');
+  expect(res.body).toMatchObject({
+    status: 401,
+    title: 'Ошибка авторизации',
+  });
 });
 
 afterAll(() => {

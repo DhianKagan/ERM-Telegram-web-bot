@@ -279,6 +279,81 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
 
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
 const TELEGRAM_CAPTION_LIMIT = 1024;
+const TELEGRAM_MESSAGE_LIMIT = 4096;
+
+const hasOddTrailingBackslash = (value: string): boolean => {
+  const match = value.match(/\\+$/);
+  if (!match) {
+    return false;
+  }
+  return match[0].length % 2 === 1;
+};
+
+const adjustBreakIndex = (text: string, index: number): number => {
+  let candidate = Math.min(Math.max(index, 1), text.length);
+  while (candidate > 0) {
+    const prefix = text.slice(0, candidate);
+    if (!hasOddTrailingBackslash(prefix)) {
+      break;
+    }
+    candidate -= 1;
+  }
+  return candidate;
+};
+
+const findBreakIndex = (text: string, limit: number): number => {
+  const windowEnd = Math.min(limit + 1, text.length);
+  const window = text.slice(0, windowEnd);
+  const doubleNewlineIndex = window.lastIndexOf('\n\n');
+  if (doubleNewlineIndex >= 0) {
+    return doubleNewlineIndex + 2;
+  }
+  const newlineIndex = window.lastIndexOf('\n');
+  if (newlineIndex >= 0) {
+    return newlineIndex + 1;
+  }
+  const spaceIndex = window.lastIndexOf(' ');
+  if (spaceIndex >= 0) {
+    return spaceIndex + 1;
+  }
+  return Math.min(limit, text.length);
+};
+
+const splitMessageForTelegramLimit = (
+  text: string,
+  limit: number,
+): string[] => {
+  const normalized = typeof text === 'string' ? text : '';
+  if (!normalized) {
+    return [];
+  }
+  if (normalized.length <= limit) {
+    return [normalized];
+  }
+  const parts: string[] = [];
+  let remaining = normalized;
+  while (remaining.length > limit) {
+    let breakIndex = findBreakIndex(remaining, limit);
+    breakIndex = adjustBreakIndex(remaining, breakIndex);
+    if (breakIndex <= 0 || breakIndex >= remaining.length) {
+      breakIndex = Math.min(limit, remaining.length);
+    }
+    let chunk = remaining.slice(0, breakIndex);
+    if (!chunk.trim()) {
+      chunk = remaining.slice(0, Math.min(limit, remaining.length));
+      breakIndex = chunk.length;
+    }
+    if (!chunk) {
+      break;
+    }
+    parts.push(chunk);
+    remaining = remaining.slice(breakIndex).replace(/^[\n\r]+/, '');
+  }
+  if (remaining.length) {
+    parts.push(remaining);
+  }
+  return parts;
+};
 
 @injectable()
 export default class TasksController {
@@ -536,8 +611,10 @@ export default class TasksController {
       ? leftover.map((entry) => entry.content).join(SECTION_SEPARATOR)
       : '';
     const supplementaryMessageIds: number[] = [];
-    const sendSupplementaryText = async () => {
-      if (!leftoverText) return;
+    const sendSupplementaryChunk = async (chunk: string) => {
+      if (!chunk || !chunk.trim()) {
+        return;
+      }
       try {
         const extraOptions: SendMessageOptions = {
           parse_mode: 'MarkdownV2',
@@ -548,7 +625,7 @@ export default class TasksController {
         }
         const extraMessage = await bot.telegram.sendMessage(
           chat,
-          leftoverText,
+          chunk,
           extraOptions,
         );
         if (extraMessage?.message_id) {
@@ -559,6 +636,17 @@ export default class TasksController {
           'Не удалось отправить дополнительный текст задачи',
           error,
         );
+      }
+    };
+
+    const leftoverChunks = leftoverText
+      ? splitMessageForTelegramLimit(leftoverText, TELEGRAM_MESSAGE_LIMIT)
+      : [];
+
+    const sendSupplementaryText = async () => {
+      if (!leftoverChunks.length) return;
+      for (const chunk of leftoverChunks) {
+        await sendSupplementaryChunk(chunk);
       }
     };
     if (albumCandidates.length > 1) {
@@ -692,13 +780,31 @@ export default class TasksController {
     if (typeof topicId === 'number') {
       options.message_thread_id = topicId;
     }
-    const response = await bot.telegram.sendMessage(chat, message, options);
+    const messageChunks = splitMessageForTelegramLimit(
+      message,
+      TELEGRAM_MESSAGE_LIMIT,
+    );
+    const [primaryMessage, ...continuationChunks] =
+      messageChunks.length > 0 ? messageChunks : [message];
+    const response = await bot.telegram.sendMessage(
+      chat,
+      primaryMessage,
+      options,
+    );
+    if (continuationChunks.length) {
+      for (const chunk of continuationChunks) {
+        // eslint-disable-next-line no-await-in-loop
+        await sendSupplementaryChunk(chunk);
+      }
+    }
     return {
       messageId: response?.message_id,
       usedPreview: false,
       cache,
       previewSourceUrls: undefined,
-      previewMessageIds: undefined,
+      previewMessageIds: supplementaryMessageIds.length
+        ? supplementaryMessageIds
+        : undefined,
       consumedAttachmentUrls: [],
     };
   }

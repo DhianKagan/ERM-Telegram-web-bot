@@ -2328,7 +2328,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 onUploaded={(a) => setAttachments((p) => [...p, a])}
                 onRemove={(a) => removeAttachment(a)}
               />
-              {isEdit && history.length > 0 && (
+              {isEdit && (
                 <div className="mt-2 flex justify-start">
                   <Button
                     type="button"
@@ -2483,93 +2483,97 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">
             <h4 className="mb-2 font-semibold">{t("history")}</h4>
             <ul className="space-y-2 text-xs sm:text-sm">
-              {history.map((entry, index) => {
-                const timeLabel = formatHistoryDate(entry.changed_at);
-                const author = resolveUserName(entry.changed_by);
-                const fromState = entry.changes.from || {};
-                const toState = entry.changes.to || {};
-                const fromStatusRaw = (fromState as Record<string, unknown>)[
-                  "status"
-                ];
-                const toStatusRaw = (toState as Record<string, unknown>)[
-                  "status"
-                ];
-                const fromStatus = formatHistoryValue(fromStatusRaw);
-                const toStatus = formatHistoryValue(toStatusRaw);
-                const showStatusChange =
-                  fromStatus !== "—" &&
-                  toStatus !== "—" &&
-                  fromStatus !== toStatus;
-                const keys = Array.from(
-                  new Set([
-                    ...Object.keys(fromState as Record<string, unknown>),
-                    ...Object.keys(toState as Record<string, unknown>),
-                  ]),
-                );
-                const keysToRender = showStatusChange
-                  ? keys.filter((key) => key !== "status")
-                  : keys;
-                const hasDetailedChanges = keysToRender.some((key) => {
-                  const prevValue = formatHistoryValue(
-                    (fromState as Record<string, unknown>)[key],
+              {history.length === 0 ? (
+                <li className="text-gray-500">{t("historyEmpty")}</li>
+              ) : (
+                history.map((entry, index) => {
+                  const timeLabel = formatHistoryDate(entry.changed_at);
+                  const author = resolveUserName(entry.changed_by);
+                  const fromState = entry.changes.from || {};
+                  const toState = entry.changes.to || {};
+                  const fromStatusRaw = (fromState as Record<string, unknown>)[
+                    "status"
+                  ];
+                  const toStatusRaw = (toState as Record<string, unknown>)[
+                    "status"
+                  ];
+                  const fromStatus = formatHistoryValue(fromStatusRaw);
+                  const toStatus = formatHistoryValue(toStatusRaw);
+                  const showStatusChange =
+                    fromStatus !== "—" &&
+                    toStatus !== "—" &&
+                    fromStatus !== toStatus;
+                  const keys = Array.from(
+                    new Set([
+                      ...Object.keys(fromState as Record<string, unknown>),
+                      ...Object.keys(toState as Record<string, unknown>),
+                    ]),
                   );
-                  const nextValue = formatHistoryValue(
-                    (toState as Record<string, unknown>)[key],
+                  const keysToRender = showStatusChange
+                    ? keys.filter((key) => key !== "status")
+                    : keys;
+                  const hasDetailedChanges = keysToRender.some((key) => {
+                    const prevValue = formatHistoryValue(
+                      (fromState as Record<string, unknown>)[key],
+                    );
+                    const nextValue = formatHistoryValue(
+                      (toState as Record<string, unknown>)[key],
+                    );
+                    return prevValue !== nextValue;
+                  });
+                  return (
+                    <li
+                      key={`${entry.changed_at}-${entry.changed_by}-${index}`}
+                      className="rounded border border-gray-200 bg-white p-2 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-baseline gap-1 text-xs font-medium text-gray-700 sm:text-sm">
+                        <span>{timeLabel || "—"}</span>
+                        <span className="text-gray-500">{author}</span>
+                      </div>
+                      {showStatusChange && (
+                        <p className="mt-1 text-xs text-gray-700 sm:text-sm">
+                          Изменил статус с {fromStatus} на {toStatus}
+                        </p>
+                      )}
+                      {keysToRender.length > 0 && (
+                        <ul className="mt-1 space-y-0.5 text-xs text-gray-700 sm:text-sm">
+                          {keysToRender.map((key) => {
+                            const prevValue = formatHistoryValue(
+                              (fromState as Record<string, unknown>)[key],
+                            );
+                            const nextValue = formatHistoryValue(
+                              (toState as Record<string, unknown>)[key],
+                            );
+                            if (prevValue === nextValue) return null;
+                            return (
+                              <li
+                                key={key}
+                                className="flex flex-wrap items-baseline gap-1"
+                              >
+                                <span className="font-medium text-gray-600">
+                                  {key}:
+                                </span>
+                                <span className="text-gray-500 line-through decoration-gray-400">
+                                  {prevValue}
+                                </span>
+                                <span className="text-gray-400">→</span>
+                                <span className="font-semibold text-gray-900">
+                                  {nextValue}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      {!showStatusChange && !hasDetailedChanges && (
+                        <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                          Детали изменений отсутствуют
+                        </p>
+                      )}
+                    </li>
                   );
-                  return prevValue !== nextValue;
-                });
-                return (
-                  <li
-                    key={`${entry.changed_at}-${entry.changed_by}-${index}`}
-                    className="rounded border border-gray-200 bg-white p-2 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-baseline gap-1 text-xs font-medium text-gray-700 sm:text-sm">
-                      <span>{timeLabel || "—"}</span>
-                      <span className="text-gray-500">{author}</span>
-                    </div>
-                    {showStatusChange && (
-                      <p className="mt-1 text-xs text-gray-700 sm:text-sm">
-                        Изменил статус с {fromStatus} на {toStatus}
-                      </p>
-                    )}
-                    {keysToRender.length > 0 && (
-                      <ul className="mt-1 space-y-0.5 text-xs text-gray-700 sm:text-sm">
-                        {keysToRender.map((key) => {
-                          const prevValue = formatHistoryValue(
-                            (fromState as Record<string, unknown>)[key],
-                          );
-                          const nextValue = formatHistoryValue(
-                            (toState as Record<string, unknown>)[key],
-                          );
-                          if (prevValue === nextValue) return null;
-                          return (
-                            <li
-                              key={key}
-                              className="flex flex-wrap items-baseline gap-1"
-                            >
-                              <span className="font-medium text-gray-600">
-                                {key}:
-                              </span>
-                              <span className="text-gray-500 line-through decoration-gray-400">
-                                {prevValue}
-                              </span>
-                              <span className="text-gray-400">→</span>
-                              <span className="font-semibold text-gray-900">
-                                {nextValue}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                    {!showStatusChange && !hasDetailedChanges && (
-                      <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-                        Детали изменений отсутствуют
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
+                })
+              )}
             </ul>
             <Button
               className="mt-2 rounded-lg"

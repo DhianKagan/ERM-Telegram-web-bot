@@ -317,7 +317,7 @@ async function createCancellationRequestFromTask(
     typeof plain.status === 'string' ? plain.status : undefined,
   );
   const payload: Partial<TaskDocument> = {
-    title: `Заявка на удаление задачи ${identifier}`,
+    title: `Запрос на отмену задачи ${identifier}`,
     task_description: description,
     kind: 'request',
     task_type: REQUEST_TYPE_NAME,

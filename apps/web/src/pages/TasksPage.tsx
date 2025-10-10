@@ -27,10 +27,20 @@ export default function TasksPage() {
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
   const hasPermission = user?.permissions?.includes("tasks");
+  const permissionsList = Array.isArray(user?.permissions)
+    ? user?.permissions
+    : null;
+  const hasExplicitPermissions = (permissionsList?.length ?? 0) > 0;
   const isPrivileged = isAdmin || isManager;
-  const canView = isPrivileged || hasPermission;
+  const canView = isPrivileged || hasPermission || !hasExplicitPermissions;
 
   const load = React.useCallback(() => {
+    if (!user?.telegram_id) {
+      setAll([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchTasks(
       {
@@ -84,7 +94,8 @@ export default function TasksPage() {
 
   React.useEffect(() => {
     if (authLoading) return;
-    if (!canView || !user?.access) return;
+    if (!canView) return;
+    if (!user?.telegram_id) return;
     load();
     // после загрузки профиля инициируем загрузку задач
   }, [authLoading, user, load, version, page, mine, canView]);

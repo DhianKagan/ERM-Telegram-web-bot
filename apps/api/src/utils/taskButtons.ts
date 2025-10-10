@@ -82,7 +82,7 @@ export default function taskStatusKeyboard(
   ];
   if (options.kind !== 'request') {
     actionsRow.push(
-      Markup.button.callback('Заявка на удаление', `task_cancel_request_prompt:${id}`),
+      Markup.button.callback('Запрос на отмену', `task_cancel_request_prompt:${id}`),
     );
   }
   rows.push(actionsRow);

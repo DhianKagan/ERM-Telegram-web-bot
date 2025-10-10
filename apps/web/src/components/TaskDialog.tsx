@@ -473,6 +473,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       dueDate: "",
     },
   });
+  const resetRef = React.useRef(reset);
+  React.useEffect(() => {
+    resetRef.current = reset;
+  }, [reset]);
+  const stableReset = React.useCallback(
+    (...args: Parameters<typeof reset>) => resetRef.current(...args),
+    [],
+  );
   const RAW_DEFAULT_TASK_TYPE =
     fields.find((f) => f.name === "task_type")?.default || "";
   const DEFAULT_PRIORITY =
@@ -484,9 +492,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const DEFAULT_PAYMENT_AMOUNT =
     fields.find((f) => f.name === "payment_amount")?.default || "0";
   const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
-  const types = fields.find((f) => f.name === "task_type")?.options || [];
-  const requestTypeOptions = types.filter((type) => type === REQUEST_TYPE_NAME);
-  const taskTypeOptions = types.filter((type) => type !== REQUEST_TYPE_NAME);
+  const { requestTypeOptions, taskTypeOptions } = React.useMemo(() => {
+    const source = fields.find((f) => f.name === "task_type")?.options || [];
+    return {
+      requestTypeOptions: source.filter((type) => type === REQUEST_TYPE_NAME),
+      taskTypeOptions: source.filter((type) => type !== REQUEST_TYPE_NAME),
+    };
+  }, [fields]);
   const DEFAULT_REQUEST_TYPE = requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
   const DEFAULT_TASK_TYPE =
     RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME
@@ -776,7 +788,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           : DEFAULT_DUE_OFFSET_MS;
       setDueOffset(diff);
       setInitialDates({ start: startDate, due: dueDate });
-      reset({
+      stableReset({
         title: (taskData.title as string) || "",
         description: (taskData.task_description as string) || "",
         assigneeId,
@@ -914,7 +926,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       created,
       formatInputDate,
       parseIsoDateMemo,
-      reset,
+      stableReset,
       setDueOffset,
       setInitialDates,
       commitResolvedTaskId,
@@ -1007,7 +1019,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const createdAt = new Date();
     const { start: defaultStartDate, due: defaultDueDate } =
       computeDefaultDates(createdAt);
-    setCreated(createdAt.toISOString());
+    setCreated((prev) => prev || createdAt.toISOString());
     setCompletedAt("");
     setHistory([]);
     setResolvedTaskId(null);
@@ -1058,7 +1070,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       showLogistics: false,
     };
     setInitialDates({ start: defaultStartDate, due: defaultDueDate });
-    reset({
+    stableReset({
       title: "",
       description: "",
       assigneeId:
@@ -1088,7 +1100,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     DEFAULT_DUE_OFFSET_MS,
     computeDefaultDates,
     parseIsoDateMemo,
-    reset,
+    stableReset,
     setDueOffset,
     setInitialDates,
     applyTaskDetails,

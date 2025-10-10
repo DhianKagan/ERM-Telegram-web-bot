@@ -95,7 +95,7 @@
   "titleRequired": "Title is required",
   "transportType": "Transport type",
   "enterDimensions": "Enter dimensions",
-  "logisticsToggle": "Logistics",
+  "logisticsToggle": "Logistics & payment",
   "taskCreatedBy": "created by",
   "taskCreatorUnknown": "created by unknown author",
   "cargoLength": "Length, m",

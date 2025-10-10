@@ -32,7 +32,11 @@ import {
 } from '../bot/bot';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
-import formatTask, { type InlineImage } from '../utils/formatTask';
+import formatTask, {
+  type InlineImage,
+  type FormatTaskSection,
+  SECTION_SEPARATOR,
+} from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
 import { uploadsDir } from '../config/storage';
 import escapeMarkdownV2 from '../utils/mdEscape';
@@ -159,6 +163,90 @@ type TaskMedia = {
   collageCandidates: NormalizedImage[];
 };
 
+const splitSectionForLimit = (
+  section: FormatTaskSection,
+  limit: number,
+): { head: FormatTaskSection | null; tail: FormatTaskSection | null } => {
+  if (section.content.length <= limit) {
+    return { head: section, tail: null };
+  }
+  const lines = section.content.split('\n');
+  const selected: string[] = [];
+  let used = 0;
+  for (const line of lines) {
+    const prefix = selected.length ? 1 : 0;
+    const nextLength = line.length;
+    if (used + prefix + nextLength > limit) {
+      break;
+    }
+    selected.push(line);
+    used += prefix + nextLength;
+  }
+  if (!selected.length) {
+    return { head: null, tail: section };
+  }
+  const headContent = selected.join('\n');
+  const tailContent = section.content
+    .slice(headContent.length)
+    .replace(/^[\n\r]+/, '');
+  return {
+    head: { key: section.key, content: headContent },
+    tail: tailContent ? { key: section.key, content: tailContent } : null,
+  };
+};
+
+const buildCaptionFromSections = (
+  sections: FormatTaskSection[],
+  fullText: string,
+  limit: number,
+): { caption: string; leftover: FormatTaskSection[] } => {
+  const selected: FormatTaskSection[] = [];
+  const leftover: FormatTaskSection[] = [];
+  let used = 0;
+
+  for (let index = 0; index < sections.length; index += 1) {
+    const section = sections[index];
+    const prefix = selected.length ? SECTION_SEPARATOR.length : 0;
+    const available = limit - used - prefix;
+    if (available <= 0) {
+      leftover.push(section, ...sections.slice(index + 1));
+      break;
+    }
+    if (section.content.length <= available) {
+      selected.push(section);
+      used += prefix + section.content.length;
+      continue;
+    }
+    const { head, tail } = splitSectionForLimit(section, available);
+    if (head) {
+      selected.push(head);
+      used += prefix + head.content.length;
+    }
+    if (tail) {
+      leftover.push(tail);
+    } else {
+      leftover.push(section);
+    }
+    leftover.push(...sections.slice(index + 1));
+    break;
+  }
+
+  if (!selected.length) {
+    const safeLimit = Math.max(0, limit - 1);
+    const snippet = fullText.slice(0, safeLimit);
+    const sanitized = escapeMarkdownV2(snippet);
+    const caption =
+      sanitized.length < fullText.length ? `${sanitized}…` : sanitized;
+    return { caption, leftover: sections.slice() };
+  }
+
+  const caption = selected
+    .map((entry) => entry.content)
+    .join(SECTION_SEPARATOR);
+
+  return { caption, leftover };
+};
+
 type SendMessageOptions = NonNullable<
   Parameters<typeof bot.telegram.sendMessage>[2]
 >;
@@ -190,6 +278,7 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
 ]);
 
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
+const TELEGRAM_CAPTION_LIMIT = 1024;
 
 @injectable()
 export default class TasksController {
@@ -413,6 +502,7 @@ export default class TasksController {
   private async sendTaskMessageWithPreview(
     chat: string | number,
     message: string,
+    sections: FormatTaskSection[],
     media: TaskMedia,
     keyboard: ReturnType<typeof taskStatusKeyboard>,
     topicId?: number,
@@ -437,7 +527,41 @@ export default class TasksController {
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
       ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
     });
-    if (albumCandidates.length > 1 && message.length <= 1024) {
+    const { caption, leftover } = buildCaptionFromSections(
+      sections,
+      message,
+      TELEGRAM_CAPTION_LIMIT,
+    );
+    const leftoverText = leftover.length
+      ? leftover.map((entry) => entry.content).join(SECTION_SEPARATOR)
+      : '';
+    const supplementaryMessageIds: number[] = [];
+    const sendSupplementaryText = async () => {
+      if (!leftoverText) return;
+      try {
+        const extraOptions: SendMessageOptions = {
+          parse_mode: 'MarkdownV2',
+          link_preview_options: { is_disabled: true },
+        };
+        if (typeof topicId === 'number') {
+          extraOptions.message_thread_id = topicId;
+        }
+        const extraMessage = await bot.telegram.sendMessage(
+          chat,
+          leftoverText,
+          extraOptions,
+        );
+        if (extraMessage?.message_id) {
+          supplementaryMessageIds.push(extraMessage.message_id);
+        }
+      } catch (error) {
+        console.error(
+          'Не удалось отправить дополнительный текст задачи',
+          error,
+        );
+      }
+    };
+    if (albumCandidates.length > 1) {
       try {
         type SendMediaGroupOptions = Parameters<
           typeof bot.telegram.sendMediaGroup
@@ -461,10 +585,10 @@ export default class TasksController {
               type: 'photo',
               media: await this.resolvePhotoInputWithCache(item.url, cache),
             };
-            const caption = index === 0 ? message : item.caption;
-            if (caption) {
+            const captionValue = index === 0 ? caption : item.caption;
+            if (captionValue) {
               descriptor.caption =
-                index === 0 ? caption : escapeMarkdownV2(caption);
+                index === 0 ? captionValue : escapeMarkdownV2(captionValue);
               descriptor.parse_mode = 'MarkdownV2';
             }
             return descriptor;
@@ -489,6 +613,10 @@ export default class TasksController {
         if (!messageId) {
           throw new Error('Отсутствует идентификатор сообщения альбома задачи');
         }
+        await sendSupplementaryText();
+        const combinedPreviewIds = supplementaryMessageIds.length
+          ? [...previewMessageIds, ...supplementaryMessageIds]
+          : previewMessageIds;
         if (keyboardMarkup) {
           try {
             await bot.telegram.editMessageReplyMarkup(
@@ -519,30 +647,37 @@ export default class TasksController {
           usedPreview: true,
           cache,
           previewSourceUrls: consumedUrls,
-          previewMessageIds,
+          previewMessageIds: combinedPreviewIds,
           consumedAttachmentUrls: consumedUrls,
         };
-      } catch (error) {
-        console.error('Не удалось отправить альбом задачи', error);
-      }
+        } catch (error) {
+          console.error('Не удалось отправить альбом задачи', error);
+        }
     }
-    if (previewUrl && message.length <= 1024) {
+    if (previewUrl) {
       try {
         const photoOptions: SendPhotoOptions = {
           ...baseOptions(),
-          caption: message,
+          caption,
           parse_mode: 'MarkdownV2',
         };
         const photo = await this.resolvePhotoInputWithCache(previewUrl, cache);
         const response = await bot.telegram.sendPhoto(chat, photo, photoOptions);
+        await sendSupplementaryText();
+        const combinedPreviewIds = supplementaryMessageIds.length
+          ? [
+              ...(response?.message_id ? [response.message_id] : []),
+              ...supplementaryMessageIds,
+            ]
+          : response?.message_id
+          ? [response.message_id]
+          : undefined;
         return {
           messageId: response?.message_id,
           usedPreview: true,
           cache,
           previewSourceUrls: [previewUrl],
-          previewMessageIds: response?.message_id
-            ? [response.message_id]
-            : undefined,
+          previewMessageIds: combinedPreviewIds,
           consumedAttachmentUrls: [previewUrl],
         };
       } catch (error) {
@@ -1680,17 +1815,18 @@ export default class TasksController {
           }
         }
 
-        const media = this.collectSendableAttachments(
-          plain,
-          formatted.inlineImages,
-        );
-        const sendResult = await this.sendTaskMessageWithPreview(
-          groupChatId,
-          message,
-          media,
-          keyboard,
-          topicId,
-        );
+          const media = this.collectSendableAttachments(
+            plain,
+            formatted.inlineImages,
+          );
+          const sendResult = await this.sendTaskMessageWithPreview(
+            groupChatId,
+            message,
+            formatted.sections,
+            media,
+            keyboard,
+            topicId,
+          );
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);

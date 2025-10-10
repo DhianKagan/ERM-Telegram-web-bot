@@ -10,7 +10,7 @@ import { chatId, appUrl as baseAppUrl } from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
-import taskStatusKeyboard from '../utils/taskButtons';
+import { taskStatusInlineMarkup } from '../utils/taskButtons';
 import type { Task as SharedTask, User } from 'shared';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
@@ -256,10 +256,9 @@ export default class TaskSyncController {
         typeof task.task_type === 'string' ? task.task_type.trim() : '';
       return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
     })();
-    const keyboard = taskStatusKeyboard(taskId, status, {
+    const replyMarkup = taskStatusInlineMarkup(taskId, status, {
       kind: resolvedKind,
     });
-    const replyMarkup = keyboard.reply_markup ?? undefined;
 
     const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
       parse_mode: 'MarkdownV2',

@@ -12,10 +12,11 @@ import { createUser, getTask, getUser, writeLog } from '../services/service';
 import '../db/model';
 import type { TaskDocument } from '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
-import taskStatusKeyboard, {
+import {
   taskAcceptConfirmKeyboard,
   taskDoneConfirmKeyboard,
   taskCancelConfirmKeyboard,
+  taskStatusInlineMarkup,
 } from '../utils/taskButtons';
 import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
@@ -836,7 +837,15 @@ export const buildDirectTaskKeyboard = (
     console.warn('Пропущено построение inline-клавиатуры: отсутствует поддержка');
     return undefined;
   }
-  return Markup.inlineKeyboard([row]);
+  const keyboard = Markup.inlineKeyboard([row]) as ReturnType<
+    typeof Markup.inlineKeyboard
+  > & { reply_markup?: InlineKeyboardMarkup };
+  if (!keyboard.reply_markup) {
+    keyboard.reply_markup = {
+      inline_keyboard: [row],
+    };
+  }
+  return keyboard;
 };
 
 type TaskPresentation = SharedTask &
@@ -897,11 +906,11 @@ const syncTaskPresentation = async (
     if (messageId !== null) {
       const formatted = formatTask(plain as SharedTask, users);
       const kind = detectTaskKind(plain);
-      const keyboard = taskStatusKeyboard(taskId, status, { kind });
+      const replyMarkup = taskStatusInlineMarkup(taskId, status, { kind });
       const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },
-        ...(keyboard.reply_markup ? { reply_markup: keyboard.reply_markup } : {}),
+        reply_markup: replyMarkup,
       };
       try {
         await bot.telegram.editMessageText(
@@ -1028,8 +1037,8 @@ async function refreshTaskKeyboard(
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
     const kind = detectTaskKind(plain ?? undefined);
-    const keyboard = taskStatusKeyboard(taskId, status, { kind });
-    await updateMessageReplyMarkup(ctx, keyboard.reply_markup ?? undefined);
+    const replyMarkup = taskStatusInlineMarkup(taskId, status, { kind });
+    await updateMessageReplyMarkup(ctx, replyMarkup);
   }
   return context;
 }
@@ -1466,9 +1475,15 @@ bot.action(/^task_cancel_request_prompt:.+$/, async (ctx) => {
       stage: 'awaitingReason',
     });
     const promptText = `Введите причину отмены для задачи ${context.identifier}. Текст должен содержать не менее ${CANCEL_REASON_MIN_LENGTH} символов.`;
-    const keyboard = Markup.inlineKeyboard([
+    const cancelRows: InlineKeyboardButton[][] = [
       [Markup.button.callback('Отмена', `cancel_request_abort:${taskId}`)],
-    ]);
+    ];
+    const keyboard = Markup.inlineKeyboard(cancelRows) as ReturnType<
+      typeof Markup.inlineKeyboard
+    > & { reply_markup?: InlineKeyboardMarkup };
+    if (!keyboard.reply_markup) {
+      keyboard.reply_markup = { inline_keyboard: cancelRows };
+    }
     try {
       await bot.telegram.sendMessage(userId, promptText, {
         reply_markup: keyboard.reply_markup,
@@ -1666,7 +1681,7 @@ if (!registerTextHandler) {
     cancelRequestSessions.set(userId, session);
     const preview =
       normalized.length > 500 ? `${normalized.slice(0, 500)}…` : normalized;
-    const keyboard = Markup.inlineKeyboard([
+    const confirmRows: InlineKeyboardButton[][] = [
       [
         Markup.button.callback(
           'Подтвердить',
@@ -1674,7 +1689,13 @@ if (!registerTextHandler) {
         ),
         Markup.button.callback('Отмена', `cancel_request_abort:${session.taskId}`),
       ],
-    ]);
+    ];
+    const keyboard = Markup.inlineKeyboard(confirmRows) as ReturnType<
+      typeof Markup.inlineKeyboard
+    > & { reply_markup?: InlineKeyboardMarkup };
+    if (!keyboard.reply_markup) {
+      keyboard.reply_markup = { inline_keyboard: confirmRows };
+    }
     await ctx.reply(
       `${messages.cancelRequestConfirmPrompt}\n\nЗадача: ${session.identifier}\nПричина:\n${preview}`,
       {

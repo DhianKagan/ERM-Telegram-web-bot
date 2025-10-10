@@ -1,7 +1,10 @@
 // Назначение: формирование кнопок изменения статуса задачи для чата
 // Модули: telegraf Markup
 import { Markup } from 'telegraf';
-import type { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
+import type {
+  InlineKeyboardButton,
+  InlineKeyboardMarkup,
+} from 'telegraf/typings/core/types/typegram';
 
 type TaskStatus = 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
 
@@ -26,38 +29,26 @@ const resolveStatusLabel = (
     ? statusButtonLabels[target].active
     : statusButtonLabels[target].default;
 
-export function taskAcceptConfirmKeyboard(
-  id: string,
-): ReturnType<typeof Markup.inlineKeyboard> {
-  return Markup.inlineKeyboard([
-    Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_accept_cancel:${id}`),
-  ]);
-}
+type InlineKeyboardMatrix = InlineKeyboardButton[][];
 
-export function taskDoneConfirmKeyboard(
-  id: string,
-): ReturnType<typeof Markup.inlineKeyboard> {
-  return Markup.inlineKeyboard([
-    Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_done_cancel:${id}`),
-  ]);
-}
+const ensureReplyMarkup = <T extends ReturnType<typeof Markup.inlineKeyboard>>(
+  keyboard: T,
+  rows: InlineKeyboardMatrix,
+): T & { reply_markup: InlineKeyboardMarkup } => {
+  const enriched = keyboard as T & { reply_markup?: InlineKeyboardMarkup };
+  if (!enriched.reply_markup) {
+    enriched.reply_markup = {
+      inline_keyboard: rows,
+    } as InlineKeyboardMarkup;
+  }
+  return enriched as T & { reply_markup: InlineKeyboardMarkup };
+};
 
-export function taskCancelConfirmKeyboard(
-  id: string,
-): ReturnType<typeof Markup.inlineKeyboard> {
-  return Markup.inlineKeyboard([
-    Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_cancel_cancel:${id}`),
-  ]);
-}
-
-export default function taskStatusKeyboard(
+const buildStatusRows = (
   id: string,
   currentStatus?: TaskStatus,
   options: TaskStatusKeyboardOptions = {},
-): ReturnType<typeof Markup.inlineKeyboard> {
+): InlineKeyboardMatrix => {
   const primaryRow: InlineKeyboardButton[] = [
     Markup.button.callback(
       resolveStatusLabel('В работе', currentStatus),
@@ -76,7 +67,7 @@ export default function taskStatusKeyboard(
       ),
     );
   }
-  const rows: InlineKeyboardButton[][] = [primaryRow];
+  const rows: InlineKeyboardMatrix = [primaryRow];
   const actionsRow: InlineKeyboardButton[] = [
     Markup.button.callback('История', `task_history:${id}`),
   ];
@@ -86,5 +77,53 @@ export default function taskStatusKeyboard(
     );
   }
   rows.push(actionsRow);
-  return Markup.inlineKeyboard(rows);
+  return rows;
+};
+
+export function taskAcceptConfirmKeyboard(
+  id: string,
+): ReturnType<typeof Markup.inlineKeyboard> {
+  const rows: InlineKeyboardMatrix = [[
+    Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`),
+    Markup.button.callback('Отмена', `task_accept_cancel:${id}`),
+  ]];
+  return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
+}
+
+export function taskDoneConfirmKeyboard(
+  id: string,
+): ReturnType<typeof Markup.inlineKeyboard> {
+  const rows: InlineKeyboardMatrix = [[
+    Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
+    Markup.button.callback('Отмена', `task_done_cancel:${id}`),
+  ]];
+  return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
+}
+
+export function taskCancelConfirmKeyboard(
+  id: string,
+): ReturnType<typeof Markup.inlineKeyboard> {
+  const rows: InlineKeyboardMatrix = [[
+    Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`),
+    Markup.button.callback('Отмена', `task_cancel_cancel:${id}`),
+  ]];
+  return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
+}
+
+export default function taskStatusKeyboard(
+  id: string,
+  currentStatus?: TaskStatus,
+  options: TaskStatusKeyboardOptions = {},
+): ReturnType<typeof Markup.inlineKeyboard> {
+  const rows = buildStatusRows(id, currentStatus, options);
+  return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
+}
+
+export function taskStatusInlineMarkup(
+  id: string,
+  currentStatus?: TaskStatus,
+  options: TaskStatusKeyboardOptions = {},
+): InlineKeyboardMarkup {
+  const rows = buildStatusRows(id, currentStatus, options);
+  return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows).reply_markup;
 }

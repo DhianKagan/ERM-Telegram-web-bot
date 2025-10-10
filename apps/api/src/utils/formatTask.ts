@@ -346,11 +346,26 @@ type TaskData = Task & {
 
 const appUrlBase = configuredAppUrl.replace(/\/+$/, '');
 
+const SECTION_SEPARATOR = '\n\n━━━━━━━━━━━━\n\n';
+
 type InlineImage = { url: string; alt?: string };
+
+type FormatTaskSectionKey =
+  | 'header'
+  | 'info'
+  | 'logistics'
+  | 'participants'
+  | 'description';
+
+type FormatTaskSection = {
+  key: FormatTaskSectionKey;
+  content: string;
+};
 
 type FormatTaskResult = {
   text: string;
   inlineImages: InlineImage[];
+  sections: FormatTaskSection[];
 };
 
 const HTTP_URL_REGEXP = /^https?:\/\//i;
@@ -609,7 +624,7 @@ export default function formatTask(
   task: TaskData,
   users: UsersIndex = {},
 ): FormatTaskResult {
-  const sections: string[] = [];
+  const sections: FormatTaskSection[] = [];
   const inlineImages: InlineImage[] = [];
 
   const headerParts: string[] = [];
@@ -653,7 +668,7 @@ export default function formatTask(
     headerParts.push(mdEscape(completionNote));
   }
   if (headerParts.length) {
-    sections.push(headerParts.join('\n'));
+    sections.push({ key: 'header', content: headerParts.join('\n') });
   }
 
   const infoLines: string[] = [];
@@ -731,7 +746,10 @@ export default function formatTask(
     );
   }
   if (infoLines.length) {
-    sections.push(['🧾 *Информация*', ...infoLines].join('\n'));
+    sections.push({
+      key: 'info',
+      content: ['🧾 *Информация*', ...infoLines].join('\n'),
+    });
   }
   if (logisticsEnabled) {
     const logisticsLines: string[] = [];
@@ -762,7 +780,10 @@ export default function formatTask(
       });
     }
     if (logisticsLines.length) {
-      sections.push(['🧭 *Логистика*', ...logisticsLines].join('\n'));
+      sections.push({
+        key: 'logistics',
+        content: ['🧭 *Логистика*', ...logisticsLines].join('\n'),
+      });
     }
   }
 
@@ -792,7 +813,10 @@ export default function formatTask(
     );
   }
   if (peopleLines.length) {
-    sections.push(['🤝 *Участники*', ...peopleLines].join('\n'));
+    sections.push({
+      key: 'participants',
+      content: ['🤝 *Участники*', ...peopleLines].join('\n'),
+    });
   }
 
   if (task.task_description) {
@@ -804,11 +828,19 @@ export default function formatTask(
       lines.push(formattedDescription);
     }
     if (lines.length) {
-      sections.push(`📝 *Описание*\n${lines.join('\n')}`);
+      sections.push({
+        key: 'description',
+        content: `📝 *Описание*\n${lines.join('\n')}`,
+      });
     }
   }
 
-  return { text: sections.join('\n\n━━━━━━━━━━━━\n\n'), inlineImages };
+  return {
+    text: sections.map((section) => section.content).join(SECTION_SEPARATOR),
+    inlineImages,
+    sections,
+  };
 }
 
-export type { InlineImage, FormatTaskResult };
+export type { InlineImage, FormatTaskResult, FormatTaskSection };
+export { SECTION_SEPARATOR };

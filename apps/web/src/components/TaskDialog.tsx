@@ -1,7 +1,7 @@
 // Общая форма создания и редактирования задач
-// Модули: React, DOMPurify, контексты, сервисы задач, shared, EmployeeLink, логирование, coerceTaskId
+// Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, логирование, coerceTaskId
 import React from "react";
-import DOMPurify from "dompurify";
+import { createPortal } from "react-dom";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,11 @@ import ConfirmDialog from "./ConfirmDialog";
 import AlertDialog from "./AlertDialog";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
-import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, taskFields as fields } from "shared";
+import {
+  PROJECT_TIMEZONE,
+  PROJECT_TIMEZONE_LABEL,
+  taskFields as fields,
+} from "shared";
 import {
   createTask,
   createRequest,
@@ -29,9 +33,12 @@ import { expandLink } from "../services/maps";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import createRouteLink from "../utils/createRouteLink";
-import { useForm, Controller } from "react-hook-form";
-import { z, ZodError } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  useForm,
+  Controller,
+  type Resolver,
+  type FieldErrors,
+} from "react-hook-form";
 import FileUploader from "./FileUploader";
 import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
@@ -44,7 +51,7 @@ interface Props {
   onClose: () => void;
   onSave?: (data: Task | null) => void;
   id?: string;
-  kind?: 'task' | 'request';
+  kind?: "task" | "request";
 }
 
 interface InitialValues {
@@ -148,7 +155,7 @@ const currencyFormatter = new Intl.NumberFormat("uk-UA", {
 
 const parseCurrencyInput = (value: string): number | null => {
   if (!value.trim()) return 0;
-  const sanitized = value.replace(/\s*грн\.?/gi, '').trim();
+  const sanitized = value.replace(/\s*грн\.?/gi, "").trim();
   const parsed = parseMetricInput(sanitized);
   if (parsed === null) return null;
   if (!Number.isFinite(parsed)) return null;
@@ -163,7 +170,7 @@ const formatCurrencyDisplay = (value: unknown): string => {
     if (!trimmed) return currencyFormatter.format(0);
     const parsed = parseCurrencyInput(trimmed);
     if (parsed === null) {
-      const sanitized = trimmed.replace(/\s*грн\.?/gi, '').trim();
+      const sanitized = trimmed.replace(/\s*грн\.?/gi, "").trim();
       return sanitized || currencyFormatter.format(0);
     }
     return currencyFormatter.format(parsed);
@@ -185,9 +192,7 @@ const parseIsoDate = (value?: string | null): Date | null => {
   return parsed;
 };
 
-const formatCoords = (
-  coords: { lat: number; lng: number } | null,
-): string => {
+const formatCoords = (coords: { lat: number; lng: number } | null): string => {
   if (!coords) return "";
   const lat = Number.isFinite(coords.lat)
     ? coords.lat.toFixed(6)
@@ -198,13 +203,36 @@ const formatCoords = (
   return `${lat}, ${lng}`;
 };
 
+const sanitizeLocationLink = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const normalized = validateURL(value);
+  if (!normalized) {
+    return "";
+  }
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    return "";
+  }
+  return "";
+};
+
 const toIsoString = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "number") {
     const fromNumber = new Date(value);
     return Number.isNaN(fromNumber.getTime()) ? "" : fromNumber.toISOString();
   }
-  if (value && typeof value === "object" && "$date" in (value as Record<string, unknown>)) {
+  if (
+    value &&
+    typeof value === "object" &&
+    "$date" in (value as Record<string, unknown>)
+  ) {
     const raw = (value as Record<string, unknown>).$date;
     return typeof raw === "string" ? raw : "";
   }
@@ -217,10 +245,13 @@ const normalizeHistory = (raw: unknown): HistoryItem[] => {
   const source = Array.isArray(raw)
     ? raw
     : typeof raw === "object"
-    ? Object.values(raw as Record<string, unknown>)
-    : [];
+      ? Object.values(raw as Record<string, unknown>)
+      : [];
   return source
-    .filter((entry): entry is Record<string, unknown> => entry !== null && typeof entry === "object")
+    .filter(
+      (entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === "object",
+    )
     .map((entry) => {
       const record = entry as Record<string, unknown>;
       const changes = toRecord(record.changes);
@@ -260,7 +291,8 @@ const formatHistoryValue = (value: unknown): string => {
     const parsed = parseIsoDate(value);
     return parsed ? formatHistoryInstant(parsed) : value;
   }
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
   try {
     return JSON.stringify(value);
   } catch {
@@ -286,16 +318,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
     () => id ?? null,
   );
-  const commitResolvedTaskId = React.useCallback((candidate?: string | null) => {
-    setResolvedTaskId((prev) => {
-      const canonical = coerceTaskId(candidate);
-      if (canonical) return canonical;
-      if (prev) return prev;
-      return candidate ?? null;
-    });
-  }, []);
+  const commitResolvedTaskId = React.useCallback(
+    (candidate?: string | null) => {
+      setResolvedTaskId((prev) => {
+        const canonical = coerceTaskId(candidate);
+        if (canonical) return canonical;
+        if (prev) return prev;
+        return candidate ?? null;
+      });
+    },
+    [],
+  );
   const effectiveTaskId = React.useMemo(
-    () => coerceTaskId(resolvedTaskId ?? id ?? null) ?? resolvedTaskId ?? id ?? null,
+    () =>
+      coerceTaskId(resolvedTaskId ?? id ?? null) ??
+      resolvedTaskId ??
+      id ??
+      null,
     [resolvedTaskId, id],
   );
   const isEdit = Boolean(effectiveTaskId);
@@ -345,33 +384,76 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [editing, setEditing] = React.useState(true);
   const initialRef = React.useRef<InitialValues | null>(null);
   const hasAutofilledAssignee = React.useRef(false);
-  const [initialDates, setInitialDates] = React.useState<{ start: string; due: string }>(
-    { start: "", due: "" },
-  );
+  const [initialDates, setInitialDates] = React.useState<{
+    start: string;
+    due: string;
+  }>({ start: "", due: "" });
   const [requestId, setRequestId] = React.useState("");
   const [created, setCreated] = React.useState("");
   const [completedAt, setCompletedAt] = React.useState("");
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = React.useState(false);
-  const taskSchema = z
-    .object({
-      title: z.string().min(1, t("titleRequired")),
-      description: z.string().optional(),
-      assigneeId: z.string().trim().min(1, t("assigneeRequiredError")),
-      startDate: z.string().optional(),
-      dueDate: z.string().optional(),
-    })
-    .refine(
-      (d) =>
-        !d.startDate ||
-        !d.dueDate ||
-        new Date(d.dueDate) >= new Date(d.startDate),
-      {
-        message: t("dueBeforeStart"),
-        path: ["dueDate"],
-      },
-    );
-  type TaskFormValues = z.infer<typeof taskSchema>;
+  const dialogTitleId = React.useId();
+  type TaskFormValues = {
+    title: string;
+    description?: string;
+    assigneeId: string;
+    startDate?: string;
+    dueDate?: string;
+  };
+  const taskFormResolver = React.useCallback<Resolver<TaskFormValues>>(
+    async (values) => {
+      const normalizedTitle =
+        typeof values.title === "string" ? values.title.trim() : "";
+      const normalizedDescription =
+        typeof values.description === "string" ? values.description : "";
+      const normalizedAssignee =
+        typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
+      const normalizedStartRaw =
+        typeof values.startDate === "string" ? values.startDate.trim() : "";
+      const normalizedDueRaw =
+        typeof values.dueDate === "string" ? values.dueDate.trim() : "";
+      const normalized: TaskFormValues = {
+        title: normalizedTitle,
+        description: normalizedDescription,
+        assigneeId: normalizedAssignee,
+        startDate: normalizedStartRaw || undefined,
+        dueDate: normalizedDueRaw || undefined,
+      };
+      const fieldErrors: FieldErrors<TaskFormValues> = {};
+      if (!normalizedTitle) {
+        fieldErrors.title = {
+          type: "required",
+          message: t("titleRequired"),
+        };
+      }
+      if (!normalizedAssignee) {
+        fieldErrors.assigneeId = {
+          type: "required",
+          message: t("assigneeRequiredError"),
+        };
+      }
+      if (normalized.startDate && normalized.dueDate) {
+        const startTime = new Date(normalized.startDate).getTime();
+        const dueTime = new Date(normalized.dueDate).getTime();
+        if (
+          Number.isFinite(startTime) &&
+          Number.isFinite(dueTime) &&
+          dueTime < startTime
+        ) {
+          fieldErrors.dueDate = {
+            type: "validate",
+            message: t("dueBeforeStart"),
+          };
+        }
+      }
+      return {
+        values: Object.keys(fieldErrors).length ? {} : normalized,
+        errors: fieldErrors,
+      };
+    },
+    [t],
+  );
   const {
     register,
     control,
@@ -382,7 +464,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setError,
     formState: { errors },
   } = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
+    resolver: taskFormResolver,
     defaultValues: {
       title: "",
       description: "",
@@ -405,12 +487,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const types = fields.find((f) => f.name === "task_type")?.options || [];
   const requestTypeOptions = types.filter((type) => type === REQUEST_TYPE_NAME);
   const taskTypeOptions = types.filter((type) => type !== REQUEST_TYPE_NAME);
-  const DEFAULT_REQUEST_TYPE =
-    requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
+  const DEFAULT_REQUEST_TYPE = requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
   const DEFAULT_TASK_TYPE =
     RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME
       ? RAW_DEFAULT_TASK_TYPE
-      : taskTypeOptions[0] ?? "";
+      : (taskTypeOptions[0] ?? "");
 
   const formatInputDate = React.useCallback((value: Date) => {
     const year = value.getFullYear();
@@ -500,6 +581,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
+  const canonicalStartLink = React.useMemo(
+    () => sanitizeLocationLink(startLink),
+    [startLink],
+  );
+  const canonicalEndLink = React.useMemo(
+    () => sanitizeLocationLink(endLink),
+    [endLink],
+  );
   const priorities = fields.find((f) => f.name === "priority")?.options || [];
   const transports =
     fields.find((f) => f.name === "transport_type")?.options || [];
@@ -522,6 +611,38 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [startDateNotice, setStartDateNotice] = React.useState<string | null>(
     null,
   );
+  const fetchedTaskIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const { body, documentElement } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+    const scrollbarWidth =
+      typeof window !== "undefined"
+        ? window.innerWidth - documentElement.clientWidth
+        : 0;
+    body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+    };
+  }, []);
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
   React.useEffect(() => {
     if (!id) return;
     commitResolvedTaskId(id);
@@ -585,11 +706,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         return DEFAULT_TASK_TYPE;
       })();
       const curPriority =
-        normalizePriorityOption(taskData.priority as string) || DEFAULT_PRIORITY;
+        normalizePriorityOption(taskData.priority as string) ||
+        DEFAULT_PRIORITY;
       const curTransport =
         (taskData.transport_type as string) || DEFAULT_TRANSPORT;
-      const curPayment =
-        (taskData.payment_method as string) || DEFAULT_PAYMENT;
+      const curPayment = (taskData.payment_method as string) || DEFAULT_PAYMENT;
       const amountValue = formatCurrencyDisplay(
         (taskData.payment_amount as unknown) ?? DEFAULT_PAYMENT_AMOUNT,
       );
@@ -610,7 +731,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         return String(rawAssignee);
       })();
       const rawCreated =
-        ((taskData as Record<string, unknown>).createdAt as string | undefined) ||
+        ((taskData as Record<string, unknown>).createdAt as
+          | string
+          | undefined) ||
         created ||
         "";
       const createdDateValue = parseIsoDateMemo(rawCreated);
@@ -621,15 +744,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         (taskData.start_date as string | undefined) ?? null,
       );
       const normalizedStartDate = createdDateValue
-        ? startCandidate && startCandidate.getTime() >= createdDateValue.getTime()
+        ? startCandidate &&
+          startCandidate.getTime() >= createdDateValue.getTime()
           ? startCandidate
           : createdDateValue
         : startCandidate;
       const startDate = normalizedStartDate
         ? formatInputDate(normalizedStartDate)
         : createdDateValue
-        ? formatInputDate(createdDateValue)
-        : "";
+          ? formatInputDate(createdDateValue)
+          : "";
       const dueCandidate = parseIsoDateMemo(
         (taskData.due_date as string | undefined) ?? null,
       );
@@ -642,10 +766,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const dueDate = normalizedDueDate
         ? formatInputDate(normalizedDueDate)
         : normalizedStartDate
-        ? formatInputDate(
-            new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
-          )
-        : "";
+          ? formatInputDate(
+              new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
+            )
+          : "";
       const diff =
         startDate && dueDate
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
@@ -690,14 +814,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       );
       const startLocationValue = (taskData.start_location as string) || "";
       const endLocationValue = (taskData.end_location as string) || "";
-      const startLocationLink = (taskData.start_location_link as string) || "";
-      const endLocationLink = (taskData.end_location_link as string) || "";
+      const startLocationLinkRaw =
+        (taskData.start_location_link as string) || "";
+      const endLocationLinkRaw = (taskData.end_location_link as string) || "";
+      const startLocationLink = sanitizeLocationLink(startLocationLinkRaw);
+      const endLocationLink = sanitizeLocationLink(endLocationLinkRaw);
       const distanceValue =
         typeof taskData.route_distance_km === "number"
           ? taskData.route_distance_km
           : null;
-      const rawLogisticsEnabled =
-        (taskData as Record<string, unknown>).logistics_enabled;
+      const rawLogisticsEnabled = (taskData as Record<string, unknown>)
+        .logistics_enabled;
       const hasLogisticsData = Boolean(
         startLocationValue ||
           endLocationValue ||
@@ -715,11 +842,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setCreator(String((taskData.created_by as unknown) || ""));
       setStart(startLocationValue);
       setStartLink(startLocationLink);
-      setStartCoordinates(startLocationLink ? extractCoords(startLocationLink) : null);
+      setStartCoordinates(
+        startLocationLink ? extractCoords(startLocationLink) : null,
+      );
       setEnd(endLocationValue);
       setEndLink(endLocationLink);
-      setFinishCoordinates(endLocationLink ? extractCoords(endLocationLink) : null);
-      setAttachments(((taskData.attachments as Attachment[]) || []) as Attachment[]);
+      setFinishCoordinates(
+        endLocationLink ? extractCoords(endLocationLink) : null,
+      );
+      setAttachments(
+        ((taskData.attachments as Attachment[]) || []) as Attachment[],
+      );
       if (usersMap) {
         setUsers((prev) => {
           const list = [...prev];
@@ -751,9 +884,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         endLink: endLocationLink,
         startDate,
         dueDate,
-        attachments: ((taskData.attachments as Attachment[]) || []) as Attachment[],
-        distanceKm:
-          typeof distanceValue === "number" ? distanceValue : null,
+        attachments: ((taskData.attachments as Attachment[]) ||
+          []) as Attachment[],
+        distanceKm: typeof distanceValue === "number" ? distanceValue : null,
         cargoLength: lengthValue,
         cargoWidth: widthValue,
         cargoHeight: heightValue,
@@ -777,7 +910,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       DEFAULT_STATUS,
       DEFAULT_DUE_OFFSET_MS,
       DEFAULT_REQUEST_TYPE,
-      requestTypeOptions,
       taskTypeOptions,
       created,
       formatInputDate,
@@ -797,25 +929,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const lengthValue = parseMetricInput(cargoLength);
     const widthValue = parseMetricInput(cargoWidth);
     const heightValue = parseMetricInput(cargoHeight);
-    if (
-      lengthValue !== null &&
-      widthValue !== null &&
-      heightValue !== null
-    ) {
+    if (lengthValue !== null && widthValue !== null && heightValue !== null) {
       const computed = lengthValue * widthValue * heightValue;
       if (Number.isFinite(computed)) {
         const formatted = computed.toFixed(3);
         if (formatted !== cargoVolume) setCargoVolume(formatted);
-      } else if (cargoVolume !== '') {
-        setCargoVolume('');
+      } else if (cargoVolume !== "") {
+        setCargoVolume("");
       }
       return;
     }
     if (
       (cargoLength.trim() || cargoWidth.trim() || cargoHeight.trim()) &&
-      cargoVolume !== ''
+      cargoVolume !== ""
     ) {
-      setCargoVolume('');
+      setCargoVolume("");
     }
   }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
@@ -823,17 +951,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const targetId = effectiveTaskId;
     setEditing(true);
     if (isEdit && targetId) {
+      const canonicalTargetId = coerceTaskId(targetId) ?? targetId;
+      if (fetchedTaskIdRef.current === canonicalTargetId) {
+        return;
+      }
+      fetchedTaskIdRef.current = canonicalTargetId;
       authFetch(`/api/v1/tasks/${targetId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (!d) return;
+          if (!d) {
+            fetchedTaskIdRef.current = null;
+            return;
+          }
           const t = d.task || d;
           setUsers((p) => {
             const list = [...p];
             const uMap = (d.users || {}) as Record<string, UserBrief>;
             Object.values(uMap).forEach((u) => {
-              if (!list.some((v) => v.telegram_id === u.telegram_id))
+              if (!list.some((v) => v.telegram_id === u.telegram_id)) {
                 list.push(u);
+              }
             });
             return list;
           });
@@ -852,100 +989,94 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             setCreated((prev) => prev || new Date().toISOString());
           }
           setHistory(normalizeHistory(t.history));
-          commitResolvedTaskId(
-            ((t as Record<string, unknown>)._id as string | undefined) ??
-              ((t as Record<string, unknown>).id as string | undefined) ??
-              null,
-          );
-          setStartDateNotice(null);
+          applyTaskDetails(t, d.users as Record<string, UserBrief>);
+          const resolvedId =
+            coerceTaskId(
+              ((t as Record<string, unknown>)._id as string | undefined) ??
+                ((t as Record<string, unknown>).id as string | undefined) ??
+                null,
+            ) ?? null;
+          if (resolvedId) {
+            fetchedTaskIdRef.current = resolvedId;
+          }
         });
-    } else {
-      setEntityKind(initialKind);
-      const createdAt = new Date();
-      const { start: defaultStartDate, due: defaultDueDate } =
-        computeDefaultDates(createdAt);
-      setCreated(createdAt.toISOString());
-      setCompletedAt("");
-      setHistory([]);
-      setResolvedTaskId(null);
-      const summaryUrl =
-        initialKind === "request"
-          ? "/api/v1/tasks/report/summary?kind=request"
-          : "/api/v1/tasks/report/summary";
-      authFetch(summaryUrl)
-        .then((r) => (r.ok ? r.json() : { count: 0 }))
-        .then((s) => {
-          const num = String((s.count || 0) + 1).padStart(6, "0");
-          const prefix = initialKind === "request" ? "REQ" : "ERM";
-          setRequestId(`${prefix}_${num}`);
-        });
-      setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
-      const startInstant = parseIsoDate(defaultStartDate);
-      setStartDateNotice(
-        startInstant ? formatHistoryInstant(startInstant) : null,
-      );
-      initialRef.current = {
-        title: "",
-        taskType:
-          initialKind === "request"
-            ? DEFAULT_REQUEST_TYPE
-            : DEFAULT_TASK_TYPE,
-        description: "",
-        comment: "",
-        priority: DEFAULT_PRIORITY,
-        transportType: DEFAULT_TRANSPORT,
-        paymentMethod: DEFAULT_PAYMENT,
-        paymentAmount: formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
-        status: DEFAULT_STATUS,
-        completedAt: "",
-        creator: user ? String(user.telegram_id) : "",
-        assigneeId:
-          initialKind === "request"
-            ? ""
-            : user
-              ? String(user.telegram_id)
-              : "",
-        start: "",
-        startLink: "",
-        end: "",
-        endLink: "",
-        startDate: defaultStartDate,
-        dueDate: defaultDueDate,
-        attachments: [],
-        distanceKm: null,
-        cargoLength: "",
-        cargoWidth: "",
-        cargoHeight: "",
-        cargoVolume: "",
-        cargoWeight: "",
-        showLogistics: false,
-      };
-      setInitialDates({ start: defaultStartDate, due: defaultDueDate });
-      reset({
-        title: "",
-        description: "",
-        assigneeId:
-          initialKind === "request"
-            ? ""
-            : user
-              ? String(user.telegram_id)
-              : "",
-        startDate: defaultStartDate,
-        dueDate: defaultDueDate,
-      });
-      hasAutofilledAssignee.current = false;
-      setCargoLength("");
-      setCargoWidth("");
-      setCargoHeight("");
-      setCargoVolume("");
-      setCargoWeight("");
-      setShowLogistics(false);
-      setDueOffset(DEFAULT_DUE_OFFSET_MS);
+      return;
     }
+    fetchedTaskIdRef.current = null;
+    setEntityKind(initialKind);
+    const createdAt = new Date();
+    const { start: defaultStartDate, due: defaultDueDate } =
+      computeDefaultDates(createdAt);
+    setCreated(createdAt.toISOString());
+    setCompletedAt("");
+    setHistory([]);
+    setResolvedTaskId(null);
+    const summaryUrl =
+      initialKind === "request"
+        ? "/api/v1/tasks/report/summary?kind=request"
+        : "/api/v1/tasks/report/summary";
+    authFetch(summaryUrl)
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((s) => {
+        const num = String((s.count || 0) + 1).padStart(6, "0");
+        const prefix = initialKind === "request" ? "REQ" : "ERM";
+        setRequestId(`${prefix}_${num}`);
+      });
+    setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
+    const startInstant = parseIsoDate(defaultStartDate);
+    setStartDateNotice(
+      startInstant ? formatHistoryInstant(startInstant) : null,
+    );
+    initialRef.current = {
+      title: "",
+      taskType:
+        initialKind === "request" ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
+      description: "",
+      comment: "",
+      priority: DEFAULT_PRIORITY,
+      transportType: DEFAULT_TRANSPORT,
+      paymentMethod: DEFAULT_PAYMENT,
+      paymentAmount: formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
+      status: DEFAULT_STATUS,
+      completedAt: "",
+      creator: user ? String(user.telegram_id) : "",
+      assigneeId:
+        initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
+      start: "",
+      startLink: "",
+      end: "",
+      endLink: "",
+      startDate: defaultStartDate,
+      dueDate: defaultDueDate,
+      attachments: [],
+      distanceKm: null,
+      cargoLength: "",
+      cargoWidth: "",
+      cargoHeight: "",
+      cargoVolume: "",
+      cargoWeight: "",
+      showLogistics: false,
+    };
+    setInitialDates({ start: defaultStartDate, due: defaultDueDate });
+    reset({
+      title: "",
+      description: "",
+      assigneeId:
+        initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
+      startDate: defaultStartDate,
+      dueDate: defaultDueDate,
+    });
+    hasAutofilledAssignee.current = false;
+    setCargoLength("");
+    setCargoWidth("");
+    setCargoHeight("");
+    setCargoVolume("");
+    setCargoWeight("");
+    setShowLogistics(false);
+    setDueOffset(DEFAULT_DUE_OFFSET_MS);
   }, [
-    id,
     isEdit,
-    resolvedTaskId,
+    effectiveTaskId,
     user,
     DEFAULT_TASK_TYPE,
     DEFAULT_REQUEST_TYPE,
@@ -960,8 +1091,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     reset,
     setDueOffset,
     setInitialDates,
-    commitResolvedTaskId,
-    effectiveTaskId,
+    applyTaskDetails,
     initialKind,
   ]);
 
@@ -1022,7 +1152,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (hasAutofilledAssignee.current) return;
     const preferred =
       (user &&
-        users.find((candidate) => candidate.telegram_id === user.telegram_id)) ||
+        users.find(
+          (candidate) => candidate.telegram_id === user.telegram_id,
+        )) ||
       users[0];
     if (!preferred) return;
     const candidateId = String(preferred.telegram_id);
@@ -1037,58 +1169,46 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     hasAutofilledAssignee.current = true;
   }, [assigneeValue, isEdit, user, users, setValue]);
 
-  React.useEffect(() => {
-    const targetId = effectiveTaskId;
-    if (!isEdit || !targetId) return;
-    authFetch(`/api/v1/tasks/${targetId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
-        const t = d.task || d;
-        applyTaskDetails(t, d.users as Record<string, UserBrief>);
-      });
-  }, [effectiveTaskId, isEdit, applyTaskDetails]);
-
-  const handleStartLink = async (v: string) => {
-    setStartLink(v);
-    const url = validateURL(v);
-    // Разрешены только ссылки с протоколом HTTP(S)
-    if (url && /^(https?:\/\/)/i.test(url)) {
-      let link = url;
-      if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(url)) {
-        const data = await expandLink(url);
-        if (data) {
-          link = data.url;
-        }
-      }
-      setStart(parseGoogleAddress(link));
-      setStartCoordinates(extractCoords(link));
-      setStartLink(link);
-    } else {
+  const handleStartLink = async (value: string) => {
+    setStartLink(value);
+    const sanitized = sanitizeLocationLink(value);
+    if (!sanitized) {
       setStart("");
       setStartCoordinates(null);
       setStartLink("");
+      return;
     }
+    let link = sanitized;
+    if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized)) {
+      const data = await expandLink(sanitized);
+      if (data?.url) {
+        link = sanitizeLocationLink(data.url) || sanitized;
+      }
+    }
+    setStart(parseGoogleAddress(link));
+    setStartCoordinates(extractCoords(link));
+    setStartLink(link);
   };
 
-  const handleEndLink = async (v: string) => {
-    setEndLink(v);
-    const url = validateURL(v);
-    if (url) {
-      let link = url;
-      if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(url)) {
-        const data = await expandLink(url);
-        if (data) {
-          link = data.url;
-        }
-      }
-      setEnd(parseGoogleAddress(link));
-      setFinishCoordinates(extractCoords(link));
-      setEndLink(link);
-    } else {
+  const handleEndLink = async (value: string) => {
+    setEndLink(value);
+    const sanitized = sanitizeLocationLink(value);
+    if (!sanitized) {
       setEnd("");
       setFinishCoordinates(null);
+      setEndLink("");
+      return;
     }
+    let link = sanitized;
+    if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized)) {
+      const data = await expandLink(sanitized);
+      if (data?.url) {
+        link = sanitizeLocationLink(data.url) || sanitized;
+      }
+    }
+    setEnd(parseGoogleAddress(link));
+    setFinishCoordinates(extractCoords(link));
+    setEndLink(link);
   };
 
   React.useEffect(() => {
@@ -1151,7 +1271,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (isNewTask) {
         const defaults = computeDefaultDates(creationDate ?? undefined);
         const startMatchesInitial =
-          Boolean(startValue) && Boolean(initialStart) && startValue === initialStart;
+          Boolean(startValue) &&
+          Boolean(initialStart) &&
+          startValue === initialStart;
         const startCleared = !startValue && Boolean(initialStart);
         startInputValue = startValue || defaults.start;
         if (startMatchesInitial || (!startValue && !initialStart)) {
@@ -1167,7 +1289,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           const startMs = new Date(startInputValue).getTime();
           const offset =
             initialStart && initialDue
-              ? new Date(initialDue).getTime() - new Date(initialStart).getTime()
+              ? new Date(initialDue).getTime() -
+                new Date(initialStart).getTime()
               : DEFAULT_DUE_OFFSET_MS;
           if (Number.isFinite(startMs)) {
             dueInputValue = formatInputDate(new Date(startMs + offset));
@@ -1204,7 +1327,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         dueMs = new Date(dueInputValue).getTime();
       }
       if (!Number.isNaN(startMs) && !Number.isNaN(dueMs) && dueMs < startMs) {
-        dueInputValue = formatInputDate(new Date(startMs + DEFAULT_DUE_OFFSET_MS));
+        dueInputValue = formatInputDate(
+          new Date(startMs + DEFAULT_DUE_OFFSET_MS),
+        );
         shouldSetDue = true;
         shouldIncludeDue = true;
         dueMs = new Date(dueInputValue).getTime();
@@ -1213,10 +1338,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setDueOffset(dueMs - startMs);
       }
       if (shouldSetStart) {
-        setValue('startDate', startInputValue);
+        setValue("startDate", startInputValue);
       }
       if (shouldSetDue) {
-        setValue('dueDate', dueInputValue);
+        setValue("dueDate", dueInputValue);
       }
       const assignedRaw =
         typeof formData.assigneeId === "string"
@@ -1231,7 +1356,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         return;
       }
       const assignedNumeric = toNumericValue(assignedRaw);
-      const assignedValue = assignedNumeric !== null ? assignedNumeric : assignedRaw;
+      const assignedValue =
+        assignedNumeric !== null ? assignedNumeric : assignedRaw;
       const resolvedTaskType =
         entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
       const payload: Record<string, unknown> = {
@@ -1335,10 +1461,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         | (Partial<Task> & Record<string, unknown>)
         | null;
       if (taskData) {
-        applyTaskDetails(taskData, detail?.users as Record<string, UserBrief> | undefined);
+        applyTaskDetails(
+          taskData,
+          detail?.users as Record<string, UserBrief> | undefined,
+        );
         const createdAtRaw =
           (taskData.createdAt as string | undefined) ||
-          ((detail?.task as Record<string, unknown>)?.createdAt as string | undefined);
+          ((detail?.task as Record<string, unknown>)?.createdAt as
+            | string
+            | undefined);
         if (createdAtRaw) {
           const createdDate = new Date(createdAtRaw);
           if (!Number.isNaN(createdDate.getTime())) {
@@ -1484,13 +1615,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             (data as Record<string, unknown>)?.completedAt,
         );
         const fallbackCompleted = new Date().toISOString();
-        setCompletedAt(
-          completedValue || fallbackCompleted,
-        );
+        setCompletedAt(completedValue || fallbackCompleted);
         if (initialRef.current) {
           initialRef.current.status = "Выполнена";
-          initialRef.current.completedAt =
-            completedValue || fallbackCompleted;
+          initialRef.current.completedAt = completedValue || fallbackCompleted;
         }
         if (onSave) onSave(data);
       } else {
@@ -1528,761 +1656,815 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (createdLabel) parts.push(createdLabel);
     return parts.join(" ").trim();
   }, [created, requestId, t]);
+  const handleBackdropClick = React.useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) {
+        onClose();
+      }
+    },
+    [onClose],
+  );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="relative mx-auto w-full max-w-screen-md space-y-4 rounded-xl bg-white p-4 shadow-lg">
-        <div className="pr-16">
-          <h3
-            className="text-lg font-semibold leading-snug text-gray-900 break-words sm:whitespace-nowrap sm:overflow-hidden sm:text-ellipsis"
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000]">
+      <button
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={handleBackdropClick}
+        className="absolute inset-0 h-full w-full cursor-default bg-slate-950/70 backdrop-blur-sm"
+      />
+      <div className="pointer-events-none absolute inset-0 overflow-y-auto">
+        <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
+          <div
+            className="pointer-events-auto relative mx-auto w-full max-w-screen-md space-y-4 rounded-xl bg-white p-4 shadow-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={dialogTitleId}
           >
-            {headerLabel}
-          </h3>
-          {hasCreator ? (
-            <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-600">
-              <span>{t("taskCreatedBy")}</span>
-              <EmployeeLink employeeId={creatorId} className={creatorBadgeClass}>
-                {creatorName}
-              </EmployeeLink>
-            </div>
-          ) : (
-            <span className="mt-1 block text-sm text-gray-500">{t("taskCreatorUnknown")}</span>
-          )}
-        </div>
-        <div className="absolute right-4 top-4 flex flex-wrap justify-end gap-2">
-          {isEdit && !editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
-              title={t("edit")}
-              aria-label={t("edit")}
-            >
-              ✎
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={resetForm}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
-            title={t("reset")}
-            aria-label={t("reset")}
-          >
-            <ArrowPathIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
-            title={t("close")}
-            aria-label={t("close")}
-          >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
-        </div>
-        <>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium" htmlFor="task-dialog-start-date">
-                {t("startDate")}
-              </label>
-              <input
-                id="task-dialog-start-date"
-                type="datetime-local"
-                {...register("startDate")}
-                min={formatIsoForInput(created)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              />
-              {!isEdit && startDateNotice ? (
-                <p className="mt-1 text-xs font-medium text-amber-600">
-                  {t("startDateAutoNotice", { date: startDateNotice })}
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <label className="block text-sm font-medium" htmlFor="task-dialog-due-date">
-                {t("dueDate")}
-              </label>
-              <input
-                id="task-dialog-due-date"
-                type="datetime-local"
-                {...register("dueDate", { onChange: handleDueDateChange })}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              {t("taskTitle")}
-            </label>
-            <textarea
-              {...titleFieldRest}
-              ref={handleTitleRef}
-              rows={1}
-              placeholder={t("title")}
-              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:outline-none focus:ring min-h-[44px] resize-none sm:text-base"
-              disabled={!editing}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                }
-              }}
-            />
-            {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              {t("taskSection")}
-            </label>
-            <Controller
-              name="description"
-              control={control}
-              render={({ field }) => (
-                <CKEditorPopup
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  readOnly={!editing}
-                />
-              )}
-            />
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("taskType")}
-              </label>
-              <select
-                value={taskType}
-                onChange={(e) => setTaskType(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing || entityKind === "request"}
+            <div className="pr-16">
+              <h3
+                id={dialogTitleId}
+                className="text-lg leading-snug font-semibold break-words text-gray-900 sm:overflow-hidden sm:text-ellipsis sm:whitespace-nowrap"
               >
-                {(entityKind === "request"
-                  ? requestTypeOptions
-                  : taskTypeOptions
-                ).map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                {t("priority")}
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                {priorities.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium">{t("status")}</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                {statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium"
-                htmlFor="task-dialog-completed-at"
-              >
-                {t("actualTime")}
-              </label>
-              <input
-                type="datetime-local"
-                id="task-dialog-completed-at"
-                name="completedAtDisplay"
-                value={completedAt ? formatIsoForInput(completedAt) : ""}
-                readOnly
-                placeholder="—"
-                className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <Controller
-              name="assigneeId"
-              control={control}
-              render={({ field }) => (
-                <MultiUserSelect
-                  label={t("assignees")}
-                  users={users}
-                  value={
-                    typeof field.value === "string" && field.value.trim().length > 0
-                      ? field.value.trim()
-                      : null
-                  }
-                  onChange={(val) => field.onChange(val ?? "")}
-                  onBlur={field.onBlur}
-                  disabled={!editing}
-                  required
-                  placeholder={t("assigneeSelectPlaceholder")}
-                  hint={!errors.assigneeId ? t("assigneeSelectHint") : undefined}
-                  error={errors.assigneeId?.message ?? null}
-                />
-              )}
-            />
-          </div>
-          <div className="space-y-3 rounded-md border border-dashed border-gray-300 p-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                id="task-show-logistics"
-                name="showLogistics"
-                className="h-4 w-4"
-                checked={showLogistics}
-                onChange={(e) => handleLogisticsToggle(e.target.checked)}
-                disabled={!editing}
-              />
-              {t("logisticsToggle")}
-            </label>
-            {showLogistics && (
-              <div className="space-y-4">
-                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-start-link"
-                    >
-                      {t("startPoint")}
-                    </label>
-                    {startLink ? (
-                      <div className="flex items-start gap-2">
-                        <div className="flex flex-col gap-1">
-                          <a
-                            href={DOMPurify.sanitize(startLink)}
-                            target="_blank"
-                            rel="noopener"
-                            className="text-accentPrimary underline"
-                          >
-                            {start || t("link")}
-                          </a>
-                          {startCoordinates && (
-                            <input
-                              id="task-start-coordinates"
-                              name="startCoordinatesDisplay"
-                              value={formatCoords(startCoordinates)}
-                              readOnly
-                              className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                              onFocus={(e) => e.currentTarget.select()}
-                              aria-label={t("coordinates")}
-                            />
-                          )}
-                        </div>
-                        {editing && (
-                          <button
-                            type="button"
-                            onClick={() => handleStartLink("")}
-                            className="text-red-600"
-                          >
-                            ✖
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-1 flex gap-2">
-                        <input
-                          id="task-start-link"
-                          name="startLink"
-                          value={startLink}
-                          onChange={(e) => handleStartLink(e.target.value)}
-                          placeholder={t("googleMapsLink")}
-                          className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                          disabled={!editing}
-                        />
-                        <a
-                          href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                          target="_blank"
-                          rel="noopener"
-                          className={cn(
-                            buttonVariants({ variant: "default", size: "sm" }),
-                            "rounded-2xl px-3",
-                          )}
-                        >
-                          {t("map")}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-end-link"
-                    >
-                      {t("endPoint")}
-                    </label>
-                    {endLink ? (
-                      <div className="flex items-start gap-2">
-                        <div className="flex flex-col gap-1">
-                          <a
-                            href={DOMPurify.sanitize(endLink)}
-                            target="_blank"
-                            rel="noopener"
-                            className="text-accentPrimary underline"
-                          >
-                            {end || t("link")}
-                          </a>
-                          {finishCoordinates && (
-                            <input
-                              id="task-end-coordinates"
-                              name="endCoordinatesDisplay"
-                              value={formatCoords(finishCoordinates)}
-                              readOnly
-                              className="w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                              onFocus={(e) => e.currentTarget.select()}
-                              aria-label={t("coordinates")}
-                            />
-                          )}
-                        </div>
-                        {editing && (
-                          <button
-                            type="button"
-                            onClick={() => handleEndLink("")}
-                            className="text-red-600"
-                          >
-                            ✖
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-1 flex gap-2">
-                        <input
-                          id="task-end-link"
-                          name="endLink"
-                          value={endLink}
-                          onChange={(e) => handleEndLink(e.target.value)}
-                          placeholder={t("googleMapsLink")}
-                          className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                          disabled={!editing}
-                        />
-                        <a
-                          href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                          target="_blank"
-                          rel="noopener"
-                          className={cn(
-                            buttonVariants({ variant: "default", size: "sm" }),
-                            "rounded-2xl px-3",
-                          )}
-                        >
-                          {t("map")}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                  <div>
-                    <label className="block text-sm font-medium">
-                      {t("transportType")}
-                    </label>
-                    <select
-                      value={transportType}
-                      onChange={(e) => setTransportType(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      disabled={!editing}
-                    >
-                      {transports.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {distanceKm !== null && (
-                    <div>
-                      <label className="block text-sm font-medium">
-                        {t("distance")}
-                      </label>
-                      <p>
-                        {distanceKm} {t("km")}
-                      </p>
-                    </div>
-                  )}
-                  {routeLink && (
-                    <div>
-                      <label className="block text-sm font-medium">
-                        {t("route")}
-                      </label>
-                      <a
-                        href={routeLink}
-                        target="_blank"
-                        rel="noopener"
-                        className="text-accentPrimary underline"
-                      >
-                        {t("link")}
-                      </a>
-                    </div>
-                  )}
-                </div>
-                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-cargo-length"
-                    >
-                      {t("cargoLength")}
-                    </label>
-                    <input
-                      id="task-cargo-length"
-                      name="cargoLength"
-                      value={cargoLength}
-                      onChange={(e) => setCargoLength(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      placeholder="0"
-                      inputMode="decimal"
-                      disabled={!editing}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-cargo-width"
-                    >
-                      {t("cargoWidth")}
-                    </label>
-                    <input
-                      id="task-cargo-width"
-                      name="cargoWidth"
-                      value={cargoWidth}
-                      onChange={(e) => setCargoWidth(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      placeholder="0"
-                      inputMode="decimal"
-                      disabled={!editing}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-cargo-height"
-                    >
-                      {t("cargoHeight")}
-                    </label>
-                    <input
-                      id="task-cargo-height"
-                      name="cargoHeight"
-                      value={cargoHeight}
-                      onChange={(e) => setCargoHeight(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      placeholder="0"
-                      inputMode="decimal"
-                      disabled={!editing}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-cargo-volume"
-                    >
-                      {t("cargoVolume")}
-                    </label>
-                    <input
-                      id="task-cargo-volume"
-                      name="cargoVolume"
-                      value={cargoVolume}
-                      readOnly
-                      className="w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      placeholder="—"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="task-cargo-weight"
-                    >
-                      {t("cargoWeight")}
-                    </label>
-                    <input
-                      id="task-cargo-weight"
-                      name="cargoWeight"
-                      value={cargoWeight}
-                      onChange={(e) => setCargoWeight(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                      placeholder="0"
-                      inputMode="decimal"
-                      disabled={!editing}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <div>
-              <label className="block text-sm font-medium">
-                {t("paymentMethod")}
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
-                disabled={!editing}
-              >
-                {payments.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium"
-                htmlFor="task-payment-amount"
-              >
-                {t("paymentAmount")}
-              </label>
-              <div
-                className={`flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:border-accentPrimary focus-within:ring focus-within:ring-brand-200 ${
-                  editing ? '' : 'opacity-80'
-                }`}
-              >
-                <input
-                  id="task-payment-amount"
-                  name="paymentAmount"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  onBlur={(e) =>
-                    setPaymentAmount(formatCurrencyDisplay(e.target.value))
-                  }
-                  className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
-                  placeholder="0"
-                  inputMode="decimal"
-                  disabled={!editing}
-                />
-                <span className="px-2 text-sm font-semibold text-slate-500">
-                  грн
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {t("paymentAmountFormat")}
-              </p>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">{t("comment")}</label>
-            <CKEditorPopup
-              value={comment}
-              onChange={setComment}
-              readOnly={!editing}
-            />
-          </div>
-          {attachments.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium">
-                {t("attachments")}
-              </label>
-              <ul className="flex flex-wrap gap-2">
-                {attachments.map((a) => (
-                  <li key={a.url} className="flex items-center gap-2">
-                    {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
-                      <img
-                        srcSet={`${a.thumbnailUrl || a.url} 1x, ${a.url} 2x`}
-                        sizes="64px"
-                        src={a.thumbnailUrl || a.url}
-                        alt={a.name}
-                        className="h-16 rounded"
-                      />
-                    ) : (
-                      <a
-                        href={a.url}
-                        target="_blank"
-                        rel="noopener"
-                        className="text-accentPrimary underline"
-                      >
-                        {a.name}
-                      </a>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="px-0 text-red-500"
-                      onClick={() => removeAttachment(a)}
-                    >
-                      {t("delete")}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <FileUploader
-            disabled={!editing || !titleValue.trim()}
-            onUploaded={(a) => setAttachments((p) => [...p, a])}
-            onRemove={(a) => removeAttachment(a)}
-          />
-          {isEdit && history.length > 0 && (
-            <div className="mt-2 flex justify-start">
-              <Button
-                type="button"
-                variant="destructive"
-                size="pill"
-                onClick={() => setShowHistory(true)}
-              >
-                {t("history")}
-              </Button>
-            </div>
-          )}
-          {isEdit && canDeleteTask && editing && (
-            <div className="mt-2 flex justify-start">
-              <Button
-                variant="destructive"
-                size="pill"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                {t("delete")}
-              </Button>
-            </div>
-          )}
-          {editing && (
-            <div className="mt-2 flex justify-end">
-              <Button
-                variant="default"
-                size="pill"
-                disabled={isSubmitting}
-                onClick={() => setShowSaveConfirm(true)}
-              >
-                {isSubmitting ? <Spinner /> : isEdit ? t("save") : t("create")}
-              </Button>
-              <ConfirmDialog
-                open={showSaveConfirm}
-                message={
-                  isEdit ? t("saveChangesQuestion") : t("createTaskQuestion")
-                }
-                confirmText={isEdit ? t("save") : t("create")}
-                cancelText={t("cancel")}
-                onConfirm={async () => {
-                  setShowSaveConfirm(false);
-                  setIsSubmitting(true);
-                  try {
-                    await submit();
-                  } catch (error) {
-                    if (error instanceof ZodError) {
-                      error.issues.forEach((issue) => {
-                        if (issue.path[0] === "assigneeId") {
-                          setError("assigneeId", {
-                            type: issue.code,
-                            message: issue.message,
-                          });
-                        }
-                      });
-                      setAlertMsg(t("taskValidationFailed"));
-                    }
-                    console.warn("Не удалось сохранить задачу", error);
-                    setIsSubmitting(false);
-                  }
-                }}
-                onCancel={() => setShowSaveConfirm(false)}
-              />
-            </div>
-          )}
-          {canDeleteTask && (
-            <ConfirmDialog
-              open={showDeleteConfirm}
-              message={t("deleteTaskQuestion")}
-              confirmText={t("delete")}
-              cancelText={t("cancel")}
-              onConfirm={() => {
-                setShowDeleteConfirm(false);
-                handleDelete();
-              }}
-              onCancel={() => setShowDeleteConfirm(false)}
-            />
-          )}
-          {isEdit && !editing && (
-            <>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <Button
-                  className={cn(
-                    "rounded-lg",
-                    selectedAction === "accept" && "ring-accentPrimary ring-2",
-                  )}
-                  variant={status === "В работе" ? "success" : "default"}
-                  onClick={() => setShowAcceptConfirm(true)}
-                >
-                  {t("accept")}
-                </Button>
-                <Button
-                  className={cn(
-                    "rounded-lg",
-                    selectedAction === "done" && "ring-accentPrimary ring-2",
-                  )}
-                  variant={status === "Выполнена" ? "success" : "default"}
-                  onClick={() => setShowDoneSelect((v) => !v)}
-                >
-                  {t("done")}
-                </Button>
-              </div>
-              {showDoneSelect && (
-                <>
-                  <select
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v) {
-                        setPendingDoneOption(v);
-                        setShowDoneConfirm(true);
-                      }
-                    }}
-                    className="mt-1 mb-2 w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:outline-none focus:ring focus:ring-brand-200 focus:border-accentPrimary"
+                {headerLabel}
+              </h3>
+              {hasCreator ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-600">
+                  <span>{t("taskCreatedBy")}</span>
+                  <EmployeeLink
+                    employeeId={creatorId}
+                    className={creatorBadgeClass}
                   >
-                    <option value="">{t("selectOption")}</option>
-                    {doneOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
+                    {creatorName}
+                  </EmployeeLink>
+                </div>
+              ) : (
+                <span className="mt-1 block text-sm text-gray-500">
+                  {t("taskCreatorUnknown")}
+                </span>
+              )}
+            </div>
+            <div className="absolute top-4 right-4 flex flex-wrap justify-end gap-2">
+              {isEdit && !editing && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+                  title={t("edit")}
+                  aria-label={t("edit")}
+                >
+                  ✎
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={resetForm}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
+                title={t("reset")}
+                aria-label={t("reset")}
+              >
+                <ArrowPathIcon className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
+                title={t("close")}
+                aria-label={t("close")}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <>
+              <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                <div>
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="task-dialog-start-date"
+                  >
+                    {t("startDate")}
+                  </label>
+                  <input
+                    id="task-dialog-start-date"
+                    type="datetime-local"
+                    {...register("startDate")}
+                    min={formatIsoForInput(created)}
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={!editing}
+                  />
+                  {!isEdit && startDateNotice ? (
+                    <p className="mt-1 text-xs font-medium text-amber-600">
+                      {t("startDateAutoNotice", { date: startDateNotice })}
+                    </p>
+                  ) : null}
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="task-dialog-due-date"
+                  >
+                    {t("dueDate")}
+                  </label>
+                  <input
+                    id="task-dialog-due-date"
+                    type="datetime-local"
+                    {...register("dueDate", { onChange: handleDueDateChange })}
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={!editing}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">
+                  {t("taskTitle")}
+                </label>
+                <textarea
+                  {...titleFieldRest}
+                  ref={handleTitleRef}
+                  rows={1}
+                  placeholder={t("title")}
+                  className="focus:ring-brand-200 focus:border-accentPrimary min-h-[44px] w-full resize-none rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:ring focus:outline-none sm:text-base"
+                  disabled={!editing}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                    }
+                  }}
+                />
+                {errors.title && (
+                  <p className="text-sm text-red-600">{errors.title.message}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium">
+                  {t("taskSection")}
+                </label>
+                <Controller
+                  name="description"
+                  control={control}
+                  render={({ field }) => (
+                    <CKEditorPopup
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      readOnly={!editing}
+                    />
+                  )}
+                />
+              </div>
+              <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                <div>
+                  <label className="block text-sm font-medium">
+                    {t("taskType")}
+                  </label>
+                  <select
+                    value={taskType}
+                    onChange={(e) => setTaskType(e.target.value)}
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={!editing || entityKind === "request"}
+                  >
+                    {(entityKind === "request"
+                      ? requestTypeOptions
+                      : taskTypeOptions
+                    ).map((t) => (
+                      <option key={t} value={t}>
+                        {t}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    {t("priority")}
+                  </label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={!editing}
+                  >
+                    {priorities.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    {t("status")}
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={!editing}
+                  >
+                    {statuses.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="task-dialog-completed-at"
+                  >
+                    {t("actualTime")}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="task-dialog-completed-at"
+                    name="completedAtDisplay"
+                    value={completedAt ? formatIsoForInput(completedAt) : ""}
+                    readOnly
+                    placeholder="—"
+                    className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                <Controller
+                  name="assigneeId"
+                  control={control}
+                  render={({ field }) => (
+                    <MultiUserSelect
+                      label={t("assignees")}
+                      users={users}
+                      value={
+                        typeof field.value === "string" &&
+                        field.value.trim().length > 0
+                          ? field.value.trim()
+                          : null
+                      }
+                      onChange={(val) => field.onChange(val ?? "")}
+                      onBlur={field.onBlur}
+                      disabled={!editing}
+                      required
+                      placeholder={t("assigneeSelectPlaceholder")}
+                      hint={
+                        !errors.assigneeId ? t("assigneeSelectHint") : undefined
+                      }
+                      error={errors.assigneeId?.message ?? null}
+                    />
+                  )}
+                />
+              </div>
+              <div className="space-y-3 rounded-md border border-dashed border-gray-300 p-3">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    id="task-show-logistics"
+                    name="showLogistics"
+                    className="h-4 w-4"
+                    checked={showLogistics}
+                    onChange={(e) => handleLogisticsToggle(e.target.checked)}
+                    disabled={!editing}
+                  />
+                  {t("logisticsToggle")}
+                </label>
+                {showLogistics && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-start-link"
+                        >
+                          {t("startPoint")}
+                        </label>
+                        {canonicalStartLink ? (
+                          <div className="flex items-start gap-2">
+                            <div className="flex flex-col gap-1">
+                              <a
+                                href={canonicalStartLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accentPrimary underline"
+                              >
+                                {start || t("link")}
+                              </a>
+                              {startCoordinates && (
+                                <input
+                                  id="task-start-coordinates"
+                                  name="startCoordinatesDisplay"
+                                  value={formatCoords(startCoordinates)}
+                                  readOnly
+                                  className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  aria-label={t("coordinates")}
+                                />
+                              )}
+                            </div>
+                            {editing && (
+                              <button
+                                type="button"
+                                onClick={() => handleStartLink("")}
+                                className="text-red-600"
+                              >
+                                ✖
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              id="task-start-link"
+                              name="startLink"
+                              value={startLink}
+                              onChange={(e) => handleStartLink(e.target.value)}
+                              placeholder={t("googleMapsLink")}
+                              className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                              disabled={!editing}
+                            />
+                            <a
+                              href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                              target="_blank"
+                              rel="noopener"
+                              className={cn(
+                                buttonVariants({
+                                  variant: "default",
+                                  size: "sm",
+                                }),
+                                "rounded-2xl px-3",
+                              )}
+                            >
+                              {t("map")}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-end-link"
+                        >
+                          {t("endPoint")}
+                        </label>
+                        {canonicalEndLink ? (
+                          <div className="flex items-start gap-2">
+                            <div className="flex flex-col gap-1">
+                              <a
+                                href={canonicalEndLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accentPrimary underline"
+                              >
+                                {end || t("link")}
+                              </a>
+                              {finishCoordinates && (
+                                <input
+                                  id="task-end-coordinates"
+                                  name="endCoordinatesDisplay"
+                                  value={formatCoords(finishCoordinates)}
+                                  readOnly
+                                  className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  aria-label={t("coordinates")}
+                                />
+                              )}
+                            </div>
+                            {editing && (
+                              <button
+                                type="button"
+                                onClick={() => handleEndLink("")}
+                                className="text-red-600"
+                              >
+                                ✖
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              id="task-end-link"
+                              name="endLink"
+                              value={endLink}
+                              onChange={(e) => handleEndLink(e.target.value)}
+                              placeholder={t("googleMapsLink")}
+                              className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                              disabled={!editing}
+                            />
+                            <a
+                              href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                              target="_blank"
+                              rel="noopener"
+                              className={cn(
+                                buttonVariants({
+                                  variant: "default",
+                                  size: "sm",
+                                }),
+                                "rounded-2xl px-3",
+                              )}
+                            >
+                              {t("map")}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t("transportType")}
+                        </label>
+                        <select
+                          value={transportType}
+                          onChange={(e) => setTransportType(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        >
+                          {transports.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {distanceKm !== null && (
+                        <div>
+                          <label className="block text-sm font-medium">
+                            {t("distance")}
+                          </label>
+                          <p>
+                            {distanceKm} {t("km")}
+                          </p>
+                        </div>
+                      )}
+                      {routeLink && (
+                        <div>
+                          <label className="block text-sm font-medium">
+                            {t("route")}
+                          </label>
+                          <a
+                            href={routeLink}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-accentPrimary underline"
+                          >
+                            {t("link")}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-cargo-length"
+                        >
+                          {t("cargoLength")}
+                        </label>
+                        <input
+                          id="task-cargo-length"
+                          name="cargoLength"
+                          value={cargoLength}
+                          onChange={(e) => setCargoLength(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          placeholder="0"
+                          inputMode="decimal"
+                          disabled={!editing}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-cargo-width"
+                        >
+                          {t("cargoWidth")}
+                        </label>
+                        <input
+                          id="task-cargo-width"
+                          name="cargoWidth"
+                          value={cargoWidth}
+                          onChange={(e) => setCargoWidth(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          placeholder="0"
+                          inputMode="decimal"
+                          disabled={!editing}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-cargo-height"
+                        >
+                          {t("cargoHeight")}
+                        </label>
+                        <input
+                          id="task-cargo-height"
+                          name="cargoHeight"
+                          value={cargoHeight}
+                          onChange={(e) => setCargoHeight(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          placeholder="0"
+                          inputMode="decimal"
+                          disabled={!editing}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-cargo-volume"
+                        >
+                          {t("cargoVolume")}
+                        </label>
+                        <input
+                          id="task-cargo-volume"
+                          name="cargoVolume"
+                          value={cargoVolume}
+                          readOnly
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          placeholder="—"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-cargo-weight"
+                        >
+                          {t("cargoWeight")}
+                        </label>
+                        <input
+                          id="task-cargo-weight"
+                          name="cargoWeight"
+                          value={cargoWeight}
+                          onChange={(e) => setCargoWeight(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          placeholder="0"
+                          inputMode="decimal"
+                          disabled={!editing}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t("paymentMethod")}
+                        </label>
+                        <select
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        >
+                          {payments.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-payment-amount"
+                        >
+                          {t("paymentAmount")}
+                        </label>
+                        <div
+                          className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:ring ${
+                            editing ? "" : "opacity-80"
+                          }`}
+                        >
+                          <input
+                            id="task-payment-amount"
+                            name="paymentAmount"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            onBlur={(e) =>
+                              setPaymentAmount(
+                                formatCurrencyDisplay(e.target.value),
+                              )
+                            }
+                            className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                          <span className="px-2 text-sm font-semibold text-slate-500">
+                            грн
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {t("paymentAmountFormat")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium">
+                  {t("comment")}
+                </label>
+                <CKEditorPopup
+                  value={comment}
+                  onChange={setComment}
+                  readOnly={!editing}
+                />
+              </div>
+              {attachments.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium">
+                    {t("attachments")}
+                  </label>
+                  <ul className="flex flex-wrap gap-2">
+                    {attachments.map((a) => (
+                      <li key={a.url} className="flex items-center gap-2">
+                        {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.url) ? (
+                          <img
+                            srcSet={`${a.thumbnailUrl || a.url} 1x, ${a.url} 2x`}
+                            sizes="64px"
+                            src={a.thumbnailUrl || a.url}
+                            alt={a.name}
+                            className="h-16 rounded"
+                          />
+                        ) : (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-accentPrimary underline"
+                          >
+                            {a.name}
+                          </a>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="px-0 text-red-500"
+                          onClick={() => removeAttachment(a)}
+                        >
+                          {t("delete")}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <FileUploader
+                disabled={!editing || !titleValue.trim()}
+                onUploaded={(a) => setAttachments((p) => [...p, a])}
+                onRemove={(a) => removeAttachment(a)}
+              />
+              {isEdit && history.length > 0 && (
+                <div className="mt-2 flex justify-start">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="pill"
+                    onClick={() => setShowHistory(true)}
+                  >
+                    {t("history")}
+                  </Button>
+                </div>
+              )}
+              {isEdit && canDeleteTask && editing && (
+                <div className="mt-2 flex justify-start">
+                  <Button
+                    variant="destructive"
+                    size="pill"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    {t("delete")}
+                  </Button>
+                </div>
+              )}
+              {editing && (
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="default"
+                    size="pill"
+                    disabled={isSubmitting}
+                    onClick={() => setShowSaveConfirm(true)}
+                  >
+                    {isSubmitting ? (
+                      <Spinner />
+                    ) : isEdit ? (
+                      t("save")
+                    ) : (
+                      t("create")
+                    )}
+                  </Button>
+                  <ConfirmDialog
+                    open={showSaveConfirm}
+                    message={
+                      isEdit
+                        ? t("saveChangesQuestion")
+                        : t("createTaskQuestion")
+                    }
+                    confirmText={isEdit ? t("save") : t("create")}
+                    cancelText={t("cancel")}
+                    onConfirm={async () => {
+                      setShowSaveConfirm(false);
+                      setIsSubmitting(true);
+                      try {
+                        await submit();
+                      } catch (error) {
+                        console.warn("Не удалось сохранить задачу", error);
+                        setIsSubmitting(false);
+                      }
+                    }}
+                    onCancel={() => setShowSaveConfirm(false)}
+                  />
+                </div>
+              )}
+              {canDeleteTask && (
+                <ConfirmDialog
+                  open={showDeleteConfirm}
+                  message={t("deleteTaskQuestion")}
+                  confirmText={t("delete")}
+                  cancelText={t("cancel")}
+                  onConfirm={() => {
+                    setShowDeleteConfirm(false);
+                    handleDelete();
+                  }}
+                  onCancel={() => setShowDeleteConfirm(false)}
+                />
+              )}
+              {isEdit && !editing && (
+                <>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <Button
+                      className={cn(
+                        "rounded-lg",
+                        selectedAction === "accept" &&
+                          "ring-accentPrimary ring-2",
+                      )}
+                      variant={status === "В работе" ? "success" : "default"}
+                      onClick={() => setShowAcceptConfirm(true)}
+                    >
+                      {t("accept")}
+                    </Button>
+                    <Button
+                      className={cn(
+                        "rounded-lg",
+                        selectedAction === "done" &&
+                          "ring-accentPrimary ring-2",
+                      )}
+                      variant={status === "Выполнена" ? "success" : "default"}
+                      onClick={() => setShowDoneSelect((v) => !v)}
+                    >
+                      {t("done")}
+                    </Button>
+                  </div>
+                  {showDoneSelect && (
+                    <>
+                      <select
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v) {
+                            setPendingDoneOption(v);
+                            setShowDoneConfirm(true);
+                          }
+                        }}
+                        className="focus:ring-brand-200 focus:border-accentPrimary mt-1 mb-2 w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                      >
+                        <option value="">{t("selectOption")}</option>
+                        {doneOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  <ConfirmDialog
+                    open={showAcceptConfirm}
+                    message={t("acceptTaskQuestion")}
+                    confirmText={t("accept")}
+                    cancelText={t("cancel")}
+                    onConfirm={() => {
+                      setShowAcceptConfirm(false);
+                      acceptTask();
+                    }}
+                    onCancel={() => setShowAcceptConfirm(false)}
+                  />
+                  <ConfirmDialog
+                    open={showDoneConfirm}
+                    message={t("completeTaskQuestion")}
+                    confirmText={t("done")}
+                    cancelText={t("cancel")}
+                    onConfirm={() => {
+                      setShowDoneConfirm(false);
+                      completeTask(pendingDoneOption);
+                    }}
+                    onCancel={() => setShowDoneConfirm(false)}
+                  />
                 </>
               )}
-              <ConfirmDialog
-                open={showAcceptConfirm}
-                message={t("acceptTaskQuestion")}
-                confirmText={t("accept")}
-                cancelText={t("cancel")}
-                onConfirm={() => {
-                  setShowAcceptConfirm(false);
-                  acceptTask();
-                }}
-                onCancel={() => setShowAcceptConfirm(false)}
-              />
-              <ConfirmDialog
-                open={showDoneConfirm}
-                message={t("completeTaskQuestion")}
-                confirmText={t("done")}
-                cancelText={t("cancel")}
-                onConfirm={() => {
-                  setShowDoneConfirm(false);
-                  completeTask(pendingDoneOption);
-                }}
-                onCancel={() => setShowDoneConfirm(false)}
-              />
             </>
-          )}
-        </>
+          </div>
+        </div>
       </div>
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -2294,8 +2476,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 const author = resolveUserName(entry.changed_by);
                 const fromState = entry.changes.from || {};
                 const toState = entry.changes.to || {};
-                const fromStatusRaw = (fromState as Record<string, unknown>)["status"];
-                const toStatusRaw = (toState as Record<string, unknown>)["status"];
+                const fromStatusRaw = (fromState as Record<string, unknown>)[
+                  "status"
+                ];
+                const toStatusRaw = (toState as Record<string, unknown>)[
+                  "status"
+                ];
                 const fromStatus = formatHistoryValue(fromStatusRaw);
                 const toStatus = formatHistoryValue(toStatusRaw);
                 const showStatusChange =
@@ -2388,6 +2574,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         onClose={() => setAlertMsg(null)}
         closeText={t("close")}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

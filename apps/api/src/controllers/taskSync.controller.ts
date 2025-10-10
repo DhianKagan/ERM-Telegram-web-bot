@@ -61,6 +61,30 @@ const isMessageNotModifiedError = (error: unknown): boolean => {
   );
 };
 
+const isMessageMissingOnEditError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const candidate = error as Record<string, unknown> & {
+    response?: { error_code?: number; description?: unknown };
+    description?: unknown;
+    error_code?: unknown;
+  };
+  const errorCode =
+    candidate.response?.error_code ??
+    (typeof candidate.error_code === 'number' ? candidate.error_code : null);
+  if (errorCode !== 400) {
+    return false;
+  }
+  const descriptionSource =
+    typeof candidate.response?.description === 'string'
+      ? candidate.response.description
+      : typeof candidate.description === 'string'
+        ? candidate.description
+        : '';
+  return descriptionSource.toLowerCase().includes('message to edit not found');
+};
+
 const isMessageMissingOnDeleteError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
@@ -287,7 +311,28 @@ export default class TaskSyncController {
           options,
         );
       } catch (error) {
-        if (!isMessageNotModifiedError(error)) {
+        if (isMessageNotModifiedError(error)) {
+          try {
+            await this.bot.telegram.editMessageReplyMarkup(
+              targetChatId,
+              currentMessageId,
+              undefined,
+              replyMarkup,
+            );
+          } catch (markupError) {
+            if (isMessageNotModifiedError(markupError)) {
+              // Клавиатура уже соответствует актуальному состоянию
+            } else if (isMessageMissingOnEditError(markupError)) {
+              await ensurePreviousMediaRemoved();
+              currentMessageId = null;
+            } else {
+              console.error(
+                'Не удалось обновить клавиатуру задачи после повторного применения',
+                markupError,
+              );
+            }
+          }
+        } else {
           try {
             await this.bot.telegram.deleteMessage(
               targetChatId,

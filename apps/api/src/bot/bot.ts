@@ -996,7 +996,12 @@ async function refreshTaskKeyboard(
       ? (plain.status as SharedTask['status'])
       : undefined;
   const messageId = toNumericId(plain?.telegram_message_id ?? null);
-  const link = buildChatMessageLink(chatId, messageId ?? undefined);
+  const topicId = toNumericId(plain?.telegram_topic_id ?? null);
+  const link = buildChatMessageLink(
+    chatId,
+    messageId ?? undefined,
+    topicId ?? undefined,
+  );
   if (ctx.chat?.type === 'private') {
     const appLink = plain ? buildTaskAppLink(plain) : null;
     const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);
@@ -1119,7 +1124,12 @@ async function processStatusAction(
       status: appliedStatus,
     } as TaskPresentation;
     const messageId = toNumericId(plainForView?.telegram_message_id ?? null);
-    const link = buildChatMessageLink(chatId, messageId ?? undefined);
+    const topicId = toNumericId(plainForView?.telegram_topic_id ?? null);
+    const link = buildChatMessageLink(
+      chatId,
+      messageId ?? undefined,
+      topicId ?? undefined,
+    );
     const appLink = plainForView ? buildTaskAppLink(plainForView) : null;
     if (ctx.chat?.type === 'private') {
       const keyboard = buildDirectTaskKeyboard(link, appLink ?? undefined);

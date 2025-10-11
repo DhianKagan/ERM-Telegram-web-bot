@@ -5,7 +5,7 @@ import path from 'path';
 import { param } from 'express-validator';
 import authMiddleware from '../middleware/auth';
 import { hasAccess, ACCESS_ADMIN } from '../utils/accessMask';
-import { File } from '../db/model';
+import { File, Task } from '../db/model';
 import type { RequestWithUser } from '../types/request';
 import { uploadsDir } from '../config/storage';
 import { sendProblem } from '../utils/problem';
@@ -34,14 +34,35 @@ router.get(
       const belongsToTask = Boolean(file.taskId);
       const isOwner = Number.isFinite(uid) && file.userId === uid;
       const isAdmin = hasAccess(mask, ACCESS_ADMIN);
-      if (!belongsToTask && !isOwner && !isAdmin) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Доступ запрещён',
-          status: 403,
-          detail: 'Forbidden',
-        });
-        return;
+      if (!isOwner && !isAdmin) {
+        if (!belongsToTask) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: 'Forbidden',
+          });
+          return;
+        }
+        const task = await Task.findById(file.taskId).lean();
+        const allowedIds = [
+          task?.created_by,
+          task?.assigned_user_id,
+          task?.controller_user_id,
+          ...(task?.assignees || []),
+          ...(task?.controllers || []),
+        ]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        if (!Number.isFinite(uid) || !allowedIds.includes(uid)) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: 'Forbidden',
+          });
+          return;
+        }
       }
       const uploadsAbs = path.resolve(uploadsDir);
       const target = path.resolve(uploadsAbs, file.path);

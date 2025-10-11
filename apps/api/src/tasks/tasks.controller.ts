@@ -2037,9 +2037,13 @@ export default class TasksController {
     await this.deleteDirectMessages(previousDirectMessages);
 
     const assignees = this.collectAssignees(plain);
-    if (Number.isFinite(actorId)) {
+    const normalizedActorId =
+      typeof actorId === 'number' || typeof actorId === 'string'
+        ? Number(actorId)
+        : NaN;
+    if (Number.isFinite(normalizedActorId)) {
       // Не отправляем личное сообщение инициатору действия.
-      assignees.delete(actorId);
+      assignees.delete(normalizedActorId);
     }
     if (assignees.size) {
       const dmKeyboard = buildDirectTaskKeyboard(

@@ -27,7 +27,7 @@ import { type Task as SharedTask } from 'shared';
 import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
 import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
-import taskStatusKeyboard from '../utils/taskButtons';
+import taskStatusKeyboard, { taskStatusInlineMarkup } from '../utils/taskButtons';
 import formatTask, {
   type InlineImage,
   type FormatTaskSection,
@@ -41,7 +41,6 @@ import {
   resolveTaskTypePhotosTarget,
 } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
-import { getTaskIdentifier } from './taskMessages';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -836,6 +835,35 @@ export default class TasksController {
     return undefined;
   }
 
+  private async updateTaskAlbumKeyboard(
+    chatId: string | number,
+    messageId: number,
+    taskId: string,
+    status: SharedTask['status'] | undefined,
+    kind: 'task' | 'request',
+    albumLink: string | null,
+  ): Promise<void> {
+    try {
+      const editMarkup =
+        typeof bot?.telegram?.editMessageReplyMarkup === 'function'
+          ? bot.telegram.editMessageReplyMarkup.bind(bot.telegram)
+          : null;
+      if (!editMarkup) {
+        return;
+      }
+      const extras = albumLink ? { albumLink } : undefined;
+      const markup = taskStatusInlineMarkup(taskId, status, { kind }, extras);
+      await editMarkup(chatId, messageId, undefined, markup);
+    } catch (error) {
+      if (!this.isMessageNotModifiedError(error)) {
+        console.error(
+          'Не удалось обновить клавиатуру задачи с кнопкой альбома',
+          error,
+        );
+      }
+    }
+  }
+
   private extractLocalFileId(url: string): string | null {
     if (!url) return null;
     try {
@@ -1180,44 +1208,15 @@ export default class TasksController {
     text: string;
     options: NonNullable<Parameters<typeof bot.telegram.sendMessage>[2]>;
   } {
-    const identifier = getTaskIdentifier(task);
     const title =
       typeof task.title === 'string' ? task.title.trim() : '';
-    const headerParts: string[] = [];
-    if (identifier) {
-      headerParts.push(`№ ${escapeMarkdownV2(identifier)}`);
-    }
-    if (title) {
-      headerParts.push(`*${escapeMarkdownV2(title)}*`);
-    }
-    const header = headerParts.length
-      ? `📸 ${headerParts.join(' — ')}`
-      : '📸 Фото по задаче';
-    const descriptionCandidates = [
-      typeof task.task_description === 'string'
-        ? task.task_description.trim()
-        : '',
-      typeof task.description === 'string'
-        ? (task.description as string).trim()
-        : '',
-    ];
-    const description = descriptionCandidates.find((value) => Boolean(value)) ?? '';
-    const lines = [header];
-    if (description) {
-      lines.push(escapeMarkdownV2(description));
-    } else {
-      lines.push('Описание отсутствует.');
-    }
-    const text = lines.join('\n\n');
+    const text = title
+      ? `*${escapeMarkdownV2(title)}*`
+      : 'Фото по задаче';
     const messageLink = options.messageLink ?? null;
-    const appLink = options.appLink ?? null;
-    const inlineKeyboard: { text: string; url: string }[][] = [];
-    if (messageLink) {
-      inlineKeyboard.push([{ text: 'Перейти к сообщению', url: messageLink }]);
-    }
-    if (appLink && appLink !== messageLink) {
-      inlineKeyboard.push([{ text: 'Открыть в вебе', url: appLink }]);
-    }
+    const inlineKeyboard = messageLink
+      ? [[{ text: 'Перейти к задаче', url: messageLink }]]
+      : [];
     const replyMarkup = inlineKeyboard.length
       ? { inline_keyboard: inlineKeyboard }
       : undefined;
@@ -1890,6 +1889,7 @@ export default class TasksController {
     let photosMessageId: number | undefined;
     let photosChatId: string | undefined;
     let photosTopicId: number | undefined;
+    let albumLinkForKeyboard: string | null = null;
 
     if (groupChatId) {
       try {
@@ -2011,6 +2011,20 @@ export default class TasksController {
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
         messageLink = buildChatMessageLink(groupChatId, groupMessageId, topicId);
+        if (
+          !shouldSendAttachmentsSeparately &&
+          Array.isArray(sendResult.previewMessageIds) &&
+          sendResult.previewMessageIds.length > 0
+        ) {
+          const albumMessageId = sendResult.previewMessageIds[0];
+          if (typeof albumMessageId === 'number') {
+            albumLinkForKeyboard = buildChatMessageLink(
+              groupChatId,
+              albumMessageId,
+              topicId,
+            );
+          }
+        }
         const consumedUrls = new Set(
           (sendResult.consumedAttachmentUrls ?? []).filter((url) => Boolean(url)),
         );
@@ -2081,11 +2095,37 @@ export default class TasksController {
                   typeof attachmentsTopicIdForSend === 'number'
                     ? attachmentsTopicIdForSend
                     : undefined;
+                albumLinkForKeyboard =
+                  buildChatMessageLink(
+                    normalizedAttachmentsChatId,
+                    albumMessageId,
+                    attachmentsTopicIdForSend,
+                  ) ?? albumLinkForKeyboard;
               }
             } catch (error) {
               console.error('Не удалось отправить вложения задачи', error);
             }
           }
+        }
+
+        if (
+          groupMessageId &&
+          groupChatId &&
+          docId &&
+          typeof docId === 'string'
+        ) {
+          const currentStatus =
+            typeof plain.status === 'string'
+              ? (plain.status as SharedTask['status'])
+              : undefined;
+          await this.updateTaskAlbumKeyboard(
+            groupChatId,
+            groupMessageId,
+            docId,
+            currentStatus,
+            kind,
+            albumLinkForKeyboard,
+          );
         }
 
       } catch (error) {

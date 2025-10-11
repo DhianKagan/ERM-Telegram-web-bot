@@ -18,7 +18,6 @@ import {
   resolveTaskTypePhotosTarget,
 } from '../services/taskTypeSettings';
 import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
-import { getTaskIdentifier } from '../tasks/taskMessages';
 import { buildTaskAppLink } from '../tasks/taskLinks';
 import buildChatMessageLink from '../utils/messageLink';
 
@@ -189,44 +188,15 @@ const buildPhotoAlbumIntro = (
     messageLink?: string | null;
   },
 ): { text: string; options: TelegramSendMessageOptions } => {
-  const identifier = getTaskIdentifier(task as TaskDocument);
   const title =
     typeof task.title === 'string' ? task.title.trim() : '';
-  const headerParts: string[] = [];
-  if (identifier) {
-    headerParts.push(`№ ${escapeMarkdownV2(identifier)}`);
-  }
-  if (title) {
-    headerParts.push(`*${escapeMarkdownV2(title)}*`);
-  }
-  const header = headerParts.length
-    ? `📸 ${headerParts.join(' — ')}`
-    : '📸 Фото по задаче';
-  const descriptionCandidates = [
-    typeof task.task_description === 'string'
-      ? task.task_description.trim()
-      : '',
-    typeof (task as Record<string, unknown>).description === 'string'
-      ? ((task as Record<string, unknown>).description as string).trim()
-      : '',
-  ];
-  const description = descriptionCandidates.find((value) => Boolean(value)) ?? '';
-  const lines = [header];
-  if (description) {
-    lines.push(escapeMarkdownV2(description));
-  } else {
-    lines.push('Описание отсутствует.');
-  }
-  const text = lines.join('\n\n');
-  const inlineKeyboard: { text: string; url: string }[][] = [];
+  const text = title
+    ? `*${escapeMarkdownV2(title)}*`
+    : 'Фото по задаче';
   const messageLink = options.messageLink ?? null;
-  const appLink = options.appLink ?? null;
-  if (messageLink) {
-    inlineKeyboard.push([{ text: 'Перейти к сообщению', url: messageLink }]);
-  }
-  if (appLink && appLink !== messageLink) {
-    inlineKeyboard.push([{ text: 'Открыть в вебе', url: appLink }]);
-  }
+  const inlineKeyboard = messageLink
+    ? [[{ text: 'Перейти к задаче', url: messageLink }]]
+    : [];
   const replyMarkup = inlineKeyboard.length
     ? { inline_keyboard: inlineKeyboard }
     : undefined;
@@ -458,6 +428,11 @@ export default class TaskSyncController {
     };
 
     let currentMessageId = messageId;
+    let albumLinkForKeyboard: string | null = null;
+    const editReplyMarkup =
+      typeof this.bot?.telegram?.editMessageReplyMarkup === 'function'
+        ? this.bot.telegram.editMessageReplyMarkup.bind(this.bot.telegram)
+        : null;
 
     if (currentMessageId !== null) {
       try {
@@ -568,6 +543,20 @@ export default class TaskSyncController {
         );
         sentMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
+        if (
+          !shouldSendAttachmentsSeparately &&
+          Array.isArray(sendResult.previewMessageIds) &&
+          sendResult.previewMessageIds.length > 0
+        ) {
+          const albumMessageId = sendResult.previewMessageIds[0];
+          if (typeof albumMessageId === 'number') {
+            albumLinkForKeyboard = buildChatMessageLink(
+              chatIdForLinks,
+              albumMessageId,
+              normalizedTopicId,
+            );
+          }
+        }
         if (sentMessageId) {
           const messageLinkForAttachments = buildChatMessageLink(
             chatIdForLinks,
@@ -601,6 +590,12 @@ export default class TaskSyncController {
                 );
                 if (response?.message_id) {
                   albumMessageId = response.message_id;
+                  albumLinkForKeyboard =
+                    buildChatMessageLink(
+                      normalizedAttachmentsChatId,
+                      albumMessageId,
+                      attachmentsTopicIdForSend,
+                    ) ?? albumLinkForKeyboard;
                 }
               } catch (error) {
                 console.error(
@@ -641,9 +636,39 @@ export default class TaskSyncController {
                     typeof attachmentsTopicIdForSend === 'number'
                       ? attachmentsTopicIdForSend
                       : undefined;
+                  albumLinkForKeyboard =
+                    buildChatMessageLink(
+                      normalizedAttachmentsChatId,
+                      albumMessageId,
+                      attachmentsTopicIdForSend,
+                    ) ?? albumLinkForKeyboard;
                 }
               } catch (error) {
                 console.error('Не удалось отправить вложения задачи', error);
+              }
+            }
+          }
+
+          if (editReplyMarkup) {
+            const updatedMarkup = taskStatusInlineMarkup(
+              taskId,
+              status,
+              { kind: resolvedKind },
+              albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+            );
+            try {
+              await editReplyMarkup(
+                targetChatId,
+                sentMessageId,
+                undefined,
+                updatedMarkup,
+              );
+            } catch (error) {
+              if (!isMessageNotModifiedError(error)) {
+                console.error(
+                  'Не удалось обновить клавиатуру задачи ссылкой на альбом',
+                  error,
+                );
               }
             }
           }
@@ -716,6 +741,12 @@ export default class TaskSyncController {
             );
             if (response?.message_id) {
               albumMessageId = response.message_id;
+              albumLinkForKeyboard =
+                buildChatMessageLink(
+                  normalizedAttachmentsChatId,
+                  albumMessageId,
+                  attachmentsTopicIdForSend,
+                ) ?? albumLinkForKeyboard;
             }
           } catch (error) {
             console.error(
@@ -761,9 +792,49 @@ export default class TaskSyncController {
                 typeof attachmentsTopicIdForSend === 'number'
                   ? attachmentsTopicIdForSend
                   : undefined;
+              albumLinkForKeyboard =
+                buildChatMessageLink(
+                  normalizedAttachmentsChatId,
+                  albumMessageId,
+                  attachmentsTopicIdForSend,
+                ) ?? albumLinkForKeyboard;
             }
           } catch (error) {
             console.error('Не удалось обновить вложения задачи', error);
+          }
+          if (!shouldSendAlbumIntro && previewMessageIds.length) {
+            const albumTargetId = previewMessageIds[0];
+            if (typeof albumTargetId === 'number') {
+              albumLinkForKeyboard = buildChatMessageLink(
+                attachmentsChatValue,
+                albumTargetId,
+                attachmentsTopicIdForSend,
+              );
+            }
+          }
+        }
+      }
+
+      if (sentMessageId && editReplyMarkup) {
+        const updatedMarkup = taskStatusInlineMarkup(
+          taskId,
+          status,
+          { kind: resolvedKind },
+          albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+        );
+        try {
+          await editReplyMarkup(
+            targetChatId,
+            sentMessageId,
+            undefined,
+            updatedMarkup,
+          );
+        } catch (error) {
+          if (!isMessageNotModifiedError(error)) {
+            console.error(
+              'Не удалось обновить клавиатуру задачи ссылкой на альбом',
+              error,
+            );
           }
         }
       }

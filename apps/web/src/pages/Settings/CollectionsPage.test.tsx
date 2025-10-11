@@ -648,9 +648,10 @@ describe("CollectionsPage", () => {
     expect(
       within(tasksPanel).getByLabelText("Название типа Выполнить"),
     ).toBeInTheDocument();
-    expect(
-      within(tasksPanel).getByPlaceholderText("https://t.me/c/..."),
-    ).toBeInTheDocument();
+    const themeInputs = within(tasksPanel).getAllByPlaceholderText(
+      "https://t.me/c/...",
+    );
+    expect(themeInputs).toHaveLength(2);
   });
 
   it("показывает фактический логин в таблице и карточке пользователя", async () => {

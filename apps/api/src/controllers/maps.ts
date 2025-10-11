@@ -17,8 +17,9 @@ export async function expand(req: Request, res: Response): Promise<void> {
     if (!input) {
       throw new Error('empty');
     }
+    const managedShortLink = isShortLink(input);
     let resolvedSource = input;
-    if (isShortLink(input)) {
+    if (managedShortLink) {
       const expanded = await resolveShortLink(input);
       if (!expanded) {
         throw new Error('not-found');
@@ -27,7 +28,7 @@ export async function expand(req: Request, res: Response): Promise<void> {
     }
     const full = await expandMapsUrl(resolvedSource);
     let shortUrl: string | undefined;
-    if (isShortLink(input)) {
+    if (managedShortLink) {
       shortUrl = normalizeManagedShortLink(input);
     } else {
       try {

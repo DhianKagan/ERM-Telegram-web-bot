@@ -39,6 +39,14 @@ const APP_ORIGIN = (() => {
 
 const SLUG_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
+const isStorageReady = (): boolean => {
+  try {
+    return ShortLink.db?.readyState === 1;
+  } catch {
+    return false;
+  }
+};
+
 const generateSlug = (length = 8): string => {
   const alphabetLen = SLUG_ALPHABET.length;
   const maxUnbiasedValue = Math.floor(256 / alphabetLen) * alphabetLen;
@@ -162,6 +170,9 @@ export const ensureShortLink = async (
   const normalized = url.trim();
   if (!normalized) {
     throw new Error('URL не должен быть пустым');
+  }
+  if (!isStorageReady()) {
+    throw new Error('Хранилище коротких ссылок недоступно');
   }
   try {
     // Проверяем валидность URL

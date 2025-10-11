@@ -1,7 +1,7 @@
 // Назначение: основной файл Telegram-бота
 // Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
-import { appUrl, botToken, chatId } from '../config';
+import { botToken, chatId } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import type {
   InlineKeyboardMarkup,
@@ -22,6 +22,7 @@ import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
 import { createTask, getUsersMap } from '../db/queries';
 import { buildHistorySummaryLog, getTaskIdentifier } from '../tasks/taskMessages';
+import { buildTaskAppLink } from '../tasks/taskLinks';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
 import TaskSyncController from '../controllers/taskSync.controller';
@@ -541,42 +542,7 @@ const statusDisplayMap: Record<SharedTask['status'], string> = {
   Отменена: '⛔️ Отменена',
 };
 
-const APP_URL_BASE = (appUrl || '').replace(/\/+$/, '');
-
-const toTaskIdentifier = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const normalized = String(value).trim();
-    return normalized ? normalized : null;
-  }
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'toString' in value &&
-    typeof (value as { toString(): unknown }).toString === 'function'
-  ) {
-    return toTaskIdentifier((value as { toString(): unknown }).toString());
-  }
-  return null;
-};
-
-export const buildTaskAppLink = (
-  task: Record<string, unknown>,
-): string | null => {
-  if (!APP_URL_BASE) {
-    return null;
-  }
-  const canonicalId =
-    toTaskIdentifier(task._id) ??
-    toTaskIdentifier(task.request_id) ??
-    toTaskIdentifier(task.task_number);
-  if (!canonicalId) {
-    return null;
-  }
-  return `${APP_URL_BASE}/tasks?task=${encodeURIComponent(canonicalId)}`;
-};
+export { buildTaskAppLink } from '../tasks/taskLinks';
 
 const htmlEscape = (value: string): string =>
   value

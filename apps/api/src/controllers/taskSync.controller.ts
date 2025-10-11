@@ -19,7 +19,7 @@ import {
 } from '../services/taskTypeSettings';
 import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 import { getTaskIdentifier } from '../tasks/taskMessages';
-import { buildTaskAppLink } from '../bot/bot';
+import { buildTaskAppLink } from '../tasks/taskLinks';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 

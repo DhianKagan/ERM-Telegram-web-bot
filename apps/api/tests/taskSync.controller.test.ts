@@ -35,6 +35,7 @@ jest.mock('../src/db/model', () => ({
 
 jest.mock('../src/services/taskTypeSettings', () => ({
   resolveTaskTypeTopicId: jest.fn(async () => null),
+  resolveTaskTypePhotosTarget: jest.fn(async () => null),
 }));
 
 const mockDeleteAttachmentMessages = jest.fn();

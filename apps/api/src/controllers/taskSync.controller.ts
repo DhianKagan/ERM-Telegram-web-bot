@@ -245,7 +245,7 @@ export default class TaskSyncController {
     const userIds = collectUserIds(task);
     const users = await buildUsersIndex(userIds);
     const formatted = formatTask(task as unknown as SharedTask, users);
-    const { text, inlineImages } = formatted;
+    const { text, inlineImages, sections } = formatted;
     const resolvedKind = (() => {
       const rawKind =
         typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
@@ -367,6 +367,7 @@ export default class TaskSyncController {
         const sendResult = await this.mediaHelper.sendTaskMessageWithPreview(
           targetChatId,
           text,
+          Array.isArray(sections) ? sections : [],
           media,
           replyMarkup,
           typeof topicId === 'number' ? topicId : undefined,

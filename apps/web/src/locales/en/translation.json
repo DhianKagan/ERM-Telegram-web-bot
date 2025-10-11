@@ -129,6 +129,31 @@
     "deleteHint": "Delete selected file",
     "deleteConfirm": "Delete file \"{{name}}\"? This action cannot be undone.",
     "deleteSuccess": "File deleted.",
-    "deleteError": "Failed to delete file."
+    "deleteError": "Failed to delete file.",
+    "userLabel": "User {{id}}",
+    "taskLabel": "Task #{{id}}",
+    "taskNumberLabel": "Task {{number}}",
+    "taskMissing": "No task",
+    "taskTitleHint": "Title: {{title}}",
+    "columns": {
+      "name": "Name",
+      "user": "User",
+      "type": "Type",
+      "size": "Size",
+      "task": "Task",
+      "uploaded": "Uploaded"
+    },
+    "filters": {
+      "title": "Filters",
+      "user": "User",
+      "type": "File type",
+      "empty": "No available values"
+    },
+    "sort": {
+      "uploadedDesc": "By date (newest first)",
+      "uploadedAsc": "By date (oldest first)",
+      "sizeDesc": "By size (largest first)",
+      "sizeAsc": "By size (smallest first)"
+    }
   }
 }

@@ -272,20 +272,31 @@ export default function StoragePage() {
 
   const rows = React.useMemo<StorageRow[]>(
     () =>
-      sortedFiles.map((file) => ({
-        ...file,
-        sizeLabel: formatSize(file.size),
-        uploadedLabel: formatDate(file.uploadedAt),
-        userLabel: t("storage.userLabel", { id: file.userId }),
-        taskLabel: file.taskId != null && file.taskId !== ""
-          ? t("storage.taskLabel", { id: file.taskId })
-          : t("storage.taskMissing"),
-        taskLink: file.taskId != null && file.taskId !== ""
-          ? `/cp/tasks?task=${encodeURIComponent(String(file.taskId))}`
-          : undefined,
-        onDownload: () => handleDownload(file),
-        onDelete: () => handleDelete(file),
-      })),
+      sortedFiles.map((file) => {
+        const hasTaskId = file.taskId != null && file.taskId !== "";
+        const normalizedTitle =
+          typeof file.taskTitle === "string" && file.taskTitle.trim()
+            ? file.taskTitle.trim()
+            : undefined;
+        const identifier = hasTaskId
+          ? file.taskNumber && file.taskNumber !== ""
+            ? t("storage.taskNumberLabel", { number: file.taskNumber })
+            : t("storage.taskLabel", { id: file.taskId })
+          : t("storage.taskMissing");
+        return {
+          ...file,
+          taskTitle: normalizedTitle,
+          sizeLabel: formatSize(file.size),
+          uploadedLabel: formatDate(file.uploadedAt),
+          userLabel: t("storage.userLabel", { id: file.userId }),
+          taskDisplay: identifier,
+          taskLink: hasTaskId
+            ? `/cp/tasks?task=${encodeURIComponent(String(file.taskId))}`
+            : undefined,
+          onDownload: () => handleDownload(file),
+          onDelete: () => handleDelete(file),
+        };
+      }),
     [sortedFiles, t, handleDelete, handleDownload],
   );
 
@@ -300,6 +311,7 @@ export default function StoragePage() {
         uploaded: t("storage.columns.uploaded"),
         download: t("storage.download"),
         delete: t("storage.delete"),
+        taskTitleHint: (title: string) => t("storage.taskTitleHint", { title }),
       }),
     [t],
   );

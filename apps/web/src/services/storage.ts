@@ -13,6 +13,8 @@ export interface StoredFile {
   size?: number;
   uploadedAt?: string;
   taskId?: string | number | null;
+  taskNumber?: string | null;
+  taskTitle?: string | null;
 }
 
 export const fetchFiles = (params?: { userId?: number; type?: string }) => {

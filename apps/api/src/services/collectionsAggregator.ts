@@ -119,6 +119,9 @@ const applyTaskTypeDefaults = (
   const url =
     typeof meta.tg_theme_url === 'string' ? meta.tg_theme_url.trim() : '';
   const parsed = url ? parseTelegramTopicUrl(url) : null;
+  const photosUrl =
+    typeof meta.tg_photos_url === 'string' ? meta.tg_photos_url.trim() : '';
+  const photosParsed = photosUrl ? parseTelegramTopicUrl(photosUrl) : null;
   item.meta = {
     ...meta,
     order,
@@ -126,6 +129,9 @@ const applyTaskTypeDefaults = (
     tg_theme_url: url || undefined,
     tg_chat_id: parsed?.chatId,
     tg_topic_id: parsed?.topicId,
+    tg_photos_url: photosUrl || undefined,
+    tg_photos_chat_id: photosParsed?.chatId,
+    tg_photos_topic_id: photosParsed?.topicId,
     virtual: Boolean(meta.virtual),
   };
   if (!item.value) {
@@ -187,6 +193,9 @@ const ensureTaskTypeItems = (items: AggregatedCollectionItem[]) => {
         tg_theme_url: undefined,
         tg_chat_id: undefined,
         tg_topic_id: undefined,
+        tg_photos_url: undefined,
+        tg_photos_chat_id: undefined,
+        tg_photos_topic_id: undefined,
         virtual: true,
       },
     };

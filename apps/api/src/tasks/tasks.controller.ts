@@ -40,8 +40,12 @@ import buildChatMessageLink from '../utils/messageLink';
 import { uploadsDir } from '../config/storage';
 import escapeMarkdownV2 from '../utils/mdEscape';
 import sharp from 'sharp';
-import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
+import {
+  resolveTaskTypeTopicId,
+  resolveTaskTypePhotosTarget,
+} from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
+import { getTaskIdentifier } from './taskMessages';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -1096,6 +1100,17 @@ export default class TasksController {
     );
   }
 
+  private normalizeChatId(value: unknown): string | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value.toString();
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }
+    return undefined;
+  }
+
   private normalizeTopicId(value: unknown): number | undefined {
     if (typeof value !== 'number') return undefined;
     return Number.isFinite(value) ? value : undefined;
@@ -1106,6 +1121,60 @@ export default class TasksController {
       return left === right;
     }
     return typeof left === 'undefined' && typeof right === 'undefined';
+  }
+
+  private areChatsEqual(
+    left?: string | number,
+    right?: string | number,
+  ): boolean {
+    return this.normalizeChatId(left) === this.normalizeChatId(right);
+  }
+
+  private buildPhotoAlbumIntro(
+    task: Partial<TaskDocument> & Record<string, unknown>,
+    options: { messageLink?: string | null; appLink?: string | null },
+  ): {
+    text: string;
+    options: NonNullable<Parameters<typeof bot.telegram.sendMessage>[2]>;
+  } {
+    const identifier = getTaskIdentifier(task);
+    const title =
+      typeof task.title === 'string' ? task.title.trim() : '';
+    const headerParts: string[] = [];
+    if (identifier) {
+      headerParts.push(`№ ${escapeMarkdownV2(identifier)}`);
+    }
+    if (title) {
+      headerParts.push(`*${escapeMarkdownV2(title)}*`);
+    }
+    const header = headerParts.length
+      ? `📸 ${headerParts.join(' — ')}`
+      : '📸 Фото по задаче';
+    const description =
+      typeof task.task_description === 'string'
+        ? task.task_description.trim()
+        : '';
+    const lines = [header];
+    if (description) {
+      lines.push(escapeMarkdownV2(description));
+    } else {
+      lines.push('Описание отсутствует.');
+    }
+    const text = lines.join('\n\n');
+    const link = options.appLink ?? options.messageLink ?? null;
+    const replyMarkup = link
+      ? {
+          inline_keyboard: [[{ text: 'Перейти к задаче', url: link }]],
+        }
+      : undefined;
+    const sendOptions: NonNullable<
+      Parameters<typeof bot.telegram.sendMessage>[2]
+    > = {
+      parse_mode: 'MarkdownV2',
+      link_preview_options: { is_disabled: true },
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    };
+    return { text, options: sendOptions };
   }
 
   private async resolveTaskTopicId(
@@ -1703,6 +1772,20 @@ export default class TasksController {
     const noteRaw = typeof options?.note === 'string' ? options.note.trim() : '';
     const dmNote = noteRaw || (action === 'обновлена' ? 'Задачу обновили' : '');
 
+    const normalizedGroupChatId = this.normalizeChatId(groupChatId);
+    const photosTarget = await resolveTaskTypePhotosTarget(plain.task_type);
+    const configuredPhotosChatId = this.normalizeChatId(photosTarget?.chatId);
+    const configuredPhotosTopicId = this.normalizeTopicId(photosTarget?.topicId);
+    const previousPhotosChatId = this.normalizeChatId(
+      previousPlain?.telegram_photos_chat_id,
+    );
+    const previousPhotosTopicId = this.normalizeTopicId(
+      previousPlain?.telegram_photos_topic_id,
+    );
+    const previousPhotosMessageId = this.toMessageId(
+      previousPlain?.telegram_photos_message_id,
+    );
+
     const recipients = this.collectNotificationTargets(plain, actorId);
     let users: Record<number, { name: string; username: string }> = {};
     try {
@@ -1744,6 +1827,9 @@ export default class TasksController {
     let attachmentMessageIds: number[] = [];
     let previewMessageIds: number[] = [];
     let directMessages: DirectMessageEntry[] = [];
+    let photosMessageId: number | undefined;
+    let photosChatId: string | undefined;
+    let photosTopicId: number | undefined;
 
     if (groupChatId) {
       try {
@@ -1774,13 +1860,24 @@ export default class TasksController {
             );
           }
           if (previousPreviewIds.length) {
-            await this.deleteAttachmentMessages(groupChatId, previousPreviewIds);
+            const previousAttachmentChatId =
+              previousPhotosChatId ?? normalizedGroupChatId;
+            if (previousAttachmentChatId) {
+              await this.deleteAttachmentMessages(
+                previousAttachmentChatId,
+                previousPreviewIds,
+              );
+            }
           }
           if (previousAttachmentIds.length) {
-            await this.deleteAttachmentMessages(
-              groupChatId,
-              previousAttachmentIds,
-            );
+            const previousAttachmentChatId =
+              previousPhotosChatId ?? normalizedGroupChatId;
+            if (previousAttachmentChatId) {
+              await this.deleteAttachmentMessages(
+                previousAttachmentChatId,
+                previousAttachmentIds,
+              );
+            }
           }
           for (const messageId of cleanupTargets) {
             await this.deleteTaskMessageSafely(
@@ -1789,6 +1886,17 @@ export default class TasksController {
               previousTopicId,
               topicId,
             );
+          }
+          if (previousPhotosMessageId) {
+            const photosChat = previousPhotosChatId ?? normalizedGroupChatId;
+            if (photosChat) {
+              await this.deleteTaskMessageSafely(
+                photosChat,
+                previousPhotosMessageId,
+                previousPhotosTopicId,
+                previousPhotosTopicId,
+              );
+            }
           }
         }
 
@@ -1818,17 +1926,77 @@ export default class TasksController {
             )
           : media.extras;
 
-        if (groupMessageId && extras.length) {
-          try {
-            attachmentMessageIds = await this.sendTaskAttachments(
-              groupChatId,
-              extras,
-              topicId,
-              groupMessageId,
-              sendResult.cache,
-            );
-          } catch (error) {
-            console.error('Не удалось отправить вложения задачи', error);
+        if (extras.length) {
+          const attachmentsChatValue =
+            configuredPhotosChatId ?? groupChatId ?? normalizedGroupChatId;
+          const normalizedAttachmentsChatId = this.normalizeChatId(
+            attachmentsChatValue,
+          );
+          const attachmentsTopicIdForSend =
+            configuredPhotosChatId && normalizedAttachmentsChatId
+              ? configuredPhotosTopicId
+              : topicId;
+          const useSeparatePhotosChat = Boolean(
+            configuredPhotosChatId &&
+              normalizedAttachmentsChatId &&
+              !this.areChatsEqual(
+                configuredPhotosChatId,
+                normalizedGroupChatId,
+              ),
+          );
+          if (useSeparatePhotosChat && normalizedAttachmentsChatId) {
+            const intro = this.buildPhotoAlbumIntro(plain, {
+              messageLink,
+              appLink: appLink ?? null,
+            });
+            try {
+              const response = await bot.telegram.sendMessage(
+                normalizedAttachmentsChatId,
+                intro.text,
+                intro.options,
+              );
+              if (response?.message_id) {
+                photosMessageId = response.message_id;
+                photosChatId = normalizedAttachmentsChatId;
+                photosTopicId = attachmentsTopicIdForSend;
+              }
+            } catch (error) {
+              console.error(
+                'Не удалось отправить описание альбома задачи',
+                error,
+              );
+            }
+          } else if (
+            normalizedAttachmentsChatId &&
+            this.areChatsEqual(normalizedAttachmentsChatId, normalizedGroupChatId)
+          ) {
+            photosChatId = undefined;
+            photosTopicId = undefined;
+          }
+          if (attachmentsChatValue) {
+            try {
+              const replyTo = photosMessageId
+                ? photosMessageId
+                : this.areChatsEqual(
+                    normalizedAttachmentsChatId,
+                    normalizedGroupChatId,
+                  )
+                  ? groupMessageId
+                  : undefined;
+              attachmentMessageIds = await this.sendTaskAttachments(
+                attachmentsChatValue,
+                extras,
+                attachmentsTopicIdForSend,
+                replyTo,
+                sendResult.cache,
+              );
+              if (useSeparatePhotosChat && normalizedAttachmentsChatId) {
+                photosChatId = normalizedAttachmentsChatId;
+                photosTopicId = attachmentsTopicIdForSend;
+              }
+            } catch (error) {
+              console.error('Не удалось отправить вложения задачи', error);
+            }
           }
         }
 
@@ -1847,6 +2015,23 @@ export default class TasksController {
     delete plain.telegram_status_message_id;
     plain.telegram_preview_message_ids = previewMessageIds;
     plain.telegram_attachments_message_ids = attachmentMessageIds;
+    if (photosChatId) {
+      plain.telegram_photos_chat_id = photosChatId;
+      if (typeof photosTopicId === 'number') {
+        plain.telegram_photos_topic_id = photosTopicId;
+      } else {
+        delete plain.telegram_photos_topic_id;
+      }
+      if (typeof photosMessageId === 'number') {
+        plain.telegram_photos_message_id = photosMessageId;
+      } else {
+        delete plain.telegram_photos_message_id;
+      }
+    } else {
+      delete plain.telegram_photos_chat_id;
+      delete plain.telegram_photos_topic_id;
+      delete plain.telegram_photos_message_id;
+    }
 
     const previousDirectMessages = this.normalizeDirectMessages(
       previousPlain?.telegram_dm_message_ids,
@@ -1854,7 +2039,6 @@ export default class TasksController {
     await this.deleteDirectMessages(previousDirectMessages);
 
     const assignees = this.collectAssignees(plain);
-    assignees.delete(actorId);
     if (assignees.size) {
       const appLink = buildTaskAppLink(plain);
       const dmKeyboard = buildDirectTaskKeyboard(messageLink, appLink ?? undefined);
@@ -1908,6 +2092,21 @@ export default class TasksController {
       setPayload.telegram_attachments_message_ids = attachmentMessageIds;
     } else {
       unsetPayload.telegram_attachments_message_ids = '';
+    }
+    if (typeof photosMessageId === 'number' && photosChatId) {
+      setPayload.telegram_photos_message_id = photosMessageId;
+    } else {
+      unsetPayload.telegram_photos_message_id = '';
+    }
+    if (photosChatId) {
+      setPayload.telegram_photos_chat_id = photosChatId;
+    } else {
+      unsetPayload.telegram_photos_chat_id = '';
+    }
+    if (typeof photosTopicId === 'number' && photosChatId) {
+      setPayload.telegram_photos_topic_id = photosTopicId;
+    } else {
+      unsetPayload.telegram_photos_topic_id = '';
     }
     if (directMessages.length) {
       setPayload.telegram_dm_message_ids = directMessages;
@@ -2337,6 +2536,12 @@ export default class TasksController {
       return;
     }
     const topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    const normalizedGroupChatId = this.normalizeChatId(groupChatId);
+    const photosChatId = this.normalizeChatId(plain.telegram_photos_chat_id);
+    const photosTopicId = this.normalizeTopicId(
+      plain.telegram_photos_topic_id,
+    );
+    const photosMessageId = this.toMessageId(plain.telegram_photos_message_id);
     const messageTargets = new Map<
       number,
       { expected?: number; actual?: number }
@@ -2398,11 +2603,25 @@ export default class TasksController {
       plain.telegram_dm_message_ids,
     );
 
+    const attachmentsChatValue = photosChatId ?? groupChatId ?? normalizedGroupChatId;
+    const normalizedAttachmentsChatId = this.normalizeChatId(attachmentsChatValue);
+    const uniquePreviewIds = Array.from(new Set(previewIds));
+    const uniqueAttachmentIds = Array.from(new Set(attachmentIds));
+    if (normalizedAttachmentsChatId) {
+      if (uniquePreviewIds.length) {
+        await this.deleteAttachmentMessages(
+          normalizedAttachmentsChatId,
+          uniquePreviewIds,
+        );
+      }
+      if (uniqueAttachmentIds.length) {
+        await this.deleteAttachmentMessages(
+          normalizedAttachmentsChatId,
+          uniqueAttachmentIds,
+        );
+      }
+    }
     if (groupChatId) {
-      const uniquePreviewIds = Array.from(new Set(previewIds));
-      const uniqueAttachmentIds = Array.from(new Set(attachmentIds));
-      await this.deleteAttachmentMessages(groupChatId, uniquePreviewIds);
-      await this.deleteAttachmentMessages(groupChatId, uniqueAttachmentIds);
       for (const [messageId, meta] of messageTargets.entries()) {
         await this.deleteTaskMessageSafely(
           groupChatId,
@@ -2411,6 +2630,14 @@ export default class TasksController {
           meta.actual,
         );
       }
+    }
+    if (photosMessageId && normalizedAttachmentsChatId) {
+      await this.deleteTaskMessageSafely(
+        normalizedAttachmentsChatId,
+        photosMessageId,
+        photosTopicId,
+        photosTopicId,
+      );
     }
 
     await this.deleteDirectMessages(directMessages);

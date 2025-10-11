@@ -75,20 +75,32 @@ const prepareMetaByType = (
     }
     const rawUrl = (metaRaw as { tg_theme_url?: unknown }).tg_theme_url;
     const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
-    if (!url) {
+    const rawPhotosUrl = (metaRaw as { tg_photos_url?: unknown }).tg_photos_url;
+    const photosUrl =
+      typeof rawPhotosUrl === 'string' ? rawPhotosUrl.trim() : '';
+    const meta: Record<string, unknown> = {};
+    if (url) {
+      const parsed = parseTelegramTopicUrl(url);
+      if (!parsed) {
+        return { error: TELEGRAM_TOPIC_HINT };
+      }
+      meta.tg_theme_url = url;
+      meta.tg_chat_id = parsed.chatId;
+      meta.tg_topic_id = parsed.topicId;
+    }
+    if (photosUrl) {
+      const parsed = parseTelegramTopicUrl(photosUrl);
+      if (!parsed) {
+        return { error: TELEGRAM_TOPIC_HINT };
+      }
+      meta.tg_photos_url = photosUrl;
+      meta.tg_photos_chat_id = parsed.chatId;
+      meta.tg_photos_topic_id = parsed.topicId;
+    }
+    if (!Object.keys(meta).length) {
       return { meta: undefined };
     }
-    const parsed = parseTelegramTopicUrl(url);
-    if (!parsed) {
-      return { error: TELEGRAM_TOPIC_HINT };
-    }
-    return {
-      meta: {
-        tg_theme_url: url,
-        tg_chat_id: parsed.chatId,
-        tg_topic_id: parsed.topicId,
-      },
-    };
+    return { meta };
   }
   if (!metaRaw || typeof metaRaw !== 'object') {
     return { meta: undefined };

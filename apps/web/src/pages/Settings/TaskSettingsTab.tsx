@@ -26,6 +26,9 @@ type TaskTypeItem = CollectionItem & {
     tg_theme_url?: string;
     tg_chat_id?: string;
     tg_topic_id?: number;
+    tg_photos_url?: string;
+    tg_photos_chat_id?: string;
+    tg_photos_topic_id?: number;
   };
 };
 
@@ -38,7 +41,7 @@ interface TaskSettingsTabProps {
   onResetField: (item: TaskFieldItem) => Promise<void>;
   onSaveType: (
     item: TaskTypeItem,
-    payload: { label: string; tg_theme_url: string },
+    payload: { label: string; tg_theme_url: string; tg_photos_url: string },
   ) => Promise<void>;
   onResetType: (item: TaskTypeItem) => Promise<void>;
 }
@@ -149,8 +152,10 @@ const TypeCard: React.FC<{
   item: TaskTypeItem;
   label: string;
   url: string;
+  photosUrl: string;
   onChangeLabel: (value: string) => void;
   onChangeUrl: (value: string) => void;
+  onChangePhotosUrl: (value: string) => void;
   onSave: () => Promise<void>;
   onReset: () => Promise<void>;
   saving: boolean;
@@ -159,8 +164,10 @@ const TypeCard: React.FC<{
   item,
   label,
   url,
+  photosUrl,
   onChangeLabel,
   onChangeUrl,
+  onChangePhotosUrl,
   onSave,
   onReset,
   saving,
@@ -179,10 +186,17 @@ const TypeCard: React.FC<{
   const storedUrl = typeof item.meta?.tg_theme_url === "string"
     ? item.meta.tg_theme_url
     : "";
+  const storedPhotosUrl =
+    typeof item.meta?.tg_photos_url === "string"
+      ? item.meta.tg_photos_url
+      : "";
   const trimmedLabel = label.trim();
   const trimmedUrl = url.trim();
+  const trimmedPhotosUrl = photosUrl.trim();
   const dirty =
-    trimmedLabel !== storedLabel || trimmedUrl !== (storedUrl || "");
+    trimmedLabel !== storedLabel ||
+    trimmedUrl !== (storedUrl || "") ||
+    trimmedPhotosUrl !== (storedPhotosUrl || "");
 
   const handleSave = async () => {
     setLocalError(undefined);
@@ -216,11 +230,6 @@ const TypeCard: React.FC<{
               Тип задачи: <span className="font-mono">{item.name}</span>
             </p>
           </div>
-          {typeof item.meta?.tg_topic_id === "number" ? (
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Тема: {item.meta.tg_topic_id}
-            </span>
-          ) : null}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
@@ -245,10 +254,36 @@ const TypeCard: React.FC<{
               aria-label={`Ссылка темы для типа ${defaultLabel}`}
             />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Тема для фото
+            </span>
+            <Input
+              value={photosUrl}
+              onChange={(event) => onChangePhotosUrl(event.target.value)}
+              placeholder="https://t.me/c/..."
+              aria-label={`Ссылка темы для фото ${defaultLabel}`}
+            />
+          </label>
         </div>
         {item.meta?.tg_chat_id ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Чат: {item.meta.tg_chat_id}
+          </p>
+        ) : null}
+        {item.meta?.tg_topic_id ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Тема: {item.meta.tg_topic_id}
+          </p>
+        ) : null}
+        {item.meta?.tg_photos_chat_id ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Чат фото: {item.meta.tg_photos_chat_id}
+          </p>
+        ) : null}
+        {item.meta?.tg_photos_topic_id ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Тема фото: {item.meta.tg_photos_topic_id}
           </p>
         ) : null}
         {localError ? (
@@ -343,6 +378,10 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
         typeof item.meta?.tg_theme_url === "string"
           ? item.meta.tg_theme_url
           : "",
+      photosUrl:
+        typeof item.meta?.tg_photos_url === "string"
+          ? item.meta.tg_photos_url
+          : "",
     }),
     [],
   );
@@ -369,11 +408,16 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
 
   const handleTypeChange = (
     name: string,
-    patch: Partial<{ label: string; url: string }>,
+    patch: Partial<{ label: string; url: string; photosUrl: string }>,
   ) => {
     setTypeDrafts((prev) => ({
       ...prev,
-      [name]: { ...prev[name], ...patch },
+      [name]: {
+        label: prev[name]?.label ?? "",
+        url: prev[name]?.url ?? "",
+        photosUrl: prev[name]?.photosUrl ?? "",
+        ...patch,
+      },
     }));
     setTypeErrors((prev) => ({ ...prev, [name]: "" }));
   };
@@ -416,14 +460,26 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   };
 
   const saveType = async (item: TaskTypeItem) => {
-    const draft = typeDrafts[item.name] ?? { label: "", url: "" };
+    const draft = typeDrafts[item.name] ?? {
+      label: "",
+      url: "",
+      photosUrl: "",
+    };
     setSavingType(item.name);
     setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
     try {
-      await onSaveType(item, { label: draft.label, tg_theme_url: draft.url });
+      await onSaveType(item, {
+        label: draft.label,
+        tg_theme_url: draft.url,
+        tg_photos_url: draft.photosUrl,
+      });
       setTypeDrafts((prev) => ({
         ...prev,
-        [item.name]: { label: draft.label, url: draft.url },
+        [item.name]: {
+          label: draft.label,
+          url: draft.url,
+          photosUrl: draft.photosUrl,
+        },
       }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -444,6 +500,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
         [item.name]: {
           label: item.meta?.defaultLabel ?? item.name,
           url: "",
+          photosUrl: "",
         },
       }));
     } catch (err) {
@@ -494,8 +551,8 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
             Типы задач и темы Telegram
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Для каждого типа задачи можно задать отображаемое название и тему
-            чата Telegram, куда будут публиковаться сообщения.
+            Для каждого типа задачи можно задать отображаемое название,
+            основную тему чата Telegram и отдельную тему для альбома фото.
           </p>
         </header>
         {loading && !sortedTypes.length ? (
@@ -510,11 +567,15 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
                 item={item}
                 label={typeDrafts[item.name]?.label ?? ""}
                 url={typeDrafts[item.name]?.url ?? ""}
+                photosUrl={typeDrafts[item.name]?.photosUrl ?? ""}
                 onChangeLabel={(value) =>
                   handleTypeChange(item.name, { label: value })
                 }
                 onChangeUrl={(value) =>
                   handleTypeChange(item.name, { url: value })
+                }
+                onChangePhotosUrl={(value) =>
+                  handleTypeChange(item.name, { photosUrl: value })
                 }
                 onSave={() => saveType(item)}
                 onReset={() => resetType(item)}

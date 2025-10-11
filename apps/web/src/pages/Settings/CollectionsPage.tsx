@@ -478,29 +478,42 @@ export default function CollectionsPage() {
   const saveTaskType = useCallback(
     async (
       item: CollectionItem,
-      payload: { label: string; tg_theme_url: string },
+      payload: { label: string; tg_theme_url: string; tg_photos_url: string },
     ) => {
       const trimmedLabel = payload.label.trim();
       if (!trimmedLabel) {
         throw new Error("Название не может быть пустым");
       }
       const trimmedUrl = payload.tg_theme_url.trim();
+      const trimmedPhotosUrl = payload.tg_photos_url.trim();
       try {
+        const buildMeta = () => {
+          const meta: Record<string, string> = {};
+          if (trimmedUrl) meta.tg_theme_url = trimmedUrl;
+          if (trimmedPhotosUrl) meta.tg_photos_url = trimmedPhotosUrl;
+          return meta;
+        };
         if (item.meta?.virtual) {
+          const meta = buildMeta();
           await createCollectionItem("task_types", {
             name: item.name,
             value: trimmedLabel,
-            ...(trimmedUrl ? { meta: { tg_theme_url: trimmedUrl } } : {}),
+            ...(Object.keys(meta).length ? { meta } : {}),
           });
         } else {
+          const meta = buildMeta();
+          if (!trimmedUrl) {
+            meta.tg_theme_url = "";
+          }
+          if (!trimmedPhotosUrl) {
+            meta.tg_photos_url = "";
+          }
           await updateCollectionItem(
             item._id,
             {
               name: item.name,
               value: trimmedLabel,
-              meta: trimmedUrl
-                ? { tg_theme_url: trimmedUrl }
-                : { tg_theme_url: "" },
+              meta,
             },
             { collectionType: "task_types" },
           );

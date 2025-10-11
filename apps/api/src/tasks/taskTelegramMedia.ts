@@ -461,6 +461,7 @@ export class TaskTelegramMedia {
         }
       } catch (error) {
         console.error('Не удалось отправить дополнительный текст задачи', error);
+        throw error;
       }
     };
 

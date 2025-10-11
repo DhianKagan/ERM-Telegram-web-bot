@@ -6,7 +6,7 @@ import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
 import { TOKENS } from '../di/tokens';
 import { Task } from '../db/model';
-import { chatId, appUrl as baseAppUrl } from '../config';
+import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
@@ -158,6 +158,9 @@ const normalizeChatId = (value: unknown): string | undefined => {
   }
   return undefined;
 };
+
+const resolveChatId = (): string | undefined =>
+  typeof getChatId === 'function' ? getChatId() : staticChatId;
 
 const areChatsEqual = (left?: unknown, right?: unknown): boolean =>
   normalizeChatId(left) === normalizeChatId(right);
@@ -352,7 +355,7 @@ export default class TaskSyncController {
     taskId: string,
     override?: TaskDocument | (TaskDocument & Record<string, unknown>) | null,
   ): Promise<void> {
-    const targetChatId = chatId;
+    const targetChatId = resolveChatId();
     if (!targetChatId) return;
     const task = await loadTaskPlain(taskId, override);
     if (!task) return;

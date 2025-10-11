@@ -121,7 +121,15 @@ if (botApiUrlRaw) {
 
 export const botToken = process.env.BOT_TOKEN;
 export const botApiUrl = botApiUrlValue;
-export const chatId = process.env.CHAT_ID;
+export const getChatId = (): string | undefined => {
+  const raw = process.env.CHAT_ID;
+  if (!raw) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed ? trimmed : undefined;
+};
+export const chatId = getChatId();
 export const jwtSecret = process.env.JWT_SECRET;
 export const mongoUrl = mongoUrlEnv;
 export const appUrl = appUrlEnv;
@@ -133,7 +141,9 @@ export const cookieDomain = cookieDomainEnv;
 const config = {
   botToken,
   botApiUrl,
-  chatId,
+  get chatId() {
+    return getChatId();
+  },
   jwtSecret,
   mongoUrl,
   appUrl,

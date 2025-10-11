@@ -1,7 +1,7 @@
 // Назначение: основной файл Telegram-бота
 // Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
-import { botToken, chatId } from '../config';
+import { botToken, getChatId, chatId as staticChatId } from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import type {
   InlineKeyboardMarkup,
@@ -35,6 +35,9 @@ export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
 const taskSyncController = new TaskSyncController(bot);
 const REQUEST_TYPE_NAME = 'Заявка';
+
+const resolveChatId = (): string | undefined =>
+  typeof getChatId === 'function' ? getChatId() : staticChatId;
 
 type CancelRequestStage = 'awaitingReason' | 'awaitingConfirm';
 
@@ -431,7 +434,12 @@ async function showMainMenu(ctx: Context): Promise<void> {
 
 async function checkAndRegister(ctx: Context): Promise<void> {
   try {
-    const member = await bot.telegram.getChatMember(chatId!, ctx.from!.id);
+    const chatId = resolveChatId();
+    if (!chatId) {
+      await ctx.reply(messages.accessError);
+      return;
+    }
+    const member = await bot.telegram.getChatMember(chatId, ctx.from!.id);
     if (!['creator', 'administrator', 'member'].includes(member.status)) {
       await ctx.reply(messages.accessOnlyGroup);
       return;
@@ -860,6 +868,7 @@ const syncTaskPresentation = async (
   if (!plain) {
     return context;
   }
+  const chatId = resolveChatId();
   if (!chatId) {
     return context;
   }
@@ -997,6 +1006,7 @@ async function refreshTaskKeyboard(
       : undefined;
   const messageId = toNumericId(plain?.telegram_message_id ?? null);
   const topicId = toNumericId(plain?.telegram_topic_id ?? null);
+  const chatId = resolveChatId();
   const link = buildChatMessageLink(
     chatId,
     messageId ?? undefined,
@@ -1125,6 +1135,7 @@ async function processStatusAction(
     } as TaskPresentation;
     const messageId = toNumericId(plainForView?.telegram_message_id ?? null);
     const topicId = toNumericId(plainForView?.telegram_topic_id ?? null);
+    const chatId = resolveChatId();
     const link = buildChatMessageLink(
       chatId,
       messageId ?? undefined,

@@ -121,6 +121,15 @@ const {
   __updateOneMock: jest.Mock;
 };
 
+jest.mock('../apps/api/src/services/taskTypeSettings', () => ({
+  resolveTaskTypePhotosTarget: jest.fn(async () => null),
+}));
+
+const { resolveTaskTypePhotosTarget: resolvePhotosTargetMock } =
+  jest.requireMock('../apps/api/src/services/taskTypeSettings') as {
+    resolveTaskTypePhotosTarget: jest.Mock;
+  };
+
 describe('notifyTaskCreated вложения', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -139,6 +148,9 @@ describe('notifyTaskCreated вложения', () => {
     updateOneMock.mockClear();
     getUsersMapMock.mockClear();
     process.env.APP_URL = 'https://example.com';
+    process.env.CHAT_ID = '-100100';
+    resolvePhotosTargetMock.mockReset();
+    resolvePhotosTargetMock.mockResolvedValue(null);
   });
 
   it('отправляет текст задачи и вложения альбомом с кнопками в основном сообщении', async () => {
@@ -290,6 +302,107 @@ describe('notifyTaskCreated вложения', () => {
         { user_id: 55, message_id: directMessageId },
       ]);
       expect(updatePayload.$unset?.telegram_message_cleanup).toBe('');
+    }
+  });
+
+  it('отправляет личное сообщение исполнителю, даже если он передан объектом', async () => {
+    sendMessageMock.mockResolvedValueOnce({ message_id: 401 });
+    sendMessageMock.mockResolvedValueOnce({ message_id: 777 });
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439012',
+      title: 'DM check',
+      attachments: [],
+      assignees: [{ telegram_id: 77 }],
+      created_by: 11,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const controller = new TasksController({} as any);
+    await (
+      controller as unknown as {
+        notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+      }
+    ).notifyTaskCreated(plainTask as TaskDocument, 11);
+
+    const dmCall = sendMessageMock.mock.calls.find((call) => call?.[0] === 77);
+    expect(dmCall).toBeDefined();
+    const dmOptions = dmCall?.[2] as { parse_mode?: string } | undefined;
+    expect(dmOptions?.parse_mode).toBe('HTML');
+  });
+
+  it('публикует фото в отдельной теме и сохраняет ссылку на альбом', async () => {
+    resolvePhotosTargetMock.mockImplementation(async () => ({
+      chatId: '-100100',
+      topicId: 7777,
+    }));
+
+    const groupMessageId = 555;
+    const albumIntroId = 556;
+    const dmMessageId = 900;
+
+    sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: albumIntroId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: dmMessageId });
+    sendPhotoMock.mockResolvedValueOnce({ message_id: 808 });
+
+    const attachments = [
+      {
+        url: 'https://cdn.example.com/photo.jpg',
+        type: 'image/jpeg',
+        name: 'photo.jpg',
+      },
+      {
+        url: 'https://cdn.example.com/photo-2.jpg',
+        type: 'image/jpeg',
+        name: 'photo-2.jpg',
+      },
+    ];
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439013',
+      task_number: 'B-77',
+      title: 'Альбом',
+      attachments,
+      telegram_topic_id: 111,
+      assignees: [42],
+      assigned_user_id: 42,
+      created_by: 10,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const controller = new TasksController({} as any);
+    await (
+      controller as unknown as {
+        notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+      }
+    ).notifyTaskCreated(plainTask as TaskDocument, 99);
+    const albumCall = sendMessageMock.mock.calls.find(
+      (call, index) => index > 0 && call?.[2]?.message_thread_id === 7777,
+    );
+    expect(albumCall?.[2]?.message_thread_id).toBe(7777);
+
+    const photoCall = sendPhotoMock.mock.calls[0];
+    expect(photoCall?.[2]?.message_thread_id).toBe(7777);
+    expect(photoCall?.[2]?.reply_parameters?.message_id).toBe(albumIntroId);
+
+    const updateCall = updateTaskMock.mock.calls[0];
+    expect(updateCall).toBeDefined();
+    if (updateCall) {
+      const updatePayload = (updateCall[1] ?? {}) as {
+        $set?: Record<string, unknown>;
+      };
+      expect(updatePayload.$set?.telegram_photos_chat_id).toBe('-100100');
+      expect(updatePayload.$set?.telegram_photos_topic_id).toBe(7777);
+      expect(updatePayload.$set?.telegram_photos_message_id).toBe(albumIntroId);
     }
   });
 });

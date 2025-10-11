@@ -395,17 +395,22 @@ export class TaskTelegramMedia {
       | Parameters<typeof this.bot.telegram.editMessageReplyMarkup>[3]
       | undefined,
     topicId?: number,
+    options?: { skipAlbum?: boolean },
   ): Promise<TaskMessageSendResult> {
+    const skipAlbum = options?.skipAlbum === true;
     const cache = new Map<string, LocalPhotoInfo | null>();
     const preview = media.previewImage;
     const previewUrl = preview?.url;
     const albumCandidates: NormalizedImage[] = [];
     const seenAlbumUrls = new Set<string>();
-    if (preview && previewUrl && !seenAlbumUrls.has(previewUrl)) {
+    if (!skipAlbum && preview && previewUrl && !seenAlbumUrls.has(previewUrl)) {
       albumCandidates.push(preview);
       seenAlbumUrls.add(previewUrl);
     }
     media.extras.forEach((attachment) => {
+      if (skipAlbum) {
+        return;
+      }
       if (attachment.kind !== 'image') return;
       if (!attachment.url || seenAlbumUrls.has(attachment.url)) return;
       albumCandidates.push(attachment);
@@ -479,7 +484,7 @@ export class TaskTelegramMedia {
       }
     };
 
-    if (albumCandidates.length > 1) {
+    if (!skipAlbum && albumCandidates.length > 1) {
       try {
         type SendMediaGroupOptions = Parameters<
           typeof this.bot.telegram.sendMediaGroup
@@ -572,7 +577,7 @@ export class TaskTelegramMedia {
       }
     }
 
-    if (previewUrl) {
+    if (!skipAlbum && previewUrl) {
       try {
         const hasSupplementaryText = leftoverChunks.length > 0;
         const photoOptions = {

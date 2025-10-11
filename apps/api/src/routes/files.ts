@@ -31,26 +31,30 @@ router.get(
       }
       const mask = req.user?.access ?? 0;
       const uid = Number(req.user?.id);
-      if (file.userId !== uid && !hasAccess(mask, ACCESS_ADMIN)) {
-        if (file.taskId) {
-          const task = await Task.findById(file.taskId).lean();
-          const allowedIds = [
-            task?.created_by,
-            task?.assigned_user_id,
-            task?.controller_user_id,
-            ...(task?.assignees || []),
-            ...(task?.controllers || []),
-          ].map((n) => Number(n));
-          if (!allowedIds.includes(uid)) {
-            sendProblem(req, res, {
-              type: 'about:blank',
-              title: 'Доступ запрещён',
-              status: 403,
-              detail: 'Forbidden',
-            });
-            return;
-          }
-        } else {
+      const belongsToTask = Boolean(file.taskId);
+      const isOwner = Number.isFinite(uid) && file.userId === uid;
+      const isAdmin = hasAccess(mask, ACCESS_ADMIN);
+      if (!isOwner && !isAdmin) {
+        if (!belongsToTask) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: 'Forbidden',
+          });
+          return;
+        }
+        const task = await Task.findById(file.taskId).lean();
+        const allowedIds = [
+          task?.created_by,
+          task?.assigned_user_id,
+          task?.controller_user_id,
+          ...(task?.assignees || []),
+          ...(task?.controllers || []),
+        ]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        if (!Number.isFinite(uid) || !allowedIds.includes(uid)) {
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Доступ запрещён',

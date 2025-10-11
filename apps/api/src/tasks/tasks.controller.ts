@@ -294,12 +294,39 @@ export default class TasksController {
   private collectAssignees(task: Partial<TaskDocument>) {
     const recipients = new Set<number>();
     const add = (value: unknown) => {
+      if (!value) {
+        return;
+      }
+      if (typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        if ('telegram_id' in record) {
+          add(record.telegram_id);
+        }
+        if ('user_id' in record) {
+          add(record.user_id);
+        }
+        if ('id' in record) {
+          add(record.id);
+        }
+        return;
+      }
       const num = Number(value);
       if (!Number.isNaN(num) && Number.isFinite(num) && num !== 0) {
         recipients.add(num);
       }
     };
     add(task.assigned_user_id);
+    if (task && typeof task === 'object') {
+      const record = task as Record<string, unknown>;
+      if (record.assigned_user && typeof record.assigned_user === 'object') {
+        const assignedRecord = record.assigned_user as Record<string, unknown>;
+        if ('telegram_id' in assignedRecord) {
+          add(assignedRecord.telegram_id);
+        } else if ('id' in assignedRecord) {
+          add(assignedRecord.id);
+        }
+      }
+    }
     if (Array.isArray(task.assignees)) task.assignees.forEach(add);
     return recipients;
   }
@@ -495,18 +522,21 @@ export default class TasksController {
     media: TaskMedia,
     keyboard: ReturnType<typeof taskStatusKeyboard>,
     topicId?: number,
+    options?: { skipAlbum?: boolean },
   ): Promise<TaskMessageSendResult> {
+    const skipAlbum = options?.skipAlbum === true;
     const cache = new Map<string, LocalPhotoInfo | null>();
     const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
     const preview = media.previewImage;
     const previewUrl = preview?.url;
     const albumCandidates: NormalizedImage[] = [];
     const seenAlbumUrls = new Set<string>();
-    if (preview && previewUrl && !seenAlbumUrls.has(previewUrl)) {
+    if (!skipAlbum && preview && previewUrl && !seenAlbumUrls.has(previewUrl)) {
       albumCandidates.push(preview);
       seenAlbumUrls.add(previewUrl);
     }
     media.extras.forEach((attachment) => {
+      if (skipAlbum) return;
       if (attachment.kind !== 'image') return;
       if (!attachment.url || seenAlbumUrls.has(attachment.url)) return;
       albumCandidates.push(attachment);
@@ -591,7 +621,7 @@ export default class TasksController {
           }
         : {};
 
-    if (albumCandidates.length > 1) {
+    if (!skipAlbum && albumCandidates.length > 1) {
       try {
         type SendMediaGroupOptions = Parameters<
           typeof bot.telegram.sendMediaGroup
@@ -642,7 +672,7 @@ export default class TasksController {
       } catch (error) {
         console.error('Не удалось отправить альбом задачи', error);
       }
-    } else if (previewUrl) {
+    } else if (!skipAlbum && previewUrl) {
       try {
         const photoOptions: SendPhotoOptions = {
           ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
@@ -1108,8 +1138,18 @@ export default class TasksController {
   }
 
   private normalizeTopicId(value: unknown): number | undefined {
-    if (typeof value !== 'number') return undefined;
-    return Number.isFinite(value) ? value : undefined;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : undefined;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+      const parsed = Number.parseInt(trimmed, 10);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
   }
 
   private areTopicsEqual(left?: number, right?: number): boolean {
@@ -1128,7 +1168,11 @@ export default class TasksController {
 
   private buildPhotoAlbumIntro(
     task: Partial<TaskDocument> & Record<string, unknown>,
-    options: { messageLink?: string | null; appLink?: string | null },
+    options: {
+      messageLink?: string | null;
+      appLink?: string | null;
+      topicId?: number | null;
+    },
   ): {
     text: string;
     options: NonNullable<Parameters<typeof bot.telegram.sendMessage>[2]>;
@@ -1170,6 +1214,9 @@ export default class TasksController {
       link_preview_options: { is_disabled: true },
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     };
+    if (typeof options.topicId === 'number') {
+      sendOptions.message_thread_id = options.topicId;
+    }
     return { text, options: sendOptions };
   }
 
@@ -1898,54 +1945,78 @@ export default class TasksController {
           }
         }
 
-          const media = this.collectSendableAttachments(
-            plain,
-            formatted.inlineImages,
-          );
-          const sendResult = await this.sendTaskMessageWithPreview(
-            groupChatId,
-            message,
-            formatted.sections,
-            media,
-            keyboard,
-            topicId,
-          );
+        const attachmentsChatValue =
+          configuredPhotosChatId ?? groupChatId ?? normalizedGroupChatId;
+        const normalizedAttachmentsChatId = this.normalizeChatId(
+          attachmentsChatValue,
+        );
+        const attachmentsTopicIdForSend = (() => {
+          if (typeof configuredPhotosTopicId === 'number') {
+            return configuredPhotosTopicId;
+          }
+          if (
+            normalizedAttachmentsChatId &&
+            !this.areChatsEqual(
+              normalizedAttachmentsChatId,
+              normalizedGroupChatId,
+            )
+          ) {
+            return undefined;
+          }
+          return topicId;
+        })();
+        const useSeparatePhotosChat = Boolean(
+          normalizedAttachmentsChatId &&
+            !this.areChatsEqual(
+              normalizedAttachmentsChatId,
+              normalizedGroupChatId,
+            ),
+        );
+        const useSeparatePhotosTopic =
+          typeof attachmentsTopicIdForSend === 'number' &&
+          !this.areTopicsEqual(attachmentsTopicIdForSend, topicId);
+        const shouldSendAttachmentsSeparately = Boolean(
+          normalizedAttachmentsChatId &&
+            (useSeparatePhotosChat || useSeparatePhotosTopic),
+        );
+
+        const media = this.collectSendableAttachments(
+          plain,
+          formatted.inlineImages,
+        );
+        const sendResult = await this.sendTaskMessageWithPreview(
+          groupChatId,
+          message,
+          formatted.sections,
+          media,
+          keyboard,
+          topicId,
+          { skipAlbum: shouldSendAttachmentsSeparately },
+        );
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
         messageLink = buildChatMessageLink(groupChatId, groupMessageId);
         const consumedUrls = new Set(
           (sendResult.consumedAttachmentUrls ?? []).filter((url) => Boolean(url)),
         );
-        const extras = consumedUrls.size
-          ? media.extras.filter((attachment) =>
-              attachment.kind === 'image'
-                ? !consumedUrls.has(attachment.url)
-                : true,
-            )
-          : media.extras;
+        const extras = shouldSendAttachmentsSeparately
+          ? media.extras
+          : consumedUrls.size
+            ? media.extras.filter((attachment) =>
+                attachment.kind === 'image'
+                  ? !consumedUrls.has(attachment.url)
+                  : true,
+              )
+            : media.extras;
 
         if (extras.length) {
-          const attachmentsChatValue =
-            configuredPhotosChatId ?? groupChatId ?? normalizedGroupChatId;
-          const normalizedAttachmentsChatId = this.normalizeChatId(
-            attachmentsChatValue,
-          );
-          const attachmentsTopicIdForSend =
-            configuredPhotosChatId && normalizedAttachmentsChatId
-              ? configuredPhotosTopicId
-              : topicId;
-          const useSeparatePhotosChat = Boolean(
-            configuredPhotosChatId &&
-              normalizedAttachmentsChatId &&
-              !this.areChatsEqual(
-                configuredPhotosChatId,
-                normalizedGroupChatId,
-              ),
-          );
-          if (useSeparatePhotosChat && normalizedAttachmentsChatId) {
+          const shouldSendAlbumIntro = shouldSendAttachmentsSeparately;
+          let albumMessageId: number | undefined;
+          if (shouldSendAlbumIntro && normalizedAttachmentsChatId) {
             const intro = this.buildPhotoAlbumIntro(plain, {
               messageLink,
               appLink: taskAppLink ?? null,
+              topicId: attachmentsTopicIdForSend ?? undefined,
             });
             try {
               const response = await bot.telegram.sendMessage(
@@ -1954,9 +2025,7 @@ export default class TasksController {
                 intro.options,
               );
               if (response?.message_id) {
-                photosMessageId = response.message_id;
-                photosChatId = normalizedAttachmentsChatId;
-                photosTopicId = attachmentsTopicIdForSend;
+                albumMessageId = response.message_id;
               }
             } catch (error) {
               console.error(
@@ -1964,21 +2033,20 @@ export default class TasksController {
                 error,
               );
             }
-          } else if (
-            normalizedAttachmentsChatId &&
-            this.areChatsEqual(normalizedAttachmentsChatId, normalizedGroupChatId)
-          ) {
-            photosChatId = undefined;
-            photosTopicId = undefined;
           }
+          const shouldReplyToGroup = Boolean(
+            normalizedAttachmentsChatId &&
+              this.areChatsEqual(
+                normalizedAttachmentsChatId,
+                normalizedGroupChatId,
+              ) &&
+              this.areTopicsEqual(attachmentsTopicIdForSend, topicId),
+          );
           if (attachmentsChatValue) {
             try {
-              const replyTo = photosMessageId
-                ? photosMessageId
-                : this.areChatsEqual(
-                    normalizedAttachmentsChatId,
-                    normalizedGroupChatId,
-                  )
+              const replyTo = albumMessageId
+                ? albumMessageId
+                : shouldReplyToGroup
                   ? groupMessageId
                   : undefined;
               attachmentMessageIds = await this.sendTaskAttachments(
@@ -1988,9 +2056,16 @@ export default class TasksController {
                 replyTo,
                 sendResult.cache,
               );
-              if (useSeparatePhotosChat && normalizedAttachmentsChatId) {
+              if (
+                typeof albumMessageId === 'number' &&
+                normalizedAttachmentsChatId
+              ) {
+                photosMessageId = albumMessageId;
                 photosChatId = normalizedAttachmentsChatId;
-                photosTopicId = attachmentsTopicIdForSend;
+                photosTopicId =
+                  typeof attachmentsTopicIdForSend === 'number'
+                    ? attachmentsTopicIdForSend
+                    : undefined;
               }
             } catch (error) {
               console.error('Не удалось отправить вложения задачи', error);
@@ -2013,18 +2088,14 @@ export default class TasksController {
     delete plain.telegram_status_message_id;
     plain.telegram_preview_message_ids = previewMessageIds;
     plain.telegram_attachments_message_ids = attachmentMessageIds;
-    if (photosChatId) {
+    if (typeof photosMessageId === 'number' && photosChatId) {
       plain.telegram_photos_chat_id = photosChatId;
       if (typeof photosTopicId === 'number') {
         plain.telegram_photos_topic_id = photosTopicId;
       } else {
         delete plain.telegram_photos_topic_id;
       }
-      if (typeof photosMessageId === 'number') {
-        plain.telegram_photos_message_id = photosMessageId;
-      } else {
-        delete plain.telegram_photos_message_id;
-      }
+      plain.telegram_photos_message_id = photosMessageId;
     } else {
       delete plain.telegram_photos_chat_id;
       delete plain.telegram_photos_topic_id;
@@ -2103,17 +2174,15 @@ export default class TasksController {
     }
     if (typeof photosMessageId === 'number' && photosChatId) {
       setPayload.telegram_photos_message_id = photosMessageId;
+      setPayload.telegram_photos_chat_id = photosChatId;
+      if (typeof photosTopicId === 'number') {
+        setPayload.telegram_photos_topic_id = photosTopicId;
+      } else {
+        unsetPayload.telegram_photos_topic_id = '';
+      }
     } else {
       unsetPayload.telegram_photos_message_id = '';
-    }
-    if (photosChatId) {
-      setPayload.telegram_photos_chat_id = photosChatId;
-    } else {
       unsetPayload.telegram_photos_chat_id = '';
-    }
-    if (typeof photosTopicId === 'number' && photosChatId) {
-      setPayload.telegram_photos_topic_id = photosTopicId;
-    } else {
       unsetPayload.telegram_photos_topic_id = '';
     }
     if (directMessages.length) {

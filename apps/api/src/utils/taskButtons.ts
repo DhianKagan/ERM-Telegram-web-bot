@@ -12,6 +12,10 @@ export interface TaskStatusKeyboardOptions {
   kind?: 'task' | 'request';
 }
 
+export interface TaskStatusKeyboardExtras {
+  albumLink?: string;
+}
+
 const statusButtonLabels: Record<
   Exclude<TaskStatus, 'Новая'>,
   { default: string; active: string }
@@ -123,7 +127,11 @@ export function taskStatusInlineMarkup(
   id: string,
   currentStatus?: TaskStatus,
   options: TaskStatusKeyboardOptions = {},
+  extras: TaskStatusKeyboardExtras = {},
 ): InlineKeyboardMarkup {
   const rows = buildStatusRows(id, currentStatus, options);
+  if (extras.albumLink) {
+    rows.push([Markup.button.url('Фотоальбом', extras.albumLink)]);
+  }
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows).reply_markup;
 }

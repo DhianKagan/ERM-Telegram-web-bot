@@ -67,9 +67,25 @@ const {
   __deleteMessageMock: jest.Mock;
 };
 
-jest.mock('../apps/api/src/utils/taskButtons', () =>
-  jest.fn(() => ({ inline_keyboard: [] })),
+const taskStatusKeyboardMock = jest.fn(() => ({ inline_keyboard: [] }));
+const taskStatusInlineMarkupMock = jest.fn(
+  (
+    _id: string,
+    _status?: string,
+    _options?: unknown,
+    extras?: { albumLink?: string },
+  ) => ({
+    inline_keyboard: extras?.albumLink
+      ? [[{ text: 'Фотоальбом', url: extras.albumLink }]]
+      : [],
+  }),
 );
+
+jest.mock('../apps/api/src/utils/taskButtons', () => ({
+  __esModule: true,
+  default: taskStatusKeyboardMock,
+  taskStatusInlineMarkup: taskStatusInlineMarkupMock,
+}));
 
 jest.mock('../apps/api/src/utils/messageLink', () =>
   jest.fn(() => 'https://t.me/c/100/200'),
@@ -146,6 +162,8 @@ describe('notifyTaskCreated вложения', () => {
     editMessageCaptionMock.mockReset();
     editMessageReplyMarkupMock.mockReset();
     deleteMessageMock.mockReset();
+    taskStatusKeyboardMock.mockReset();
+    taskStatusInlineMarkupMock.mockReset();
     updateTaskMock.mockClear();
     taskFindByIdMock.mockClear();
     fileFindByIdMock.mockClear();
@@ -229,6 +247,14 @@ describe('notifyTaskCreated вложения', () => {
         updatePayload.$set?.telegram_attachments_message_ids,
       ).toEqual(expect.arrayContaining([youtubeMessageId]));
     }
+
+    const markupCall = editMessageReplyMarkupMock.mock.calls.find(
+      (call) => call?.[1] === groupMessageId,
+    );
+    expect(markupCall?.[3]?.inline_keyboard?.[0]?.[0]).toEqual({
+      text: 'Фотоальбом',
+      url: 'https://t.me/c/100/200',
+    });
   });
 
   it('удаляет и пересоздаёт сообщения и вложения при обновлении задачи', async () => {
@@ -394,16 +420,11 @@ describe('notifyTaskCreated вложения', () => {
       (call, index) => index > 0 && call?.[2]?.message_thread_id === 7777,
     );
     expect(albumCall?.[2]?.message_thread_id).toBe(7777);
+    expect(albumCall?.[1]).toBe('*Альбом*');
     const albumKeyboard = albumCall?.[2]?.reply_markup?.inline_keyboard;
-    expect(albumKeyboard?.[0]?.[0]).toEqual({
-      text: 'Перейти к сообщению',
-      url: 'https://t.me/c/100/200',
-    });
-    const webButton = albumKeyboard?.[1]?.[0];
-    expect(webButton?.text).toBe('Открыть в вебе');
-    expect(webButton?.url).toMatch(
-      /\/tasks\?task=507f1f77bcf86cd799439013$/,
-    );
+    expect(albumKeyboard).toEqual([
+      [{ text: 'Перейти к задаче', url: 'https://t.me/c/100/200' }],
+    ]);
     expect(buildChatMessageLinkMock).toHaveBeenCalledWith(
       expect.stringMatching(/^-100/),
       groupMessageId,
@@ -424,5 +445,13 @@ describe('notifyTaskCreated вложения', () => {
       expect(updatePayload.$set?.telegram_photos_topic_id).toBe(7777);
       expect(updatePayload.$set?.telegram_photos_message_id).toBe(albumIntroId);
     }
+
+    const markupCall = editMessageReplyMarkupMock.mock.calls.find(
+      (call) => call?.[1] === groupMessageId,
+    );
+    expect(markupCall?.[3]?.inline_keyboard?.[0]?.[0]).toEqual({
+      text: 'Фотоальбом',
+      url: 'https://t.me/c/100/200',
+    });
   });
 });

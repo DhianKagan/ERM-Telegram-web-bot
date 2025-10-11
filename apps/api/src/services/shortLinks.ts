@@ -31,10 +31,15 @@ const APP_ORIGIN = (() => {
 const SLUG_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const generateSlug = (length = 8): string => {
-  const bytes = randomBytes(length);
+  const alphabetLen = SLUG_ALPHABET.length;
+  const maxUnbiasedValue = Math.floor(256 / alphabetLen) * alphabetLen;
   let slug = '';
-  for (let index = 0; index < length; index += 1) {
-    const value = bytes[index] % SLUG_ALPHABET.length;
+  while (slug.length < length) {
+    const byte = randomBytes(1)[0];
+    if (byte >= maxUnbiasedValue) {
+      continue;
+    }
+    const value = byte % alphabetLen;
     slug += SLUG_ALPHABET[value];
   }
   return slug;

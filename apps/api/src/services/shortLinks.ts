@@ -165,8 +165,8 @@ export const ensureShortLink = async (
   }
   try {
     // Проверяем валидность URL
-    // eslint-disable-next-line no-new
-    new URL(normalized);
+    const parsedUrl = new URL(normalized);
+    parsedUrl.toString();
   } catch {
     throw new Error('Некорректный URL для сокращения');
   }

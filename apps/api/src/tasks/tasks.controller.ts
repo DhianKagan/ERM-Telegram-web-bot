@@ -1190,10 +1190,15 @@ export default class TasksController {
     const header = headerParts.length
       ? `📸 ${headerParts.join(' — ')}`
       : '📸 Фото по задаче';
-    const description =
+    const descriptionCandidates = [
       typeof task.task_description === 'string'
         ? task.task_description.trim()
-        : '';
+        : '',
+      typeof task.description === 'string'
+        ? (task.description as string).trim()
+        : '',
+    ];
+    const description = descriptionCandidates.find((value) => Boolean(value)) ?? '';
     const lines = [header];
     if (description) {
       lines.push(escapeMarkdownV2(description));
@@ -1201,11 +1206,17 @@ export default class TasksController {
       lines.push('Описание отсутствует.');
     }
     const text = lines.join('\n\n');
-    const link = options.appLink ?? options.messageLink ?? null;
-    const replyMarkup = link
-      ? {
-          inline_keyboard: [[{ text: 'Перейти к задаче', url: link }]],
-        }
+    const messageLink = options.messageLink ?? null;
+    const appLink = options.appLink ?? null;
+    const inlineKeyboard: { text: string; url: string }[][] = [];
+    if (messageLink) {
+      inlineKeyboard.push([{ text: 'Перейти к сообщению', url: messageLink }]);
+    }
+    if (appLink && appLink !== messageLink) {
+      inlineKeyboard.push([{ text: 'Открыть в вебе', url: appLink }]);
+    }
+    const replyMarkup = inlineKeyboard.length
+      ? { inline_keyboard: inlineKeyboard }
       : undefined;
     const sendOptions: NonNullable<
       Parameters<typeof bot.telegram.sendMessage>[2]
@@ -1995,7 +2006,7 @@ export default class TasksController {
         );
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
-        messageLink = buildChatMessageLink(groupChatId, groupMessageId);
+        messageLink = buildChatMessageLink(groupChatId, groupMessageId, topicId);
         const consumedUrls = new Set(
           (sendResult.consumedAttachmentUrls ?? []).filter((url) => Boolean(url)),
         );

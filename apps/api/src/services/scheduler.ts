@@ -143,7 +143,11 @@ export function startScheduler(): void {
         const diffMs = dueDate.getTime() - now.getTime();
         const durationText = formatDuration(Math.abs(diffMs));
         const formattedDue = deadlineFormatter.format(dueDate).replace(', ', ' ');
-        const link = buildChatMessageLink(chatId, t.telegram_message_id);
+        const link = buildChatMessageLink(
+          chatId,
+          t.telegram_message_id,
+          t.telegram_topic_id,
+        );
         if (!link) continue;
         const prefix = `Дедлайн задачи <a href="${link}">${identifier}</a>`;
         const base = `${prefix} — срок ${formattedDue} (${PROJECT_TIMEZONE_LABEL}), `;

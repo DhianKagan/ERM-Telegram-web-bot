@@ -20,6 +20,7 @@ import {
 import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 import { getTaskIdentifier } from '../tasks/taskMessages';
 import { buildTaskAppLink } from '../tasks/taskLinks';
+import buildChatMessageLink from '../utils/messageLink';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
@@ -179,7 +180,11 @@ type TelegramSendMessageOptions = Parameters<
 
 const buildPhotoAlbumIntro = (
   task: Partial<PlainTask>,
-  options: { appLink?: string | null; topicId?: number | null },
+  options: {
+    appLink?: string | null;
+    topicId?: number | null;
+    messageLink?: string | null;
+  },
 ): { text: string; options: TelegramSendMessageOptions } => {
   const identifier = getTaskIdentifier(task as TaskDocument);
   const title =
@@ -194,10 +199,15 @@ const buildPhotoAlbumIntro = (
   const header = headerParts.length
     ? `📸 ${headerParts.join(' — ')}`
     : '📸 Фото по задаче';
-  const description =
+  const descriptionCandidates = [
     typeof task.task_description === 'string'
       ? task.task_description.trim()
-      : '';
+      : '',
+    typeof (task as Record<string, unknown>).description === 'string'
+      ? ((task as Record<string, unknown>).description as string).trim()
+      : '',
+  ];
+  const description = descriptionCandidates.find((value) => Boolean(value)) ?? '';
   const lines = [header];
   if (description) {
     lines.push(escapeMarkdownV2(description));
@@ -205,9 +215,17 @@ const buildPhotoAlbumIntro = (
     lines.push('Описание отсутствует.');
   }
   const text = lines.join('\n\n');
-  const link = options.appLink ?? null;
-  const replyMarkup = link
-    ? { inline_keyboard: [[{ text: 'Перейти к задаче', url: link }]] }
+  const inlineKeyboard: { text: string; url: string }[][] = [];
+  const messageLink = options.messageLink ?? null;
+  const appLink = options.appLink ?? null;
+  if (messageLink) {
+    inlineKeyboard.push([{ text: 'Перейти к сообщению', url: messageLink }]);
+  }
+  if (appLink && appLink !== messageLink) {
+    inlineKeyboard.push([{ text: 'Открыть в вебе', url: appLink }]);
+  }
+  const replyMarkup = inlineKeyboard.length
+    ? { inline_keyboard: inlineKeyboard }
     : undefined;
   const sendOptions: TelegramSendMessageOptions = {
     parse_mode: 'MarkdownV2',
@@ -354,6 +372,11 @@ export default class TaskSyncController {
     const { text, inlineImages, sections } = formatted;
     const appLink = buildTaskAppLink(task);
     const normalizedGroupChatId = normalizeChatId(targetChatId);
+    const chatIdForLinks =
+      normalizedGroupChatId ??
+      (typeof targetChatId === 'string' || typeof targetChatId === 'number'
+        ? targetChatId
+        : undefined);
     const photosTarget = await resolveTaskTypePhotosTarget(task.task_type);
     const configuredPhotosChatId = normalizeChatId(photosTarget?.chatId);
     const configuredPhotosTopicId = toNumericId(photosTarget?.topicId) ?? undefined;
@@ -543,6 +566,11 @@ export default class TaskSyncController {
         sentMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
         if (sentMessageId) {
+          const messageLinkForAttachments = buildChatMessageLink(
+            chatIdForLinks,
+            sentMessageId,
+            normalizedTopicId,
+          );
           const consumed = new Set(sendResult.consumedAttachmentUrls ?? []);
           const extras = shouldSendAttachmentsSeparately
             ? media.extras
@@ -559,6 +587,7 @@ export default class TaskSyncController {
             if (shouldSendAlbumIntro && normalizedAttachmentsChatId) {
               const intro = buildPhotoAlbumIntro(task, {
                 appLink,
+                messageLink: messageLinkForAttachments,
                 topicId: attachmentsTopicIdForSend ?? undefined,
               });
               try {
@@ -669,6 +698,11 @@ export default class TaskSyncController {
         if (shouldSendAlbumIntro && normalizedAttachmentsChatId) {
           const intro = buildPhotoAlbumIntro(task, {
             appLink,
+            messageLink: buildChatMessageLink(
+              chatIdForLinks,
+              sentMessageId,
+              normalizedTopicId,
+            ),
             topicId: attachmentsTopicIdForSend ?? undefined,
           });
           try {

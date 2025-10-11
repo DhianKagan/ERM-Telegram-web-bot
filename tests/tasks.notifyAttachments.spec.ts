@@ -121,6 +121,10 @@ const {
   __updateOneMock: jest.Mock;
 };
 
+const buildChatMessageLinkMock = jest.requireMock(
+  '../apps/api/src/utils/messageLink',
+) as jest.Mock;
+
 jest.mock('../apps/api/src/services/taskTypeSettings', () => ({
   resolveTaskTypePhotosTarget: jest.fn(async () => null),
 }));
@@ -147,6 +151,7 @@ describe('notifyTaskCreated вложения', () => {
     fileFindByIdMock.mockClear();
     updateOneMock.mockClear();
     getUsersMapMock.mockClear();
+    buildChatMessageLinkMock.mockClear();
     process.env.APP_URL = 'https://example.com';
     process.env.CHAT_ID = '-100100';
     resolvePhotosTargetMock.mockReset();
@@ -389,6 +394,21 @@ describe('notifyTaskCreated вложения', () => {
       (call, index) => index > 0 && call?.[2]?.message_thread_id === 7777,
     );
     expect(albumCall?.[2]?.message_thread_id).toBe(7777);
+    const albumKeyboard = albumCall?.[2]?.reply_markup?.inline_keyboard;
+    expect(albumKeyboard?.[0]?.[0]).toEqual({
+      text: 'Перейти к сообщению',
+      url: 'https://t.me/c/100/200',
+    });
+    const webButton = albumKeyboard?.[1]?.[0];
+    expect(webButton?.text).toBe('Открыть в вебе');
+    expect(webButton?.url).toMatch(
+      /\/tasks\?task=507f1f77bcf86cd799439013$/,
+    );
+    expect(buildChatMessageLinkMock).toHaveBeenCalledWith(
+      expect.stringMatching(/^-100/),
+      groupMessageId,
+      111,
+    );
 
     const photoCall = sendPhotoMock.mock.calls[0];
     expect(photoCall?.[2]?.message_thread_id).toBe(7777);

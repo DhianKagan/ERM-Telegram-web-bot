@@ -13,7 +13,7 @@ export interface StorageRow extends StoredFile {
   sizeLabel: string;
   uploadedLabel: string;
   userLabel: string;
-  taskLabel: string;
+  taskDisplay: string;
   taskLink?: string;
   onDownload: () => void;
   onDelete: () => void;
@@ -28,6 +28,7 @@ interface Labels {
   uploaded: string;
   download: string;
   delete: string;
+  taskTitleHint: (title: string) => string;
 }
 
 export default function createStorageColumns(
@@ -95,19 +96,35 @@ export default function createStorageColumns(
     },
     {
       header: labels.task,
-      accessorKey: "taskLabel",
-      meta: { minWidth: "8rem", maxWidth: "12rem" },
+      accessorKey: "taskDisplay",
+      meta: { minWidth: "10rem", maxWidth: "16rem" },
       cell: ({ row }) => {
         const file = row.original;
-        if (!file.taskId) return <span>{file.taskLabel}</span>;
-        if (!file.taskLink) return <span>{file.taskLabel}</span>;
+        const content = (
+          <span className="block">
+            {file.taskDisplay}
+            {file.taskTitle ? (
+              <span className="block text-xs text-muted-foreground">
+                {file.taskTitle}
+              </span>
+            ) : null}
+          </span>
+        );
+        if (!file.taskId || !file.taskLink) {
+          return content;
+        }
         return (
           <Link
             to={file.taskLink}
             className="text-blue-600 underline"
             onClick={(event) => event.stopPropagation()}
+            title={
+              file.taskTitle
+                ? labels.taskTitleHint(file.taskTitle)
+                : undefined
+            }
           >
-            {file.taskLabel}
+            {content}
           </Link>
         );
       },

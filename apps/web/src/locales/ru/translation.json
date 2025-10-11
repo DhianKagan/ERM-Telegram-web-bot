@@ -128,7 +128,9 @@
     "loadError": "Не удалось загрузить список файлов.",
     "userLabel": "Пользователь {{id}}",
     "taskLabel": "Задача #{{id}}",
+    "taskNumberLabel": "Задача {{number}}",
     "taskMissing": "Без задачи",
+    "taskTitleHint": "Название: {{title}}",
     "columns": {
       "name": "Имя",
       "user": "Пользователь",

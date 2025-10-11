@@ -1818,6 +1818,8 @@ export default class TasksController {
             .filter((item): item is number => item !== null)
         : [];
 
+    const taskAppLink = buildTaskAppLink(plain);
+
     let groupMessageId: number | undefined;
     let messageLink: string | null = null;
     let attachmentMessageIds: number[] = [];
@@ -1943,7 +1945,7 @@ export default class TasksController {
           if (useSeparatePhotosChat && normalizedAttachmentsChatId) {
             const intro = this.buildPhotoAlbumIntro(plain, {
               messageLink,
-              appLink: appLink ?? null,
+              appLink: taskAppLink ?? null,
             });
             try {
               const response = await bot.telegram.sendMessage(
@@ -2036,8 +2038,10 @@ export default class TasksController {
 
     const assignees = this.collectAssignees(plain);
     if (assignees.size) {
-      const appLink = buildTaskAppLink(plain);
-      const dmKeyboard = buildDirectTaskKeyboard(messageLink, appLink ?? undefined);
+      const dmKeyboard = buildDirectTaskKeyboard(
+        messageLink,
+        taskAppLink ?? undefined,
+      );
       const dmOptions: SendMessageOptions = {
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },
@@ -2049,7 +2053,7 @@ export default class TasksController {
         plain,
         messageLink,
         users,
-        appLink,
+        taskAppLink,
         dmNote ? { note: dmNote } : undefined,
       );
       for (const userId of assignees) {

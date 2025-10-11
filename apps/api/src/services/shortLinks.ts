@@ -16,6 +16,15 @@ const SHORT_PATH_PREFIX = (() => {
   }
 })();
 
+export const getShortLinkPathPrefix = (): string => {
+  if (SHORT_PATH_PREFIX.startsWith('/')) {
+    const trimmed = SHORT_PATH_PREFIX.replace(/\/+$/, '');
+    return trimmed || '/l';
+  }
+  const normalized = SHORT_PATH_PREFIX.replace(/\/+$/, '') || SHORT_PATH_SEGMENT;
+  return `/${normalized}`;
+};
+
 const APP_ORIGIN = (() => {
   try {
     const parsed = new URL(appUrl);

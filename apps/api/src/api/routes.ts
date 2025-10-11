@@ -53,7 +53,7 @@ import {
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
-import { resolveShortLinkBySlug } from '../services/shortLinks';
+import { getShortLinkPathPrefix, resolveShortLinkBySlug } from '../services/shortLinks';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -183,8 +183,9 @@ export default async function registerRoutes(
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   });
+  const shortLinkRoute = `${getShortLinkPathPrefix()}/:slug`;
   app.get(
-    '/l/:slug',
+    shortLinkRoute,
     asyncHandler(async (req: Request, res: Response) => {
       const slug = typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
       if (!slug) {

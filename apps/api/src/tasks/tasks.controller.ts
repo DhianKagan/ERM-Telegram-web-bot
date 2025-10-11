@@ -24,12 +24,8 @@ import {
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
-import {
-  bot,
-  buildTaskAppLink,
-  buildDirectTaskKeyboard,
-  buildDirectTaskMessage,
-} from '../bot/bot';
+import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
+import { buildTaskAppLink } from './taskLinks';
 import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, {

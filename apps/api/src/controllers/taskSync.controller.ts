@@ -351,6 +351,10 @@ export default class TaskSyncController {
       (typeof targetChatId === 'string' || typeof targetChatId === 'number'
         ? targetChatId
         : undefined);
+    let albumLinkForKeyboard: string | null = resolveTaskAlbumLink(task, {
+      fallbackChatId: chatIdForLinks,
+      fallbackTopicId: typeof topicId === 'number' ? topicId : null,
+    });
     const photosTarget = await resolveTaskTypePhotosTarget(task.task_type);
     const configuredPhotosChatId = normalizeChatId(photosTarget?.chatId);
     const configuredPhotosTopicId = toNumericId(photosTarget?.topicId) ?? undefined;
@@ -432,10 +436,6 @@ export default class TaskSyncController {
     };
 
     let currentMessageId = messageId;
-    let albumLinkForKeyboard: string | null = resolveTaskAlbumLink(task, {
-      fallbackChatId: chatIdForLinks,
-      fallbackTopicId: typeof topicId === 'number' ? topicId : null,
-    });
     const editReplyMarkup =
       typeof this.bot?.telegram?.editMessageReplyMarkup === 'function'
         ? this.bot.telegram.editMessageReplyMarkup.bind(this.bot.telegram)

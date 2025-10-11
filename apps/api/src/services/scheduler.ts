@@ -4,7 +4,10 @@ import { schedule, ScheduledTask } from 'node-cron';
 import { Task, User } from '../db/model';
 import { call } from './telegramApi';
 import { enqueue } from './messageQueue';
-import { chatId } from '../config';
+import { getChatId, chatId as staticChatId } from '../config';
+
+const resolveChatId = (): string | undefined =>
+  typeof getChatId === 'function' ? getChatId() : staticChatId;
 import buildChatMessageLink from '../utils/messageLink';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 
@@ -70,12 +73,15 @@ export function startScheduler(): void {
         }
       }
       if (!notified) {
-        await enqueue(() =>
-          call('sendMessage', {
-            chat_id: chatId,
-            text: `Напоминание: ${t.title}`,
-          }),
-        );
+        const groupChatId = resolveChatId();
+        if (groupChatId) {
+          await enqueue(() =>
+            call('sendMessage', {
+              chat_id: groupChatId,
+              text: `Напоминание: ${t.title}`,
+            }),
+          );
+        }
       }
     }
     if (tasks.length) {
@@ -143,8 +149,9 @@ export function startScheduler(): void {
         const diffMs = dueDate.getTime() - now.getTime();
         const durationText = formatDuration(Math.abs(diffMs));
         const formattedDue = deadlineFormatter.format(dueDate).replace(', ', ' ');
+        const groupChatId = resolveChatId();
         const link = buildChatMessageLink(
-          chatId,
+          groupChatId,
           t.telegram_message_id,
           t.telegram_topic_id,
         );

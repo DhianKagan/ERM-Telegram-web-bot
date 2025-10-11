@@ -26,7 +26,7 @@ import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
 import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
-import { chatId as groupChatId, appUrl as baseAppUrl } from '../config';
+import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard from '../utils/taskButtons';
 import formatTask, {
   type InlineImage,
@@ -79,6 +79,9 @@ const baseAppHost = (() => {
     return null;
   }
 })();
+
+const resolveGroupChatId = (): string | undefined =>
+  typeof getChatId === 'function' ? getChatId() : staticChatId;
 
 type LocalPhotoInfo = {
   absolutePath: string;
@@ -1826,6 +1829,7 @@ export default class TasksController {
     const noteRaw = typeof options?.note === 'string' ? options.note.trim() : '';
     const dmNote = noteRaw || (action === 'обновлена' ? 'Задачу обновили' : '');
 
+    const groupChatId = resolveGroupChatId();
     const normalizedGroupChatId = this.normalizeChatId(groupChatId);
     const photosTarget = await resolveTaskTypePhotosTarget(plain.task_type);
     const configuredPhotosChatId = this.normalizeChatId(photosTarget?.chatId);
@@ -2624,6 +2628,7 @@ export default class TasksController {
       return;
     }
     const topicId = this.normalizeTopicId(plain.telegram_topic_id);
+    const groupChatId = resolveGroupChatId();
     const normalizedGroupChatId = this.normalizeChatId(groupChatId);
     const photosChatId = this.normalizeChatId(plain.telegram_photos_chat_id);
     const photosTopicId = this.normalizeTopicId(

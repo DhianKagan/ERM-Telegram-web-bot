@@ -5,7 +5,10 @@ import { Gauge } from 'prom-client';
 import { uploadsDir } from '../config/storage';
 import { enqueue } from './messageQueue';
 import { call } from './telegramApi';
-import { chatId } from '../config';
+import { getChatId, chatId as staticChatId } from '../config';
+
+const resolveChatId = (): string | undefined =>
+  typeof getChatId === 'function' ? getChatId() : staticChatId;
 import { register } from '../metrics';
 
 const diskFreeGauge = new Gauge({
@@ -24,22 +27,28 @@ export async function checkDiskSpace(): Promise<void> {
     diskFreeGauge.set(free);
     if (free < THRESHOLD && !warned) {
       warned = true;
-      await enqueue(() =>
-        call('sendMessage', {
-          chat_id: chatId,
-          text: `Свободное место на диске менее ${Math.round(free / 1024 / 1024)} МБ`,
-        }),
-      );
+      const groupChatId = resolveChatId();
+      if (groupChatId) {
+        await enqueue(() =>
+          call('sendMessage', {
+            chat_id: groupChatId,
+            text: `Свободное место на диске менее ${Math.round(free / 1024 / 1024)} МБ`,
+          }),
+        );
+      }
     }
     if (free >= THRESHOLD) warned = false;
   } catch (e) {
     console.error('diskSpace', e);
-    await enqueue(() =>
-      call('sendMessage', {
-        chat_id: chatId,
-        text: 'Не удалось проверить свободное место на диске',
-      }),
-    );
+    const groupChatId = resolveChatId();
+    if (groupChatId) {
+      await enqueue(() =>
+        call('sendMessage', {
+          chat_id: groupChatId,
+          text: 'Не удалось проверить свободное место на диске',
+        }),
+      );
+    }
   }
 }
 

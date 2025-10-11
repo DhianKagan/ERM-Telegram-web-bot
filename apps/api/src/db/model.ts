@@ -255,6 +255,9 @@ export interface TaskAttrs {
   telegram_preview_message_ids?: number[];
   telegram_attachments_message_ids?: number[];
   telegram_dm_message_ids?: { user_id: number; message_id: number }[];
+  telegram_photos_message_id?: number;
+  telegram_photos_chat_id?: string | number;
+  telegram_photos_topic_id?: number;
   telegram_message_cleanup?: {
     chat_id: string | number;
     message_id: number;
@@ -363,7 +366,7 @@ const taskSchema = new Schema<TaskDocument>(
     cargo_height_m: Number,
     cargo_volume_m3: Number,
     cargo_weight_kg: Number,
-    logistics_enabled: { type: Boolean, default: true },
+    logistics_enabled: { type: Boolean, default: false },
 
     // Способ оплаты допускает отсутствие оплаты
     payment_method: {
@@ -390,6 +393,9 @@ const taskSchema = new Schema<TaskDocument>(
         message_id: Number,
       },
     ],
+    telegram_photos_message_id: Number,
+    telegram_photos_chat_id: String,
+    telegram_photos_topic_id: Number,
     telegram_message_cleanup: Schema.Types.Mixed,
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },

@@ -81,6 +81,9 @@ interface InitialValues {
   cargoVolume: string;
   cargoWeight: string;
   showLogistics: boolean;
+  photosLink?: string | null;
+  photosChatId?: unknown;
+  photosMessageId?: unknown;
 }
 
 const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -132,6 +135,43 @@ const formatMetricValue = (value: unknown): string => {
     return value;
   }
   return "";
+};
+
+const buildTelegramMessageLink = (
+  chatId: unknown,
+  messageId: unknown,
+): string | null => {
+  if (chatId === undefined || chatId === null) {
+    return null;
+  }
+  const rawMessageId =
+    typeof messageId === "number"
+      ? messageId
+      : typeof messageId === "string"
+        ? Number(messageId.trim())
+        : NaN;
+  if (!Number.isFinite(rawMessageId) || rawMessageId <= 0) {
+    return null;
+  }
+  const chat =
+    typeof chatId === "number"
+      ? chatId.toString()
+      : typeof chatId === "string"
+        ? chatId.trim()
+        : "";
+  if (!chat) {
+    return null;
+  }
+  if (chat.startsWith("@")) {
+    return `https://t.me/${chat.slice(1)}/${rawMessageId}`;
+  }
+  if (/^-100\d+$/.test(chat)) {
+    return `https://t.me/c/${chat.slice(4)}/${rawMessageId}`;
+  }
+  if (/^\d+$/.test(chat)) {
+    return `https://t.me/c/${chat}/${rawMessageId}`;
+  }
+  return null;
 };
 
 const REQUEST_TYPE_NAME = "Заявка";
@@ -647,6 +687,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+  const [photosLink, setPhotosLink] = React.useState<string | null>(null);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const autoRouteRef = React.useRef(true);
@@ -918,6 +959,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setAttachments(
         ((taskData.attachments as Attachment[]) || []) as Attachment[],
       );
+      const albumChat = (taskData as Record<string, unknown>)
+        .telegram_photos_chat_id;
+      const albumMessage = (taskData as Record<string, unknown>)
+        .telegram_photos_message_id;
+      setPhotosLink(buildTelegramMessageLink(albumChat, albumMessage));
       if (usersMap) {
         setUsers((prev) => {
           const list = [...prev];
@@ -958,6 +1004,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         cargoVolume: volumeValue,
         cargoWeight: weightValue,
         showLogistics: logisticsEnabled,
+        photosLink: buildTelegramMessageLink(albumChat, albumMessage),
+        photosChatId: albumChat,
+        photosMessageId: albumMessage,
       };
       setStartDateNotice(null);
       commitResolvedTaskId(
@@ -1088,6 +1137,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setRequestId(`${prefix}_${num}`);
       });
     setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
+    setPhotosLink(null);
     const startInstant = parseIsoDate(defaultStartDate);
     setStartDateNotice(
       startInstant ? formatHistoryInstant(startInstant) : null,
@@ -1121,6 +1171,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       cargoVolume: "",
       cargoWeight: "",
       showLogistics: false,
+      photosLink: null,
+      photosChatId: undefined,
+      photosMessageId: undefined,
     };
     setInitialDates({ start: defaultStartDate, due: defaultDueDate });
     stableReset({
@@ -1644,6 +1697,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setEnd(d.end);
     setEndLink(d.endLink);
     setAttachments(d.attachments as Attachment[]);
+    setPhotosLink(
+      buildTelegramMessageLink(d.photosChatId, d.photosMessageId) ??
+        (typeof d.photosLink === "string" ? d.photosLink : null),
+    );
     setDistanceKm(d.distanceKm);
     setShowLogistics(Boolean(d.showLogistics));
   };
@@ -2402,6 +2459,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   </ul>
                 </div>
               )}
+              {photosLink ? (
+                <div>
+                  <a
+                    href={photosLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "pill" }),
+                      "inline-flex w-fit",
+                    )}
+                  >
+                    Фото
+                  </a>
+                </div>
+              ) : null}
               <FileUploader
                 disabled={!editing || !titleValue.trim()}
                 onUploaded={(a) => setAttachments((p) => [...p, a])}

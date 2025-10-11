@@ -29,6 +29,9 @@ export interface CollectionItemMeta {
   tg_theme_url?: string;
   tg_chat_id?: string;
   tg_topic_id?: number;
+  tg_photos_url?: string;
+  tg_photos_chat_id?: string;
+  tg_photos_topic_id?: number;
   [key: string]: unknown;
 }
 

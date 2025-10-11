@@ -31,6 +31,9 @@ export interface Task {
   telegram_summary_message_id?: number;
   telegram_preview_message_ids?: number[];
   telegram_attachments_message_ids?: number[];
+  telegram_photos_message_id?: number;
+  telegram_photos_chat_id?: string | number;
+  telegram_photos_topic_id?: number;
   deadline_reminder_sent_at?: string;
   [key: string]: unknown;
 }

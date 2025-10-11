@@ -20,7 +20,11 @@ jest.mock('../src/db/queries', () => ({
 
 jest.mock('../src/utils/formatTask', () => ({
   __esModule: true,
-  default: jest.fn(() => ({ text: 'Задача', inlineImages: undefined })),
+  default: jest.fn(() => ({
+    text: 'Задача',
+    inlineImages: undefined,
+    sections: [],
+  })),
 }));
 
 const mockUpdateOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue(undefined) }));

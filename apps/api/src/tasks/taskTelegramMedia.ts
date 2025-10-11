@@ -16,7 +16,11 @@ import {
   type TaskDocument,
 } from '../db/model';
 import { uploadsDir } from '../config/storage';
-import type { InlineImage } from '../utils/formatTask';
+import type {
+  FormatTaskSection,
+  InlineImage,
+} from '../utils/formatTask';
+import { SECTION_SEPARATOR } from '../utils/formatTask';
 
 type LocalPhotoInfo = {
   absolutePath: string;
@@ -71,6 +75,163 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
   'image/gif',
 ]);
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
+const TELEGRAM_CAPTION_LIMIT = 1024;
+const TELEGRAM_MESSAGE_LIMIT = 4096;
+
+const hasOddTrailingBackslash = (value: string): boolean => {
+  const match = value.match(/\\+$/);
+  if (!match) {
+    return false;
+  }
+  return match[0].length % 2 === 1;
+};
+
+const adjustBreakIndex = (text: string, index: number): number => {
+  let candidate = Math.min(Math.max(index, 1), text.length);
+  while (candidate > 0) {
+    const prefix = text.slice(0, candidate);
+    if (!hasOddTrailingBackslash(prefix)) {
+      break;
+    }
+    candidate -= 1;
+  }
+  return candidate;
+};
+
+const findBreakIndex = (text: string, limit: number): number => {
+  const windowEnd = Math.min(limit + 1, text.length);
+  const window = text.slice(0, windowEnd);
+  const doubleNewlineIndex = window.lastIndexOf('\n\n');
+  if (doubleNewlineIndex >= 0) {
+    return doubleNewlineIndex + 2;
+  }
+  const newlineIndex = window.lastIndexOf('\n');
+  if (newlineIndex >= 0) {
+    return newlineIndex + 1;
+  }
+  const spaceIndex = window.lastIndexOf(' ');
+  if (spaceIndex >= 0) {
+    return spaceIndex + 1;
+  }
+  return Math.min(limit, text.length);
+};
+
+const splitMessageForTelegramLimit = (text: string, limit: number): string[] => {
+  const normalized = typeof text === 'string' ? text : '';
+  if (!normalized) {
+    return [];
+  }
+  if (normalized.length <= limit) {
+    return [normalized];
+  }
+  const parts: string[] = [];
+  let remaining = normalized;
+  while (remaining.length > limit) {
+    let breakIndex = findBreakIndex(remaining, limit);
+    breakIndex = adjustBreakIndex(remaining, breakIndex);
+    if (breakIndex <= 0 || breakIndex >= remaining.length) {
+      breakIndex = Math.min(limit, remaining.length);
+    }
+    let chunk = remaining.slice(0, breakIndex);
+    if (!chunk.trim()) {
+      chunk = remaining.slice(0, Math.min(limit, remaining.length));
+      breakIndex = chunk.length;
+    }
+    if (!chunk) {
+      break;
+    }
+    parts.push(chunk);
+    remaining = remaining.slice(breakIndex).replace(/^[\n\r]+/, '');
+  }
+  if (remaining.length) {
+    parts.push(remaining);
+  }
+  return parts;
+};
+
+const splitSectionForLimit = (
+  section: FormatTaskSection,
+  limit: number,
+): { head: FormatTaskSection | null; tail: FormatTaskSection | null } => {
+  if (section.content.length <= limit) {
+    return { head: section, tail: null };
+  }
+  const lines = section.content.split('\n');
+  const selected: string[] = [];
+  let used = 0;
+  for (const line of lines) {
+    const prefix = selected.length ? 1 : 0;
+    const nextLength = line.length;
+    if (used + prefix + nextLength > limit) {
+      break;
+    }
+    selected.push(line);
+    used += prefix + nextLength;
+  }
+  if (!selected.length) {
+    return { head: null, tail: section };
+  }
+  const headContent = selected.join('\n');
+  const tailContent = section.content
+    .slice(headContent.length)
+    .replace(/^[\n\r]+/, '');
+  return {
+    head: { key: section.key, content: headContent },
+    tail: tailContent ? { key: section.key, content: tailContent } : null,
+  };
+};
+
+const buildCaptionFromSections = (
+  sections: FormatTaskSection[],
+  fullText: string,
+  limit: number,
+): { caption: string; leftover: FormatTaskSection[] } => {
+  const selected: FormatTaskSection[] = [];
+  const leftover: FormatTaskSection[] = [];
+  let used = 0;
+
+  for (let index = 0; index < sections.length; index += 1) {
+    const section = sections[index];
+    const prefix = selected.length ? SECTION_SEPARATOR.length : 0;
+    const available = limit - used - prefix;
+    if (available <= 0) {
+      leftover.push(section, ...sections.slice(index + 1));
+      break;
+    }
+    if (section.content.length <= available) {
+      selected.push(section);
+      used += prefix + section.content.length;
+      continue;
+    }
+    const { head, tail } = splitSectionForLimit(section, available);
+    if (head) {
+      selected.push(head);
+      used += prefix + head.content.length;
+    }
+    if (tail) {
+      leftover.push(tail);
+    } else {
+      leftover.push(section);
+    }
+    leftover.push(...sections.slice(index + 1));
+    break;
+  }
+
+  if (!selected.length) {
+    const safeLimit = Math.max(0, limit - 1);
+    const snippet = fullText.slice(0, safeLimit);
+    const sanitized = escapeMarkdownV2(snippet);
+    const caption =
+      sanitized.length < fullText.length ? `${sanitized}…` : sanitized;
+    return { caption, leftover: sections.slice() };
+  }
+
+  const caption = selected
+    .map((entry) => entry.content)
+    .join(SECTION_SEPARATOR);
+
+  return { caption, leftover };
+};
 
 const uploadsAbsoluteDir = path.resolve(uploadsDir);
 
@@ -228,6 +389,7 @@ export class TaskTelegramMedia {
   async sendTaskMessageWithPreview(
     chat: string | number,
     message: string,
+    sections: FormatTaskSection[],
     media: TaskMedia,
     keyboardMarkup:
       | Parameters<typeof this.bot.telegram.editMessageReplyMarkup>[3]
@@ -250,12 +412,74 @@ export class TaskTelegramMedia {
       seenAlbumUrls.add(attachment.url);
     });
 
-    const baseOptions = () => ({
+    const baseOptions = (includeKeyboard: boolean) => ({
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
-      ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
+      ...(includeKeyboard && keyboardMarkup
+        ? { reply_markup: keyboardMarkup }
+        : {}),
     });
 
-    if (albumCandidates.length > 1 && message.length <= 1024) {
+    const normalizedSections = Array.isArray(sections) ? sections : [];
+    const { caption, leftover } = buildCaptionFromSections(
+      normalizedSections,
+      message,
+      TELEGRAM_CAPTION_LIMIT,
+    );
+    const leftoverText = leftover.length
+      ? leftover.map((entry) => entry.content).join(SECTION_SEPARATOR)
+      : '';
+    const leftoverChunks = leftoverText
+      ? splitMessageForTelegramLimit(leftoverText, TELEGRAM_MESSAGE_LIMIT)
+      : [];
+    const textMessageIds: number[] = [];
+    let lastTextMessageId: number | undefined;
+
+    const sendTextChunk = async (
+      chunk: string,
+      withKeyboard: boolean,
+    ): Promise<void> => {
+      if (!chunk || !chunk.trim()) {
+        return;
+      }
+      try {
+        const options: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
+          parse_mode: 'MarkdownV2',
+          link_preview_options: { is_disabled: true },
+          ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+          ...(withKeyboard && keyboardMarkup
+            ? { reply_markup: keyboardMarkup }
+            : {}),
+        };
+        const extraMessage = await this.bot.telegram.sendMessage(
+          chat,
+          chunk,
+          options,
+        );
+        if (extraMessage?.message_id) {
+          textMessageIds.push(extraMessage.message_id);
+          lastTextMessageId = extraMessage.message_id;
+        }
+      } catch (error) {
+        console.error('Не удалось отправить дополнительный текст задачи', error);
+      }
+    };
+
+    const dispatchChunks = async (
+      chunks: string[],
+      attachKeyboardToLast: boolean,
+    ): Promise<void> => {
+      if (!chunks.length) {
+        return;
+      }
+      for (let index = 0; index < chunks.length; index += 1) {
+        const chunk = chunks[index];
+        const isLast = index === chunks.length - 1;
+        // eslint-disable-next-line no-await-in-loop
+        await sendTextChunk(chunk, attachKeyboardToLast && isLast);
+      }
+    };
+
+    if (albumCandidates.length > 1) {
       try {
         type SendMediaGroupOptions = Parameters<
           typeof this.bot.telegram.sendMediaGroup
@@ -279,10 +503,10 @@ export class TaskTelegramMedia {
               type: 'photo',
               media: await this.resolvePhotoInputWithCache(item.url, cache),
             };
-            const caption = index === 0 ? message : item.caption;
-            if (caption) {
+            const captionValue = index === 0 ? caption : item.caption;
+            if (captionValue) {
               descriptor.caption =
-                index === 0 ? caption : escapeMarkdownV2(caption);
+                index === 0 ? captionValue : escapeMarkdownV2(captionValue);
               descriptor.parse_mode = 'MarkdownV2';
             }
             return descriptor;
@@ -307,7 +531,18 @@ export class TaskTelegramMedia {
         if (!messageId) {
           throw new Error('Отсутствует идентификатор сообщения альбома задачи');
         }
-        if (keyboardMarkup) {
+        await dispatchChunks(
+          leftoverChunks,
+          Boolean(keyboardMarkup && leftoverChunks.length),
+        );
+        const combinedPreviewIds = textMessageIds.length
+          ? [...previewMessageIds, ...textMessageIds]
+          : previewMessageIds;
+        const keyboardTargetId =
+          lastTextMessageId !== undefined ? lastTextMessageId : messageId;
+        const shouldEditAlbumKeyboard =
+          keyboardMarkup && (!textMessageIds.length || !leftoverChunks.length);
+        if (shouldEditAlbumKeyboard) {
           try {
             await this.bot.telegram.editMessageReplyMarkup(
               chat,
@@ -325,11 +560,11 @@ export class TaskTelegramMedia {
           }
         }
         return {
-          messageId,
+          messageId: keyboardTargetId,
           usedPreview: true,
           cache,
           previewSourceUrls: consumedUrls,
-          previewMessageIds,
+          previewMessageIds: combinedPreviewIds,
           consumedAttachmentUrls: consumedUrls,
         };
       } catch (error) {
@@ -337,12 +572,14 @@ export class TaskTelegramMedia {
       }
     }
 
-    if (previewUrl && message.length <= 1024) {
+    if (previewUrl) {
       try {
+        const hasSupplementaryText = leftoverChunks.length > 0;
         const photoOptions = {
-          ...baseOptions(),
-          caption: message,
-          parse_mode: 'MarkdownV2' as const,
+          ...baseOptions(!hasSupplementaryText),
+          ...(caption
+            ? ({ caption, parse_mode: 'MarkdownV2' as const } as const)
+            : {}),
         };
         const photo = await this.resolvePhotoInputWithCache(previewUrl, cache);
         const response = await this.bot.telegram.sendPhoto(
@@ -350,13 +587,24 @@ export class TaskTelegramMedia {
           photo,
           photoOptions,
         );
+        await dispatchChunks(
+          leftoverChunks,
+          Boolean(keyboardMarkup && leftoverChunks.length),
+        );
+        const combinedPreviewIds = response?.message_id
+          ? [response.message_id, ...textMessageIds]
+          : textMessageIds.slice();
+        const messageId =
+          lastTextMessageId !== undefined
+            ? lastTextMessageId
+            : response?.message_id;
         return {
-          messageId: response?.message_id,
+          messageId,
           usedPreview: true,
           cache,
           previewSourceUrls: [previewUrl],
-          previewMessageIds: response?.message_id
-            ? [response.message_id]
+          previewMessageIds: combinedPreviewIds.length
+            ? combinedPreviewIds
             : undefined,
           consumedAttachmentUrls: [previewUrl],
         };
@@ -368,21 +616,25 @@ export class TaskTelegramMedia {
       }
     }
 
-    const options: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
-      parse_mode: 'MarkdownV2',
-      link_preview_options: { is_disabled: true },
-      ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
-    };
-    if (typeof topicId === 'number') {
-      options.message_thread_id = topicId;
+    const messageChunks = splitMessageForTelegramLimit(
+      message,
+      TELEGRAM_MESSAGE_LIMIT,
+    );
+    if (!messageChunks.length && message.trim()) {
+      messageChunks.push(message);
     }
-    const response = await this.bot.telegram.sendMessage(chat, message, options);
+    await dispatchChunks(
+      messageChunks,
+      Boolean(keyboardMarkup && messageChunks.length),
+    );
+    const textMessageId =
+      lastTextMessageId !== undefined ? lastTextMessageId : undefined;
     return {
-      messageId: response?.message_id,
+      messageId: textMessageId,
       usedPreview: false,
       cache,
       previewSourceUrls: undefined,
-      previewMessageIds: undefined,
+      previewMessageIds: textMessageIds.length ? textMessageIds : undefined,
       consumedAttachmentUrls: [],
     };
   }

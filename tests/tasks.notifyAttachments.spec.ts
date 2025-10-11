@@ -67,25 +67,37 @@ const {
   __deleteMessageMock: jest.Mock;
 };
 
-const taskStatusKeyboardMock = jest.fn(() => ({ inline_keyboard: [] }));
-const taskStatusInlineMarkupMock = jest.fn(
-  (
-    _id: string,
-    _status?: string,
-    _options?: unknown,
-    extras?: { albumLink?: string },
-  ) => ({
-    inline_keyboard: extras?.albumLink
-      ? [[{ text: 'Фотоальбом', url: extras.albumLink }]]
-      : [],
-  }),
-);
+jest.mock('../apps/api/src/utils/taskButtons', () => {
+  const taskStatusKeyboardMock = jest.fn(() => ({ inline_keyboard: [] }));
+  const taskStatusInlineMarkupMock = jest.fn(
+    (
+      _id: string,
+      _status?: string,
+      _options?: unknown,
+      extras?: { albumLink?: string },
+    ) => ({
+      inline_keyboard: extras?.albumLink
+        ? [[{ text: 'Фотоальбом', url: extras.albumLink }]]
+        : [],
+    }),
+  );
 
-jest.mock('../apps/api/src/utils/taskButtons', () => ({
-  __esModule: true,
-  default: taskStatusKeyboardMock,
-  taskStatusInlineMarkup: taskStatusInlineMarkupMock,
-}));
+  return {
+    __esModule: true,
+    default: taskStatusKeyboardMock,
+    taskStatusInlineMarkup: taskStatusInlineMarkupMock,
+    __taskStatusKeyboardMock: taskStatusKeyboardMock,
+    __taskStatusInlineMarkupMock: taskStatusInlineMarkupMock,
+  };
+});
+
+const {
+  __taskStatusKeyboardMock: taskStatusKeyboardMock,
+  __taskStatusInlineMarkupMock: taskStatusInlineMarkupMock,
+} = jest.requireMock('../apps/api/src/utils/taskButtons') as {
+  __taskStatusKeyboardMock: jest.Mock;
+  __taskStatusInlineMarkupMock: jest.Mock;
+};
 
 jest.mock('../apps/api/src/utils/messageLink', () =>
   jest.fn(() => 'https://t.me/c/100/200'),
@@ -164,6 +176,19 @@ describe('notifyTaskCreated вложения', () => {
     deleteMessageMock.mockReset();
     taskStatusKeyboardMock.mockReset();
     taskStatusInlineMarkupMock.mockReset();
+    taskStatusKeyboardMock.mockImplementation(() => ({ inline_keyboard: [] }));
+    taskStatusInlineMarkupMock.mockImplementation(
+      (
+        _id: string,
+        _status?: string,
+        _options?: unknown,
+        extras?: { albumLink?: string },
+      ) => ({
+        inline_keyboard: extras?.albumLink
+          ? [[{ text: 'Фотоальбом', url: extras.albumLink }]]
+          : [],
+      }),
+    );
     updateTaskMock.mockClear();
     taskFindByIdMock.mockClear();
     fileFindByIdMock.mockClear();

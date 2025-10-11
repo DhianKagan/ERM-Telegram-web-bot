@@ -193,7 +193,6 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
 ]);
 
 const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
-const TELEGRAM_CAPTION_LIMIT = 1024;
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 const hasOddTrailingBackslash = (value: string): boolean => {
@@ -574,7 +573,6 @@ export default class TasksController {
 
     if (continuationChunks.length) {
       for (const chunk of continuationChunks) {
-        // eslint-disable-next-line no-await-in-loop
         await sendSupplementaryChunk(chunk);
       }
     }

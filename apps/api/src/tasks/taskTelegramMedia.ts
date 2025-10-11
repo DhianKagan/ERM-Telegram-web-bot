@@ -475,7 +475,6 @@ export class TaskTelegramMedia {
       for (let index = 0; index < chunks.length; index += 1) {
         const chunk = chunks[index];
         const isLast = index === chunks.length - 1;
-        // eslint-disable-next-line no-await-in-loop
         await sendTextChunk(chunk, attachKeyboardToLast && isLast);
       }
     };

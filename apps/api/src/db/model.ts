@@ -531,6 +531,37 @@ export const Role = mongoose.model<RoleDocument>('Role', roleSchema);
 export const User = mongoose.model<UserDocument>('User', userSchema, 'telegram_users');
 export const Log = mongoose.model<LogDocument>('Log', logSchema);
 
+export interface ShortLinkAttrs {
+  slug: string;
+  url: string;
+  access_count?: number;
+  last_accessed_at?: Date;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface ShortLinkDocument extends ShortLinkAttrs, Document {}
+
+const shortLinkSchema = new Schema<ShortLinkDocument>(
+  {
+    slug: { type: String, required: true, unique: true },
+    url: { type: String, required: true, unique: true },
+    access_count: { type: Number, default: 0 },
+    last_accessed_at: Date,
+  },
+  {
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  },
+);
+
+shortLinkSchema.index({ slug: 1 }, { unique: true, name: 'short_link_slug_unique' });
+shortLinkSchema.index({ url: 1 }, { unique: true, name: 'short_link_url_unique' });
+
+export const ShortLink = mongoose.model<ShortLinkDocument>(
+  'ShortLink',
+  shortLinkSchema,
+);
+
 // Коллекция загруженных файлов
 // Основные модули: mongoose
 export interface FileAttrs {

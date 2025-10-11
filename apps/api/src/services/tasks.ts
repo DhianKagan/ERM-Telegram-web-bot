@@ -5,6 +5,7 @@ import type { TaskDocument } from '../db/model';
 import { getRouteDistance, Point } from './route';
 import { generateRouteLink, type Task } from 'shared';
 import { resolveTaskTypeTopicId } from './taskTypeSettings';
+import { ensureTaskLinksShort } from './taskLinks';
 
 export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   completed_at?: string | Date | null;
@@ -81,6 +82,7 @@ export const create = async (
 ): Promise<unknown> => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
   await applyRouteInfo(data);
+  await ensureTaskLinksShort(data as Partial<TaskDocument>);
   await applyTaskTypeTopic(data);
   const payload = prepareTaskPayload(data);
   return q.createTask(payload, userId);
@@ -100,6 +102,7 @@ export const update = async (
   userId = 0,
 ): Promise<unknown> => {
   await applyRouteInfo(data);
+  await ensureTaskLinksShort(data as Partial<TaskDocument>);
   if (Object.prototype.hasOwnProperty.call(data, 'task_type')) {
     await applyTaskTypeTopic(data);
   }
@@ -113,7 +116,7 @@ export const addTime = (
   userId = 0,
 ): Promise<unknown> => q.addTime(id, minutes, userId);
 
-export const bulk = (
+export const bulk = async (
   ids: string[],
   data: TaskData = {},
 ): Promise<unknown> => {
@@ -131,6 +134,7 @@ export const bulk = (
       draft.completed_at = null;
     }
   }
+  await ensureTaskLinksShort(draft as Partial<TaskDocument>);
   const payload = prepareTaskPayload(draft);
   return q.bulkUpdate(ids, payload);
 };

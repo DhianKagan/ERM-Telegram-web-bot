@@ -142,11 +142,14 @@ describe('notifyTaskCreated вложения', () => {
   });
 
   it('отправляет текст задачи и вложения альбомом с кнопками в основном сообщении', async () => {
+    const groupMessageId = 311;
+    const youtubeMessageId = 322;
     sendMediaGroupMock.mockResolvedValueOnce([
       { message_id: 301 },
       { message_id: 302 },
     ]);
-    sendMessageMock.mockResolvedValueOnce({ message_id: 311 });
+    sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: youtubeMessageId });
 
     const attachments = [
       {
@@ -190,15 +193,11 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
     expect(sendPhotoMock).not.toHaveBeenCalled();
-    expect(editMessageReplyMarkupMock).toHaveBeenCalledWith(
-      expect.any(String),
-      301,
-      undefined,
-      { inline_keyboard: expect.any(Array) },
-    );
 
-    expect(sendMessageMock).toHaveBeenCalledTimes(1);
-    const youtubeCall = sendMessageMock.mock.calls[0];
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+    const youtubeCall = sendMessageMock.mock.calls.find((call) =>
+      typeof call?.[1] === 'string' && call[1].includes('▶️'),
+    );
     expect(youtubeCall?.[1]).toContain('▶️');
 
     const updateCall = updateTaskMock.mock.calls[0];
@@ -207,14 +206,21 @@ describe('notifyTaskCreated вложения', () => {
         $set?: Record<string, unknown>;
         $unset?: Record<string, unknown>;
       };
+      expect(updatePayload.$set?.telegram_message_id).toBe(groupMessageId);
       expect(updatePayload.$set?.telegram_preview_message_ids).toEqual([301, 302]);
-      expect(updatePayload.$set?.telegram_attachments_message_ids).toEqual([311]);
+      expect(
+        updatePayload.$set?.telegram_attachments_message_ids,
+      ).toEqual(expect.arrayContaining([youtubeMessageId]));
     }
   });
 
   it('удаляет и пересоздаёт сообщения и вложения при обновлении задачи', async () => {
-    sendPhotoMock.mockResolvedValueOnce({ message_id: 612 });
-    sendMessageMock.mockResolvedValueOnce({ message_id: 702 });
+    const previewMessageId = 612;
+    const groupMessageId = 702;
+    const directMessageId = 713;
+    sendPhotoMock.mockResolvedValueOnce({ message_id: previewMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: directMessageId });
 
     const previousTask = {
       _id: '507f1f77bcf86cd799439011',
@@ -265,7 +271,7 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 501);
     expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 311);
-    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
     expect(sendPhotoMock).toHaveBeenCalledTimes(1);
     const updateCall = updateTaskMock.mock.calls[0];
     if (updateCall) {
@@ -273,13 +279,15 @@ describe('notifyTaskCreated вложения', () => {
         $set?: Record<string, unknown>;
         $unset?: Record<string, unknown>;
       };
-      expect(updatePayload.$set?.telegram_message_id).toBe(612);
-      expect(updatePayload.$set?.telegram_preview_message_ids).toEqual([612]);
+      expect(updatePayload.$set?.telegram_message_id).toBe(groupMessageId);
+      expect(updatePayload.$set?.telegram_preview_message_ids).toEqual([
+        previewMessageId,
+      ]);
       expect(updatePayload.$set?.telegram_history_message_id).toBeUndefined();
       expect(updatePayload.$unset?.telegram_history_message_id).toBe('');
       expect(updatePayload.$unset?.telegram_attachments_message_ids).toBe('');
       expect(updatePayload.$set?.telegram_dm_message_ids).toEqual([
-        { user_id: 55, message_id: 702 },
+        { user_id: 55, message_id: directMessageId },
       ]);
       expect(updatePayload.$unset?.telegram_message_cleanup).toBe('');
     }

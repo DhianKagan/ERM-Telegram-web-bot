@@ -192,6 +192,19 @@ const parseIsoDate = (value?: string | null): Date | null => {
   return parsed;
 };
 
+const toCoordsValue = (
+  value: unknown,
+): { lat: number; lng: number } | null => {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as { lat?: unknown; lng?: unknown };
+  const lat = Number(candidate.lat);
+  const lng = Number(candidate.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  return { lat, lng };
+};
+
 const formatCoords = (coords: { lat: number; lng: number } | null): string => {
   if (!coords) return "";
   const lat = Number.isFinite(coords.lat)
@@ -220,6 +233,31 @@ const sanitizeLocationLink = (value: unknown): string => {
     return "";
   }
   return "";
+};
+
+const resolveAppOrigin = (): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.location.origin;
+  } catch {
+    return null;
+  }
+};
+
+const isManagedShortLink = (value: string): boolean => {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    const origin = resolveAppOrigin();
+    if (origin && parsed.origin !== origin) {
+      return false;
+    }
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const index = segments.indexOf("l");
+    return index !== -1 && index === segments.length - 2 && Boolean(segments[index + 1]);
+  } catch {
+    return false;
+  }
 };
 
 const toIsoString = (value: unknown): string => {
@@ -611,6 +649,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
+  const autoRouteRef = React.useRef(true);
   const doneOptions = [
     { value: "full", label: t("doneFull") },
     { value: "partial", label: t("donePartial") },
@@ -831,6 +870,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const endLocationLinkRaw = (taskData.end_location_link as string) || "";
       const startLocationLink = sanitizeLocationLink(startLocationLinkRaw);
       const endLocationLink = sanitizeLocationLink(endLocationLinkRaw);
+      const startCoordsFromTask = toCoordsValue(taskData.startCoordinates);
+      const endCoordsFromTask = toCoordsValue(taskData.finishCoordinates);
+      const storedRouteLinkRaw = sanitizeLocationLink(
+        (taskData.google_route_url as string) || "",
+      );
       const distanceValue =
         typeof taskData.route_distance_km === "number"
           ? taskData.route_distance_km
@@ -855,13 +899,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setStart(startLocationValue);
       setStartLink(startLocationLink);
       setStartCoordinates(
-        startLocationLink ? extractCoords(startLocationLink) : null,
+        startCoordsFromTask ??
+          (startLocationLink ? extractCoords(startLocationLink) : null),
       );
       setEnd(endLocationValue);
       setEndLink(endLocationLink);
       setFinishCoordinates(
-        endLocationLink ? extractCoords(endLocationLink) : null,
+        endCoordsFromTask ??
+          (endLocationLink ? extractCoords(endLocationLink) : null),
       );
+      if (storedRouteLinkRaw) {
+        autoRouteRef.current = false;
+        setRouteLink(storedRouteLinkRaw);
+      } else {
+        autoRouteRef.current = true;
+        setRouteLink("");
+      }
       setAttachments(
         ((taskData.attachments as Attachment[]) || []) as Attachment[],
       );
@@ -1182,7 +1235,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [assigneeValue, isEdit, user, users, setValue]);
 
   const handleStartLink = async (value: string) => {
-    setStartLink(value);
+    autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     if (!sanitized) {
       setStart("");
@@ -1191,19 +1244,30 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       return;
     }
     let link = sanitized;
-    if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized)) {
+    let resolved = sanitized;
+    if (
+      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+      isManagedShortLink(sanitized)
+    ) {
       const data = await expandLink(sanitized);
       if (data?.url) {
-        link = sanitizeLocationLink(data.url) || sanitized;
+        const expanded = sanitizeLocationLink(data.url) || sanitized;
+        resolved = expanded;
+        if (typeof data.short === "string") {
+          const shortCandidate = sanitizeLocationLink(data.short);
+          link = shortCandidate || sanitized;
+        } else {
+          link = expanded;
+        }
       }
     }
-    setStart(parseGoogleAddress(link));
-    setStartCoordinates(extractCoords(link));
+    setStart(parseGoogleAddress(resolved));
+    setStartCoordinates(extractCoords(resolved));
     setStartLink(link);
   };
 
   const handleEndLink = async (value: string) => {
-    setEndLink(value);
+    autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     if (!sanitized) {
       setEnd("");
@@ -1212,20 +1276,33 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       return;
     }
     let link = sanitized;
-    if (/^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized)) {
+    let resolved = sanitized;
+    if (
+      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+      isManagedShortLink(sanitized)
+    ) {
       const data = await expandLink(sanitized);
       if (data?.url) {
-        link = sanitizeLocationLink(data.url) || sanitized;
+        const expanded = sanitizeLocationLink(data.url) || sanitized;
+        resolved = expanded;
+        if (typeof data.short === "string") {
+          const shortCandidate = sanitizeLocationLink(data.short);
+          link = shortCandidate || sanitized;
+        } else {
+          link = expanded;
+        }
       }
     }
-    setEnd(parseGoogleAddress(link));
-    setFinishCoordinates(extractCoords(link));
+    setEnd(parseGoogleAddress(resolved));
+    setFinishCoordinates(extractCoords(resolved));
     setEndLink(link);
   };
 
   React.useEffect(() => {
     if (startCoordinates && finishCoordinates) {
-      setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
+      if (autoRouteRef.current) {
+        setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
+      }
       fetchRoute(startCoordinates, finishCoordinates).then((r) => {
         if (r) {
           setDistanceKm(Number((r.distance / 1000).toFixed(1)));
@@ -1233,7 +1310,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       });
     } else {
       setDistanceKm(null);
-      setRouteLink("");
+      if (autoRouteRef.current) {
+        setRouteLink("");
+      }
     }
   }, [startCoordinates, finishCoordinates]);
 

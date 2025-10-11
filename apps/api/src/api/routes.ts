@@ -53,6 +53,7 @@ import {
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
+import { resolveShortLinkBySlug } from '../services/shortLinks';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -182,6 +183,27 @@ export default async function registerRoutes(
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   });
+  app.get(
+    '/l/:slug',
+    asyncHandler(async (req: Request, res: Response) => {
+      const slug = typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
+      if (!slug) {
+        res.status(404).send('Not found');
+        return;
+      }
+      try {
+        const target = await resolveShortLinkBySlug(slug);
+        if (!target) {
+          res.status(404).send('Not found');
+          return;
+        }
+        res.redirect(target);
+      } catch (error) {
+        console.error('Не удалось переадресовать короткую ссылку', error);
+        res.status(500).send('Internal Server Error');
+      }
+    }),
+  );
   app.get(`${prefix}/csrf`, csrf, (req: Request, res: Response) => {
     res.json({
       csrfToken: (req as unknown as { csrfToken: () => string }).csrfToken(),

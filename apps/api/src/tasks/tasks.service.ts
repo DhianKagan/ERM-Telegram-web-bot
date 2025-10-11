@@ -8,6 +8,7 @@ import type { TaskFilters, SummaryFilters } from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
+import { ensureTaskLinksShort } from '../services/taskLinks';
 
 interface TasksRepository {
   createTask(
@@ -125,6 +126,7 @@ class TasksService {
       payload.remind_at = payload.due_date;
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
+    await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     try {
       const task =
@@ -161,6 +163,7 @@ class TasksService {
     }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
+    await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     try {
       const task = await this.repo.updateTask(id, payload, userId);
@@ -285,6 +288,7 @@ class TasksService {
         payload.completed_at = null;
       }
     }
+    await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     await this.repo.bulkUpdate(ids, payload);
     await clearRouteCache();

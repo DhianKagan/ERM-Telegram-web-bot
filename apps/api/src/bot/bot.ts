@@ -26,6 +26,7 @@ import { buildTaskAppLink } from '../tasks/taskLinks';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
 import TaskSyncController from '../controllers/taskSync.controller';
+import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -874,6 +875,7 @@ const syncTaskPresentation = async (
   }
   try {
     const messageId = toNumericId(plain.telegram_message_id);
+    const topicId = toNumericId(plain.telegram_topic_id);
     const status =
       typeof plain.status === 'string'
         ? (plain.status as SharedTask['status'])
@@ -881,7 +883,16 @@ const syncTaskPresentation = async (
     if (messageId !== null) {
       const formatted = formatTask(plain as SharedTask, users);
       const kind = detectTaskKind(plain);
-      const replyMarkup = taskStatusInlineMarkup(taskId, status, { kind });
+      const albumLink = resolveTaskAlbumLink(plain, {
+        fallbackChatId: chatId,
+        fallbackTopicId: topicId,
+      });
+      const replyMarkup = taskStatusInlineMarkup(
+        taskId,
+        status,
+        { kind },
+        albumLink ? { albumLink } : {},
+      );
       const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
         link_preview_options: { is_disabled: true },

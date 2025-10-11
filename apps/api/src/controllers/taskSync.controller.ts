@@ -12,6 +12,7 @@ import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
 import escapeMarkdownV2 from '../utils/mdEscape';
 import { taskStatusInlineMarkup } from '../utils/taskButtons';
+import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
 import type { Task as SharedTask, User } from 'shared';
 import {
   resolveTaskTypeTopicId,
@@ -350,6 +351,10 @@ export default class TaskSyncController {
       (typeof targetChatId === 'string' || typeof targetChatId === 'number'
         ? targetChatId
         : undefined);
+    let albumLinkForKeyboard: string | null = resolveTaskAlbumLink(task, {
+      fallbackChatId: chatIdForLinks,
+      fallbackTopicId: typeof topicId === 'number' ? topicId : null,
+    });
     const photosTarget = await resolveTaskTypePhotosTarget(task.task_type);
     const configuredPhotosChatId = normalizeChatId(photosTarget?.chatId);
     const configuredPhotosTopicId = toNumericId(photosTarget?.topicId) ?? undefined;
@@ -367,9 +372,12 @@ export default class TaskSyncController {
         typeof task.task_type === 'string' ? task.task_type.trim() : '';
       return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
     })();
-    const replyMarkup = taskStatusInlineMarkup(taskId, status, {
-      kind: resolvedKind,
-    });
+    const replyMarkup = taskStatusInlineMarkup(
+      taskId,
+      status,
+      { kind: resolvedKind },
+      albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+    );
 
     const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
       parse_mode: 'MarkdownV2',
@@ -428,7 +436,6 @@ export default class TaskSyncController {
     };
 
     let currentMessageId = messageId;
-    let albumLinkForKeyboard: string | null = null;
     const editReplyMarkup =
       typeof this.bot?.telegram?.editMessageReplyMarkup === 'function'
         ? this.bot.telegram.editMessageReplyMarkup.bind(this.bot.telegram)

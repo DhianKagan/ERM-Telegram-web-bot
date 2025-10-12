@@ -340,6 +340,13 @@ export default class StorageDiagnosticsService {
     return Array.from(usage.values());
   }
 
+  private toRecord(value: unknown): Record<string, unknown> {
+    if (value && typeof value === 'object') {
+      return value as Record<string, unknown>;
+    }
+    return {};
+  }
+
   private normalizeObjectId(value: unknown): string | null {
     if (typeof value === 'string' && /^[0-9a-f]{24}$/i.test(value)) {
       return value;
@@ -437,19 +444,20 @@ export default class StorageDiagnosticsService {
     tasks.forEach((task) => {
       const taskId = this.normalizeObjectId(task._id);
       if (!taskId) return;
+      const record = this.toRecord(task);
       const info: TaskRef = {
         id: taskId,
         number:
-          typeof (task as Record<string, unknown>).task_number === 'string'
-            ? ((task as Record<string, unknown>).task_number as string)
+          typeof record.task_number === 'string'
+            ? (record.task_number as string)
             : null,
         title:
-          typeof (task as Record<string, unknown>).title === 'string'
-            ? ((task as Record<string, unknown>).title as string)
+          typeof record.title === 'string'
+            ? (record.title as string)
             : null,
       };
-      const attachments = Array.isArray((task as Record<string, unknown>).attachments)
-        ? ((task as Record<string, unknown>).attachments as Array<Record<string, unknown>>)
+      const attachments = Array.isArray(record.attachments)
+        ? (record.attachments as Array<Record<string, unknown>>)
         : [];
       attachments.forEach((attachment) => {
         if (!attachment || typeof attachment.url !== 'string') return;
@@ -464,8 +472,8 @@ export default class StorageDiagnosticsService {
           usage.set(fileId, taskMap);
         }
       });
-      const files = Array.isArray((task as Record<string, unknown>).files)
-        ? ((task as Record<string, unknown>).files as unknown[])
+      const files = Array.isArray(record.files)
+        ? (record.files as unknown[])
         : [];
       files.forEach((value) => {
         if (typeof value !== 'string') return;
@@ -485,24 +493,25 @@ export default class StorageDiagnosticsService {
   private collectStaleIssues(
     tasks: TaskDocument[],
     fileIdSet: Set<string>,
-  ): StorageIssue[] {
-    const issues: StorageIssue[] = [];
+  ): Array<Extract<StorageIssue, { type: 'stale_task_link' }>> {
+    const issues: Array<Extract<StorageIssue, { type: 'stale_task_link' }>> = [];
     tasks.forEach((task) => {
       const taskId = this.normalizeObjectId(task._id);
       if (!taskId) return;
+      const record = this.toRecord(task);
       const taskInfo: TaskRef = {
         id: taskId,
         number:
-          typeof (task as Record<string, unknown>).task_number === 'string'
-            ? ((task as Record<string, unknown>).task_number as string)
+          typeof record.task_number === 'string'
+            ? (record.task_number as string)
             : null,
         title:
-          typeof (task as Record<string, unknown>).title === 'string'
-            ? ((task as Record<string, unknown>).title as string)
+          typeof record.title === 'string'
+            ? (record.title as string)
             : null,
       };
-      const attachments = Array.isArray((task as Record<string, unknown>).attachments)
-        ? ((task as Record<string, unknown>).attachments as Array<Record<string, unknown>>)
+      const attachments = Array.isArray(record.attachments)
+        ? (record.attachments as Array<Record<string, unknown>>)
         : [];
       attachments.forEach((attachment) => {
         if (!attachment || typeof attachment.url !== 'string') return;
@@ -523,8 +532,8 @@ export default class StorageDiagnosticsService {
           });
         }
       });
-      const files = Array.isArray((task as Record<string, unknown>).files)
-        ? ((task as Record<string, unknown>).files as unknown[])
+      const files = Array.isArray(record.files)
+        ? (record.files as unknown[])
         : [];
       files.forEach((value) => {
         if (typeof value !== 'string') return;
@@ -608,9 +617,10 @@ export default class StorageDiagnosticsService {
         },
       )
       .exec();
+    const docRecord = this.toRecord(doc);
     return {
       fileId,
-      path: this.normalizeInputPath((doc as Record<string, unknown>).path) ?? null,
+      path: this.normalizeInputPath(docRecord.path) ?? null,
     };
   }
 

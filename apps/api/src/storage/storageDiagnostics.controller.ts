@@ -1,6 +1,6 @@
 // Назначение: HTTP-контроллер диагностики хранилища
 // Основные модули: express, tsyringe, storageDiagnostics.service
-import { Request, Response } from 'express';
+import { Request, Response, type RequestHandler } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { TOKENS } from '../di/tokens';
 import StorageDiagnosticsService, {
@@ -20,11 +20,10 @@ export default class StorageDiagnosticsController {
     res.json(report);
   };
 
-  remediate = async (
-    req: Request<unknown, unknown, { actions?: StorageFixAction[] }>,
-    res: Response,
-  ): Promise<void> => {
-    const actions = this.service.normalizeFixActions(req.body?.actions);
+  remediate: RequestHandler = async (req, res): Promise<void> => {
+    const actions = this.service.normalizeFixActions(
+      (req.body as { actions?: unknown })?.actions,
+    );
     if (!actions.length) {
       sendProblem(req, res, {
         type: 'about:blank',

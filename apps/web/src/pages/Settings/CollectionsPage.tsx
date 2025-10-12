@@ -429,6 +429,12 @@ export default function CollectionsPage() {
     }
   }, [setHint]);
 
+  useEffect(() => {
+    if (active === "tasks") {
+      void loadTaskSettings();
+    }
+  }, [active, loadTaskSettings]);
+
   const saveTaskField = useCallback(
     async (item: CollectionItem, label: string) => {
       const trimmed = label.trim();
@@ -1321,7 +1327,6 @@ export default function CollectionsPage() {
                   fields={taskFieldItems}
                   types={taskTypeItems}
                   loading={tasksLoading}
-                  onRefresh={loadTaskSettings}
                   onSaveField={saveTaskField}
                   onResetField={resetTaskField}
                   onSaveType={saveTaskType}

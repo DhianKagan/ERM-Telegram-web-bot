@@ -36,7 +36,6 @@ interface TaskSettingsTabProps {
   fields: TaskFieldItem[];
   types: TaskTypeItem[];
   loading: boolean;
-  onRefresh: () => void;
   onSaveField: (item: TaskFieldItem, label: string) => Promise<void>;
   onResetField: (item: TaskFieldItem) => Promise<void>;
   onSaveType: (
@@ -360,7 +359,6 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   fields,
   types,
   loading,
-  onRefresh,
   onSaveField,
   onResetField,
   onSaveType,
@@ -392,11 +390,6 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   const [savingType, setSavingType] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
   const [typeErrors, setTypeErrors] = React.useState<Record<string, string>>({});
-
-  React.useEffect(() => {
-    onRefresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const sortedFields = React.useMemo(() => sortByOrder(fields), [fields]);
   const sortedTypes = React.useMemo(() => sortByOrder(types), [types]);

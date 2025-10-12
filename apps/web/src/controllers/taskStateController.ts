@@ -49,15 +49,16 @@ const normalizeAssignees = (value: unknown): number[] => {
 };
 
 const pickStringOrNull = (...candidates: unknown[]): string | null | undefined => {
+  let sawNull = false;
   for (const candidate of candidates) {
     if (typeof candidate === "string") {
       return candidate;
     }
     if (candidate === null) {
-      return null;
+      sawNull = true;
     }
   }
-  return undefined;
+  return sawNull ? null : undefined;
 };
 
 const resolveKind = (task: Partial<TaskRow> & Partial<Task>): "task" | "request" => {

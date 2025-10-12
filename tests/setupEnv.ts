@@ -77,12 +77,12 @@ const ensureJest = (): JestLike => {
   return jestShim;
 };
 
-const jest = ensureJest();
+const jestApi = ensureJest();
 
-jest.mock('../apps/api/src/utils/delay', () => ({
+jestApi.mock('../apps/api/src/utils/delay', () => ({
   __esModule: true,
-  default: jest.fn(async () => {}),
-  delay: jest.fn(async () => {}),
+  default: jestApi.fn(async () => {}),
+  delay: jestApi.fn(async () => {}),
 }));
 
 const modulePrototype = (Module as unknown as {

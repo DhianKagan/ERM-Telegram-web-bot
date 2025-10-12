@@ -10,6 +10,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import useTasks from "../context/useTasks";
+import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
 import type { Coords, FleetVehicleDto } from "shared";
 import type { TaskRow } from "../columns/taskColumns";
@@ -23,7 +25,7 @@ const TRACK_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 60 * 1000;
 
 export default function RoutesPage() {
-  const [tasks, setTasks] = React.useState<RouteTask[]>([]);
+  const tasks = useTaskIndex("routes:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState("angle");
@@ -50,6 +52,7 @@ export default function RoutesPage() {
   const [params] = useSearchParams();
   const hasDialog = params.has("task") || params.has("newTask");
   const { user } = useAuth();
+  const { controller } = useTasks();
   const role = user?.role ?? null;
 
   React.useEffect(() => {
@@ -75,7 +78,8 @@ export default function RoutesPage() {
   );
 
   const load = React.useCallback(() => {
-    fetchTasks({}, Number((user as any)?.telegram_id)).then((data: any) => {
+    const userId = Number((user as any)?.telegram_id) || undefined;
+    fetchTasks({}, userId, true).then((data: any) => {
       const raw = Array.isArray(data)
         ? data
         : data.items || data.tasks || data.data || [];
@@ -94,10 +98,17 @@ export default function RoutesPage() {
       const list = mapped.filter(
         (task): task is RouteTask => Boolean(task),
       );
-      setTasks(list);
+      controller.setIndex("routes:all", list, {
+        kind: "task",
+        mine: false,
+        userId,
+        pageSize: 0,
+        total: list.length,
+        sort: "desc",
+      });
       setSorted(list);
     });
-  }, [user]);
+  }, [controller, user]);
 
   const loadFleetVehicles = React.useCallback(async () => {
     if (role !== "admin") return;

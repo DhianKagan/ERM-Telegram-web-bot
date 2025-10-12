@@ -7,6 +7,9 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 const refreshMock = jest.fn();
+const upsertMock = jest.fn();
+const removeMock = jest.fn();
+
 const taskDialogMock = jest.fn(
   ({
     id,
@@ -15,14 +18,14 @@ const taskDialogMock = jest.fn(
   }: {
     id?: string;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (data: unknown) => void;
   }) => (
     <div data-testid="task-dialog">
       <span data-testid="task-id">{id}</span>
       <button type="button" onClick={onClose}>
         Закрыть
       </button>
-      <button type="button" onClick={onSave}>
+      <button type="button" onClick={() => onSave({ _id: id })}>
         Сохранить
       </button>
     </div>
@@ -31,7 +34,13 @@ const taskDialogMock = jest.fn(
 
 jest.mock("../context/useTasks", () => ({
   __esModule: true,
-  default: () => ({ refresh: refreshMock }),
+  default: () => ({
+    refresh: refreshMock,
+    controller: {
+      upsert: upsertMock,
+      remove: removeMock,
+    },
+  }),
 }));
 
 jest.mock("./TaskDialog", () => ({
@@ -45,6 +54,8 @@ describe("TaskDialogRoute", () => {
   beforeEach(() => {
     refreshMock.mockClear();
     taskDialogMock.mockClear();
+    upsertMock.mockClear();
+    removeMock.mockClear();
   });
 
   it("отображает TaskDialog и кнопки управления при параметре task", async () => {

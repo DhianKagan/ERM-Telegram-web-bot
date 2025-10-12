@@ -4,6 +4,10 @@ import React from "react";
 import { useSearchParams } from "react-router-dom";
 import TaskTable from "../components/TaskTable";
 import useTasks from "../context/useTasks";
+import {
+  useTaskIndex,
+  useTaskIndexMeta,
+} from "../controllers/taskStateController";
 import { fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import { type Task, type User } from "shared";
@@ -15,14 +19,12 @@ type TaskExtra = Task & {
 };
 
 export default function TasksPage() {
-  const [all, setAll] = React.useState<TaskExtra[]>([]);
   const [page, setPage] = React.useState(0);
-  const [total, setTotal] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get("mine") === "1");
-  const { version, refresh } = useTasks();
+  const { version, refresh, controller } = useTasks();
   const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
@@ -34,10 +36,27 @@ export default function TasksPage() {
   const isPrivileged = isAdmin || isManager;
   const canView = isPrivileged || hasPermission || !hasExplicitPermissions;
 
+  const effectiveMine = isPrivileged ? mine : true;
+
+  const scopeKey = React.useMemo(() => {
+    const userKey = user?.telegram_id ? String(user.telegram_id) : "anon";
+    const mineKey = effectiveMine ? "mine" : "all";
+    return `tasks:task:${userKey}:${mineKey}:page=${page + 1}`;
+  }, [effectiveMine, page, user?.telegram_id]);
+
+  const tasks = useTaskIndex(scopeKey) as TaskExtra[];
+  const meta = useTaskIndexMeta(scopeKey);
+
   const load = React.useCallback(() => {
     if (!user?.telegram_id) {
-      setAll([]);
-      setTotal(0);
+      controller.setIndex(scopeKey, [], {
+        kind: "task",
+        mine: effectiveMine,
+        userId: undefined,
+        pageSize: 25,
+        total: 0,
+        sort: "desc",
+      });
       setLoading(false);
       return;
     }
@@ -49,21 +68,27 @@ export default function TasksPage() {
         mine: !isPrivileged || mine ? 1 : undefined,
         kind: "task",
       },
-      user?.telegram_id,
+      user.telegram_id,
       true,
     )
       .then((data) => {
-        const tasks = data.tasks as TaskExtra[];
+        const rawTasks = data.tasks as TaskExtra[];
         const filteredTasks = isPrivileged
-          ? tasks
-          : tasks.filter((t) => {
+          ? rawTasks
+          : rawTasks.filter((t) => {
               const assigned =
                 t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
-              const uid = user?.telegram_id ?? 0;
+              const uid = user.telegram_id;
               return assigned.includes(uid) || t.created_by === uid;
             });
-        setAll(filteredTasks);
-        setTotal(data.total || filteredTasks.length);
+        controller.setIndex(scopeKey, filteredTasks, {
+          kind: "task",
+          mine: effectiveMine,
+          userId: user.telegram_id,
+          pageSize: 25,
+          total: data.total || filteredTasks.length,
+          sort: "desc",
+        });
         const list = Array.isArray(data.users)
           ? (data.users as User[])
           : (Object.values(data.users || {}) as User[]);
@@ -75,9 +100,18 @@ export default function TasksPage() {
         .then((r) => (r.ok ? r.json() : []))
         .then((list) =>
           setUsers(Array.isArray(list) ? list : Object.values(list || {})),
-        );
+        )
+        .catch(() => undefined);
     }
-  }, [isPrivileged, user, page, mine]);
+  }, [
+    controller,
+    effectiveMine,
+    isPrivileged,
+    mine,
+    page,
+    scopeKey,
+    user,
+  ]);
 
   React.useEffect(() => {
     if (authLoading) return;
@@ -99,7 +133,6 @@ export default function TasksPage() {
     load();
     // после загрузки профиля инициируем загрузку задач
   }, [authLoading, user, load, version, page, mine, canView]);
-  const tasks = React.useMemo(() => all, [all]);
 
   const userMap = React.useMemo(() => {
     const map: Record<number, User> = {};
@@ -122,7 +155,7 @@ export default function TasksPage() {
         tasks={tasks}
         users={userMap}
         page={page}
-        pageCount={Math.ceil(total / 25)}
+        pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
         mine={isPrivileged ? mine : true}
         onPageChange={setPage}
         onMineChange={

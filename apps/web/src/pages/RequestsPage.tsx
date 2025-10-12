@@ -4,6 +4,10 @@ import React from "react";
 import { useSearchParams } from "react-router-dom";
 import TaskTable from "../components/TaskTable";
 import useTasks from "../context/useTasks";
+import {
+  useTaskIndex,
+  useTaskIndexMeta,
+} from "../controllers/taskStateController";
 import { fetchTasks } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import { type Task, type User } from "shared";
@@ -15,21 +19,39 @@ interface RequestRow extends Task {
 }
 
 export default function RequestsPage() {
-  const [items, setItems] = React.useState<RequestRow[]>([]);
   const [page, setPage] = React.useState(0);
-  const [total, setTotal] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get("mine") === "1");
-  const { version, refresh } = useTasks();
+  const { version, refresh, controller } = useTasks();
   const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
   const isPrivileged = isAdmin || isManager;
 
+  const scopeKey = React.useMemo(() => {
+    const userKey = user?.telegram_id ? String(user.telegram_id) : "anon";
+    const mineKey = mine ? "mine" : "all";
+    return `tasks:request:${userKey}:${mineKey}:page=${page + 1}`;
+  }, [mine, page, user?.telegram_id]);
+
+  const tasks = useTaskIndex(scopeKey) as RequestRow[];
+  const meta = useTaskIndexMeta(scopeKey);
+
   const load = React.useCallback(() => {
-    if (!user?.telegram_id) return;
+    if (!user?.telegram_id) {
+      controller.setIndex(scopeKey, [], {
+        kind: "request",
+        mine,
+        userId: undefined,
+        pageSize: 25,
+        total: 0,
+        sort: "desc",
+      });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchTasks(
       {
@@ -42,17 +64,23 @@ export default function RequestsPage() {
       true,
     )
       .then((data) => {
-        const tasks = data.tasks as RequestRow[];
+        const rawTasks = data.tasks as RequestRow[];
         const filtered = isPrivileged
-          ? tasks
-          : tasks.filter((t) => {
+          ? rawTasks
+          : rawTasks.filter((t) => {
               const assigned =
                 t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
               const uid = user.telegram_id;
               return assigned.includes(uid) || t.created_by === uid;
             });
-        setItems(filtered);
-        setTotal(data.total || filtered.length);
+        controller.setIndex(scopeKey, filtered, {
+          kind: "request",
+          mine,
+          userId: user.telegram_id,
+          pageSize: 25,
+          total: data.total || filtered.length,
+          sort: "desc",
+        });
         const list = Array.isArray(data.users)
           ? (data.users as User[])
           : (Object.values(data.users || {}) as User[]);
@@ -67,7 +95,7 @@ export default function RequestsPage() {
         )
         .catch(() => undefined);
     }
-  }, [isPrivileged, mine, page, user]);
+  }, [controller, isPrivileged, mine, page, scopeKey, user]);
 
   React.useEffect(() => {
     if (authLoading) return;
@@ -94,10 +122,10 @@ export default function RequestsPage() {
       </h2>
       {loading && <div>Загрузка...</div>}
       <TaskTable
-        tasks={items}
+        tasks={tasks}
         users={map}
         page={page}
-        pageCount={Math.ceil(total / 25)}
+        pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
         mine={mine}
         entityKind="request"
         onPageChange={setPage}

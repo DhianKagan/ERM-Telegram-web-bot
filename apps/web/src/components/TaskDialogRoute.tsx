@@ -10,7 +10,7 @@ const TaskDialogLazy = React.lazy(() => import("./TaskDialog"));
 export default function TaskDialogRoute() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { refresh } = useTasks();
+  const { refresh, controller } = useTasks();
   const id = coerceTaskId(params.get("task"));
   const create = params.get("newTask");
   const createRequest = params.get("newRequest");
@@ -26,7 +26,9 @@ export default function TaskDialogRoute() {
       <TaskDialogLazy
         id={id || undefined}
         onClose={close}
-        onSave={() => {
+        onSave={(data) => {
+          if (data) controller.upsert(data);
+          else if (id) controller.remove(id);
           refresh();
         }}
         kind={createRequest ? "request" : undefined}

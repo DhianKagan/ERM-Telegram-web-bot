@@ -3,10 +3,81 @@
  * Основные модули: process, util, mongoose.
  */
 
-import Module from 'module';
+import Module, { createRequire } from 'module';
 import path from 'path';
 import type { Mongoose } from 'mongoose';
 import { TextDecoder, TextEncoder } from 'util';
+
+const requireForMock = createRequire(__filename);
+
+type MockFunction = ((...args: unknown[]) => unknown) & {
+  mockImplementation: (implementation: (...args: unknown[]) => unknown) => MockFunction;
+  mockResolvedValue: (value: unknown) => MockFunction;
+  mockRejectedValue: (reason: unknown) => MockFunction;
+};
+
+type JestLike = {
+  fn: (implementation?: (...args: unknown[]) => unknown) => MockFunction;
+  mock: (moduleId: string, factory: () => unknown) => void;
+};
+
+const ensureJest = (): JestLike => {
+  const globalAny = global as typeof globalThis & { jest?: unknown };
+  const existingJest = globalAny.jest as JestLike | undefined;
+  if (existingJest) {
+    return existingJest;
+  }
+
+  const createMockFn = (implementation?: (...args: unknown[]) => unknown): MockFunction => {
+    let currentImplementation = implementation;
+    const mockFn: MockFunction = ((...args: unknown[]) => {
+      if (!currentImplementation) {
+        return undefined;
+      }
+      return currentImplementation(...args);
+    }) as MockFunction;
+    mockFn.mockImplementation = (impl) => {
+      currentImplementation = impl;
+      return mockFn;
+    };
+    mockFn.mockResolvedValue = (value) => {
+      currentImplementation = async () => value;
+      return mockFn;
+    };
+    mockFn.mockRejectedValue = (reason) => {
+      currentImplementation = async () => {
+        throw reason;
+      };
+      return mockFn;
+    };
+    return mockFn;
+  };
+
+  const jestShim: JestLike = {
+    fn: createMockFn,
+    mock(moduleId, factory) {
+      const resolvedPath = requireForMock.resolve(moduleId);
+      const mockedModule = {
+        id: resolvedPath,
+        filename: resolvedPath,
+        loaded: true,
+        exports: factory(),
+        children: [],
+        paths: [],
+      } as unknown as NodeJS.Module;
+      (requireForMock.cache as Record<string, NodeJS.Module | undefined>)[resolvedPath] = mockedModule;
+    },
+  };
+
+  Object.defineProperty(globalAny, 'jest', {
+    value: jestShim,
+    configurable: true,
+    writable: true,
+  });
+  return jestShim;
+};
+
+const jest = ensureJest();
 
 jest.mock('../apps/api/src/utils/delay', () => ({
   __esModule: true,

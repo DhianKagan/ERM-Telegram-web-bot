@@ -52,6 +52,14 @@ export interface StackExecutionResult {
   logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
+export interface CodexMaintenanceBrief {
+  generatedAt: string;
+  prompt: string;
+  storageReport: StorageDiagnosticsReport;
+  storagePlan: StorageFixAction[];
+  logAnalysis: RailwayLogAnalysisSummary | null;
+}
+
 export const fetchOverview = () =>
   authFetch("/api/v1/system/overview").then((res) =>
     res.ok ? (res.json() as Promise<StackOverview>) : Promise.reject(res),
@@ -67,4 +75,9 @@ export const fetchLatestLogAnalysis = () =>
     res.ok ? (res.json() as Promise<RailwayLogAnalysisSummary | null>) : Promise.reject(res),
   );
 
-export default { fetchOverview, executePlan, fetchLatestLogAnalysis };
+export const fetchCodexBrief = () =>
+  authFetch("/api/v1/system/codex-brief").then((res) =>
+    res.ok ? (res.json() as Promise<CodexMaintenanceBrief>) : Promise.reject(res),
+  );
+
+export default { fetchOverview, executePlan, fetchLatestLogAnalysis, fetchCodexBrief };

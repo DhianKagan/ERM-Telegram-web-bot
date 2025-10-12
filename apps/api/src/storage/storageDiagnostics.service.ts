@@ -247,10 +247,17 @@ export default class StorageDiagnosticsService {
 
     filePathMap.forEach((ids, filePath) => {
       if (ids.length <= 1) return;
-      const duplicates = ids.slice(1).map((fileId) => ({
-        type: 'remove_file_entry',
-        fileId,
-      })) as StorageFixAction[];
+      const referenced = ids.filter((fileId) =>
+        (fileUsage.get(fileId)?.size ?? 0) > 0,
+      );
+      const keepId = referenced.length > 0 ? referenced[0] : ids[0];
+      const duplicates = ids
+        .filter((fileId) => fileId !== keepId)
+        .filter((fileId) => (fileUsage.get(fileId)?.size ?? 0) === 0)
+        .map((fileId) => ({
+          type: 'remove_file_entry',
+          fileId,
+        })) as StorageFixAction[];
       issues.push({
         type: 'duplicate_entry',
         path: filePath,

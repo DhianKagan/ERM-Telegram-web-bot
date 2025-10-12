@@ -78,9 +78,7 @@ router.post(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   [body('actions').isArray()] as unknown as RequestHandler[],
-  asyncHandler((req, res, next) =>
-    diagnosticsController.remediate(req, res, next!),
-  ),
+  asyncHandler(diagnosticsController.remediate),
 );
 
 export default router;

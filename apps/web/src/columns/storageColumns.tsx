@@ -1,8 +1,7 @@
 // Конфигурация колонок таблицы файлов хранилища
-// Основные модули: React, @tanstack/react-table, react-router-dom, heroicons
+// Основные модули: React, @tanstack/react-table, heroicons
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Link } from "react-router-dom";
 import {
   ArrowDownTrayIcon,
   TrashIcon,
@@ -14,6 +13,7 @@ export interface StorageRow extends StoredFile {
   uploadedLabel: string;
   userLabel: string;
   taskDisplay: string;
+  taskParam?: string;
   taskLink?: string;
   onDownload: () => void;
   onDelete: () => void;
@@ -33,7 +33,9 @@ interface Labels {
 
 export default function createStorageColumns(
   labels: Labels,
+  options: { onTaskOpen?: (taskId: string) => void } = {},
 ): ColumnDef<StorageRow, any>[] {
+  const handleTaskOpen = options.onTaskOpen;
   return [
     {
       header: labels.name,
@@ -110,23 +112,45 @@ export default function createStorageColumns(
             ) : null}
           </span>
         );
-        if (!file.taskId || !file.taskLink) {
+        if (!file.taskParam) {
           return content;
         }
-        return (
-          <Link
-            to={file.taskLink}
-            className="text-blue-600 underline"
-            onClick={(event) => event.stopPropagation()}
-            title={
-              file.taskTitle
-                ? labels.taskTitleHint(file.taskTitle)
-                : undefined
-            }
-          >
-            {content}
-          </Link>
-        );
+        if (handleTaskOpen) {
+          return (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleTaskOpen(file.taskParam as string);
+              }}
+              className="inline-flex w-full flex-col items-start gap-0.5 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-left text-xs font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100"
+              title={
+                file.taskTitle
+                  ? labels.taskTitleHint(file.taskTitle)
+                  : undefined
+              }
+            >
+              {content}
+            </button>
+          );
+        }
+        if (file.taskLink) {
+          return (
+            <a
+              href={file.taskLink}
+              className="inline-flex w-full flex-col items-start gap-0.5 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-left text-xs font-semibold text-blue-700 no-underline transition hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100"
+              onClick={(event) => event.stopPropagation()}
+              title={
+                file.taskTitle
+                  ? labels.taskTitleHint(file.taskTitle)
+                  : undefined
+              }
+            >
+              {content}
+            </a>
+          );
+        }
+        return content;
       },
     },
     {

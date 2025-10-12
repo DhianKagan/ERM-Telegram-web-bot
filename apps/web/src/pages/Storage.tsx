@@ -2,6 +2,7 @@
 // Основные модули: React, DataTable, heroicons, i18next
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import {
   ArrowDownTrayIcon,
   DocumentIcon,
@@ -112,6 +113,7 @@ export default function StoragePage() {
     error?: string;
     content?: string;
   } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const loadFiles = React.useCallback(() => {
     setLoading(true);
@@ -373,6 +375,7 @@ export default function StoragePage() {
     () =>
       sortedFiles.map((file) => {
         const hasTaskId = file.taskId != null && file.taskId !== "";
+        const normalizedTaskId = hasTaskId ? String(file.taskId) : undefined;
         const normalizedTitle =
           typeof file.taskTitle === "string" && file.taskTitle.trim()
             ? file.taskTitle.trim()
@@ -380,8 +383,14 @@ export default function StoragePage() {
         const identifier = hasTaskId
           ? file.taskNumber && file.taskNumber !== ""
             ? t("storage.taskNumberLabel", { number: file.taskNumber })
-            : t("storage.taskLabel", { id: file.taskId })
+            : t("storage.taskLabel", { id: normalizedTaskId })
           : t("storage.taskMissing");
+        let taskLink: string | undefined;
+        if (normalizedTaskId) {
+          const paramsWithTask = new URLSearchParams(searchParams.toString());
+          paramsWithTask.set("task", normalizedTaskId);
+          taskLink = `?${paramsWithTask.toString()}`;
+        }
         return {
           ...file,
           taskTitle: normalizedTitle,
@@ -389,30 +398,43 @@ export default function StoragePage() {
           uploadedLabel: formatDate(file.uploadedAt),
           userLabel: t("storage.userLabel", { id: file.userId }),
           taskDisplay: identifier,
-          taskLink: hasTaskId
-            ? `/cp/tasks?task=${encodeURIComponent(String(file.taskId))}`
-            : undefined,
+          taskParam: normalizedTaskId,
+          taskLink,
           onDownload: () => handleDownload(file),
           onDelete: () => handleDelete(file),
         };
       }),
-    [sortedFiles, t, handleDelete, handleDownload],
+    [sortedFiles, t, handleDelete, handleDownload, searchParams],
+  );
+
+  const openTaskDialog = React.useCallback(
+    (taskId?: string) => {
+      if (!taskId) return;
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("task", taskId);
+      setSearchParams(next, { replace: false });
+    },
+    [searchParams, setSearchParams],
   );
 
   const columns = React.useMemo(
     () =>
-      createStorageColumns({
-        name: t("storage.columns.name"),
-        user: t("storage.columns.user"),
-        type: t("storage.columns.type"),
-        size: t("storage.columns.size"),
-        task: t("storage.columns.task"),
-        uploaded: t("storage.columns.uploaded"),
-        download: t("storage.download"),
-        delete: t("storage.delete"),
-        taskTitleHint: (title: string) => t("storage.taskTitleHint", { title }),
-      }),
-    [t],
+      createStorageColumns(
+        {
+          name: t("storage.columns.name"),
+          user: t("storage.columns.user"),
+          type: t("storage.columns.type"),
+          size: t("storage.columns.size"),
+          task: t("storage.columns.task"),
+          uploaded: t("storage.columns.uploaded"),
+          download: t("storage.download"),
+          delete: t("storage.delete"),
+          taskTitleHint: (title: string) =>
+            t("storage.taskTitleHint", { title }),
+        },
+        { onTaskOpen: openTaskDialog },
+      ),
+    [t, openTaskDialog],
   );
 
   const pageSize = rows.length > 0 ? rows.length : 10;

@@ -59,6 +59,29 @@ if (!/^mongodb(\+srv)?:\/\//.test(mongoUrlEnv)) {
   );
 }
 
+let parsedMongoUrl: URL;
+try {
+  parsedMongoUrl = new URL(mongoUrlEnv);
+} catch {
+  throw new Error('MONGO_DATABASE_URL имеет неверный формат');
+}
+
+const dbName = parsedMongoUrl.pathname.replace(/^\/+/, '');
+if (!dbName) {
+  throw new Error(
+    'MONGO_DATABASE_URL должен содержать имя базы данных после хоста, например /ermdb',
+  );
+}
+
+const authSource = parsedMongoUrl.searchParams.get('authSource');
+const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
+const isRailwayInternal = /\.railway\.internal$/i.test(parsedMongoUrl.hostname);
+if (!authSource && isRailwayInternal && mongoUsername === 'mongo') {
+  throw new Error(
+    'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
+  );
+}
+
 const appUrlEnv = (process.env.APP_URL || '').trim();
 if (!/^https:\/\//.test(appUrlEnv)) {
   throw new Error(

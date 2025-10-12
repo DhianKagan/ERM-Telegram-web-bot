@@ -131,7 +131,7 @@ jest.mock("../context/useAuth", () => ({
 }));
 
 jest.mock("../controllers/taskStateController", () => {
-  const React = require("react");
+  const ReactActual = jest.requireActual<typeof import("react")>("react");
   const listeners = new Set<() => void>();
   let snapshot: any[] = [];
   let meta = {
@@ -171,7 +171,7 @@ jest.mock("../controllers/taskStateController", () => {
       };
       notify();
     },
-    setIndex(_key: string, list: any[], _meta?: unknown) {
+    setIndex(_key: string, list: any[]) {
       updateSnapshot(Array.isArray(list) ? list : []);
     },
     getIndexSnapshot() {
@@ -182,8 +182,8 @@ jest.mock("../controllers/taskStateController", () => {
     },
   };
   const useTaskIndex = () => {
-    const [value, setValue] = React.useState(() => snapshot);
-    React.useEffect(() => {
+    const [value, setValue] = ReactActual.useState(() => snapshot);
+    ReactActual.useEffect(() => {
       const listener = () => {
         setValue([...snapshot]);
       };
@@ -194,8 +194,10 @@ jest.mock("../controllers/taskStateController", () => {
     return value;
   };
   const useTaskIndexMeta = () => {
-    const [value, setValue] = React.useState(() => taskStateController.getIndexMetaSnapshot());
-    React.useEffect(() => {
+    const [value, setValue] = ReactActual.useState(() =>
+      taskStateController.getIndexMetaSnapshot(),
+    );
+    ReactActual.useEffect(() => {
       const listener = () => {
         setValue(taskStateController.getIndexMetaSnapshot());
       };

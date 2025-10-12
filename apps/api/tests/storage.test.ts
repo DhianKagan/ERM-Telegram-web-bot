@@ -8,6 +8,20 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 
+const mockDiagnosticsController = {
+  diagnose: jest.fn((_req: any, res: any) => res.json({ ok: true })),
+  remediate: jest.fn((_req: any, res: any) => res.json({ ok: true })),
+};
+
+jest.mock('../src/di', () => {
+  const resolve = jest.fn(() => mockDiagnosticsController);
+  return {
+    __esModule: true,
+    default: { resolve },
+    container: { resolve },
+  };
+});
+
 jest.mock('../src/db/model', () => ({
   File: {
     find: jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) })),
@@ -39,6 +53,7 @@ jest.mock('../src/auth/roles.decorator', () => ({
 
 describe('storage routes', () => {
   const app = express();
+  app.use(express.json());
   app.use(router);
 
   test('list files', async () => {
@@ -71,6 +86,19 @@ describe('storage routes', () => {
     });
     await request(app).delete('/del.txt').expect(200);
     expect(fs.existsSync(f)).toBe(false);
+  });
+
+  test('diagnostics endpoint delegates to controller', async () => {
+    await request(app).get('/diagnostics').expect(200);
+    expect(mockDiagnosticsController.diagnose).toHaveBeenCalled();
+  });
+
+  test('remediate endpoint делегирует контроллеру', async () => {
+    await request(app)
+      .post('/diagnostics/fix')
+      .send({ actions: [] })
+      .expect(200);
+    expect(mockDiagnosticsController.remediate).toHaveBeenCalled();
   });
 });
 

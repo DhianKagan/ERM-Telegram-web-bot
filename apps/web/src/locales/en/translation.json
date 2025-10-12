@@ -154,6 +154,40 @@
       "uploadedAsc": "By date (oldest first)",
       "sizeDesc": "By size (largest first)",
       "sizeAsc": "By size (smallest first)"
+    },
+    "diagnostics": {
+      "title": "Storage diagnostics",
+      "issues": "Issues found: {{count}}",
+      "loading": "Loading diagnostics...",
+      "noReport": "No report yet.",
+      "reportTimestamp": "Report generated at {{value}}",
+      "run": "Run check",
+      "running": "Checking...",
+      "fix": "Apply fixes",
+      "fixing": "Applying...",
+      "autoFix": "Auto-heal",
+      "autoFixing": "Auto-healing...",
+      "summaryTitle": "Summary",
+      "summary": {
+        "missing": "Missing files in DB: {{count}}",
+        "orphan": "Orphans on disk: {{count}}",
+        "duplicate": "Duplicates: {{count}}",
+        "stale": "Broken task links: {{count}}"
+      },
+      "recommendationsTitle": "Recommendations",
+      "noRecommendations": "Run a check to get recommendations.",
+      "diskHint": "Free {{free}} of {{total}} total.",
+      "lastExecutionTitle": "Last orchestration at {{value}}",
+      "lastExecutionSummary": "Performed: {{performed}}, errors: {{errors}}.",
+      "planHint": "Recommended actions: {{count}}.",
+      "success": "Diagnostics completed.",
+      "error": "Diagnostics failed.",
+      "noActions": "Nothing to fix.",
+      "fixSuccess": "Fixes applied.",
+      "fixError": "Failed to apply fixes.",
+      "autoSuccess": "Auto-heal finished.",
+      "autoError": "Auto-heal failed.",
+      "overviewError": "Failed to load overview."
     }
   }
 }

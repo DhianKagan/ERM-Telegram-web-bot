@@ -23,4 +23,4 @@ export interface TasksState {
 export const TasksContext = createContext<TasksState | undefined>(undefined);
 
 // Экспорт провайдера
-export { TasksProvider } from "./TasksContext.tsx";
+export { TasksProvider } from "./TasksProvider";

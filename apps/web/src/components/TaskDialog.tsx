@@ -576,7 +576,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       requestTypeOptions: source.filter((type) => type === REQUEST_TYPE_NAME),
       taskTypeOptions: source.filter((type) => type !== REQUEST_TYPE_NAME),
     };
-  }, [fields]);
+  }, []);
   const DEFAULT_REQUEST_TYPE = requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
   const DEFAULT_TASK_TYPE =
     RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME

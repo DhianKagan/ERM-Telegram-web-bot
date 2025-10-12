@@ -10,12 +10,13 @@ export default function CodeLogin() {
   const [sent, setSent] = useState(false);
   const { addToast } = useToast();
   const [params] = useSearchParams();
+  const expired = params.get("expired");
 
   useEffect(() => {
-    if (params.get("expired")) {
+    if (expired) {
       addToast("Сессия истекла, войдите снова", "error");
     }
-  }, [params, addToast]);
+  }, [expired, addToast]);
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getProfile, logout as apiLogout } from "../services/auth";
 import { clearAnonTasksCache } from "../services/tasks";
+import { taskStateController } from "../controllers/taskStateController";
 import { AuthContext } from "./AuthContext";
 import { AuthActionsContext } from "./AuthActionsContext";
 import { setCsrfToken } from "../utils/csrfToken";
@@ -15,6 +16,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUserState] = useState<User | null>(null);
   const setUser = (u: User | null) => {
+    taskStateController.clear();
     setUserState(u);
     if (u) clearAnonTasksCache();
   };
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUserState(null);
     try {
       clearAnonTasksCache();
+      taskStateController.clear();
       localStorage.clear();
       sessionStorage.clear();
       if ("caches" in window) {

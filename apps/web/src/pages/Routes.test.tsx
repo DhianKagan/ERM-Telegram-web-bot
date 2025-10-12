@@ -7,6 +7,7 @@ import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import RoutesPage from "./Routes";
+import { taskStateController } from "../controllers/taskStateController";
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 
 const mockTasks = [
@@ -70,7 +71,11 @@ jest.mock("../components/Breadcrumbs", () => () => <nav data-testid="breadcrumbs
 
 jest.mock("../components/TaskTable", () => {
   function MockTaskTable({ tasks, onDataChange }: any) {
+    const signatureRef = React.useRef<string | null>(null);
     React.useEffect(() => {
+      const signature = JSON.stringify(tasks);
+      if (signatureRef.current === signature) return;
+      signatureRef.current = signature;
       onDataChange(tasks);
     }, [tasks, onDataChange]);
     return React.createElement("div", { "data-testid": "task-table" });
@@ -125,10 +130,112 @@ jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: { telegram_id: 42, role: "admin" } }),
 }));
 
+jest.mock("../controllers/taskStateController", () => {
+  const React = require("react");
+  const listeners = new Set<() => void>();
+  let snapshot: any[] = [];
+  let meta = {
+    key: "routes:all",
+    pageSize: 0,
+    total: 0,
+    sort: "desc" as const,
+    updatedAt: Date.now(),
+  };
+  const notify = () => {
+    listeners.forEach((listener) => listener());
+  };
+  const updateSnapshot = (rows: any[]) => {
+    snapshot = rows.map((task) => ({ ...task }));
+    meta = {
+      ...meta,
+      pageSize: snapshot.length,
+      total: snapshot.length,
+      updatedAt: Date.now(),
+    };
+    notify();
+  };
+  const taskStateController = {
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    clear() {
+      snapshot = [];
+      meta = {
+        ...meta,
+        pageSize: 0,
+        total: 0,
+        updatedAt: Date.now(),
+      };
+      notify();
+    },
+    setIndex(_key: string, list: any[], _meta?: unknown) {
+      updateSnapshot(Array.isArray(list) ? list : []);
+    },
+    getIndexSnapshot() {
+      return snapshot;
+    },
+    getIndexMetaSnapshot() {
+      return { ...meta };
+    },
+  };
+  const useTaskIndex = () => {
+    const [value, setValue] = React.useState(() => snapshot);
+    React.useEffect(() => {
+      const listener = () => {
+        setValue([...snapshot]);
+      };
+      const unsubscribe = taskStateController.subscribe(listener);
+      listener();
+      return unsubscribe;
+    }, []);
+    return value;
+  };
+  const useTaskIndexMeta = () => {
+    const [value, setValue] = React.useState(() => taskStateController.getIndexMetaSnapshot());
+    React.useEffect(() => {
+      const listener = () => {
+        setValue(taskStateController.getIndexMetaSnapshot());
+      };
+      const unsubscribe = taskStateController.subscribe(listener);
+      listener();
+      return unsubscribe;
+    }, []);
+    return value;
+  };
+  return {
+    __esModule: true,
+    taskStateController,
+    useTaskIndex,
+    useTaskIndexMeta,
+  };
+});
+
+jest.mock("../context/useTasks", () => {
+  const { taskStateController } = jest.requireMock(
+    "../controllers/taskStateController",
+  );
+  return {
+    __esModule: true,
+    default: () => ({
+      controller: taskStateController,
+      version: 0,
+      refresh: jest.fn(),
+      query: "",
+      setQuery: jest.fn(),
+      filters: { status: [], priority: [], from: "", to: "" },
+      setFilters: jest.fn(),
+    }),
+  };
+});
+
 describe("RoutesPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchTasksMock.mockResolvedValue(mockTasks);
+    taskStateController.clear();
     listFleetVehiclesMock.mockReset();
     listFleetVehiclesMock
       .mockResolvedValueOnce({

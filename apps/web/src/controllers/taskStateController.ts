@@ -48,6 +48,19 @@ const normalizeAssignees = (value: unknown): number[] => {
   return candidate !== null ? [candidate] : [];
 };
 
+const pickStringOrNull = (...candidates: unknown[]): string | null | undefined => {
+  let sawNull = false;
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      return candidate;
+    }
+    if (candidate === null) {
+      sawNull = true;
+    }
+  }
+  return sawNull ? null : undefined;
+};
+
 const resolveKind = (task: Partial<TaskRow> & Partial<Task>): "task" | "request" => {
   if (task.kind === "request") return "request";
   if (task.kind === "task") return "task";
@@ -74,12 +87,16 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
       : typeof (input as Record<string, unknown>).created_at === "string"
         ? ((input as Record<string, unknown>).created_at as string)
         : undefined;
-  const dueDate =
-    typeof (input as Record<string, unknown>).dueDate === "string"
-      ? (input as Record<string, unknown>).dueDate
-      : typeof (input as Record<string, unknown>).due_date === "string"
-        ? ((input as Record<string, unknown>).due_date as string)
-        : undefined;
+  const nextDueDate = pickStringOrNull(
+    (input as Record<string, unknown>).dueDate,
+    (input as Record<string, unknown>).due_date,
+  );
+  const previousDueDate = pickStringOrNull(
+    (input as TaskRow).dueDate,
+    (input as TaskRow).due_date,
+  );
+  const resolvedDueDate =
+    nextDueDate !== undefined ? nextDueDate : previousDueDate;
   const assignees = normalizeAssignees(
     (input as Record<string, unknown>).assignees ??
       (input as Record<string, unknown>).assigned_user_id ??
@@ -96,8 +113,8 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
     status: statusRaw as TaskRow["status"],
     assignees,
     createdAt: createdAt ?? (input as TaskRow).createdAt,
-    dueDate: dueDate ?? (input as TaskRow).dueDate,
-    due_date: dueDate ?? (input as TaskRow).due_date,
+    dueDate: resolvedDueDate,
+    due_date: resolvedDueDate,
     created_by: creator as number | string | null | undefined,
     kind: resolveKind(input as Partial<TaskRow> & Partial<Task>),
   };
@@ -135,10 +152,13 @@ const applyLimit = (ids: string[], meta: TaskIndexMeta | undefined): string[] =>
   return ids.slice(0, limit);
 };
 
+const EMPTY_SNAPSHOT = Object.freeze([]) as unknown as TaskRow[];
+
 export class TaskStateController {
   private tasks = new Map<string, TaskRow>();
   private indexes = new Map<string, string[]>();
   private meta = new Map<string, TaskIndexMeta>();
+  private snapshots = new Map<string, TaskRow[]>();
   private listeners = new Set<Listener>();
   private version = 0;
 
@@ -159,7 +179,27 @@ export class TaskStateController {
     this.tasks.clear();
     this.indexes.clear();
     this.meta.clear();
+    this.snapshots.clear();
     this.notify();
+  }
+
+  private rebuildSnapshot(key: string) {
+    const ids = this.indexes.get(key);
+    if (!ids || !ids.length) {
+      this.snapshots.set(key, EMPTY_SNAPSHOT);
+      return;
+    }
+    const rows = ids
+      .map((candidate) => this.tasks.get(candidate))
+      .filter((task): task is TaskRow => Boolean(task))
+      .map((task) => Object.freeze({ ...task })) as TaskRow[];
+    this.snapshots.set(key, Object.freeze(rows) as TaskRow[]);
+  }
+
+  private rebuildSnapshots(keys: Iterable<string>) {
+    for (const key of keys) {
+      this.rebuildSnapshot(key);
+    }
   }
 
   setIndex(key: string, list: TaskInput[], meta?: Partial<Omit<TaskIndexMeta, "key" | "updatedAt">>) {
@@ -189,6 +229,7 @@ export class TaskStateController {
       total,
       updatedAt: Date.now(),
     });
+    this.rebuildSnapshot(key);
     this.notify();
   }
 
@@ -199,6 +240,7 @@ export class TaskStateController {
     const next = existing ? { ...existing, ...normalized } : normalized;
     this.tasks.set(normalized.id, next);
     let changed = !existing;
+    const touched = new Set<string>();
     this.indexes.forEach((ids, key) => {
       const meta = this.meta.get(key);
       const has = ids.includes(normalized.id);
@@ -229,7 +271,11 @@ export class TaskStateController {
         }
         changed = true;
       }
+      if (has || matches) {
+        touched.add(key);
+      }
     });
+    this.rebuildSnapshots(touched);
     if (changed) {
       this.notify();
     } else {
@@ -244,6 +290,7 @@ export class TaskStateController {
     if (!normalizedId) return;
     const existed = this.tasks.delete(normalizedId);
     let changed = existed;
+    const touched = new Set<string>();
     this.indexes.forEach((ids, key) => {
       if (!ids.includes(normalizedId)) return;
       const filtered = ids.filter((candidate) => candidate !== normalizedId);
@@ -257,19 +304,16 @@ export class TaskStateController {
         });
       }
       changed = true;
+      touched.add(key);
     });
+    this.rebuildSnapshots(touched);
     if (changed) {
       this.notify();
     }
   }
 
   getIndexSnapshot(key: string): TaskRow[] {
-    const ids = this.indexes.get(key);
-    if (!ids || !ids.length) return [];
-    return ids
-      .map((candidate) => this.tasks.get(candidate))
-      .filter((task): task is TaskRow => Boolean(task))
-      .map((task) => ({ ...task }));
+    return this.snapshots.get(key) ?? EMPTY_SNAPSHOT;
   }
 
   getIndexMetaSnapshot(key: string): TaskIndexMeta {

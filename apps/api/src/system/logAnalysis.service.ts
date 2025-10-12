@@ -37,7 +37,7 @@ export interface RailwayLogAnalysisSummary {
 
 @injectable()
 export default class LogAnalysisService {
-  private readonly analysisDir = path.resolve(process.cwd(), 'Railway', 'analysis');
+  private readonly analysisDir = path.resolve(__dirname, '../../..', 'Railway', 'analysis');
 
   async getLatestSummary(): Promise<RailwayLogAnalysisSummary | null> {
     let entries;

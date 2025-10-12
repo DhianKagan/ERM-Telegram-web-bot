@@ -50,7 +50,7 @@ web/
 
 ## Файловый сервис
 
-- Коллекция `File` хранит `taskId`, `userId`, `name`, `path`, `type`, `size`, `uploadedAt` и `hash`.
+- Коллекция `File` хранит `taskId`, `userId`, `name`, `path`, `type`, `size` и `uploadedAt`.
 - Контроллер `/api/v1/tasks/:taskId/files` управляет загрузкой и перечнем вложений, проверяя роли участников задачи.
 - Скачивание и удаление выполняются через `/api/v1/files/:id`, разрешено автору задачи, загрузчику и администраторам.
 - Подробная схема и миграция описаны в `docs/file_service_refactor.md`.

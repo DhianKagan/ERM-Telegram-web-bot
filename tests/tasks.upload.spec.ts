@@ -42,6 +42,8 @@ jest.mock('../apps/api/src/services/antivirus', () => ({
   scanFile: jest.fn().mockResolvedValue(true),
 }));
 
+let scanFile: jest.MockedFunction<(target: string) => Promise<boolean>>;
+
 jest.mock('../apps/api/src/services/wgLogEngine', () => ({
   writeLog: jest.fn(),
 }));
@@ -171,6 +173,9 @@ beforeAll(async () => {
   jest.resetModules();
   tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'erm-upload-'));
   process.env.STORAGE_DIR = tempRoot;
+  ({ scanFile } = require('../apps/api/src/services/antivirus') as {
+    scanFile: jest.MockedFunction<(target: string) => Promise<boolean>>;
+  });
   const tasksModule = await import('../apps/api/src/routes/tasks');
   handleChunks = tasksModule.handleChunks;
   ({ uploadsDir } = await import('../apps/api/src/config/storage'));
@@ -208,6 +213,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   storedFiles.length = 0;
+  scanFile.mockClear();
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   } else {
@@ -236,6 +242,7 @@ describe('Chunk upload', () => {
     expect(fs.existsSync(absolute)).toBe(true);
     expect(fs.readFileSync(absolute).toString()).toBe(content.toString());
     expect(storedPath.startsWith(`${currentUserId}/`)).toBe(true);
+    expect(scanFile).toHaveBeenCalledWith(absolute);
   });
 
   test('загружает PDF документ', async () => {
@@ -364,5 +371,39 @@ describe('Chunk upload', () => {
     expect(second.status).toBe(400);
     expect(second.body.error).toBe('Файл превышает допустимый размер');
     expect(storedFiles).toHaveLength(0);
+  });
+
+  test('отклоняет файл при срабатывании антивируса', async () => {
+    scanFile.mockResolvedValueOnce(false);
+    const chunkA = Buffer.from('suspicious ');
+    const chunkB = Buffer.from('payload');
+    const first = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'virus-check')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '2')
+      .attach('file', chunkA, {
+        filename: 'archive.zip',
+        contentType: 'application/zip',
+      });
+    expect(first.status).toBe(200);
+    expect(first.body.received).toBe(0);
+    const second = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'virus-check')
+      .field('chunkIndex', '1')
+      .field('totalChunks', '2')
+      .attach('file', chunkB, {
+        filename: 'archive.zip',
+        contentType: 'application/zip',
+      });
+    expect(second.status).toBe(400);
+    expect(second.body.error).toBe('Файл содержит вирус');
+    expect(scanFile).toHaveBeenCalledTimes(1);
+    expect(storedFiles).toHaveLength(0);
+    const userDir = path.join(uploadsDir, String(currentUserId));
+    if (fs.existsSync(userDir)) {
+      expect(fs.readdirSync(userDir)).toHaveLength(0);
+    }
   });
 });

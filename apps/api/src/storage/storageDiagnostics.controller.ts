@@ -3,9 +3,7 @@
 import { Request, Response, type RequestHandler } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { TOKENS } from '../di/tokens';
-import StorageDiagnosticsService, {
-  type StorageFixAction,
-} from './storageDiagnostics.service';
+import StorageDiagnosticsService from './storageDiagnostics.service';
 import { sendProblem } from '../utils/problem';
 
 @injectable()

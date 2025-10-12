@@ -40,4 +40,12 @@ router.get(
   asyncHandler(orchestrator.latestLogAnalysis),
 );
 
+router.get(
+  '/codex-brief',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(orchestrator.codexBrief),
+);
+
 export default router;

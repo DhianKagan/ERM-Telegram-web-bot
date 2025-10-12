@@ -469,6 +469,37 @@ docker run -d -p 9090:9090 \
 
 Для испытаний устойчивости можно запустить `pnpm --dir apps/api chaos`.
 
+## Проверка состояния продакшн-сервера
+
+Инструмент `scripts/check_remote_status.sh` позволяет получить актуальное состояние
+выкатанного окружения напрямую из контейнера разработчика или CI. Скрипт
+подключается по SSH к серверу, читает процессы pm2 и проверяет HTTP-эндпойнт
+`/health`.
+
+1. Сохраните приватный ключ деплоя в `~/.ssh` контейнера и выставьте переменные
+   окружения:
+
+   ```bash
+   export DEPLOY_SSH_HOST=example.com
+   export DEPLOY_SSH_USER=deploy
+   export DEPLOY_SSH_KEY_PATH=$HOME/.ssh/erm_deploy
+   export DEPLOY_PUBLIC_URL=https://bot.example.com
+   ```
+
+   При необходимости задайте порт `DEPLOY_SSH_PORT`.
+2. Запустите скрипт:
+
+   ```bash
+   ./scripts/check_remote_status.sh
+   ```
+
+3. В выводе появятся блоки `pm2 status`, последние логи приложения и результат
+   `curl` для `/health`. Ошибка соединения укажет на проблемы с сетью или ключом,
+   код ответа `/health` поможет диагностировать API.
+
+Скрипт добавляет опцию `StrictHostKeyChecking=accept-new`, поэтому первый запуск
+фиксирует отпечаток сервера. Для работы в CI загрузите ключ и хост в секреты.
+
 ## Безопасность
 
 Флаги cookie и защита от CSRF описаны в `docs/security/cookies_csrf.md`.

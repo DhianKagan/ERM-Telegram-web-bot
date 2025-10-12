@@ -18,9 +18,12 @@ export default function LogViewer() {
 
   React.useEffect(() => {
     if (!live) return;
-    const id = setInterval(() => setFilters({ ...filters }), 5000);
+    const id = setInterval(
+      () => setFilters((current) => ({ ...current })),
+      5000,
+    );
     return () => clearInterval(id);
-  }, [live, filters, page]);
+  }, [live]);
 
   return (
     <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">

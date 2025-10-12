@@ -10,6 +10,7 @@ bot/public/*
 .env
 .env.*
 !Railway/.env
+Railway/config/pipeline.env
 
 # логи
 npm-debug.log*
@@ -17,6 +18,12 @@ yarn-debug.log*
 yarn-error.log*
 logs/
 !bot/src/logs/
+Railway/logs/**
+!Railway/logs/
+!Railway/logs/.gitkeep
+Railway/analysis/**
+!Railway/analysis/
+!Railway/analysis/.gitkeep
 
 # Docker
 *.tar

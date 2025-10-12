@@ -55,7 +55,7 @@ router.get(
   '/profile',
   authMiddleware(),
   authLimiter as unknown as RequestHandler,
-  authCtrl.profile as unknown as RequestHandler,
+  asyncHandler(authCtrl.profile),
 );
 router.patch(
   '/profile',

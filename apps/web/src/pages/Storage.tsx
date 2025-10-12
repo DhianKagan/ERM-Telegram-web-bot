@@ -52,6 +52,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
 
 type PreviewMode = "image" | "video" | "pdf" | "text";
 
+type PreviewState = {
+  file: StorageRow;
+  inlineUrl: string;
+  mime: string;
+  mode: PreviewMode;
+  loading?: boolean;
+  error?: string;
+  content?: string;
+};
+
 type SortOption =
   | "uploaded_desc"
   | "uploaded_asc"
@@ -108,15 +118,7 @@ export default function StoragePage() {
   const [logAnalysisLoading, setLogAnalysisLoading] = React.useState(false);
   const [overviewLoading, setOverviewLoading] = React.useState(false);
   const [lastExecution, setLastExecution] = React.useState<StackExecutionResult | null>(null);
-  const [preview, setPreview] = React.useState<{
-    file: StoredFile;
-    inlineUrl: string;
-    mime: string;
-    mode: PreviewMode;
-    loading?: boolean;
-    error?: string;
-    content?: string;
-  } | null>(null);
+  const [preview, setPreview] = React.useState<PreviewState | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const loadFiles = React.useCallback(() => {
@@ -308,7 +310,7 @@ export default function StoragePage() {
   );
 
   const openPreview = React.useCallback(
-    (file: StoredFile) => {
+    (file: StorageRow) => {
       const mime = file.type || "application/octet-stream";
       const inlineUrl = file.previewUrl || `${file.url}?mode=inline`;
       if (mime.startsWith("image/")) {
@@ -461,6 +463,83 @@ export default function StoragePage() {
   );
 
   const pageSize = rows.length > 0 ? rows.length : 10;
+
+  const previewDetails = React.useMemo(() => {
+    if (!preview) {
+      return [] as Array<{ key: string; label: string; value: React.ReactNode }>;
+    }
+    const file = preview.file;
+    const empty = t("storage.details.empty");
+    return [
+      {
+        key: "task",
+        label: t("storage.details.task"),
+        value: (
+          <div className="space-y-0.5">
+            <span className="font-medium text-foreground">{file.taskDisplay}</span>
+            {file.taskTitle ? (
+              <span className="block text-xs text-muted-foreground">{file.taskTitle}</span>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "taskNumber",
+        label: t("storage.details.taskNumber"),
+        value: file.taskNumber && file.taskNumber.trim() ? file.taskNumber : empty,
+      },
+      {
+        key: "taskId",
+        label: t("storage.details.taskId"),
+        value: file.taskParam ? (
+          <code className="break-all text-xs text-foreground">{file.taskParam}</code>
+        ) : (
+          empty
+        ),
+      },
+      {
+        key: "taskTitle",
+        label: t("storage.details.taskTitle"),
+        value: file.taskTitle && file.taskTitle.trim() ? file.taskTitle : empty,
+      },
+      {
+        key: "user",
+        label: t("storage.details.user"),
+        value: (
+          <div className="space-y-0.5">
+            <span className="font-medium text-foreground">{file.userLabel}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("storage.details.userId", { id: file.userId })}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "uploaded",
+        label: t("storage.details.uploaded"),
+        value: file.uploadedLabel && file.uploadedLabel.trim()
+          ? file.uploadedLabel
+          : empty,
+      },
+      {
+        key: "size",
+        label: t("storage.details.size"),
+        value: file.sizeLabel && file.sizeLabel.trim() ? file.sizeLabel : empty,
+      },
+      {
+        key: "type",
+        label: t("storage.details.type"),
+        value: file.type && file.type.trim() ? file.type : empty,
+      },
+      {
+        key: "path",
+        label: t("storage.details.path"),
+        value: (
+          <code className="break-all text-xs text-foreground">{file.path}</code>
+        ),
+      },
+    ];
+  }, [preview, t]);
 
   return (
     <div className="space-y-4">
@@ -822,6 +901,41 @@ export default function StoragePage() {
                 </Button>
               </div>
             </div>
+            <section className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t("storage.details.title")}
+                </h3>
+                {preview.file.taskParam ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      openTaskDialog(preview.file.taskParam);
+                      setPreview(null);
+                    }}
+                  >
+                    {t("storage.details.openTask")}
+                  </Button>
+                ) : null}
+              </div>
+              <dl className="mt-1 grid gap-3 text-sm sm:grid-cols-2">
+                {previewDetails.map((item) => (
+                  <div
+                    key={item.key}
+                    className="space-y-1 rounded-md border border-border/40 bg-background/70 p-3"
+                  >
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {item.label}
+                    </dt>
+                    <dd className="break-words text-sm text-foreground">
+                      {item.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
             {preview.mode === "image" && (
               <img
                 srcSet={`${preview.file.thumbnailUrl || preview.inlineUrl} 1x, ${preview.inlineUrl} 2x`}

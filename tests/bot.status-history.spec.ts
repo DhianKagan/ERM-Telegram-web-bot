@@ -73,8 +73,12 @@ const taskStatusKeyboardMock = jest
     }),
   );
 const taskStatusInlineMarkupMock = jest.fn(
-  (id: string, status?: string, options?: { kind?: string }) =>
-    taskStatusKeyboardMock(id, status, options).reply_markup,
+  (
+    id: string,
+    status?: string,
+    options?: { kind?: string },
+    extras?: { albumLink?: string },
+  ) => taskStatusKeyboardMock(id, status, options).reply_markup,
 );
 const taskAcceptConfirmKeyboardMock = jest
   .fn()
@@ -100,8 +104,14 @@ jest.mock('../apps/api/src/utils/taskButtons', () => ({
     ),
   taskStatusInlineMarkup: (
     ...args: unknown[]
-  ) => taskStatusInlineMarkupMock(
-      ...(args as [string, string | undefined, Record<string, unknown> | undefined]),
+  ) =>
+    taskStatusInlineMarkupMock(
+      ...(args as [
+        string,
+        string | undefined,
+        Record<string, unknown> | undefined,
+        Record<string, unknown> | undefined,
+      ]),
     ),
   taskAcceptConfirmKeyboard: (
     ...args: unknown[]
@@ -322,6 +332,7 @@ describe('обработка завершения задачи', () => {
       'task321',
       undefined,
       expect.objectContaining({ kind: 'task' }),
+      undefined,
     );
     expect(ctx.answerCbQuery).toHaveBeenLastCalledWith('Не ваш таск', {
       show_alert: true,
@@ -347,6 +358,7 @@ describe('обработка завершения задачи', () => {
       'task555',
       'Выполнена',
       expect.objectContaining({ kind: 'task' }),
+      undefined,
     );
     expect(updateTaskStatusMock).toHaveBeenCalledWith(
       'task555',
@@ -369,6 +381,7 @@ describe('обработка завершения задачи', () => {
       'task900',
       undefined,
       expect.objectContaining({ kind: 'task' }),
+      undefined,
     );
     expect(ctx.answerCbQuery).toHaveBeenCalledWith('Отменено');
   });

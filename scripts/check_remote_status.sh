@@ -39,5 +39,6 @@ if [[ -n "$PUBLIC_URL" ]]; then
   echo ">>> curl $PUBLIC_URL/health"
   if ! curl -fsSL "$PUBLIC_URL/health"; then
     echo "Проверка /health завершилась ошибкой." >&2
+    exit 1
   fi
 fi

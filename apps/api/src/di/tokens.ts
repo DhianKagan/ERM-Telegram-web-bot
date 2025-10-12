@@ -15,6 +15,13 @@ export const TOKENS = {
   BotInstance: Symbol('BotInstance'),
   TaskSyncController: Symbol('TaskSyncController'),
   ArchivesService: Symbol('ArchivesService'),
+  StorageRootDir: Symbol('StorageRootDir'),
+  FileModel: Symbol('FileModel'),
+  TaskModel: Symbol('TaskModel'),
+  StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
+  StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
+  StackOrchestratorService: Symbol('StackOrchestratorService'),
+  StackOrchestratorController: Symbol('StackOrchestratorController'),
 } as const;
 
 type TokenMap = typeof TOKENS;

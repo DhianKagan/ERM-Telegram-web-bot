@@ -17,6 +17,12 @@ import ArchivesService from '../archives/archives.service';
 import queries from '../db/queries';
 import tmaAuthGuard from '../auth/tmaAuth.guard';
 import { bot } from '../bot/bot';
+import { uploadsDir } from '../config/storage';
+import { File, Task } from '../db/model';
+import StorageDiagnosticsService from '../storage/storageDiagnostics.service';
+import StorageDiagnosticsController from '../storage/storageDiagnostics.controller';
+import StackOrchestratorService from '../system/stackOrchestrator.service';
+import StackOrchestratorController from '../system/stackOrchestrator.controller';
 
 container.register(TOKENS.TasksRepository, { useValue: queries });
 container.register(TOKENS.TasksService, {
@@ -45,6 +51,25 @@ container.register(TOKENS.SchedulerService, { useValue: scheduler });
 container.register(TOKENS.TmaAuthGuard, { useValue: tmaAuthGuard });
 container.register(TOKENS.BotInstance, { useValue: bot });
 container.registerSingleton(TOKENS.TaskSyncController, TaskSyncController);
+container.register(TOKENS.StorageRootDir, { useValue: uploadsDir });
+container.register(TOKENS.FileModel, { useValue: File });
+container.register(TOKENS.TaskModel, { useValue: Task });
+container.registerSingleton(
+  TOKENS.StorageDiagnosticsService,
+  StorageDiagnosticsService,
+);
+container.registerSingleton(
+  TOKENS.StorageDiagnosticsController,
+  StorageDiagnosticsController,
+);
+container.registerSingleton(
+  TOKENS.StackOrchestratorService,
+  StackOrchestratorService,
+);
+container.registerSingleton(
+  TOKENS.StackOrchestratorController,
+  StackOrchestratorController,
+);
 
 export { container };
 export default container;

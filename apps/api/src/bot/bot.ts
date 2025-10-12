@@ -891,7 +891,7 @@ const syncTaskPresentation = async (
         taskId,
         status,
         { kind },
-        albumLink ? { albumLink } : {},
+        albumLink ? { albumLink } : undefined,
       );
       const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
         parse_mode: 'MarkdownV2',
@@ -1029,7 +1029,19 @@ async function refreshTaskKeyboard(
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
     const kind = detectTaskKind(plain ?? undefined);
-    const replyMarkup = taskStatusInlineMarkup(taskId, status, { kind });
+    const albumLink =
+      plain
+        ? resolveTaskAlbumLink(plain, {
+            fallbackChatId: chatId,
+            fallbackTopicId: topicId,
+          })
+        : null;
+    const replyMarkup = taskStatusInlineMarkup(
+      taskId,
+      status,
+      { kind },
+      albumLink ? { albumLink } : undefined,
+    );
     await updateMessageReplyMarkup(ctx, replyMarkup);
   }
   return context;

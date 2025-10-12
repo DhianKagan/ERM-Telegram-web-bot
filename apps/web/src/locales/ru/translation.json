@@ -131,6 +131,21 @@
     "taskNumberLabel": "Задача {{number}}",
     "taskMissing": "Без задачи",
     "taskTitleHint": "Название: {{title}}",
+    "details": {
+      "title": "Карточка файла",
+      "task": "Привязка к задаче",
+      "taskId": "ID задачи",
+      "taskNumber": "Номер задачи",
+      "taskTitle": "Название задачи",
+      "user": "Пользователь",
+      "userId": "ID: {{id}}",
+      "uploaded": "Загружено",
+      "size": "Размер файла",
+      "type": "Тип файла",
+      "path": "Путь в хранилище",
+      "openTask": "Открыть задачу",
+      "empty": "Не указано"
+    },
     "columns": {
       "name": "Имя",
       "user": "Пользователь",

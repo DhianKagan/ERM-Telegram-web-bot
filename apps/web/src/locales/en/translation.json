@@ -135,6 +135,21 @@
     "taskNumberLabel": "Task {{number}}",
     "taskMissing": "No task",
     "taskTitleHint": "Title: {{title}}",
+    "details": {
+      "title": "File details",
+      "task": "Task link",
+      "taskId": "Task ID",
+      "taskNumber": "Task number",
+      "taskTitle": "Task title",
+      "user": "User",
+      "userId": "ID: {{id}}",
+      "uploaded": "Uploaded at",
+      "size": "File size",
+      "type": "MIME type",
+      "path": "Storage path",
+      "openTask": "Open task",
+      "empty": "Not specified"
+    },
     "columns": {
       "name": "Name",
       "user": "User",

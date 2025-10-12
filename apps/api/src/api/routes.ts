@@ -21,6 +21,7 @@ import createRateLimiter from '../utils/rateLimiter';
 import { swaggerUi, specs } from './swagger';
 import { register } from '../metrics';
 import { verifyToken, asyncHandler, requestLogger } from './middleware';
+import healthcheck from './healthcheck';
 import errorMiddleware from '../middleware/errorMiddleware';
 import globalLimiter from '../middleware/globalLimiter';
 import tasksRouter from '../routes/tasks';
@@ -177,9 +178,7 @@ export default async function registerRoutes(
     }),
   );
 
-  app.get('/health', (_req: Request, res: Response) =>
-    res.json({ status: 'ok' }),
-  );
+  app.get('/health', asyncHandler(healthcheck));
   app.get('/metrics', async (_req: Request, res: Response) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());

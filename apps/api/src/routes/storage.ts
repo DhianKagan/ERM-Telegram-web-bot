@@ -69,7 +69,7 @@ router.get(
   authMiddleware(),
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
-  asyncHandler(async (req, res) => diagnosticsController.diagnose(req, res)),
+  asyncHandler(diagnosticsController.diagnose),
 );
 
 router.post(
@@ -78,7 +78,9 @@ router.post(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   [body('actions').isArray()] as unknown as RequestHandler[],
-  asyncHandler(async (req, res) => diagnosticsController.remediate(req, res)),
+  asyncHandler((req, res, next) =>
+    diagnosticsController.remediate(req, res, next!),
+  ),
 );
 
 export default router;

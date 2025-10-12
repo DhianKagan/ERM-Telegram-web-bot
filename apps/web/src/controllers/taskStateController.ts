@@ -159,8 +159,15 @@ export class TaskStateController {
   private indexes = new Map<string, string[]>();
   private meta = new Map<string, TaskIndexMeta>();
   private snapshots = new Map<string, TaskRow[]>();
+  private defaultMeta = new Map<string, TaskIndexMeta>();
   private listeners = new Set<Listener>();
   private version = 0;
+
+  private storeMeta(key: string, value: TaskIndexMeta) {
+    const snapshot = Object.freeze({ ...value });
+    this.meta.set(key, snapshot);
+    this.defaultMeta.delete(key);
+  }
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
@@ -180,6 +187,7 @@ export class TaskStateController {
     this.indexes.clear();
     this.meta.clear();
     this.snapshots.clear();
+    this.defaultMeta.clear();
     this.notify();
   }
 
@@ -219,7 +227,7 @@ export class TaskStateController {
     const userId = meta?.userId;
     const sort = meta?.sort ?? "desc";
     const total = meta?.total ?? ids.length;
-    this.meta.set(key, {
+    this.storeMeta(key, {
       key,
       pageSize,
       kind,
@@ -250,7 +258,7 @@ export class TaskStateController {
         const limited = applyLimit(sorted, meta);
         this.indexes.set(key, limited);
         if (meta) {
-          this.meta.set(key, {
+          this.storeMeta(key, {
             ...meta,
             total: (meta.total ?? ids.length) + 1,
             updatedAt: Date.now(),
@@ -263,7 +271,7 @@ export class TaskStateController {
         const filtered = ids.filter((id) => id !== normalized.id);
         this.indexes.set(key, filtered);
         if (meta) {
-          this.meta.set(key, {
+          this.storeMeta(key, {
             ...meta,
             total: Math.max(0, (meta.total ?? filtered.length + 1) - 1),
             updatedAt: Date.now(),
@@ -297,7 +305,7 @@ export class TaskStateController {
       this.indexes.set(key, filtered);
       const meta = this.meta.get(key);
       if (meta) {
-        this.meta.set(key, {
+        this.storeMeta(key, {
           ...meta,
           total: Math.max(0, (meta.total ?? filtered.length + 1) - 1),
           updatedAt: Date.now(),
@@ -319,15 +327,22 @@ export class TaskStateController {
   getIndexMetaSnapshot(key: string): TaskIndexMeta {
     const meta = this.meta.get(key);
     if (!meta) {
-      return {
+      const cached = this.defaultMeta.get(key);
+      if (cached) {
+        return cached;
+      }
+      const fallback: TaskIndexMeta = Object.freeze({
         key,
         pageSize: DEFAULT_PAGE_SIZE,
         total: 0,
         sort: "desc",
         updatedAt: 0,
-      };
+      });
+      this.defaultMeta.set(key, fallback);
+      return fallback;
     }
-    return { ...meta };
+    this.defaultMeta.delete(key);
+    return meta;
   }
 }
 

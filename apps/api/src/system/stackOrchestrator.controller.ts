@@ -21,4 +21,9 @@ export default class StackOrchestratorController {
     const result = await this.service.executePlan();
     res.json(result);
   };
+
+  latestLogAnalysis = async (_req: Request, res: Response): Promise<void> => {
+    const summary = await this.service.latestLogAnalysis();
+    res.json(summary);
+  };
 }

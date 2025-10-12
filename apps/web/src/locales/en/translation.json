@@ -187,7 +187,20 @@
       "fixError": "Failed to apply fixes.",
       "autoSuccess": "Auto-heal finished.",
       "autoError": "Auto-heal failed.",
-      "overviewError": "Failed to load overview."
+      "overviewError": "Failed to load overview.",
+      "logAnalysisError": "Failed to refresh log analysis.",
+      "logAnalysis": {
+        "title": "Railway log analysis",
+        "loading": "Loading analytics...",
+        "empty": "No analysis reports yet.",
+        "generated": "Report generated at {{value}}",
+        "errors": "Errors: {{count}}",
+        "warnings": "Warnings: {{count}}",
+        "commands": "Auto actions: {{count}}",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing...",
+        "noRecommendations": "No log-based recommendations."
+      }
     }
   }
 }

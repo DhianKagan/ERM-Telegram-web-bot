@@ -34,8 +34,10 @@ import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from "shared";
 import {
   fetchOverview as fetchStackOverview,
   executePlan as executeStackPlan,
+  fetchLatestLogAnalysis,
   type StackOverview,
   type StackExecutionResult,
+  type RailwayLogAnalysisSummary,
 } from "../services/system";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -102,6 +104,8 @@ export default function StoragePage() {
   const [fixLoading, setFixLoading] = React.useState(false);
   const [autoLoading, setAutoLoading] = React.useState(false);
   const [overview, setOverview] = React.useState<StackOverview | null>(null);
+  const [logAnalysis, setLogAnalysis] = React.useState<RailwayLogAnalysisSummary | null>(null);
+  const [logAnalysisLoading, setLogAnalysisLoading] = React.useState(false);
   const [overviewLoading, setOverviewLoading] = React.useState(false);
   const [lastExecution, setLastExecution] = React.useState<StackExecutionResult | null>(null);
   const [preview, setPreview] = React.useState<{
@@ -137,6 +141,7 @@ export default function StoragePage() {
       .then((snapshot) => {
         setOverview(snapshot);
         setDiagnostics(snapshot.storage);
+        setLogAnalysis(snapshot.logAnalysis ?? null);
       })
       .catch(() => {
         showToast(t("storage.diagnostics.overviewError"), "error");
@@ -147,6 +152,22 @@ export default function StoragePage() {
   React.useEffect(() => {
     refreshOverview();
   }, [refreshOverview]);
+
+  const refreshLogAnalysis = React.useCallback(() => {
+    setLogAnalysisLoading(true);
+    return fetchLatestLogAnalysis()
+      .then((summary) => {
+        setLogAnalysis(summary ?? null);
+      })
+      .catch(() => {
+        showToast(t("storage.diagnostics.logAnalysisError"), "error");
+      })
+      .finally(() => setLogAnalysisLoading(false));
+  }, [t]);
+
+  React.useEffect(() => {
+    refreshLogAnalysis();
+  }, [refreshLogAnalysis]);
 
   React.useEffect(() => {
     setDraftFilters(filters);
@@ -242,10 +263,12 @@ export default function StoragePage() {
       .then(async (result) => {
         setLastExecution(result);
         setDiagnostics(result.report);
+        setLogAnalysis(result.logAnalysis ?? null);
         setOverview({
           generatedAt: result.generatedAt,
           storage: result.report,
           plannedActions: result.plan,
+          logAnalysis: result.logAnalysis ?? null,
         });
         showToast(t("storage.diagnostics.autoSuccess"), "success");
         await loadFiles();
@@ -566,6 +589,69 @@ export default function StoragePage() {
               </p>
             )}
           </div>
+        </div>
+        <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/20 p-3 text-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-foreground">
+                {t("storage.diagnostics.logAnalysis.title")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {logAnalysis
+                  ? t("storage.diagnostics.logAnalysis.generated", {
+                      value: formatDate(logAnalysis.generatedAt),
+                    })
+                  : logAnalysisLoading
+                  ? t("storage.diagnostics.logAnalysis.loading")
+                  : t("storage.diagnostics.logAnalysis.empty")}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={refreshLogAnalysis}
+              disabled={logAnalysisLoading}
+            >
+              {logAnalysisLoading
+                ? t("storage.diagnostics.logAnalysis.refreshing")
+                : t("storage.diagnostics.logAnalysis.refresh")}
+            </Button>
+          </div>
+          {logAnalysis ? (
+            <div className="mt-3 space-y-2">
+              <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                <span>
+                  {t("storage.diagnostics.logAnalysis.errors", {
+                    count: logAnalysis.stats.errors,
+                  })}
+                </span>
+                <span>
+                  {t("storage.diagnostics.logAnalysis.warnings", {
+                    count: logAnalysis.stats.warnings,
+                  })}
+                </span>
+                <span>
+                  {t("storage.diagnostics.logAnalysis.commands", {
+                    count: logAnalysis.recommendations.length,
+                  })}
+                </span>
+              </div>
+              {logAnalysis.recommendations.length > 0 ? (
+                <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {logAnalysis.recommendations.slice(0, 3).map((item) => (
+                    <li key={item.id}>
+                      <span className="font-medium text-foreground">{item.title}</span>
+                      {item.command ? ` — ${item.command}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {t("storage.diagnostics.logAnalysis.noRecommendations")}
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
         {lastExecution ? (
           <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 p-3 text-sm text-muted-foreground">

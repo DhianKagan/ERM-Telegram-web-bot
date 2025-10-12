@@ -32,4 +32,12 @@ router.post(
   asyncHandler(orchestrator.coordinate),
 );
 
+router.get(
+  '/log-analysis/latest',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(orchestrator.latestLogAnalysis),
+);
+
 export default router;

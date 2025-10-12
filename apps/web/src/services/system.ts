@@ -6,10 +6,39 @@ import type {
   StorageFixAction,
 } from "./storage";
 
+export interface RailwayLogAnalysisSummary {
+  generatedAt: string;
+  baseName: string;
+  logPath: string;
+  stats: {
+    totalLines: number;
+    errors: number;
+    warnings: number;
+    infos: number;
+  };
+  errors: Array<{
+    message: string;
+    count: number;
+  }>;
+  warnings: Array<{
+    message: string;
+    count: number;
+  }>;
+  recommendations: Array<{
+    id: string;
+    title: string;
+    reason: string;
+    autoRun: boolean;
+    command?: string;
+  }>;
+  sourceFile: string;
+}
+
 export interface StackOverview {
   generatedAt: string;
   storage: StorageDiagnosticsReport;
   plannedActions: StorageFixAction[];
+  logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
 export interface StackExecutionResult {
@@ -20,6 +49,7 @@ export interface StackExecutionResult {
     errors: Array<{ action: StorageFixAction; error: string }>;
   };
   report: StorageDiagnosticsReport;
+  logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
 export const fetchOverview = () =>
@@ -32,4 +62,9 @@ export const executePlan = () =>
     res.ok ? (res.json() as Promise<StackExecutionResult>) : Promise.reject(res),
   );
 
-export default { fetchOverview, executePlan };
+export const fetchLatestLogAnalysis = () =>
+  authFetch("/api/v1/system/log-analysis/latest").then((res) =>
+    res.ok ? (res.json() as Promise<RailwayLogAnalysisSummary | null>) : Promise.reject(res),
+  );
+
+export default { fetchOverview, executePlan, fetchLatestLogAnalysis };

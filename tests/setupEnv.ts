@@ -8,6 +8,12 @@ import path from 'path';
 import type { Mongoose } from 'mongoose';
 import { TextDecoder, TextEncoder } from 'util';
 
+jest.mock('../apps/api/src/utils/delay', () => ({
+  __esModule: true,
+  default: jest.fn(async () => {}),
+  delay: jest.fn(async () => {}),
+}));
+
 const modulePrototype = (Module as unknown as {
   prototype: NodeJS.Module & {
     __ermMongoosePatched?: boolean;

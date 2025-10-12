@@ -33,6 +33,7 @@ import formatTask, {
   type FormatTaskSection,
 } from '../utils/formatTask';
 import buildChatMessageLink from '../utils/messageLink';
+import delay from '../utils/delay';
 import { uploadsDir } from '../config/storage';
 import escapeMarkdownV2 from '../utils/mdEscape';
 import sharp from 'sharp';
@@ -94,6 +95,7 @@ const YOUTUBE_URL_REGEXP =
   /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\//i;
 
 const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
+const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const REQUEST_TYPE_NAME = 'Заявка';
 
@@ -2037,6 +2039,7 @@ export default class TasksController {
                   : true,
               )
             : media.extras;
+        let albumIntroMessageId: number | undefined;
 
         if (extras.length) {
           const shouldSendAlbumIntro = shouldSendAttachmentsSeparately;
@@ -2055,6 +2058,7 @@ export default class TasksController {
               );
               if (response?.message_id) {
                 albumMessageId = response.message_id;
+                albumIntroMessageId = response.message_id;
               }
             } catch (error) {
               console.error(
@@ -2106,6 +2110,13 @@ export default class TasksController {
               console.error('Не удалось отправить вложения задачи', error);
             }
           }
+        }
+
+        if (
+          typeof albumIntroMessageId === 'number' &&
+          normalizedAttachmentsChatId
+        ) {
+          await delay(ALBUM_MESSAGE_DELAY_MS);
         }
 
         if (

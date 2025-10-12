@@ -131,7 +131,7 @@ export function taskStatusInlineMarkup(
 ): InlineKeyboardMarkup {
   const rows = buildStatusRows(id, currentStatus, options);
   if (extras.albumLink) {
-    rows.push([Markup.button.url('Фотоальбом', extras.albumLink)]);
+    rows.unshift([Markup.button.url('Фотоальбом', extras.albumLink)]);
   }
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows).reply_markup;
 }

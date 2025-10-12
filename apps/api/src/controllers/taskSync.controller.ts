@@ -21,10 +21,12 @@ import {
 import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 import { buildTaskAppLink } from '../tasks/taskLinks';
 import buildChatMessageLink from '../utils/messageLink';
+import delay from '../utils/delay';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
 const REQUEST_TYPE_NAME = 'Заявка';
+const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const selectUserField = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
@@ -580,6 +582,7 @@ export default class TaskSyncController {
                     : true,
                 )
               : media.extras;
+          let albumIntroMessageId: number | undefined;
           if (extras.length) {
             const shouldSendAlbumIntro = shouldSendAttachmentsSeparately;
             let albumMessageId: number | undefined;
@@ -597,6 +600,7 @@ export default class TaskSyncController {
                 );
                 if (response?.message_id) {
                   albumMessageId = response.message_id;
+                  albumIntroMessageId = response.message_id;
                   albumLinkForKeyboard =
                     buildChatMessageLink(
                       normalizedAttachmentsChatId,
@@ -657,6 +661,12 @@ export default class TaskSyncController {
           }
 
           if (editReplyMarkup) {
+            if (
+              typeof albumIntroMessageId === 'number' &&
+              normalizedAttachmentsChatId
+            ) {
+              await delay(ALBUM_MESSAGE_DELAY_MS);
+            }
             const updatedMarkup = taskStatusInlineMarkup(
               taskId,
               status,

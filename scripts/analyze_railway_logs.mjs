@@ -115,6 +115,14 @@ const RECOMMENDATIONS = {
     title: 'Проверить занятые порты',
     autoRun: false,
     reason: 'Приложение не смогло занять порт — проверьте фоновые процессы и конфигурацию Railway.'
+  },
+  formatCode: {
+    id: 'format-code',
+    title: 'Форматировать код',
+    command: 'pnpm format',
+    autoRun: true,
+    reason:
+      'Логи содержат ошибки форматирования. Прогоним Prettier, чтобы автоматически привести код к стандарту проекта.'
   }
 };
 
@@ -158,6 +166,12 @@ const PATTERNS = [
     id: 'port',
     regex: /EADDRINUSE|address already in use/i,
     recommendationIds: ['portInUse']
+  },
+  {
+    id: 'formatting',
+    regex:
+      /(Run \w+ lint --fix|Run pnpm lint --fix|Formatting issues detected|Prettier failed|Delete ␍|Expected indentation of|Insert `;`)/i,
+    recommendationIds: ['formatCode']
   }
 ];
 

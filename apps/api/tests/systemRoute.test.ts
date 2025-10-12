@@ -9,6 +9,7 @@ const request = require('supertest');
 const mockOrchestratorController = {
   overview: jest.fn((_req: any, res: any) => res.json({ plan: [] })),
   coordinate: jest.fn((_req: any, res: any) => res.json({ executed: true })),
+  latestLogAnalysis: jest.fn((_req: any, res: any) => res.json({ summary: null })),
 };
 
 jest.mock('../src/di', () => {
@@ -47,5 +48,10 @@ describe('system routes', () => {
   test('POST /coordinate вызывает контроллер', async () => {
     await request(app).post('/coordinate').expect(200);
     expect(mockOrchestratorController.coordinate).toHaveBeenCalled();
+  });
+
+  test('GET /log-analysis/latest вызывает контроллер', async () => {
+    await request(app).get('/log-analysis/latest').expect(200);
+    expect(mockOrchestratorController.latestLogAnalysis).toHaveBeenCalled();
   });
 });

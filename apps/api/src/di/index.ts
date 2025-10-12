@@ -21,6 +21,7 @@ import { uploadsDir } from '../config/storage';
 import { File, Task } from '../db/model';
 import StorageDiagnosticsService from '../storage/storageDiagnostics.service';
 import StorageDiagnosticsController from '../storage/storageDiagnostics.controller';
+import LogAnalysisService from '../system/logAnalysis.service';
 import StackOrchestratorService from '../system/stackOrchestrator.service';
 import StackOrchestratorController from '../system/stackOrchestrator.controller';
 
@@ -62,6 +63,7 @@ container.registerSingleton(
   TOKENS.StorageDiagnosticsController,
   StorageDiagnosticsController,
 );
+container.registerSingleton(TOKENS.LogAnalysisService, LogAnalysisService);
 container.registerSingleton(
   TOKENS.StackOrchestratorService,
   StackOrchestratorService,

@@ -20,6 +20,7 @@ export const TOKENS = {
   TaskModel: Symbol('TaskModel'),
   StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
   StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
+  LogAnalysisService: Symbol('LogAnalysisService'),
   StackOrchestratorService: Symbol('StackOrchestratorService'),
   StackOrchestratorController: Symbol('StackOrchestratorController'),
 } as const;

@@ -156,8 +156,50 @@ export const chatId = getChatId();
 export const jwtSecret = process.env.JWT_SECRET;
 export const mongoUrl = mongoUrlEnv;
 export const appUrl = appUrlEnv;
+
+const parsePort = (source: string | undefined | null): number | undefined => {
+  if (!source) {
+    return undefined;
+  }
+  const trimmed = source.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed <= 0 || parsed > 65535) {
+    return undefined;
+  }
+  return parsed;
+};
+
+const portFromRailway = parsePort(process.env.RAILWAY_TCP_PORT);
+const portFromEnv = parsePort(process.env.PORT);
+const portFromHostPort = parsePort(process.env.HOST_PORT);
+
+const selectedPort =
+  portFromRailway ?? portFromEnv ?? portFromHostPort ?? 3000;
+
+if (
+  portFromRailway !== undefined &&
+  portFromEnv !== undefined &&
+  portFromRailway !== portFromEnv
+) {
+  console.warn(
+    `Railway принудительно использует порт ${portFromRailway}, игнорируем PORT=${portFromEnv}.`,
+  );
+}
+
+if (
+  portFromHostPort !== undefined &&
+  (portFromRailway !== undefined || portFromEnv !== portFromHostPort)
+) {
+  console.warn(
+    `HOST_PORT=${portFromHostPort} не используется веб-сервером, используем порт ${selectedPort}.`,
+  );
+}
+
 // Приводим порт к числу для корректной передачи в listen
-export const port = Number.parseInt(process.env.PORT ?? '', 10) || 3000;
+export const port = selectedPort;
 export const locale = process.env.LOCALE || 'ru';
 export const routingUrl = routingUrlEnv;
 export const cookieDomain = cookieDomainEnv;

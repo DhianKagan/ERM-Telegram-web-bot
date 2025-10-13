@@ -9,6 +9,7 @@ import type { AddressInfo } from 'net';
 import ru from '../../apps/web/src/locales/ru/translation.json';
 
 type FileInfo = {
+  id: string;
   path: string;
   name: string;
   userId: number;
@@ -21,6 +22,7 @@ type FileInfo = {
 
 const initialFiles: FileInfo[] = [
   {
+    id: '64d000000000000000000001',
     path: 'docs/report.pdf',
     name: 'report.pdf',
     userId: 1,
@@ -31,6 +33,7 @@ const initialFiles: FileInfo[] = [
     url: 'https://example.com/report.pdf',
   },
   {
+    id: '64d000000000000000000002',
     path: 'img/photo.jpg',
     name: 'photo.jpg',
     userId: 2,
@@ -60,9 +63,18 @@ app.get('/api/v1/storage', (req, res) => {
   res.json(filtered);
 });
 
-app.delete('/api/v1/storage/:filePath', (req, res) => {
-  const filePath = decodeURIComponent(req.params.filePath);
-  const index = files.findIndex((f) => f.path === filePath);
+app.get('/api/v1/storage/:id', (req, res) => {
+  const file = files.find((f) => f.id === req.params.id);
+  if (!file) {
+    res.sendStatus(404);
+    return;
+  }
+  res.json(file);
+});
+
+app.delete('/api/v1/storage/:id', (req, res) => {
+  const fileId = decodeURIComponent(req.params.id);
+  const index = files.findIndex((f) => f.id === fileId);
   if (index === -1) {
     res.sendStatus(404);
     return;
@@ -132,7 +144,7 @@ app.get('/cp/storage', (_req, res) => {
           if (!window.confirm(message)) return;
           try {
             const response = await fetch(
-              '/api/v1/storage/' + encodeURIComponent(file.path),
+              '/api/v1/storage/' + encodeURIComponent(file.id),
               { method: 'DELETE' },
             );
             if (!response.ok) throw new Error('delete');
@@ -279,7 +291,7 @@ test('подтверждает удаление, фильтрует список
   await page.getByRole('button', { name: ru.storage.delete }).click();
 
   const request = await requestPromise;
-  expect(request.url()).toContain(encodeURIComponent('docs/report.pdf'));
+  expect(request.url()).toContain(encodeURIComponent('64d000000000000000000001'));
 
   await expect(page.locator('#toast')).toHaveText(ru.storage.deleteSuccess);
   await expect(page.locator('#toast')).toHaveAttribute('data-status', 'success');

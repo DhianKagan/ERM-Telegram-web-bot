@@ -3,6 +3,7 @@
 import authFetch from "../utils/authFetch";
 
 export interface StoredFile {
+  id: string;
   path: string;
   userId: number;
   name: string;
@@ -78,8 +79,13 @@ export const fetchFiles = (params?: { userId?: number; type?: string }) => {
   >;
 };
 
-export const removeFile = (name: string) =>
-  authFetch(`/api/v1/storage/${encodeURIComponent(name)}`, {
+export const fetchFile = (id: string) =>
+  authFetch(`/api/v1/storage/${encodeURIComponent(id)}`).then((res) =>
+    res.ok ? (res.json() as Promise<StoredFile>) : Promise.reject(res),
+  );
+
+export const removeFile = (id: string) =>
+  authFetch(`/api/v1/storage/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 
@@ -99,4 +105,4 @@ export const applyFixes = (actions: StorageFixAction[]) =>
       : Promise.reject(res),
   );
 
-export default { fetchFiles, removeFile, runDiagnostics, applyFixes };
+export default { fetchFiles, fetchFile, removeFile, runDiagnostics, applyFixes };

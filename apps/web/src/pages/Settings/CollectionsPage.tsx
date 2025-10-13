@@ -19,6 +19,7 @@ import {
   CollectionItem,
 } from "../../services/collections";
 import CollectionForm from "./CollectionForm";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
@@ -36,17 +37,21 @@ import {
   fetchUsers,
   createUser as createUserApi,
   updateUser as updateUserApi,
+  deleteUser as deleteUserApi,
   type UserDetails,
 } from "../../services/users";
 import { fetchRoles, type Role } from "../../services/roles";
 import { formatRoleName } from "../../utils/roleDisplay";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "../../types/user";
+import { useAuth } from "../../context/useAuth";
 import {
   SETTINGS_BADGE_CLASS,
   SETTINGS_BADGE_EMPTY,
   SETTINGS_BADGE_WRAPPER_CLASS,
 } from "./badgeStyles";
+import { hasAccess, ACCESS_ADMIN } from "../../utils/access";
+import { showToast } from "../../utils/toast";
 import {
   BuildingOffice2Icon,
   Squares2X2Icon,
@@ -282,6 +287,10 @@ const TASK_SETTINGS_ERROR_HINT = "Не удалось загрузить нас�
 const TASK_FIELD_SAVE_ERROR = "Не удалось сохранить поле задачи";
 const TASK_TYPE_SAVE_ERROR = "Не удалось сохранить тип задачи";
 const TASK_SETTINGS_RESET_ERROR = "Не удалось сбросить настройки задач";
+const USER_DELETE_SUCCESS = "Пользователь удалён";
+const USER_DELETE_ERROR = "Не удалось удалить пользователя";
+const EMPLOYEE_DELETE_SUCCESS = "Сотрудник удалён";
+const EMPLOYEE_DELETE_ERROR = "Не удалось удалить сотрудника";
 
 type CollectionColumn = (typeof collectionColumns)[number];
 
@@ -328,6 +337,10 @@ export default function CollectionsPage() {
   const [taskFieldItems, setTaskFieldItems] = useState<CollectionItem[]>([]);
   const [taskTypeItems, setTaskTypeItems] = useState<CollectionItem[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const { user: currentUser } = useAuth();
+  const [confirmUserDelete, setConfirmUserDelete] = useState(false);
+  const [confirmEmployeeDelete, setConfirmEmployeeDelete] = useState(false);
+  const canManageUsers = hasAccess(currentUser?.access, ACCESS_ADMIN);
   const actionButtonClass =
     "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
   const selectedCollectionInfo = useMemo(() => {
@@ -696,10 +709,10 @@ export default function CollectionsPage() {
     setUserModalOpen(true);
   };
 
-  const closeUserModal = () => {
+  const closeUserModal = useCallback(() => {
     setUserModalOpen(false);
     setUserForm(emptyUser);
-  };
+  }, []);
 
   const openEmployeeModal = (user?: User) => {
     if (user) {
@@ -737,6 +750,57 @@ export default function CollectionsPage() {
       setEmployeeFormMode("update");
     }
   };
+
+  const executeUserDelete = useCallback(async () => {
+    if (!userForm.telegram_id) {
+      setConfirmUserDelete(false);
+      return;
+    }
+    try {
+      await deleteUserApi(userForm.telegram_id);
+      showToast(USER_DELETE_SUCCESS, "success");
+      setSelectedEmployeeId((prev) =>
+        prev === String(userForm.telegram_id) ? undefined : prev,
+      );
+      closeUserModal();
+      await loadUsers();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : USER_DELETE_ERROR;
+      showToast(message || USER_DELETE_ERROR, "error");
+    } finally {
+      setConfirmUserDelete(false);
+    }
+  }, [
+    userForm.telegram_id,
+    closeUserModal,
+    loadUsers,
+    setSelectedEmployeeId,
+  ]);
+
+  const executeEmployeeDelete = useCallback(async () => {
+    if (!selectedEmployeeId) {
+      setConfirmEmployeeDelete(false);
+      return;
+    }
+    try {
+      await deleteUserApi(selectedEmployeeId);
+      showToast(EMPLOYEE_DELETE_SUCCESS, "success");
+      setIsEmployeeModalOpen(false);
+      setSelectedEmployeeId(undefined);
+      setEmployeeFormMode("create");
+      await loadUsers();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : EMPLOYEE_DELETE_ERROR;
+      showToast(message || EMPLOYEE_DELETE_ERROR, "error");
+    } finally {
+      setConfirmEmployeeDelete(false);
+    }
+  }, [
+    selectedEmployeeId,
+    loadUsers,
+  ]);
 
   const submit = async () => {
     if (active === "fleets") return;
@@ -1571,7 +1635,24 @@ export default function CollectionsPage() {
       <Modal open={userModalOpen} onClose={closeUserModal}>
         <div className="space-y-4">
           <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <h3 className="text-base font-semibold">Карточка пользователя</h3>
+            <header className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold">Карточка пользователя</h3>
+                <p className="text-sm text-slate-500">
+                  ID: {userForm.telegram_id ?? "—"}
+                </p>
+              </div>
+              {canManageUsers && userForm.telegram_id ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-9 px-3 text-sm"
+                  onClick={() => setConfirmUserDelete(true)}
+                >
+                  Удалить
+                </Button>
+              ) : null}
+            </header>
             <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <div>
                 <dt className="font-medium text-slate-500">Telegram ID</dt>
@@ -1656,7 +1737,24 @@ export default function CollectionsPage() {
         <div className="space-y-4">
           {selectedEmployee ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <h3 className="text-base font-semibold">Карточка сотрудника</h3>
+              <header className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold">Карточка сотрудника</h3>
+                  <p className="text-sm text-slate-500">
+                    ID: {selectedEmployee.telegram_id ?? "—"}
+                  </p>
+                </div>
+                {canManageUsers && selectedEmployee.telegram_id ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="h-9 px-3 text-sm"
+                    onClick={() => setConfirmEmployeeDelete(true)}
+                  >
+                    Удалить
+                  </Button>
+                ) : null}
+              </header>
               <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="font-medium text-slate-500">Telegram ID</dt>
@@ -1753,6 +1851,20 @@ export default function CollectionsPage() {
           />
         </div>
       </Modal>
+      <ConfirmDialog
+        open={confirmUserDelete}
+        message="Удалить пользователя? Это действие нельзя отменить."
+        onConfirm={executeUserDelete}
+        onCancel={() => setConfirmUserDelete(false)}
+        confirmText="Удалить"
+      />
+      <ConfirmDialog
+        open={confirmEmployeeDelete}
+        message="Удалить сотрудника? Это действие нельзя отменить."
+        onConfirm={executeEmployeeDelete}
+        onCancel={() => setConfirmEmployeeDelete(false)}
+        confirmText="Удалить"
+      />
     </div>
   );
 }

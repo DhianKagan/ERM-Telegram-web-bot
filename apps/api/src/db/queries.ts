@@ -832,6 +832,15 @@ export async function listUsers(): Promise<UserDocument[]> {
   return User.find();
 }
 
+export async function removeUser(id: string | number): Promise<boolean> {
+  const telegramId = Number(id);
+  if (Number.isNaN(telegramId)) {
+    return false;
+  }
+  const result = await User.deleteOne({ telegram_id: { $eq: telegramId } });
+  return result.deletedCount === 1;
+}
+
 export async function getUsersMap(
   ids: Array<string | number> = [],
 ): Promise<Record<number, UserDocument>> {
@@ -950,6 +959,7 @@ export default {
   generateUserCredentials,
   getUser,
   listUsers,
+  removeUser,
   getUsersMap,
   updateUser,
   listRoles,

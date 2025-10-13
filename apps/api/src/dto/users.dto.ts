@@ -1,6 +1,6 @@
 // Назначение файла: DTO для пользователей
 // Основные модули: routes, middleware
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 export class CreateUserDto {
   static rules() {
@@ -27,6 +27,12 @@ export class UpdateUserDto {
       body('receive_reminders').optional().isBoolean(),
       body('verified_at').optional().isISO8601(),
     ];
+  }
+}
+
+export class DeleteUserDto {
+  static rules() {
+    return [param('id').isInt().withMessage('ID должен быть числом')];
   }
 }
 export default { CreateUserDto, UpdateUserDto };

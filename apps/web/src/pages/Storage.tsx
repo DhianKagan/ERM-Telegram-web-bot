@@ -26,6 +26,8 @@ import {
   removeFile,
   type StoredFile,
 } from "../services/storage";
+import { fetchUsers } from "../services/users";
+import type { User } from "../types/user";
 import authFetch from "../utils/authFetch";
 import { showToast } from "../utils/toast";
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from "shared";
@@ -93,8 +95,7 @@ export default function StoragePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = React.useState<StoredFile[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [filters, setFilters] = React.useState<{ userId?: number; type?: string }>({});
-  const [draftFilters, setDraftFilters] = React.useState<{ userId?: number; type?: string }>({});
+  const [usersById, setUsersById] = React.useState<Record<number, User>>({});
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortOption>("uploaded_desc");
   const [pageIndex, setPageIndex] = React.useState(0);
@@ -107,7 +108,7 @@ export default function StoragePage() {
 
   const loadFiles = React.useCallback(() => {
     setLoading(true);
-    return fetchFiles(filters)
+    return fetchFiles()
       .then((list) => {
         setFiles(Array.isArray(list) ? list : []);
       })
@@ -115,15 +116,32 @@ export default function StoragePage() {
         showToast(t("storage.loadError"), "error");
       })
       .finally(() => setLoading(false));
-  }, [filters, t]);
+  }, [t]);
 
   React.useEffect(() => {
     void loadFiles();
   }, [loadFiles]);
 
   React.useEffect(() => {
-    setDraftFilters(filters);
-  }, [filters]);
+    let active = true;
+    fetchUsers()
+      .then((list) => {
+        if (!active) return;
+        const map: Record<number, User> = {};
+        list.forEach((user) => {
+          if (typeof user.telegram_id === "number") {
+            map[user.telegram_id] = user;
+          }
+        });
+        setUsersById(map);
+      })
+      .catch(() => {
+        showToast(t("storage.usersLoadError"), "error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [t]);
 
   React.useEffect(() => {
     const queryId = searchParams.get("file");
@@ -196,24 +214,6 @@ export default function StoragePage() {
     setPreview(null);
     // неподдерживаемые типы доступны только для скачивания
   }, [selectedFile, t]);
-
-  const userOptions = React.useMemo(() => {
-    const ids = new Set<number>();
-    files.forEach((file) => {
-      if (typeof file.userId === "number") {
-        ids.add(file.userId);
-      }
-    });
-    return Array.from(ids).sort((a, b) => a - b);
-  }, [files]);
-
-  const typeOptions = React.useMemo(() => {
-    const types = new Set<string>();
-    files.forEach((file) => {
-      if (file.type) types.add(file.type);
-    });
-    return Array.from(types).sort((a, b) => a.localeCompare(b));
-  }, [files]);
 
   const filteredFiles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -298,6 +298,18 @@ export default function StoragePage() {
           ? t("storage.taskNumberLabel", { number: file.taskNumber })
           : t("storage.taskLabel", { id: normalizedTaskId })
         : t("storage.taskMissing");
+      const user =
+        typeof file.userId === "number" ? usersById[file.userId] : undefined;
+      const displayName =
+        (typeof user?.name === "string" && user.name.trim()) ||
+        (typeof user?.telegram_username === "string" &&
+          user.telegram_username.trim()) ||
+        (typeof user?.username === "string" && user.username.trim()) ||
+        t("storage.userLabel", { id: file.userId });
+      const userHint =
+        typeof file.userId === "number"
+          ? t("storage.details.userId", { id: file.userId })
+          : t("storage.details.userId", { id: "—" });
       let taskLink: string | undefined;
       if (normalizedTaskId) {
         const paramsWithTask = new URLSearchParams(searchParams.toString());
@@ -309,7 +321,8 @@ export default function StoragePage() {
         taskTitle: normalizedTitle,
         sizeLabel: formatSize(file.size),
         uploadedLabel: formatDate(file.uploadedAt),
-        userLabel: t("storage.userLabel", { id: file.userId }),
+        userDisplay: displayName,
+        userHint,
         taskDisplay: identifier,
         taskParam: normalizedTaskId,
         taskLink,
@@ -317,7 +330,7 @@ export default function StoragePage() {
         onDelete: () => handleDelete(file),
       };
     },
-    [handleDelete, handleDownload, searchParams, t],
+    [handleDelete, handleDownload, searchParams, t, usersById],
   );
 
   const rows = React.useMemo<StorageRow[]>(
@@ -329,17 +342,6 @@ export default function StoragePage() {
     if (!sortedFiles.length) return 1;
     return Math.max(1, Math.ceil(sortedFiles.length / PAGE_SIZE));
   }, [sortedFiles.length]);
-
-  const applyFilters = React.useCallback(() => {
-    setFilters({ ...draftFilters });
-    setPageIndex(0);
-  }, [draftFilters]);
-
-  const resetFilters = React.useCallback(() => {
-    setDraftFilters({});
-    setFilters({});
-    setPageIndex(0);
-  }, []);
 
   const openTaskDialog = React.useCallback(
     (taskId?: string) => {
@@ -391,9 +393,9 @@ export default function StoragePage() {
         label: t("storage.details.user"),
         value: (
           <span className="flex flex-col">
-            {selectedRow.userLabel}
+            {selectedRow.userDisplay}
             <span className="text-xs text-muted-foreground">
-              {t("storage.details.userId", { id: selectedRow.userId })}
+              {selectedRow.userHint}
             </span>
           </span>
         ),
@@ -426,118 +428,52 @@ export default function StoragePage() {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: t("storage.title") }]} />
-      <section className="space-y-4 rounded border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-1 flex-wrap items-center gap-2">
-            <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPageIndex(0);
-              }}
-              placeholder={t("storage.searchPlaceholder") ?? ""}
-              className="max-w-xs"
-            />
-            <select
-              value={sort}
-              onChange={(event) => {
-                setSort(event.target.value as SortOption);
-                setPageIndex(0);
-              }}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="uploaded_desc">{t("storage.sort.uploadedDesc")}</option>
-              <option value="uploaded_asc">{t("storage.sort.uploadedAsc")}</option>
-              <option value="size_desc">{t("storage.sort.sizeDesc")}</option>
-              <option value="size_asc">{t("storage.sort.sizeAsc")}</option>
-            </select>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void loadFiles()}
-              disabled={loading}
-            >
-              {t("storage.refresh")}
-            </Button>
+      <section className="space-y-5 rounded border border-border bg-card p-5 shadow-sm">
+        <header className="flex flex-col gap-4 border-b border-border pb-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-foreground">{t("storage.title")}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t("storage.total", { count: filteredFiles.length })}
+            </p>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {t("storage.total", { count: sortedFiles.length })}
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <h3 className="text-sm font-semibold">{t("storage.filters.user")}</h3>
-            <div className="mt-2 space-y-2">
-              {userOptions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t("storage.filters.empty")}
-                </p>
-              ) : (
-                userOptions.map((id) => {
-                  const checked = draftFilters.userId === id;
-                  return (
-                    <label key={id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name="storage-user"
-                        value={id}
-                        checked={checked}
-                        onChange={() =>
-                          setDraftFilters((current) => ({
-                            ...current,
-                            userId: checked ? undefined : id,
-                          }))
-                        }
-                      />
-                      {t("storage.userLabel", { id })}
-                    </label>
-                  );
-                })
-              )}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPageIndex(0);
+                }}
+                placeholder={t("storage.searchPlaceholder") ?? ""}
+                className="max-w-xs"
+              />
+              <select
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value as SortOption);
+                  setPageIndex(0);
+                }}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="uploaded_desc">{t("storage.sort.uploadedDesc")}</option>
+                <option value="uploaded_asc">{t("storage.sort.uploadedAsc")}</option>
+                <option value="size_desc">{t("storage.sort.sizeDesc")}</option>
+                <option value="size_asc">{t("storage.sort.sizeAsc")}</option>
+              </select>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void loadFiles()}
+                disabled={loading}
+              >
+                {t("storage.refresh")}
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground md:text-sm">
+              {loading ? t("loading") : null}
             </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold">{t("storage.filters.type")}</h3>
-            <div className="mt-2 space-y-2">
-              {typeOptions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t("storage.filters.empty")}
-                </p>
-              ) : (
-                typeOptions.map((type) => {
-                  const checked = draftFilters.type === type;
-                  return (
-                    <label key={type} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name="storage-type"
-                        value={type}
-                        checked={checked}
-                        onChange={() =>
-                          setDraftFilters((current) => ({
-                            ...current,
-                            type: checked ? undefined : type,
-                          }))
-                        }
-                      />
-                      {type}
-                    </label>
-                  );
-                })
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button type="button" onClick={applyFilters}>
-              {t("storage.filters.apply")}
-            </Button>
-            <Button type="button" variant="outline" onClick={resetFilters}>
-              {t("storage.filters.reset")}
-            </Button>
-          </div>
-        </div>
-      </section>
-      <section className="rounded border border-border bg-card p-4 shadow-sm">
+        </header>
         <DataTable<StorageRow>
           columns={createStorageColumns(
             {
@@ -560,6 +496,7 @@ export default function StoragePage() {
           onPageChange={setPageIndex}
           showGlobalSearch={false}
           showFilters={false}
+          wrapCellsAsBadges
           onRowClick={(row) => {
             const next = new URLSearchParams(searchParams.toString());
             next.set("file", row.id);

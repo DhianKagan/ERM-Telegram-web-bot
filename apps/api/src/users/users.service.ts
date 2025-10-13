@@ -19,6 +19,7 @@ interface UsersRepo {
     id: string | number,
     data: Omit<Partial<UserDocument>, 'access'>,
   ): Promise<UserDocument | null>;
+  removeUser(id: string | number): Promise<boolean>;
 }
 
 class UsersService {
@@ -58,6 +59,10 @@ class UsersService {
 
   update(id: string | number, data: Omit<Partial<UserDocument>, 'access'>) {
     return this.repo.updateUser(id, data);
+  }
+
+  remove(id: string | number) {
+    return this.repo.removeUser(id);
   }
 }
 

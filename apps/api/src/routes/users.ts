@@ -9,7 +9,7 @@ import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN, ACCESS_MANAGER } from '../utils/accessMask';
 import validateDto from '../middleware/validateDto';
-import { CreateUserDto, UpdateUserDto } from '../dto/users.dto';
+import { CreateUserDto, UpdateUserDto, DeleteUserDto } from '../dto/users.dto';
 
 const router: Router = Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
@@ -43,6 +43,15 @@ router.patch<{ id: string }>(
   rolesGuard,
   ...validateDto(UpdateUserDto),
   ...ctrl.update,
+);
+
+router.delete<{ id: string }>(
+  '/:id',
+  ...base,
+  Roles(ACCESS_ADMIN),
+  rolesGuard,
+  ...validateDto(DeleteUserDto),
+  ctrl.remove,
 );
 
 export default router;

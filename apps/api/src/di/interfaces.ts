@@ -33,6 +33,7 @@ export interface IUsersService {
   ): Promise<{ telegramId: number; username: string }>;
   get(id: string | number): Promise<unknown | null>;
   update(id: string, data: unknown): Promise<unknown | null>;
+  remove(id: string | number): Promise<boolean>;
 }
 
 export interface IRolesService {

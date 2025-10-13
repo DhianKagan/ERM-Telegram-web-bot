@@ -110,4 +110,18 @@ export default class UsersController {
       res.json(formatUser(user));
     },
   ];
+
+  remove = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+    const removed = await this.service.remove(req.params.id);
+    if (!removed) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Пользователь не найден',
+        status: 404,
+        detail: 'Not Found',
+      });
+      return;
+    }
+    res.json({ status: 'ok' });
+  };
 }

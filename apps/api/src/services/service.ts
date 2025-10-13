@@ -8,6 +8,7 @@ export const updateTask = q.updateTask;
 export const updateTaskStatus = q.updateTaskStatus;
 export const createUser = q.createUser;
 export const listUsers = q.listUsers;
+export const removeUser = q.removeUser;
 export const updateUser = q.updateUser;
 export const listRoles = q.listRoles;
 export const getRole = q.getRole;

@@ -1,4 +1,4 @@
-// Роуты пользователей: список и создание
+// Роуты пользователей: список, создание, GET /:id и PATCH /:id
 // Модули: express, express-rate-limit, controllers/users, middleware/auth, utils/accessMask
 import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';

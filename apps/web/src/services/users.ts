@@ -197,3 +197,17 @@ export const updateUser = (
     return normalizeUser(data) as UserDetails;
   });
 };
+
+export const deleteUser = async (id: number | string): Promise<void> => {
+  const response = await authFetch(`/api/v1/users/${id}`, {
+    method: "DELETE",
+    confirmed: true,
+  });
+  if (response.status === 404) {
+    throw new Error("Пользователь не найден");
+  }
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(body || "Не удалось удалить пользователя");
+  }
+};

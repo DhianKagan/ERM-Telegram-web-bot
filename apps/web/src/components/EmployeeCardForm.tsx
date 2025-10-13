@@ -26,6 +26,7 @@ import {
 } from "../services/users";
 import { useAuth } from "../context/useAuth";
 import { showToast } from "../utils/toast";
+import { hasAccess, ACCESS_ADMIN } from "../utils/access";
 import type { UserFormData } from "../pages/Settings/UserForm";
 
 interface EmployeeCardFormProps {
@@ -97,7 +98,7 @@ export default function EmployeeCardForm({
   const [prefillError, setPrefillError] = useState<string | null>(null);
 
   const isCreateMode = resolvedMode === "create";
-  const canEdit = user?.role === "admin";
+  const canEdit = hasAccess(user?.access, ACCESS_ADMIN);
 
   useEffect(() => {
     fetchCollectionItems("departments", "", 1, 100).then((d) =>

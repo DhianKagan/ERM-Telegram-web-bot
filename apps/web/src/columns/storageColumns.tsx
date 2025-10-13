@@ -6,12 +6,14 @@ import {
   ArrowDownTrayIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
+import EmployeeLink from "../components/EmployeeLink";
 import type { StoredFile } from "../services/storage";
 
 export interface StorageRow extends StoredFile {
   sizeLabel: string;
   uploadedLabel: string;
-  userLabel: string;
+  userDisplay: string;
+  userHint: string;
   taskDisplay: string;
   taskParam?: string;
   taskLink?: string;
@@ -31,6 +33,13 @@ interface Labels {
   taskTitleHint: (title: string) => string;
 }
 
+const userBadgeClass = [
+  "inline-flex max-w-full items-center gap-1",
+  "rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-xs",
+  "transition-colors duration-150 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+  "dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100",
+].join(" ");
+
 export default function createStorageColumns(
   labels: Labels,
   options: { onTaskOpen?: (taskId: string) => void } = {},
@@ -40,7 +49,7 @@ export default function createStorageColumns(
     {
       header: labels.name,
       accessorKey: "name",
-      meta: { minWidth: "12rem", maxWidth: "20rem" },
+      meta: { minWidth: "12rem", maxWidth: "20rem", renderAsBadges: false },
       cell: ({ row }) => {
         const file = row.original;
         return (
@@ -80,9 +89,29 @@ export default function createStorageColumns(
     },
     {
       header: labels.user,
-      accessorKey: "userLabel",
-      meta: { minWidth: "6rem", maxWidth: "10rem" },
-      cell: ({ row }) => row.original.userLabel,
+      accessorKey: "userDisplay",
+      meta: { minWidth: "8rem", maxWidth: "12rem", renderAsBadges: false },
+      cell: ({ row }) => {
+        const file = row.original;
+        const label = file.userDisplay;
+        if (!file.userId) {
+          return (
+            <span className="truncate text-sm" title={file.userHint}>
+              {label}
+            </span>
+          );
+        }
+        return (
+          <EmployeeLink
+            employeeId={file.userId}
+            stopPropagation
+            className={userBadgeClass}
+            title={file.userHint}
+          >
+            <span className="truncate">{label}</span>
+          </EmployeeLink>
+        );
+      },
     },
     {
       header: labels.type,
@@ -99,7 +128,7 @@ export default function createStorageColumns(
     {
       header: labels.task,
       accessorKey: "taskDisplay",
-      meta: { minWidth: "10rem", maxWidth: "16rem" },
+      meta: { minWidth: "10rem", maxWidth: "16rem", renderAsBadges: false },
       cell: ({ row }) => {
         const file = row.original;
         const content = (

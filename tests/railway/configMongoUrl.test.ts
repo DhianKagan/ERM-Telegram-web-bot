@@ -1,10 +1,13 @@
 // Назначение: проверка валидации Mongo URL в конфиге. Модули: jest, services.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
 process.env.APP_URL = 'https://localhost';
-process.env.MONGO_DATABASE_URL = 'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
+process.env.MONGO_DATABASE_URL =
+  'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
 
 const { stopScheduler } = require('../../apps/api/src/services/scheduler');
 const { stopQueue } = require('../../apps/api/src/services/messageQueue');

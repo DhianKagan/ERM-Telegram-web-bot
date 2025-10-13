@@ -1,5 +1,7 @@
 // Назначение: проверка выбора порта в конфиге Railway.
 // Основные модули: jest, config.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';

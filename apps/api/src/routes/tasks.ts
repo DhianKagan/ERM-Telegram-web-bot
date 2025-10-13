@@ -621,8 +621,8 @@ router.post(
 router.patch(
   '/:id',
   param('id').isMongoId(),
-  checkTaskAccess as unknown as RequestHandler,
   upload.any(),
+  checkTaskAccess as unknown as RequestHandler,
   processUploads,
   normalizeArrays,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),

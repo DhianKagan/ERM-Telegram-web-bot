@@ -1,6 +1,7 @@
 // Назначение: проверка права пользователя изменять задачу
-// Основные модули: express, accessMask, tasks, service
+// Основные модули: express, fs/promises, accessMask, tasks, service
 import { Response, NextFunction } from 'express';
+import { promises as fs } from 'fs';
 import {
   hasAccess,
   ACCESS_ADMIN,
@@ -41,8 +42,20 @@ export default async function checkTaskAccess(
       .filter((value) => Number.isFinite(value))
       .forEach((value) => assignedIds.add(value));
   }
+  const controllerIds = new Set<number>();
+  const primaryController = Number(task.controller_user_id);
+  if (Number.isFinite(primaryController)) {
+    controllerIds.add(primaryController);
+  }
+  if (Array.isArray(task.controllers)) {
+    task.controllers
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+      .forEach((value) => controllerIds.add(value));
+  }
   const isCreator = Number.isFinite(id) && task.created_by === id;
   const isExecutor = Number.isFinite(id) && assignedIds.has(id);
+  const isController = Number.isFinite(id) && controllerIds.has(id);
   const sameActor = isCreator && isExecutor;
   const status = typeof task.status === 'string' ? task.status : undefined;
   const isTaskNew = status === 'Новая';
@@ -52,7 +65,7 @@ export default async function checkTaskAccess(
   const isStatusRoute =
     method === 'PATCH' &&
     (routePath === '/:id/status' || req.originalUrl.endsWith('/status'));
-  if (hasElevatedAccess) {
+  if (hasElevatedAccess || isController) {
     req.task = task;
     next();
     return;
@@ -95,6 +108,22 @@ export default async function checkTaskAccess(
   await writeLog(
     `Нет доступа ${req.method} ${req.originalUrl} user:${id}/${req.user?.username} ip:${req.ip}`,
   ).catch(() => {});
+  const filesRaw = req.files;
+  if (Array.isArray(filesRaw)) {
+    await Promise.all(
+      filesRaw
+        .map((file) => {
+          if (!file || typeof file !== 'object') {
+            return undefined;
+          }
+          const record = file as { path?: unknown };
+          return typeof record.path === 'string'
+            ? fs.unlink(record.path).catch(() => undefined)
+            : undefined;
+        })
+        .filter(Boolean) as Promise<unknown>[],
+    );
+  }
   sendProblem(req, res, {
     type: 'about:blank',
     title: 'Доступ запрещён',

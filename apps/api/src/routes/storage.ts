@@ -11,7 +11,7 @@ import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
-import { listFiles, deleteFile } from '../services/dataStorage';
+import { listFiles, deleteFile, getFile } from '../services/dataStorage';
 import { body, param, query } from 'express-validator';
 import { asyncHandler } from '../api/middleware';
 import container from '../di';
@@ -43,27 +43,6 @@ router.get(
   },
 );
 
-router.delete(
-  '/:name',
-  authMiddleware(),
-  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
-  rolesGuard as unknown as RequestHandler,
-  param('name').isString() as unknown as RequestHandler,
-  async (req, res, next: NextFunction) => {
-    try {
-      await deleteFile(req.params.name);
-      res.json({ ok: true });
-    } catch (error: unknown) {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code === 'ENOENT') {
-        res.status(404).json({ error: 'Файл не найден' });
-      } else {
-        next(error);
-      }
-    }
-  },
-);
-
 router.get(
   '/diagnostics',
   authMiddleware(),
@@ -79,6 +58,43 @@ router.post(
   rolesGuard as unknown as RequestHandler,
   [body('actions').isArray()] as unknown as RequestHandler[],
   asyncHandler(diagnosticsController.remediate),
+);
+
+router.get(
+  '/:id([0-9a-fA-F]{24})',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  param('id').isMongoId() as unknown as RequestHandler,
+  async (req, res) => {
+    const file = await getFile(req.params.id);
+    if (!file) {
+      res.status(404).json({ error: 'Файл не найден' });
+      return;
+    }
+    res.json(file);
+  },
+);
+
+router.delete(
+  '/:id([0-9a-fA-F]{24})',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  param('id').isMongoId() as unknown as RequestHandler,
+  async (req, res, next: NextFunction) => {
+    try {
+      await deleteFile(req.params.id);
+      res.json({ ok: true });
+    } catch (error: unknown) {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'ENOENT') {
+        res.status(404).json({ error: 'Файл не найден' });
+      } else {
+        next(error);
+      }
+    }
+  },
 );
 
 export default router;

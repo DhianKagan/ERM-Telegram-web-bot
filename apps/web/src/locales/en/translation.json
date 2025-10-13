@@ -162,8 +162,12 @@
       "title": "Filters",
       "user": "User",
       "type": "File type",
-      "empty": "No available values"
+      "empty": "No available values",
+      "apply": "Apply",
+      "reset": "Reset"
     },
+    "refresh": "Refresh",
+    "total": "Total files: {{count}}",
     "sort": {
       "uploadedDesc": "By date (newest first)",
       "uploadedAsc": "By date (oldest first)",

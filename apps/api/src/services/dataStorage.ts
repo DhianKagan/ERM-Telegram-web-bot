@@ -10,6 +10,7 @@ import { File, Task, type FileDocument } from '../db/model';
 const uploadsDirAbs = path.resolve(uploadsDir);
 
 export interface StoredFile {
+  id: string;
   taskId?: string;
   userId: number;
   name: string;
@@ -54,6 +55,7 @@ export async function listFiles(
       const taskId = f.taskId ? String(f.taskId) : undefined;
       const taskMeta = taskId ? taskMap.get(taskId) : undefined;
       return {
+        id: String(f._id),
         taskId,
         taskNumber: taskMeta?.number ?? undefined,
         taskTitle:
@@ -78,8 +80,45 @@ export async function listFiles(
   }
 }
 
-export async function deleteFile(name: string): Promise<void> {
-  const file = await File.findOneAndDelete({ path: name }).lean();
+export async function getFile(id: string): Promise<StoredFile | null> {
+  const doc = await File.findById(id).lean();
+  if (!doc) {
+    return null;
+  }
+  const taskId = doc.taskId ? String(doc.taskId) : undefined;
+  const taskMeta = taskId
+    ? await Task.findById(doc.taskId)
+        .select(['task_number', 'title'])
+        .lean()
+    : null;
+  return {
+    id: String(doc._id),
+    taskId,
+    taskNumber: taskMeta?.task_number ?? undefined,
+    taskTitle:
+      typeof taskMeta?.title === 'string' && taskMeta.title.trim()
+        ? taskMeta.title
+        : undefined,
+    userId: doc.userId,
+    name: doc.name,
+    path: doc.path,
+    thumbnailUrl: doc.thumbnailPath
+      ? `/uploads/${doc.thumbnailPath}`
+      : undefined,
+    type: doc.type,
+    size: doc.size,
+    uploadedAt: doc.uploadedAt,
+    url: `/api/v1/files/${String(doc._id)}`,
+    previewUrl: `/api/v1/files/${String(doc._id)}?mode=inline`,
+  } satisfies StoredFile;
+}
+
+export async function deleteFile(identifier: string): Promise<void> {
+  const query: FilterQuery<FileDocument> =
+    /^[0-9a-fA-F]{24}$/.test(identifier)
+      ? { _id: identifier }
+      : { path: identifier };
+  const file = await File.findOneAndDelete(query).lean();
   if (!file) {
     const err = new Error('Файл не найден') as NodeJS.ErrnoException;
     err.code = 'ENOENT';

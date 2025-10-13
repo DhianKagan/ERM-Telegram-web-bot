@@ -22,14 +22,26 @@ jest.mock('../src/di', () => {
   };
 });
 
+const fileFindMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
+const fileFindByIdMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+const fileFindOneAndDeleteMock = jest.fn(() => ({
+  lean: jest.fn().mockResolvedValue(null),
+}));
+
+const taskFindMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
+const taskFindByIdMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+
 jest.mock('../src/db/model', () => ({
   File: {
-    find: jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) })),
-    findOneAndDelete: jest.fn(() => ({
-      lean: jest.fn().mockResolvedValue(null),
-    })),
+    find: fileFindMock,
+    findById: fileFindByIdMock,
+    findOneAndDelete: fileFindOneAndDeleteMock,
   },
-  Task: { updateOne: jest.fn() },
+  Task: {
+    updateOne: jest.fn(),
+    find: taskFindMock,
+    findById: taskFindByIdMock,
+  },
 }));
 
 process.env.STORAGE_DIR = path.resolve(__dirname, '../public/uploads');
@@ -56,8 +68,16 @@ describe('storage routes', () => {
   app.use(express.json());
   app.use(router);
 
+  beforeEach(() => {
+    fileFindMock.mockReset();
+    fileFindByIdMock.mockReset();
+    fileFindOneAndDeleteMock.mockReset();
+    taskFindMock.mockReset();
+    taskFindByIdMock.mockReset();
+  });
+
   test('list files', async () => {
-    (File.find as jest.Mock).mockReturnValue({
+    fileFindMock.mockReturnValue({
       lean: jest.fn().mockResolvedValue([
         {
           userId: 1,
@@ -75,16 +95,44 @@ describe('storage routes', () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body[0].name).toBe('test.txt');
     expect(res.body[0].previewUrl).toContain('?mode=inline');
+    expect(res.body[0].id).toBe('64d000000000000000000001');
+  });
+
+  test('get file by id', async () => {
+    fileFindByIdMock.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: '64d000000000000000000002',
+        userId: 2,
+        name: 'single.txt',
+        path: 'single.txt',
+        type: 'text/plain',
+        size: 2,
+        uploadedAt: new Date(),
+        taskId: '64d000000000000000000003',
+      }),
+    });
+    taskFindByIdMock.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
+      }),
+    });
+    const res = await request(app).get('/64d000000000000000000002');
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('single.txt');
+    expect(res.body.taskNumber).toBe('A-2');
   });
 
   test('delete file', async () => {
     const f = path.join(uploadsDir, 'del.txt');
     fs.mkdirSync(uploadsDir, { recursive: true });
     fs.writeFileSync(f, 'd');
-    (File.findOneAndDelete as jest.Mock).mockReturnValue({
-      lean: jest.fn().mockResolvedValue({ path: 'del.txt' }),
+    fileFindOneAndDeleteMock.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        path: 'del.txt',
+        _id: '64d000000000000000000004',
+      }),
     });
-    await request(app).delete('/del.txt').expect(200);
+    await request(app).delete('/64d000000000000000000004').expect(200);
     expect(fs.existsSync(f)).toBe(false);
   });
 

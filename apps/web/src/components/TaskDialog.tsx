@@ -67,6 +67,7 @@ interface InitialValues {
   completedAt: string;
   creator: string;
   assigneeId: string;
+  assigneeIds: number[];
   start: string;
   startLink: string;
   end: string;
@@ -106,6 +107,19 @@ const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+
+const toAssigneeNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
 
 const normalizePriorityOption = (value?: string | null) => {
   if (typeof value !== "string") {
@@ -652,6 +666,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
   );
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
+  const [initialStatus, setInitialStatus] = React.useState(DEFAULT_STATUS);
+  const [taskAssigneeIds, setTaskAssigneeIds] = React.useState<number[]>([]);
   const [cargoLength, setCargoLength] = React.useState("");
   const [cargoWidth, setCargoWidth] = React.useState("");
   const [cargoHeight, setCargoHeight] = React.useState("");
@@ -659,6 +675,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [cargoWeight, setCargoWeight] = React.useState("");
   const [showLogistics, setShowLogistics] = React.useState(false);
   const [creator, setCreator] = React.useState("");
+  const currentUserId =
+    typeof user?.telegram_id === "number" ? user.telegram_id : null;
+  const creatorNumericId = React.useMemo(() => {
+    const parsed = Number(creator);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [creator]);
+  const isCreator = currentUserId !== null && creatorNumericId === currentUserId;
+  const isExecutor = React.useMemo(
+    () => currentUserId !== null && taskAssigneeIds.includes(currentUserId),
+    [taskAssigneeIds, currentUserId],
+  );
+  const sameActor = isCreator && isExecutor;
+  const isTaskNew = initialStatus === "Новая";
+  const canEditTask =
+    canEditAll || ((isCreator || sameActor) && isTaskNew);
+  const canChangeStatus =
+    canEditAll ||
+    (isExecutor && !sameActor) ||
+    ((isCreator || sameActor) && isTaskNew);
   const [start, setStart] = React.useState("");
   const [startLink, setStartLink] = React.useState("");
   const [startCoordinates, setStartCoordinates] = React.useState<{
@@ -811,6 +846,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         (taskData as Record<string, unknown>).completed_at ??
         (taskData as Record<string, unknown>).completedAt;
       const curCompletedAt = toIsoString(rawCompleted);
+      const normalizedAssigneeIds = (() => {
+        const candidates: number[] = [];
+        if (Array.isArray(taskData.assignees)) {
+          taskData.assignees.forEach((candidate) => {
+            const parsed = toAssigneeNumber(candidate);
+            if (parsed !== null) candidates.push(parsed);
+          });
+        }
+        const primaryAssignee = toAssigneeNumber(
+          (taskData as Record<string, unknown>).assigned_user_id,
+        );
+        if (primaryAssignee !== null) candidates.push(primaryAssignee);
+        return Array.from(new Set(candidates));
+      })();
       const rawAssignee = Array.isArray(taskData.assignees)
         ? (taskData.assignees as (string | number | null | undefined)[])[0]
         : (taskData as Record<string, unknown>).assigned_user_id;
@@ -882,8 +931,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setTransportType(curTransport);
       setPaymentMethod(curPayment);
       setPaymentAmount(amountValue);
+      setInitialStatus(curStatus);
       setStatus(curStatus);
       setCompletedAt(curCompletedAt);
+      setTaskAssigneeIds(normalizedAssigneeIds);
       const lengthValue = formatMetricValue(taskData.cargo_length_m);
       const widthValue = formatMetricValue(taskData.cargo_width_m);
       const heightValue = formatMetricValue(taskData.cargo_height_m);
@@ -989,6 +1040,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         completedAt: curCompletedAt,
         creator: String((taskData.created_by as unknown) || ""),
         assigneeId,
+        assigneeIds: normalizedAssigneeIds,
         start: (taskData.start_location as string) || "",
         startLink: startLocationLink,
         end: (taskData.end_location as string) || "",
@@ -1040,6 +1092,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   };
 
   React.useEffect(() => {
+    if (!isEdit) {
+      setEditing(true);
+      return;
+    }
+    setEditing(canEditTask);
+  }, [isEdit, canEditTask]);
+
+  React.useEffect(() => {
     const lengthValue = parseMetricInput(cargoLength);
     const widthValue = parseMetricInput(cargoWidth);
     const heightValue = parseMetricInput(cargoHeight);
@@ -1063,7 +1123,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   React.useEffect(() => {
     const targetId = effectiveTaskId;
-    setEditing(true);
     if (isEdit && targetId) {
       const canonicalTargetId = coerceTaskId(targetId) ?? targetId;
       if (fetchedTaskIdRef.current === canonicalTargetId) {
@@ -1142,6 +1201,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStartDateNotice(
       startInstant ? formatHistoryInstant(startInstant) : null,
     );
+    const defaultAssigneeIds =
+      initialKind === "request"
+        ? []
+        : typeof user?.telegram_id === "number"
+          ? [user.telegram_id]
+          : [];
+    setTaskAssigneeIds(defaultAssigneeIds);
+    setInitialStatus(DEFAULT_STATUS);
     initialRef.current = {
       title: "",
       taskType:
@@ -1157,6 +1224,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       creator: user ? String(user.telegram_id) : "",
       assigneeId:
         initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
+      assigneeIds: defaultAssigneeIds,
       start: "",
       startLink: "",
       end: "",
@@ -1684,8 +1752,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setTransportType(d.transportType);
     setPaymentMethod(d.paymentMethod);
     setPaymentAmount(d.paymentAmount);
+    setInitialStatus(d.status);
     setStatus(d.status);
     setCompletedAt(d.completedAt);
+    setTaskAssigneeIds(d.assigneeIds);
     setCreator(d.creator);
     setCargoLength(d.cargoLength);
     setCargoWidth(d.cargoWidth);
@@ -1719,6 +1789,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       ]);
       if (data) {
         if (onSave) onSave(data);
+        if (initialRef.current) {
+          initialRef.current.status = "В работе";
+        }
+        setInitialStatus("В работе");
       } else {
         setStatus(prev);
         setAlertMsg(t("taskSaveFailed"));
@@ -1768,6 +1842,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           initialRef.current.status = "Выполнена";
           initialRef.current.completedAt = completedValue || fallbackCompleted;
         }
+        setInitialStatus("Выполнена");
         if (onSave) onSave(data);
       } else {
         setStatus(prev);
@@ -1858,7 +1933,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               )}
             </div>
             <div className="absolute top-4 right-4 flex flex-wrap justify-end gap-2">
-              {isEdit && !editing && (
+              {isEdit && !editing && canEditTask && (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
@@ -1872,7 +1947,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               <button
                 type="button"
                 onClick={resetForm}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!editing}
                 title={t("reset")}
                 aria-label={t("reset")}
               >
@@ -2446,14 +2522,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             {a.name}
                           </a>
                         )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="px-0 text-red-500"
-                          onClick={() => removeAttachment(a)}
-                        >
-                          {t("delete")}
-                        </Button>
+                        {editing && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="px-0 text-red-500"
+                            onClick={() => removeAttachment(a)}
+                          >
+                            {t("delete")}
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -2554,7 +2632,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   onCancel={() => setShowDeleteConfirm(false)}
                 />
               )}
-              {isEdit && !editing && (
+              {isEdit && !editing && canChangeStatus && (
                 <>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button

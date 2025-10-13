@@ -83,6 +83,7 @@ export default function FileUploader({
   const [items, setItems] = React.useState<UploadItem[]>([]);
   const { t } = useTranslation();
   const fileInputId = React.useId();
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const handleFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
@@ -138,6 +139,26 @@ export default function FileUploader({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) handleFiles(e.target.files);
+  };
+
+  const openFileDialog = () => {
+    if (disabled) return;
+    const node = fileInputRef.current;
+    if (node) node.click();
+  };
+
+  const handleZoneClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    event.preventDefault();
+    openFileDialog();
+  };
+
+  const handleZoneKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openFileDialog();
+    }
   };
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -198,12 +219,41 @@ export default function FileUploader({
   return (
     <div>
       <div
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!disabled) e.dataTransfer.dropEffect = 'copy';
+        }}
         onDrop={onDrop}
-        className={`mt-2 flex flex-col items-center justify-center rounded border-2 border-dashed p-4 text-sm ${disabled ? "opacity-50" : ""}`}
+        onClick={handleZoneClick}
+        onKeyDown={handleZoneKeyDown}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
+        aria-label={t("dragFilesOrSelect")}
+        className={`mt-2 flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+          disabled
+            ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-70"
+            : "cursor-pointer border-accentPrimary/60 bg-accentPrimary/5 text-slate-700 hover:border-accentPrimary hover:bg-accentPrimary/10"
+        }`}
       >
-        <p>{t("dragFilesOrSelect")}</p>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-base font-medium">{t("dragFilesOrSelect")}</p>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              openFileDialog();
+            }}
+            className="rounded-full border border-accentPrimary px-4 py-1.5 text-sm font-semibold text-accentPrimary transition hover:bg-accentPrimary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+            disabled={disabled}
+          >
+            {t("chooseFiles")}
+          </button>
+          <p className="text-xs text-slate-500">{t("uploadTapHint")}</p>
+        </div>
         <input
+          ref={fileInputRef}
           id={fileInputId}
           name="attachments"
           type="file"
@@ -211,6 +261,7 @@ export default function FileUploader({
           onChange={handleChange}
           disabled={disabled}
           accept={ACCEPT_ATTR.join(",")}
+          className="sr-only"
         />
       </div>
       {items.length > 0 && (

@@ -58,22 +58,36 @@ jest.mock('../src/services/wgLogEngine', () => ({
   writeLog: jest.fn().mockResolvedValue(undefined),
 }));
 
+const getByIdMock = jest.fn(async () => ({
+  _id: mockExistingTaskId,
+  created_by: 1,
+  status: 'Новая',
+  assignees: [],
+  controllers: [],
+}));
+
 jest.mock('../src/services/tasks', () => ({
-  getById: jest.fn(async () => ({
-    _id: mockExistingTaskId,
-    created_by: 1,
-    assignees: [],
-    controllers: [],
-  })),
+  getById: getByIdMock,
 }));
 
 const { createTask, updateTask } = require('../src/db/queries');
 const checkTaskAccess = require('../src/middleware/taskAccess').default as RequestHandler;
 const { ACCESS_USER } = require('../src/utils/accessMask');
+const tasksService = require('../src/services/tasks');
+const mockedGetById = tasksService.getById as jest.Mock;
+
+const defaultTaskAccess = {
+  _id: mockExistingTaskId,
+  created_by: 1,
+  status: 'Новая',
+  assignees: [] as Array<number>,
+  controllers: [] as Array<number>,
+};
 
 describe('Привязка вложений к задачам', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedGetById.mockResolvedValue({ ...defaultTaskAccess });
   });
 
   test('устанавливает taskId после создания задачи', async () => {
@@ -155,8 +169,13 @@ describe('Привязка вложений к задачам', () => {
 });
 
 describe('Проверка доступа к задаче другим пользователем', () => {
+  beforeEach(() => {
+    mockedGetById.mockResolvedValue({ ...defaultTaskAccess });
+  });
+
   test('возвращает 403 при попытке обновления без прав', async () => {
     const app = express();
+    app.use(express.json());
     app.use((req, _res, next) => {
       (req as any).user = { id: 99, access: ACCESS_USER };
       next();
@@ -167,4 +186,132 @@ describe('Проверка доступа к задаче другим поль�
     const response = await request(app).patch(`/tasks/${existingTaskId}`);
     expect(response.status).toBe(403);
   });
+
+  test('создатель новой задачи может обновлять поля', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 7,
+      status: 'Новая',
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 7, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}`)
+      .send({ title: 'Обновлено' });
+    expect(response.status).toBe(200);
+  });
+
+  test('создатель не может редактировать задачу в работе', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 7,
+      status: 'В работе',
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 7, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}`)
+      .send({ title: 'Нельзя' });
+    expect(response.status).toBe(403);
+  });
+
+  test('исполнитель может обновить только статус', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 10,
+      assignees: [8],
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 8, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}`)
+      .send({ status: 'В работе' });
+    expect(response.status).toBe(200);
+  });
+
+  test('исполнитель не может менять другие поля', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 10,
+      assignees: [8],
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 8, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}`)
+      .send({ priority: 'Срочно' });
+    expect(response.status).toBe(403);
+  });
+
+  test('создатель-исполнитель не меняет статус после старта', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 12,
+      assignees: [12],
+      status: 'В работе',
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 12, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id/status', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}/status`)
+      .send({ status: 'Выполнена' });
+    expect(response.status).toBe(403);
+  });
+
+  test('исполнитель может сменить статус через отдельный роут', async () => {
+    mockedGetById.mockResolvedValue({
+      ...defaultTaskAccess,
+      created_by: 14,
+      assignees: [15],
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = { id: 15, access: ACCESS_USER };
+      next();
+    });
+    app.patch('/tasks/:id/status', checkTaskAccess, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const response = await request(app)
+      .patch(`/tasks/${existingTaskId}/status`)
+      .send({ status: 'В работе' });
+    expect(response.status).toBe(200);
+  });
+});
 });

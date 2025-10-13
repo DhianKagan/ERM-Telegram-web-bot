@@ -1,4 +1,4 @@
-// Контроллер пользователей с использованием UsersService
+// Контроллер пользователей: список, создание, GET /:id, PATCH /:id
 // Основные модули: express-validator, utils/formatUser, express
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
@@ -98,6 +98,15 @@ export default class UsersController {
       res: Response,
     ): Promise<void> => {
       const user = await this.service.update(req.params.id, req.body);
+      if (!user) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Пользователь не найден',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
       res.json(formatUser(user));
     },
   ];

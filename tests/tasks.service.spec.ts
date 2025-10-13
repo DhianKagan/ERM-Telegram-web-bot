@@ -2,8 +2,37 @@
  * Назначение файла: проверяет применение темы Telegram для типов задач.
  * Основные модули: TasksService, resolveTaskTypeTopicId.
  */
-import TasksService from '../apps/api/src/tasks/tasks.service';
 import type { TaskDocument } from '../apps/api/src/db/model';
+import { generateRouteLink } from 'shared';
+
+jest.mock('../apps/api/src/config', () => ({
+  __esModule: true,
+  botToken: 'test-bot-token',
+  botApiUrl: undefined,
+  getChatId: () => '0',
+  chatId: '0',
+  jwtSecret: 'test-secret',
+  mongoUrl: 'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin',
+  appUrl: 'https://example.com',
+  port: 3000,
+  locale: 'ru',
+  routingUrl: 'https://localhost:8000/route',
+  cookieDomain: undefined,
+  default: {
+    botToken: 'test-bot-token',
+    botApiUrl: undefined,
+    get chatId() {
+      return '0';
+    },
+    jwtSecret: 'test-secret',
+    mongoUrl: 'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin',
+    appUrl: 'https://example.com',
+    port: 3000,
+    locale: 'ru',
+    routingUrl: 'https://localhost:8000/route',
+    cookieDomain: undefined,
+  },
+}));
 
 jest.mock('../apps/api/src/services/route', () => ({
   getRouteDistance: jest.fn(),
@@ -28,6 +57,14 @@ jest.mock('../apps/api/src/services/taskTypeSettings', () => ({
 
 const { resolveTaskTypeTopicId } =
   jest.requireMock('../apps/api/src/services/taskTypeSettings');
+const { getRouteDistance } = jest.requireMock('../apps/api/src/services/route');
+
+type TasksServiceCtor = typeof import('../apps/api/src/tasks/tasks.service').default;
+let TasksService: TasksServiceCtor;
+
+beforeAll(async () => {
+  ({ default: TasksService } = await import('../apps/api/src/tasks/tasks.service'));
+});
 
 type RepositoryMocks = {
   createTask: jest.Mock;
@@ -103,5 +140,24 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(repo.updateTask).toHaveBeenCalledTimes(1);
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.telegram_topic_id).toBeUndefined();
+  });
+
+  it('добавляет дистанцию и ссылку маршрута при наличии координат', async () => {
+    getRouteDistance.mockResolvedValue({ distance: 12345, waypoints: [] });
+    const repo = createRepo();
+    const service = new TasksService(repo as unknown as any);
+    const start = { lat: 50.45, lng: 30.523 };
+    const finish = { lat: 49.84, lng: 24.03 };
+
+    await service.update(
+      'task',
+      { startCoordinates: start, finishCoordinates: finish },
+      77,
+    );
+
+    expect(getRouteDistance).toHaveBeenCalledWith(start, finish);
+    const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
+    expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
+    expect(payload.route_distance_km).toBe(12.3);
   });
 });

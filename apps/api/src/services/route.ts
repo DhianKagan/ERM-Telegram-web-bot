@@ -1,5 +1,5 @@
 // Назначение: запросы к сервису OSRM
-// Моdули: fetch, config, prom-client
+// Модули: fetch, config, prom-client
 import { routingUrl } from '../config';
 import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
@@ -34,7 +34,7 @@ const allowed = ['table', 'nearest', 'match', 'trip'] as const;
 
 type Endpoint = (typeof allowed)[number];
 
-/** Проверка формата коорdинат */
+/** Проверка формата координат */
 export function validateCoords(value: string): string {
   const coordRx =
     /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
@@ -47,7 +47,7 @@ async function call<T>(
   coords: string,
   params: Record<string, string | number> = {},
 ): Promise<T> {
-  if (!allowed.includes(endpoint)) throw new Error('Неизвестный энdпойнт');
+  if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт');
   const safeCoords = validateCoords(coords);
   const url = new URL(`${base}/${endpoint}`);
   url.searchParams.append(

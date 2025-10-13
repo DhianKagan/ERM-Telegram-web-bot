@@ -15,6 +15,7 @@ import * as os from 'os';
 
 const { Types } = require('../apps/api/node_modules/mongoose');
 const { checkFile } = require('../apps/api/src/utils/fileCheck');
+const { ACCESS_MANAGER } = require('../apps/api/src/utils/accessMask');
 
 const sharpToFileMock = jest.fn().mockResolvedValue(undefined);
 const sharpResizeMock = jest.fn().mockReturnValue({ toFile: sharpToFileMock });
@@ -51,7 +52,7 @@ jest.mock('../apps/api/src/services/wgLogEngine', () => ({
 jest.mock('../apps/api/src/middleware/auth', () =>
   function authMock(): RequestHandler {
     return (req, _res, next) => {
-      (req as any).user = { id: currentUserId, access: 2 };
+      (req as any).user = { id: currentUserId, access: ACCESS_MANAGER };
       next();
     };
   },

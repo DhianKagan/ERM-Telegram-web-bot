@@ -300,6 +300,11 @@ const tasksLimiter = createRateLimiter({
 router.use(authMiddleware());
 router.use(tasksLimiter as unknown as RequestHandler);
 
+const requireTaskCreationRights: RequestHandler[] = [
+  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+];
+
 const handleInlineUpload: RequestHandler = async (req, res) => {
   try {
     const file = req.file as Express.Multer.File | undefined;
@@ -457,8 +462,18 @@ export const handleChunks: RequestHandler = async (req, res) => {
   }
 };
 
-router.post('/upload-chunk', chunkUploadMiddleware, handleChunks);
-router.post('/upload-inline', inlineUpload, handleInlineUpload);
+router.post(
+  '/upload-chunk',
+  ...requireTaskCreationRights,
+  chunkUploadMiddleware,
+  handleChunks,
+);
+router.post(
+  '/upload-inline',
+  ...requireTaskCreationRights,
+  inlineUpload,
+  handleInlineUpload,
+);
 function normalizeUserId(value: unknown): string | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -594,11 +609,10 @@ router.post(
 
 router.post(
   '/',
+  ...requireTaskCreationRights,
   upload.any(),
   processUploads,
   normalizeArrays,
-  Roles(ACCESS_MANAGER) as unknown as RequestHandler,
-  rolesGuard as unknown as RequestHandler,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
   ...(ctrl.create as RequestHandler[]),
@@ -606,11 +620,11 @@ router.post(
 
 router.patch(
   '/:id',
+  param('id').isMongoId(),
   upload.any(),
+  checkTaskAccess as unknown as RequestHandler,
   processUploads,
   normalizeArrays,
-  param('id').isMongoId(),
-  checkTaskAccess as unknown as RequestHandler,
   ...(validateDto(UpdateTaskDto) as RequestHandler[]),
   ...(ctrl.update as RequestHandler[]),
 );

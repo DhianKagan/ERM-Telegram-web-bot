@@ -2,6 +2,8 @@
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
+process.env.MONGO_DATABASE_URL =
+  'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
 
 const express = require('express');
 const request = require('supertest');
@@ -22,25 +24,25 @@ jest.mock('../src/di', () => {
   };
 });
 
-const fileFindMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
-const fileFindByIdMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
-const fileFindOneAndDeleteMock = jest.fn(() => ({
+const mockFileFind = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
+const mockFileFindById = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+const mockFileFindOneAndDelete = jest.fn(() => ({
   lean: jest.fn().mockResolvedValue(null),
 }));
 
-const taskFindMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
-const taskFindByIdMock = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+const mockTaskFind = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
+const mockTaskFindById = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
 
 jest.mock('../src/db/model', () => ({
   File: {
-    find: fileFindMock,
-    findById: fileFindByIdMock,
-    findOneAndDelete: fileFindOneAndDeleteMock,
+    find: mockFileFind,
+    findById: mockFileFindById,
+    findOneAndDelete: mockFileFindOneAndDelete,
   },
   Task: {
     updateOne: jest.fn(),
-    find: taskFindMock,
-    findById: taskFindByIdMock,
+    find: mockTaskFind,
+    findById: mockTaskFindById,
   },
 }));
 
@@ -69,15 +71,15 @@ describe('storage routes', () => {
   app.use(router);
 
   beforeEach(() => {
-    fileFindMock.mockReset();
-    fileFindByIdMock.mockReset();
-    fileFindOneAndDeleteMock.mockReset();
-    taskFindMock.mockReset();
-    taskFindByIdMock.mockReset();
+    mockFileFind.mockReset();
+    mockFileFindById.mockReset();
+    mockFileFindOneAndDelete.mockReset();
+    mockTaskFind.mockReset();
+    mockTaskFindById.mockReset();
   });
 
   test('list files', async () => {
-    fileFindMock.mockReturnValue({
+    mockFileFind.mockReturnValue({
       lean: jest.fn().mockResolvedValue([
         {
           userId: 1,
@@ -99,7 +101,7 @@ describe('storage routes', () => {
   });
 
   test('get file by id', async () => {
-    fileFindByIdMock.mockReturnValue({
+    mockFileFindById.mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         _id: '64d000000000000000000002',
         userId: 2,
@@ -111,7 +113,7 @@ describe('storage routes', () => {
         taskId: '64d000000000000000000003',
       }),
     });
-    taskFindByIdMock.mockReturnValue({
+    mockTaskFindById.mockReturnValue({
       select: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
       }),
@@ -126,7 +128,7 @@ describe('storage routes', () => {
     const f = path.join(uploadsDir, 'del.txt');
     fs.mkdirSync(uploadsDir, { recursive: true });
     fs.writeFileSync(f, 'd');
-    fileFindOneAndDeleteMock.mockReturnValue({
+    mockFileFindOneAndDelete.mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         path: 'del.txt',
         _id: '64d000000000000000000004',

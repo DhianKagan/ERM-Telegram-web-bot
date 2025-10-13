@@ -58,7 +58,7 @@ jest.mock('../src/services/wgLogEngine', () => ({
   writeLog: jest.fn().mockResolvedValue(undefined),
 }));
 
-const getByIdMock = jest.fn(async () => ({
+const mockGetById = jest.fn(async () => ({
   _id: mockExistingTaskId,
   created_by: 1,
   status: 'Новая',
@@ -67,7 +67,7 @@ const getByIdMock = jest.fn(async () => ({
 }));
 
 jest.mock('../src/services/tasks', () => ({
-  getById: getByIdMock,
+  getById: mockGetById,
 }));
 
 const { createTask, updateTask } = require('../src/db/queries');
@@ -82,6 +82,25 @@ const defaultTaskAccess = {
   status: 'Новая',
   assignees: [] as Array<number>,
   controllers: [] as Array<number>,
+};
+
+type TestUser = { id: number; access: number };
+
+// Хелпер создаёт Express-приложение с префиксом /tasks и предзаполненным пользователем.
+const createTasksApp = (
+  user: TestUser,
+  register: (router: express.Router) => void,
+) => {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).user = user;
+    next();
+  });
+  const router = express.Router();
+  register(router);
+  app.use('/tasks', router);
+  return app;
 };
 
 describe('Привязка вложений к задачам', () => {
@@ -174,14 +193,10 @@ describe('Проверка доступа к задаче другим поль�
   });
 
   test('возвращает 403 при попытке обновления без прав', async () => {
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 99, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 99, access: ACCESS_USER }, (router) => {
+      router.patch('/:id', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app).patch(`/tasks/${existingTaskId}`);
     expect(response.status).toBe(403);
@@ -193,14 +208,10 @@ describe('Проверка доступа к задаче другим поль�
       created_by: 7,
       status: 'Новая',
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 7, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 7, access: ACCESS_USER }, (router) => {
+      router.patch('/:id', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -214,14 +225,10 @@ describe('Проверка доступа к задаче другим поль�
       created_by: 7,
       status: 'В работе',
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 7, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 7, access: ACCESS_USER }, (router) => {
+      router.patch('/:id', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -235,14 +242,10 @@ describe('Проверка доступа к задаче другим поль�
       created_by: 10,
       assignees: [8],
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 8, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 8, access: ACCESS_USER }, (router) => {
+      router.patch('/:id', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -256,14 +259,10 @@ describe('Проверка доступа к задаче другим поль�
       created_by: 10,
       assignees: [8],
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 8, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 8, access: ACCESS_USER }, (router) => {
+      router.patch('/:id', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -278,14 +277,10 @@ describe('Проверка доступа к задаче другим поль�
       assignees: [12],
       status: 'В работе',
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 12, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id/status', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 12, access: ACCESS_USER }, (router) => {
+      router.patch('/:id/status', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}/status`)
@@ -299,14 +294,10 @@ describe('Проверка доступа к задаче другим поль�
       created_by: 14,
       assignees: [15],
     });
-    const app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      (req as any).user = { id: 15, access: ACCESS_USER };
-      next();
-    });
-    app.patch('/tasks/:id/status', checkTaskAccess, (_req, res) => {
-      res.json({ ok: true });
+    const app = createTasksApp({ id: 15, access: ACCESS_USER }, (router) => {
+      router.patch('/:id/status', checkTaskAccess, (_req, res) => {
+        res.json({ ok: true });
+      });
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}/status`)

@@ -537,6 +537,13 @@ export default function CollectionsPage() {
       return;
     }
     try {
+      if (active === "employees") {
+        const list = await fetchAllCollectionItems("employees");
+        setItems(list);
+        setTotal(list.length);
+        setHint("");
+        return;
+      }
       const d = (await fetchCollectionItems(
         active,
         currentQuery,

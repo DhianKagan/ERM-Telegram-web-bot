@@ -42,6 +42,7 @@ import {
 } from "../../services/users";
 import { fetchRoles, type Role } from "../../services/roles";
 import { formatRoleName } from "../../utils/roleDisplay";
+import { buildEmployeeRow } from "../../utils/employeeRow";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "../../types/user";
 import { useAuth } from "../../context/useAuth";
@@ -1291,168 +1292,61 @@ export default function CollectionsPage() {
     userPage * limit,
   );
 
-  const employeeDetails = useMemo(() => {
-    const byId = new Map<string, Partial<EmployeeRow>>();
-    const byUsername = new Map<string, Partial<EmployeeRow>>();
-    items
-      .filter((item) => item.type === "employees")
-      .forEach((item) => {
-        const parsed = parseEmployeeValue(item.value);
-        const { telegram_id: parsedTelegramId, ...rest } = parsed;
-        const detail: Partial<EmployeeRow> = { ...rest };
-        if (!detail.name && item.name.trim()) {
-          detail.name = item.name.trim();
-        }
-        if (item.meta) {
-          const meta = item.meta;
-          const assignMeta = (
-            key: keyof EmployeeRow,
-            raw?: string,
-          ) => {
-            if (detail[key]) return;
-            if (typeof raw !== "string") return;
-            const trimmed = raw.trim();
-            if (!trimmed) return;
-            detail[key] = trimmed as unknown as EmployeeRow[typeof key];
-          };
-          assignMeta("departmentId", meta.departmentId);
-          assignMeta("divisionId", meta.divisionId);
-          assignMeta("positionId", meta.positionId);
-        }
-        if (parsedTelegramId) {
-          byId.set(String(parsedTelegramId), detail);
-        }
-        const login =
-          typeof detail.telegram_username === "string"
-            ? detail.telegram_username.trim().toLowerCase()
-            : typeof detail.username === "string"
-              ? detail.username.trim().toLowerCase()
-              : "";
-        if (login) {
-          byUsername.set(login, detail);
-        }
-      });
-    return { byId, byUsername };
-  }, [items]);
 
-  const employeeRows = useMemo<EmployeeRow[]>(() => {
-    const pickString = (value?: string | null, fallback?: string | null) => {
-      if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (trimmed) return trimmed;
-      }
-      if (typeof fallback === "string") {
-        const trimmed = fallback.trim();
-        if (trimmed) return trimmed;
-      }
-      return undefined;
-    };
-    const pickNumber = (value?: number | null, fallback?: number | null) => {
-      if (typeof value === "number" && Number.isFinite(value)) return value;
-      if (typeof fallback === "number" && Number.isFinite(fallback)) return fallback;
-      return undefined;
-    };
+  const employeeRows = useMemo<EmployeeRow[]>(
+    () =>
+      paginatedUsers.map((user) => {
+        const roleId =
+          typeof user.roleId === "string" ? user.roleId.trim() : "";
+        const departmentId =
+          typeof user.departmentId === "string" ? user.departmentId.trim() : "";
+        const divisionId =
+          typeof user.divisionId === "string" ? user.divisionId.trim() : "";
+        const positionId =
+          typeof user.positionId === "string" ? user.positionId.trim() : "";
+        const roleNameFromMap = resolveReferenceName(
+          roleMap,
+          roleId,
+          user.roleName,
+        );
+        const departmentName = resolveReferenceName(
+          departmentMap,
+          departmentId,
+          user.departmentName,
+        );
+        const divisionName = resolveReferenceName(
+          divisionMap,
+          divisionId,
+          user.divisionName,
+        );
+        const positionName = resolveReferenceName(
+          positionMap,
+          positionId,
+          user.positionName,
+        );
+        const roleLabel =
+          roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
+        return buildEmployeeRow({
+          ...user,
+          roleId,
+          departmentId,
+          divisionId,
+          positionId,
+          roleName: roleLabel,
+          departmentName,
+          divisionName,
+          positionName,
+        });
+      }),
+    [
+      paginatedUsers,
+      roleMap,
+      departmentMap,
+      divisionMap,
+      positionMap,
+    ],
+  );
 
-    return paginatedUsers.map((user) => {
-      const idKey =
-        user.telegram_id !== undefined && user.telegram_id !== null
-          ? String(user.telegram_id)
-          : undefined;
-      const usernameKey = pickString(
-        user.telegram_username,
-        user.username,
-      )?.toLowerCase();
-      const detail =
-        (idKey ? employeeDetails.byId.get(idKey) : undefined) ||
-        (usernameKey ? employeeDetails.byUsername.get(usernameKey) : undefined);
-
-      const resolvedTelegramId = pickNumber(user.telegram_id, detail?.telegram_id);
-      const resolvedUsername = pickString(user.username, detail?.username);
-      const resolvedTelegramUsername = pickString(
-        user.telegram_username,
-        detail?.telegram_username ?? detail?.username,
-      );
-      const resolvedName = pickString(user.name, detail?.name) ?? "";
-      const resolvedPhone = pickString(user.phone, detail?.phone) ?? "";
-      const resolvedMobNumber = pickString(user.mobNumber, detail?.mobNumber) ?? "";
-      const resolvedEmail = pickString(user.email, detail?.email) ?? "";
-      const resolvedRole = pickString(user.role, detail?.role);
-      const resolvedAccess = pickNumber(user.access, detail?.access);
-
-      const rawRoleId = pickString(user.roleId, detail?.roleId) ?? "";
-      const rawDepartmentId = pickString(user.departmentId, detail?.departmentId) ?? "";
-      const rawDivisionId = pickString(user.divisionId, detail?.divisionId) ?? "";
-      const rawPositionId = pickString(user.positionId, detail?.positionId) ?? "";
-
-      const fallbackRoleName = pickString(user.roleName, detail?.roleName);
-      const fallbackDepartmentName = pickString(
-        user.departmentName,
-        detail?.departmentName,
-      );
-      const fallbackDivisionName = pickString(
-        user.divisionName,
-        detail?.divisionName,
-      );
-      const fallbackPositionName = pickString(
-        user.positionName,
-        detail?.positionName,
-      );
-
-      const roleNameFromMap = resolveReferenceName(
-        roleMap,
-        rawRoleId,
-        fallbackRoleName,
-      );
-      const departmentName = resolveReferenceName(
-        departmentMap,
-        rawDepartmentId,
-        fallbackDepartmentName,
-      );
-      const divisionName = resolveReferenceName(
-        divisionMap,
-        rawDivisionId,
-        fallbackDivisionName,
-      );
-      const positionName = resolveReferenceName(
-        positionMap,
-        rawPositionId,
-        fallbackPositionName,
-      );
-
-      const roleLabel =
-        roleNameFromMap || (resolvedRole ? formatRoleName(resolvedRole) : "");
-
-      return {
-        ...user,
-        telegram_id: resolvedTelegramId,
-        username:
-          resolvedUsername ??
-          (resolvedTelegramId !== undefined ? String(resolvedTelegramId) : ""),
-        telegram_username: resolvedTelegramUsername,
-        name: resolvedName,
-        phone: resolvedPhone,
-        mobNumber: resolvedMobNumber,
-        email: resolvedEmail,
-        role: resolvedRole ?? user.role,
-        access: resolvedAccess ?? user.access,
-        roleId: rawRoleId,
-        departmentId: rawDepartmentId,
-        divisionId: rawDivisionId,
-        positionId: rawPositionId,
-        roleName: roleLabel,
-        departmentName,
-        divisionName,
-        positionName,
-      };
-    });
-  }, [
-    paginatedUsers,
-    employeeDetails,
-    roleMap,
-    departmentMap,
-    divisionMap,
-    positionMap,
-  ]);
   const selectedEmployee = useMemo(
     () =>
       selectedEmployeeId

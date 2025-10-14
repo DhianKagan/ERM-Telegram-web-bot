@@ -195,12 +195,33 @@
         "duplicate": "Duplicates: {{count}}",
         "stale": "Broken task links: {{count}}"
       },
+      "planTitle": "Fix plan",
+      "issueTypes": {
+        "missing_on_disk": "Missing file entry",
+        "orphan_on_disk": "Orphan file",
+        "duplicate_entry": "Duplicate entry",
+        "stale_task_link": "Stale task link"
+      },
+      "actions": {
+        "removeEntry": "Remove DB record {{id}}",
+        "deleteFile": "Delete file \"{{path}}\" from disk",
+        "unlinkTask": "Unlink attachment from task {{id}}",
+        "unknown": "Unknown action"
+      },
+      "actionTypes": {
+        "remove_file_entry": "DB cleanup",
+        "delete_disk_file": "Disk cleanup",
+        "unlink_task_reference": "Task link cleanup"
+      },
       "recommendationsTitle": "Recommendations",
       "noRecommendations": "Run a check to get recommendations.",
       "diskHint": "Free {{free}} of {{total}} total.",
+      "thresholdHint": "Warning threshold: {{threshold}}.",
       "lastExecutionTitle": "Last orchestration at {{value}}",
       "lastExecutionSummary": "Performed: {{performed}}, errors: {{errors}}.",
       "planHint": "Recommended actions: {{count}}.",
+      "selectAll": "Select all",
+      "deselectAll": "Clear selection",
       "success": "Diagnostics completed.",
       "error": "Diagnostics failed.",
       "noActions": "Nothing to fix.",
@@ -208,6 +229,7 @@
       "fixError": "Failed to apply fixes.",
       "autoSuccess": "Auto-heal finished.",
       "autoError": "Auto-heal failed.",
+      "loadingHint": "Run diagnostics to get the latest report.",
       "overviewError": "Failed to load overview.",
       "logAnalysisError": "Failed to refresh log analysis.",
       "logAnalysis": {

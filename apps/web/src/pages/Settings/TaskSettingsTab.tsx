@@ -37,12 +37,12 @@ interface TaskSettingsTabProps {
   types: TaskTypeItem[];
   loading: boolean;
   onSaveField: (item: TaskFieldItem, label: string) => Promise<void>;
-  onResetField: (item: TaskFieldItem) => Promise<void>;
+  onDeleteField: (item: TaskFieldItem) => Promise<void>;
   onSaveType: (
     item: TaskTypeItem,
     payload: { label: string; tg_theme_url: string; tg_photos_url: string },
   ) => Promise<void>;
-  onResetType: (item: TaskTypeItem) => Promise<void>;
+  onDeleteType: (item: TaskTypeItem) => Promise<void>;
 }
 
 const CARD_CLASS =
@@ -55,10 +55,22 @@ const FieldCard: React.FC<{
   value: string;
   onChange: (value: string) => void;
   onSave: () => Promise<void>;
-  onReset: () => Promise<void>;
+  onReset: () => void;
+  onDelete?: () => Promise<void>;
   saving: boolean;
+  deleting?: boolean;
   error?: string;
-}> = ({ item, value, onChange, onSave, onReset, saving, error }) => {
+}> = ({
+  item,
+  value,
+  onChange,
+  onSave,
+  onReset,
+  onDelete,
+  saving,
+  deleting,
+  error,
+}) => {
   const [localError, setLocalError] = React.useState<string | undefined>(
     error,
   );
@@ -82,10 +94,16 @@ const FieldCard: React.FC<{
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = () => {
+    setLocalError(undefined);
+    onReset();
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
     setLocalError(undefined);
     try {
-      await onReset();
+      await onDelete();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setLocalError(message);
@@ -128,7 +146,7 @@ const FieldCard: React.FC<{
             type="button"
             size="sm"
             onClick={handleSave}
-            disabled={saving || !dirty || !trimmedValue}
+            disabled={saving || deleting || !dirty || !trimmedValue}
           >
             {saving ? <Spinner /> : "Сохранить"}
           </Button>
@@ -137,10 +155,21 @@ const FieldCard: React.FC<{
             size="sm"
             variant="outline"
             onClick={handleReset}
-            disabled={saving || Boolean(item.meta?.virtual)}
+            disabled={saving || deleting}
           >
             Сбросить
           </Button>
+          {onDelete && !item.meta?.virtual ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+            >
+              {deleting ? <Spinner /> : "Удалить"}
+            </Button>
+          ) : null}
         </div>
       </div>
     </article>
@@ -156,8 +185,10 @@ const TypeCard: React.FC<{
   onChangeUrl: (value: string) => void;
   onChangePhotosUrl: (value: string) => void;
   onSave: () => Promise<void>;
-  onReset: () => Promise<void>;
+  onReset: () => void;
+  onDelete?: () => Promise<void>;
   saving: boolean;
+  deleting?: boolean;
   error?: string;
 }> = ({
   item,
@@ -169,7 +200,9 @@ const TypeCard: React.FC<{
   onChangePhotosUrl,
   onSave,
   onReset,
+  onDelete,
   saving,
+  deleting,
   error,
 }) => {
   const [localError, setLocalError] = React.useState<string | undefined>(
@@ -207,10 +240,16 @@ const TypeCard: React.FC<{
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = () => {
+    setLocalError(undefined);
+    onReset();
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
     setLocalError(undefined);
     try {
-      await onReset();
+      await onDelete();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setLocalError(message);
@@ -295,7 +334,7 @@ const TypeCard: React.FC<{
             type="button"
             size="sm"
             onClick={handleSave}
-            disabled={saving || !trimmedLabel || !dirty}
+            disabled={saving || deleting || !trimmedLabel || !dirty}
           >
             {saving ? <Spinner /> : "Сохранить"}
           </Button>
@@ -304,10 +343,21 @@ const TypeCard: React.FC<{
             size="sm"
             variant="outline"
             onClick={handleReset}
-            disabled={saving || Boolean(item.meta?.virtual)}
+            disabled={saving || deleting}
           >
             Сбросить
           </Button>
+          {onDelete && !item.meta?.virtual ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+            >
+              {deleting ? <Spinner /> : "Удалить"}
+            </Button>
+          ) : null}
         </div>
       </div>
     </article>
@@ -360,9 +410,9 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   types,
   loading,
   onSaveField,
-  onResetField,
+  onDeleteField,
   onSaveType,
-  onResetType,
+  onDeleteType,
 }) => {
   const selectFieldDraft = React.useCallback(
     (item: TaskFieldItem) =>
@@ -388,6 +438,8 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   const [typeDrafts, setTypeDrafts] = useDraftMap(types, selectTypeDraft);
   const [savingField, setSavingField] = React.useState<string | null>(null);
   const [savingType, setSavingType] = React.useState<string | null>(null);
+  const [deletingField, setDeletingField] = React.useState<string | null>(null);
+  const [deletingType, setDeletingType] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
   const [typeErrors, setTypeErrors] = React.useState<Record<string, string>>({});
 
@@ -434,22 +486,29 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     }
   };
 
-  const resetField = async (item: TaskFieldItem) => {
-    setSavingField(item.name);
+  const deleteField = async (item: TaskFieldItem) => {
+    if (item.meta?.virtual) {
+      return;
+    }
+    setDeletingField(item.name);
     setFieldErrors((prev) => ({ ...prev, [item.name]: "" }));
     try {
-      await onResetField(item);
-      setFieldDrafts((prev) => ({
-        ...prev,
-        [item.name]: item.meta?.defaultLabel ?? item.name,
-      }));
+      await onDeleteField(item);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setFieldErrors((prev) => ({ ...prev, [item.name]: message }));
       throw err;
     } finally {
-      setSavingField((prev) => (prev === item.name ? null : prev));
+      setDeletingField((prev) => (prev === item.name ? null : prev));
     }
+  };
+
+  const revertFieldDraft = (item: TaskFieldItem) => {
+    setFieldDrafts((prev) => ({
+      ...prev,
+      [item.name]: selectFieldDraft(item),
+    }));
+    setFieldErrors((prev) => ({ ...prev, [item.name]: "" }));
   };
 
   const saveType = async (item: TaskTypeItem) => {
@@ -483,26 +542,29 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     }
   };
 
-  const resetType = async (item: TaskTypeItem) => {
-    setSavingType(item.name);
+  const deleteType = async (item: TaskTypeItem) => {
+    if (item.meta?.virtual) {
+      return;
+    }
+    setDeletingType(item.name);
     setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
     try {
-      await onResetType(item);
-      setTypeDrafts((prev) => ({
-        ...prev,
-        [item.name]: {
-          label: item.meta?.defaultLabel ?? item.name,
-          url: "",
-          photosUrl: "",
-        },
-      }));
+      await onDeleteType(item);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setTypeErrors((prev) => ({ ...prev, [item.name]: message }));
       throw err;
     } finally {
-      setSavingType((prev) => (prev === item.name ? null : prev));
+      setDeletingType((prev) => (prev === item.name ? null : prev));
     }
+  };
+
+  const revertTypeDraft = (item: TaskTypeItem) => {
+    setTypeDrafts((prev) => ({
+      ...prev,
+      [item.name]: selectTypeDraft(item),
+    }));
+    setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
   };
 
   return (
@@ -530,8 +592,12 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
                 value={fieldDrafts[item.name] ?? ""}
                 onChange={(value) => handleFieldChange(item.name, value)}
                 onSave={() => saveField(item)}
-                onReset={() => resetField(item)}
+                onReset={() => revertFieldDraft(item)}
+                onDelete={
+                  item.meta?.virtual ? undefined : () => deleteField(item)
+                }
                 saving={savingField === item.name}
+                deleting={deletingField === item.name}
                 error={fieldErrors[item.name]}
               />
             ))}
@@ -571,8 +637,12 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
                   handleTypeChange(item.name, { photosUrl: value })
                 }
                 onSave={() => saveType(item)}
-                onReset={() => resetType(item)}
+                onReset={() => revertTypeDraft(item)}
+                onDelete={
+                  item.meta?.virtual ? undefined : () => deleteType(item)
+                }
                 saving={savingType === item.name}
+                deleting={deletingType === item.name}
                 error={typeErrors[item.name]}
               />
             ))}

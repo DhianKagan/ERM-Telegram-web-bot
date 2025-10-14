@@ -7,7 +7,14 @@ const resolveRoleId = jest.fn();
 
 jest.mock('../apps/api/src/db/model', () => ({
   Role: { findOne: jest.fn() },
-  User: { findOneAndUpdate: jest.fn() },
+  User: {
+    findOne: jest.fn(() => ({
+      lean: () => ({
+        exec: () => Promise.resolve(null),
+      }),
+    })),
+    findOneAndUpdate: jest.fn(),
+  },
 }));
 
 jest.mock('../apps/api/src/db/roleCache', () => ({

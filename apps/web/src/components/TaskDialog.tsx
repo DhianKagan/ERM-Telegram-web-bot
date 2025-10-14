@@ -44,6 +44,13 @@ import Spinner from "./Spinner";
 import type { Attachment, HistoryItem, UserBrief } from "../types/task";
 import type { Task } from "shared";
 import EmployeeLink from "./EmployeeLink";
+import {
+  creatorBadgeClass,
+  fallbackBadgeClass as taskFallbackBadgeClass,
+  getPriorityBadgeClass,
+  getStatusBadgeClass,
+  getTypeBadgeClass,
+} from "../columns/taskColumns";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
 
@@ -99,9 +106,6 @@ const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
 
 const formatHistoryInstant = (date: Date): string =>
   `${historyDateFormatter.format(date).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
-
-const creatorBadgeClass =
-  "inline-flex items-center gap-1 rounded-full bg-indigo-500/15 px-2.5 py-1 text-sm font-semibold text-indigo-900 no-underline transition-colors hover:bg-indigo-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-indigo-400/20 dark:text-indigo-100 dark:hover:bg-indigo-400/30 dark:focus-visible:ring-indigo-200";
 
 const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -392,6 +396,93 @@ const formatHistoryValue = (value: unknown): string => {
   }
 };
 
+const normalizePriorityBadgeLabel = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  return /^бессроч/i.test(trimmed) ? "До выполнения" : trimmed;
+};
+
+const resolveBadgeKind = (
+  rawKey: string,
+): "status" | "priority" | "taskType" | null => {
+  const key = rawKey.trim().toLowerCase();
+  if (key === "status") return "status";
+  if (key === "priority" || key === "priority_label" || key === "prioritylabel") {
+    return "priority";
+  }
+  if (key === "task_type" || key === "tasktype" || key === "type") {
+    return "taskType";
+  }
+  return null;
+};
+
+const renderTaskBadge = (key: string, value: string): React.ReactNode | null => {
+  const kind = resolveBadgeKind(key);
+  if (!kind) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "—") {
+    return null;
+  }
+  if (kind === "status") {
+    const className = getStatusBadgeClass(trimmed) ?? taskFallbackBadgeClass;
+    return <span className={className}>{trimmed}</span>;
+  }
+  if (kind === "priority") {
+    const className =
+      getPriorityBadgeClass(trimmed) ?? `${taskFallbackBadgeClass} normal-case`;
+    return <span className={className}>{normalizePriorityBadgeLabel(trimmed)}</span>;
+  }
+  const className =
+    getTypeBadgeClass(trimmed) ?? `${taskFallbackBadgeClass} normal-case`;
+  return <span className={className}>{trimmed}</span>;
+};
+
+type HistoryBadgeVariant = "plain" | "prev" | "next";
+
+const renderHistoryValueNode = (
+  key: string,
+  value: string,
+  variant: HistoryBadgeVariant,
+): React.ReactNode => {
+  const normalized = typeof value === "string" ? value : String(value ?? "");
+  const trimmed = normalized.trim();
+  if (!trimmed || trimmed === "—") {
+    if (variant === "prev") {
+      return (
+        <span className="text-gray-400 line-through decoration-gray-300">—</span>
+      );
+    }
+    return <span className="text-gray-500">—</span>;
+  }
+  const badge = renderTaskBadge(key, trimmed);
+  if (!badge) {
+    const className =
+      variant === "prev"
+        ? "text-gray-500 line-through decoration-gray-400"
+        : "font-semibold text-gray-900";
+    return <span className={className}>{trimmed}</span>;
+  }
+  if (variant === "prev") {
+    return (
+      <span className="inline-flex items-center gap-1 text-gray-500 line-through decoration-gray-400">
+        {badge}
+      </span>
+    );
+  }
+  if (variant === "next") {
+    return (
+      <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
+        {badge}
+      </span>
+    );
+  }
+  return badge;
+};
+
 const hasDimensionValues = (
   length: string,
   width: string,
@@ -432,9 +523,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const isEdit = Boolean(effectiveTaskId);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const normalizedAccess =
+    typeof user?.access === "number"
+      ? user.access
+      : typeof user?.access === "string"
+        ? Number.parseInt(user.access, 10)
+        : Number.NaN;
   const canDeleteTask =
-    typeof user?.access === "number" &&
-    (user.access & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
+    Number.isFinite(normalizedAccess) &&
+    (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
   const canEditAll = isAdmin || user?.role === "manager";
   const { t: rawT } = useTranslation();
   const initialKind = React.useMemo(() => kind ?? "task", [kind]);
@@ -2760,8 +2857,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         <span className="text-gray-500">{author}</span>
                       </div>
                       {showStatusChange && (
-                        <p className="mt-1 text-xs text-gray-700 sm:text-sm">
-                          Изменил статус с {fromStatus} на {toStatus}
+                        <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-700 sm:text-sm">
+                          <span>Изменил статус с</span>
+                          {renderHistoryValueNode("status", fromStatus, "plain")}
+                          <span>на</span>
+                          {renderHistoryValueNode("status", toStatus, "plain")}
                         </p>
                       )}
                       {keysToRender.length > 0 && (
@@ -2782,13 +2882,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <span className="font-medium text-gray-600">
                                   {key}:
                                 </span>
-                                <span className="text-gray-500 line-through decoration-gray-400">
-                                  {prevValue}
-                                </span>
+                                {renderHistoryValueNode(key, prevValue, "prev")}
                                 <span className="text-gray-400">→</span>
-                                <span className="font-semibold text-gray-900">
-                                  {nextValue}
-                                </span>
+                                {renderHistoryValueNode(key, nextValue, "next")}
                               </li>
                             );
                           })}

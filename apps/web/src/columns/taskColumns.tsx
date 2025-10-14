@@ -36,13 +36,13 @@ const numberBadgeClass =
 const titleBadgeClass =
   `${pillBadgeBaseClass} justify-start normal-case ${badgeTextClass} ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:ring-indigo-300/45`;
 
-const creatorBadgeClass =
+export const creatorBadgeClass =
   `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
 
 const assigneeBadgeClass =
   `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:ring-violet-300/45`;
 
-const fallbackBadgeClass = buildBadgeClass(
+export const fallbackBadgeClass = buildBadgeClass(
   "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
 );
 
@@ -99,14 +99,14 @@ const priorityBadgeClassMap: Record<string, string> = {
 const hasOwn = <T extends Record<PropertyKey, unknown>>(obj: T, key: PropertyKey): key is keyof T =>
   Object.prototype.hasOwnProperty.call(obj, key);
 
-const getStatusBadgeClass = (value: string) => {
+export const getStatusBadgeClass = (value: string) => {
   if (hasOwn(statusBadgeClassMap, value)) {
     return statusBadgeClassMap[value];
   }
   return null;
 };
 
-const getPriorityBadgeClass = (value: string) => {
+export const getPriorityBadgeClass = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
     return null;
@@ -161,7 +161,7 @@ const typeBadgeClassMap: Record<string, string> = {
   ),
 };
 
-const getTypeBadgeClass = (value: string) => {
+export const getTypeBadgeClass = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) {
     return null;

@@ -213,6 +213,147 @@ const collectStringIds = (value: unknown): string[] => {
   return [];
 };
 
+const KEY_LABEL_OVERRIDES: Record<string, string> = {
+  telegram_id: "Telegram ID",
+  telegram_username: "Логин Telegram",
+  username: "Логин",
+  name: "Имя",
+  phone: "Телефон",
+  mobNumber: "Моб. номер",
+  email: "E-mail",
+  role: "Роль",
+  access: "Доступ",
+  roleId: "Роль ID",
+  departmentId: "Департамент",
+  departmentName: "Департамент",
+  divisionId: "Отдел",
+  divisionName: "Отдел",
+  positionId: "Должность",
+  positionName: "Должность",
+  permissions: "Права",
+  fleetId: "Автопарк",
+  source: "Источник",
+  sourceId: "ID источника",
+  readonly: "Только чтение",
+  readonlyReason: "Причина ограничения",
+  invalid: "Некорректен",
+  invalidReason: "Причина ошибки",
+  invalidCode: "Код ошибки",
+  invalidAt: "Ошибка от",
+  syncPending: "Ожидает синхронизации",
+  syncWarning: "Предупреждение",
+  syncError: "Ошибка синхронизации",
+  syncFailedAt: "Сбой синхронизации",
+  defaultLabel: "Название по умолчанию",
+  fieldType: "Тип поля",
+  required: "Обязательное",
+  order: "Порядок",
+  virtual: "Системный элемент",
+  tg_theme_url: "Тема Telegram",
+  tg_chat_id: "ID чата",
+  tg_topic_id: "ID темы",
+  tg_photos_url: "Тема для фото",
+  tg_photos_chat_id: "ID чата фото",
+  tg_photos_topic_id: "ID темы фото",
+};
+
+const formatKeyLabel = (key: string): string => {
+  const override = KEY_LABEL_OVERRIDES[key];
+  if (override) return override;
+  const normalized = key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim();
+  if (!normalized) return key;
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const formatSummaryValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "boolean") {
+    return value ? "Да" : "Нет";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed;
+  }
+  if (Array.isArray(value)) {
+    const formatted = value
+      .map((item) => formatSummaryValue(item))
+      .filter(Boolean);
+    return formatted.join(", ");
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, nested]) => {
+        const formatted = formatSummaryValue(nested);
+        if (!formatted) return "";
+        return `${formatKeyLabel(key)}=${formatted}`;
+      })
+      .filter(Boolean);
+    return entries.join("; ");
+  }
+  return "";
+};
+
+const summarizeRecord = (record?: Record<string, unknown>): string => {
+  if (!record) return "";
+  const entries = Object.entries(record)
+    .map(([key, value]) => {
+      const formatted = formatSummaryValue(value);
+      if (!formatted) return "";
+      return `${formatKeyLabel(key)}: ${formatted}`;
+    })
+    .filter(Boolean);
+  return entries.join("\n");
+};
+
+const tryParseJsonValue = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+};
+
+const formatCollectionRawValue = (raw: string): string => {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const parsed =
+    trimmed.startsWith("{") || trimmed.startsWith("[")
+      ? tryParseJsonValue(trimmed)
+      : undefined;
+  if (Array.isArray(parsed)) {
+    const formatted = parsed
+      .map((item) => formatSummaryValue(item))
+      .filter(Boolean);
+    if (formatted.length) {
+      return formatted.join("\n");
+    }
+  } else if (parsed && typeof parsed === "object") {
+    const summary = summarizeRecord(parsed as Record<string, unknown>);
+    if (summary) {
+      return summary;
+    }
+  }
+  if (trimmed.includes(",")) {
+    const parts = trimmed
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      return parts.join("\n");
+    }
+  }
+  return trimmed;
+};
+
 const parseIds = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return [] as string[];
@@ -602,7 +743,7 @@ const DUPLICATE_DIVISION_HINT_PREFIX = "Обнаружены дублирующ�
 const TASK_SETTINGS_ERROR_HINT = "Не удалось загрузить настройки задач";
 const TASK_FIELD_SAVE_ERROR = "Не удалось сохранить поле задачи";
 const TASK_TYPE_SAVE_ERROR = "Не удалось сохранить тип задачи";
-const TASK_SETTINGS_RESET_ERROR = "Не удалось сбросить настройки задач";
+const TASK_SETTINGS_DELETE_ERROR = "Не удалось удалить настройку задачи";
 const USER_DELETE_SUCCESS = "Пользователь удалён";
 const USER_DELETE_ERROR = "Не удалось удалить пользователя";
 const EMPLOYEE_DELETE_SUCCESS = "Сотрудник удалён";
@@ -800,7 +941,7 @@ export default function CollectionsPage() {
     [loadTaskSettings],
   );
 
-  const resetTaskField = useCallback(
+  const deleteTaskField = useCallback(
     async (item: CollectionItem) => {
       if (item.meta?.virtual) {
         return;
@@ -810,8 +951,8 @@ export default function CollectionsPage() {
         await loadTaskSettings();
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : TASK_SETTINGS_RESET_ERROR;
-        throw new Error(message || TASK_SETTINGS_RESET_ERROR);
+          error instanceof Error ? error.message : TASK_SETTINGS_DELETE_ERROR;
+        throw new Error(message || TASK_SETTINGS_DELETE_ERROR);
       }
     },
     [loadTaskSettings],
@@ -870,7 +1011,7 @@ export default function CollectionsPage() {
     [loadTaskSettings],
   );
 
-  const resetTaskType = useCallback(
+  const deleteTaskType = useCallback(
     async (item: CollectionItem) => {
       if (item.meta?.virtual) {
         return;
@@ -880,8 +1021,8 @@ export default function CollectionsPage() {
         await loadTaskSettings();
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : TASK_SETTINGS_RESET_ERROR;
-        throw new Error(message || TASK_SETTINGS_RESET_ERROR);
+          error instanceof Error ? error.message : TASK_SETTINGS_DELETE_ERROR;
+        throw new Error(message || TASK_SETTINGS_DELETE_ERROR);
       }
     },
     [loadTaskSettings],
@@ -1301,16 +1442,17 @@ export default function CollectionsPage() {
           departmentMap.get(item.value) ??
           allDepartments.find((department) => department._id === item.value)?.name ??
           item.value;
-        return departmentName || SETTINGS_BADGE_EMPTY;
+        return departmentName ? formatCollectionRawValue(departmentName) : SETTINGS_BADGE_EMPTY;
       }
       if (type === "positions") {
         const divisionName =
           divisionMap.get(item.value) ??
           allDivisions.find((division) => division._id === item.value)?.name ??
           item.value;
-        return divisionName || SETTINGS_BADGE_EMPTY;
+        return divisionName ? formatCollectionRawValue(divisionName) : SETTINGS_BADGE_EMPTY;
       }
-      return item.value || SETTINGS_BADGE_EMPTY;
+      const formatted = formatCollectionRawValue(item.value ?? "");
+      return formatted || SETTINGS_BADGE_EMPTY;
     },
     [
       allDepartments,
@@ -1319,6 +1461,12 @@ export default function CollectionsPage() {
       divisionMap,
     ],
   );
+
+  const formatMetaSummary = useCallback((meta?: CollectionItem["meta"]) => {
+    if (!meta) return SETTINGS_BADGE_EMPTY;
+    const summary = summarizeRecord(meta as Record<string, unknown>);
+    return summary || SETTINGS_BADGE_EMPTY;
+  }, []);
 
   const buildCollectionColumns = useCallback(
     (excludedKeys: string[]) =>
@@ -1690,20 +1838,11 @@ export default function CollectionsPage() {
         </TabsList>
         <div className="flex-1 space-y-6">
           {types.map((t) => {
-            const rows: CollectionTableRow[] =
-              t.key === "departments" ||
-              t.key === "divisions" ||
-              t.key === "positions"
-                ? items.map((item) => ({
-                    ...item,
-                    displayValue: String(getItemDisplayValue(item, t.key)),
-                    metaSummary: item.meta ? JSON.stringify(item.meta) : "",
-                  }))
-                : items.map((item) => ({
-                    ...item,
-                    displayValue: item.value,
-                    metaSummary: item.meta ? JSON.stringify(item.meta) : "",
-                  }));
+            const rows: CollectionTableRow[] = items.map((item) => ({
+              ...item,
+              displayValue: getItemDisplayValue(item, t.key),
+              metaSummary: formatMetaSummary(item.meta),
+            }));
           const columnsForType =
             t.key === "departments"
               ? departmentColumns
@@ -1772,9 +1911,9 @@ export default function CollectionsPage() {
                   types={taskTypeItems}
                   loading={tasksLoading}
                   onSaveField={saveTaskField}
-                  onResetField={resetTaskField}
+                  onDeleteField={deleteTaskField}
                   onSaveType={saveTaskType}
-                  onResetType={resetTaskType}
+                  onDeleteType={deleteTaskType}
                 />
               ) : t.key === "employees" ? (
                 <div className="space-y-4">

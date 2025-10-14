@@ -15,6 +15,7 @@ import {
 import Breadcrumbs from "../components/Breadcrumbs";
 import DataTable from "../components/DataTable";
 import Modal from "../components/Modal";
+import StorageDiagnosticsCard from "../components/StorageDiagnosticsCard";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import createStorageColumns, {
@@ -428,6 +429,7 @@ export default function StoragePage() {
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: t("storage.title") }]} />
+      <StorageDiagnosticsCard />
       <section className="space-y-5 rounded border border-border bg-card p-5 shadow-sm">
         <header className="flex flex-col gap-4 border-b border-border pb-4">
           <div className="flex flex-col gap-1">

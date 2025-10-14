@@ -192,12 +192,33 @@
         "duplicate": "Дубликатов: {{count}}",
         "stale": "Битых ссылок в задачах: {{count}}"
       },
+      "planTitle": "План исправлений",
+      "issueTypes": {
+        "missing_on_disk": "Запись без файла",
+        "orphan_on_disk": "Файл без записи",
+        "duplicate_entry": "Дублирующая запись",
+        "stale_task_link": "Устаревшая ссылка"
+      },
+      "actions": {
+        "removeEntry": "Удалить запись файла {{id}}",
+        "deleteFile": "Удалить файл «{{path}}» с диска",
+        "unlinkTask": "Удалить ссылку из задачи {{id}}",
+        "unknown": "Неизвестное действие"
+      },
+      "actionTypes": {
+        "remove_file_entry": "Удаление записи",
+        "delete_disk_file": "Удаление файла на диске",
+        "unlink_task_reference": "Очистка ссылки в задаче"
+      },
       "recommendationsTitle": "Рекомендации",
       "noRecommendations": "Рекомендации появятся после проверки.",
       "diskHint": "Свободно {{free}}, всего {{total}}.",
+      "thresholdHint": "Порог предупреждения: {{threshold}}.",
       "lastExecutionTitle": "Последнее действие от {{value}}",
       "lastExecutionSummary": "Выполнено: {{performed}}, ошибок: {{errors}}.",
       "planHint": "Рекомендованных действий: {{count}}.",
+      "selectAll": "Выбрать все",
+      "deselectAll": "Снять выделение",
       "success": "Диагностика завершена.",
       "error": "Не удалось выполнить диагностику.",
       "noActions": "Нет действий для исправления.",
@@ -205,6 +226,7 @@
       "fixError": "Не удалось применить исправления.",
       "autoSuccess": "Автокоррекция завершена.",
       "autoError": "Не удалось выполнить автокоррекцию.",
+      "loadingHint": "Нажмите «Проверить», чтобы получить свежий отчёт.",
       "overviewError": "Не удалось загрузить сводку.",
       "logAnalysisError": "Не удалось обновить анализ логов.",
       "logAnalysis": {

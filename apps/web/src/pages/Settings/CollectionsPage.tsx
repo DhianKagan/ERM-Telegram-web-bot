@@ -42,6 +42,7 @@ import {
 } from "../../services/users";
 import { fetchRoles, type Role } from "../../services/roles";
 import { formatRoleName } from "../../utils/roleDisplay";
+import { buildEmployeeRow } from "../../utils/employeeRow";
 import UserForm, { UserFormData } from "./UserForm";
 import type { User } from "../../types/user";
 import { useAuth } from "../../context/useAuth";
@@ -1159,7 +1160,7 @@ export default function CollectionsPage() {
         );
         const roleLabel =
           roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
-        return {
+        return buildEmployeeRow({
           ...user,
           roleId,
           departmentId,
@@ -1169,9 +1170,15 @@ export default function CollectionsPage() {
           departmentName,
           divisionName,
           positionName,
-        };
+        });
       }),
-    [paginatedUsers, roleMap, departmentMap, divisionMap, positionMap],
+    [
+      paginatedUsers,
+      roleMap,
+      departmentMap,
+      divisionMap,
+      positionMap,
+    ],
   );
   const selectedEmployee = useMemo(
     () =>

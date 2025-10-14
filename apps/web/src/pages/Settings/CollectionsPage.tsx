@@ -282,6 +282,321 @@ const resolveReferenceName = (
   return map.get(trimmed) ?? trimmed;
 };
 
+type EmployeeDetailsIndex = {
+  byId: Map<string, Partial<User>>;
+  byTelegramUsername: Map<string, Partial<User>>;
+  byUsername: Map<string, Partial<User>>;
+};
+
+const readValue = (
+  source: Record<string, unknown>,
+  keys: string[],
+): unknown => {
+  for (const key of keys) {
+    if (key in source) return source[key];
+  }
+  const lowerCaseSource: Record<string, unknown> = {};
+  Object.entries(source).forEach(([key, value]) => {
+    lowerCaseSource[key.toLowerCase()] = value;
+  });
+  for (const key of keys) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey in lowerCaseSource) return lowerCaseSource[lowerKey];
+  }
+  return undefined;
+};
+
+const pickString = (
+  source: Record<string, unknown>,
+  keys: string[],
+  fallback?: string,
+): string | undefined => {
+  const raw = readValue(source, keys);
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.length) return trimmed;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return String(raw);
+  }
+  if (typeof fallback === "string") {
+    const trimmed = fallback.trim();
+    if (trimmed.length) return trimmed;
+  }
+  return undefined;
+};
+
+const pickNumber = (
+  source: Record<string, unknown>,
+  keys: string[],
+): number | undefined => {
+  const raw = readValue(source, keys);
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
+const pickStringArray = (
+  source: Record<string, unknown>,
+  keys: string[],
+): string[] | undefined => {
+  const raw = readValue(source, keys);
+  if (!Array.isArray(raw)) return undefined;
+  const normalized = raw
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return normalized.length ? normalized : undefined;
+};
+
+const collectEmployeeDetails = (
+  item: CollectionItem,
+): Partial<User> | undefined => {
+  if (item.type !== "employees") return undefined;
+  const parts: Record<string, unknown>[] = [];
+  if (item.meta && typeof item.meta === "object") {
+    parts.push(item.meta as Record<string, unknown>);
+  }
+  const rawValue = item.value;
+  if (typeof rawValue === "string") {
+    const trimmed = rawValue.trim();
+    if (trimmed) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          parts.push(parsed as Record<string, unknown>);
+        }
+      } catch {
+        // игнорируем значения, которые не являются JSON
+      }
+    }
+  } else if (rawValue && typeof rawValue === "object" && !Array.isArray(rawValue)) {
+    parts.push(rawValue as Record<string, unknown>);
+  }
+
+  if (!parts.length) {
+    const name = item.name?.trim();
+    return name ? { name } : undefined;
+  }
+
+  const combined = parts.reduce<Record<string, unknown>>(
+    (acc, part) => ({ ...acc, ...part }),
+    {},
+  );
+
+  const details: Partial<User> = {};
+  const telegramId = pickNumber(combined, ["telegram_id", "telegramId", "id"]);
+  if (typeof telegramId === "number") {
+    details.telegram_id = telegramId;
+  }
+  const telegramUsername = pickString(combined, [
+    "telegram_username",
+    "telegramUsername",
+    "telegram_login",
+    "telegramLogin",
+  ]);
+  if (telegramUsername) {
+    details.telegram_username = telegramUsername;
+  }
+  const username = pickString(combined, ["username", "login"]);
+  if (username) {
+    details.username = username;
+  }
+  const name = pickString(combined, ["name", "fullName"], item.name);
+  if (name) {
+    details.name = name;
+  }
+  const phone = pickString(combined, ["phone", "phone_number", "phoneNumber"]);
+  if (phone) {
+    details.phone = phone;
+  }
+  const mobNumber = pickString(combined, [
+    "mobNumber",
+    "mobile",
+    "mobile_phone",
+    "mobilePhone",
+  ]);
+  if (mobNumber) {
+    details.mobNumber = mobNumber;
+  }
+  const email = pickString(combined, ["email", "mail"]);
+  if (email) {
+    details.email = email;
+  }
+  const role = pickString(combined, ["role", "roleName"]);
+  if (role) {
+    details.role = role;
+  }
+  const access = pickNumber(combined, ["access", "access_level", "accessLevel"]);
+  if (typeof access === "number") {
+    details.access = access;
+  }
+  const roleId = pickString(combined, ["roleId", "role_id"]);
+  if (roleId) {
+    details.roleId = roleId;
+  }
+  const roleName = pickString(combined, ["roleName"]);
+  if (roleName) {
+    details.roleName = roleName;
+  }
+  const departmentId = pickString(combined, ["departmentId", "department_id"]);
+  if (departmentId) {
+    details.departmentId = departmentId;
+  }
+  const departmentName = pickString(combined, ["departmentName"]);
+  if (departmentName) {
+    details.departmentName = departmentName;
+  }
+  const divisionId = pickString(combined, ["divisionId", "division_id"]);
+  if (divisionId) {
+    details.divisionId = divisionId;
+  }
+  const divisionName = pickString(combined, ["divisionName"]);
+  if (divisionName) {
+    details.divisionName = divisionName;
+  }
+  const positionId = pickString(combined, ["positionId", "position_id"]);
+  if (positionId) {
+    details.positionId = positionId;
+  }
+  const positionName = pickString(combined, ["positionName"]);
+  if (positionName) {
+    details.positionName = positionName;
+  }
+  const permissions = pickStringArray(combined, ["permissions"]);
+  if (permissions) {
+    details.permissions = permissions;
+  }
+
+  return Object.keys(details).length ? details : undefined;
+};
+
+const buildEmployeeDetailsIndex = (
+  items: CollectionItem[],
+): EmployeeDetailsIndex => {
+  const index: EmployeeDetailsIndex = {
+    byId: new Map(),
+    byTelegramUsername: new Map(),
+    byUsername: new Map(),
+  };
+  items.forEach((item) => {
+    const details = collectEmployeeDetails(item);
+    if (!details) return;
+    if (typeof details.telegram_id === "number") {
+      index.byId.set(String(details.telegram_id), details);
+    }
+    if (typeof details.telegram_username === "string") {
+      index.byTelegramUsername.set(details.telegram_username.toLowerCase(), details);
+    }
+    if (typeof details.username === "string") {
+      index.byUsername.set(details.username.toLowerCase(), details);
+    }
+  });
+  return index;
+};
+
+const mergeEmployeeDetails = (
+  user: User,
+  details?: Partial<User>,
+): User => {
+  if (!details) return user;
+  const result: User = { ...user };
+  const assignNumber = <K extends keyof User>(key: K) => {
+    const next = details[key];
+    if (typeof next !== "number" || !Number.isFinite(next)) return;
+    const current = result[key];
+    if (typeof current === "number" && Number.isFinite(current)) return;
+    result[key] = next as User[K];
+  };
+  const assignString = <K extends keyof User>(key: K) => {
+    const next = details[key];
+    if (next === undefined || next === null) return;
+    const normalized =
+      typeof next === "string"
+        ? next.trim()
+        : typeof next === "number" && Number.isFinite(next)
+          ? String(next)
+          : "";
+    if (!normalized) return;
+    const current = result[key];
+    if (
+      current === undefined ||
+      current === null ||
+      (typeof current === "string" && !current.trim())
+    ) {
+      result[key] = normalized as User[K];
+    }
+  };
+
+  assignNumber("telegram_id");
+  assignString("telegram_username");
+  assignString("username");
+  assignString("name");
+  assignString("phone");
+  assignString("mobNumber");
+  assignString("email");
+  assignString("role");
+  assignNumber("access");
+  assignString("roleId");
+  assignString("roleName");
+  assignString("departmentId");
+  assignString("departmentName");
+  assignString("divisionId");
+  assignString("divisionName");
+  assignString("positionId");
+  assignString("positionName");
+  if (
+    (!result.permissions || !result.permissions.length) &&
+    Array.isArray(details.permissions) &&
+    details.permissions.length
+  ) {
+    result.permissions = details.permissions.slice();
+  }
+  return result;
+};
+
+const findEmployeeDetails = (
+  user: User | undefined,
+  index: EmployeeDetailsIndex,
+  fallbackId?: string,
+): Partial<User> | undefined => {
+  const candidateId = fallbackId
+    ? fallbackId.trim()
+    : typeof user?.telegram_id === "number"
+      ? String(user.telegram_id)
+      : undefined;
+  if (candidateId) {
+    const direct = index.byId.get(candidateId);
+    if (direct) return direct;
+  }
+  const telegramUsername =
+    typeof user?.telegram_username === "string"
+      ? user.telegram_username.trim().toLowerCase()
+      : undefined;
+  if (telegramUsername) {
+    const direct = index.byTelegramUsername.get(telegramUsername);
+    if (direct) return direct;
+  }
+  const username =
+    typeof user?.username === "string"
+      ? user.username.trim().toLowerCase()
+      : undefined;
+  if (username) {
+    const direct = index.byUsername.get(username);
+    if (direct) return direct;
+  }
+  return undefined;
+};
+
 const USERS_ERROR_HINT = "Не удалось загрузить пользователей";
 const DUPLICATE_DIVISION_HINT_PREFIX = "Обнаружены дублирующиеся отделы";
 const TASK_SETTINGS_ERROR_HINT = "Не удалось загрузить настройки задач";
@@ -907,6 +1222,17 @@ export default function CollectionsPage() {
     return map;
   }, [allPositions]);
 
+  const employeeDetailsIndex = useMemo(
+    () => buildEmployeeDetailsIndex(items),
+    [items],
+  );
+
+  const enrichUserWithEmployeeDetails = useCallback(
+    (user: User) =>
+      mergeEmployeeDetails(user, findEmployeeDetails(user, employeeDetailsIndex)),
+    [employeeDetailsIndex],
+  );
+
   const roleMap = useMemo(() => {
     const map = new Map<string, string>();
     allRoles.forEach((role) => map.set(role._id, role.name));
@@ -1138,38 +1464,48 @@ export default function CollectionsPage() {
   const employeeRows = useMemo<EmployeeRow[]>(
     () =>
       paginatedUsers.map((user) => {
+        const mergedUser = enrichUserWithEmployeeDetails(user);
         const roleId =
-          typeof user.roleId === "string" ? user.roleId.trim() : "";
+          typeof mergedUser.roleId === "string"
+            ? mergedUser.roleId.trim()
+            : "";
         const departmentId =
-          typeof user.departmentId === "string" ? user.departmentId.trim() : "";
+          typeof mergedUser.departmentId === "string"
+            ? mergedUser.departmentId.trim()
+            : "";
         const divisionId =
-          typeof user.divisionId === "string" ? user.divisionId.trim() : "";
+          typeof mergedUser.divisionId === "string"
+            ? mergedUser.divisionId.trim()
+            : "";
         const positionId =
-          typeof user.positionId === "string" ? user.positionId.trim() : "";
+          typeof mergedUser.positionId === "string"
+            ? mergedUser.positionId.trim()
+            : "";
         const roleNameFromMap = resolveReferenceName(
           roleMap,
           roleId,
-          user.roleName,
+          mergedUser.roleName,
         );
         const departmentName = resolveReferenceName(
           departmentMap,
           departmentId,
-          user.departmentName,
+          mergedUser.departmentName,
         );
         const divisionName = resolveReferenceName(
           divisionMap,
           divisionId,
-          user.divisionName,
+          mergedUser.divisionName,
         );
         const positionName = resolveReferenceName(
           positionMap,
           positionId,
-          user.positionName,
+          mergedUser.positionName,
         );
         const roleLabel =
-          roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
+          roleNameFromMap ||
+          (mergedUser.role ? formatRoleName(mergedUser.role) : "");
         return buildEmployeeRow({
-          ...user,
+          ...mergedUser,
           roleId,
           departmentId,
           divisionId,
@@ -1186,16 +1522,44 @@ export default function CollectionsPage() {
       departmentMap,
       divisionMap,
       positionMap,
+      enrichUserWithEmployeeDetails,
     ],
   );
 
-  const selectedEmployee = useMemo(
-    () =>
-      selectedEmployeeId
-        ? users.find((u) => String(u.telegram_id) === selectedEmployeeId)
-        : undefined,
-    [selectedEmployeeId, users],
-  );
+  const selectedEmployee = useMemo(() => {
+    if (!selectedEmployeeId) return undefined;
+    const base = users.find((u) => String(u.telegram_id) === selectedEmployeeId);
+    if (base) {
+      return enrichUserWithEmployeeDetails(base);
+    }
+    const fallbackDetails = findEmployeeDetails(
+      undefined,
+      employeeDetailsIndex,
+      selectedEmployeeId,
+    );
+    if (!fallbackDetails) return undefined;
+    const fallbackUser: User = {};
+    if (typeof fallbackDetails.telegram_id === "number") {
+      fallbackUser.telegram_id = fallbackDetails.telegram_id;
+    } else {
+      const parsedId = Number(selectedEmployeeId);
+      if (Number.isFinite(parsedId)) {
+        fallbackUser.telegram_id = parsedId;
+      }
+    }
+    if (fallbackDetails.username) {
+      fallbackUser.username = fallbackDetails.username;
+    }
+    if (fallbackDetails.telegram_username) {
+      fallbackUser.telegram_username = fallbackDetails.telegram_username;
+    }
+    return mergeEmployeeDetails(fallbackUser, fallbackDetails);
+  }, [
+    employeeDetailsIndex,
+    enrichUserWithEmployeeDetails,
+    selectedEmployeeId,
+    users,
+  ]);
 
   const selectedDepartmentDivisionNames = useMemo(() => {
     if (!selectedCollection || selectedCollection.type !== "departments") {

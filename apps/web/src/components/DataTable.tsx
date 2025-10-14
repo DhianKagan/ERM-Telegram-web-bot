@@ -56,8 +56,27 @@ export const defaultBadgeClassName = [
 export const defaultBadgeWrapperClassName =
   "flex flex-wrap items-center gap-1.5";
 
+const sanitizeHtml = (html: string): string =>
+  html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+const normalizeToText = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") {
+    return sanitizeHtml(value);
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  return "";
+};
+
 const extractBadgeItems = (value: React.ReactNode): string[] => {
   const items: string[] = [];
+  const pushItem = (text: string) => {
+    if (!text) return;
+    if (items.includes(text)) return;
+    items.push(text);
+  };
   const visit = (node: React.ReactNode) => {
     if (node === null || node === undefined || node === false) return;
     if (typeof node === "string" || typeof node === "number") {
@@ -79,11 +98,47 @@ const extractBadgeItems = (value: React.ReactNode): string[] => {
       return;
     }
     if (React.isValidElement(node)) {
-      visit(node.props.children);
+      const element = node as React.ReactElement<Record<string, unknown>>;
+      const beforeLength = items.length;
+      visit(element.props.children as React.ReactNode);
+      if (items.length === beforeLength) {
+        const props = element.props || {};
+        const fallbackCandidates: unknown[] = [
+          props["data-badge-label"],
+          props["data-label"],
+          props["aria-label"],
+          props.title,
+        ];
+        fallbackCandidates.forEach((candidate) => {
+          if (candidate === null || candidate === undefined) return;
+          const text = String(candidate).trim();
+          pushItem(text);
+        });
+        const html = props.dangerouslySetInnerHTML as
+          | { __html?: unknown }
+          | undefined;
+        const rawHtml =
+          html && typeof html.__html === "string"
+            ? sanitizeHtml(html.__html)
+            : "";
+        if (rawHtml) {
+          pushItem(rawHtml);
+        }
+        const renderValue = props.renderValue;
+        if (typeof renderValue === "function") {
+          const rendered = normalizeToText(renderValue());
+          pushItem(rendered);
+        }
+        const getValue = props.getValue;
+        if (typeof getValue === "function") {
+          const rawValue = normalizeToText(getValue());
+          pushItem(rawValue);
+        }
+      }
       return;
     }
     const fallback = String(node).trim();
-    if (fallback) items.push(fallback);
+    pushItem(fallback);
   };
   visit(value);
   return items;

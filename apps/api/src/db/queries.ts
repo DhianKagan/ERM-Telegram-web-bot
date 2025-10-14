@@ -19,7 +19,12 @@ import {
 import * as logEngine from '../services/wgLogEngine';
 import { resolveRoleId } from './roleCache';
 import { Types, PipelineStage, Query } from 'mongoose';
-import { ACCESS_ADMIN, ACCESS_MANAGER, ACCESS_USER } from '../utils/accessMask';
+import {
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_TASK_DELETE,
+  ACCESS_USER,
+} from '../utils/accessMask';
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
 
 function escapeRegex(text: string): string {
@@ -859,6 +864,12 @@ export async function updateUser(
 ): Promise<UserDocument | null> {
   const telegramId = Number(id);
   if (Number.isNaN(telegramId)) return null;
+  const previous = await User.findOne(
+    { telegram_id: { $eq: telegramId } },
+    { access: 1 },
+  )
+    .lean<{ access?: number }>()
+    .exec();
   const sanitized = sanitizeUpdate(data) as Partial<UserDocument>;
   delete sanitized.access;
   if (sanitized.roleId) {
@@ -878,6 +889,16 @@ export async function updateUser(
       sanitized.roleId = resolved;
     } else {
       delete (sanitized as Record<string, unknown>).roleId;
+    }
+  }
+  if (typeof sanitized.access === 'number') {
+    const previousAccess =
+      typeof previous?.access === 'number' ? previous.access : null;
+    if (
+      previousAccess !== null &&
+      (previousAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE
+    ) {
+      sanitized.access |= ACCESS_TASK_DELETE;
     }
   }
   return User.findOneAndUpdate(

@@ -236,6 +236,164 @@ const parseIds = (value: string) => {
   return Array.from(new Set(splitted));
 };
 
+const normalizeEmployeeValue = (
+  value: unknown,
+): Partial<EmployeeRow> & { telegram_id?: number } => {
+  const record: Partial<EmployeeRow> & { telegram_id?: number } = {};
+  const assignString = (
+    key: keyof EmployeeRow,
+    raw: unknown,
+  ) => {
+    if (raw === undefined || raw === null) return;
+    const str = String(raw).trim();
+    if (!str) return;
+    record[key] = str as unknown as EmployeeRow[typeof key];
+  };
+  const assignNumber = (key: keyof EmployeeRow, raw: unknown) => {
+    if (raw === undefined || raw === null) return;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return;
+    record[key] = num as unknown as EmployeeRow[typeof key];
+  };
+  const assignTelegramId = (raw: unknown) => {
+    if (raw === undefined || raw === null) return;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return;
+    record.telegram_id = num;
+  };
+  const assignFromKey = (key: string, raw: unknown) => {
+    const lower = key.toLowerCase();
+    switch (lower) {
+      case "telegram_id":
+      case "telegramid":
+      case "id":
+        assignTelegramId(raw);
+        break;
+      case "telegram_username":
+      case "telegramusername":
+      case "username":
+      case "login":
+        assignString("telegram_username", raw);
+        assignString("username", raw);
+        break;
+      case "name":
+      case "full_name":
+      case "fullname":
+        assignString("name", raw);
+        break;
+      case "phone":
+      case "tel":
+      case "telephone":
+        assignString("phone", raw);
+        break;
+      case "mobnumber":
+      case "mobile":
+      case "mobile_phone":
+      case "mobilephone":
+      case "mob_number":
+        assignString("mobNumber", raw);
+        break;
+      case "email":
+        assignString("email", raw);
+        break;
+      case "role":
+        assignString("role", raw);
+        break;
+      case "access":
+        assignNumber("access", raw);
+        break;
+      case "roleid":
+      case "role_id":
+        assignString("roleId", raw);
+        break;
+      case "rolename":
+      case "role_name":
+        assignString("roleName", raw);
+        break;
+      case "departmentid":
+      case "department_id":
+        assignString("departmentId", raw);
+        break;
+      case "departmentname":
+      case "department_name":
+      case "department":
+        assignString("departmentName", raw);
+        break;
+      case "divisionid":
+      case "division_id":
+        assignString("divisionId", raw);
+        break;
+      case "divisionname":
+      case "division_name":
+      case "division":
+        assignString("divisionName", raw);
+        break;
+      case "positionid":
+      case "position_id":
+        assignString("positionId", raw);
+        break;
+      case "positionname":
+      case "position_name":
+      case "position":
+        assignString("positionName", raw);
+        break;
+      default:
+        break;
+    }
+  };
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    Object.entries(value as Record<string, unknown>).forEach(([key, raw]) => {
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        assignFromKey(key, (raw as { value?: unknown }).value ?? raw);
+        return;
+      }
+      assignFromKey(key, raw);
+    });
+    return record;
+  }
+
+  assignFromKey("value", value);
+  return record;
+};
+
+const parseEmployeeValue = (value: string): (Partial<EmployeeRow> & {
+  telegram_id?: number;
+}) => {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => normalizeEmployeeValue(item))
+          .reduce((acc, item) => ({ ...acc, ...item }), {} as Partial<EmployeeRow> & {
+            telegram_id?: number;
+          });
+      }
+      return normalizeEmployeeValue(parsed);
+    } catch {
+      // игнорируем ошибки парсинга и пытаемся разобрать строку вручную
+    }
+  }
+
+  const result: Record<string, string> = {};
+  trimmed
+    .split(/[,;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((part) => {
+      const [rawKey, ...rest] = part.split(":");
+      if (!rawKey || !rest.length) return;
+      result[rawKey.trim()] = rest.join(":").trim();
+    });
+  if (Object.keys(result).length) {
+    return normalizeEmployeeValue(result);
+  }
+  return {};
+};
+
 const mergeById = <T extends { _id: string }>(
   current: T[],
   incoming: T[],
@@ -379,6 +537,13 @@ export default function CollectionsPage() {
       return;
     }
     try {
+      if (active === "employees") {
+        const list = await fetchAllCollectionItems("employees");
+        setItems(list);
+        setTotal(list.length);
+        setHint("");
+        return;
+      }
       const d = (await fetchCollectionItems(
         active,
         currentQuery,
@@ -1126,53 +1291,168 @@ export default function CollectionsPage() {
     userPage * limit,
   );
 
-  const employeeRows = useMemo<EmployeeRow[]>(
-    () =>
-      paginatedUsers.map((user) => {
-        const roleId =
-          typeof user.roleId === "string" ? user.roleId.trim() : "";
-        const departmentId =
-          typeof user.departmentId === "string" ? user.departmentId.trim() : "";
-        const divisionId =
-          typeof user.divisionId === "string" ? user.divisionId.trim() : "";
-        const positionId =
-          typeof user.positionId === "string" ? user.positionId.trim() : "";
-        const roleNameFromMap = resolveReferenceName(
-          roleMap,
-          roleId,
-          user.roleName,
-        );
-        const departmentName = resolveReferenceName(
-          departmentMap,
-          departmentId,
-          user.departmentName,
-        );
-        const divisionName = resolveReferenceName(
-          divisionMap,
-          divisionId,
-          user.divisionName,
-        );
-        const positionName = resolveReferenceName(
-          positionMap,
-          positionId,
-          user.positionName,
-        );
-        const roleLabel =
-          roleNameFromMap || (user.role ? formatRoleName(user.role) : "");
-        return {
-          ...user,
-          roleId,
-          departmentId,
-          divisionId,
-          positionId,
-          roleName: roleLabel,
-          departmentName,
-          divisionName,
-          positionName,
-        };
-      }),
-    [paginatedUsers, roleMap, departmentMap, divisionMap, positionMap],
-  );
+  const employeeDetails = useMemo(() => {
+    const byId = new Map<string, Partial<EmployeeRow>>();
+    const byUsername = new Map<string, Partial<EmployeeRow>>();
+    items
+      .filter((item) => item.type === "employees")
+      .forEach((item) => {
+        const parsed = parseEmployeeValue(item.value);
+        const { telegram_id: parsedTelegramId, ...rest } = parsed;
+        const detail: Partial<EmployeeRow> = { ...rest };
+        if (!detail.name && item.name.trim()) {
+          detail.name = item.name.trim();
+        }
+        if (item.meta) {
+          const meta = item.meta;
+          const assignMeta = (
+            key: keyof EmployeeRow,
+            raw?: string,
+          ) => {
+            if (detail[key]) return;
+            if (typeof raw !== "string") return;
+            const trimmed = raw.trim();
+            if (!trimmed) return;
+            detail[key] = trimmed as unknown as EmployeeRow[typeof key];
+          };
+          assignMeta("departmentId", meta.departmentId);
+          assignMeta("divisionId", meta.divisionId);
+          assignMeta("positionId", meta.positionId);
+        }
+        if (parsedTelegramId) {
+          byId.set(String(parsedTelegramId), detail);
+        }
+        const login =
+          typeof detail.telegram_username === "string"
+            ? detail.telegram_username.trim().toLowerCase()
+            : typeof detail.username === "string"
+              ? detail.username.trim().toLowerCase()
+              : "";
+        if (login) {
+          byUsername.set(login, detail);
+        }
+      });
+    return { byId, byUsername };
+  }, [items]);
+
+  const employeeRows = useMemo<EmployeeRow[]>(() => {
+    const pickString = (value?: string | null, fallback?: string | null) => {
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed) return trimmed;
+      }
+      if (typeof fallback === "string") {
+        const trimmed = fallback.trim();
+        if (trimmed) return trimmed;
+      }
+      return undefined;
+    };
+    const pickNumber = (value?: number | null, fallback?: number | null) => {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof fallback === "number" && Number.isFinite(fallback)) return fallback;
+      return undefined;
+    };
+
+    return paginatedUsers.map((user) => {
+      const idKey =
+        user.telegram_id !== undefined && user.telegram_id !== null
+          ? String(user.telegram_id)
+          : undefined;
+      const usernameKey = pickString(
+        user.telegram_username,
+        user.username,
+      )?.toLowerCase();
+      const detail =
+        (idKey ? employeeDetails.byId.get(idKey) : undefined) ||
+        (usernameKey ? employeeDetails.byUsername.get(usernameKey) : undefined);
+
+      const resolvedTelegramId = pickNumber(user.telegram_id, detail?.telegram_id);
+      const resolvedUsername = pickString(user.username, detail?.username);
+      const resolvedTelegramUsername = pickString(
+        user.telegram_username,
+        detail?.telegram_username ?? detail?.username,
+      );
+      const resolvedName = pickString(user.name, detail?.name) ?? "";
+      const resolvedPhone = pickString(user.phone, detail?.phone) ?? "";
+      const resolvedMobNumber = pickString(user.mobNumber, detail?.mobNumber) ?? "";
+      const resolvedEmail = pickString(user.email, detail?.email) ?? "";
+      const resolvedRole = pickString(user.role, detail?.role);
+      const resolvedAccess = pickNumber(user.access, detail?.access);
+
+      const rawRoleId = pickString(user.roleId, detail?.roleId) ?? "";
+      const rawDepartmentId = pickString(user.departmentId, detail?.departmentId) ?? "";
+      const rawDivisionId = pickString(user.divisionId, detail?.divisionId) ?? "";
+      const rawPositionId = pickString(user.positionId, detail?.positionId) ?? "";
+
+      const fallbackRoleName = pickString(user.roleName, detail?.roleName);
+      const fallbackDepartmentName = pickString(
+        user.departmentName,
+        detail?.departmentName,
+      );
+      const fallbackDivisionName = pickString(
+        user.divisionName,
+        detail?.divisionName,
+      );
+      const fallbackPositionName = pickString(
+        user.positionName,
+        detail?.positionName,
+      );
+
+      const roleNameFromMap = resolveReferenceName(
+        roleMap,
+        rawRoleId,
+        fallbackRoleName,
+      );
+      const departmentName = resolveReferenceName(
+        departmentMap,
+        rawDepartmentId,
+        fallbackDepartmentName,
+      );
+      const divisionName = resolveReferenceName(
+        divisionMap,
+        rawDivisionId,
+        fallbackDivisionName,
+      );
+      const positionName = resolveReferenceName(
+        positionMap,
+        rawPositionId,
+        fallbackPositionName,
+      );
+
+      const roleLabel =
+        roleNameFromMap || (resolvedRole ? formatRoleName(resolvedRole) : "");
+
+      return {
+        ...user,
+        telegram_id: resolvedTelegramId,
+        username:
+          resolvedUsername ??
+          (resolvedTelegramId !== undefined ? String(resolvedTelegramId) : ""),
+        telegram_username: resolvedTelegramUsername,
+        name: resolvedName,
+        phone: resolvedPhone,
+        mobNumber: resolvedMobNumber,
+        email: resolvedEmail,
+        role: resolvedRole ?? user.role,
+        access: resolvedAccess ?? user.access,
+        roleId: rawRoleId,
+        departmentId: rawDepartmentId,
+        divisionId: rawDivisionId,
+        positionId: rawPositionId,
+        roleName: roleLabel,
+        departmentName,
+        divisionName,
+        positionName,
+      };
+    });
+  }, [
+    paginatedUsers,
+    employeeDetails,
+    roleMap,
+    departmentMap,
+    divisionMap,
+    positionMap,
+  ]);
   const selectedEmployee = useMemo(
     () =>
       selectedEmployeeId

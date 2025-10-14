@@ -313,6 +313,29 @@ describe("CollectionsPage", () => {
       },
       финансы: { items: [], total: 0 },
     },
+    employees: {
+      "": {
+        items: [
+          {
+            _id: "emp-1",
+            type: "employees",
+            name: "Иван Тестовый",
+            value: JSON.stringify({
+              telegram_id: 101,
+              telegram_username: "testuser",
+              phone: "+380000000000",
+              email: "test@example.com",
+              departmentId: "dep-1",
+            }),
+            meta: {
+              departmentId: "dep-1",
+              divisionId: "div-1",
+            },
+          },
+        ],
+        total: 1,
+      },
+    },
   };
 
   beforeEach(() => {
@@ -592,6 +615,32 @@ describe("CollectionsPage", () => {
     );
 
     expect(headerTexts).toEqual(expectedHeaders);
+  });
+
+  it("использует данные коллекции для заполнения карточки сотрудника", async () => {
+    mockedFetchUsers.mockResolvedValueOnce([
+      { telegram_id: 101, username: "101" } as User,
+    ]);
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+
+    const employeesPanel = await screen.findByTestId("tab-content-employees");
+
+    await waitFor(() =>
+      expect(
+        within(employeesPanel).getByText("testuser"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      within(employeesPanel).getByText("+380000000000"),
+    ).toBeInTheDocument();
+    expect(
+      within(employeesPanel).getByText("test@example.com"),
+    ).toBeInTheDocument();
   });
 
   it("отображает настройки задач во вкладке 'Задачи'", async () => {

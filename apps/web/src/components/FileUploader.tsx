@@ -144,11 +144,24 @@ export default function FileUploader({
   const openFileDialog = () => {
     if (disabled) return;
     const node = fileInputRef.current;
-    if (node) node.click();
+    if (!node) return;
+    const picker = (node as HTMLInputElement & { showPicker?: () => void }).showPicker;
+    if (typeof picker === "function") {
+      picker.call(node);
+      return;
+    }
+    node.click();
   };
 
   const handleZoneClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("label")) {
+      return;
+    }
     event.preventDefault();
     openFileDialog();
   };
@@ -238,18 +251,16 @@ export default function FileUploader({
       >
         <div className="flex flex-col items-center gap-2">
           <p className="text-base font-medium">{t("dragFilesOrSelect")}</p>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              openFileDialog();
-            }}
-            className="rounded-full border border-accentPrimary px-4 py-1.5 text-sm font-semibold text-accentPrimary transition hover:bg-accentPrimary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
-            disabled={disabled}
+          <label
+            htmlFor={fileInputId}
+            className={`rounded-full border border-accentPrimary px-4 py-1.5 text-sm font-semibold text-accentPrimary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+              disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:bg-accentPrimary/10 focus-visible:ring-accentPrimary"
+            }`}
           >
             {t("chooseFiles")}
-          </button>
+          </label>
           <p className="text-xs text-slate-500">{t("uploadTapHint")}</p>
         </div>
         <input

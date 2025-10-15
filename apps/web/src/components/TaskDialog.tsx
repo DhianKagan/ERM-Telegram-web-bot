@@ -1996,10 +1996,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   return createPortal(
     <div className="fixed inset-0 z-[1000]">
-      <button
-        type="button"
+      <div
         aria-hidden="true"
-        tabIndex={-1}
         onClick={handleBackdropClick}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-950/70 backdrop-blur-sm"
       />

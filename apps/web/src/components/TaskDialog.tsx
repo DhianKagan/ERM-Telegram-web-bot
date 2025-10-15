@@ -872,7 +872,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     commitResolvedTaskId(id);
   }, [id, commitResolvedTaskId]);
   const { ref: titleFieldRef, ...titleFieldRest } = register("title");
-  const titleValue = watch("title");
+  const titleValue = watch("title", "");
+  const isTitleFilled = React.useMemo(
+    () => (typeof titleValue === "string" ? titleValue.trim().length > 0 : false),
+    [titleValue],
+  );
+  const canUploadAttachments = editing && isTitleFilled;
   const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
   const handleTitleRef = React.useCallback(
     (node: HTMLTextAreaElement | null) => {
@@ -2650,10 +2655,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 </div>
               ) : null}
               <FileUploader
-                disabled={!editing || !titleValue.trim()}
+                disabled={!canUploadAttachments}
                 onUploaded={(a) => setAttachments((p) => [...p, a])}
                 onRemove={(a) => removeAttachment(a)}
               />
+              {editing && !isTitleFilled ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  {t("fillTitleToUpload")}
+                </p>
+              ) : null}
               {isEdit && (
                 <div className="mt-2 flex justify-start">
                   <Button

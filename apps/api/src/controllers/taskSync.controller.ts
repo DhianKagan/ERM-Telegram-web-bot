@@ -22,6 +22,7 @@ import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 import { buildTaskAppLink } from '../tasks/taskLinks';
 import buildChatMessageLink from '../utils/messageLink';
 import delay from '../utils/delay';
+import { syncCommentMessage } from '../tasks/taskComments';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
@@ -338,6 +339,8 @@ export default class TaskSyncController {
     const topicId =
       toNumericId(task.telegram_topic_id) ??
       (typeof configuredTopicId === 'number' ? configuredTopicId : null);
+    const normalizedTopicId =
+      typeof topicId === 'number' ? topicId : undefined;
     const status =
       typeof task.status === 'string'
         ? (task.status as SharedTask['status'])
@@ -364,6 +367,11 @@ export default class TaskSyncController {
     const previousPhotosMessageId = toNumericId(
       task.telegram_photos_message_id,
     );
+    const previousCommentMessageId = toNumericId(
+      task.telegram_comment_message_id,
+    );
+    let commentMessageId: number | undefined = previousCommentMessageId ?? undefined;
+    let shouldDeletePreviousComment = false;
     const resolvedKind = (() => {
       const rawKind =
         typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
@@ -378,13 +386,18 @@ export default class TaskSyncController {
       taskId,
       status,
       { kind: resolvedKind },
-      albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+      {
+        ...(albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {}),
+        showCommentButton: true,
+      },
     );
 
     const options: Parameters<typeof this.bot.telegram.editMessageText>[4] = {
       parse_mode: 'MarkdownV2',
       link_preview_options: { is_disabled: true },
-      ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+      ...(typeof normalizedTopicId === 'number'
+        ? { message_thread_id: normalizedTopicId }
+        : {}),
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     };
 
@@ -495,10 +508,16 @@ export default class TaskSyncController {
           }
           await ensurePreviousMediaRemoved();
           currentMessageId = null;
+          shouldDeletePreviousComment = true;
+          commentMessageId = undefined;
         }
       }
     } else {
       await ensurePreviousMediaRemoved();
+      if (typeof previousCommentMessageId === 'number') {
+        shouldDeletePreviousComment = true;
+        commentMessageId = undefined;
+      }
     }
 
     let previewMessageIds: number[] = [];
@@ -515,8 +534,6 @@ export default class TaskSyncController {
         const normalizedAttachmentsChatId = normalizeChatId(
           attachmentsChatValue,
         );
-        const normalizedTopicId =
-          typeof topicId === 'number' ? topicId : undefined;
         const attachmentsTopicIdForSend = (() => {
           if (typeof configuredPhotosTopicId === 'number') {
             return configuredPhotosTopicId;
@@ -671,7 +688,10 @@ export default class TaskSyncController {
               taskId,
               status,
               { kind: resolvedKind },
-              albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+              {
+                ...(albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {}),
+                showCommentButton: true,
+              },
             );
             try {
               await editReplyMarkup(
@@ -719,8 +739,6 @@ export default class TaskSyncController {
         const normalizedAttachmentsChatId = normalizeChatId(
           attachmentsChatValue,
         );
-        const normalizedTopicId =
-          typeof topicId === 'number' ? topicId : undefined;
         const attachmentsTopicIdForSend =
           typeof configuredPhotosTopicId === 'number'
             ? configuredPhotosTopicId
@@ -837,7 +855,10 @@ export default class TaskSyncController {
           taskId,
           status,
           { kind: resolvedKind },
-          albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {},
+          {
+            ...(albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {}),
+            showCommentButton: true,
+          },
         );
         try {
           await editReplyMarkup(
@@ -853,6 +874,75 @@ export default class TaskSyncController {
               error,
             );
           }
+        }
+      }
+    }
+
+    if (shouldDeletePreviousComment && typeof previousCommentMessageId === 'number') {
+      try {
+        await syncCommentMessage({
+          bot: this.bot,
+          chatId: targetChatId,
+          topicId: normalizedTopicId,
+          messageId: previousCommentMessageId,
+          commentHtml: '',
+          detectors: {
+            missingOnDelete: isMessageMissingOnDeleteError,
+          },
+        });
+      } catch (error) {
+        if (!isMessageMissingOnDeleteError(error)) {
+          console.error('Не удалось удалить устаревший комментарий задачи', error);
+        }
+      }
+    }
+
+    const baseMessageId =
+      typeof sentMessageId === 'number'
+        ? sentMessageId
+        : typeof messageId === 'number'
+          ? messageId
+          : undefined;
+    const commentContent =
+      typeof task.comment === 'string' ? task.comment : '';
+    if (commentContent.trim() && typeof baseMessageId === 'number') {
+      try {
+        commentMessageId = await syncCommentMessage({
+          bot: this.bot,
+          chatId: targetChatId,
+          topicId: normalizedTopicId,
+          replyTo: baseMessageId,
+          messageId: commentMessageId,
+          commentHtml: commentContent,
+          detectors: {
+            notModified: isMessageNotModifiedError,
+            missingOnEdit: isMessageMissingOnEditError,
+            missingOnDelete: isMessageMissingOnDeleteError,
+          },
+        });
+      } catch (error) {
+        console.error('Не удалось синхронизировать комментарий задачи', error);
+        commentMessageId = previousCommentMessageId ?? undefined;
+      }
+    } else if (typeof commentMessageId === 'number') {
+      try {
+        await syncCommentMessage({
+          bot: this.bot,
+          chatId: targetChatId,
+          topicId: normalizedTopicId,
+          messageId: commentMessageId,
+          commentHtml: '',
+          detectors: {
+            missingOnDelete: isMessageMissingOnDeleteError,
+          },
+        });
+        commentMessageId = undefined;
+      } catch (error) {
+        if (isMessageMissingOnDeleteError(error)) {
+          commentMessageId = undefined;
+        } else {
+          console.error('Не удалось удалить сообщение комментария задачи', error);
+          commentMessageId = previousCommentMessageId ?? commentMessageId;
         }
       }
     }
@@ -890,6 +980,11 @@ export default class TaskSyncController {
       unsetPayload.telegram_photos_message_id = '';
       unsetPayload.telegram_photos_chat_id = '';
       unsetPayload.telegram_photos_topic_id = '';
+    }
+    if (typeof commentMessageId === 'number') {
+      setPayload.telegram_comment_message_id = commentMessageId;
+    } else {
+      unsetPayload.telegram_comment_message_id = '';
     }
 
     const updatePayload: Record<string, unknown> = {};

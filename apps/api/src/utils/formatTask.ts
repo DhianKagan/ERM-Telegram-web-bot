@@ -561,7 +561,7 @@ const finalizeMarkdown = (value: string): string =>
     .replace(/^\s+/g, '')
     .trim();
 
-const convertHtmlToMarkdown = (html: string): string => {
+export const convertHtmlToMarkdown = (html: string): string => {
   const trimmed = typeof html === 'string' ? html.trim() : '';
   if (!trimmed) return '';
   const document = parseDocument(trimmed, { decodeEntities: true });

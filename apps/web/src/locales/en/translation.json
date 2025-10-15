@@ -47,6 +47,7 @@
   "dragFilesOrSelect": "Drag files here or select",
   "chooseFiles": "Choose files",
   "uploadTapHint": "Tap the button or drop files",
+  "fillTitleToUpload": "Enter a title to add files",
   "dueBeforeStart": "Due date cannot be before start",
   "startBeforeCreated": "Start date cannot be earlier than creation date",
   "dueDate": "Due date",

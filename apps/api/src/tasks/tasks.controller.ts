@@ -1781,6 +1781,35 @@ export default class TasksController {
     );
   }
 
+  private isMessageMissingOnEditError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const record = error as Record<string, unknown>;
+    const rawResponse = record.response;
+    const response =
+      rawResponse && typeof rawResponse === 'object'
+        ? (rawResponse as { error_code?: number; description?: unknown })
+        : null;
+    const errorCode =
+      response?.error_code ??
+      (typeof record.error_code === 'number' ? record.error_code : null);
+    if (errorCode !== 400) {
+      return false;
+    }
+    const descriptionRaw =
+      (response?.description ??
+        (typeof record.description === 'string' ? record.description : null)) ??
+      null;
+    if (typeof descriptionRaw !== 'string') {
+      return false;
+    }
+    const normalized = descriptionRaw.toLowerCase();
+    return (
+      normalized.includes('message to edit not found') ||
+      normalized.includes('message to edit not found in the chat') ||
+      normalized.includes('message with the specified identifier not found')
+    );
+  }
+
   private isMessageMissingOnDeleteError(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
     const record = error as Record<string, unknown>;

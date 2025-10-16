@@ -59,7 +59,11 @@ const extractStatus = (value: unknown): string | null => {
   return trimString(record.status);
 };
 
-export function getTaskIdentifier(task: Partial<TaskDocument>): string {
+type TaskIdentifierSource =
+  Partial<Pick<TaskDocument, '_id' | 'request_id' | 'task_number'>> &
+  Record<string, unknown>;
+
+export function getTaskIdentifier(task: TaskIdentifierSource): string {
   return (
     resolveIdentifier(task.request_id) ||
     resolveIdentifier(task.task_number) ||
@@ -69,7 +73,7 @@ export function getTaskIdentifier(task: Partial<TaskDocument>): string {
 }
 
 export async function buildActionMessage(
-  task: Partial<TaskDocument>,
+  task: TaskIdentifierSource,
   action: string,
   at: Date,
   creatorId?: number,
@@ -124,7 +128,7 @@ const shouldSkipInitialStatusEntry = (
 };
 
 export async function buildLatestHistorySummary(
-  task: Partial<TaskDocument> & { history?: HistoryEntry[] } & Record<string, unknown>,
+  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<string, unknown>,
 ): Promise<string | null> {
   const history = Array.isArray(task.history) ? task.history : [];
   if (!history.length) {
@@ -157,7 +161,7 @@ export async function buildLatestHistorySummary(
 }
 
 export async function buildHistorySummaryLog(
-  task: Partial<TaskDocument> & { history?: HistoryEntry[] } & Record<string, unknown>,
+  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<string, unknown>,
 ): Promise<string | null> {
   const history = Array.isArray(task.history) ? task.history : [];
   if (!history.length) {

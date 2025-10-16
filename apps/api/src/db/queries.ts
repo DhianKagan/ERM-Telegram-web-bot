@@ -6,6 +6,7 @@ import {
   User,
   Role,
   File,
+  type Attachment,
   TaskDocument,
   TaskAttrs,
   UserDocument,
@@ -57,6 +58,162 @@ function normalizeAttachmentsField(
     return;
   }
   target.attachments = normalized;
+}
+
+const ensureDate = (value: unknown): Date | undefined => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
+const pickNumber = (...values: unknown[]): number | undefined => {
+  for (const candidate of values) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+};
+
+const pickString = (...values: unknown[]): string | undefined => {
+  for (const candidate of values) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  return undefined;
+};
+
+const buildAttachmentKey = (attachment: Attachment): string | null => {
+  if (!attachment || typeof attachment.url !== 'string') {
+    return null;
+  }
+  const trimmed = attachment.url.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const [pathPart] = trimmed.split('?');
+  const segments = pathPart.split('/').filter(Boolean);
+  const last = segments[segments.length - 1];
+  if (last && Types.ObjectId.isValid(last)) {
+    return `file:${last}`;
+  }
+  return `url:${trimmed}`;
+};
+
+const resolveAttachmentFileId = (attachment: Attachment): string | null => {
+  const key = buildAttachmentKey(attachment);
+  if (key && key.startsWith('file:')) {
+    return key.slice(5);
+  }
+  return null;
+};
+
+type LeanFileDoc = {
+  _id: unknown;
+  name?: string;
+  thumbnailPath?: string;
+  userId?: number;
+  type?: string;
+  size?: number;
+  uploadedAt?: Date | string | number;
+};
+
+const mergeAttachmentSources = (
+  current: Attachment,
+  sources: {
+    file?: LeanFileDoc;
+    previous?: Attachment;
+  },
+): Attachment => {
+  const uploadedAt =
+    ensureDate(current.uploadedAt) ||
+    ensureDate(sources.previous?.uploadedAt) ||
+    ensureDate(sources.file?.uploadedAt) ||
+    new Date();
+  const thumbnailFromFile =
+    sources.file?.thumbnailPath && sources.file.thumbnailPath.trim()
+      ? `/uploads/${sources.file.thumbnailPath}`
+      : undefined;
+  return {
+    ...sources.previous,
+    ...current,
+    name:
+      pickString(current.name, sources.previous?.name, sources.file?.name) ??
+      current.name,
+    url: sources.file ? `/api/v1/files/${String(sources.file._id)}` : current.url,
+    thumbnailUrl:
+      pickString(current.thumbnailUrl, sources.previous?.thumbnailUrl) ??
+      thumbnailFromFile,
+    uploadedBy:
+      pickNumber(current.uploadedBy, sources.previous?.uploadedBy, sources.file?.userId) ??
+      current.uploadedBy,
+    uploadedAt,
+    type:
+      pickString(current.type, sources.previous?.type, sources.file?.type) ??
+      (current.type ?? 'application/octet-stream'),
+    size:
+      pickNumber(current.size, sources.previous?.size, sources.file?.size) ??
+      current.size,
+  } as Attachment;
+};
+
+async function enrichAttachmentsFromContent(
+  data: Partial<TaskDocument> & Record<string, unknown>,
+  previous: TaskDocument | null,
+): Promise<Attachment[] | undefined> {
+  const attachmentsRaw = data.attachments as Attachment[] | undefined;
+  if (attachmentsRaw === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(attachmentsRaw) || attachmentsRaw.length === 0) {
+    return [];
+  }
+  const attachments = attachmentsRaw.map((item) => ({ ...item })) as Attachment[];
+  const previousByKey = new Map<string, Attachment>();
+  if (previous && Array.isArray(previous.attachments)) {
+    previous.attachments.forEach((item) => {
+      const key = buildAttachmentKey(item as Attachment);
+      if (key) {
+        previousByKey.set(key, item as Attachment);
+      }
+    });
+  }
+  const fileIds = new Set<string>();
+  const attachmentFileMap = new Map<number, string>();
+  attachments.forEach((attachment, index) => {
+    const fileId = resolveAttachmentFileId(attachment);
+    if (fileId) {
+      fileIds.add(fileId);
+      attachmentFileMap.set(index, fileId);
+    }
+  });
+  const filesMap = new Map<string, LeanFileDoc>();
+  if (fileIds.size > 0) {
+    const objectIds = Array.from(fileIds).map((id) => new Types.ObjectId(id));
+    const docs = await File.find({ _id: { $in: objectIds } }).lean();
+    docs.forEach((doc) => {
+      filesMap.set(String(doc._id), doc);
+    });
+  }
+  attachments.forEach((attachment, index) => {
+    const key = buildAttachmentKey(attachment);
+    const prevAttachment = key ? previousByKey.get(key) : undefined;
+    const fileId = attachmentFileMap.get(index);
+    const fileDoc = fileId ? filesMap.get(fileId) : undefined;
+    attachments[index] = mergeAttachmentSources(attachment, {
+      file: fileDoc,
+      previous: prevAttachment,
+    });
+  });
+  return attachments;
 }
 
 const REQUEST_TYPE_NAME = 'Заявка';
@@ -200,6 +357,14 @@ export async function updateTask(
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const enrichedAttachments = await enrichAttachmentsFromContent(
+    data as Partial<TaskDocument> & Record<string, unknown>,
+    prev,
+  );
+  if (enrichedAttachments !== undefined) {
+    (data as Partial<TaskDocument>).attachments =
+      enrichedAttachments as TaskDocument['attachments'];
+  }
   const kind = detectTaskKind(prev);
   const creatorId = Number(prev.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;

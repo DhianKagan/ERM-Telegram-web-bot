@@ -198,9 +198,10 @@ async function enrichAttachmentsFromContent(
     }
   });
   const filesMap = new Map<string, LeanFileDoc>();
-  if (fileIds.size > 0) {
+  const fileModel = File as typeof File | undefined;
+  if (fileIds.size > 0 && fileModel && typeof fileModel.find === 'function') {
     const objectIds = Array.from(fileIds).map((id) => new Types.ObjectId(id));
-    const docs = await File.find({ _id: { $in: objectIds } }).lean();
+    const docs = await fileModel.find({ _id: { $in: objectIds } }).lean();
     docs.forEach((doc) => {
       filesMap.set(String(doc._id), doc);
     });
@@ -319,7 +320,11 @@ export async function createTask(
 ): Promise<TaskDocument> {
   const payload: Partial<TaskDocument> = data ? { ...data } : {};
   normalizeAttachmentsField(payload as Record<string, unknown>);
-  await enrichAttachmentsFromContent(payload, null);
+  const enrichedAttachments = await enrichAttachmentsFromContent(payload, null);
+  if (enrichedAttachments !== undefined) {
+    (payload as Partial<TaskDocument>).attachments =
+      enrichedAttachments as TaskDocument['attachments'];
+  }
   const entry = {
     changed_at: new Date(),
     changed_by: payload.created_by || 0,
@@ -458,7 +463,7 @@ export async function updateTask(
   );
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
-  } else if (updated && attachmentsFromContent) {
+  } else if (updated && enrichedAttachments !== undefined) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
   }
   return updated;

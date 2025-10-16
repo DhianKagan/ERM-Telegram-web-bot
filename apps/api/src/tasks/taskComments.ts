@@ -115,6 +115,9 @@ export interface CommentSyncOptions {
 }
 
 type SendMessageOptions = Parameters<Telegraf<Context>['telegram']['sendMessage']>[2];
+type EditMessageOptions = Parameters<
+  Telegraf<Context>['telegram']['editMessageText']
+>[4];
 
 export const syncCommentMessage = async (
   options: CommentSyncOptions,
@@ -134,7 +137,7 @@ export const syncCommentMessage = async (
     return undefined;
   }
 
-  const commonOptions: SendMessageOptions = {
+  const baseOptions: SendMessageOptions & EditMessageOptions = {
     parse_mode: payload.parseMode,
     link_preview_options: { is_disabled: true },
     ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
@@ -147,7 +150,7 @@ export const syncCommentMessage = async (
         messageId,
         undefined,
         payload.text,
-        commonOptions,
+        baseOptions,
       );
       return messageId;
     } catch (error) {
@@ -162,7 +165,7 @@ export const syncCommentMessage = async (
     }
   }
 
-  const sendOptions: SendMessageOptions = { ...commonOptions };
+  const sendOptions: SendMessageOptions = { ...baseOptions };
   if (typeof replyTo === 'number') {
     sendOptions.reply_parameters = {
       message_id: replyTo,

@@ -14,6 +14,7 @@ export interface TaskStatusKeyboardOptions {
 
 export interface TaskStatusKeyboardExtras {
   albumLink?: string;
+  showCommentButton?: boolean;
 }
 
 const statusButtonLabels: Record<
@@ -118,8 +119,19 @@ export default function taskStatusKeyboard(
   id: string,
   currentStatus?: TaskStatus,
   options: TaskStatusKeyboardOptions = {},
+  extras: TaskStatusKeyboardExtras = {},
 ): ReturnType<typeof Markup.inlineKeyboard> {
   const rows = buildStatusRows(id, currentStatus, options);
+  const extraRow: InlineKeyboardButton[] = [];
+  if (extras.albumLink) {
+    extraRow.push(Markup.button.url('Фотоальбом', extras.albumLink));
+  }
+  if (extras.showCommentButton !== false) {
+    extraRow.push(Markup.button.callback('Комментарий', `task_comment_prompt:${id}`));
+  }
+  if (extraRow.length) {
+    rows.unshift(extraRow);
+  }
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
 
@@ -130,8 +142,15 @@ export function taskStatusInlineMarkup(
   extras: TaskStatusKeyboardExtras = {},
 ): InlineKeyboardMarkup {
   const rows = buildStatusRows(id, currentStatus, options);
+  const extraRow: InlineKeyboardButton[] = [];
   if (extras.albumLink) {
-    rows.unshift([Markup.button.url('Фотоальбом', extras.albumLink)]);
+    extraRow.push(Markup.button.url('Фотоальбом', extras.albumLink));
+  }
+  if (extras.showCommentButton !== false) {
+    extraRow.push(Markup.button.callback('Комментарий', `task_comment_prompt:${id}`));
+  }
+  if (extraRow.length) {
+    rows.unshift(extraRow);
   }
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows).reply_markup;
 }

@@ -54,6 +54,11 @@ const messages = {
   cancelRequestSuccess: 'Запрос на отмену задачи создан.',
   cancelRequestFailed: 'Не удалось создать запрос на отмену задачи.',
   enterComment: 'Введите комментарий',
+  commentStartError:
+    'Не удалось начать ввод комментария. Напишите боту в личные сообщения.',
+  commentPromptSent: 'Отправьте комментарий в ответ на это сообщение.',
+  commentSaved: 'Комментарий сохранён.',
+  commentSaveError: 'Не удалось сохранить комментарий.',
   taskDeleted: 'Задача удалена',
   taskForm: 'Поля новой задачи:',
   fullMapLink: 'Полная ссылка',

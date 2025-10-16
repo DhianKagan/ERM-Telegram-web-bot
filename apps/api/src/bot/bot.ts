@@ -8,9 +8,15 @@ import type {
   InlineKeyboardButton,
 } from 'telegraf/typings/core/types/typegram';
 import messages from '../messages';
-import { createUser, getTask, getUser, writeLog } from '../services/service';
+import {
+  createUser,
+  getTask,
+  getUser,
+  updateTask as updateTaskRecord,
+  writeLog,
+} from '../services/service';
 import '../db/model';
-import type { TaskDocument } from '../db/model';
+import type { TaskDocument, Comment, UserDocument } from '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
   taskAcceptConfirmKeyboard,
@@ -27,6 +33,8 @@ import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
 import TaskSyncController from '../controllers/taskSync.controller';
 import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
+import { buildCommentHtml } from '../tasks/taskComments';
+import { ACCESS_ADMIN } from '../utils/accessMask';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -65,6 +73,7 @@ class CancellationRequestError extends Error {
 }
 
 const cancelRequestSessions = new Map<number, CancelRequestSession>();
+const commentSessions = new Map<number, { taskId: string; identifier: string }>();
 const HISTORY_ALERT_LIMIT = 190;
 const CANCEL_REASON_MIN_LENGTH = 50;
 const CANCEL_REASON_MAX_LENGTH = 2000;
@@ -603,6 +612,17 @@ const collectTaskUserIds = (
     });
   });
   return Array.from(ids);
+};
+
+const hasAdminPrivileges = (user: UserDocument | null): boolean => {
+  if (!user) {
+    return false;
+  }
+  if (user.role === 'admin') {
+    return true;
+  }
+  const mask = typeof user.access === 'number' ? user.access : 0;
+  return (mask & ACCESS_ADMIN) === ACCESS_ADMIN;
 };
 
 const buildUsersIndex = async (
@@ -1274,6 +1294,62 @@ bot.action(/^task_history:.+$/, async (ctx) => {
   }
 });
 
+bot.action(/^task_comment_prompt:.+$/, async (ctx) => {
+  const data = getCallbackData(ctx.callbackQuery);
+  const taskId = getTaskIdFromCallback(data);
+  if (!taskId) {
+    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+      show_alert: true,
+    });
+    return;
+  }
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+      show_alert: true,
+    });
+    return;
+  }
+  try {
+    const context = await loadTaskContext(taskId);
+    const plain = context.plain;
+    if (!plain) {
+      await ctx.answerCbQuery(messages.taskNotFound, {
+        show_alert: true,
+      });
+      return;
+    }
+    const userRecord = await getUser(userId);
+    const allowed =
+      hasAdminPrivileges(userRecord) ||
+      isTaskCreator(plain, userId) ||
+      isTaskExecutor(plain, userId);
+    if (!allowed) {
+      await ctx.answerCbQuery(messages.taskPermissionError, {
+        show_alert: true,
+      });
+      return;
+    }
+    const identifier = getTaskIdentifier(plain) ?? `#${taskId}`;
+    commentSessions.set(userId, { taskId, identifier });
+    try {
+      await bot.telegram.sendMessage(
+        userId,
+        `${messages.enterComment}. Задача: ${identifier}`,
+      );
+    } catch (error) {
+      commentSessions.delete(userId);
+      console.error('Не удалось отправить запрос комментария', error);
+      await ctx.answerCbQuery(messages.commentStartError, { show_alert: true });
+      return;
+    }
+    await ctx.answerCbQuery(messages.commentPromptSent);
+  } catch (error) {
+    console.error('Не удалось подготовить ввод комментария', error);
+    await ctx.answerCbQuery(messages.commentStartError, { show_alert: true });
+  }
+});
+
 bot.action('task_accept_prompt', async (ctx) => {
   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
 });
@@ -1670,6 +1746,91 @@ if (!registerTextHandler) {
   registerTextHandler('text', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) {
+      return;
+    }
+    const commentSession = commentSessions.get(userId);
+    if (commentSession) {
+      if (ctx.chat?.type !== 'private') {
+        return;
+      }
+      const messageText =
+        typeof ctx.message?.text === 'string' ? ctx.message.text : '';
+      const normalizedComment = messageText.replace(/\r\n/g, '\n').trim();
+      if (!normalizedComment) {
+        await ctx.reply(messages.enterComment);
+        return;
+      }
+      try {
+        const task = await getTask(commentSession.taskId);
+        if (!task) {
+          commentSessions.delete(userId);
+          await ctx.reply(messages.taskNotFound);
+          return;
+        }
+        const existing: Comment[] = Array.isArray(task.comments)
+          ? [...(task.comments as Comment[])]
+          : [];
+        const entry: Comment = {
+          author_id: userId,
+          text: normalizedComment,
+          created_at: new Date(),
+        };
+        const nextEntries = [...existing, entry];
+        const authorIds = new Set<number>();
+        nextEntries.forEach((item) => {
+          const numeric = Number(item.author_id);
+          if (Number.isFinite(numeric)) {
+            authorIds.add(numeric);
+          }
+        });
+        const usersRaw = await getUsersMap(Array.from(authorIds));
+        const authorMeta: Record<number, { name?: string; username?: string }> = {};
+        Object.entries(usersRaw ?? {}).forEach(([key, value]) => {
+          const numeric = Number(key);
+          if (!Number.isFinite(numeric)) {
+            return;
+          }
+          const name =
+            typeof value?.name === 'string' && value.name.trim()
+              ? value.name.trim()
+              : undefined;
+          const username =
+            typeof value?.username === 'string' && value.username.trim()
+              ? value.username.trim()
+              : undefined;
+          authorMeta[numeric] = { name, username };
+        });
+        const fallbackNames: Record<number, string> = {};
+        const nameParts = [ctx.from?.first_name, ctx.from?.last_name]
+          .map((part) => (typeof part === 'string' ? part.trim() : ''))
+          .filter((part) => part.length > 0);
+        const fallbackName =
+          nameParts.join(' ').trim() ||
+          (ctx.from?.username ? `@${ctx.from.username}` : '') ||
+          String(userId);
+        fallbackNames[userId] = fallbackName;
+        const commentHtml = buildCommentHtml(nextEntries, {
+          users: authorMeta,
+          fallbackNames,
+        });
+        const updated = await updateTaskRecord(
+          commentSession.taskId,
+          { comment: commentHtml, comments: nextEntries },
+          userId,
+        );
+        if (!updated) {
+          commentSessions.delete(userId);
+          await ctx.reply(messages.taskNotFound);
+          return;
+        }
+        commentSessions.delete(userId);
+        await ctx.reply(messages.commentSaved);
+        await taskSyncController.syncAfterChange(commentSession.taskId, updated);
+      } catch (error) {
+        commentSessions.delete(userId);
+        console.error('Не удалось сохранить комментарий задачи', error);
+        await ctx.reply(messages.commentSaveError);
+      }
       return;
     }
     const session = cancelRequestSessions.get(userId);

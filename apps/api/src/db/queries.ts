@@ -15,6 +15,8 @@ import {
   TaskTemplate,
   TaskTemplateDocument,
   HistoryEntry,
+  Comment,
+  Attachment,
   type TaskKind,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
@@ -59,6 +61,7 @@ function normalizeAttachmentsField(
   }
   target.attachments = normalized;
 }
+
 
 const ensureDate = (value: unknown): Date | undefined => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -214,6 +217,7 @@ async function enrichAttachmentsFromContent(
     });
   });
   return attachments;
+
 }
 
 const REQUEST_TYPE_NAME = 'Заявка';
@@ -316,6 +320,7 @@ export async function createTask(
 ): Promise<TaskDocument> {
   const payload: Partial<TaskDocument> = data ? { ...data } : {};
   normalizeAttachmentsField(payload as Record<string, unknown>);
+  await enrichAttachmentsFromContent(payload, null);
   const entry = {
     changed_at: new Date(),
     changed_by: payload.created_by || 0,
@@ -365,6 +370,7 @@ export async function updateTask(
     (data as Partial<TaskDocument>).attachments =
       enrichedAttachments as TaskDocument['attachments'];
   }
+
   const kind = detectTaskKind(prev);
   const creatorId = Number(prev.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
@@ -404,6 +410,26 @@ export async function updateTask(
   }
   const from: Record<string, unknown> = {};
   const to: Record<string, unknown> = {};
+  const shouldAutoAppendComment =
+    Object.prototype.hasOwnProperty.call(data, 'comment') &&
+    !Object.prototype.hasOwnProperty.call(data, 'comments');
+  if (shouldAutoAppendComment) {
+    const nextComment =
+      typeof data.comment === 'string' ? data.comment.trim() : '';
+    const previousComment =
+      typeof prev.comment === 'string' ? prev.comment.trim() : '';
+    if (nextComment && nextComment !== previousComment) {
+      const commentEntry = {
+        author_id: userId,
+        text: nextComment,
+        created_at: new Date(),
+      } satisfies Comment;
+      const existing = Array.isArray(prev.comments)
+        ? (prev.comments as Comment[])
+        : [];
+      data.comments = [...existing, commentEntry];
+    }
+  }
   Object.entries(data).forEach(([k, v]) => {
     const oldVal = (prev as unknown as Record<string, unknown>)[k];
     if (oldVal !== v) {
@@ -432,6 +458,8 @@ export async function updateTask(
     { new: true },
   );
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
+    await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+  } else if (updated && attachmentsFromContent) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
   }
   return updated;

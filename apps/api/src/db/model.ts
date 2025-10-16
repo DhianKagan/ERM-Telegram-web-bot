@@ -258,6 +258,7 @@ export interface TaskAttrs {
   telegram_photos_message_id?: number;
   telegram_photos_chat_id?: string | number;
   telegram_photos_topic_id?: number;
+  telegram_comment_message_id?: number;
   telegram_message_cleanup?: {
     chat_id: string | number;
     message_id: number;
@@ -396,6 +397,7 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_photos_message_id: Number,
     telegram_photos_chat_id: String,
     telegram_photos_topic_id: Number,
+    telegram_comment_message_id: Number,
     telegram_message_cleanup: Schema.Types.Mixed,
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },

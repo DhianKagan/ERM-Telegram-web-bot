@@ -27,7 +27,10 @@ import { type Task as SharedTask } from 'shared';
 import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
 import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
-import taskStatusKeyboard, { taskStatusInlineMarkup } from '../utils/taskButtons';
+import taskStatusKeyboard, {
+  taskStatusInlineMarkup,
+  type TaskStatusKeyboardExtras,
+} from '../utils/taskButtons';
 import formatTask, {
   type InlineImage,
   type FormatTaskSection,
@@ -42,6 +45,7 @@ import {
   resolveTaskTypePhotosTarget,
 } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
+import { syncCommentMessage } from '../tasks/taskComments';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -853,7 +857,10 @@ export default class TasksController {
       if (!editMarkup) {
         return;
       }
-      const extras = albumLink ? { albumLink } : undefined;
+      const extras: TaskStatusKeyboardExtras = {
+        ...(albumLink ? { albumLink } : {}),
+        showCommentButton: true,
+      };
       const markup = taskStatusInlineMarkup(taskId, status, { kind }, extras);
       await editMarkup(chatId, messageId, undefined, markup);
     } catch (error) {
@@ -1844,6 +1851,9 @@ export default class TasksController {
     const previousPhotosMessageId = this.toMessageId(
       previousPlain?.telegram_photos_message_id,
     );
+    const previousCommentMessageId = this.toMessageId(
+      previousPlain?.telegram_comment_message_id,
+    );
 
     const recipients = this.collectNotificationTargets(plain, actorId);
     let users: Record<number, { name: string; username: string }> = {};
@@ -1867,6 +1877,7 @@ export default class TasksController {
         ? (plain.status as SharedTask['status'])
         : undefined,
       { kind },
+      { showCommentButton: true },
     );
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
@@ -1892,6 +1903,7 @@ export default class TasksController {
     let photosChatId: string | undefined;
     let photosTopicId: number | undefined;
     let albumLinkForKeyboard: string | null = null;
+    let commentMessageId: number | undefined;
 
     if (groupChatId) {
       try {
@@ -1912,6 +1924,9 @@ export default class TasksController {
           }
           if (typeof previousPlain.telegram_status_message_id === 'number') {
             cleanupTargets.add(previousPlain.telegram_status_message_id);
+          }
+          if (typeof previousPlain.telegram_comment_message_id === 'number') {
+            cleanupTargets.add(previousPlain.telegram_comment_message_id);
           }
           if (previousMessageId) {
             await this.deleteTaskMessageSafely(
@@ -2117,11 +2132,11 @@ export default class TasksController {
           normalizedAttachmentsChatId
         ) {
           await delay(ALBUM_MESSAGE_DELAY_MS);
-        }
+      }
 
-        if (
-          groupMessageId &&
-          groupChatId &&
+      if (
+        groupMessageId &&
+        groupChatId &&
           docId &&
           typeof docId === 'string'
         ) {
@@ -2137,11 +2152,54 @@ export default class TasksController {
             kind,
             albumLinkForKeyboard,
           );
-        }
-
-      } catch (error) {
-        console.error('Не удалось отправить уведомление в группу', error);
       }
+
+    } catch (error) {
+      console.error('Не удалось отправить уведомление в группу', error);
+    }
+  }
+
+    if (groupChatId) {
+      const baseMessageId =
+        typeof groupMessageId === 'number'
+          ? groupMessageId
+          : this.toMessageId(plain.telegram_message_id);
+      const commentContent =
+        typeof plain.comment === 'string' ? plain.comment : '';
+      try {
+        if (commentContent.trim() && typeof baseMessageId === 'number') {
+          commentMessageId = await syncCommentMessage({
+            bot,
+            chatId: groupChatId,
+            topicId,
+            replyTo: baseMessageId,
+            messageId: previousCommentMessageId ?? undefined,
+            commentHtml: commentContent,
+            detectors: {
+              notModified: this.isMessageNotModifiedError.bind(this),
+              missingOnEdit: this.isMessageMissingOnEditError.bind(this),
+              missingOnDelete: this.isMessageMissingOnDeleteError.bind(this),
+            },
+          });
+        } else if (typeof previousCommentMessageId === 'number') {
+          await syncCommentMessage({
+            bot,
+            chatId: groupChatId,
+            topicId,
+            messageId: previousCommentMessageId,
+            commentHtml: '',
+            detectors: {
+              missingOnDelete: this.isMessageMissingOnDeleteError.bind(this),
+            },
+          });
+          commentMessageId = undefined;
+        }
+      } catch (error) {
+        console.error('Не удалось синхронизировать комментарий задачи', error);
+        commentMessageId = previousCommentMessageId ?? undefined;
+      }
+    } else {
+      commentMessageId = previousCommentMessageId ?? undefined;
     }
 
     if (groupMessageId) {
@@ -2152,6 +2210,11 @@ export default class TasksController {
     delete plain.telegram_summary_message_id;
     delete plain.telegram_history_message_id;
     delete plain.telegram_status_message_id;
+    if (typeof commentMessageId === 'number') {
+      plain.telegram_comment_message_id = commentMessageId;
+    } else {
+      delete plain.telegram_comment_message_id;
+    }
     plain.telegram_preview_message_ids = previewMessageIds;
     plain.telegram_attachments_message_ids = attachmentMessageIds;
     if (typeof photosMessageId === 'number' && photosChatId) {
@@ -2250,6 +2313,11 @@ export default class TasksController {
       unsetPayload.telegram_photos_message_id = '';
       unsetPayload.telegram_photos_chat_id = '';
       unsetPayload.telegram_photos_topic_id = '';
+    }
+    if (typeof commentMessageId === 'number') {
+      setPayload.telegram_comment_message_id = commentMessageId;
+    } else {
+      unsetPayload.telegram_comment_message_id = '';
     }
     if (directMessages.length) {
       setPayload.telegram_dm_message_ids = directMessages;
@@ -2716,6 +2784,11 @@ export default class TasksController {
     );
     registerMessage(
       this.toMessageId(plain.telegram_summary_message_id),
+      topicId,
+      topicId,
+    );
+    registerMessage(
+      this.toMessageId(plain.telegram_comment_message_id),
       topicId,
       topicId,
     );

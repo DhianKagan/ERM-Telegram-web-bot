@@ -14,6 +14,8 @@ import {
   TaskTemplate,
   TaskTemplateDocument,
   HistoryEntry,
+  Comment,
+  Attachment,
   type TaskKind,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';
@@ -57,6 +59,95 @@ function normalizeAttachmentsField(
     return;
   }
   target.attachments = normalized;
+}
+
+const FILE_LINK_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/gi;
+
+const collectInlineFileIds = (html: unknown): string[] => {
+  if (typeof html !== 'string') {
+    return [];
+  }
+  const ids = new Set<string>();
+  let match: RegExpExecArray | null;
+  FILE_LINK_REGEXP.lastIndex = 0;
+  while ((match = FILE_LINK_REGEXP.exec(html)) !== null) {
+    const id = match[1]?.toLowerCase();
+    if (id) {
+      ids.add(id);
+    }
+  }
+  return Array.from(ids);
+};
+
+async function enrichAttachmentsFromContent(
+  payload: Partial<TaskDocument>,
+  previous: TaskDocument | null,
+): Promise<boolean> {
+  const sources: string[] = [];
+  if (typeof payload.task_description === 'string') {
+    sources.push(payload.task_description);
+  }
+  if (typeof payload.comment === 'string') {
+    sources.push(payload.comment);
+  }
+  if (!sources.length) {
+    return false;
+  }
+  const inlineIds = new Set<string>();
+  sources.forEach((source) => {
+    collectInlineFileIds(source).forEach((id) => inlineIds.add(id));
+  });
+  if (!inlineIds.size) {
+    return false;
+  }
+
+  const currentAttachments: Attachment[] = Array.isArray(payload.attachments)
+    ? [...(payload.attachments as Attachment[])]
+    : Array.isArray(previous?.attachments)
+      ? [...(previous!.attachments as Attachment[])]
+      : [];
+
+  const existingIds = new Set(
+    extractAttachmentIds(currentAttachments).map((id) => id.toHexString().toLowerCase()),
+  );
+  const missingIds = Array.from(inlineIds).filter((id) => !existingIds.has(id));
+  if (!missingIds.length) {
+    if (Array.isArray(payload.attachments)) {
+      payload.attachments = currentAttachments;
+    }
+    return false;
+  }
+
+  const files = await File.find({ _id: { $in: missingIds } })
+    .lean()
+    .catch(() => [] as Attachment[]);
+
+  files.forEach((fileDoc) => {
+    if (!fileDoc) {
+      return;
+    }
+    const identifier = String((fileDoc as { _id: unknown })._id ?? '').trim();
+    if (!identifier) {
+      return;
+    }
+    const url = `/api/v1/files/${identifier}`;
+    currentAttachments.push({
+      name: fileDoc.name,
+      url,
+      thumbnailUrl: fileDoc.thumbnailPath ? `/uploads/${fileDoc.thumbnailPath}` : undefined,
+      uploadedBy: fileDoc.userId,
+      uploadedAt: fileDoc.uploadedAt,
+      type: fileDoc.type,
+      size: fileDoc.size,
+    });
+  });
+
+  payload.attachments = currentAttachments;
+  payload.files = currentAttachments
+    .map((item) => (typeof item?.url === 'string' ? item.url : null))
+    .filter((value): value is string => typeof value === 'string');
+
+  return true;
 }
 
 const REQUEST_TYPE_NAME = 'Заявка';
@@ -159,6 +250,7 @@ export async function createTask(
 ): Promise<TaskDocument> {
   const payload: Partial<TaskDocument> = data ? { ...data } : {};
   normalizeAttachmentsField(payload as Record<string, unknown>);
+  await enrichAttachmentsFromContent(payload, null);
   const entry = {
     changed_at: new Date(),
     changed_by: payload.created_by || 0,
@@ -200,6 +292,7 @@ export async function updateTask(
   normalizeAttachmentsField(data as Record<string, unknown>);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const attachmentsFromContent = await enrichAttachmentsFromContent(data, prev);
   const kind = detectTaskKind(prev);
   const creatorId = Number(prev.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
@@ -239,6 +332,26 @@ export async function updateTask(
   }
   const from: Record<string, unknown> = {};
   const to: Record<string, unknown> = {};
+  const shouldAutoAppendComment =
+    Object.prototype.hasOwnProperty.call(data, 'comment') &&
+    !Object.prototype.hasOwnProperty.call(data, 'comments');
+  if (shouldAutoAppendComment) {
+    const nextComment =
+      typeof data.comment === 'string' ? data.comment.trim() : '';
+    const previousComment =
+      typeof prev.comment === 'string' ? prev.comment.trim() : '';
+    if (nextComment && nextComment !== previousComment) {
+      const commentEntry = {
+        author_id: userId,
+        text: nextComment,
+        created_at: new Date(),
+      } satisfies Comment;
+      const existing = Array.isArray(prev.comments)
+        ? (prev.comments as Comment[])
+        : [];
+      data.comments = [...existing, commentEntry];
+    }
+  }
   Object.entries(data).forEach(([k, v]) => {
     const oldVal = (prev as unknown as Record<string, unknown>)[k];
     if (oldVal !== v) {
@@ -267,6 +380,8 @@ export async function updateTask(
     { new: true },
   );
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
+    await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+  } else if (updated && attachmentsFromContent) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
   }
   return updated;

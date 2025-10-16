@@ -16,7 +16,6 @@ import {
   TaskTemplateDocument,
   HistoryEntry,
   Comment,
-  Attachment,
   type TaskKind,
 } from './model';
 import * as logEngine from '../services/wgLogEngine';

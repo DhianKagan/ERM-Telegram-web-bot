@@ -290,9 +290,9 @@ export async function updateTask(
     delete (data as Record<string, unknown>).kind;
   }
   normalizeAttachmentsField(data as Record<string, unknown>);
-  const attachmentsFromContent = await enrichAttachmentsFromContent(data, prev);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const attachmentsFromContent = await enrichAttachmentsFromContent(data, prev);
   const kind = detectTaskKind(prev);
   const creatorId = Number(prev.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;

@@ -1,6 +1,6 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, @hello-pangea/dnd, сервис задач
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 
@@ -10,14 +10,17 @@ import { cn } from "@/lib/utils";
 import TaskCard from "./components/TaskCard";
 import TaskDialog from "./components/TaskDialog";
 import { fetchKanban, updateTaskStatus } from "./services/tasks";
+import type { Task } from "shared";
 
 const columns = ["Новая", "В работе", "Выполнена"];
 
-interface KanbanTask {
-  _id: string;
-  status: string;
-  title: string;
-}
+type KanbanTask = Task & {
+  dueDate?: string;
+  due_date?: string;
+  due?: string;
+  request_id?: string;
+  task_number?: string;
+};
 
 export default function TaskBoard() {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
@@ -37,6 +40,18 @@ export default function TaskBoard() {
     );
   };
 
+  const openTaskDialog = useCallback(
+    (taskId: string) => {
+      const trimmed = String(taskId || "").trim();
+      if (!trimmed) return;
+      const next = new URLSearchParams(params);
+      next.set("task", trimmed);
+      next.delete("newTask");
+      setParams(next);
+    },
+    [params, setParams],
+  );
+
   return (
     <div className="p-4">
       <div className="mb-4 flex flex-col gap-2 md:flex-row">
@@ -48,8 +63,10 @@ export default function TaskBoard() {
         </Link>
         <Button
           onClick={() => {
-            params.set("newTask", "1");
-            setParams(params);
+            const next = new URLSearchParams(params);
+            next.set("newTask", "1");
+            next.delete("task");
+            setParams(next);
           }}
         >
           Новая задача
@@ -71,17 +88,17 @@ export default function TaskBoard() {
                     .map((t, i) => (
                       <Draggable key={t._id} draggableId={t._id} index={i}>
                         {(prov) => (
-                          <div
-                            ref={prov.innerRef}
-                            {...prov.draggableProps}
-                            {...prov.dragHandleProps}
-                          >
-                            <TaskCard task={t} />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                  {provided.placeholder}
+                      <div
+                        ref={prov.innerRef}
+                        {...prov.draggableProps}
+                        {...prov.dragHandleProps}
+                      >
+                        <TaskCard task={t} onOpen={openTaskDialog} />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+              {provided.placeholder}
                 </div>
               )}
             </Droppable>
@@ -91,8 +108,9 @@ export default function TaskBoard() {
       {open && (
         <TaskDialog
           onClose={() => {
-            params.delete("newTask");
-            setParams(params);
+            const next = new URLSearchParams(params);
+            next.delete("newTask");
+            setParams(next);
           }}
           onSave={() => {
             fetchKanban().then(setTasks);

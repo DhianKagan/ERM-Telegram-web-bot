@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import TaskCard from "./components/TaskCard";
 import TaskDialog from "./components/TaskDialog";
+import useTasks from "./context/useTasks";
 import { fetchKanban, updateTaskStatus } from "./services/tasks";
 import type { Task } from "shared";
 
@@ -26,10 +27,19 @@ export default function TaskBoard() {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [params, setParams] = useSearchParams();
   const open = params.get("newTask") !== null;
+  const { version } = useTasks();
 
   useEffect(() => {
-    fetchKanban().then(setTasks);
-  }, []);
+    let active = true;
+    fetchKanban()
+      .then((list) => {
+        if (active) setTasks(list);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [version]);
 
   const onDragEnd = async ({ destination, draggableId }) => {
     if (!destination) return;

@@ -5,6 +5,7 @@ const DataTable = lazy(() => import("./DataTable"));
 import taskColumns, { TaskRow } from "../columns/taskColumns";
 import useTasks from "../context/useTasks";
 import coerceTaskId from "../utils/coerceTaskId";
+import matchTaskQuery from "../utils/matchTaskQuery";
 
 type EntityKind = "task" | "request";
 
@@ -50,11 +51,7 @@ export default function TaskTable({
       <DataTable<TaskRow>
         columns={columns}
         data={tasks.filter((t) => {
-          if (
-            query &&
-            !JSON.stringify(t).toLowerCase().includes(query.toLowerCase())
-          )
-            return false;
+          if (query && !matchTaskQuery(t, query, users)) return false;
           if (filters.status.length && !filters.status.includes(t.status))
             return false;
           if (

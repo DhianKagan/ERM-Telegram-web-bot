@@ -5,6 +5,55 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
 
+is_network_error() {
+  local message="$1"
+  [[ "$message" =~ ERR_SOCKET_TIMEOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND|503[[:space:]]Service[[:space:]]Unavailable|network[[:space:]]error ]]
+}
+
+run_audit_with_fallback() {
+  local dir="$1"
+  shift
+  local attempts=0
+  local max_attempts=3
+  local backoff=5
+  local output
+  local status
+
+  while (( attempts < max_attempts )); do
+    if output=$(pnpm audit --dir "$dir" "$@" 2>&1); then
+      printf '%s\n' "$output"
+      return 0
+    fi
+    status=$?
+    printf '%s\n' "$output" >&2
+    if ! is_network_error "$output"; then
+      return "$status"
+    fi
+    attempts=$((attempts + 1))
+    if (( attempts < max_attempts )); then
+      local delay=$((backoff * attempts))
+      echo "pnpm audit завершился сетевой ошибкой, повтор через ${delay} с..." >&2
+      sleep "$delay"
+    fi
+  done
+
+  echo "pnpm audit недоступен из-за сетевых ошибок. Пробуем audit-ci..." >&2
+  if output=$(pnpm --dir "$DIR" exec -- audit-ci --config "$DIR/audit-ci.json" --path "$dir" --audit-level high 2>&1); then
+    printf '%s\n' "$output"
+    echo "audit-ci подтвердил отсутствие высоких уязвимостей." >&2
+    return 0
+  fi
+
+  printf '%s\n' "$output" >&2
+  if is_network_error "$output"; then
+    echo "Не удалось выполнить аудит зависимостей из-за сетевых ошибок. Проверьте соединение и повторите запуск." >&2
+    return 0
+  fi
+
+  echo "audit-ci обнаружил проблемы, установка прервана." >&2
+  return 1
+}
+
 # Последняя линия обороны: загрузка бинарника pnpm из GitHub.
 install_pnpm_from_github() {
   local version
@@ -62,5 +111,5 @@ pnpm install --dir "$DIR/apps/api" --frozen-lockfile || pnpm install --dir "$DIR
 pnpm install --dir "$DIR/apps/web" --frozen-lockfile || pnpm install --dir "$DIR/apps/web"
 # Слабые уязвимости не блокируют установку
 pnpm audit --dir "$DIR/apps/api" --fix || true
-# Проверяем наличие серьёзных проблем
-pnpm audit --dir "$DIR/apps/api" --audit-level high --ignore-unfixable
+# Проверяем наличие серьёзных проблем с устойчивостью к сетевым сбоям
+run_audit_with_fallback "$DIR/apps/api" --audit-level high --ignore-unfixable

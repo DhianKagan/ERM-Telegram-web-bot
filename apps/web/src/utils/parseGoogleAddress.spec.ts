@@ -18,4 +18,9 @@ describe("parseGoogleAddress", () => {
     const invalid = "not a url";
     expect(parseGoogleAddress(invalid)).toBe(invalid);
   });
+
+  test("возвращает заглушку, когда название не найдено", () => {
+    const coordsUrl = "https://www.google.com/maps/@50.4501,30.5234,17z";
+    expect(parseGoogleAddress(coordsUrl)).toBe("Тока на карте");
+  });
 });

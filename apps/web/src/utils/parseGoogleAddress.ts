@@ -2,7 +2,7 @@
  * Назначение файла: извлекает короткий адрес из ссылки Google Maps.
  * Основные модули: parseGoogleAddress.
  */
-const GOOGLE_LABEL_FALLBACK = "Тока на карте";
+const GOOGLE_LABEL_FALLBACK = "Точка на карте";
 
 const isGoogleHost = (candidate: string): boolean => {
   if (!candidate) {

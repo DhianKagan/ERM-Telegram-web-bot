@@ -758,6 +758,56 @@ describe("CollectionsPage", () => {
     expect(within(usersPanel).getByText("operator")).toBeInTheDocument();
   });
 
+  it("находит сотрудника по фамилии из карточки", async () => {
+    mockedFetchAll.mockImplementation(async (type: string) => {
+      if (type === "employees") {
+        return [
+          {
+            _id: "emp-card",
+            type: "employees",
+            name: "",
+            value: JSON.stringify({
+              telegram_id: 404,
+              username: "petrov",
+              firstName: "Иван",
+              lastName: "Петров",
+            }),
+            meta: {
+              departmentId: "dep-1",
+              divisionId: "div-1",
+            },
+          },
+        ] as CollectionItem[];
+      }
+      const byType = dataset[type] ?? {};
+      const defaultEntry = byType[""] ?? { items: [] };
+      return (defaultEntry.items ?? []) as CollectionItem[];
+    });
+
+    mockedFetchUsers.mockResolvedValueOnce([
+      { telegram_id: 404, username: "404", role: "user" } as User,
+    ]);
+
+    render(<CollectionsPage />);
+
+    await screen.findByText("Главный департамент");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+
+    const employeesPanel = await screen.findByTestId("tab-content-employees");
+    const rowsContainer = within(employeesPanel).getByTestId("data-table-rows");
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+
+    const searchInput = within(employeesPanel).getByPlaceholderText("Имя или логин");
+    fireEvent.change(searchInput, { target: { value: "Петров" } });
+
+    fireEvent.click(within(employeesPanel).getByRole("button", { name: "Искать" }));
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+    expect(within(employeesPanel).getByText("Петров Иван")).toBeInTheDocument();
+  });
+
   it("показывает подсказку, если департамент сохраняют без отделов", async () => {
     const { parseErrorMessage } = jest.requireActual(
       "../../services/collections",

@@ -1,6 +1,7 @@
 // Назначение: страница управления коллекциями настроек
-// Основные модули: React, Tabs, services/collections
+// Основные модули: React, match-sorter, Tabs, services/collections
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { matchSorter, rankings } from "match-sorter";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -553,8 +554,27 @@ const collectEmployeeDetails = (
     details.username = username;
   }
   const name = pickString(combined, ["name", "fullName"], item.name);
+  const firstName = pickString(combined, ["firstName", "first_name"]);
+  const lastName = pickString(combined, [
+    "lastName",
+    "last_name",
+    "surname",
+    "familyName",
+  ]);
+  const middleName = pickString(combined, [
+    "middleName",
+    "middle_name",
+    "patronymic",
+  ]);
   if (name) {
     details.name = name;
+  } else {
+    const parts = [lastName, firstName, middleName].filter(
+      (part): part is string => typeof part === "string" && part.trim().length > 0,
+    );
+    if (parts.length) {
+      details.name = parts.join(" ");
+    }
   }
   const phone = pickString(combined, ["phone", "phone_number", "phoneNumber"]);
   if (phone) {
@@ -703,6 +723,49 @@ const mergeEmployeeDetails = (
     result.permissions = details.permissions.slice();
   }
   return result;
+};
+
+const TOKEN_SPLIT_REGEX = /[\s,.;:/\\|_-]+/u;
+
+const buildUserSearchTokens = (user: User): string[] => {
+  const tokens = new Set<string>();
+  const addValue = (value?: string | number | null) => {
+    if (value === undefined || value === null) return;
+    let text: string;
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) return;
+      text = String(value);
+    } else if (typeof value === "string") {
+      text = value.trim();
+    } else {
+      return;
+    }
+    if (!text) return;
+    tokens.add(text);
+    text
+      .split(TOKEN_SPLIT_REGEX)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0)
+      .forEach((part) => tokens.add(part));
+  };
+
+  addValue(user.username ?? undefined);
+  addValue(user.telegram_username ?? undefined);
+  addValue(user.telegram_id ?? undefined);
+  addValue(user.name ?? undefined);
+  addValue(user.phone ?? undefined);
+  addValue(user.mobNumber ?? undefined);
+  addValue(user.email ?? undefined);
+  addValue(user.role ?? undefined);
+  addValue(user.roleName ?? undefined);
+  addValue(user.departmentName ?? undefined);
+  addValue(user.divisionName ?? undefined);
+  addValue(user.positionName ?? undefined);
+  if (Array.isArray(user.permissions)) {
+    user.permissions.forEach((permission) => addValue(permission));
+  }
+
+  return Array.from(tokens);
 };
 
 const findEmployeeDetails = (
@@ -1374,6 +1437,11 @@ export default function CollectionsPage() {
     [employeeDetailsIndex],
   );
 
+  const enrichedUsers = useMemo(
+    () => users.map((user) => enrichUserWithEmployeeDetails(user)),
+    [users, enrichUserWithEmployeeDetails],
+  );
+
   const roleMap = useMemo(() => {
     const map = new Map<string, string>();
     allRoles.forEach((role) => map.set(role._id, role.name));
@@ -1591,17 +1659,35 @@ export default function CollectionsPage() {
   );
 
   const totalPages = Math.ceil(total / limit) || 1;
-  const filteredUsers = users.filter((u) => {
-    const q = userQuery.toLowerCase();
-    const login = (u.username ?? "").toLowerCase();
-    const telegramLogin = u.telegram_username?.toLowerCase() ?? "";
-    return (
-      !q ||
-      login.includes(q) ||
-      telegramLogin.includes(q) ||
-      u.name?.toLowerCase().includes(q)
-    );
-  });
+  const filteredUsers = useMemo(() => {
+    const trimmed = userQuery.trim();
+    if (!trimmed) {
+      return enrichedUsers;
+    }
+    return matchSorter<User>(enrichedUsers, trimmed, {
+      keys: [
+        {
+          key: (item: User) => item.username ?? "",
+          threshold: rankings.STARTS_WITH,
+        },
+        {
+          key: (item: User) => item.telegram_username ?? "",
+          threshold: rankings.STARTS_WITH,
+        },
+        {
+          key: (item: User) =>
+            item.telegram_id !== undefined && item.telegram_id !== null
+              ? String(item.telegram_id)
+              : "",
+          threshold: rankings.STARTS_WITH,
+        },
+        {
+          key: (item: User) => buildUserSearchTokens(item),
+          threshold: rankings.CONTAINS,
+        },
+      ],
+    });
+  }, [userQuery, enrichedUsers]);
   const userTotalPages = Math.ceil(filteredUsers.length / limit) || 1;
   const paginatedUsers = filteredUsers.slice(
     (userPage - 1) * limit,
@@ -1676,9 +1762,11 @@ export default function CollectionsPage() {
 
   const selectedEmployee = useMemo(() => {
     if (!selectedEmployeeId) return undefined;
-    const base = users.find((u) => String(u.telegram_id) === selectedEmployeeId);
+    const base = enrichedUsers.find(
+      (u) => String(u.telegram_id) === selectedEmployeeId,
+    );
     if (base) {
-      return enrichUserWithEmployeeDetails(base);
+      return base;
     }
     const fallbackDetails = findEmployeeDetails(
       undefined,
@@ -1702,12 +1790,7 @@ export default function CollectionsPage() {
       fallbackUser.telegram_username = fallbackDetails.telegram_username;
     }
     return mergeEmployeeDetails(fallbackUser, fallbackDetails);
-  }, [
-    employeeDetailsIndex,
-    enrichUserWithEmployeeDetails,
-    selectedEmployeeId,
-    users,
-  ]);
+  }, [employeeDetailsIndex, enrichedUsers, selectedEmployeeId]);
 
   const selectedDepartmentDivisionNames = useMemo(() => {
     if (!selectedCollection || selectedCollection.type !== "departments") {
@@ -1751,7 +1834,7 @@ export default function CollectionsPage() {
     if (!selectedCollection || selectedCollection.type !== "divisions") {
       return [] as string[];
     }
-    return users
+    return enrichedUsers
       .filter((user) => user.divisionId === selectedCollection._id)
       .map((user) => {
         if (user.name && user.name.trim()) return user.name.trim();
@@ -1760,7 +1843,7 @@ export default function CollectionsPage() {
           return `ID ${user.telegram_id}`;
         return "Без имени";
       });
-  }, [selectedCollection, users]);
+  }, [selectedCollection, enrichedUsers]);
 
   return (
     <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">

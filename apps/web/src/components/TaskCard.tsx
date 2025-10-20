@@ -26,6 +26,15 @@ const numberBadgeClass =
     "dark:bg-slate-500/20 dark:ring-slate-400/30 sm:px-1.5 sm:text-[0.76rem]",
   ].join(" ");
 
+const entityBadgeClass =
+  [
+    "inline-flex max-w-full min-w-0 items-center gap-0.5",
+    "whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem]",
+    "font-semibold leading-tight text-slate-900 shadow-xs",
+    "ring-1 ring-slate-500/30 bg-slate-500/10 dark:text-slate-100",
+    "dark:bg-slate-500/20 dark:ring-slate-400/30 sm:px-1.5 sm:text-[0.76rem]",
+  ].join(" ");
+
 const resolveDueDate = (
   task: TaskCardProps["task"],
 ): string | null => {
@@ -61,25 +70,32 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const identifier = resolveIdentifier(task);
   const statusClass =
     getStatusBadgeClass(task.status) ?? `${fallbackBadgeClass} normal-case`;
+  const entityLabel =
+    typeof task.kind === "string" && task.kind.trim().toLowerCase() === "request"
+      ? "Заявка"
+      : "Задача";
 
   return (
     <div className="mb-2 rounded-lg bg-white p-3 shadow transition-shadow hover:shadow-md">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        {identifier ? (
-          <button
-            type="button"
-            className={`${numberBadgeClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
-            title={identifier.title}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen?.(task._id);
-            }}
-          >
-            <span className="truncate">{identifier.short}</span>
-          </button>
-        ) : (
-          <span className="text-xs text-gray-500">—</span>
-        )}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {identifier ? (
+            <button
+              type="button"
+              className={`${numberBadgeClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+              title={identifier.title}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen?.(task._id);
+              }}
+            >
+              <span className="truncate">{identifier.short}</span>
+            </button>
+          ) : (
+            <span className="text-xs text-gray-500">—</span>
+          )}
+          <span className={entityBadgeClass}>{entityLabel}</span>
+        </div>
         <span className={statusClass}>{task.status}</span>
       </div>
       <h4 className="mb-1 line-clamp-2 font-semibold text-slate-900">

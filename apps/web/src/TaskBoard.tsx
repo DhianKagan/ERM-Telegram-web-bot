@@ -83,33 +83,40 @@ export default function TaskBoard() {
         </Button>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex space-x-4 overflow-x-auto">
+        <div className="flex flex-col gap-6">
           {columns.map((key, idx) => (
-            <Droppable droppableId={String(idx)} key={key}>
+            <Droppable
+              droppableId={String(idx)}
+              key={key}
+              direction="horizontal"
+            >
               {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="w-64 rounded bg-gray-100 p-2"
-                >
-                  <h3 className="mb-2 font-bold">{key.replace("_", " ")}</h3>
-                  {tasks
-                    .filter((t) => t.status === key)
-                    .map((t, i) => (
-                      <Draggable key={t._id} draggableId={t._id} index={i}>
-                        {(prov) => (
-                      <div
-                        ref={prov.innerRef}
-                        {...prov.draggableProps}
-                        {...prov.dragHandleProps}
-                      >
-                        <TaskCard task={t} onOpen={openTaskDialog} />
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-              {provided.placeholder}
-                </div>
+                <section className="rounded-lg bg-gray-100 p-3">
+                  <h3 className="mb-3 font-semibold">{key.replace("_", " ")}</h3>
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="flex min-h-[11rem] gap-3 overflow-x-auto pb-1"
+                  >
+                    {tasks
+                      .filter((t) => t.status === key)
+                      .map((t, i) => (
+                        <Draggable key={t._id} draggableId={t._id} index={i}>
+                          {(prov) => (
+                            <div
+                              ref={prov.innerRef}
+                              {...prov.draggableProps}
+                              {...prov.dragHandleProps}
+                              className="w-72 min-w-[18rem] shrink-0"
+                            >
+                              <TaskCard task={t} onOpen={openTaskDialog} />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                    {provided.placeholder}
+                  </div>
+                </section>
               )}
             </Droppable>
           ))}

@@ -4,7 +4,7 @@ const messages = {
   accessOnlyGroup: 'Доступ разрешён только участникам группы',
   accessError: 'Ошибка проверки доступа',
   registered: 'Вы зарегистрированы в системе.',
-  welcomeBack: 'С возвращением!',
+  welcomeBack: 'Вы уже зарегистрированы в системе!',
   codeSent: 'Код подтверждения отправлен в Telegram',
   miniAppLinkText: 'Открыть приложение',
   idLabel: 'Ваш ID',

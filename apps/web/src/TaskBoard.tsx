@@ -1,6 +1,6 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, @hello-pangea/dnd, сервис задач
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 
@@ -28,6 +28,35 @@ export default function TaskBoard() {
   const [params, setParams] = useSearchParams();
   const open = params.get("newTask") !== null;
   const { version } = useTasks();
+  const totalTasks = tasks.length;
+  const layout = useMemo(() => {
+    if (totalTasks > 40) {
+      return {
+        template: "repeat(auto-fit, minmax(11.5rem, 1fr))",
+        gapClass: "gap-2",
+        cardMinWidth: "11.5rem",
+      } as const;
+    }
+    if (totalTasks > 28) {
+      return {
+        template: "repeat(auto-fit, minmax(12.5rem, 1fr))",
+        gapClass: "gap-3",
+        cardMinWidth: "12.5rem",
+      } as const;
+    }
+    if (totalTasks > 16) {
+      return {
+        template: "repeat(auto-fit, minmax(14rem, 1fr))",
+        gapClass: "gap-4",
+        cardMinWidth: "14rem",
+      } as const;
+    }
+    return {
+      template: "repeat(auto-fit, minmax(16rem, 1fr))",
+      gapClass: "gap-4",
+      cardMinWidth: "16rem",
+    } as const;
+  }, [totalTasks]);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +125,11 @@ export default function TaskBoard() {
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="flex min-h-[11rem] gap-3 overflow-x-auto pb-1"
+                    className={cn(
+                      "grid min-h-[11rem] pb-1",
+                      layout.gapClass,
+                    )}
+                    style={{ gridTemplateColumns: layout.template }}
                   >
                     {tasks
                       .filter((t) => t.status === key)
@@ -107,7 +140,11 @@ export default function TaskBoard() {
                               ref={prov.innerRef}
                               {...prov.draggableProps}
                               {...prov.dragHandleProps}
-                              className="w-72 min-w-[18rem] shrink-0"
+                              className="flex w-full min-w-0"
+                              style={{
+                                minWidth: layout.cardMinWidth,
+                                ...(prov.draggableProps.style ?? {}),
+                              }}
                             >
                               <TaskCard task={t} onOpen={openTaskDialog} />
                             </div>

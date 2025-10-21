@@ -2010,7 +2010,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       <div className="pointer-events-none absolute inset-0 overflow-y-auto">
         <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
           <div
-            className="pointer-events-auto relative mx-auto w-full max-w-screen-md space-y-4 rounded-xl bg-white p-4 shadow-lg"
+            className="pointer-events-auto relative mx-auto w-full max-w-6xl space-y-6 rounded-2xl bg-white p-4 shadow-lg sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby={dialogTitleId}
@@ -2071,7 +2071,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               </button>
             </div>
             <>
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium">
@@ -2110,7 +2110,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       )}
                     />
                   </div>
-                  <div className="space-y-3 rounded-xl border border-dashed border-gray-300 p-4">
+                  <div className="space-y-4 rounded-xl border border-dashed border-gray-300 p-5">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       <input
                         type="checkbox"
@@ -2124,7 +2124,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       {t("logisticsToggle")}
                     </label>
                     {showLogistics && (
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
                             className="block text-sm font-medium"
@@ -2609,8 +2609,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     />
                   )}
                 </div>
-                <aside className="space-y-5 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                  <div className="grid gap-3">
+                <aside className="space-y-5 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label
                         className="block text-sm font-medium"
@@ -2648,7 +2648,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       />
                     </div>
                   </div>
-                  <div className="grid gap-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium">
                         {t("taskType")}
@@ -2846,7 +2846,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           onClick={() => setPreviewAttachment(null)}
         >
           <div
-            className="relative max-h-[85vh] w-full max-w-4xl"
+            className="relative max-h-[85vh] w-full max-w-5xl"
             onClick={(event) => event.stopPropagation()}
           >
             <button

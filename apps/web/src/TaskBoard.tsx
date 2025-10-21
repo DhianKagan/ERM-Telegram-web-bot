@@ -1,6 +1,6 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, @hello-pangea/dnd, сервис задач
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 
@@ -28,6 +28,31 @@ export default function TaskBoard() {
   const [params, setParams] = useSearchParams();
   const open = params.get("newTask") !== null;
   const { version } = useTasks();
+  const totalTasks = tasks.length;
+  const layout = useMemo(() => {
+    if (totalTasks > 40) {
+      return {
+        gapClass: "gap-2",
+        cardClass: "md:max-w-[15rem]",
+      } as const;
+    }
+    if (totalTasks > 28) {
+      return {
+        gapClass: "gap-3",
+        cardClass: "md:max-w-[16rem]",
+      } as const;
+    }
+    if (totalTasks > 16) {
+      return {
+        gapClass: "gap-4",
+        cardClass: "md:max-w-[18rem]",
+      } as const;
+    }
+    return {
+      gapClass: "gap-4",
+      cardClass: "md:max-w-[20rem]",
+    } as const;
+  }, [totalTasks]);
 
   useEffect(() => {
     let active = true;
@@ -85,18 +110,17 @@ export default function TaskBoard() {
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col gap-6">
           {columns.map((key, idx) => (
-            <Droppable
-              droppableId={String(idx)}
-              key={key}
-              direction="horizontal"
-            >
+            <Droppable droppableId={String(idx)} key={key} direction="vertical">
               {(provided) => (
                 <section className="rounded-lg bg-gray-100 p-3">
                   <h3 className="mb-3 font-semibold">{key.replace("_", " ")}</h3>
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="flex min-h-[11rem] gap-3 overflow-x-auto pb-1"
+                    className={cn(
+                      "flex min-h-[11rem] flex-col pb-1",
+                      layout.gapClass,
+                    )}
                   >
                     {tasks
                       .filter((t) => t.status === key)
@@ -107,7 +131,11 @@ export default function TaskBoard() {
                               ref={prov.innerRef}
                               {...prov.draggableProps}
                               {...prov.dragHandleProps}
-                              className="w-72 min-w-[18rem] shrink-0"
+                              className={cn(
+                                "flex w-full min-w-0",
+                                layout.cardClass,
+                              )}
+                              style={{ ...(prov.draggableProps.style ?? {}) }}
                             >
                               <TaskCard task={t} onOpen={openTaskDialog} />
                             </div>

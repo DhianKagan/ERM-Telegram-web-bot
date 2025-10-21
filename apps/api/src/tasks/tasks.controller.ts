@@ -2601,7 +2601,10 @@ export default class TasksController {
         typeof previousTask.status === 'string'
           ? (previousTask.status as TaskDocument['status'])
           : undefined;
-      if (currentStatus && currentStatus !== 'Новая') {
+      const isCreator =
+        Number.isFinite(Number(req.user?.id)) &&
+        Number(previousTask.created_by) === Number(req.user?.id);
+      if (currentStatus && currentStatus !== 'Новая' && !isCreator) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Редактирование запрещено',
@@ -2639,7 +2642,8 @@ export default class TasksController {
         if (
           current &&
           typeof current.status === 'string' &&
-          current.status !== 'Новая'
+          current.status !== 'Новая' &&
+          !isCreator
         ) {
           sendProblem(req, res, {
             type: 'about:blank',
@@ -2657,8 +2661,18 @@ export default class TasksController {
         }
         return;
       }
+      const changedFields = Object.entries(nextPayload)
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key);
       await writeLog(
         `Обновлена задача ${req.params.id} пользователем ${req.user!.id}/${req.user!.username}`,
+        'info',
+        {
+          taskId: req.params.id,
+          userId: req.user!.id,
+          username: req.user!.username,
+          changedFields,
+        },
       );
       res.json(task);
       const docId =

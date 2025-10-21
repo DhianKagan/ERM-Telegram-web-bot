@@ -57,8 +57,6 @@ export default async function checkTaskAccess(
   const isExecutor = Number.isFinite(id) && assignedIds.has(id);
   const isController = Number.isFinite(id) && controllerIds.has(id);
   const sameActor = isCreator && isExecutor;
-  const status = typeof task.status === 'string' ? task.status : undefined;
-  const isTaskNew = status === 'Новая';
   const method = req.method.toUpperCase();
   const routePath = typeof req.route?.path === 'string' ? req.route.path : '';
   const isTaskUpdateRoute = method === 'PATCH' && routePath === '/:id';
@@ -71,12 +69,7 @@ export default async function checkTaskAccess(
     return;
   }
   if (isTaskUpdateRoute) {
-    if (isCreator && isTaskNew) {
-      req.task = task;
-      next();
-      return;
-    }
-    if (sameActor && isTaskNew) {
+    if (isCreator) {
       req.task = task;
       next();
       return;
@@ -94,7 +87,7 @@ export default async function checkTaskAccess(
       }
     }
   } else if (isStatusRoute) {
-    if ((isCreator && isTaskNew) || (sameActor && isTaskNew)) {
+    if (isCreator) {
       req.task = task;
       next();
       return;

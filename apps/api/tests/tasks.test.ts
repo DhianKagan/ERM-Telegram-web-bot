@@ -65,13 +65,13 @@ jest.mock('../src/db/model', () => ({
     })),
     findByIdAndUpdate: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
     findByIdAndDelete: jest.fn(async () => ({
-      _id: '1',
+      _id: '507f191e810c19729de860ea',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
       created_by: 1,
       toObject() {
         return {
-          _id: '1',
+          _id: '507f191e810c19729de860ea',
           request_id: 'ERM_000001',
           task_number: 'ERM_000001',
           created_by: 1,
@@ -83,6 +83,14 @@ jest.mock('../src/db/model', () => ({
     find: jest.fn(async () => []),
   },
   Archive: { create: jest.fn(async () => ({})) },
+  File: {
+    find: jest.fn(() => ({
+      lean: jest.fn().mockResolvedValue([]),
+    })),
+    deleteMany: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue(null),
+    })),
+  },
 }));
 
 const mockWriteLog = jest.fn().mockResolvedValue(undefined);

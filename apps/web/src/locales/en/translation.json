@@ -91,7 +91,7 @@
   "taskSaveFailed": "Failed to save task",
   "taskSaveFailedWithReason": "Failed to save task: {{reason}}",
   "taskValidationFailed": "Check required fields before saving",
-  "taskSection": "\uD83D\uDD28 Task",
+  "taskSection": "🔨 Task",
   "taskTitle": "Task title",
   "taskType": "Task type",
   "taskUpdated": "Task updated",
@@ -177,74 +177,10 @@
       "sizeDesc": "By size (largest first)",
       "sizeAsc": "By size (smallest first)"
     },
-    "diagnostics": {
-      "title": "Storage diagnostics",
-      "issues": "Issues found: {{count}}",
-      "loading": "Loading diagnostics...",
-      "noReport": "No report yet.",
-      "reportTimestamp": "Report generated at {{value}}",
-      "run": "Run check",
-      "running": "Checking...",
-      "fix": "Apply fixes",
-      "fixing": "Applying...",
-      "autoFix": "Auto-heal",
-      "autoFixing": "Auto-healing...",
-      "summaryTitle": "Summary",
-      "summary": {
-        "missing": "Missing files in DB: {{count}}",
-        "orphan": "Orphans on disk: {{count}}",
-        "duplicate": "Duplicates: {{count}}",
-        "stale": "Broken task links: {{count}}"
-      },
-      "planTitle": "Fix plan",
-      "issueTypes": {
-        "missing_on_disk": "Missing file entry",
-        "orphan_on_disk": "Orphan file",
-        "duplicate_entry": "Duplicate entry",
-        "stale_task_link": "Stale task link"
-      },
-      "actions": {
-        "removeEntry": "Remove DB record {{id}}",
-        "deleteFile": "Delete file \"{{path}}\" from disk",
-        "unlinkTask": "Unlink attachment from task {{id}}",
-        "unknown": "Unknown action"
-      },
-      "actionTypes": {
-        "remove_file_entry": "DB cleanup",
-        "delete_disk_file": "Disk cleanup",
-        "unlink_task_reference": "Task link cleanup"
-      },
-      "recommendationsTitle": "Recommendations",
-      "noRecommendations": "Run a check to get recommendations.",
-      "diskHint": "Free {{free}} of {{total}} total.",
-      "thresholdHint": "Warning threshold: {{threshold}}.",
-      "lastExecutionTitle": "Last orchestration at {{value}}",
-      "lastExecutionSummary": "Performed: {{performed}}, errors: {{errors}}.",
-      "planHint": "Recommended actions: {{count}}.",
-      "selectAll": "Select all",
-      "deselectAll": "Clear selection",
-      "success": "Diagnostics completed.",
-      "error": "Diagnostics failed.",
-      "noActions": "Nothing to fix.",
-      "fixSuccess": "Fixes applied.",
-      "fixError": "Failed to apply fixes.",
-      "autoSuccess": "Auto-heal finished.",
-      "autoError": "Auto-heal failed.",
-      "loadingHint": "Run diagnostics to get the latest report.",
-      "overviewError": "Failed to load overview.",
-      "logAnalysisError": "Failed to refresh log analysis.",
-      "logAnalysis": {
-        "title": "Railway log analysis",
-        "loading": "Loading analytics...",
-        "empty": "No analysis reports yet.",
-        "generated": "Report generated at {{value}}",
-        "errors": "Errors: {{count}}",
-        "warnings": "Warnings: {{count}}",
-        "commands": "Auto actions: {{count}}",
-        "refresh": "Refresh",
-        "refreshing": "Refreshing...",
-        "noRecommendations": "No log-based recommendations."
-      }
+    "sync": {
+      "title": "Attachment synchronisation",
+      "ok": "Total files: {{count}}, all linked to tasks.",
+      "warning": "Files without tasks: {{count}}. Review tasks and clear the storage."
     }
   }
 }

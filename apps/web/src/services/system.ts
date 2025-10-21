@@ -1,10 +1,6 @@
 // Назначение: запросы к API оркестратора стека
 // Основные модули: authFetch
 import authFetch from "../utils/authFetch";
-import type {
-  StorageDiagnosticsReport,
-  StorageFixAction,
-} from "./storage";
 
 export interface RailwayLogAnalysisSummary {
   generatedAt: string;
@@ -34,29 +30,28 @@ export interface RailwayLogAnalysisSummary {
   sourceFile: string;
 }
 
+export interface FileSyncSnapshot {
+  totalFiles: number;
+  linkedFiles: number;
+  detachedFiles: number;
+}
+
 export interface StackOverview {
   generatedAt: string;
-  storage: StorageDiagnosticsReport;
-  plannedActions: StorageFixAction[];
+  fileSync: FileSyncSnapshot;
   logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
 export interface StackExecutionResult {
   generatedAt: string;
-  plan: StorageFixAction[];
-  execution: {
-    performed: Array<{ action: StorageFixAction; details?: Record<string, unknown> }>;
-    errors: Array<{ action: StorageFixAction; error: string }>;
-  };
-  report: StorageDiagnosticsReport;
+  fileSync: FileSyncSnapshot;
   logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
 export interface CodexMaintenanceBrief {
   generatedAt: string;
   prompt: string;
-  storageReport: StorageDiagnosticsReport;
-  storagePlan: StorageFixAction[];
+  fileSync: FileSyncSnapshot;
   logAnalysis: RailwayLogAnalysisSummary | null;
 }
 

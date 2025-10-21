@@ -7,15 +7,28 @@ const express = require('express');
 const request = require('supertest');
 
 const mockOrchestratorController = {
-  overview: jest.fn((_req: any, res: any) => res.json({ plan: [] })),
-  coordinate: jest.fn((_req: any, res: any) => res.json({ executed: true })),
-  latestLogAnalysis: jest.fn((_req: any, res: any) => res.json({ summary: null })),
+  overview: jest.fn((_req: any, res: any) =>
+    res.json({
+      generatedAt: '2024-01-01T00:00:00.000Z',
+      fileSync: { totalFiles: 0, linkedFiles: 0, detachedFiles: 0 },
+      logAnalysis: null,
+    }),
+  ),
+  coordinate: jest.fn((_req: any, res: any) =>
+    res.json({
+      generatedAt: '2024-01-01T00:00:00.000Z',
+      fileSync: { totalFiles: 0, linkedFiles: 0, detachedFiles: 0 },
+      logAnalysis: null,
+    }),
+  ),
+  latestLogAnalysis: jest.fn((_req: any, res: any) =>
+    res.json({ summary: null }),
+  ),
   codexBrief: jest.fn((_req: any, res: any) =>
     res.json({
       generatedAt: '2024-01-01T00:00:00.000Z',
       prompt: 'demo',
-      storageReport: { summary: { total: 0 } },
-      storagePlan: [],
+      fileSync: { totalFiles: 0, linkedFiles: 0, detachedFiles: 0 },
       logAnalysis: null,
     }),
   ),

@@ -18,8 +18,6 @@ export const TOKENS = {
   StorageRootDir: Symbol('StorageRootDir'),
   FileModel: Symbol('FileModel'),
   TaskModel: Symbol('TaskModel'),
-  StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
-  StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
   LogAnalysisService: Symbol('LogAnalysisService'),
   StackOrchestratorService: Symbol('StackOrchestratorService'),
   StackOrchestratorController: Symbol('StackOrchestratorController'),

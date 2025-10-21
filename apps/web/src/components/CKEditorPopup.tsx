@@ -213,7 +213,7 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
             <PhotoIcon className="h-3 w-3" /> Drag & Drop
           </span>
         </div>
-        <div className="max-h-48 overflow-auto px-4 py-3 text-sm leading-relaxed text-slate-700">
+        <div className="px-4 py-3 text-sm leading-relaxed text-slate-700">
           {sanitizedPreview ? (
             <div
               className="prose prose-sm max-w-none"

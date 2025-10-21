@@ -1,28 +1,14 @@
 // Роуты управления файлами в хранилище
 // Модули: express, express-validator, middleware/auth, auth/roles, services/dataStorage
-import {
-  Router,
-  RequestHandler,
-  NextFunction,
-  Request,
-  Response,
-} from 'express';
+import { Router, RequestHandler, NextFunction, Request, Response } from 'express';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { listFiles, deleteFile, getFile } from '../services/dataStorage';
-import { body, param, query } from 'express-validator';
-import { asyncHandler } from '../api/middleware';
-import container from '../di';
-import { TOKENS } from '../di/tokens';
-import type StorageDiagnosticsController from '../storage/storageDiagnostics.controller';
+import { param, query } from 'express-validator';
 
 const router: Router = Router();
-
-const diagnosticsController = container.resolve<StorageDiagnosticsController>(
-  TOKENS.StorageDiagnosticsController,
-);
 
 router.get(
   '/',
@@ -41,23 +27,6 @@ router.get(
     const files = await listFiles(filters);
     res.json(files);
   },
-);
-
-router.get(
-  '/diagnostics',
-  authMiddleware(),
-  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
-  rolesGuard as unknown as RequestHandler,
-  asyncHandler(diagnosticsController.diagnose),
-);
-
-router.post(
-  '/diagnostics/fix',
-  authMiddleware(),
-  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
-  rolesGuard as unknown as RequestHandler,
-  [body('actions').isArray()] as unknown as RequestHandler[],
-  asyncHandler(diagnosticsController.remediate),
 );
 
 router.get(

@@ -9,6 +9,22 @@ import { File, Task, type FileDocument } from '../db/model';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 
+const resolveWithinUploads = (relative: string): string => {
+  const targetPath = path.resolve(uploadsDirAbs, relative);
+  if (!targetPath.startsWith(uploadsDirAbs + path.sep)) {
+    throw new Error('Недопустимое имя файла');
+  }
+  return targetPath;
+};
+
+const unlinkWithinUploads = async (relative?: string | null): Promise<void> => {
+  if (!relative) return;
+  const target = resolveWithinUploads(relative);
+  await fs.promises.unlink(target).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error;
+  });
+};
+
 export interface StoredFile {
   id: string;
   taskId?: string;
@@ -124,13 +140,8 @@ export async function deleteFile(identifier: string): Promise<void> {
     err.code = 'ENOENT';
     throw err;
   }
-  const targetPath = path.resolve(uploadsDirAbs, file.path);
-  if (!targetPath.startsWith(uploadsDirAbs + path.sep)) {
-    throw new Error('Недопустимое имя файла');
-  }
-  await fs.promises.unlink(targetPath).catch((e: NodeJS.ErrnoException) => {
-    if (e.code !== 'ENOENT') throw e;
-  });
+  await unlinkWithinUploads(file.path);
+  await unlinkWithinUploads(file.thumbnailPath);
   if (file.taskId) {
     await Task.updateOne(
       { _id: file.taskId },
@@ -142,4 +153,50 @@ export async function deleteFile(identifier: string): Promise<void> {
       },
     ).exec();
   }
+}
+
+export async function deleteFilesForTask(
+  taskId: Types.ObjectId | string,
+  extraFileIds: Types.ObjectId[] = [],
+): Promise<void> {
+  const normalizedTaskId =
+    typeof taskId === 'string' ? new Types.ObjectId(taskId) : taskId;
+  const uniqueExtraIds = Array.from(new Set(extraFileIds.map((id) => id.toHexString()))).map(
+    (id) => new Types.ObjectId(id),
+  );
+  const orConditions: FilterQuery<FileDocument>[] = [
+    { taskId: normalizedTaskId },
+  ];
+  if (uniqueExtraIds.length > 0) {
+    orConditions.push({ _id: { $in: uniqueExtraIds } });
+  }
+  const filter: FilterQuery<FileDocument> =
+    orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
+  const files = await File.find(filter).lean();
+  if (files.length === 0) return;
+  await Promise.all(
+    files.map(async (file) => {
+      await unlinkWithinUploads(file.path);
+      await unlinkWithinUploads(file.thumbnailPath);
+    }),
+  );
+  await File.deleteMany({ _id: { $in: files.map((file) => file._id) } }).exec();
+}
+
+export interface FileSyncSnapshot {
+  totalFiles: number;
+  linkedFiles: number;
+  detachedFiles: number;
+}
+
+export async function getFileSyncSnapshot(): Promise<FileSyncSnapshot> {
+  const [totalFiles, linkedFiles] = await Promise.all([
+    File.countDocuments().exec(),
+    File.countDocuments({ taskId: { $ne: null } }).exec(),
+  ]);
+  return {
+    totalFiles,
+    linkedFiles,
+    detachedFiles: Math.max(totalFiles - linkedFiles, 0),
+  } satisfies FileSyncSnapshot;
 }

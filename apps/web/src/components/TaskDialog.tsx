@@ -2125,60 +2125,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     </label>
                     {showLogistics && (
                       <div className="space-y-4">
-                        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium">
-                      {t("taskTitle")}
-                    </label>
-                    <textarea
-                      {...titleFieldRest}
-                      ref={handleTitleRef}
-                      rows={1}
-                      placeholder={t("title")}
-                      className="focus:ring-brand-200 focus:border-accentPrimary min-h-[44px] w-full resize-none rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:ring focus:outline-none sm:text-base"
-                      disabled={!editing}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                        }
-                      }}
-                    />
-                    {errors.title && (
-                      <p className="text-sm text-red-600">{errors.title.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      {t("taskSection")}
-                    </label>
-                    <Controller
-                      name="description"
-                      control={control}
-                      render={({ field }) => (
-                        <CKEditorPopup
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          readOnly={!editing}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-3 rounded-xl border border-dashed border-gray-300 p-4">
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                      <input
-                        type="checkbox"
-                        id="task-show-logistics"
-                        name="showLogistics"
-                        className="h-4 w-4"
-                        checked={showLogistics}
-                        onChange={(e) => handleLogisticsToggle(e.target.checked)}
-                        disabled={!editing}
-                      />
-                      {t("logisticsToggle")}
-                    </label>
-                    {showLogistics && (
-                      <div className="space-y-4">
                         <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                           <div>
                             <label

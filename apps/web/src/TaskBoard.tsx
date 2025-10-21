@@ -32,29 +32,25 @@ export default function TaskBoard() {
   const layout = useMemo(() => {
     if (totalTasks > 40) {
       return {
-        template: "repeat(auto-fit, minmax(11.5rem, 1fr))",
         gapClass: "gap-2",
-        cardMinWidth: "11.5rem",
+        cardClass: "md:max-w-[15rem]",
       } as const;
     }
     if (totalTasks > 28) {
       return {
-        template: "repeat(auto-fit, minmax(12.5rem, 1fr))",
         gapClass: "gap-3",
-        cardMinWidth: "12.5rem",
+        cardClass: "md:max-w-[16rem]",
       } as const;
     }
     if (totalTasks > 16) {
       return {
-        template: "repeat(auto-fit, minmax(14rem, 1fr))",
         gapClass: "gap-4",
-        cardMinWidth: "14rem",
+        cardClass: "md:max-w-[18rem]",
       } as const;
     }
     return {
-      template: "repeat(auto-fit, minmax(16rem, 1fr))",
       gapClass: "gap-4",
-      cardMinWidth: "16rem",
+      cardClass: "md:max-w-[20rem]",
     } as const;
   }, [totalTasks]);
 
@@ -114,11 +110,7 @@ export default function TaskBoard() {
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col gap-6">
           {columns.map((key, idx) => (
-            <Droppable
-              droppableId={String(idx)}
-              key={key}
-              direction="horizontal"
-            >
+            <Droppable droppableId={String(idx)} key={key} direction="vertical">
               {(provided) => (
                 <section className="rounded-lg bg-gray-100 p-3">
                   <h3 className="mb-3 font-semibold">{key.replace("_", " ")}</h3>
@@ -126,10 +118,9 @@ export default function TaskBoard() {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      "grid min-h-[11rem] pb-1",
+                      "flex min-h-[11rem] flex-col pb-1",
                       layout.gapClass,
                     )}
-                    style={{ gridTemplateColumns: layout.template }}
                   >
                     {tasks
                       .filter((t) => t.status === key)
@@ -140,11 +131,11 @@ export default function TaskBoard() {
                               ref={prov.innerRef}
                               {...prov.draggableProps}
                               {...prov.dragHandleProps}
-                              className="flex w-full min-w-0"
-                              style={{
-                                minWidth: layout.cardMinWidth,
-                                ...(prov.draggableProps.style ?? {}),
-                              }}
+                              className={cn(
+                                "flex w-full min-w-0",
+                                layout.cardClass,
+                              )}
+                              style={{ ...(prov.draggableProps.style ?? {}) }}
                             >
                               <TaskCard task={t} onOpen={openTaskDialog} />
                             </div>

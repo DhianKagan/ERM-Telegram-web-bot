@@ -53,6 +53,10 @@ export default async function checkTaskAccess(
       .filter((value) => Number.isFinite(value))
       .forEach((value) => controllerIds.add(value));
   }
+  const status =
+    typeof task.status === 'string' ? (task.status as TaskInfo['status']) : undefined;
+  const isTaskNew = !status || status === 'Новая';
+  const hasTaskStarted = status !== undefined && status !== 'Новая';
   const isCreator = Number.isFinite(id) && task.created_by === id;
   const isExecutor = Number.isFinite(id) && assignedIds.has(id);
   const isController = Number.isFinite(id) && controllerIds.has(id);
@@ -69,7 +73,7 @@ export default async function checkTaskAccess(
     return;
   }
   if (isTaskUpdateRoute) {
-    if (isCreator) {
+    if (isCreator && isTaskNew) {
       req.task = task;
       next();
       return;
@@ -88,9 +92,11 @@ export default async function checkTaskAccess(
     }
   } else if (isStatusRoute) {
     if (isCreator) {
-      req.task = task;
-      next();
-      return;
+      if (!(sameActor && hasTaskStarted)) {
+        req.task = task;
+        next();
+        return;
+      }
     }
     if (isExecutor && !sameActor) {
       req.task = task;

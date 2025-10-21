@@ -2124,329 +2124,321 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       {t("logisticsToggle")}
                     </label>
                     {showLogistics && (
-                      <div className="space-y-4">
-                        <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-start-link"
-                            >
-                              {t("startPoint")}
-                            </label>
-                            {canonicalStartLink ? (
-                              <div className="flex items-start gap-2">
-                                <div className="flex flex-col gap-1">
-                                  <a
-                                    href={canonicalStartLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accentPrimary underline"
-                                  >
-                                    {start || t("link")}
-                                  </a>
-                                  {startCoordinates && (
-                                    <input
-                                      id="task-start-coordinates"
-                                      name="startCoordinatesDisplay"
-                                      value={formatCoords(startCoordinates)}
-                                      readOnly
-                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                      onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t("coordinates")}
-                                    />
-                                  )}
-                                </div>
-                                {editing && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartLink("")}
-                                    className="text-red-600"
-                                  >
-                                    ✖
-                                  </button>
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="sm:col-span-2 lg:col-span-2">
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-start-link"
+                          >
+                            {t("startPoint")}
+                          </label>
+                          {canonicalStartLink ? (
+                            <div className="flex items-start gap-2">
+                              <div className="flex flex-col gap-1">
+                                <a
+                                  href={canonicalStartLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accentPrimary underline"
+                                >
+                                  {start || t("link")}
+                                </a>
+                                {startCoordinates && (
+                                  <input
+                                    id="task-start-coordinates"
+                                    name="startCoordinatesDisplay"
+                                    value={formatCoords(startCoordinates)}
+                                    readOnly
+                                    className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                    onFocus={(e) => e.currentTarget.select()}
+                                    aria-label={t("coordinates")}
+                                  />
                                 )}
                               </div>
-                            ) : (
-                              <div className="mt-1 flex gap-2">
-                                <input
-                                  id="task-start-link"
-                                  name="startLink"
-                                  value={startLink}
-                                  onChange={(e) => handleStartLink(e.target.value)}
-                                  placeholder={t("googleMapsLink")}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing}
-                                />
-                                <a
-                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                  target="_blank"
-                                  rel="noopener"
-                                  className={cn(
-                                    buttonVariants({
-                                      variant: "default",
-                                      size: "sm",
-                                    }),
-                                    "rounded-2xl px-3",
-                                  )}
+                              {editing && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartLink("")}
+                                  className="text-red-600"
                                 >
-                                  {t("map")}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-end-link"
-                            >
-                              {t("endPoint")}
-                            </label>
-                            {canonicalEndLink ? (
-                              <div className="flex items-start gap-2">
-                                <div className="flex flex-col gap-1">
-                                  <a
-                                    href={canonicalEndLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accentPrimary underline"
-                                  >
-                                    {end || t("link")}
-                                  </a>
-                                  {finishCoordinates && (
-                                    <input
-                                      id="task-finish-coordinates"
-                                      name="finishCoordinatesDisplay"
-                                      value={formatCoords(finishCoordinates)}
-                                      readOnly
-                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                      onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t("coordinates")}
-                                    />
-                                  )}
-                                </div>
-                                {editing && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEndLink("")}
-                                    className="text-red-600"
-                                  >
-                                    ✖
-                                  </button>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="mt-1 flex gap-2">
-                                <input
-                                  id="task-end-link"
-                                  name="endLink"
-                                  value={endLink}
-                                  onChange={(e) => handleEndLink(e.target.value)}
-                                  placeholder={t("googleMapsLink")}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing}
-                                />
-                                <a
-                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                  target="_blank"
-                                  rel="noopener"
-                                  className={cn(
-                                    buttonVariants({
-                                      variant: "default",
-                                      size: "sm",
-                                    }),
-                                    "rounded-2xl px-3",
-                                  )}
-                                >
-                                  {t("map")}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-distance"
-                            >
-                              {t("distance")}
-                            </label>
-                            <input
-                              id="task-distance"
-                              name="distanceKm"
-                              value={distanceKm ?? ""}
-                              onChange={(e) => setDistanceKm(parseMetricInput(e.target.value))}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-transport-type"
-                            >
-                              {t("transportType")}
-                            </label>
-                            <select
-                              id="task-transport-type"
-                              value={transportType}
-                              onChange={(e) => setTransportType(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              disabled={!editing}
-                            >
-                              {transports.map((transport) => (
-                                <option key={transport} value={transport}>
-                                  {transport}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-cargo-length"
-                            >
-                              {t("cargoLength")}
-                            </label>
-                            <input
-                              id="task-cargo-length"
-                              name="cargoLength"
-                              value={cargoLength}
-                              onChange={(e) => setCargoLength(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-cargo-width"
-                            >
-                              {t("cargoWidth")}
-                            </label>
-                            <input
-                              id="task-cargo-width"
-                              name="cargoWidth"
-                              value={cargoWidth}
-                              onChange={(e) => setCargoWidth(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-cargo-height"
-                            >
-                              {t("cargoHeight")}
-                            </label>
-                            <input
-                              id="task-cargo-height"
-                              name="cargoHeight"
-                              value={cargoHeight}
-                              onChange={(e) => setCargoHeight(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-cargo-volume"
-                            >
-                              {t("cargoVolume")}
-                            </label>
-                            <input
-                              id="task-cargo-volume"
-                              name="cargoVolume"
-                              value={cargoVolume}
-                              readOnly
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border bg-gray-100 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="—"
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-cargo-weight"
-                            >
-                              {t("cargoWeight")}
-                            </label>
-                            <input
-                              id="task-cargo-weight"
-                              name="cargoWeight"
-                              value={cargoWeight}
-                              onChange={(e) => setCargoWeight(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                          <div>
-                            <label className="block text-sm font-medium">
-                              {t("paymentMethod")}
-                            </label>
-                            <select
-                              value={paymentMethod}
-                              onChange={(e) => setPaymentMethod(e.target.value)}
-                              className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                              disabled={!editing}
-                            >
-                              {payments.map((p) => (
-                                <option key={p} value={p}>
-                                  {p}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label
-                              className="block text-sm font-medium"
-                              htmlFor="task-payment-amount"
-                            >
-                              {t("paymentAmount")}
-                            </label>
-                            <div
-                              className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:ring ${
-                                editing ? "" : "opacity-80"
-                              }`}
-                            >
+                                  ✖
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-1 flex gap-2">
                               <input
-                                id="task-payment-amount"
-                                name="paymentAmount"
-                                value={paymentAmount}
-                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                onBlur={(e) =>
-                                  setPaymentAmount(
-                                    formatCurrencyDisplay(e.target.value),
-                                  )
-                                }
-                                className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
-                                placeholder="0"
-                                inputMode="decimal"
+                                id="task-start-link"
+                                name="startLink"
+                                value={startLink}
+                                onChange={(e) => handleStartLink(e.target.value)}
+                                placeholder={t("googleMapsLink")}
+                                className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
-                              <span className="px-2 text-sm font-semibold text-slate-500">
-                                грн
-                              </span>
+                              <a
+                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                target="_blank"
+                                rel="noopener"
+                                className={cn(
+                                  buttonVariants({
+                                    variant: "default",
+                                    size: "sm",
+                                  }),
+                                  "rounded-2xl px-3",
+                                )}
+                              >
+                                {t("map")}
+                              </a>
                             </div>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {t("paymentAmountFormat")}
-                            </p>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-2">
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-end-link"
+                          >
+                            {t("endPoint")}
+                          </label>
+                          {canonicalEndLink ? (
+                            <div className="flex items-start gap-2">
+                              <div className="flex flex-col gap-1">
+                                <a
+                                  href={canonicalEndLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accentPrimary underline"
+                                >
+                                  {end || t("link")}
+                                </a>
+                                {finishCoordinates && (
+                                  <input
+                                    id="task-finish-coordinates"
+                                    name="finishCoordinatesDisplay"
+                                    value={formatCoords(finishCoordinates)}
+                                    readOnly
+                                    className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                    onFocus={(e) => e.currentTarget.select()}
+                                    aria-label={t("coordinates")}
+                                  />
+                                )}
+                              </div>
+                              {editing && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEndLink("")}
+                                  className="text-red-600"
+                                >
+                                  ✖
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-1 flex gap-2">
+                              <input
+                                id="task-end-link"
+                                name="endLink"
+                                value={endLink}
+                                onChange={(e) => handleEndLink(e.target.value)}
+                                placeholder={t("googleMapsLink")}
+                                className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                disabled={!editing}
+                              />
+                              <a
+                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                target="_blank"
+                                rel="noopener"
+                                className={cn(
+                                  buttonVariants({
+                                    variant: "default",
+                                    size: "sm",
+                                  }),
+                                  "rounded-2xl px-3",
+                                )}
+                              >
+                                {t("map")}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-distance"
+                          >
+                            {t("distance")}
+                          </label>
+                          <input
+                            id="task-distance"
+                            name="distanceKm"
+                            value={distanceKm ?? ""}
+                            onChange={(e) => setDistanceKm(parseMetricInput(e.target.value))}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-transport-type"
+                          >
+                            {t("transportType")}
+                          </label>
+                          <select
+                            id="task-transport-type"
+                            value={transportType}
+                            onChange={(e) => setTransportType(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            disabled={!editing}
+                          >
+                            {transports.map((transport) => (
+                              <option key={transport} value={transport}>
+                                {transport}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-cargo-length"
+                          >
+                            {t("cargoLength")}
+                          </label>
+                          <input
+                            id="task-cargo-length"
+                            name="cargoLength"
+                            value={cargoLength}
+                            onChange={(e) => setCargoLength(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-cargo-width"
+                          >
+                            {t("cargoWidth")}
+                          </label>
+                          <input
+                            id="task-cargo-width"
+                            name="cargoWidth"
+                            value={cargoWidth}
+                            onChange={(e) => setCargoWidth(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-cargo-height"
+                          >
+                            {t("cargoHeight")}
+                          </label>
+                          <input
+                            id="task-cargo-height"
+                            name="cargoHeight"
+                            value={cargoHeight}
+                            onChange={(e) => setCargoHeight(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-cargo-volume"
+                          >
+                            {t("cargoVolume")}
+                          </label>
+                          <input
+                            id="task-cargo-volume"
+                            name="cargoVolume"
+                            value={cargoVolume}
+                            readOnly
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-gray-100 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="—"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-2">
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-cargo-weight"
+                          >
+                            {t("cargoWeight")}
+                          </label>
+                          <input
+                            id="task-cargo-weight"
+                            name="cargoWeight"
+                            value={cargoWeight}
+                            onChange={(e) => setCargoWeight(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            placeholder="0"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-1">
+                          <label className="block text-sm font-medium">
+                            {t("paymentMethod")}
+                          </label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                            disabled={!editing}
+                          >
+                            {payments.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <label
+                            className="block text-sm font-medium"
+                            htmlFor="task-payment-amount"
+                          >
+                            {t("paymentAmount")}
+                          </label>
+                          <div
+                            className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:ring ${
+                              editing ? "" : "opacity-80"
+                            }`}
+                          >
+                            <input
+                              id="task-payment-amount"
+                              name="paymentAmount"
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                              onBlur={(e) =>
+                                setPaymentAmount(
+                                  formatCurrencyDisplay(e.target.value),
+                                )
+                              }
+                              className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
+                              placeholder="0"
+                              inputMode="decimal"
+                              disabled={!editing}
+                            />
+                            <span className="px-2 text-sm font-semibold text-slate-500">
+                              грн
+                            </span>
                           </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t("paymentAmountFormat")}
+                          </p>
                         </div>
                       </div>
                     )}

@@ -301,19 +301,58 @@ export default async function registerRoutes(
         });
         return;
       }
-      const ids = [
-        task.assigned_user_id,
-        task.controller_user_id,
-        ...(task.controllers || []),
-        ...(task.assignees || []),
-        task.created_by,
-      ].map((id) => Number(id));
-      if (!ids.includes(userId)) {
+      const assigneeIds = new Set<number>();
+      const controllerIds = new Set<number>();
+      const mainAssignee = Number(task.assigned_user_id);
+      if (Number.isFinite(mainAssignee)) {
+        assigneeIds.add(mainAssignee);
+      }
+      const extraAssignees = Array.isArray(task.assignees)
+        ? task.assignees
+        : [];
+      extraAssignees
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value))
+        .forEach((value) => assigneeIds.add(value));
+      const mainController = Number(task.controller_user_id);
+      if (Number.isFinite(mainController)) {
+        controllerIds.add(mainController);
+      }
+      const extraControllers = Array.isArray(task.controllers)
+        ? task.controllers
+        : [];
+      extraControllers
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value))
+        .forEach((value) => controllerIds.add(value));
+      const actorIds = new Set<number>();
+      assigneeIds.forEach((value) => actorIds.add(value));
+      controllerIds.forEach((value) => actorIds.add(value));
+      const creatorId = Number(task.created_by);
+      if (Number.isFinite(creatorId)) {
+        actorIds.add(creatorId);
+      }
+      if (!actorIds.has(userId)) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Доступ запрещён',
           status: 403,
           detail: 'Forbidden',
+        });
+        return;
+      }
+      const status =
+        typeof task.status === 'string' ? task.status : undefined;
+      const hasTaskStarted = status !== undefined && status !== 'Новая';
+      const isCreator = Number(task.created_by) === userId;
+      const isExecutor = assigneeIds.has(userId);
+      const isController = controllerIds.has(userId);
+      if (!isController && isCreator && isExecutor && hasTaskStarted) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Доступ запрещён',
+          status: 403,
+          detail: 'Нет прав для изменения статуса',
         });
         return;
       }

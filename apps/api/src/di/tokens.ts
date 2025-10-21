@@ -21,6 +21,8 @@ export const TOKENS = {
   LogAnalysisService: Symbol('LogAnalysisService'),
   StackOrchestratorService: Symbol('StackOrchestratorService'),
   StackOrchestratorController: Symbol('StackOrchestratorController'),
+  StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
+  StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
 } as const;
 
 type TokenMap = typeof TOKENS;

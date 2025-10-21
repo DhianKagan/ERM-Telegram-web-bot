@@ -2,7 +2,8 @@
 // Модули: fs, path, mongoose
 import fs from 'fs';
 import path from 'path';
-import type { FilterQuery, Types } from 'mongoose';
+import type { FilterQuery } from 'mongoose';
+import { Types } from 'mongoose';
 
 import { uploadsDir } from '../config/storage';
 import { File, Task, type FileDocument } from '../db/model';

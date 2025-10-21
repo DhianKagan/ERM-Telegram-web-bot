@@ -22,6 +22,8 @@ import { File, Task } from '../db/model';
 import LogAnalysisService from '../system/logAnalysis.service';
 import StackOrchestratorService from '../system/stackOrchestrator.service';
 import StackOrchestratorController from '../system/stackOrchestrator.controller';
+import StorageDiagnosticsService from '../services/storageDiagnostics.service';
+import StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
 
 container.register(TOKENS.TasksRepository, { useValue: queries });
 container.register(TOKENS.TasksService, {
@@ -61,6 +63,14 @@ container.registerSingleton(
 container.registerSingleton(
   TOKENS.StackOrchestratorController,
   StackOrchestratorController,
+);
+container.registerSingleton(
+  TOKENS.StorageDiagnosticsService,
+  StorageDiagnosticsService,
+);
+container.registerSingleton(
+  TOKENS.StorageDiagnosticsController,
+  StorageDiagnosticsController,
 );
 
 export { container };

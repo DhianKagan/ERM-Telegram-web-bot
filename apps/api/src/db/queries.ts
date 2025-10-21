@@ -28,6 +28,7 @@ import {
   ACCESS_USER,
 } from '../utils/accessMask';
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
+import { deleteFilesForTask } from '../services/dataStorage';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -738,6 +739,11 @@ export async function deleteTask(
   const doc = await Task.findByIdAndDelete(id);
   if (!doc) return null;
   const data = doc.toObject();
+  const attachments = Array.isArray(data.attachments)
+    ? (data.attachments as Attachment[])
+    : [];
+  const fileIds = extractAttachmentIds(attachments);
+  await deleteFilesForTask(doc._id as Types.ObjectId, fileIds);
   const fallbackUserId =
     typeof data.created_by === 'number' && Number.isFinite(data.created_by)
       ? data.created_by

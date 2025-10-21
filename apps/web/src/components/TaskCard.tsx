@@ -76,7 +76,7 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
       : "Задача";
 
   return (
-    <div className="mb-2 rounded-lg bg-white p-3 shadow transition-shadow hover:shadow-md">
+    <div className="h-full rounded-lg bg-white p-3 shadow transition-shadow hover:shadow-md">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {identifier ? (

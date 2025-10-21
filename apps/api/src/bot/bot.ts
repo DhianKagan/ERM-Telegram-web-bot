@@ -436,8 +436,8 @@ async function showMainMenu(ctx: Context): Promise<void> {
   await ctx.reply(
     messages.menuPrompt,
     Markup.keyboard([
-      ['Регистрация', 'ERM'],
-      ['Транспорт'],
+      ['Регистрация в ERM'],
+      ['ERM веб-клиент'],
     ]).resize(),
   );
 }
@@ -473,8 +473,8 @@ bot.start(async (ctx) => {
 });
 
 bot.command('register', checkAndRegister);
-bot.hears('Регистрация', checkAndRegister);
-bot.hears('ERM', async (ctx) => {
+bot.hears(['Регистрация', 'Регистрация в ERM'], checkAndRegister);
+bot.hears(['ERM', 'ERM веб-клиент'], async (ctx) => {
   await ctx.reply(messages.ermLink);
 });
 

@@ -2133,13 +2133,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             {t("startPoint")}
                           </label>
                           {canonicalStartLink ? (
-                            <div className="flex items-start gap-2">
-                              <div className="flex flex-col gap-1">
+                            <div className="flex flex-wrap items-start gap-2">
+                              <div className="flex min-w-0 flex-col gap-1">
                                 <a
                                   href={canonicalStartLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-accentPrimary underline"
+                                  className="text-accentPrimary underline break-words"
                                 >
                                   {start || t("link")}
                                 </a>
@@ -2159,21 +2159,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <button
                                   type="button"
                                   onClick={() => handleStartLink("")}
-                                  className="text-red-600"
+                                  className="shrink-0 text-red-600"
                                 >
                                   ✖
                                 </button>
                               )}
                             </div>
                           ) : (
-                            <div className="mt-1 flex gap-2">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
                               <input
                                 id="task-start-link"
                                 name="startLink"
                                 value={startLink}
                                 onChange={(e) => handleStartLink(e.target.value)}
                                 placeholder={t("googleMapsLink")}
-                                className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
                               <a
@@ -2185,7 +2185,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     variant: "default",
                                     size: "sm",
                                   }),
-                                  "rounded-2xl px-3",
+                                  "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
                                 )}
                               >
                                 {t("map")}
@@ -2201,13 +2201,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             {t("endPoint")}
                           </label>
                           {canonicalEndLink ? (
-                            <div className="flex items-start gap-2">
-                              <div className="flex flex-col gap-1">
+                            <div className="flex flex-wrap items-start gap-2">
+                              <div className="flex min-w-0 flex-col gap-1">
                                 <a
                                   href={canonicalEndLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-accentPrimary underline"
+                                  className="text-accentPrimary underline break-words"
                                 >
                                   {end || t("link")}
                                 </a>
@@ -2227,21 +2227,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <button
                                   type="button"
                                   onClick={() => handleEndLink("")}
-                                  className="text-red-600"
+                                  className="shrink-0 text-red-600"
                                 >
                                   ✖
                                 </button>
                               )}
                             </div>
                           ) : (
-                            <div className="mt-1 flex gap-2">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
                               <input
                                 id="task-end-link"
                                 name="endLink"
                                 value={endLink}
                                 onChange={(e) => handleEndLink(e.target.value)}
                                 placeholder={t("googleMapsLink")}
-                                className="focus:ring-brand-200 focus:border-accentPrimary flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
                               <a
@@ -2253,7 +2253,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     variant: "default",
                                     size: "sm",
                                   }),
-                                  "rounded-2xl px-3",
+                                  "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
                                 )}
                               >
                                 {t("map")}

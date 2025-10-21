@@ -6,9 +6,17 @@ import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { listFiles, deleteFile, getFile } from '../services/dataStorage';
-import { param, query } from 'express-validator';
+import { body, param, query } from 'express-validator';
+import { asyncHandler } from '../api/middleware';
+import container from '../di';
+import { TOKENS } from '../di/tokens';
+import type StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
 
 const router: Router = Router();
+
+const diagnosticsController = container.resolve<StorageDiagnosticsController>(
+  TOKENS.StorageDiagnosticsController,
+);
 
 router.get(
   '/',
@@ -64,6 +72,23 @@ router.delete(
       }
     }
   },
+);
+
+router.get(
+  '/diagnostics',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(diagnosticsController.diagnose),
+);
+
+router.post(
+  '/diagnostics/fix',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  [body('actions').optional().isArray()] as unknown as RequestHandler[],
+  asyncHandler(diagnosticsController.remediate),
 );
 
 export default router;

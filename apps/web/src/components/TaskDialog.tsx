@@ -24,6 +24,11 @@ import {
   updateTaskStatus,
   TaskRequestError,
   fetchRequestExecutors,
+  fetchTransportOptions,
+} from "../services/tasks";
+import type {
+  TransportDriverOption,
+  TransportVehicleOption,
 } from "../services/tasks";
 import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
@@ -88,6 +93,11 @@ interface InitialValues {
   cargoHeight: string;
   cargoVolume: string;
   cargoWeight: string;
+  transportDriverId: string;
+  transportDriverName: string;
+  transportVehicleId: string;
+  transportVehicleName: string;
+  transportVehicleRegistration: string;
   showLogistics: boolean;
   photosLink?: string | null;
   photosChatId?: unknown;
@@ -758,6 +768,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [comment, setComment] = React.useState("");
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
+  const [transportDriverId, setTransportDriverId] = React.useState<string>("");
+  const [transportDriverName, setTransportDriverName] = React.useState<string>("");
+  const [transportVehicleId, setTransportVehicleId] = React.useState<string>("");
+  const [transportVehicleName, setTransportVehicleName] = React.useState<string>("");
+  const [transportVehicleRegistration, setTransportVehicleRegistration] =
+    React.useState<string>("");
+  const [transportDriverOptions, setTransportDriverOptions] =
+    React.useState<TransportDriverOption[]>([]);
+  const [transportVehicleOptions, setTransportVehicleOptions] =
+    React.useState<TransportVehicleOption[]>([]);
+  const [transportOptionsLoading, setTransportOptionsLoading] =
+    React.useState(false);
+  const [transportOptionsError, setTransportOptionsError] =
+    React.useState<string | null>(null);
+  const [transportOptionsLoaded, setTransportOptionsLoaded] =
+    React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [paymentAmount, setPaymentAmount] = React.useState(() =>
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
@@ -826,6 +852,155 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
   const autoRouteRef = React.useRef(true);
+  const transportRequiresDetails = React.useMemo(
+    () => transportType === "Легковой" || transportType === "Грузовой",
+    [transportType],
+  );
+  const loadTransportOptions = React.useCallback(
+    async (force = false) => {
+      if (transportOptionsLoading || (transportOptionsLoaded && !force)) {
+        return;
+      }
+      setTransportOptionsLoading(true);
+      setTransportOptionsError(null);
+      try {
+        const options = await fetchTransportOptions();
+        setTransportDriverOptions(options.drivers);
+        setTransportVehicleOptions(options.vehicles);
+        setTransportOptionsLoaded(true);
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Не удалось загрузить транспорт";
+        setTransportOptionsError(message);
+        if (force) {
+          setTransportOptionsLoaded(false);
+        }
+      } finally {
+        setTransportOptionsLoading(false);
+      }
+    },
+    [transportOptionsLoaded, transportOptionsLoading],
+  );
+  React.useEffect(() => {
+    if (!transportRequiresDetails) return;
+    void loadTransportOptions();
+  }, [transportRequiresDetails, loadTransportOptions]);
+  React.useEffect(() => {
+    if (!transportDriverId) {
+      if (transportDriverName) setTransportDriverName("");
+      return;
+    }
+    const option = transportDriverOptions.find(
+      (candidate) => String(candidate.id) === transportDriverId,
+    );
+    if (option && option.name !== transportDriverName) {
+      setTransportDriverName(option.name);
+    }
+  }, [transportDriverId, transportDriverOptions, transportDriverName]);
+  React.useEffect(() => {
+    if (!transportVehicleId) {
+      if (transportVehicleName) setTransportVehicleName("");
+      if (transportVehicleRegistration) {
+        setTransportVehicleRegistration("");
+      }
+      return;
+    }
+    const option = transportVehicleOptions.find(
+      (candidate) => candidate.id === transportVehicleId,
+    );
+    if (option) {
+      if (option.name !== transportVehicleName) {
+        setTransportVehicleName(option.name);
+      }
+      if (option.registrationNumber !== transportVehicleRegistration) {
+        setTransportVehicleRegistration(option.registrationNumber);
+      }
+    }
+  }, [
+    transportVehicleId,
+    transportVehicleOptions,
+    transportVehicleName,
+    transportVehicleRegistration,
+  ]);
+  const prevTransportRequiresRef = React.useRef(transportRequiresDetails);
+  React.useEffect(() => {
+    const prev = prevTransportRequiresRef.current;
+    if (prev && !transportRequiresDetails) {
+      setTransportDriverId("");
+      setTransportDriverName("");
+      setTransportVehicleId("");
+      setTransportVehicleName("");
+      setTransportVehicleRegistration("");
+    }
+    prevTransportRequiresRef.current = transportRequiresDetails;
+  }, [transportRequiresDetails]);
+  const driverOptions = React.useMemo(() => {
+    const list = [...transportDriverOptions];
+    if (transportDriverId) {
+      const numericDriver = Number.parseInt(transportDriverId, 10);
+      if (
+        Number.isFinite(numericDriver) &&
+        !list.some((item) => item.id === numericDriver)
+      ) {
+        list.push({
+          id: numericDriver,
+          name: transportDriverName || String(numericDriver),
+          username: null,
+        });
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  }, [transportDriverOptions, transportDriverId, transportDriverName]);
+  const vehicleOptions = React.useMemo(() => {
+    const allowedType =
+      transportType === "Грузовой" ? "Грузовой" : "Легковой";
+    const list = transportVehicleOptions
+      .filter((vehicle) => vehicle.transportType === allowedType)
+      .slice();
+    if (
+      transportVehicleId &&
+      !list.some((item) => item.id === transportVehicleId)
+    ) {
+      list.push({
+        id: transportVehicleId,
+        name: transportVehicleName || transportVehicleId,
+        registrationNumber: transportVehicleRegistration || "",
+        transportType: allowedType,
+      });
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  }, [
+    transportVehicleOptions,
+    transportVehicleId,
+    transportVehicleName,
+    transportVehicleRegistration,
+    transportType,
+  ]);
+  React.useEffect(() => {
+    if (!transportRequiresDetails || !transportVehicleId) {
+      return;
+    }
+    const hasVehicle = vehicleOptions.some(
+      (vehicle) => vehicle.id === transportVehicleId,
+    );
+    if (!hasVehicle) {
+      setTransportVehicleId("");
+      setTransportVehicleName("");
+      setTransportVehicleRegistration("");
+    }
+  }, [transportRequiresDetails, transportVehicleId, vehicleOptions]);
+  const showTransportFields =
+    transportRequiresDetails ||
+    Boolean(
+      transportDriverId ||
+        transportVehicleId ||
+        transportDriverName ||
+        transportVehicleName,
+    );
+  const canEditTransport =
+    editing && (canEditAll || isCreator || isExecutor);
   const doneOptions = [
     { value: "full", label: t("doneFull") },
     { value: "partial", label: t("donePartial") },
@@ -979,6 +1154,34 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         }
         return String(rawAssignee);
       })();
+      const driverNumeric = toAssigneeNumber(
+        (taskData as Record<string, unknown>).transport_driver_id,
+      );
+      const driverIdValue = driverNumeric !== null ? String(driverNumeric) : "";
+      const driverUser =
+        driverNumeric !== null && usersMap
+          ? usersMap[String(driverNumeric)]
+          : undefined;
+      const driverDisplay = driverUser
+        ? driverUser.name ||
+          driverUser.telegram_username ||
+          driverUser.username ||
+          String(driverNumeric)
+        : driverNumeric !== null
+          ? String(driverNumeric)
+          : "";
+      const vehicleIdValue =
+        typeof taskData.transport_vehicle_id === "string"
+          ? taskData.transport_vehicle_id
+          : "";
+      const vehicleNameValue =
+        typeof taskData.transport_vehicle_name === "string"
+          ? taskData.transport_vehicle_name
+          : "";
+      const vehicleRegistrationValue =
+        typeof taskData.transport_vehicle_registration === "string"
+          ? taskData.transport_vehicle_registration
+          : "";
       const rawCreated =
         ((taskData as Record<string, unknown>).createdAt as
           | string
@@ -1037,6 +1240,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setComment((taskData.comment as string) || "");
       setPriority(curPriority);
       setTransportType(curTransport);
+      setTransportDriverId(driverIdValue);
+      setTransportDriverName(driverDisplay);
+      setTransportVehicleId(vehicleIdValue);
+      setTransportVehicleName(vehicleNameValue);
+      setTransportVehicleRegistration(vehicleRegistrationValue);
       setPaymentMethod(curPayment);
       setPaymentAmount(amountValue);
       setInitialStatus(curStatus);
@@ -1163,6 +1371,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         cargoHeight: heightValue,
         cargoVolume: volumeValue,
         cargoWeight: weightValue,
+        transportDriverId: driverIdValue,
+        transportDriverName: driverDisplay,
+        transportVehicleId: vehicleIdValue,
+        transportVehicleName: vehicleNameValue,
+        transportVehicleRegistration: vehicleRegistrationValue,
         showLogistics: logisticsEnabled,
         photosLink: buildTelegramMessageLink(albumChat, albumMessage),
         photosChatId: albumChat,
@@ -1346,6 +1559,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       cargoHeight: "",
       cargoVolume: "",
       cargoWeight: "",
+      transportDriverId: "",
+      transportDriverName: "",
+      transportVehicleId: "",
+      transportVehicleName: "",
+      transportVehicleRegistration: "",
       showLogistics: false,
       photosLink: null,
       photosChatId: undefined,
@@ -1367,6 +1585,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setCargoVolume("");
     setCargoWeight("");
     setShowLogistics(false);
+    setTransportDriverId("");
+    setTransportDriverName("");
+    setTransportVehicleId("");
+    setTransportVehicleName("");
+    setTransportVehicleRegistration("");
     setDueOffset(DEFAULT_DUE_OFFSET_MS);
   }, [
     isEdit,
@@ -1697,6 +1920,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         end_location_link: endLink,
         logistics_enabled: showLogistics,
       };
+      const requiresTransport =
+        transportType === "Легковой" || transportType === "Грузовой";
+      if (requiresTransport) {
+        const driverCandidate = transportDriverId.trim();
+        const vehicleCandidate = transportVehicleId.trim();
+        const driverNumeric = Number.parseInt(driverCandidate, 10);
+        if (!driverCandidate || !Number.isFinite(driverNumeric)) {
+          setAlertMsg(t("transportDriverRequired"));
+          return;
+        }
+        if (!vehicleCandidate) {
+          setAlertMsg(t("transportVehicleRequired"));
+          return;
+        }
+        payload.transport_driver_id = driverNumeric;
+        payload.transport_vehicle_id = vehicleCandidate;
+      } else {
+        payload.transport_driver_id = null;
+        payload.transport_vehicle_id = null;
+      }
       if (!isNewTask && payload.created_by === null) {
         delete payload.created_by;
       }
@@ -1858,6 +2101,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setComment(d.comment);
     setPriority(d.priority);
     setTransportType(d.transportType);
+    setTransportDriverId(d.transportDriverId);
+    setTransportDriverName(d.transportDriverName);
+    setTransportVehicleId(d.transportVehicleId);
+    setTransportVehicleName(d.transportVehicleName);
+    setTransportVehicleRegistration(d.transportVehicleRegistration);
     setPaymentMethod(d.paymentMethod);
     setPaymentAmount(d.paymentAmount);
     setInitialStatus(d.status);
@@ -2750,6 +2998,123 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       )}
                     />
                   </div>
+                  {showTransportFields && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-transport-driver"
+                        >
+                          {t("transportDriver")}
+                        </label>
+                        <select
+                          id="task-transport-driver"
+                          value={transportDriverId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setTransportDriverId(value);
+                            if (!value) {
+                              setTransportDriverName("");
+                              return;
+                            }
+                            const option = driverOptions.find(
+                              (candidate) => String(candidate.id) === value,
+                            );
+                            setTransportDriverName(
+                              option ? option.name : value,
+                            );
+                          }}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
+                          disabled={!canEditTransport || !transportRequiresDetails}
+                        >
+                          <option value="">
+                            {t("transportDriverPlaceholder")}
+                          </option>
+                          {driverOptions.map((driver) => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.name}
+                            </option>
+                          ))}
+                        </select>
+                        {transportOptionsLoading && transportRequiresDetails ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t("transportOptionsLoading")}
+                          </p>
+                        ) : null}
+                        {transportOptionsError ? (
+                          <p className="mt-1 text-xs text-red-600">
+                            {transportOptionsError}
+                            {canEditTransport ? (
+                              <button
+                                type="button"
+                                className="ml-2 text-accentPrimary underline decoration-dotted"
+                                onClick={() => {
+                                  setTransportOptionsLoaded(false);
+                                  void loadTransportOptions(true);
+                                }}
+                              >
+                                {t("transportOptionsReload")}
+                              </button>
+                            ) : null}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-transport-vehicle"
+                        >
+                          {t("transportVehicle")}
+                        </label>
+                        <select
+                          id="task-transport-vehicle"
+                          value={transportVehicleId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setTransportVehicleId(value);
+                            if (!value) {
+                              setTransportVehicleName("");
+                              setTransportVehicleRegistration("");
+                              return;
+                            }
+                            const option = vehicleOptions.find(
+                              (candidate) => candidate.id === value,
+                            );
+                            if (option) {
+                              setTransportVehicleName(option.name);
+                              setTransportVehicleRegistration(
+                                option.registrationNumber,
+                              );
+                            } else {
+                              setTransportVehicleName(value);
+                              setTransportVehicleRegistration("");
+                            }
+                          }}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
+                          disabled={!canEditTransport || !transportRequiresDetails}
+                        >
+                          <option value="">
+                            {t("transportVehiclePlaceholder")}
+                          </option>
+                          {vehicleOptions.map((vehicle) => (
+                            <option key={vehicle.id} value={vehicle.id}>
+                              {vehicle.registrationNumber
+                                ? `${vehicle.name} (${vehicle.registrationNumber})`
+                                : vehicle.name}
+                            </option>
+                          ))}
+                        </select>
+                        {!transportRequiresDetails &&
+                        transportVehicleName ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {transportVehicleRegistration
+                              ? `${transportVehicleName} (${transportVehicleRegistration})`
+                              : transportVehicleName}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
                 </aside>
               </div>
               {canDeleteTask && (

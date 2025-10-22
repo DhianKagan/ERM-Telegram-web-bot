@@ -33,6 +33,14 @@ import {
 const PAGE_LIMIT = 10;
 const TRACK_POINTS_PREVIEW_LIMIT = 20;
 
+const transportHistoryFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 const formatUnknown = (value: unknown): string => {
   if (value === undefined || value === null) {
     return "";
@@ -126,6 +134,46 @@ const formatPositionInfo = (position?: VehiclePositionDto): string => {
   return items.join("; ");
 };
 
+const formatHistoryInstant = (value?: string): string => {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return transportHistoryFormatter.format(date);
+};
+
+const buildHistoryLabel = (
+  entry: NonNullable<FleetVehicleDto["transportHistory"]>[number],
+): string => {
+  const assigned = formatHistoryInstant(entry.assignedAt);
+  const removed = formatHistoryInstant(entry.removedAt);
+  const title = entry.taskTitle && entry.taskTitle.trim().length
+    ? entry.taskTitle.trim()
+    : entry.taskId;
+  if (assigned && removed) {
+    return `${assigned} — ${title} (до ${removed})`;
+  }
+  if (assigned) {
+    return `${assigned} — ${title}`;
+  }
+  if (removed) {
+    return `${title} (до ${removed})`;
+  }
+  return title;
+};
+
+const formatTransportHistory = (
+  history?: FleetVehicleDto["transportHistory"],
+): string => {
+  if (!history?.length) {
+    return "";
+  }
+  return history.map(buildHistoryLabel).join("; ");
+};
+
 export default function FleetVehiclesTab() {
   const [items, setItems] = useState<FleetVehicleDto[]>([]);
   const [total, setTotal] = useState(0);
@@ -150,6 +198,7 @@ export default function FleetVehiclesTab() {
         customSensorsInfo: formatSensorList(item.customSensors),
         trackInfo: formatTrackList(item.track),
         positionInfo: formatPositionInfo(item.position),
+        transportHistoryInfo: formatTransportHistory(item.transportHistory),
       })),
     [items],
   );
@@ -364,6 +413,25 @@ export default function FleetVehiclesTab() {
                     {selectedVehicle.currentTasks?.length
                       ? selectedVehicle.currentTasks.join(", ")
                       : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-500">История задач</dt>
+                  <dd className="text-slate-900">
+                    {selectedVehicle.transportHistory?.length ? (
+                      <ul className="space-y-1 text-sm">
+                        {selectedVehicle.transportHistory.map((entry) => (
+                          <li
+                            key={`${entry.taskId}-${entry.assignedAt}`}
+                            className="leading-snug"
+                          >
+                            {buildHistoryLabel(entry)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      "—"
+                    )}
                   </dd>
                 </div>
                 <div>

@@ -236,6 +236,10 @@ export interface TaskAttrs {
   files?: string[];
   attachments?: Attachment[];
   transport_type?: 'Без транспорта' | 'Легковой' | 'Грузовой';
+  transport_driver_id?: number | null;
+  transport_vehicle_id?: Types.ObjectId | null;
+  transport_vehicle_name?: string | null;
+  transport_vehicle_registration?: string | null;
   cargo_length_m?: number;
   cargo_width_m?: number;
   cargo_height_m?: number;
@@ -362,6 +366,10 @@ const taskSchema = new Schema<TaskDocument>(
       enum: ['Без транспорта', 'Легковой', 'Грузовой'],
       default: 'Без транспорта',
     },
+    transport_driver_id: Number,
+    transport_vehicle_id: { type: Schema.Types.ObjectId, ref: 'Fleet' },
+    transport_vehicle_name: String,
+    transport_vehicle_registration: String,
     cargo_length_m: Number,
     cargo_width_m: Number,
     cargo_height_m: Number,

@@ -202,6 +202,61 @@ export const updateTask = async (
 export const fetchMentioned = () =>
   authFetch("/api/v1/tasks/mentioned").then((r) => (r.ok ? r.json() : []));
 
+export interface TransportDriverOption {
+  id: number;
+  name: string;
+  username?: string | null;
+}
+
+export interface TransportVehicleOption {
+  id: string;
+  name: string;
+  registrationNumber: string;
+  transportType: "Легковой" | "Грузовой";
+}
+
+export interface TransportOptionsResponse {
+  drivers: TransportDriverOption[];
+  vehicles: TransportVehicleOption[];
+}
+
+export const fetchTransportOptions = async (): Promise<TransportOptionsResponse> => {
+  const res = await authFetch("/api/v1/tasks/transport-options");
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || "Не удалось загрузить данные транспорта");
+  }
+  const data = (await res.json()) as {
+    drivers?: Array<{ id: number; name?: string; username?: string | null }>;
+    vehicles?: Array<{
+      id: string;
+      name: string;
+      registrationNumber: string;
+      transportType?: "Легковой" | "Грузовой";
+    }>;
+  };
+  const drivers = Array.isArray(data.drivers)
+    ? data.drivers.map((driver) => ({
+        id: driver.id,
+        name:
+          typeof driver.name === "string" && driver.name.trim().length > 0
+            ? driver.name.trim()
+            : driver.username ?? String(driver.id),
+        username: driver.username ?? null,
+      }))
+    : [];
+  const vehicles = Array.isArray(data.vehicles)
+    ? data.vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        name: vehicle.name,
+        registrationNumber: vehicle.registrationNumber,
+        transportType:
+          vehicle.transportType === "Грузовой" ? "Грузовой" : "Легковой",
+      }))
+    : [];
+  return { drivers, vehicles };
+};
+
 export const fetchRequestExecutors = (): Promise<User[]> =>
   authFetch("/api/v1/tasks/executors?kind=request")
     .then((r) => (r.ok ? r.json() : []))

@@ -23,6 +23,7 @@ export type FleetVehicleRow = FleetVehicleDto & {
   customSensorsInfo: string;
   trackInfo: string;
   positionInfo: string;
+  transportHistoryInfo: string;
 };
 
 export const fleetVehicleColumns: ColumnDef<FleetVehicleRow>[] = [
@@ -81,6 +82,12 @@ export const fleetVehicleColumns: ColumnDef<FleetVehicleRow>[] = [
     header: "Текущие задачи",
     cell: ({ getValue }) => stringify(getValue<string[] | undefined>()),
     meta: { minWidth: "10rem", maxWidth: "24rem" },
+  },
+  {
+    accessorKey: "transportHistoryInfo",
+    header: "История задач",
+    cell: ({ getValue }) => stringify(getValue<string | undefined>()),
+    meta: { minWidth: "12rem", maxWidth: "28rem" },
   },
   {
     accessorKey: "createdAt",

@@ -8,6 +8,11 @@ const normalizeEmptyNumeric = (value: unknown) => {
   return value;
 };
 
+const normalizeEmptyString = (value: unknown) => {
+  if (typeof value === 'string' && value.trim() === '') return null;
+  return value;
+};
+
 const optionalFloatField = (field: string) =>
   body(field)
     .customSanitizer(normalizeEmptyNumeric)
@@ -47,6 +52,14 @@ export class CreateTaskDto {
         .isNumeric(),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
+      body('transport_driver_id')
+        .customSanitizer(normalizeEmptyNumeric)
+        .optional({ nullable: true })
+        .isNumeric(),
+      body('transport_vehicle_id')
+        .customSanitizer(normalizeEmptyString)
+        .optional({ nullable: true, checkFalsy: true })
+        .isMongoId(),
       body()
         .custom((_value, { req }) => {
           const { assignees, assigned_user_id: assignedUserId } = req.body as {
@@ -86,6 +99,14 @@ export class UpdateTaskDto {
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
         .isNumeric(),
+      body('transport_driver_id')
+        .customSanitizer(normalizeEmptyNumeric)
+        .optional({ nullable: true })
+        .isNumeric(),
+      body('transport_vehicle_id')
+        .customSanitizer(normalizeEmptyString)
+        .optional({ nullable: true, checkFalsy: true })
+        .isMongoId(),
       body()
         .custom((_value, { req }) => {
           const { assignees, assigned_user_id: assignedUserId } = req.body as {

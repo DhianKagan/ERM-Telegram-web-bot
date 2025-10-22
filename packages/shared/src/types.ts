@@ -23,6 +23,10 @@ export interface Task {
   cargo_volume_m3?: number;
   cargo_weight_kg?: number;
   logistics_enabled?: boolean;
+  transport_driver_id?: number | null;
+  transport_vehicle_id?: string | null;
+  transport_vehicle_name?: string | null;
+  transport_vehicle_registration?: string | null;
   payment_method?: PaymentMethod;
   payment_amount?: number;
   telegram_message_id?: number;
@@ -89,6 +93,7 @@ export interface FleetVehicleDto {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
+  transportHistory?: { taskId: string; taskTitle?: string; assignedAt: string; removedAt?: string }[];
   createdAt?: string;
   updatedAt?: string;
   unitId?: number;

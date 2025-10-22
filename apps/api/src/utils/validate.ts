@@ -7,6 +7,7 @@ import {
   ValidationError,
 } from 'express-validator';
 import { sendProblem } from './problem';
+import { cleanupUploadedFiles } from './requestUploads';
 
 const hasFieldParam = (
   error: ValidationError,
@@ -72,6 +73,7 @@ export function handleValidation(
     detailMessages.length > 0
       ? `Поля: ${detailMessages.join('; ')}`
       : 'Ошибка валидации';
+  void cleanupUploadedFiles(req);
   sendProblem(req, res, {
     type: 'about:blank',
     title: 'Ошибка валидации',

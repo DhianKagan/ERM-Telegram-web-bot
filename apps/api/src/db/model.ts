@@ -589,12 +589,14 @@ export interface FileAttrs {
   type: string;
   size: number;
   uploadedAt: Date;
+  draftId?: Types.ObjectId;
 }
 
 export interface FileDocument extends FileAttrs, Document {}
 
 const fileSchema = new Schema<FileDocument>({
   taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
+  draftId: { type: Schema.Types.ObjectId, ref: 'TaskDraft', default: null },
   userId: { type: Number, required: true },
   name: { type: String, required: true },
   path: { type: String, required: true },
@@ -604,7 +606,40 @@ const fileSchema = new Schema<FileDocument>({
   uploadedAt: { type: Date, default: Date.now },
 });
 
+fileSchema.index({ draftId: 1 }, { name: 'files_draft_id_idx' });
+
 export const File = mongoose.model<FileDocument>('File', fileSchema);
+
+// Черновики задач сохраняют незавершённые формы
+// Основные модули: mongoose
+export interface TaskDraftAttrs {
+  userId: number;
+  kind: 'task' | 'request';
+  payload: Record<string, unknown>;
+  attachments?: Attachment[];
+}
+
+export interface TaskDraftDocument extends TaskDraftAttrs, Document {}
+
+const taskDraftSchema = new Schema<TaskDraftDocument>(
+  {
+    userId: { type: Number, required: true },
+    kind: { type: String, enum: ['task', 'request'], required: true },
+    payload: { type: Schema.Types.Mixed, default: {} },
+    attachments: [attachmentSchema],
+  },
+  { timestamps: true },
+);
+
+taskDraftSchema.index(
+  { userId: 1, kind: 1 },
+  { unique: true, name: 'task_drafts_user_kind_unique' },
+);
+
+export const TaskDraft = mongoose.model<TaskDraftDocument>(
+  'TaskDraft',
+  taskDraftSchema,
+);
 
 // Шаблон задачи хранит предустановленные поля
 // Основные модули: mongoose

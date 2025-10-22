@@ -29,6 +29,7 @@ import { writeLog } from '../services/wgLogEngine';
 import { maxUserFiles, maxUserStorage } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
 import { coerceAttachments } from '../utils/attachments';
+import { registerUploadedFile } from '../utils/requestUploads';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
@@ -202,6 +203,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
             type: f.mimetype,
             size: f.size,
           });
+          registerUploadedFile(req, String(doc._id));
           await writeLog('Загружен файл', 'info', { userId, name: original });
           return {
             name: original,

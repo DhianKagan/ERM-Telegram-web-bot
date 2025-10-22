@@ -25,6 +25,10 @@ import {
   TaskRequestError,
   fetchRequestExecutors,
   fetchTransportOptions,
+  fetchTaskDraft,
+  saveTaskDraft,
+  deleteTaskDraft,
+  type TaskDraft,
 } from "../services/tasks";
 import type {
   TransportDriverOption,
@@ -657,6 +661,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     register,
     control,
     handleSubmit,
+    getValues,
     reset,
     watch,
     setValue,
@@ -848,6 +853,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [previewAttachment, setPreviewAttachment] = React.useState<
     { name: string; url: string } | null
   >(null);
+  const [draft, setDraft] = React.useState<TaskDraft | null>(null);
+  const [draftLoading, setDraftLoading] = React.useState(false);
+  const [isSavingDraft, setIsSavingDraft] = React.useState(false);
   const [photosLink, setPhotosLink] = React.useState<string | null>(null);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
@@ -1656,6 +1664,60 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [user, canEditAll, entityKind]);
 
   React.useEffect(() => {
+    if (isEdit) {
+      setDraft(null);
+      return;
+    }
+    let cancelled = false;
+    setDraftLoading(true);
+    fetchTaskDraft(entityKind)
+      .then((data) => {
+        if (cancelled) return;
+        if (data) {
+          setDraft(data);
+          const payload = (data.payload || {}) as Partial<Task> &
+            Record<string, unknown>;
+          applyTaskDetails(payload);
+          const meta = (payload.draftMeta as Record<string, unknown> | undefined) ?? {};
+          if (typeof meta.transportDriverName === "string") {
+            setTransportDriverName(meta.transportDriverName);
+          }
+          if (typeof meta.transportVehicleName === "string") {
+            setTransportVehicleName(meta.transportVehicleName);
+          }
+          if (typeof meta.transportVehicleRegistration === "string") {
+            setTransportVehicleRegistration(meta.transportVehicleRegistration);
+          }
+          if (typeof meta.photosLink === "string") {
+            setPhotosLink(meta.photosLink);
+          }
+          setAlertMsg((prev) => prev ?? t("taskDraftLoaded"));
+        } else {
+          setDraft(null);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn("Не удалось загрузить черновик задачи", error);
+      })
+      .finally(() => {
+        if (!cancelled) setDraftLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyTaskDetails,
+    entityKind,
+    isEdit,
+    setPhotosLink,
+    setTransportDriverName,
+    setTransportVehicleName,
+    setTransportVehicleRegistration,
+    t,
+  ]);
+
+  React.useEffect(() => {
     if (isEdit) return;
     const current =
       typeof assigneeValue === "string" ? assigneeValue.trim() : "";
@@ -1780,6 +1842,219 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     return null;
   };
+
+  const collectDraftPayload = React.useCallback(() => {
+    const values = getValues();
+    const titleValue =
+      typeof values.title === "string" ? values.title.trim() : "";
+    const descriptionValue =
+      typeof values.description === "string" ? values.description : "";
+    const assigneeRaw =
+      typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
+    const assigneeNumeric = toNumericValue(assigneeRaw);
+    const resolvedAssignee =
+      assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
+    const resolvedTaskType =
+      entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
+
+    const payload: Record<string, unknown> = {
+      title: titleValue,
+      task_type: resolvedTaskType,
+      task_description: descriptionValue,
+      comment,
+      priority,
+      transport_type: transportType,
+      payment_method: paymentMethod,
+      status,
+      logistics_enabled: showLogistics,
+      attachments,
+    };
+
+    if (resolvedAssignee !== undefined) {
+      payload.assigned_user_id = resolvedAssignee;
+    }
+    if (taskAssigneeIds.length > 0) {
+      payload.assignees = taskAssigneeIds;
+    } else if (resolvedAssignee !== undefined) {
+      payload.assignees = [resolvedAssignee];
+    }
+
+    const creatorNumeric = toNumericValue(creator);
+    if (creatorNumeric !== null) {
+      payload.created_by = creatorNumeric;
+    } else if (creator.trim()) {
+      payload.created_by = creator.trim();
+    }
+
+    if (values.startDate) payload.start_date = values.startDate;
+    if (values.dueDate) payload.due_date = values.dueDate;
+    if (start) payload.start_location = start;
+    if (startLink) payload.start_location_link = startLink;
+    if (end) payload.end_location = end;
+    if (endLink) payload.end_location_link = endLink;
+    if (startCoordinates) payload.startCoordinates = startCoordinates;
+    if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+    if (routeLink) payload.google_route_url = routeLink;
+    if (distanceKm !== null) payload.route_distance_km = distanceKm;
+
+    if (transportDriverId.trim()) {
+      const driverNumeric = toNumericValue(transportDriverId);
+      payload.transport_driver_id =
+        driverNumeric !== null ? driverNumeric : transportDriverId.trim();
+    }
+    if (transportVehicleId.trim()) {
+      payload.transport_vehicle_id = transportVehicleId.trim();
+    }
+    if (transportVehicleName.trim()) {
+      payload.transport_vehicle_name = transportVehicleName.trim();
+    }
+    if (transportVehicleRegistration.trim()) {
+      payload.transport_vehicle_registration =
+        transportVehicleRegistration.trim();
+    }
+
+    if (requestId) {
+      if (entityKind === "request") {
+        payload.request_id = requestId;
+      } else {
+        payload.task_number = requestId;
+      }
+    }
+
+    const amountValue = parseCurrencyInput(paymentAmount);
+    if (amountValue !== null) payload.payment_amount = amountValue;
+    else if (paymentAmount.trim()) payload.payment_amount = paymentAmount.trim();
+
+    const lengthValue = parseMetricInput(cargoLength);
+    if (lengthValue !== null) payload.cargo_length_m = lengthValue;
+    else if (cargoLength.trim()) payload.cargo_length_m = cargoLength.trim();
+
+    const widthValue = parseMetricInput(cargoWidth);
+    if (widthValue !== null) payload.cargo_width_m = widthValue;
+    else if (cargoWidth.trim()) payload.cargo_width_m = cargoWidth.trim();
+
+    const heightValue = parseMetricInput(cargoHeight);
+    if (heightValue !== null) payload.cargo_height_m = heightValue;
+    else if (cargoHeight.trim()) payload.cargo_height_m = cargoHeight.trim();
+
+    const volumeValue = parseMetricInput(cargoVolume);
+    if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
+    else if (cargoVolume.trim()) payload.cargo_volume_m3 = cargoVolume.trim();
+
+    const weightValue = parseMetricInput(cargoWeight);
+    if (weightValue !== null) payload.cargo_weight_kg = weightValue;
+    else if (cargoWeight.trim()) payload.cargo_weight_kg = cargoWeight.trim();
+
+    if (completedAt) {
+      payload.completed_at = completedAt;
+    }
+
+    const draftMeta: Record<string, unknown> = {};
+    if (transportDriverName.trim()) {
+      draftMeta.transportDriverName = transportDriverName.trim();
+    }
+    if (transportVehicleName.trim()) {
+      draftMeta.transportVehicleName = transportVehicleName.trim();
+    }
+    if (transportVehicleRegistration.trim()) {
+      draftMeta.transportVehicleRegistration =
+        transportVehicleRegistration.trim();
+    }
+    if (photosLink) {
+      draftMeta.photosLink = photosLink;
+    }
+    if (Object.keys(draftMeta).length > 0) {
+      payload.draftMeta = draftMeta;
+    }
+
+    payload.kind = entityKind;
+
+    return payload;
+  }, [
+    attachments,
+    cargoHeight,
+    cargoLength,
+    cargoVolume,
+    cargoWeight,
+    cargoWidth,
+    comment,
+    completedAt,
+    creator,
+    distanceKm,
+    end,
+    endLink,
+    entityKind,
+    getValues,
+    paymentAmount,
+    paymentMethod,
+    photosLink,
+    priority,
+    routeLink,
+    showLogistics,
+    start,
+    startCoordinates,
+    startLink,
+    taskAssigneeIds,
+    taskType,
+    transportDriverId,
+    transportDriverName,
+    transportType,
+    transportVehicleId,
+    transportVehicleName,
+    transportVehicleRegistration,
+    status,
+    finishCoordinates,
+    requestId,
+  ]);
+
+  const handleSaveDraft = React.useCallback(async () => {
+    setIsSavingDraft(true);
+    try {
+      const payload = collectDraftPayload();
+      const saved = await saveTaskDraft(entityKind, payload);
+      setDraft(saved);
+      setAlertMsg(t("taskDraftSaved"));
+    } catch (error) {
+      console.error("Не удалось сохранить черновик", error);
+      if (error instanceof TaskRequestError) {
+        setAlertMsg(
+          t("taskDraftSaveFailedWithReason", { reason: error.message }),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(
+          t("taskDraftSaveFailedWithReason", { reason: error.message }),
+        );
+      } else {
+        setAlertMsg(t("taskDraftSaveFailed"));
+      }
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [collectDraftPayload, entityKind, t]);
+
+  const handleDeleteDraft = React.useCallback(async () => {
+    setDraftLoading(true);
+    try {
+      await deleteTaskDraft(entityKind);
+      setDraft(null);
+      setAlertMsg(t("taskDraftCleared"));
+    } catch (error) {
+      console.error("Не удалось удалить черновик", error);
+      if (error instanceof TaskRequestError) {
+        setAlertMsg(
+          t("taskDraftClearFailedWithReason", { reason: error.message }),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(
+          t("taskDraftClearFailedWithReason", { reason: error.message }),
+        );
+      } else {
+        setAlertMsg(t("taskDraftClearFailed"));
+      }
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [entityKind, t]);
 
   const submit = handleSubmit(async (formData) => {
     try {
@@ -2051,6 +2326,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (requestLabel) setRequestId(requestLabel);
       }
       setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
+      if (!isEdit) {
+        try {
+          await deleteTaskDraft(entityKind);
+          setDraft(null);
+        } catch (error) {
+          console.warn("Не удалось удалить сохранённый черновик", error);
+        }
+      }
       if (taskData && onSave) onSave(taskData as Task);
     } catch (e) {
       console.error(e);
@@ -2806,6 +3089,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       </Button>
                     )}
                     <div className="ml-auto flex flex-wrap gap-2">
+                      {editing && !isEdit && (
+                        <Button
+                          variant="outline"
+                          size="pill"
+                          disabled={isSavingDraft || draftLoading}
+                          onClick={handleSaveDraft}
+                        >
+                          {isSavingDraft ? <Spinner /> : t("saveDraft")}
+                        </Button>
+                      )}
+                      {editing && !isEdit && draft && (
+                        <Button
+                          variant="ghost"
+                          size="pill"
+                          onClick={handleDeleteDraft}
+                          disabled={draftLoading}
+                        >
+                          {t("clearDraft")}
+                        </Button>
+                      )}
                       {isEdit && canDeleteTask && editing && (
                         <Button
                           variant="destructive"

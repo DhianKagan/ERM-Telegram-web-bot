@@ -7,6 +7,7 @@ export const TOKENS = {
   UsersService: Symbol('UsersService'),
   RolesService: Symbol('RolesService'),
   LogsService: Symbol('LogsService'),
+  TaskDraftsService: Symbol('TaskDraftsService'),
   RoutesService: Symbol('RoutesService'),
   MapsService: Symbol('MapsService'),
   TelegramApi: Symbol('TelegramApi'),
@@ -23,6 +24,7 @@ export const TOKENS = {
   StackOrchestratorController: Symbol('StackOrchestratorController'),
   StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
   StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
+  TaskDraftsController: Symbol('TaskDraftsController'),
 } as const;
 
 type TokenMap = typeof TOKENS;

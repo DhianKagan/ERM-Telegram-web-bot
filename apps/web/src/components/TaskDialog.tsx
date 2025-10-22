@@ -1455,6 +1455,183 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
+  const toNumericValue = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const collectDraftPayload = React.useCallback(() => {
+    const values = getValues();
+    const titleValue =
+      typeof values.title === "string" ? values.title.trim() : "";
+    const descriptionValue =
+      typeof values.description === "string" ? values.description : "";
+    const assigneeRaw =
+      typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
+    const assigneeNumeric = toNumericValue(assigneeRaw);
+    const resolvedAssignee =
+      assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
+    const resolvedTaskType =
+      entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
+
+    const payload: Record<string, unknown> = {
+      title: titleValue,
+      task_type: resolvedTaskType,
+      task_description: descriptionValue,
+      comment,
+      priority,
+      transport_type: transportType,
+      payment_method: paymentMethod,
+      status,
+      logistics_enabled: showLogistics,
+      attachments,
+    };
+
+    if (resolvedAssignee !== undefined) {
+      payload.assigned_user_id = resolvedAssignee;
+    }
+    if (taskAssigneeIds.length > 0) {
+      payload.assignees = taskAssigneeIds;
+    } else if (resolvedAssignee !== undefined) {
+      payload.assignees = [resolvedAssignee];
+    }
+
+    const creatorNumeric = toNumericValue(creator);
+    if (creatorNumeric !== null) {
+      payload.created_by = creatorNumeric;
+    } else if (creator.trim()) {
+      payload.created_by = creator.trim();
+    }
+
+    if (values.startDate) payload.start_date = values.startDate;
+    if (values.dueDate) payload.due_date = values.dueDate;
+    if (start) payload.start_location = start;
+    if (startLink) payload.start_location_link = startLink;
+    if (end) payload.end_location = end;
+    if (endLink) payload.end_location_link = endLink;
+    if (startCoordinates) payload.startCoordinates = startCoordinates;
+    if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+    if (routeLink) payload.google_route_url = routeLink;
+    if (distanceKm !== null) payload.route_distance_km = distanceKm;
+
+    if (transportDriverId.trim()) {
+      const driverNumeric = toNumericValue(transportDriverId);
+      payload.transport_driver_id =
+        driverNumeric !== null ? driverNumeric : transportDriverId.trim();
+    }
+    if (transportVehicleId.trim()) {
+      payload.transport_vehicle_id = transportVehicleId.trim();
+    }
+    if (transportVehicleName.trim()) {
+      payload.transport_vehicle_name = transportVehicleName.trim();
+    }
+    if (transportVehicleRegistration.trim()) {
+      payload.transport_vehicle_registration =
+        transportVehicleRegistration.trim();
+    }
+
+    if (requestId) {
+      if (entityKind === "request") {
+        payload.request_id = requestId;
+      } else {
+        payload.task_number = requestId;
+      }
+    }
+
+    const amountValue = parseCurrencyInput(paymentAmount);
+    if (amountValue !== null) payload.payment_amount = amountValue;
+    else if (paymentAmount.trim()) payload.payment_amount = paymentAmount.trim();
+
+    const lengthValue = parseMetricInput(cargoLength);
+    if (lengthValue !== null) payload.cargo_length_m = lengthValue;
+    else if (cargoLength.trim()) payload.cargo_length_m = cargoLength.trim();
+
+    const widthValue = parseMetricInput(cargoWidth);
+    if (widthValue !== null) payload.cargo_width_m = widthValue;
+    else if (cargoWidth.trim()) payload.cargo_width_m = cargoWidth.trim();
+
+    const heightValue = parseMetricInput(cargoHeight);
+    if (heightValue !== null) payload.cargo_height_m = heightValue;
+    else if (cargoHeight.trim()) payload.cargo_height_m = cargoHeight.trim();
+
+    const volumeValue = parseMetricInput(cargoVolume);
+    if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
+    else if (cargoVolume.trim()) payload.cargo_volume_m3 = cargoVolume.trim();
+
+    const weightValue = parseMetricInput(cargoWeight);
+    if (weightValue !== null) payload.cargo_weight_kg = weightValue;
+    else if (cargoWeight.trim()) payload.cargo_weight_kg = cargoWeight.trim();
+
+    if (completedAt) {
+      payload.completed_at = completedAt;
+    }
+
+    const draftMeta: Record<string, unknown> = {};
+    if (transportDriverName.trim()) {
+      draftMeta.transportDriverName = transportDriverName.trim();
+    }
+    if (transportVehicleName.trim()) {
+      draftMeta.transportVehicleName = transportVehicleName.trim();
+    }
+    if (transportVehicleRegistration.trim()) {
+      draftMeta.transportVehicleRegistration =
+        transportVehicleRegistration.trim();
+    }
+    if (photosLink) {
+      draftMeta.photosLink = photosLink;
+    }
+    if (Object.keys(draftMeta).length > 0) {
+      payload.draftMeta = draftMeta;
+    }
+
+    payload.kind = entityKind;
+
+    return payload;
+  }, [
+    attachments,
+    cargoHeight,
+    cargoLength,
+    cargoVolume,
+    cargoWeight,
+    cargoWidth,
+    comment,
+    completedAt,
+    creator,
+    distanceKm,
+    end,
+    endLink,
+    entityKind,
+    getValues,
+    paymentAmount,
+    paymentMethod,
+    photosLink,
+    priority,
+    routeLink,
+    showLogistics,
+    start,
+    startCoordinates,
+    startLink,
+    taskAssigneeIds,
+    taskType,
+    transportDriverId,
+    transportDriverName,
+    transportType,
+    transportVehicleId,
+    transportVehicleName,
+    transportVehicleRegistration,
+    status,
+    finishCoordinates,
+    requestId,
+  ]);
+
   React.useEffect(() => {
     const targetId = effectiveTaskId;
     if (isEdit && targetId) {
@@ -1848,183 +2025,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       }
     }
   }, [startCoordinates, finishCoordinates]);
-
-  const toNumericValue = (value: unknown): number | null => {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return null;
-      const parsed = Number(trimmed);
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-  };
-
-  const collectDraftPayload = React.useCallback(() => {
-    const values = getValues();
-    const titleValue =
-      typeof values.title === "string" ? values.title.trim() : "";
-    const descriptionValue =
-      typeof values.description === "string" ? values.description : "";
-    const assigneeRaw =
-      typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
-    const assigneeNumeric = toNumericValue(assigneeRaw);
-    const resolvedAssignee =
-      assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
-    const resolvedTaskType =
-      entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
-
-    const payload: Record<string, unknown> = {
-      title: titleValue,
-      task_type: resolvedTaskType,
-      task_description: descriptionValue,
-      comment,
-      priority,
-      transport_type: transportType,
-      payment_method: paymentMethod,
-      status,
-      logistics_enabled: showLogistics,
-      attachments,
-    };
-
-    if (resolvedAssignee !== undefined) {
-      payload.assigned_user_id = resolvedAssignee;
-    }
-    if (taskAssigneeIds.length > 0) {
-      payload.assignees = taskAssigneeIds;
-    } else if (resolvedAssignee !== undefined) {
-      payload.assignees = [resolvedAssignee];
-    }
-
-    const creatorNumeric = toNumericValue(creator);
-    if (creatorNumeric !== null) {
-      payload.created_by = creatorNumeric;
-    } else if (creator.trim()) {
-      payload.created_by = creator.trim();
-    }
-
-    if (values.startDate) payload.start_date = values.startDate;
-    if (values.dueDate) payload.due_date = values.dueDate;
-    if (start) payload.start_location = start;
-    if (startLink) payload.start_location_link = startLink;
-    if (end) payload.end_location = end;
-    if (endLink) payload.end_location_link = endLink;
-    if (startCoordinates) payload.startCoordinates = startCoordinates;
-    if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
-    if (routeLink) payload.google_route_url = routeLink;
-    if (distanceKm !== null) payload.route_distance_km = distanceKm;
-
-    if (transportDriverId.trim()) {
-      const driverNumeric = toNumericValue(transportDriverId);
-      payload.transport_driver_id =
-        driverNumeric !== null ? driverNumeric : transportDriverId.trim();
-    }
-    if (transportVehicleId.trim()) {
-      payload.transport_vehicle_id = transportVehicleId.trim();
-    }
-    if (transportVehicleName.trim()) {
-      payload.transport_vehicle_name = transportVehicleName.trim();
-    }
-    if (transportVehicleRegistration.trim()) {
-      payload.transport_vehicle_registration =
-        transportVehicleRegistration.trim();
-    }
-
-    if (requestId) {
-      if (entityKind === "request") {
-        payload.request_id = requestId;
-      } else {
-        payload.task_number = requestId;
-      }
-    }
-
-    const amountValue = parseCurrencyInput(paymentAmount);
-    if (amountValue !== null) payload.payment_amount = amountValue;
-    else if (paymentAmount.trim()) payload.payment_amount = paymentAmount.trim();
-
-    const lengthValue = parseMetricInput(cargoLength);
-    if (lengthValue !== null) payload.cargo_length_m = lengthValue;
-    else if (cargoLength.trim()) payload.cargo_length_m = cargoLength.trim();
-
-    const widthValue = parseMetricInput(cargoWidth);
-    if (widthValue !== null) payload.cargo_width_m = widthValue;
-    else if (cargoWidth.trim()) payload.cargo_width_m = cargoWidth.trim();
-
-    const heightValue = parseMetricInput(cargoHeight);
-    if (heightValue !== null) payload.cargo_height_m = heightValue;
-    else if (cargoHeight.trim()) payload.cargo_height_m = cargoHeight.trim();
-
-    const volumeValue = parseMetricInput(cargoVolume);
-    if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
-    else if (cargoVolume.trim()) payload.cargo_volume_m3 = cargoVolume.trim();
-
-    const weightValue = parseMetricInput(cargoWeight);
-    if (weightValue !== null) payload.cargo_weight_kg = weightValue;
-    else if (cargoWeight.trim()) payload.cargo_weight_kg = cargoWeight.trim();
-
-    if (completedAt) {
-      payload.completed_at = completedAt;
-    }
-
-    const draftMeta: Record<string, unknown> = {};
-    if (transportDriverName.trim()) {
-      draftMeta.transportDriverName = transportDriverName.trim();
-    }
-    if (transportVehicleName.trim()) {
-      draftMeta.transportVehicleName = transportVehicleName.trim();
-    }
-    if (transportVehicleRegistration.trim()) {
-      draftMeta.transportVehicleRegistration =
-        transportVehicleRegistration.trim();
-    }
-    if (photosLink) {
-      draftMeta.photosLink = photosLink;
-    }
-    if (Object.keys(draftMeta).length > 0) {
-      payload.draftMeta = draftMeta;
-    }
-
-    payload.kind = entityKind;
-
-    return payload;
-  }, [
-    attachments,
-    cargoHeight,
-    cargoLength,
-    cargoVolume,
-    cargoWeight,
-    cargoWidth,
-    comment,
-    completedAt,
-    creator,
-    distanceKm,
-    end,
-    endLink,
-    entityKind,
-    getValues,
-    paymentAmount,
-    paymentMethod,
-    photosLink,
-    priority,
-    routeLink,
-    showLogistics,
-    start,
-    startCoordinates,
-    startLink,
-    taskAssigneeIds,
-    taskType,
-    transportDriverId,
-    transportDriverName,
-    transportType,
-    transportVehicleId,
-    transportVehicleName,
-    transportVehicleRegistration,
-    status,
-    finishCoordinates,
-    requestId,
-  ]);
 
   const handleDeleteDraft = React.useCallback(async () => {
     setDraftLoading(true);

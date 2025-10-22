@@ -29,11 +29,16 @@ const middlewares = [
 
 const parseNumber = (value: unknown): number => Number(value);
 
-type FleetVehicleResponseDto = FleetVehicleAttrs & {
+type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
   id: string;
   createdAt?: string;
   updatedAt?: string;
-  transportHistory: { taskId: string; taskTitle?: string; assignedAt?: string; removedAt?: string }[];
+  transportHistory: {
+    taskId: string;
+    taskTitle?: string;
+    assignedAt?: string;
+    removedAt?: string;
+  }[];
 };
 
 function mapVehicle(

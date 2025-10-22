@@ -245,14 +245,16 @@ export const fetchTransportOptions = async (): Promise<TransportOptionsResponse>
         username: driver.username ?? null,
       }))
     : [];
-  const vehicles = Array.isArray(data.vehicles)
-    ? data.vehicles.map((vehicle) => ({
-        id: vehicle.id,
-        name: vehicle.name,
-        registrationNumber: vehicle.registrationNumber,
-        transportType:
-          vehicle.transportType === "Грузовой" ? "Грузовой" : "Легковой",
-      }))
+  const vehicles: TransportVehicleOption[] = Array.isArray(data.vehicles)
+    ? data.vehicles.map(
+        (vehicle): TransportVehicleOption => ({
+          id: vehicle.id,
+          name: vehicle.name,
+          registrationNumber: vehicle.registrationNumber,
+          transportType:
+            vehicle.transportType === "Грузовой" ? "Грузовой" : "Легковой",
+        }),
+      )
     : [];
   return { drivers, vehicles };
 };

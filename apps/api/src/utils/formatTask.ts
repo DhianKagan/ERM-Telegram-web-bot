@@ -774,9 +774,37 @@ export default function formatTask(
         `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
       );
     }
-    if (typeof task.transport_driver_id === 'number') {
-      const driverId = task.transport_driver_id;
-      logisticsLines.push(`🚘 Водитель: ${userLink(driverId, users[driverId]?.name || users[driverId]?.username)}`);
+    const driverNameRaw =
+      typeof task.transport_driver_name === 'string'
+        ? task.transport_driver_name.trim()
+        : '';
+    const driverIdRaw = task.transport_driver_id as number | string | null | undefined;
+    if (driverIdRaw !== null && driverIdRaw !== undefined && driverIdRaw !== '') {
+      const driverKey =
+        typeof driverIdRaw === 'string' ? driverIdRaw.trim() : driverIdRaw;
+      const numericCandidate =
+        typeof driverKey === 'number'
+          ? driverKey
+          : Number.isFinite(Number(driverKey))
+          ? Number(driverKey)
+          : null;
+      const lookupKey =
+        numericCandidate !== null ? numericCandidate : driverKey;
+      const userData = users[lookupKey];
+      const resolvedName =
+        driverNameRaw ||
+        userData?.name ||
+        userData?.username ||
+        (typeof driverKey === 'string' ? driverKey : String(driverKey));
+      const linkId =
+        numericCandidate !== null
+          ? numericCandidate
+          : typeof driverKey === 'string' && driverKey
+          ? driverKey
+          : driverKey;
+      logisticsLines.push(`🚘 Водитель: ${userLink(linkId, resolvedName)}`);
+    } else if (driverNameRaw) {
+      logisticsLines.push(`🚘 Водитель: *${mdEscape(driverNameRaw)}*`);
     }
     if (task.transport_vehicle_name) {
       const vehicleLabel = task.transport_vehicle_registration

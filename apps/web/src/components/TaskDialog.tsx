@@ -746,6 +746,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [formatInputDate, DEFAULT_DUE_OFFSET_MS],
   );
 
+  const watchedDraftValues = watch();
   const startDateValue = watch("startDate");
   const dueDateValue = watch("dueDate");
   const assigneeValue = watch("assigneeId");
@@ -856,6 +857,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [draft, setDraft] = React.useState<TaskDraft | null>(null);
   const [draftLoading, setDraftLoading] = React.useState(false);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
+  const [hasDraftChanges, setHasDraftChanges] = React.useState(false);
+  const draftSnapshotRef = React.useRef<string | null>(null);
+  const draftSaveRequestIdRef = React.useRef(0);
+  const skipNextDraftSyncRef = React.useRef(true);
   const [photosLink, setPhotosLink] = React.useState<string | null>(null);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState("");
@@ -1617,6 +1622,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setDueOffset,
     setInitialDates,
     applyTaskDetails,
+    collectDraftPayload,
     initialKind,
   ]);
 
@@ -1692,8 +1698,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             setPhotosLink(meta.photosLink);
           }
           setAlertMsg((prev) => prev ?? t("taskDraftLoaded"));
+          setHasDraftChanges(true);
+          skipNextDraftSyncRef.current = true;
+          window.setTimeout(() => {
+            if (cancelled) return;
+            try {
+              draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+            } catch (error) {
+              console.warn("Не удалось зафиксировать состояние черновика", error);
+            }
+          }, 0);
         } else {
           setDraft(null);
+          skipNextDraftSyncRef.current = true;
+          draftSnapshotRef.current = null;
+          setHasDraftChanges(false);
         }
       })
       .catch((error) => {
@@ -2007,37 +2026,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     requestId,
   ]);
 
-  const handleSaveDraft = React.useCallback(async () => {
-    setIsSavingDraft(true);
-    try {
-      const payload = collectDraftPayload();
-      const saved = await saveTaskDraft(entityKind, payload);
-      setDraft(saved);
-      setAlertMsg(t("taskDraftSaved"));
-    } catch (error) {
-      console.error("Не удалось сохранить черновик", error);
-      if (error instanceof TaskRequestError) {
-        setAlertMsg(
-          t("taskDraftSaveFailedWithReason", { reason: error.message }),
-        );
-      } else if (error instanceof Error && error.message) {
-        setAlertMsg(
-          t("taskDraftSaveFailedWithReason", { reason: error.message }),
-        );
-      } else {
-        setAlertMsg(t("taskDraftSaveFailed"));
-      }
-    } finally {
-      setIsSavingDraft(false);
-    }
-  }, [collectDraftPayload, entityKind, t]);
-
   const handleDeleteDraft = React.useCallback(async () => {
     setDraftLoading(true);
     try {
       await deleteTaskDraft(entityKind);
       setDraft(null);
       setAlertMsg(t("taskDraftCleared"));
+      setHasDraftChanges(false);
+      skipNextDraftSyncRef.current = true;
+      try {
+        draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+      } catch (error) {
+        console.warn("Не удалось сбросить состояние черновика", error);
+      }
     } catch (error) {
       console.error("Не удалось удалить черновик", error);
       if (error instanceof TaskRequestError) {
@@ -2054,7 +2055,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     } finally {
       setDraftLoading(false);
     }
-  }, [entityKind, t]);
+  }, [collectDraftPayload, entityKind, t]);
 
   const submit = handleSubmit(async (formData) => {
     try {
@@ -2330,6 +2331,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         try {
           await deleteTaskDraft(entityKind);
           setDraft(null);
+          setHasDraftChanges(false);
+          skipNextDraftSyncRef.current = true;
+          try {
+            draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+          } catch (error) {
+            console.warn("Не удалось обновить состояние черновика", error);
+          }
         } catch (error) {
           console.warn("Не удалось удалить сохранённый черновик", error);
         }
@@ -2360,6 +2368,68 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
   const [pendingDoneOption, setPendingDoneOption] = React.useState("");
+
+  React.useEffect(() => {
+    if (isEdit || !editing) {
+      return undefined;
+    }
+    const payload = collectDraftPayload();
+    const serialized = JSON.stringify(payload);
+    if (skipNextDraftSyncRef.current) {
+      skipNextDraftSyncRef.current = false;
+      draftSnapshotRef.current = serialized;
+      return undefined;
+    }
+    if (draftSnapshotRef.current === serialized) {
+      return undefined;
+    }
+    setHasDraftChanges(true);
+    const timeoutId = window.setTimeout(() => {
+      const requestId = draftSaveRequestIdRef.current + 1;
+      draftSaveRequestIdRef.current = requestId;
+      setIsSavingDraft(true);
+      saveTaskDraft(entityKind, payload)
+        .then((saved) => {
+          if (draftSaveRequestIdRef.current !== requestId) {
+            return;
+          }
+          draftSnapshotRef.current = serialized;
+          setDraft(saved);
+        })
+        .catch((error) => {
+          if (draftSaveRequestIdRef.current !== requestId) {
+            return;
+          }
+          console.error("Не удалось сохранить черновик", error);
+          if (error instanceof TaskRequestError) {
+            setAlertMsg(
+              t("taskDraftSaveFailedWithReason", { reason: error.message }),
+            );
+          } else if (error instanceof Error && error.message) {
+            setAlertMsg(
+              t("taskDraftSaveFailedWithReason", { reason: error.message }),
+            );
+          } else {
+            setAlertMsg(t("taskDraftSaveFailed"));
+          }
+        })
+        .finally(() => {
+          if (draftSaveRequestIdRef.current === requestId) {
+            setIsSavingDraft(false);
+          }
+        });
+    }, 800);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    collectDraftPayload,
+    editing,
+    entityKind,
+    isEdit,
+    t,
+    watchedDraftValues,
+  ]);
 
   const handleDelete = async () => {
     const targetId = effectiveTaskId;
@@ -2412,6 +2482,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     );
     setDistanceKm(d.distanceKm);
     setShowLogistics(Boolean(d.showLogistics));
+    skipNextDraftSyncRef.current = true;
   };
 
   const acceptTask = async () => {
@@ -3089,22 +3160,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       </Button>
                     )}
                     <div className="ml-auto flex flex-wrap gap-2">
-                      {editing && !isEdit && (
-                        <Button
-                          variant="outline"
-                          size="pill"
-                          disabled={isSavingDraft || draftLoading}
-                          onClick={handleSaveDraft}
-                        >
-                          {isSavingDraft ? <Spinner /> : t("saveDraft")}
-                        </Button>
-                      )}
-                      {editing && !isEdit && draft && (
+                      {editing &&
+                      !isEdit &&
+                      (draft || hasDraftChanges) && (
                         <Button
                           variant="ghost"
                           size="pill"
                           onClick={handleDeleteDraft}
-                          disabled={draftLoading}
+                          disabled={draftLoading || isSavingDraft}
                         >
                           {t("clearDraft")}
                         </Button>

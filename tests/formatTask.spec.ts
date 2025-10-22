@@ -2,8 +2,20 @@
  * Назначение файла: проверка форматирования задач для Telegram.
  * Основные модули: formatTask, mdEscape.
  */
-import formatTask from '../apps/api/src/utils/formatTask';
-import escapeMarkdownV2 from '../apps/api/src/utils/mdEscape';
+
+let formatTask: typeof import('../apps/api/src/utils/formatTask').default;
+let escapeMarkdownV2: typeof import('../apps/api/src/utils/mdEscape').default;
+
+beforeAll(async () => {
+  process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost:27017/ermdb';
+  jest.mock('../apps/api/src/config', () => ({
+    __esModule: true,
+    appUrl: process.env.APP_URL || 'https://example.com',
+    mongoDatabaseUrl: process.env.MONGO_DATABASE_URL!,
+  }));
+  ({ default: formatTask } = await import('../apps/api/src/utils/formatTask'));
+  ({ default: escapeMarkdownV2 } = await import('../apps/api/src/utils/mdEscape'));
+});
 
 describe('formatTask', () => {
   it('создаёт расширенный Markdown с кликабельным номером и секциями', () => {
@@ -119,6 +131,36 @@ describe('formatTask', () => {
       '📣 *Проверка формы*',
       'Выполнена с опозданием на 2 часа',
     ]);
+  });
+
+  it('оборачивает водителя в ссылку при строковом идентификаторе', () => {
+    const task = {
+      _id: '64f9d82e0f4c446ce93f1fb0',
+      task_number: 'B-15',
+      transport_driver_id: '303',
+      transport_driver_name: 'Пётр Иванов',
+      logistics_enabled: true,
+    };
+    const users = {
+      303: { name: 'Пётр Иванов', username: 'petr' },
+    };
+
+    const { text } = formatTask(task as any, users);
+
+    expect(text).toContain('🚘 Водитель: [Пётр Иванов](tg://user?id=303)');
+  });
+
+  it('показывает имя водителя, если идентификатор отсутствует', () => {
+    const task = {
+      _id: '74f9d82e0f4c446ce93f1fb0',
+      task_number: 'B-16',
+      transport_driver_name: 'Сергей Коваленко',
+      logistics_enabled: true,
+    };
+
+    const { text } = formatTask(task as any, {});
+
+    expect(text).toContain('🚘 Водитель: *Сергей Коваленко*');
   });
 
   it('извлекает изображения из HTML и формирует список ссылок', () => {

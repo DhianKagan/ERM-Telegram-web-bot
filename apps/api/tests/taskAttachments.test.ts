@@ -128,7 +128,7 @@ describe('Привязка вложений к задачам', () => {
         _id: { $in: [fileId] },
         $or: [{ userId: 7 }, { taskId: createdTaskId }],
       },
-      { $set: { taskId: createdTaskId } },
+      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
     );
     expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
       2,
@@ -136,7 +136,7 @@ describe('Привязка вложений к задачам', () => {
         taskId: createdTaskId,
         _id: { $nin: [fileId] },
       },
-      { $unset: { taskId: '' } },
+      { $unset: { taskId: '', draftId: '' } },
     );
   });
 
@@ -149,7 +149,7 @@ describe('Привязка вложений к задачам', () => {
     expect(result).not.toBeNull();
     expect(mockFileUpdateMany).toHaveBeenCalledWith(
       { taskId: existingTaskId },
-      { $unset: { taskId: '' } },
+      { $unset: { taskId: '', draftId: '' } },
     );
   });
 

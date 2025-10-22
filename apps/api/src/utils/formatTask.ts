@@ -774,6 +774,16 @@ export default function formatTask(
         `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
       );
     }
+    if (typeof task.transport_driver_id === 'number') {
+      const driverId = task.transport_driver_id;
+      logisticsLines.push(`🚘 Водитель: ${userLink(driverId, users[driverId]?.name || users[driverId]?.username)}`);
+    }
+    if (task.transport_vehicle_name) {
+      const vehicleLabel = task.transport_vehicle_registration
+        ? `${task.transport_vehicle_name} (${task.transport_vehicle_registration})`
+        : task.transport_vehicle_name;
+      logisticsLines.push(`🚙 Авто: *${mdEscape(vehicleLabel)}*`);
+    }
     if (cargoEntries.length) {
       cargoEntries.forEach(({ label, value }) => {
         logisticsLines.push(`📦 *${mdEscape(label)}*: *${mdEscape(value)}*`);

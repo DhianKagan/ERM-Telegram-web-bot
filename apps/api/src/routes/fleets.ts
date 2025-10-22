@@ -33,6 +33,7 @@ type FleetVehicleResponseDto = FleetVehicleAttrs & {
   id: string;
   createdAt?: string;
   updatedAt?: string;
+  transportHistory: { taskId: string; taskTitle?: string; assignedAt?: string; removedAt?: string }[];
 };
 
 function mapVehicle(
@@ -52,6 +53,24 @@ function mapVehicle(
     fuelAverageConsumption: doc.fuelAverageConsumption,
     fuelSpentTotal: doc.fuelSpentTotal,
     currentTasks: doc.currentTasks,
+    transportHistory: Array.isArray(doc.transportHistory)
+      ? doc.transportHistory.map((entry) => ({
+          taskId: entry.taskId,
+          taskTitle: entry.taskTitle,
+          assignedAt:
+            entry.assignedAt instanceof Date
+              ? entry.assignedAt.toISOString()
+              : entry.assignedAt
+              ? String(entry.assignedAt)
+              : undefined,
+          removedAt:
+            entry.removedAt instanceof Date
+              ? entry.removedAt.toISOString()
+              : entry.removedAt
+              ? String(entry.removedAt)
+              : undefined,
+        }))
+      : [],
   };
   if (doc.createdAt) {
     base.createdAt =

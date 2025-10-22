@@ -579,6 +579,8 @@ router.get(
 
 router.get('/mentioned', ctrl.mentioned);
 
+router.get('/transport-options', ctrl.transportOptions as RequestHandler);
+
 router.get(
   '/report/summary',
   [

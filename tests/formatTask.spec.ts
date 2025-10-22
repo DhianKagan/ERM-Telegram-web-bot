@@ -22,6 +22,10 @@ describe('formatTask', () => {
       end_location: 'Объект «Юг»',
       route_distance_km: 125,
       transport_type: 'Грузовой',
+      transport_driver_id: 101,
+      transport_vehicle_id: '64abc123def4567890fedcba',
+      transport_vehicle_name: 'MAN TGS',
+      transport_vehicle_registration: 'AA1234BB',
       payment_method: 'Безнал',
       payment_amount: 1500,
       cargo_length_m: 2.5,
@@ -56,6 +60,10 @@ describe('formatTask', () => {
     expect(text).toContain('🧭 *Логистика*');
     expect(text).toContain('🗺 Расстояние: *125 км*');
     expect(text).toContain('🚗 Транспорт: *Грузовой*');
+    expect(text).toContain('🚘 Водитель: [Иван Петров](tg://user?id=101)');
+    expect(text).toContain(
+      `🚙 Авто: *${escapeMarkdownV2('MAN TGS (AA1234BB)')}*`,
+    );
     expect(text).toContain('💳 Способ оплаты: *Безнал*');
     const formattedAmount = new Intl.NumberFormat('uk-UA', {
       minimumFractionDigits: 2,

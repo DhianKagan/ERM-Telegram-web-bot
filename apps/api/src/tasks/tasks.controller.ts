@@ -21,6 +21,8 @@ import {
   type Attachment,
   type FileDocument,
 } from '../db/model';
+import { FleetVehicle } from '../db/models/fleet';
+import { CollectionItem } from '../db/models/CollectionItem';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
@@ -2412,6 +2414,7 @@ export default class TasksController {
       (t.assignees || []).forEach((id: number) => ids.add(id));
       (t.controllers || []).forEach((id: number) => ids.add(id));
       if (t.created_by) ids.add(t.created_by);
+      if (typeof t.transport_driver_id === 'number') ids.add(t.transport_driver_id);
       (t.history || []).forEach((h) => ids.add(h.changed_by));
     });
     const users = await getUsersMap(Array.from(ids));
@@ -2435,6 +2438,7 @@ export default class TasksController {
     (task.assignees || []).forEach((id: number) => ids.add(id));
     (task.controllers || []).forEach((id: number) => ids.add(id));
     if (task.created_by) ids.add(task.created_by);
+    if (typeof task.transport_driver_id === 'number') ids.add(task.transport_driver_id);
     (task.history || []).forEach((h) => ids.add(h.changed_by));
     const users = await getUsersMap(Array.from(ids));
     res.json({ task, users });
@@ -2472,7 +2476,22 @@ export default class TasksController {
       } else {
         payload.kind = 'task';
       }
-      const task = await this.service.create(payload, actorId);
+      let task: TaskDocument;
+      try {
+        task = (await this.service.create(payload, actorId)) as TaskDocument;
+      } catch (error) {
+        const err = error as { code?: string; message?: string };
+        if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Транспорт не заполнен',
+            status: 422,
+            detail: 'Укажите водителя и транспорт для выбранного типа',
+          });
+          return;
+        }
+        throw error;
+      }
       const label = resolveTaskLabel(detectTaskKind(task));
       await writeLog(
         `Создана ${label.toLowerCase()} ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
@@ -2622,6 +2641,15 @@ export default class TasksController {
         );
       } catch (error) {
         const err = error as { code?: string; message?: string };
+        if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Транспорт не заполнен',
+            status: 422,
+            detail: 'Укажите водителя и транспорт для выбранного типа',
+          });
+          return;
+        }
         if (
           err.code === 'TASK_CANCEL_FORBIDDEN' ||
           err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN' ||
@@ -2729,6 +2757,48 @@ export default class TasksController {
   mentioned = async (req: RequestWithUser, res: Response) => {
     const tasks = await this.service.mentioned(String(req.user!.id));
     res.json(tasks);
+  };
+
+  transportOptions = async (_req: RequestWithUser, res: Response) => {
+    const positions = await CollectionItem.find({
+      type: 'positions',
+      name: { $regex: /^водитель$/i },
+    })
+      .select({ _id: 1 })
+      .lean<{ _id: unknown }[]>();
+    const positionIds = positions
+      .map((item) => (item?._id ? String(item._id) : null))
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    let drivers: { telegram_id: number; name?: string; username?: string }[] = [];
+    if (positionIds.length > 0) {
+      drivers = await User.find({ positionId: { $in: positionIds } })
+        .select({ telegram_id: 1, name: 1, username: 1 })
+        .sort({ name: 1, telegram_id: 1 })
+        .lean<{ telegram_id: number; name?: string; username?: string }[]>();
+    }
+    const vehicles = await FleetVehicle.find()
+      .select({ name: 1, registrationNumber: 1, transportType: 1 })
+      .sort({ name: 1 })
+      .lean<{ _id: unknown; name: string; registrationNumber: string; transportType?: string }[]>();
+    res.json({
+      drivers: drivers.map((driver) => ({
+        id: driver.telegram_id,
+        name:
+          (typeof driver.name === 'string' && driver.name.trim().length > 0
+            ? driver.name.trim()
+            : driver.username) || String(driver.telegram_id),
+        username: driver.username || null,
+      })),
+      vehicles: vehicles.map((vehicle) => ({
+        id: String(vehicle._id),
+        name: vehicle.name,
+        registrationNumber: vehicle.registrationNumber,
+        transportType:
+          typeof vehicle.transportType === 'string' && vehicle.transportType.trim().length > 0
+            ? vehicle.transportType
+            : 'Легковой',
+      })),
+    });
   };
 
   executors = async (req: RequestWithUser, res: Response) => {

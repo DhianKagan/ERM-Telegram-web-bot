@@ -6,6 +6,13 @@ export type FuelType = 'Бензин' | 'Дизель';
 
 export type TransportType = 'Легковой' | 'Грузовой';
 
+export interface VehicleTaskHistoryEntry {
+  taskId: string;
+  taskTitle?: string;
+  assignedAt: Date;
+  removedAt?: Date;
+}
+
 export interface FleetVehicleAttrs {
   name: string;
   registrationNumber: string;
@@ -18,9 +25,20 @@ export interface FleetVehicleAttrs {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
+  transportHistory?: VehicleTaskHistoryEntry[];
 }
 
 export type FleetVehicleDocument = HydratedDocument<FleetVehicleAttrs>;
+
+const vehicleTaskHistorySchema = new Schema<VehicleTaskHistoryEntry>(
+  {
+    taskId: { type: String, required: true },
+    taskTitle: String,
+    assignedAt: { type: Date, default: Date.now },
+    removedAt: Date,
+  },
+  { _id: false },
+);
 
 const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
   {
@@ -50,6 +68,7 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     fuelAverageConsumption: { type: Number, required: true, min: 0 },
     fuelSpentTotal: { type: Number, required: true, min: 0 },
     currentTasks: { type: [String], default: [] },
+    transportHistory: { type: [vehicleTaskHistorySchema], default: [] },
   },
   {
     timestamps: true,

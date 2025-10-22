@@ -18,6 +18,7 @@ import {
   Comment,
   type TaskKind,
 } from './model';
+import { FleetVehicle } from './models/fleet';
 import * as logEngine from '../services/wgLogEngine';
 import { resolveRoleId } from './roleCache';
 import { Types, PipelineStage, Query } from 'mongoose';
@@ -60,6 +61,414 @@ function normalizeAttachmentsField(
     return;
   }
   target.attachments = normalized;
+}
+
+const TRANSPORT_REQUIRED_TYPES = new Set(['Легковой', 'Грузовой']);
+
+const isTransportRequired = (value: unknown): boolean => {
+  if (typeof value !== 'string') return false;
+  return TRANSPORT_REQUIRED_TYPES.has(value.trim());
+};
+
+const toObjectId = (value: unknown): Types.ObjectId | null => {
+  if (value instanceof Types.ObjectId) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed && Types.ObjectId.isValid(trimmed)) {
+      return new Types.ObjectId(trimmed);
+    }
+  }
+  return null;
+};
+
+const buildTransportError = () => {
+  const error = new Error('TRANSPORT_FIELDS_REQUIRED');
+  (error as Error & { code?: string }).code = 'TRANSPORT_FIELDS_REQUIRED';
+  return error;
+};
+
+async function normalizeTransportFields(
+  payload: Partial<TaskDocument> & Record<string, unknown>,
+  previous: TaskDocument | null,
+): Promise<void> {
+  const typeCandidate = Object.prototype.hasOwnProperty.call(payload, 'transport_type')
+    ? payload.transport_type
+    : previous?.transport_type;
+  const requiresTransport = isTransportRequired(typeCandidate);
+  if (!requiresTransport) {
+    payload.transport_driver_id = null;
+    payload.transport_vehicle_id = null;
+    payload.transport_vehicle_name = null;
+    payload.transport_vehicle_registration = null;
+    return;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_id')) {
+    const driverRaw = payload.transport_driver_id;
+    const driverValue =
+      typeof driverRaw === 'number'
+        ? driverRaw
+        : typeof driverRaw === 'string'
+        ? Number(driverRaw.trim())
+        : Number.NaN;
+    payload.transport_driver_id = Number.isFinite(driverValue) ? driverValue : null;
+  } else if (previous) {
+    payload.transport_driver_id = previous.transport_driver_id ?? null;
+  }
+
+  let vehicleId: Types.ObjectId | null = null;
+  if (Object.prototype.hasOwnProperty.call(payload, 'transport_vehicle_id')) {
+    vehicleId = toObjectId(payload.transport_vehicle_id);
+    if (!vehicleId) {
+      payload.transport_vehicle_id = null;
+      payload.transport_vehicle_name = null;
+      payload.transport_vehicle_registration = null;
+    }
+  } else if (previous?.transport_vehicle_id) {
+    vehicleId = previous.transport_vehicle_id as Types.ObjectId;
+    payload.transport_vehicle_id = previous.transport_vehicle_id;
+    payload.transport_vehicle_name = previous.transport_vehicle_name ?? null;
+    payload.transport_vehicle_registration =
+      previous.transport_vehicle_registration ?? null;
+  }
+
+  if (vehicleId) {
+    const vehicle = await FleetVehicle.findById(vehicleId).lean();
+    if (!vehicle) {
+      payload.transport_vehicle_id = null;
+      payload.transport_vehicle_name = null;
+      payload.transport_vehicle_registration = null;
+      vehicleId = null;
+    } else {
+      payload.transport_vehicle_id = vehicle._id as Types.ObjectId;
+      payload.transport_vehicle_name = vehicle.name;
+      payload.transport_vehicle_registration = vehicle.registrationNumber;
+    }
+  }
+
+  const finalDriver =
+    payload.transport_driver_id ?? previous?.transport_driver_id ?? null;
+  const finalVehicle =
+    payload.transport_vehicle_id ?? previous?.transport_vehicle_id ?? null;
+
+  if (!finalDriver || !finalVehicle) {
+    throw buildTransportError();
+  }
+}
+
+const toTaskIdString = (
+  current: TaskDocument | null,
+  previous?: TaskDocument | null,
+): string | null => {
+  const idCandidate = current?._id ?? previous?._id;
+  return idCandidate ? String(idCandidate) : null;
+};
+
+async function attachVehicle(
+  vehicleId: string,
+  taskId: string,
+  taskTitle?: string,
+): Promise<void> {
+  const vehicle = await FleetVehicle.findById(vehicleId);
+  if (!vehicle) return;
+  const tasks = Array.isArray(vehicle.currentTasks)
+    ? [...vehicle.currentTasks]
+    : [];
+  if (!tasks.includes(taskId)) {
+    tasks.push(taskId);
+    vehicle.currentTasks = tasks;
+  }
+  const history = Array.isArray(vehicle.transportHistory)
+    ? [...vehicle.transportHistory]
+    : [];
+  const entry = history.find((item) => item.taskId === taskId);
+  const now = new Date();
+  if (entry) {
+    entry.assignedAt = now;
+    entry.removedAt = undefined;
+    if (taskTitle) entry.taskTitle = taskTitle;
+  } else {
+    history.push({
+      taskId,
+      taskTitle,
+      assignedAt: now,
+    });
+  }
+  vehicle.transportHistory = history;
+  await vehicle.save();
+}
+
+async function detachVehicle(vehicleId: string, taskId: string): Promise<void> {
+  const vehicle = await FleetVehicle.findById(vehicleId);
+  if (!vehicle) return;
+  if (Array.isArray(vehicle.currentTasks)) {
+    vehicle.currentTasks = vehicle.currentTasks.filter((item) => item !== taskId);
+  }
+  if (Array.isArray(vehicle.transportHistory)) {
+    const entry = vehicle.transportHistory.find(
+      (item) => item.taskId === taskId && !item.removedAt,
+    );
+    if (entry) {
+      entry.removedAt = new Date();
+    }
+  }
+  await vehicle.save();
+}
+
+async function syncVehicleAssignments(
+  previous: TaskDocument | null,
+  current: TaskDocument | null,
+): Promise<void> {
+  const taskId = toTaskIdString(current, previous);
+  if (!taskId) return;
+  const prevRequires = previous ? isTransportRequired(previous.transport_type) : false;
+  const nextRequires = current ? isTransportRequired(current.transport_type) : false;
+
+  const prevVehicleId =
+    prevRequires && previous?.transport_vehicle_id
+      ? String(previous.transport_vehicle_id)
+      : null;
+  const nextVehicleId =
+    nextRequires && current?.transport_vehicle_id
+      ? String(current.transport_vehicle_id)
+      : null;
+
+  if (prevVehicleId && prevVehicleId !== nextVehicleId) {
+    await detachVehicle(prevVehicleId, taskId);
+  }
+  if (nextVehicleId) {
+    const title =
+      typeof current?.title === 'string'
+        ? current.title
+        : typeof previous?.title === 'string'
+        ? previous.title
+        : undefined;
+    await attachVehicle(nextVehicleId, taskId, title);
+  } else if (prevVehicleId && !nextVehicleId) {
+    await detachVehicle(prevVehicleId, taskId);
+  }
+}
+
+async function safeSyncVehicleAssignments(
+  previous: TaskDocument | null,
+  current: TaskDocument | null,
+): Promise<void> {
+  try {
+    await syncVehicleAssignments(previous, current);
+  } catch (error) {
+    const id = toTaskIdString(current, previous) ?? 'unknown';
+    const message = error instanceof Error ? error.message : String(error);
+    await logEngine
+      .writeLog('Не удалось синхронизировать транспорт задачи', 'error', {
+        taskId: id,
+        error: message,
+      })
+      .catch(() => undefined);
+  }
+}
+
+const TRANSPORT_REQUIRED_TYPES = new Set(['Легковой', 'Грузовой']);
+
+const isTransportRequired = (value: unknown): boolean => {
+  if (typeof value !== 'string') return false;
+  return TRANSPORT_REQUIRED_TYPES.has(value.trim());
+};
+
+const toObjectId = (value: unknown): Types.ObjectId | null => {
+  if (value instanceof Types.ObjectId) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed && Types.ObjectId.isValid(trimmed)) {
+      return new Types.ObjectId(trimmed);
+    }
+  }
+  return null;
+};
+
+const buildTransportError = () => {
+  const error = new Error('TRANSPORT_FIELDS_REQUIRED');
+  (error as Error & { code?: string }).code = 'TRANSPORT_FIELDS_REQUIRED';
+  return error;
+};
+
+async function normalizeTransportFields(
+  payload: Partial<TaskDocument> & Record<string, unknown>,
+  previous: TaskDocument | null,
+): Promise<void> {
+  const typeCandidate = Object.prototype.hasOwnProperty.call(payload, 'transport_type')
+    ? payload.transport_type
+    : previous?.transport_type;
+  const requiresTransport = isTransportRequired(typeCandidate);
+  if (!requiresTransport) {
+    payload.transport_driver_id = null;
+    payload.transport_vehicle_id = null;
+    payload.transport_vehicle_name = null;
+    payload.transport_vehicle_registration = null;
+    return;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_id')) {
+    const driverRaw = payload.transport_driver_id;
+    const driverValue =
+      typeof driverRaw === 'number'
+        ? driverRaw
+        : typeof driverRaw === 'string'
+        ? Number(driverRaw.trim())
+        : Number.NaN;
+    payload.transport_driver_id = Number.isFinite(driverValue) ? driverValue : null;
+  } else if (previous) {
+    payload.transport_driver_id = previous.transport_driver_id ?? null;
+  }
+
+  let vehicleId: Types.ObjectId | null = null;
+  if (Object.prototype.hasOwnProperty.call(payload, 'transport_vehicle_id')) {
+    vehicleId = toObjectId(payload.transport_vehicle_id);
+    if (!vehicleId) {
+      payload.transport_vehicle_id = null;
+      payload.transport_vehicle_name = null;
+      payload.transport_vehicle_registration = null;
+    }
+  } else if (previous?.transport_vehicle_id) {
+    vehicleId = previous.transport_vehicle_id as Types.ObjectId;
+    payload.transport_vehicle_id = previous.transport_vehicle_id;
+    payload.transport_vehicle_name = previous.transport_vehicle_name ?? null;
+    payload.transport_vehicle_registration =
+      previous.transport_vehicle_registration ?? null;
+  }
+
+  if (vehicleId) {
+    const vehicle = await FleetVehicle.findById(vehicleId).lean();
+    if (!vehicle) {
+      payload.transport_vehicle_id = null;
+      payload.transport_vehicle_name = null;
+      payload.transport_vehicle_registration = null;
+      vehicleId = null;
+    } else {
+      payload.transport_vehicle_id = vehicle._id as Types.ObjectId;
+      payload.transport_vehicle_name = vehicle.name;
+      payload.transport_vehicle_registration = vehicle.registrationNumber;
+    }
+  }
+
+  const finalDriver =
+    payload.transport_driver_id ?? previous?.transport_driver_id ?? null;
+  const finalVehicle =
+    payload.transport_vehicle_id ?? previous?.transport_vehicle_id ?? null;
+
+  if (!finalDriver || !finalVehicle) {
+    throw buildTransportError();
+  }
+}
+
+const toTaskIdString = (
+  current: TaskDocument | null,
+  previous?: TaskDocument | null,
+): string | null => {
+  const idCandidate = current?._id ?? previous?._id;
+  return idCandidate ? String(idCandidate) : null;
+};
+
+async function attachVehicle(
+  vehicleId: string,
+  taskId: string,
+  taskTitle?: string,
+): Promise<void> {
+  const vehicle = await FleetVehicle.findById(vehicleId);
+  if (!vehicle) return;
+  const tasks = Array.isArray(vehicle.currentTasks)
+    ? [...vehicle.currentTasks]
+    : [];
+  if (!tasks.includes(taskId)) {
+    tasks.push(taskId);
+    vehicle.currentTasks = tasks;
+  }
+  const history = Array.isArray(vehicle.transportHistory)
+    ? [...vehicle.transportHistory]
+    : [];
+  const entry = history.find((item) => item.taskId === taskId);
+  const now = new Date();
+  if (entry) {
+    entry.assignedAt = now;
+    entry.removedAt = undefined;
+    if (taskTitle) entry.taskTitle = taskTitle;
+  } else {
+    history.push({
+      taskId,
+      taskTitle,
+      assignedAt: now,
+    });
+  }
+  vehicle.transportHistory = history;
+  await vehicle.save();
+}
+
+async function detachVehicle(vehicleId: string, taskId: string): Promise<void> {
+  const vehicle = await FleetVehicle.findById(vehicleId);
+  if (!vehicle) return;
+  if (Array.isArray(vehicle.currentTasks)) {
+    vehicle.currentTasks = vehicle.currentTasks.filter((item) => item !== taskId);
+  }
+  if (Array.isArray(vehicle.transportHistory)) {
+    const entry = vehicle.transportHistory.find(
+      (item) => item.taskId === taskId && !item.removedAt,
+    );
+    if (entry) {
+      entry.removedAt = new Date();
+    }
+  }
+  await vehicle.save();
+}
+
+async function syncVehicleAssignments(
+  previous: TaskDocument | null,
+  current: TaskDocument | null,
+): Promise<void> {
+  const taskId = toTaskIdString(current, previous);
+  if (!taskId) return;
+  const prevRequires = previous ? isTransportRequired(previous.transport_type) : false;
+  const nextRequires = current ? isTransportRequired(current.transport_type) : false;
+
+  const prevVehicleId =
+    prevRequires && previous?.transport_vehicle_id
+      ? String(previous.transport_vehicle_id)
+      : null;
+  const nextVehicleId =
+    nextRequires && current?.transport_vehicle_id
+      ? String(current.transport_vehicle_id)
+      : null;
+
+  if (prevVehicleId && prevVehicleId !== nextVehicleId) {
+    await detachVehicle(prevVehicleId, taskId);
+  }
+  if (nextVehicleId) {
+    const title =
+      typeof current?.title === 'string'
+        ? current.title
+        : typeof previous?.title === 'string'
+        ? previous.title
+        : undefined;
+    await attachVehicle(nextVehicleId, taskId, title);
+  } else if (prevVehicleId && !nextVehicleId) {
+    await detachVehicle(prevVehicleId, taskId);
+  }
+}
+
+async function safeSyncVehicleAssignments(
+  previous: TaskDocument | null,
+  current: TaskDocument | null,
+): Promise<void> {
+  try {
+    await syncVehicleAssignments(previous, current);
+  } catch (error) {
+    const id = toTaskIdString(current, previous) ?? 'unknown';
+    const message = error instanceof Error ? error.message : String(error);
+    await logEngine
+      .writeLog('Не удалось синхронизировать транспорт задачи', 'error', {
+        taskId: id,
+        error: message,
+      })
+      .catch(() => undefined);
+  }
 }
 
 
@@ -320,6 +729,10 @@ export async function createTask(
   userId?: number,
 ): Promise<TaskDocument> {
   const payload: Partial<TaskDocument> = data ? { ...data } : {};
+  await normalizeTransportFields(
+    payload as Partial<TaskDocument> & Record<string, unknown>,
+    null,
+  );
   normalizeAttachmentsField(payload as Record<string, unknown>);
   const enrichedAttachments = await enrichAttachmentsFromContent(payload, null);
   if (enrichedAttachments !== undefined) {
@@ -333,6 +746,7 @@ export async function createTask(
   };
   const task = await Task.create({ ...payload, history: [entry] });
   await syncTaskAttachments(task._id as Types.ObjectId, task.attachments, userId);
+  await safeSyncVehicleAssignments(null, task);
   return task;
 }
 
@@ -351,6 +765,7 @@ export async function listMentionedTasks(
       { assignees: userId },
       { created_by: userId },
       { 'comments.author_id': userId },
+      { transport_driver_id: userId },
     ],
   });
 }
@@ -361,12 +776,16 @@ export async function updateTask(
   userId: number,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  const prev = await Task.findById(id);
+  if (!prev) return null;
+  await normalizeTransportFields(
+    data as Partial<TaskDocument> & Record<string, unknown>,
+    prev,
+  );
   if (Object.prototype.hasOwnProperty.call(data, 'kind')) {
     delete (data as Record<string, unknown>).kind;
   }
   normalizeAttachmentsField(data as Record<string, unknown>);
-  const prev = await Task.findById(id);
-  if (!prev) return null;
   const enrichedAttachments = await enrichAttachmentsFromContent(
     data as Partial<TaskDocument> & Record<string, unknown>,
     prev,
@@ -466,6 +885,9 @@ export async function updateTask(
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
   } else if (updated && enrichedAttachments !== undefined) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+  }
+  if (updated) {
+    await safeSyncVehicleAssignments(prev, updated);
   }
   return updated;
 }

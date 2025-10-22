@@ -96,10 +96,24 @@ async function normalizeTransportFields(
     : previous?.transport_type;
   const requiresTransport = isTransportRequired(typeCandidate);
   if (!requiresTransport) {
-    payload.transport_driver_id = null;
-    payload.transport_vehicle_id = null;
-    payload.transport_vehicle_name = null;
-    payload.transport_vehicle_registration = null;
+    const transportFields: Array<keyof TaskDocument> = [
+      'transport_driver_id',
+      'transport_vehicle_id',
+      'transport_vehicle_name',
+      'transport_vehicle_registration',
+    ];
+    transportFields.forEach((field) => {
+      const hasOwnValue = Object.prototype.hasOwnProperty.call(payload, field);
+      const previousValue =
+        previous != null
+          ? (previous as unknown as Record<string, unknown>)[field as string]
+          : undefined;
+      if (hasOwnValue) {
+        (payload as Record<string, unknown>)[field] = null;
+      } else if (previousValue !== null && previousValue !== undefined) {
+        (payload as Record<string, unknown>)[field] = null;
+      }
+    });
     return;
   }
 

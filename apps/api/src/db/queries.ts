@@ -776,6 +776,8 @@ export async function updateTask(
   userId: number,
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  const prev = await Task.findById(id);
+  if (!prev) return null;
   await normalizeTransportFields(
     data as Partial<TaskDocument> & Record<string, unknown>,
     prev,
@@ -784,8 +786,6 @@ export async function updateTask(
     delete (data as Record<string, unknown>).kind;
   }
   normalizeAttachmentsField(data as Record<string, unknown>);
-  const prev = await Task.findById(id);
-  if (!prev) return null;
   const enrichedAttachments = await enrichAttachmentsFromContent(
     data as Partial<TaskDocument> & Record<string, unknown>,
     prev,

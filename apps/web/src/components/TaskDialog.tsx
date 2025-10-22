@@ -859,6 +859,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
   const [hasDraftChanges, setHasDraftChanges] = React.useState(false);
   const draftSnapshotRef = React.useRef<string | null>(null);
+  const draftSaveRequestIdRef = React.useRef(0);
   const skipNextDraftSyncRef = React.useRef(true);
   const [photosLink, setPhotosLink] = React.useState<string | null>(null);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
@@ -2384,13 +2385,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     setHasDraftChanges(true);
     const timeoutId = window.setTimeout(() => {
+      const requestId = draftSaveRequestIdRef.current + 1;
+      draftSaveRequestIdRef.current = requestId;
       setIsSavingDraft(true);
       saveTaskDraft(entityKind, payload)
         .then((saved) => {
+          if (draftSaveRequestIdRef.current !== requestId) {
+            return;
+          }
           draftSnapshotRef.current = serialized;
           setDraft(saved);
         })
         .catch((error) => {
+          if (draftSaveRequestIdRef.current !== requestId) {
+            return;
+          }
           console.error("Не удалось сохранить черновик", error);
           if (error instanceof TaskRequestError) {
             setAlertMsg(
@@ -2405,7 +2414,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           }
         })
         .finally(() => {
-          setIsSavingDraft(false);
+          if (draftSaveRequestIdRef.current === requestId) {
+            setIsSavingDraft(false);
+          }
         });
     }, 800);
     return () => {

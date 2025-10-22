@@ -299,6 +299,19 @@ describe('Chunk upload', () => {
     expect(scanFile).toHaveBeenCalledWith(absolute);
   });
 
+  test('возвращает 400, если чанк пришёл без файла', async () => {
+    const response = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'missing')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '1');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Файл не получен' });
+    expect(storedFiles).toHaveLength(0);
+    expect(scanFile).not.toHaveBeenCalled();
+  });
+
   test('загружает PDF документ', async () => {
     const chunks = [Buffer.from('%PDF-1.4\nERM test document')];
     const { attachment, storedPath } = await uploadViaChunks(

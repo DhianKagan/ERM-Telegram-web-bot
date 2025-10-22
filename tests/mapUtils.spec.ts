@@ -26,6 +26,13 @@ describe('extractCoords', () => {
     expect(result).toEqual({ lat: 49.8379154, lng: 24.0181383 });
   });
 
+  it('извлекает координаты из вложенного параметра link', () => {
+    const result = extractCoords(
+      'https://maps.app.goo.gl/?link=https%3A%2F%2Fwww.google.com%2Fmaps%2Fsearch%2F%3Fapi%3D1%26query%3D50.4501%252C30.5234&apn=com.google.android.apps.maps',
+    );
+    expect(result).toEqual({ lat: 50.4501, lng: 30.5234 });
+  });
+
   it('возвращает null при отсутствии координат', () => {
     expect(extractCoords('https://www.google.com/maps')).toBeNull();
   });

@@ -104,7 +104,7 @@ async function normalizeTransportFields(
   }
 
   if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_id')) {
-    const driverRaw = payload.transport_driver_id;
+    const driverRaw = payload.transport_driver_id as unknown;
     const driverValue =
       typeof driverRaw === 'number'
         ? driverRaw

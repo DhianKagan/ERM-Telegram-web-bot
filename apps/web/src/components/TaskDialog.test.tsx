@@ -2,7 +2,7 @@
 // Назначение файла: проверяет сохранение задачи и повторное открытие формы.
 // Основные модули: React, @testing-library/react, TaskDialog.
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 
@@ -286,6 +286,12 @@ describe("TaskDialog", () => {
       </MemoryRouter>,
     );
 
+    const assigneeSelect = (await screen.findByTestId("assignee")) as HTMLSelectElement;
+    await screen.findByText("Alice");
+    await act(async () => {
+      fireEvent.change(assigneeSelect, { target: { value: "1" } });
+    });
+
     const titleInput = await screen.findByPlaceholderText("title");
     fireEvent.change(titleInput, { target: { value: "Новая задача" } });
 
@@ -326,7 +332,13 @@ describe("TaskDialog", () => {
     fireEvent.change(titleInput, { target: { value: "New delivery" } });
 
     const assigneeSelect = await screen.findByTestId("assignee");
-    fireEvent.change(assigneeSelect, { target: { value: "" } });
+    await screen.findByText("Alice");
+    await act(async () => {
+      fireEvent.change(assigneeSelect, { target: { value: "1" } });
+    });
+    await act(async () => {
+      fireEvent.change(assigneeSelect, { target: { value: "" } });
+    });
 
     const submitButton = screen.getByRole("button", { name: "create" });
     fireEvent.click(submitButton);
@@ -349,7 +361,10 @@ describe("TaskDialog", () => {
     fireEvent.change(titleInput, { target: { value: "Deliver docs" } });
 
     const assigneeSelect = await screen.findByTestId("assignee");
-    fireEvent.change(assigneeSelect, { target: { value: "2" } });
+    await screen.findByText("Alice");
+    await act(async () => {
+      fireEvent.change(assigneeSelect, { target: { value: "2" } });
+    });
 
     const submitButton = screen.getByRole("button", { name: "create" });
     fireEvent.click(submitButton);

@@ -56,6 +56,11 @@ export class CreateTaskDto {
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
         .isNumeric(),
+      body('transport_driver_name')
+        .customSanitizer(normalizeEmptyString)
+        .optional({ nullable: true })
+        .isString()
+        .isLength({ max: 256 }),
       body('transport_vehicle_id')
         .customSanitizer(normalizeEmptyString)
         .optional({ nullable: true, checkFalsy: true })
@@ -103,6 +108,11 @@ export class UpdateTaskDto {
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
         .isNumeric(),
+      body('transport_driver_name')
+        .customSanitizer(normalizeEmptyString)
+        .optional({ nullable: true })
+        .isString()
+        .isLength({ max: 256 }),
       body('transport_vehicle_id')
         .customSanitizer(normalizeEmptyString)
         .optional({ nullable: true, checkFalsy: true })

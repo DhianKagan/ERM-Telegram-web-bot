@@ -98,6 +98,7 @@ async function normalizeTransportFields(
   if (!requiresTransport) {
     const transportFields: Array<keyof TaskDocument> = [
       'transport_driver_id',
+      'transport_driver_name',
       'transport_vehicle_id',
       'transport_vehicle_name',
       'transport_vehicle_registration',
@@ -128,6 +129,20 @@ async function normalizeTransportFields(
     payload.transport_driver_id = Number.isFinite(driverValue) ? driverValue : null;
   } else if (previous) {
     payload.transport_driver_id = previous.transport_driver_id ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_name')) {
+    const rawName = payload.transport_driver_name as unknown;
+    if (typeof rawName === 'string') {
+      const trimmed = rawName.trim();
+      payload.transport_driver_name = trimmed.length > 0 ? trimmed : null;
+    } else {
+      payload.transport_driver_name = null;
+    }
+  } else if (payload.transport_driver_id === null) {
+    payload.transport_driver_name = null;
+  } else if (previous) {
+    payload.transport_driver_name = previous.transport_driver_name ?? null;
   }
 
   let vehicleId: Types.ObjectId | null = null;

@@ -237,6 +237,7 @@ export interface TaskAttrs {
   attachments?: Attachment[];
   transport_type?: 'Без транспорта' | 'Легковой' | 'Грузовой';
   transport_driver_id?: number | null;
+  transport_driver_name?: string | null;
   transport_vehicle_id?: Types.ObjectId | null;
   transport_vehicle_name?: string | null;
   transport_vehicle_registration?: string | null;
@@ -367,6 +368,7 @@ const taskSchema = new Schema<TaskDocument>(
       default: 'Без транспорта',
     },
     transport_driver_id: Number,
+    transport_driver_name: String,
     transport_vehicle_id: { type: Schema.Types.ObjectId, ref: 'Fleet' },
     transport_vehicle_name: String,
     transport_vehicle_registration: String,

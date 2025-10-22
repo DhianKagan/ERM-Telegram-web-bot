@@ -1,5 +1,5 @@
 // Общая форма создания и редактирования задач
-// Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, логирование, coerceTaskId
+// Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, SingleSelect, логирование, coerceTaskId
 import React from "react";
 import { createPortal } from "react-dom";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import CKEditorPopup from "./CKEditorPopup";
 import MultiUserSelect from "./MultiUserSelect";
+import SingleSelect from "./SingleSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import AlertDialog from "./AlertDialog";
 import { useAuth } from "../context/useAuth";
@@ -41,6 +42,7 @@ import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
+import haversine from "../utils/haversine";
 import createRouteLink from "../utils/createRouteLink";
 import {
   useForm,
@@ -820,7 +822,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const sameActor = isCreator && isExecutor;
   const isTaskNew = initialStatus === "Новая";
   const canEditTask =
-    canEditAll || ((isCreator || sameActor) && isTaskNew);
+    canEditAll || isExecutor || (isCreator && isTaskNew);
   const canChangeStatus =
     canEditAll ||
     (isExecutor && !sameActor) ||
@@ -905,15 +907,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   React.useEffect(() => {
     if (!transportDriverId) {
       if (transportDriverName) setTransportDriverName("");
-      return;
     }
-    const option = transportDriverOptions.find(
-      (candidate) => String(candidate.id) === transportDriverId,
-    );
-    if (option && option.name !== transportDriverName) {
-      setTransportDriverName(option.name);
-    }
-  }, [transportDriverId, transportDriverOptions, transportDriverName]);
+  }, [transportDriverId, transportDriverName]);
   React.useEffect(() => {
     if (!transportVehicleId) {
       if (transportVehicleName) setTransportVehicleName("");
@@ -951,7 +946,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     prevTransportRequiresRef.current = transportRequiresDetails;
   }, [transportRequiresDetails]);
-  const driverOptions = React.useMemo(() => {
+  const driverOptionItems = React.useMemo(() => {
     const list = [...transportDriverOptions];
     if (transportDriverId) {
       const numericDriver = Number.parseInt(transportDriverId, 10);
@@ -966,8 +961,37 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         });
       }
     }
-    return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    return list
+      .map((item) => {
+        const normalized = item.name.trim();
+        const fallbackName = normalized.length > 0 ? normalized : String(item.id);
+        return {
+          ...item,
+          name: fallbackName,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"));
   }, [transportDriverOptions, transportDriverId, transportDriverName]);
+  const driverOptions = React.useMemo(
+    () =>
+      driverOptionItems.map((driver) => ({
+        value: String(driver.id),
+        label: driver.name,
+      })),
+    [driverOptionItems],
+  );
+  const selectedDriverOption = React.useMemo(
+    () =>
+      driverOptionItems.find(
+        (driver) => String(driver.id) === transportDriverId,
+      ) ?? null,
+    [driverOptionItems, transportDriverId],
+  );
+  React.useEffect(() => {
+    if (selectedDriverOption && selectedDriverOption.name !== transportDriverName) {
+      setTransportDriverName(selectedDriverOption.name);
+    }
+  }, [selectedDriverOption, transportDriverName]);
   const vehicleOptions = React.useMemo(() => {
     const allowedType =
       transportType === "Грузовой" ? "Грузовой" : "Легковой";
@@ -993,6 +1017,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     transportVehicleRegistration,
     transportType,
   ]);
+  const vehicleSelectOptions = React.useMemo(
+    () =>
+      vehicleOptions.map((vehicle) => ({
+        value: vehicle.id,
+        label: vehicle.registrationNumber
+          ? `${vehicle.name} (${vehicle.registrationNumber})`
+          : vehicle.name,
+      })),
+    [vehicleOptions],
+  );
   React.useEffect(() => {
     if (!transportRequiresDetails || !transportVehicleId) {
       return;
@@ -1177,18 +1211,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         (taskData as Record<string, unknown>).transport_driver_id,
       );
       const driverIdValue = driverNumeric !== null ? String(driverNumeric) : "";
+      const driverNameRaw = (taskData as Record<string, unknown>)
+        .transport_driver_name;
+      const driverNameStored =
+        typeof driverNameRaw === "string" ? driverNameRaw.trim() : "";
       const driverUser =
         driverNumeric !== null && usersMap
           ? usersMap[String(driverNumeric)]
           : undefined;
-      const driverDisplay = driverUser
-        ? driverUser.name ||
-          driverUser.telegram_username ||
-          driverUser.username ||
-          String(driverNumeric)
-        : driverNumeric !== null
-          ? String(driverNumeric)
-          : "";
+      const driverDisplay = driverNameStored
+        || (driverUser
+          ? driverUser.name ||
+            driverUser.telegram_username ||
+            driverUser.username ||
+            String(driverNumeric)
+          : driverNumeric !== null
+            ? String(driverNumeric)
+            : "");
       const vehicleIdValue =
         typeof taskData.transport_vehicle_id === "string"
           ? taskData.transport_vehicle_id
@@ -1260,7 +1299,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setPriority(curPriority);
       setTransportType(curTransport);
       setTransportDriverId(driverIdValue);
-      setTransportDriverName(driverDisplay);
+      setTransportDriverName(driverNameStored || driverDisplay);
       setTransportVehicleId(vehicleIdValue);
       setTransportVehicleName(vehicleNameValue);
       setTransportVehicleRegistration(vehicleRegistrationValue);
@@ -1391,7 +1430,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         cargoVolume: volumeValue,
         cargoWeight: weightValue,
         transportDriverId: driverIdValue,
-        transportDriverName: driverDisplay,
+        transportDriverName: driverNameStored || driverDisplay,
         transportVehicleId: vehicleIdValue,
         transportVehicleName: vehicleNameValue,
         transportVehicleRegistration: vehicleRegistrationValue,
@@ -1532,6 +1571,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const driverNumeric = toNumericValue(transportDriverId);
       payload.transport_driver_id =
         driverNumeric !== null ? driverNumeric : transportDriverId.trim();
+    }
+    const driverNameValue = transportDriverName.trim();
+    if (driverNameValue) {
+      payload.transport_driver_name = driverNameValue;
+    } else if (!transportDriverId.trim()) {
+      payload.transport_driver_name = null;
     }
     if (transportVehicleId.trim()) {
       payload.transport_vehicle_id = transportVehicleId.trim();
@@ -2035,17 +2080,34 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (autoRouteRef.current) {
         setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
       }
-      fetchRoute(startCoordinates, finishCoordinates).then((r) => {
-        if (r) {
-          setDistanceKm(Number((r.distance / 1000).toFixed(1)));
+      let cancelled = false;
+      const applyFallback = () => {
+        const fallback = haversine(startCoordinates, finishCoordinates);
+        if (!cancelled) {
+          setDistanceKm(Number(fallback.toFixed(1)));
         }
-      });
-    } else {
-      setDistanceKm(null);
-      if (autoRouteRef.current) {
-        setRouteLink("");
-      }
+      };
+      fetchRoute(startCoordinates, finishCoordinates)
+        .then((r) => {
+          if (cancelled) return;
+          if (r && typeof r.distance === "number" && Number.isFinite(r.distance)) {
+            setDistanceKm(Number((r.distance / 1000).toFixed(1)));
+            return;
+          }
+          applyFallback();
+        })
+        .catch(() => {
+          applyFallback();
+        });
+      return () => {
+        cancelled = true;
+      };
     }
+    setDistanceKm(null);
+    if (autoRouteRef.current) {
+      setRouteLink("");
+    }
+    return undefined;
   }, [startCoordinates, finishCoordinates]);
 
   const handleDeleteDraft = React.useCallback(async () => {
@@ -3387,43 +3449,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     />
                   </div>
                   {showTransportFields && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label
-                          className="block text-sm font-medium"
-                          htmlFor="task-transport-driver"
-                        >
-                          {t("transportDriver")}
-                        </label>
-                        <select
-                          id="task-transport-driver"
-                          value={transportDriverId}
-                          onChange={(event) => {
-                            const value = event.target.value;
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <SingleSelect
+                          label={t("transportDriver")}
+                          options={driverOptions}
+                          value={transportDriverId || null}
+                          onChange={(option) => {
+                            const value = option?.value ?? "";
                             setTransportDriverId(value);
                             if (!value) {
                               setTransportDriverName("");
                               return;
                             }
-                            const option = driverOptions.find(
-                              (candidate) => String(candidate.id) === value,
-                            );
-                            setTransportDriverName(
-                              option ? option.name : value,
-                            );
+                            setTransportDriverName(option?.label ?? value);
                           }}
-                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
                           disabled={!canEditTransport || !transportRequiresDetails}
-                        >
-                          <option value="">
-                            {t("transportDriverPlaceholder")}
-                          </option>
-                          {driverOptions.map((driver) => (
-                            <option key={driver.id} value={driver.id}>
-                              {driver.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder={t("transportDriverPlaceholder")}
+                        />
                         {transportOptionsLoading && transportRequiresDetails ? (
                           <p className="mt-1 text-xs text-slate-500">
                             {t("transportOptionsLoading")}
@@ -3447,53 +3490,36 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           </p>
                         ) : null}
                       </div>
-                      <div>
-                        <label
-                          className="block text-sm font-medium"
-                          htmlFor="task-transport-vehicle"
-                        >
-                          {t("transportVehicle")}
-                        </label>
-                        <select
-                          id="task-transport-vehicle"
-                          value={transportVehicleId}
-                          onChange={(event) => {
-                            const value = event.target.value;
+                      <div className="space-y-1.5">
+                        <SingleSelect
+                          label={t("transportVehicle")}
+                          options={vehicleSelectOptions}
+                          value={transportVehicleId || null}
+                          onChange={(option) => {
+                            const value = option?.value ?? "";
                             setTransportVehicleId(value);
                             if (!value) {
                               setTransportVehicleName("");
                               setTransportVehicleRegistration("");
                               return;
                             }
-                            const option = vehicleOptions.find(
-                              (candidate) => candidate.id === value,
+                            const candidate = vehicleOptions.find(
+                              (vehicle) => vehicle.id === value,
                             );
-                            if (option) {
-                              setTransportVehicleName(option.name);
+                            if (candidate) {
+                              setTransportVehicleName(candidate.name);
                               setTransportVehicleRegistration(
-                                option.registrationNumber,
+                                candidate.registrationNumber,
                               );
                             } else {
-                              setTransportVehicleName(value);
+                              setTransportVehicleName(option?.label ?? value);
                               setTransportVehicleRegistration("");
                             }
                           }}
-                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
                           disabled={!canEditTransport || !transportRequiresDetails}
-                        >
-                          <option value="">
-                            {t("transportVehiclePlaceholder")}
-                          </option>
-                          {vehicleOptions.map((vehicle) => (
-                            <option key={vehicle.id} value={vehicle.id}>
-                              {vehicle.registrationNumber
-                                ? `${vehicle.name} (${vehicle.registrationNumber})`
-                                : vehicle.name}
-                            </option>
-                          ))}
-                        </select>
-                        {!transportRequiresDetails &&
-                        transportVehicleName ? (
+                          placeholder={t("transportVehiclePlaceholder")}
+                        />
+                        {!transportRequiresDetails && transportVehicleName ? (
                           <p className="mt-1 text-xs text-slate-500">
                             {transportVehicleRegistration
                               ? `${transportVehicleName} (${transportVehicleRegistration})`

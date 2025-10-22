@@ -63,11 +63,13 @@ import {
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
 
+type TaskKind = "task" | "request";
+
 interface Props {
   onClose: () => void;
   onSave?: (data: Task | null) => void;
   id?: string;
-  kind?: "task" | "request";
+  kind?: TaskKind;
 }
 
 interface InitialValues {
@@ -1027,6 +1029,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     null,
   );
   const fetchedTaskIdRef = React.useRef<string | null>(null);
+  const summaryFetchRef = React.useRef<{
+    kind: TaskKind;
+    completed: boolean;
+  } | null>(null);
   React.useEffect(() => {
     if (typeof document === "undefined") return;
     const { body, documentElement } = document;
@@ -1635,6 +1641,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   React.useEffect(() => {
     const targetId = effectiveTaskId;
     if (isEdit && targetId) {
+      summaryFetchRef.current = null;
       const canonicalTargetId = coerceTaskId(targetId) ?? targetId;
       if (fetchedTaskIdRef.current === canonicalTargetId) {
         return;
@@ -1699,13 +1706,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       initialKind === "request"
         ? "/api/v1/tasks/report/summary?kind=request"
         : "/api/v1/tasks/report/summary";
-    authFetch(summaryUrl)
-      .then((r) => (r.ok ? r.json() : { count: 0 }))
-      .then((s) => {
-        const num = String((s.count || 0) + 1).padStart(6, "0");
-        const prefix = initialKind === "request" ? "REQ" : "ERM";
-        setRequestId(`${prefix}_${num}`);
-      });
+    summaryFetchRef.current =
+      summaryFetchRef.current?.kind === initialKind
+        ? summaryFetchRef.current
+        : { kind: initialKind, completed: false };
+    const summaryState = summaryFetchRef.current;
+    if (summaryState && !summaryState.completed) {
+      summaryState.completed = true;
+      authFetch(summaryUrl)
+        .then((r) => (r.ok ? r.json() : { count: 0 }))
+        .then((s) => {
+          const num = String((s.count || 0) + 1).padStart(6, "0");
+          const prefix = initialKind === "request" ? "REQ" : "ERM";
+          setRequestId(`${prefix}_${num}`);
+        })
+        .catch(() => {
+          if (
+            summaryFetchRef.current &&
+            summaryFetchRef.current.kind === initialKind
+          ) {
+            summaryFetchRef.current.completed = false;
+          }
+        });
+    }
     setPaymentAmount(formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT));
     setPhotosLink(null);
     const startInstant = parseIsoDate(defaultStartDate);
@@ -1799,7 +1822,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setDueOffset,
     setInitialDates,
     applyTaskDetails,
-    collectDraftPayload,
     initialKind,
   ]);
 

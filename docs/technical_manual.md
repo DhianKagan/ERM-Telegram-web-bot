@@ -90,8 +90,11 @@ API справочников постепенно переезжает с кол
 выбор задаётся переменной `SECRETS_MANAGER`.
 Планировщик `KEY_ROTATION_CRON` пересоздаёт ключи.
 Управление файлами выполняется через сервис `dataStorage`, файлы лежат в каталоге `STORAGE_DIR`.
-API `/api/v1/files/:id` поддерживает режим предпросмотра `?mode=inline`,
-который отдаёт файл с заголовками `Content-Disposition: inline` и типом из поля `type`.
+
+- Chunk-upload реализован маршрутом `POST /api/v1/tasks/upload-chunk` в `apps/api/src/routes/tasks.ts`; он собирает части, проверяет лимиты и возвращает ссылку вида `/api/v1/files/:id`.
+- Для небольших вложений используется `POST /api/v1/tasks/upload-inline` из того же файла, который обрабатывает обычную multipart-форму.
+- Скачивание (`GET /api/v1/files/:id`) и удаление (`DELETE /api/v1/files/:id`) реализованы в `apps/api/src/routes/files.ts`; режим `?mode=inline` отдаёт файл с заголовками `Content-Disposition: inline` и `X-Content-Type-Options: nosniff`.
+
 На клиенте встроенный просмотр работает для изображений, видео, PDF и текстовых форматов;
 другие типы открываются только скачиванием в новой вкладке.
 Файлы из `apps/api/src` собираются в каталог `apps/api/dist`, затем

@@ -51,9 +51,10 @@ web/
 ## Файловый сервис
 
 - Коллекция `File` хранит `taskId`, `userId`, `name`, `path`, `type`, `size` и `uploadedAt`.
-- Chunk-upload обрабатывает маршрут `POST /api/v1/tasks/upload-chunk` в `apps/api/src/routes/tasks.ts` и собирает временные части, сохраняя итоговую запись в MongoDB.
-- Быструю загрузку небольших файлов обслуживает `POST /api/v1/tasks/upload-inline` из `apps/api/src/routes/tasks.ts`, формируя вложение сразу в теле запроса.
-- Скачивание (`GET /api/v1/files/:id`) и удаление (`DELETE /api/v1/files/:id`) реализованы в `apps/api/src/routes/files.ts`; доступ проверяется по владельцу, участникам задачи и административной маске.
+
+- Chunk-upload обрабатывается маршрутом `POST /api/v1/tasks/upload-chunk` в `apps/api/src/routes/tasks.ts`, где собираются части файла, создаются миниатюры и регистрируются вложения задачи.
+- Скачивание и удаление выполняются маршрутом `/api/v1/files/:id` из `apps/api/src/routes/files.ts`, он проверяет права владельца, участников задачи и администраторов перед выдачей файла или очисткой записи.
+
 - Подробная схема и миграция описаны в `docs/file_service_refactor.md`.
 
 Модули связаны через сервисы и разделены по ответственности,

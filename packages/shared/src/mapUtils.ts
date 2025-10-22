@@ -7,6 +7,8 @@ export interface Coords {
 }
 
 const COORD_PAIR_PATTERN = /(-?\d+(?:\.\d+)?)[,\s+]+(-?\d+(?:\.\d+)?)/;
+const NESTED_URL_KEYS = ['link', 'url', 'u'];
+const MAX_NESTING_DEPTH = 3;
 
 const parseCoordPair = (latRaw: string, lngRaw: string): Coords | null => {
   const lat = Number.parseFloat(latRaw);
@@ -17,11 +19,27 @@ const parseCoordPair = (latRaw: string, lngRaw: string): Coords | null => {
   return { lat, lng };
 };
 
+const safeDecode = (value: string): string => {
+  let current = value;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const decoded = decodeURIComponent(current);
+      if (decoded === current) {
+        break;
+      }
+      current = decoded;
+    } catch {
+      break;
+    }
+  }
+  return current;
+};
+
 const parseCombinedValue = (value: string | null | undefined): Coords | null => {
   if (!value) {
     return null;
   }
-  const decoded = decodeURIComponent(value);
+  const decoded = safeDecode(value);
   const match = decoded.match(COORD_PAIR_PATTERN);
   if (!match) {
     return null;
@@ -29,8 +47,41 @@ const parseCombinedValue = (value: string | null | undefined): Coords | null => 
   return parseCoordPair(match[1], match[2]);
 };
 
-export function extractCoords(url: string): Coords | null {
-  if (!url) {
+const looksLikeUrl = (value: string): boolean => {
+  if (!value) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value, 'https://maps.google.com');
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const extractNestedCoords = (value: string | null, depth: number): Coords | null => {
+  if (!value || depth > MAX_NESTING_DEPTH) {
+    return null;
+  }
+  const direct = parseCombinedValue(value);
+  if (direct) {
+    return direct;
+  }
+  const decoded = safeDecode(value);
+  if (decoded !== value) {
+    const decodedDirect = parseCombinedValue(decoded);
+    if (decodedDirect) {
+      return decodedDirect;
+    }
+  }
+  if (!looksLikeUrl(decoded)) {
+    return null;
+  }
+  return extractCoordsInternal(decoded, depth + 1);
+};
+
+const extractCoordsInternal = (url: string, depth = 0): Coords | null => {
+  if (!url || depth > MAX_NESTING_DEPTH) {
     return null;
   }
   try {
@@ -52,6 +103,15 @@ export function extractCoords(url: string): Coords | null {
         return coords;
       }
     }
+    for (const nestedKey of NESTED_URL_KEYS) {
+      const coords = extractNestedCoords(
+        candidate.searchParams.get(nestedKey),
+        depth + 1,
+      );
+      if (coords) {
+        return coords;
+      }
+    }
     const hashCoords = parseCombinedValue(candidate.hash.replace(/^#/, ''));
     if (hashCoords) {
       return hashCoords;
@@ -59,7 +119,7 @@ export function extractCoords(url: string): Coords | null {
   } catch {
     // Пропускаем ошибки парсинга URL, пробуем регулярные выражения ниже.
   }
-  const decoded = decodeURIComponent(url);
+  const decoded = safeDecode(url);
   const bangMatch = decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
   if (bangMatch) {
     const coords = parseCoordPair(bangMatch[1], bangMatch[2]);
@@ -81,7 +141,17 @@ export function extractCoords(url: string): Coords | null {
       return coords;
     }
   }
+  if (decoded !== url && looksLikeUrl(decoded)) {
+    return extractCoordsInternal(decoded, depth + 1);
+  }
   return null;
+};
+
+export function extractCoords(url: string): Coords | null {
+  if (!url) {
+    return null;
+  }
+  return extractCoordsInternal(url);
 }
 
 export function generateRouteLink(

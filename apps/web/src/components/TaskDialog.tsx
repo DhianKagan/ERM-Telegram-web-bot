@@ -2022,6 +2022,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     let link = sanitized;
     let resolved = sanitized;
+    let coords = extractCoords(resolved);
     if (
       /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
       isManagedShortLink(sanitized)
@@ -2030,6 +2031,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (data?.url) {
         const expanded = sanitizeLocationLink(data.url) || sanitized;
         resolved = expanded;
+        const backendCoords = toCoordsValue(data.coords);
+        if (backendCoords) {
+          coords = backendCoords;
+        }
         if (typeof data.short === "string") {
           const shortCandidate = sanitizeLocationLink(data.short);
           link = shortCandidate || sanitized;
@@ -2037,9 +2042,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           link = expanded;
         }
       }
+      if (!coords) {
+        coords = extractCoords(resolved);
+      }
     }
     setStart(parseGoogleAddress(resolved));
-    setStartCoordinates(extractCoords(resolved));
+    setStartCoordinates(coords ?? extractCoords(resolved));
     setStartLink(link);
   };
 
@@ -2054,6 +2062,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     let link = sanitized;
     let resolved = sanitized;
+    let coords = extractCoords(resolved);
     if (
       /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
       isManagedShortLink(sanitized)
@@ -2062,6 +2071,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (data?.url) {
         const expanded = sanitizeLocationLink(data.url) || sanitized;
         resolved = expanded;
+        const backendCoords = toCoordsValue(data.coords);
+        if (backendCoords) {
+          coords = backendCoords;
+        }
         if (typeof data.short === "string") {
           const shortCandidate = sanitizeLocationLink(data.short);
           link = shortCandidate || sanitized;
@@ -2069,9 +2082,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           link = expanded;
         }
       }
+      if (!coords) {
+        coords = extractCoords(resolved);
+      }
     }
     setEnd(parseGoogleAddress(resolved));
-    setFinishCoordinates(extractCoords(resolved));
+    setFinishCoordinates(coords ?? extractCoords(resolved));
     setEndLink(link);
   };
 

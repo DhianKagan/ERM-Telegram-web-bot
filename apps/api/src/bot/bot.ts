@@ -592,6 +592,7 @@ const collectTaskUserIds = (
     'assigned_user_id',
     'controller_user_id',
     'created_by',
+    'transport_driver_id',
   ];
   singleKeys.forEach((key) => {
     const value = task[key as keyof typeof task];

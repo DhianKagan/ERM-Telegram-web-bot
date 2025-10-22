@@ -7,13 +7,14 @@ import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
 
 const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
+const translate = (value: string) => value;
 
 jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
 jest.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (v: string) => v }),
+  useTranslation: () => ({ t: translate }),
 }));
 
 jest.mock("./CKEditorPopup", () => () => <div />);
@@ -293,10 +294,12 @@ describe("TaskDialog", () => {
       </MemoryRouter>,
     );
 
+    await screen.findByText("taskCreatedBy");
     const assigneeSelect = (await screen.findByTestId("assignee")) as HTMLSelectElement;
     await screen.findByText("Alice");
     await act(async () => {
       fireEvent.change(assigneeSelect, { target: { value: "1" } });
+      await Promise.resolve();
     });
 
     const titleInput = await screen.findByPlaceholderText("title");
@@ -317,8 +320,13 @@ describe("TaskDialog", () => {
     const dueValueSource = toLocalInputValue(new Date(now + 65 * 60_000));
     fireEvent.change(dueInput, { target: { value: dueValueSource } });
 
-    const submitButton = screen.getByRole("button", { name: "create" });
-    fireEvent.click(submitButton);
+    const submitButton = await screen.findByRole("button", {
+      name: /^(create|save)$/,
+    });
+    await act(async () => {
+      fireEvent.click(submitButton);
+      await Promise.resolve();
+    });
 
     await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
     expect(createTaskMock.mock.calls[0][0]).toMatchObject({
@@ -347,8 +355,12 @@ describe("TaskDialog", () => {
       fireEvent.change(assigneeSelect, { target: { value: "" } });
     });
 
-    const submitButton = screen.getByRole("button", { name: "create" });
-    fireEvent.click(submitButton);
+    const submitButton = await screen.findByRole("button", {
+      name: /^(create|save)$/,
+    });
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
 
     const errorMessage = await screen.findByText("assigneeRequiredError");
     expect(errorMessage.textContent ?? "").toContain("assigneeRequiredError");
@@ -373,8 +385,12 @@ describe("TaskDialog", () => {
       fireEvent.change(assigneeSelect, { target: { value: "2" } });
     });
 
-    const submitButton = screen.getByRole("button", { name: "create" });
-    fireEvent.click(submitButton);
+    const submitButton = await screen.findByRole("button", {
+      name: /^(create|save)$/,
+    });
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
 
     await waitFor(() =>
       expect(createTaskMock).toHaveBeenCalledWith(

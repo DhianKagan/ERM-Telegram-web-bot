@@ -115,6 +115,19 @@ const updateTaskMock = jest.fn().mockResolvedValue({
   json: async () => ({ ...taskData, _id: "1" }),
 });
 
+const findSubmitButton = () =>
+  screen.findByRole("button", {
+    name: /^(create|save)$/,
+  });
+
+const clickSubmitButton = async () => {
+  const submit = await findSubmitButton();
+  await act(async () => {
+    fireEvent.click(submit);
+    await Promise.resolve();
+  });
+};
+
 jest.mock("../services/tasks", () => {
   const actual = jest.requireActual("../services/tasks");
   return {
@@ -149,7 +162,7 @@ describe("TaskDialog", () => {
     const { unmount } = renderDialog();
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("save"));
+    await clickSubmitButton();
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
         "1",
@@ -320,13 +333,7 @@ describe("TaskDialog", () => {
     const dueValueSource = toLocalInputValue(new Date(now + 65 * 60_000));
     fireEvent.change(dueInput, { target: { value: dueValueSource } });
 
-    const submitButton = await screen.findByRole("button", {
-      name: /^(create|save)$/,
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-      await Promise.resolve();
-    });
+    await clickSubmitButton();
 
     await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
     expect(createTaskMock.mock.calls[0][0]).toMatchObject({
@@ -355,12 +362,7 @@ describe("TaskDialog", () => {
       fireEvent.change(assigneeSelect, { target: { value: "" } });
     });
 
-    const submitButton = await screen.findByRole("button", {
-      name: /^(create|save)$/,
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-    });
+    await clickSubmitButton();
 
     const errorMessage = await screen.findByText("assigneeRequiredError");
     expect(errorMessage.textContent ?? "").toContain("assigneeRequiredError");
@@ -385,12 +387,7 @@ describe("TaskDialog", () => {
       fireEvent.change(assigneeSelect, { target: { value: "2" } });
     });
 
-    const submitButton = await screen.findByRole("button", {
-      name: /^(create|save)$/,
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-    });
+    await clickSubmitButton();
 
     await waitFor(() =>
       expect(createTaskMock).toHaveBeenCalledWith(

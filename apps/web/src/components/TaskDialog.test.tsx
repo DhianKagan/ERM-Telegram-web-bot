@@ -91,6 +91,13 @@ const defaultAuthFetch = (url: string) => {
   if (url === "/api/v1/tasks/report/summary") {
     return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
   }
+  if (url.startsWith("/api/v1/task-drafts/")) {
+    return Promise.resolve({
+      ok: false,
+      status: 404,
+      json: async () => ({}),
+    });
+  }
   return Promise.resolve({ ok: true, json: async () => ({}) });
 };
 

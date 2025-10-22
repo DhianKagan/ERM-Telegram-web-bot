@@ -358,7 +358,11 @@ export const handleChunks: RequestHandler = async (req, res) => {
       res.status(400).json({ error: 'Недопустимый идентификатор файла' });
       return;
     }
-    const file = req.file as Express.Multer.File;
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      res.status(400).json({ error: 'Файл не получен' });
+      return;
+    }
     const idx = Number(chunkIndex);
     const total = Number(totalChunks);
     // Проверяем индексы чанков

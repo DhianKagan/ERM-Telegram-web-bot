@@ -13,6 +13,59 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
+process.env.MONGO_DATABASE_URL ||=
+  'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
+process.env.APP_URL ||= 'https://example.com';
+
+jest.mock('../apps/api/src/di', () => ({
+  __esModule: true,
+  default: {
+    resolve: () => ({
+      list: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      executors: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      mentioned: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      transportOptions: jest.fn(
+        (_req: unknown, _res: unknown, next?: () => void) => next?.(),
+      ),
+      summary: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      detail: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      createRequest: [
+        jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      ],
+      create: [
+        jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      ],
+      update: [
+        jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      ],
+      addTime: [
+        jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      ],
+      remove: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      bulk: [
+        jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      ],
+    }),
+  },
+}));
+
+jest.mock('../apps/api/src/tasks/tasks.controller', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('../apps/api/src/config', () => ({
+  __esModule: true,
+  botToken: 'test-bot-token',
+  botApiUrl: undefined,
+  getChatId: () => '0',
+  chatId: '0',
+  jwtSecret: 'test-secret',
+  mongoUrl: 'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin',
+  appUrl: 'https://example.com',
+  routingUrl: 'https://localhost:8000/route',
+}));
+
 const { Types } = require('../apps/api/node_modules/mongoose');
 const { checkFile } = require('../apps/api/src/utils/fileCheck');
 const { ACCESS_MANAGER } = require('../apps/api/src/utils/accessMask');
@@ -345,6 +398,19 @@ describe('Chunk upload', () => {
       });
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Недопустимый тип файла');
+  });
+
+  test('возвращает 400, если файл не передан', async () => {
+    const response = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'missing-file')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '1');
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Файл не получен');
+    expect(storedFiles).toHaveLength(0);
+    const chunkDir = path.join(uploadsDir, String(currentUserId), 'missing-file');
+    expect(fs.existsSync(chunkDir)).toBe(false);
   });
 
   test('отклоняет файл больше 10 МБ после сборки', async () => {

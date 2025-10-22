@@ -136,7 +136,6 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
         "insertTable",
         "uploadImage",
         "mediaEmbed",
-        "removeFormat",
       ],
       image: {
         toolbar: [

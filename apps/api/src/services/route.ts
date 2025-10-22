@@ -28,7 +28,25 @@ if (!Number.isFinite(tableMinInterval) || tableMinInterval <= 0) {
 }
 let tableLastCall = 0;
 
-const base = routingUrl.replace(/\/route$/, '');
+const routingUrlObject = new URL(routingUrl);
+const routePathSegments = routingUrlObject.pathname
+  .split('/')
+  .filter((segment) => segment.length > 0);
+const routeSegmentIndex = routePathSegments.lastIndexOf('route');
+
+const buildEndpointUrl = (endpoint: Endpoint): URL => {
+  const parts =
+    routeSegmentIndex === -1
+      ? [...routePathSegments, endpoint]
+      : [
+          ...routePathSegments.slice(0, routeSegmentIndex),
+          endpoint,
+          ...routePathSegments.slice(routeSegmentIndex + 1),
+        ];
+  const normalized = parts.filter((segment) => segment.length > 0);
+  const pathname = normalized.length ? `/${normalized.join('/')}` : '/';
+  return new URL(pathname, `${routingUrlObject.origin}/`);
+};
 
 const allowed = ['table', 'nearest', 'match', 'trip'] as const;
 
@@ -49,7 +67,7 @@ async function call<T>(
 ): Promise<T> {
   if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт');
   const safeCoords = validateCoords(coords);
-  const url = new URL(`${base}/${endpoint}`);
+  const url = buildEndpointUrl(endpoint);
   url.searchParams.append(
     endpoint === 'nearest' ? 'point' : 'points',
     safeCoords,

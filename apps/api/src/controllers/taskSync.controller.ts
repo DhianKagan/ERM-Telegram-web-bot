@@ -260,6 +260,10 @@ const collectUserIds = (task: Partial<PlainTask>): number[] => {
   if (Array.isArray(task.controllers)) {
     task.controllers.forEach(register);
   }
+  register(task.transport_driver_id);
+  if (task && typeof task === 'object' && 'transport_driver' in task) {
+    register((task as Record<string, unknown>).transport_driver);
+  }
   register(task.created_by);
   return Array.from(ids);
 };

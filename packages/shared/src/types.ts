@@ -24,6 +24,7 @@ export interface Task {
   cargo_weight_kg?: number;
   logistics_enabled?: boolean;
   transport_driver_id?: number | null;
+  transport_driver_name?: string | null;
   transport_vehicle_id?: string | null;
   transport_vehicle_name?: string | null;
   transport_vehicle_registration?: string | null;

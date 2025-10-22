@@ -5,6 +5,7 @@
 import authFetch from "../utils/authFetch";
 import { buildTaskFormData } from "./buildTaskFormData";
 import type { Task, User } from "shared";
+import type { Attachment } from "../types/task";
 
 const STATUS_HINTS: Record<number, string> = {
   400: "Сервер отклонил запрос: проверьте заполненные поля.",
@@ -293,6 +294,76 @@ export const clearAnonTasksCache = () => {
   Object.keys(localStorage)
     .filter((k) => k.startsWith("tasks_anon_"))
     .forEach((k) => localStorage.removeItem(k));
+};
+
+export interface TaskDraft {
+  id: string;
+  kind: "task" | "request";
+  payload: Record<string, unknown>;
+  attachments: Attachment[];
+  updatedAt: string | null;
+}
+
+const mapTaskDraft = (data: Record<string, unknown>): TaskDraft => ({
+  id: String(data.id ?? data._id ?? ""),
+  kind:
+    data.kind === "request"
+      ? "request"
+      : (data.kind as "task" | "request") ?? "task",
+  payload: (data.payload as Record<string, unknown>) ?? {},
+  attachments: Array.isArray(data.attachments)
+    ? (data.attachments as Attachment[])
+    : [],
+  updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : null,
+});
+
+export const fetchTaskDraft = async (
+  kind: "task" | "request",
+): Promise<TaskDraft | null> => {
+  const res = await authFetch(`/api/v1/task-drafts/${kind}`);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new TaskRequestError({
+      status: res.status,
+      statusText: res.statusText,
+      reason: await extractReason(res),
+    });
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return mapTaskDraft(data);
+};
+
+export const saveTaskDraft = async (
+  kind: "task" | "request",
+  payload: Record<string, unknown>,
+): Promise<TaskDraft> => {
+  const res = await authFetch(`/api/v1/task-drafts/${kind}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payload }),
+  });
+  if (!res.ok) {
+    throw new TaskRequestError({
+      status: res.status,
+      statusText: res.statusText,
+      reason: await extractReason(res),
+    });
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return mapTaskDraft(data);
+};
+
+export const deleteTaskDraft = async (kind: "task" | "request"): Promise<void> => {
+  const res = await authFetch(`/api/v1/task-drafts/${kind}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new TaskRequestError({
+      status: res.status,
+      statusText: res.statusText,
+      reason: await extractReason(res),
+    });
+  }
 };
 
 export const fetchTasks = (

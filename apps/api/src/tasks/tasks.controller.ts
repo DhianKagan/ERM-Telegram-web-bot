@@ -48,6 +48,7 @@ import {
 } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { syncCommentMessage } from '../tasks/taskComments';
+import { cleanupUploadedFiles } from '../utils/requestUploads';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -2459,6 +2460,7 @@ export default class TasksController {
         }
         const allowed = await this.resolveAdminExecutors(source);
         if (!allowed.length) {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Исполнители недоступны',
@@ -2480,6 +2482,7 @@ export default class TasksController {
       try {
         task = (await this.service.create(payload, actorId)) as TaskDocument;
       } catch (error) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
         const err = error as { code?: string; message?: string };
         if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
           sendProblem(req, res, {
@@ -2516,6 +2519,7 @@ export default class TasksController {
       }
       const allowed = await this.resolveAdminExecutors(source);
       if (!allowed.length) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Исполнители недоступны',
@@ -2530,7 +2534,13 @@ export default class TasksController {
       payload.created_by = actorId;
       payload.assignees = allowed;
       payload.assigned_user_id = allowed[0];
-      const task = await this.service.create(payload, actorId);
+      let task: TaskDocument;
+      try {
+        task = (await this.service.create(payload, actorId)) as TaskDocument;
+      } catch (error) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
+        throw error;
+      }
       await writeLog(
         `Создана заявка ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
@@ -2551,6 +2561,7 @@ export default class TasksController {
             : (previousRaw as unknown)) as TaskWithMeta & Record<string, unknown>)
         : null;
       if (!previousTask) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Задача не найдена',
@@ -2566,6 +2577,7 @@ export default class TasksController {
           typeof nextPayload.kind === 'string' &&
           nextPayload.kind.trim() !== 'request'
         ) {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Изменение типа запрещено',
@@ -2579,6 +2591,7 @@ export default class TasksController {
           typeof nextPayload.task_type === 'string' &&
           nextPayload.task_type.trim() !== REQUEST_TYPE_NAME
         ) {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Изменение типа запрещено',
@@ -2599,6 +2612,7 @@ export default class TasksController {
           }
           const allowed = await this.resolveAdminExecutors(source);
           if (!allowed.length) {
+            await cleanupUploadedFiles(req).catch(() => undefined);
             sendProblem(req, res, {
               type: 'about:blank',
               title: 'Исполнители недоступны',
@@ -2624,6 +2638,7 @@ export default class TasksController {
         Number.isFinite(Number(req.user?.id)) &&
         Number(previousTask.created_by) === Number(req.user?.id);
       if (currentStatus && currentStatus !== 'Новая' && !isCreator) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Редактирование запрещено',
@@ -2640,6 +2655,7 @@ export default class TasksController {
           req.user!.id as number,
         );
       } catch (error) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
         const err = error as { code?: string; message?: string };
         if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
           sendProblem(req, res, {
@@ -2655,6 +2671,7 @@ export default class TasksController {
           err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN' ||
           err.code === 'TASK_CANCEL_SOURCE_FORBIDDEN'
         ) {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Доступ запрещён',
@@ -2673,6 +2690,7 @@ export default class TasksController {
           current.status !== 'Новая' &&
           !isCreator
         ) {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Редактирование запрещено',
@@ -2680,6 +2698,7 @@ export default class TasksController {
             detail: 'Редактирование доступно только для задач в статусе «Новая»',
           });
         } else {
+          await cleanupUploadedFiles(req).catch(() => undefined);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Задача не найдена',

@@ -24,6 +24,8 @@ import StackOrchestratorService from '../system/stackOrchestrator.service';
 import StackOrchestratorController from '../system/stackOrchestrator.controller';
 import StorageDiagnosticsService from '../services/storageDiagnostics.service';
 import StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
+import TaskDraftsService from '../taskDrafts/taskDrafts.service';
+import TaskDraftsController from '../taskDrafts/taskDrafts.controller';
 
 container.register(TOKENS.TasksRepository, { useValue: queries });
 container.register(TOKENS.TasksService, {
@@ -38,6 +40,7 @@ container.register(TOKENS.RolesService, {
 container.register(TOKENS.LogsService, {
   useFactory: (c) => new LogsService(c.resolve(TOKENS.TasksRepository)),
 });
+container.registerSingleton(TOKENS.TaskDraftsService, TaskDraftsService);
 container.register(TOKENS.ArchivesService, {
   useFactory: (c) => new ArchivesService(c.resolve(TOKENS.TasksRepository)),
 });
@@ -72,6 +75,7 @@ container.registerSingleton(
   TOKENS.StorageDiagnosticsController,
   StorageDiagnosticsController,
 );
+container.registerSingleton(TOKENS.TaskDraftsController, TaskDraftsController);
 
 export { container };
 export default container;

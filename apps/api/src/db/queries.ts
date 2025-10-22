@@ -493,7 +493,10 @@ async function syncTaskAttachments(
   const idsForLog = fileIds.map((id) => id.toHexString());
   try {
     if (fileIds.length === 0) {
-      await fileModel.updateMany({ taskId }, { $unset: { taskId: '' } });
+      await fileModel.updateMany(
+        { taskId },
+        { $unset: { taskId: '', draftId: '' } },
+      );
       return;
     }
     const filter: Record<string, unknown> = {
@@ -502,10 +505,13 @@ async function syncTaskAttachments(
     if (userId !== undefined) {
       filter.$or = [{ userId }, { taskId }];
     }
-    await fileModel.updateMany(filter, { $set: { taskId } });
+    await fileModel.updateMany(filter, {
+      $set: { taskId },
+      $unset: { draftId: '' },
+    });
     await fileModel.updateMany(
       { taskId, _id: { $nin: fileIds } },
-      { $unset: { taskId: '' } },
+      { $unset: { taskId: '', draftId: '' } },
     );
   } catch (error) {
     await logEngine.writeLog(

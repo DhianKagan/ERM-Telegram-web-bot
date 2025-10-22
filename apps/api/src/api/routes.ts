@@ -25,6 +25,7 @@ import healthcheck from './healthcheck';
 import errorMiddleware from '../middleware/errorMiddleware';
 import globalLimiter from '../middleware/globalLimiter';
 import tasksRouter from '../routes/tasks';
+import taskDraftsRouter from '../routes/taskDrafts';
 import { uploadsDir } from '../config/storage';
 import mapsRouter from '../routes/maps';
 import routeRouter from '../routes/route';
@@ -240,6 +241,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/optimizer`, optimizerRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);
+  app.use(`${prefix}/task-drafts`, taskDraftsRouter);
   app.use(`${prefix}/task-templates`, taskTemplatesRouter);
   app.use(`${prefix}/storage`, storageRouter);
   app.use(`${prefix}/files`, filesRouter);

@@ -175,6 +175,28 @@ describe("TaskDialog", () => {
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
   });
 
+  it("не дублирует запрос summary при редактировании черновика", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const summaryCalls = () =>
+      authFetchMock.mock.calls.filter(
+        ([url]) => url === "/api/v1/tasks/report/summary",
+      );
+
+    await waitFor(() => expect(summaryCalls()).toHaveLength(1));
+
+    const titleField = await screen.findByPlaceholderText("title");
+    await act(async () => {
+      fireEvent.change(titleField, { target: { value: "Новое название" } });
+    });
+
+    await waitFor(() => expect(summaryCalls()).toHaveLength(1));
+  });
+
   it("обновляет ObjectId после открытия по request_id", async () => {
     const requestId = "ERM_000042";
     const objectId = "507f1f77bcf86cd799439011";

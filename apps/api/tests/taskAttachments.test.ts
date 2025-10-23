@@ -140,6 +140,28 @@ describe('Привязка вложений к задачам', () => {
     );
   });
 
+  test('распознаёт идентификатор файла с фрагментом URL', async () => {
+    const attachments = [
+      {
+        name: 'diagram.png',
+        url: `https://example.com/api/v1/files/${fileId}#viewer`,
+        uploadedBy: 7,
+        uploadedAt: new Date(),
+        type: 'image/png',
+        size: 42,
+      },
+    ];
+    await createTask({ attachments }, 7);
+    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        _id: { $in: [fileId] },
+        $or: [{ userId: 7 }, { taskId: createdTaskId }],
+      },
+      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
+    );
+  });
+
   test('очищает привязку файлов при удалении вложения', async () => {
     const result = await updateTask(
       String(existingTaskId),

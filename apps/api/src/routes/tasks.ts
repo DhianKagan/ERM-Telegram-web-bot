@@ -120,6 +120,19 @@ async function createThumbnail(
   return undefined;
 }
 
+function resolveNumericUserId(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
 export const processUploads: RequestHandler = async (req, res, next) => {
   try {
     const filesRaw = req.files;
@@ -140,7 +153,11 @@ export const processUploads: RequestHandler = async (req, res, next) => {
     }
     let createdAttachments: AttachmentItem[] = [];
     if (files.length > 0) {
-      const userId = (req as RequestWithUser).user?.id as number;
+      const userId = resolveNumericUserId((req as RequestWithUser).user?.id);
+      if (userId === undefined) {
+        res.status(403).json({ error: 'Не удалось определить пользователя' });
+        return;
+      }
       const agg = await File.aggregate([
         { $match: { userId } },
         { $group: { _id: null, count: { $sum: 1 }, size: { $sum: '$size' } } },
@@ -376,7 +393,11 @@ export const handleChunks: RequestHandler = async (req, res) => {
       res.status(400).json({ error: 'Недопустимый индекс' });
       return;
     }
-    const userId = (req as RequestWithUser).user?.id as number;
+    const userId = resolveNumericUserId((req as RequestWithUser).user?.id);
+    if (userId === undefined) {
+      res.status(403).json({ error: 'Не удалось определить пользователя' });
+      return;
+    }
     const baseDir = path.resolve(uploadsDirAbs, String(userId));
     const dir = path.resolve(baseDir, fileId);
     // Не допускаем выход за пределы каталога пользователя

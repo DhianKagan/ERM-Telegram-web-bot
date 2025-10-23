@@ -2571,6 +2571,23 @@ export default class TasksController {
         });
         return;
       }
+      const actorIdRaw = req.user?.id;
+      const actorId =
+        typeof actorIdRaw === 'number' && Number.isFinite(actorIdRaw)
+          ? actorIdRaw
+          : typeof actorIdRaw === 'string'
+            ? Number(actorIdRaw.trim())
+            : Number.NaN;
+      if (!Number.isFinite(actorId)) {
+        await cleanupUploadedFiles(req).catch(() => undefined);
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 403,
+          detail: 'Не удалось определить пользователя',
+        });
+        return;
+      }
       const nextPayload = req.body as Partial<TaskDocument>;
       const previousKind = detectTaskKind(previousTask);
       if (previousKind === 'request') {
@@ -2653,7 +2670,7 @@ export default class TasksController {
         task = await this.service.update(
           req.params.id,
           req.body as Partial<TaskDocument>,
-          req.user!.id as number,
+          actorId,
         );
       } catch (error) {
         await cleanupUploadedFiles(req).catch(() => undefined);
@@ -2728,7 +2745,7 @@ export default class TasksController {
           ? (task._id as { toString(): string }).toString()
           : String(task._id ?? '');
       if (docId) {
-        void this.broadcastTaskSnapshot(task, req.user!.id as number, {
+        void this.broadcastTaskSnapshot(task, actorId, {
           previous: previousTask,
           action: 'обновлена',
         }).catch((error) => {

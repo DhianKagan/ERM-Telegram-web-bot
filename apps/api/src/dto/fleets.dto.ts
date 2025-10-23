@@ -3,7 +3,7 @@
 import { body } from 'express-validator';
 
 const registrationPattern = /^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u;
-const fuelTypes = ['Бензин', 'Дизель'];
+const fuelTypes = ['Бензин', 'Дизель', 'Газ'];
 const transportTypes = ['Легковой', 'Грузовой'];
 
 function numberField(field: string) {

@@ -4,7 +4,7 @@ import type { Request } from 'express';
 import type { ParsedQs } from 'qs';
 import type { User, Task } from 'shared';
 
-export type UserInfo = Partial<User> & { id?: number; access?: number };
+export type UserInfo = Partial<User> & { id?: number | string; access?: number };
 
 export type TaskInfo = Partial<Task>;
 

@@ -134,7 +134,10 @@ export function extractAttachmentIds(
   const seen = new Set<string>();
   attachments.forEach((attachment) => {
     if (!attachment || typeof attachment.url !== 'string') return;
-    const [pathPart] = attachment.url.trim().split('?');
+    const trimmed = attachment.url.trim();
+    if (!trimmed) return;
+    const [withoutFragment] = trimmed.split('#');
+    const [pathPart] = withoutFragment.split('?');
     if (!pathPart) return;
     const segments = pathPart.split('/').filter(Boolean);
     const last = segments[segments.length - 1];

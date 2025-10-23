@@ -5,6 +5,7 @@ import type {
   InlineKeyboardButton,
   InlineKeyboardMarkup,
 } from 'telegraf/typings/core/types/typegram';
+import { TASK_STATUS_ICON_MAP } from './taskStatusIcons';
 
 type TaskStatus = 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
 
@@ -21,9 +22,18 @@ const statusButtonLabels: Record<
   Exclude<TaskStatus, 'Новая'>,
   { default: string; active: string }
 > = {
-  'В работе': { default: 'В работу', active: '🟢 В работе' },
-  Выполнена: { default: 'Выполнена', active: '✅ Выполнена' },
-  Отменена: { default: 'Отменить', active: '⛔️ Отменена' },
+  'В работе': {
+    default: 'В работу',
+    active: `${TASK_STATUS_ICON_MAP['В работе']} В работе`,
+  },
+  Выполнена: {
+    default: 'Выполнена',
+    active: `${TASK_STATUS_ICON_MAP['Выполнена']} Выполнена`,
+  },
+  Отменена: {
+    default: 'Отменить',
+    active: `${TASK_STATUS_ICON_MAP['Отменена']} Отменена`,
+  },
 };
 
 const resolveStatusLabel = (

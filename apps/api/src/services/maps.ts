@@ -71,9 +71,9 @@ const formatCoordinate = (value: number): string =>
   Number.isFinite(value) ? value.toFixed(6) : String(value);
 
 const buildCoordsUrl = (coords: Coordinates): string =>
-  `https://www.google.com/maps/?q=${formatCoordinate(coords.lat)},${formatCoordinate(
+  `https://www.google.com/maps/@${formatCoordinate(coords.lat)},${formatCoordinate(
     coords.lng,
-  )}`;
+  )},17z`;
 
 export type { Coordinates };
 

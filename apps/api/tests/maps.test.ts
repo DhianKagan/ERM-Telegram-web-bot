@@ -49,7 +49,7 @@ test('expandMapsUrl строит ссылку по координатам из �
     text: jest.fn().mockResolvedValue(html),
   });
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
-  expect(res).toBe('https://www.google.com/maps/?q=49.987650,36.123450');
+  expect(res).toBe('https://www.google.com/maps/@49.987650,36.123450,17z');
 });
 
 test('extractCoords извлекает широту и долготу', () => {

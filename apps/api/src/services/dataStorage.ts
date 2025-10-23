@@ -6,7 +6,13 @@ import type { FilterQuery } from 'mongoose';
 import { Types } from 'mongoose';
 
 import { uploadsDir } from '../config/storage';
-import { File, Task, type FileDocument } from '../db/model';
+import {
+  File,
+  Task,
+  type Attachment,
+  type FileDocument,
+} from '../db/model';
+import { extractAttachmentIds } from '../utils/attachments';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 
@@ -42,6 +48,72 @@ export interface StoredFile {
   taskTitle?: string;
 }
 
+const TASK_URL_SUFFIX = '(?:[/?#].*|$)';
+
+const buildAttachmentQuery = (
+  ids: string[],
+):
+  | { $or: Array<{ 'attachments.url': { $regex: RegExp } }> }
+  | null => {
+  if (ids.length === 0) return null;
+  const orConditions = ids.map((id) => ({
+    'attachments.url': {
+      $regex: new RegExp(`/${id}${TASK_URL_SUFFIX}`),
+    },
+  }));
+  return { $or: orConditions };
+};
+
+const normalizeTitle = (value?: string | null) => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const collectAttachmentLinks = async (
+  candidates: Array<{
+    id: string;
+    hasTask: boolean;
+  }>,
+): Promise<
+  Map<string, { taskId: string; number?: string | null; title?: string | null }>
+> => {
+  const pendingIds = candidates
+    .filter((file) => !file.hasTask)
+    .map((file) => file.id);
+  if (!pendingIds.length) {
+    return new Map();
+  }
+  const query = buildAttachmentQuery(pendingIds);
+  if (!query) {
+    return new Map();
+  }
+  const tasks = await Task.find(query)
+    .select(['_id', 'task_number', 'title', 'attachments'])
+    .lean();
+  const lookup = new Map<
+    string,
+    { taskId: string; number?: string | null; title?: string | null }
+  >();
+  if (!tasks.length) return lookup;
+  const available = new Set(pendingIds);
+  tasks.forEach((task) => {
+    const attachments = extractAttachmentIds(
+      (task.attachments as Attachment[] | undefined) ?? [],
+    );
+    attachments.forEach((attachmentId) => {
+      const key = attachmentId.toHexString();
+      if (!available.has(key) || lookup.has(key)) return;
+      lookup.set(key, {
+        taskId: String(task._id),
+        number: task.task_number,
+        title: task.title,
+      });
+    });
+  });
+  return lookup;
+};
+
 export async function listFiles(
   filters: { userId?: number; type?: string } = {},
 ): Promise<StoredFile[]> {
@@ -53,6 +125,11 @@ export async function listFiles(
     const taskIds = files
       .map((file) => file.taskId)
       .filter((id): id is Types.ObjectId => Boolean(id));
+    const candidates = files.map((file) => ({
+      id: String(file._id),
+      hasTask: Boolean(file.taskId),
+    }));
+    const attachmentsLookup = await collectAttachmentLinks(candidates);
     const taskMap = new Map<
       string,
       { title?: string | null; number?: string | null }
@@ -69,16 +146,20 @@ export async function listFiles(
       });
     }
     return files.map((f) => {
-      const taskId = f.taskId ? String(f.taskId) : undefined;
-      const taskMeta = taskId ? taskMap.get(taskId) : undefined;
+      let taskId = f.taskId ? String(f.taskId) : undefined;
+      let taskMeta = taskId ? taskMap.get(taskId) : undefined;
+      if (!taskId) {
+        const fallback = attachmentsLookup.get(String(f._id));
+        if (fallback) {
+          taskId = fallback.taskId;
+          taskMeta = { title: fallback.title, number: fallback.number };
+        }
+      }
       return {
         id: String(f._id),
         taskId,
         taskNumber: taskMeta?.number ?? undefined,
-        taskTitle:
-          typeof taskMeta?.title === 'string' && taskMeta.title.trim()
-            ? taskMeta.title
-            : undefined,
+        taskTitle: normalizeTitle(taskMeta?.title),
         userId: f.userId,
         name: f.name,
         path: f.path,
@@ -102,20 +183,38 @@ export async function getFile(id: string): Promise<StoredFile | null> {
   if (!doc) {
     return null;
   }
-  const taskId = doc.taskId ? String(doc.taskId) : undefined;
-  const taskMeta = taskId
-    ? await Task.findById(doc.taskId)
-        .select(['task_number', 'title'])
-        .lean()
-    : null;
+  let taskId = doc.taskId ? String(doc.taskId) : undefined;
+  let taskMeta: { task_number?: string | null; title?: string | null } | null =
+    null;
+  if (taskId) {
+    taskMeta = await Task.findById(doc.taskId)
+      .select(['task_number', 'title'])
+      .lean();
+  } else {
+    const fallbackQuery = buildAttachmentQuery([String(doc._id)]);
+    if (fallbackQuery) {
+      const fallback = await Task.findOne(fallbackQuery)
+        .select(['_id', 'task_number', 'title', 'attachments'])
+        .lean();
+      if (fallback) {
+        const attachments = extractAttachmentIds(
+          (fallback.attachments as Attachment[] | undefined) ?? [],
+        );
+        const matched = attachments.some((entry) =>
+          entry.equals(doc._id as Types.ObjectId),
+        );
+        if (matched) {
+          taskId = String(fallback._id);
+          taskMeta = fallback;
+        }
+      }
+    }
+  }
   return {
     id: String(doc._id),
     taskId,
     taskNumber: taskMeta?.task_number ?? undefined,
-    taskTitle:
-      typeof taskMeta?.title === 'string' && taskMeta.title.trim()
-        ? taskMeta.title
-        : undefined,
+    taskTitle: normalizeTitle(taskMeta?.title),
     userId: doc.userId,
     name: doc.name,
     path: doc.path,

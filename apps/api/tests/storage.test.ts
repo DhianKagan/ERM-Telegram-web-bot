@@ -30,8 +30,18 @@ const mockFileFindOneAndDelete = jest.fn(() => ({
   lean: jest.fn().mockResolvedValue(null),
 }));
 
-const mockTaskFind = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
-const mockTaskFindById = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+const mockTaskFind = jest.fn(() => ({
+  select: jest.fn().mockReturnThis(),
+  lean: jest.fn().mockResolvedValue([]),
+}));
+const mockTaskFindOne = jest.fn(() => ({
+  select: jest.fn().mockReturnThis(),
+  lean: jest.fn().mockResolvedValue(null),
+}));
+const mockTaskFindById = jest.fn(() => ({
+  select: jest.fn().mockReturnThis(),
+  lean: jest.fn().mockResolvedValue(null),
+}));
 
 jest.mock('../src/db/model', () => ({
   File: {
@@ -42,6 +52,7 @@ jest.mock('../src/db/model', () => ({
   Task: {
     updateOne: jest.fn(),
     find: mockTaskFind,
+    findOne: mockTaskFindOne,
     findById: mockTaskFindById,
   },
 }));
@@ -75,7 +86,20 @@ describe('storage routes', () => {
     mockFileFindById.mockReset();
     mockFileFindOneAndDelete.mockReset();
     mockTaskFind.mockReset();
+    mockTaskFindOne.mockReset();
     mockTaskFindById.mockReset();
+    mockTaskFind.mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue([]),
+    }));
+    mockTaskFindOne.mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(null),
+    }));
+    mockTaskFindById.mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(null),
+    }));
   });
 
   test('list files', async () => {

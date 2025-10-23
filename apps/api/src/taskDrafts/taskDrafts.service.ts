@@ -67,7 +67,7 @@ export default class TaskDraftsService {
     if (newIds.length > 0) {
       await File.updateMany(
         { _id: { $in: newIds }, userId },
-        { $set: { draftId: draft._id }, $unset: { taskId: '' } },
+        { $set: { draftId: draft._id } },
       ).exec();
     }
 
@@ -97,15 +97,37 @@ export default class TaskDraftsService {
     const draft = await TaskDraft.findOneAndDelete({ userId, kind }).exec();
     if (!draft) return;
     const ids = extractAttachmentIds(draft.attachments || []);
+    if (ids.length === 0) {
+      return;
+    }
+
+    const relatedFiles = await File.find({ _id: { $in: ids } })
+      .select(['_id', 'taskId'])
+      .lean()
+      .catch(() => [] as Array<{ _id: Types.ObjectId; taskId?: Types.ObjectId | null }>);
+
+    const attachedIds = new Set(
+      relatedFiles
+        .filter((doc) => doc.taskId)
+        .map((doc) => String(doc._id)),
+    );
+
     await Promise.all(
       ids.map(async (id) => {
+        const idHex = id.toHexString();
+        if (attachedIds.has(idHex)) {
+          await File.updateOne({ _id: id }, { $unset: { draftId: '' } })
+            .exec()
+            .catch(() => undefined);
+          return;
+        }
         try {
-          await deleteFile(id.toHexString());
+          await deleteFile(idHex);
         } catch (error) {
           const err = error as NodeJS.ErrnoException;
           if (err.code !== 'ENOENT') {
             await writeLog('Ошибка удаления вложения черновика', 'warn', {
-              fileId: id.toHexString(),
+              fileId: idHex,
               error: err?.message || String(error),
             }).catch(() => undefined);
           }

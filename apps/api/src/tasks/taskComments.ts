@@ -18,6 +18,8 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeZone: DEFAULT_TIMEZONE,
 });
 
+export const EMPTY_COMMENT_PLACEHOLDER_HTML = '<p>Нет комментариев</p>';
+
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
@@ -35,6 +37,24 @@ const normalizeDate = (value: unknown): Date | null => {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
   return null;
+};
+
+const hasRenderableComment = (value: unknown): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const markdown = convertHtmlToMarkdown(value);
+  const normalized = markdown.replace(/\u200b/gi, '').trim();
+  return normalized.length > 0;
+};
+
+export const ensureCommentHtml = (
+  value: string | null | undefined,
+): string => {
+  if (hasRenderableComment(value)) {
+    return value;
+  }
+  return EMPTY_COMMENT_PLACEHOLDER_HTML;
 };
 
 export interface CommentAuthorMeta {

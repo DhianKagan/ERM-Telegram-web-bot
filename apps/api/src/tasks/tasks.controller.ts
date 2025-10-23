@@ -47,7 +47,7 @@ import {
   resolveTaskTypePhotosTarget,
 } from '../services/taskTypeSettings';
 import { ACCESS_ADMIN } from '../utils/accessMask';
-import { syncCommentMessage } from '../tasks/taskComments';
+import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
 
 type TelegramMessageCleanupMeta = {
@@ -2199,14 +2199,15 @@ export default class TasksController {
       const commentContent =
         typeof plain.comment === 'string' ? plain.comment : '';
       try {
-        if (commentContent.trim() && typeof baseMessageId === 'number') {
+        if (typeof baseMessageId === 'number') {
+          const commentHtml = ensureCommentHtml(commentContent);
           commentMessageId = await syncCommentMessage({
             bot,
             chatId: groupChatId,
             topicId,
             replyTo: baseMessageId,
             messageId: previousCommentMessageId ?? undefined,
-            commentHtml: commentContent,
+            commentHtml,
             detectors: {
               notModified: this.isMessageNotModifiedError.bind(this),
               missingOnEdit: this.isMessageMissingOnEditError.bind(this),

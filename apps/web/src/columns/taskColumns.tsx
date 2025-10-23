@@ -573,7 +573,7 @@ const buildCompletionNote = (
 
 // Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
 // eslint-disable-next-line react-refresh/only-export-components
-function DeadlineCountdownBadge({
+export function DeadlineCountdownBadge({
   startValue,
   dueValue,
   rawDue,

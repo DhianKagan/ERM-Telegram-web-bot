@@ -20,8 +20,8 @@ const decodeMapsUrlCandidate = (candidate: string): string | null => {
     .replace(/\\\//g, '/')
     .replace(/\\u003d/gi, '=')
     .replace(/\\u0026/gi, '&');
-  current = current.replace(/&amp;/gi, '&');
   current = current.replace(/["']+$/g, '');
+  current = current.replace(/&amp;/gi, '&');
   try {
     const parsed = new URL(current);
     const host = parsed.hostname.toLowerCase();

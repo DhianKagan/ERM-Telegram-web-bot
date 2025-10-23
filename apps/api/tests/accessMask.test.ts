@@ -27,6 +27,11 @@ test('пользователь с комбинированной маской и
   expect(hasAccess(mask, ACCESS_ADMIN)).toBe(false);
 });
 
+test('менеджер и администратор наследуют права пользователя', () => {
+  expect(hasAccess(ACCESS_MANAGER, ACCESS_USER)).toBe(true);
+  expect(hasAccess(ACCESS_ADMIN, ACCESS_USER)).toBe(true);
+});
+
 test('уровень 8 наследует права администратора и менеджера', () => {
   expect(hasAccess(ACCESS_TASK_DELETE, ACCESS_TASK_DELETE)).toBe(true);
   expect(hasAccess(ACCESS_TASK_DELETE, ACCESS_ADMIN)).toBe(true);

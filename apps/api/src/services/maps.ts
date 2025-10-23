@@ -19,8 +19,8 @@ const decodeMapsUrlCandidate = (candidate: string): string | null => {
   let current = candidate
     .replace(/\\\//g, '/')
     .replace(/\\u003d/gi, '=')
-    .replace(/\\u0026/gi, '&')
-    .replace(/&amp;/gi, '&');
+    .replace(/\\u0026/gi, '&');
+  current = current.replace(/&amp;/gi, '&');
   current = current.replace(/["']+$/g, '');
   try {
     const parsed = new URL(current);

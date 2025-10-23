@@ -1,11 +1,8 @@
 // Карточка задачи в канбане
 import React from "react";
+import { type Task } from "shared";
 import {
-  PROJECT_TIMEZONE,
-  PROJECT_TIMEZONE_LABEL,
-  type Task,
-} from "shared";
-import {
+  DeadlineCountdownBadge,
   fallbackBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
@@ -31,19 +28,6 @@ const numberBadgeClass =
     "hover:bg-slate-200 dark:border-slate-500/40 dark:bg-slate-700/70 dark:text-slate-100",
     "dark:hover:bg-slate-600/70",
   ].join(" ");
-
-const deadlineBadgeClass =
-  "inline-flex min-w-0 items-center gap-1 whitespace-nowrap rounded-full bg-slate-500/10 px-2 py-0.5 text-[0.68rem] font-mono font-semibold leading-tight text-slate-900 ring-1 ring-slate-500/30 shadow-xs dark:bg-slate-500/20 dark:text-slate-100 dark:ring-slate-400/30";
-
-const deadlineFormatter = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: PROJECT_TIMEZONE,
-});
 
 const resolveDueDate = (
   task: TaskCardProps["task"],
@@ -101,16 +85,38 @@ const resolveTypeLabel = (task: TaskCardProps["task"]): string | null => {
   return trimmed ? trimmed : null;
 };
 
-const formatDeadline = (value: string | null): string | null => {
-  if (!value) return null;
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return null;
-  const label = deadlineFormatter.format(new Date(timestamp)).replace(", ", " ");
-  return `${label} ${PROJECT_TIMEZONE_LABEL}`;
+const resolveStartDate = (
+  task: TaskCardProps["task"],
+): string | null => {
+  const source = (task as Record<string, unknown>).start_date;
+  if (typeof source === "string" && source.trim()) {
+    return source;
+  }
+  const camelCase = (task as Record<string, unknown>).startDate;
+  if (typeof camelCase === "string" && camelCase.trim()) {
+    return camelCase;
+  }
+  return null;
+};
+
+const resolveCompletedAt = (
+  task: TaskCardProps["task"],
+): string | null => {
+  const source = (task as Record<string, unknown>).completed_at;
+  if (typeof source === "string" && source.trim()) {
+    return source;
+  }
+  const camelCase = (task as Record<string, unknown>).completedAt;
+  if (typeof camelCase === "string" && camelCase.trim()) {
+    return camelCase;
+  }
+  return null;
 };
 
 export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const dueDate = resolveDueDate(task);
+  const startDate = resolveStartDate(task);
+  const completedAt = resolveCompletedAt(task);
   const taskNumber = buildTaskNumber(task);
   const taskId = normalizeTaskId(task);
   const statusClass =
@@ -119,7 +125,6 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const typeClass = typeLabel
     ? getTypeBadgeClass(typeLabel) ?? `${fallbackBadgeClass} normal-case`
     : null;
-  const deadlineLabel = formatDeadline(dueDate);
 
   return (
     <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-md border border-border bg-card/80 p-2 shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
@@ -145,11 +150,13 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
       <div className="flex flex-wrap items-center gap-1.5">
         <span className={statusClass}>{task.status}</span>
         {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}
-        {deadlineLabel ? (
-          <span className={deadlineBadgeClass} title={deadlineLabel}>
-            {deadlineLabel}
-          </span>
-        ) : null}
+        <DeadlineCountdownBadge
+          startValue={startDate ?? undefined}
+          dueValue={dueDate ?? undefined}
+          rawDue={dueDate ?? undefined}
+          status={task.status}
+          completedAt={completedAt ?? undefined}
+        />
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ import { TaskTelegramMedia } from '../tasks/taskTelegramMedia';
 import { buildTaskAppLink } from '../tasks/taskLinks';
 import buildChatMessageLink from '../utils/messageLink';
 import delay from '../utils/delay';
-import { syncCommentMessage } from '../tasks/taskComments';
+import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 
 type UsersIndex = Record<number | string, Pick<User, 'name' | 'username'>>;
 
@@ -909,15 +909,16 @@ export default class TaskSyncController {
           : undefined;
     const commentContent =
       typeof task.comment === 'string' ? task.comment : '';
-    if (commentContent.trim() && typeof baseMessageId === 'number') {
+    if (typeof baseMessageId === 'number') {
       try {
+        const commentHtml = ensureCommentHtml(commentContent);
         commentMessageId = await syncCommentMessage({
           bot: this.bot,
           chatId: targetChatId,
           topicId: normalizedTopicId,
           replyTo: baseMessageId,
           messageId: commentMessageId,
-          commentHtml: commentContent,
+          commentHtml,
           detectors: {
             notModified: isMessageNotModifiedError,
             missingOnEdit: isMessageMissingOnEditError,

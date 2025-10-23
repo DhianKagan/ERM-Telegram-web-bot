@@ -5,6 +5,7 @@ import { parseDocument } from 'htmlparser2';
 import type { DataNode, Element, Node as DomNode } from 'domhandler';
 import userLink from './userLink';
 import { escapeMarkdownV2 as mdEscape } from './mdEscape';
+import { getTaskStatusIcon } from './taskStatusIcons';
 import {
   PROJECT_TIMEZONE,
   PROJECT_TIMEZONE_LABEL,
@@ -317,7 +318,7 @@ const emphasizeValue = (
 ): string => {
   const emojiCandidate =
     style?.fill?.color ? pickColorEmoji(style.fill.color) : null;
-  const emoji = emojiCandidate ?? options.fallbackEmoji ?? '';
+  const emoji = (options.fallbackEmoji ?? emojiCandidate) ?? '';
   const escaped = mdEscape(value);
   const prefix = emoji ? `${emoji} ` : '';
   return `*${prefix}${escaped}*`;
@@ -693,7 +694,14 @@ export default function formatTask(
   }
   if (task.status) {
     const statusStyle = resolveStatusStyle(task.status);
-    infoLines.push(`🛠 Статус: ${emphasizeValue(task.status, statusStyle)}`);
+    const statusIcon = getTaskStatusIcon(task.status);
+    infoLines.push(
+      `🛠 Статус: ${emphasizeValue(
+        task.status,
+        statusStyle,
+        statusIcon ? { fallbackEmoji: statusIcon } : undefined,
+      )}`,
+    );
   }
   const cargoEntries: { label: string; value: string }[] = [];
   const lengthValue =

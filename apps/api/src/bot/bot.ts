@@ -24,6 +24,7 @@ import {
   taskCancelConfirmKeyboard,
   taskStatusInlineMarkup,
 } from '../utils/taskButtons';
+import { TASK_STATUS_ICON_MAP } from '../utils/taskStatusIcons';
 import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
 import { createTask, getUsersMap } from '../db/queries';
@@ -554,10 +555,10 @@ const directMessageDateFormatter = new Intl.DateTimeFormat('ru-RU', {
 });
 
 const statusDisplayMap: Record<SharedTask['status'], string> = {
-  Новая: '🆕 Новая',
-  'В работе': '🟢 В работе',
-  Выполнена: '✅ Выполнена',
-  Отменена: '⛔️ Отменена',
+  Новая: `${TASK_STATUS_ICON_MAP['Новая']} Новая`,
+  'В работе': `${TASK_STATUS_ICON_MAP['В работе']} В работе`,
+  Выполнена: `${TASK_STATUS_ICON_MAP['Выполнена']} Выполнена`,
+  Отменена: `${TASK_STATUS_ICON_MAP['Отменена']} Отменена`,
 };
 
 export { buildTaskAppLink } from '../tasks/taskLinks';

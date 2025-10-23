@@ -5,7 +5,7 @@ import { body } from 'express-validator';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
-import { ACCESS_MANAGER } from '../utils/accessMask';
+import { ACCESS_USER } from '../utils/accessMask';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import TaskDraftsController from '../taskDrafts/taskDrafts.controller';
@@ -18,7 +18,7 @@ const ctrl = container.resolve<TaskDraftsController>(
 );
 
 router.use(authMiddleware());
-router.use(Roles(ACCESS_MANAGER) as unknown as RequestHandler);
+router.use(Roles(ACCESS_USER) as unknown as RequestHandler);
 router.use(rolesGuard as unknown as RequestHandler);
 
 router.get(

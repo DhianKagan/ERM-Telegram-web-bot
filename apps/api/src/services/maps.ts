@@ -16,12 +16,11 @@ const MAPS_URL_PATTERNS = [
 
 const decodeMapsUrlCandidate = (candidate: string): string | null => {
   if (!candidate) return null;
-  let current = candidate
-    .replace(/\\\//g, '/')
-    .replace(/\\u003d/gi, '=')
-    .replace(/\\u0026/gi, '&');
+  let current = candidate.replace(/\\\//g, '/').replace(/\\u003d/gi, '=');
+  current = current.replace(/\\u0026amp;/gi, '&amp;');
+  current = current.replace(/\\u0026(?=[\w%.-]+=)/gi, '&');
+  current = current.replace(/&amp;(?=[\w%.-]+=)/gi, '&');
   current = current.replace(/["']+$/g, '');
-  current = current.replace(/&amp;/gi, '&');
   try {
     const parsed = new URL(current);
     const host = parsed.hostname.toLowerCase();

@@ -7,8 +7,11 @@ export const ACCESS_TASK_DELETE = 8;
 
 export function hasAccess(mask: number, required: number): boolean {
   let effectiveMask = mask;
-  if ((mask & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE) {
+  if ((effectiveMask & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE) {
     effectiveMask |= ACCESS_ADMIN | ACCESS_MANAGER;
+  }
+  if ((effectiveMask & (ACCESS_ADMIN | ACCESS_MANAGER)) !== 0) {
+    effectiveMask |= ACCESS_USER;
   }
   return (effectiveMask & required) === required;
 }

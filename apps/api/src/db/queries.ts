@@ -131,7 +131,11 @@ async function normalizeTransportFields(
     payload.transport_driver_id = previous.transport_driver_id ?? null;
   }
 
-  if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_name')) {
+  const driverNameProvided = Object.prototype.hasOwnProperty.call(
+    payload,
+    'transport_driver_name',
+  );
+  if (driverNameProvided) {
     const rawName = payload.transport_driver_name as unknown;
     if (typeof rawName === 'string') {
       const trimmed = rawName.trim();
@@ -142,7 +146,50 @@ async function normalizeTransportFields(
   } else if (payload.transport_driver_id === null) {
     payload.transport_driver_name = null;
   } else if (previous) {
-    payload.transport_driver_name = previous.transport_driver_name ?? null;
+    const prevName =
+      typeof previous.transport_driver_name === 'string'
+        ? previous.transport_driver_name.trim()
+        : null;
+    payload.transport_driver_name = prevName && prevName.length > 0 ? prevName : null;
+  }
+
+  const resolvedDriverId =
+    typeof payload.transport_driver_id === 'number' &&
+    Number.isFinite(payload.transport_driver_id)
+      ? payload.transport_driver_id
+      : typeof previous?.transport_driver_id === 'number' &&
+        Number.isFinite(previous.transport_driver_id)
+      ? previous.transport_driver_id
+      : null;
+  const currentDriverName =
+    typeof payload.transport_driver_name === 'string' &&
+    payload.transport_driver_name.trim().length > 0
+      ? payload.transport_driver_name.trim()
+      : typeof previous?.transport_driver_name === 'string' &&
+        previous.transport_driver_name.trim().length > 0
+      ? previous.transport_driver_name.trim()
+      : null;
+
+  if (resolvedDriverId !== null && !currentDriverName) {
+    const driver = await User.findOne(
+      { telegram_id: { $eq: resolvedDriverId } },
+      { name: 1, username: 1 },
+    )
+      .lean<{ name?: string | null; username?: string | null }>()
+      .exec();
+    const resolvedName = driver
+      ? (typeof driver.name === 'string' && driver.name.trim().length > 0
+          ? driver.name.trim()
+          : typeof driver.username === 'string' &&
+            driver.username.trim().length > 0
+          ? driver.username.trim()
+          : null)
+      : null;
+    if (resolvedName) {
+      payload.transport_driver_name = resolvedName;
+    } else if (driverNameProvided) {
+      payload.transport_driver_name = null;
+    }
   }
 
   let vehicleId: Types.ObjectId | null = null;

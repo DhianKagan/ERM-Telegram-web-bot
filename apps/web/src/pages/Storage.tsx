@@ -133,8 +133,16 @@ export default function StoragePage() {
       const result = report.results.find(
         (item) => item?.action === "purgeDetachedFiles",
       );
-      const removed = Number.isFinite(result?.removed)
-        ? Number(result?.removed)
+      if (!result || result.status !== "completed") {
+        const details =
+          typeof result?.details === "string" && result.details.trim().length > 0
+            ? result.details.trim()
+            : t("storage.cleanup.error");
+        showToast(details, "error");
+        return;
+      }
+      const removed = Number.isFinite(result.removed)
+        ? Number(result.removed)
         : 0;
       showToast(
         removed > 0

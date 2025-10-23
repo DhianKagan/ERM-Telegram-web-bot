@@ -89,7 +89,7 @@ export interface FleetVehicleDto {
   odometerCurrent: number;
   mileageTotal: number;
   transportType: 'Легковой' | 'Грузовой';
-  fuelType: 'Бензин' | 'Дизель';
+  fuelType: 'Бензин' | 'Дизель' | 'Газ';
   fuelRefilled: number;
   fuelAverageConsumption: number;
   fuelSpentTotal: number;

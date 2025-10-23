@@ -73,10 +73,10 @@ describe('fleets router', () => {
     const created = await FleetVehicle.create(payload);
     const res = await request(app)
       .put(`/api/v1/fleets/${created._id}`)
-      .send({ odometerCurrent: 1300, fuelType: 'Дизель', transportType: 'Грузовой' });
+      .send({ odometerCurrent: 1300, fuelType: 'Газ', transportType: 'Грузовой' });
     expect(res.status).toBe(200);
     expect(res.body.odometerCurrent).toBe(1300);
-    expect(res.body.fuelType).toBe('Дизель');
+    expect(res.body.fuelType).toBe('Газ');
     expect(res.body.transportType).toBe('Грузовой');
   });
 

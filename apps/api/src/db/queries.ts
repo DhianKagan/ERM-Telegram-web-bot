@@ -925,7 +925,7 @@ export async function getTasks(
     const count = await Task.countDocuments(q);
     if (limit) {
       const p = Number(page) || 1;
-      const l = Number(limit) || 20;
+      const l = Number(limit) || 25;
       query = query.skip((p - 1) * l).limit(l);
     }
     const list = await query.exec();

@@ -24,7 +24,7 @@ interface FormState {
   odometerCurrent: string;
   mileageTotal: string;
   transportType: "Легковой" | "Грузовой";
-  fuelType: "Бензин" | "Дизель";
+  fuelType: "Бензин" | "Дизель" | "Газ";
   fuelRefilled: string;
   fuelAverageConsumption: string;
   fuelSpentTotal: string;
@@ -275,6 +275,7 @@ export default function FleetVehicleDialog({
           >
             <option value="Бензин">Бензин</option>
             <option value="Дизель">Дизель</option>
+            <option value="Газ">Газ</option>
           </select>
         </label>
         <label className="flex flex-col gap-1">

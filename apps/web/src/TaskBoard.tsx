@@ -30,27 +30,27 @@ export default function TaskBoard() {
   const { version } = useTasks();
   const totalTasks = tasks.length;
   const layout = useMemo(() => {
-    if (totalTasks > 40) {
+    if (totalTasks > 60) {
+      return {
+        gapClass: "gap-1.5",
+        cardClass: "min-w-[8.75rem] max-w-[11rem]",
+      } as const;
+    }
+    if (totalTasks > 36) {
       return {
         gapClass: "gap-2",
-        cardClass: "md:max-w-[15rem]",
+        cardClass: "min-w-[9rem] max-w-[11.5rem]",
       } as const;
     }
-    if (totalTasks > 28) {
+    if (totalTasks > 18) {
       return {
-        gapClass: "gap-3",
-        cardClass: "md:max-w-[16rem]",
-      } as const;
-    }
-    if (totalTasks > 16) {
-      return {
-        gapClass: "gap-4",
-        cardClass: "md:max-w-[18rem]",
+        gapClass: "gap-2.5",
+        cardClass: "min-w-[9.5rem] max-w-[12.5rem]",
       } as const;
     }
     return {
-      gapClass: "gap-4",
-      cardClass: "md:max-w-[20rem]",
+      gapClass: "gap-3",
+      cardClass: "min-w-[10rem] max-w-[13rem]",
     } as const;
   }, [totalTasks]);
 
@@ -110,7 +110,7 @@ export default function TaskBoard() {
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col gap-6">
           {columns.map((key, idx) => (
-            <Droppable droppableId={String(idx)} key={key} direction="vertical">
+            <Droppable droppableId={String(idx)} key={key} direction="horizontal">
               {(provided) => (
                 <section className="rounded-lg bg-gray-100 p-3">
                   <h3 className="mb-3 font-semibold">{key.replace("_", " ")}</h3>
@@ -118,7 +118,7 @@ export default function TaskBoard() {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      "flex min-h-[11rem] flex-col pb-1",
+                      "flex min-h-[11rem] flex-wrap content-start items-start pb-1",
                       layout.gapClass,
                     )}
                   >
@@ -132,7 +132,7 @@ export default function TaskBoard() {
                               {...prov.draggableProps}
                               {...prov.dragHandleProps}
                               className={cn(
-                                "flex w-full min-w-0",
+                                "flex shrink-0",
                                 layout.cardClass,
                               )}
                               style={{ ...(prov.draggableProps.style ?? {}) }}

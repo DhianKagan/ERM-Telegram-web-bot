@@ -23,6 +23,7 @@ import createStorageColumns, {
 import {
   fetchFile,
   fetchFiles,
+  purgeDetachedFiles,
   removeFile,
   type StoredFile,
 } from "../services/storage";
@@ -95,6 +96,7 @@ export default function StoragePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = React.useState<StoredFile[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [cleanupLoading, setCleanupLoading] = React.useState(false);
   const [usersById, setUsersById] = React.useState<Record<number, User>>({});
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortOption>("uploaded_desc");
@@ -122,6 +124,35 @@ export default function StoragePage() {
     () => files.filter((file) => !file.taskId).length,
     [files],
   );
+
+  const handleDetachedCleanup = React.useCallback(async () => {
+    if (cleanupLoading) return;
+    setCleanupLoading(true);
+    try {
+      const report = await purgeDetachedFiles();
+      const result = report.results.find(
+        (item) => item?.action === "purgeDetachedFiles",
+      );
+      const removed = Number.isFinite(result?.removed)
+        ? Number(result?.removed)
+        : 0;
+      showToast(
+        removed > 0
+          ? t("storage.cleanup.success", { count: removed })
+          : t("storage.cleanup.empty"),
+        "success",
+      );
+      await loadFiles();
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("storage.cleanup.error");
+      showToast(message, "error");
+    } finally {
+      setCleanupLoading(false);
+    }
+  }, [cleanupLoading, loadFiles, purgeDetachedFiles, t]);
 
   React.useEffect(() => {
     void loadFiles();
@@ -442,6 +473,18 @@ export default function StoragePage() {
             ? t("storage.sync.ok", { count: files.length })
             : t("storage.sync.warning", { count: detachedCount })}
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={cleanupLoading || detachedCount === 0}
+            onClick={() => void handleDetachedCleanup()}
+          >
+            {cleanupLoading
+              ? t("storage.cleanup.progress")
+              : t("storage.cleanup.button")}
+          </Button>
+        </div>
       </section>
       <section className="space-y-5 rounded border border-border bg-card p-5 shadow-sm">
         <header className="flex flex-col gap-4 border-b border-border pb-4">

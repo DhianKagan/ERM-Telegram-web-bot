@@ -2,7 +2,7 @@
 // Основные модули: mongoose
 import { Schema, model, type HydratedDocument } from 'mongoose';
 
-export type FuelType = 'Бензин' | 'Дизель';
+export type FuelType = 'Бензин' | 'Дизель' | 'Газ';
 
 export type TransportType = 'Легковой' | 'Грузовой';
 
@@ -62,7 +62,7 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     fuelType: {
       type: String,
       required: true,
-      enum: ['Бензин', 'Дизель'],
+      enum: ['Бензин', 'Дизель', 'Газ'],
     },
     fuelRefilled: { type: Number, required: true, min: 0 },
     fuelAverageConsumption: { type: Number, required: true, min: 0 },

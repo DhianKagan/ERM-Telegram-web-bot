@@ -204,12 +204,14 @@ describe('notifyTaskCreated вложения', () => {
   it('отправляет текст задачи и вложения альбомом с кнопками в основном сообщении', async () => {
     const groupMessageId = 311;
     const youtubeMessageId = 322;
+    const commentMessageId = 333;
     sendMediaGroupMock.mockResolvedValueOnce([
       { message_id: 301 },
       { message_id: 302 },
     ]);
     sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
     sendMessageMock.mockResolvedValueOnce({ message_id: youtubeMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: commentMessageId });
 
     const attachments = [
       {
@@ -254,11 +256,16 @@ describe('notifyTaskCreated вложения', () => {
     expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
     expect(sendPhotoMock).not.toHaveBeenCalled();
 
-    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+    expect(sendMessageMock).toHaveBeenCalledTimes(3);
     const youtubeCall = sendMessageMock.mock.calls.find((call) =>
       typeof call?.[1] === 'string' && call[1].includes('▶️'),
     );
     expect(youtubeCall?.[1]).toContain('▶️');
+    const commentCall = sendMessageMock.mock.calls.find((call) =>
+      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    );
+    expect(commentCall?.[1]).toContain('Нет комментариев');
+    expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
 
     const updateCall = updateTaskMock.mock.calls[0];
     if (updateCall) {
@@ -271,6 +278,9 @@ describe('notifyTaskCreated вложения', () => {
       expect(
         updatePayload.$set?.telegram_attachments_message_ids,
       ).toEqual(expect.arrayContaining([youtubeMessageId]));
+      expect(updatePayload.$set?.telegram_comment_message_id).toBe(
+        commentMessageId,
+      );
     }
 
     const markupCall = editMessageReplyMarkupMock.mock.calls.find(
@@ -286,8 +296,10 @@ describe('notifyTaskCreated вложения', () => {
     const previewMessageId = 612;
     const groupMessageId = 702;
     const directMessageId = 713;
+    const commentMessageId = 724;
     sendPhotoMock.mockResolvedValueOnce({ message_id: previewMessageId });
     sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: commentMessageId });
     sendMessageMock.mockResolvedValueOnce({ message_id: directMessageId });
 
     const previousTask = {
@@ -339,8 +351,12 @@ describe('notifyTaskCreated вложения', () => {
 
     expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 501);
     expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 311);
-    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+    expect(sendMessageMock).toHaveBeenCalledTimes(3);
     expect(sendPhotoMock).toHaveBeenCalledTimes(1);
+    const commentCall = sendMessageMock.mock.calls.find((call) =>
+      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    );
+    expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
     const updateCall = updateTaskMock.mock.calls[0];
     if (updateCall) {
       const updatePayload = (updateCall[1] ?? {}) as {
@@ -358,12 +374,19 @@ describe('notifyTaskCreated вложения', () => {
         { user_id: 55, message_id: directMessageId },
       ]);
       expect(updatePayload.$unset?.telegram_message_cleanup).toBe('');
+      expect(updatePayload.$set?.telegram_comment_message_id).toBe(
+        commentMessageId,
+      );
     }
   });
 
   it('отправляет личное сообщение исполнителю, даже если он передан объектом', async () => {
-    sendMessageMock.mockResolvedValueOnce({ message_id: 401 });
-    sendMessageMock.mockResolvedValueOnce({ message_id: 777 });
+    const groupMessageId = 401;
+    const dmMessageId = 777;
+    const commentMessageId = 778;
+    sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: commentMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: dmMessageId });
 
     const plainTask = {
       _id: '507f1f77bcf86cd799439012',
@@ -389,6 +412,12 @@ describe('notifyTaskCreated вложения', () => {
     expect(dmCall).toBeDefined();
     const dmOptions = dmCall?.[2] as { parse_mode?: string } | undefined;
     expect(dmOptions?.parse_mode).toBe('HTML');
+    const commentCall = sendMessageMock.mock.calls.find((call) =>
+      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    );
+    expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(
+      groupMessageId,
+    );
   });
 
   it('публикует фото в отдельной теме и сохраняет ссылку на альбом', async () => {
@@ -400,9 +429,11 @@ describe('notifyTaskCreated вложения', () => {
     const groupMessageId = 555;
     const albumIntroId = 556;
     const dmMessageId = 900;
+    const commentMessageId = 901;
 
     sendMessageMock.mockResolvedValueOnce({ message_id: groupMessageId });
     sendMessageMock.mockResolvedValueOnce({ message_id: albumIntroId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: commentMessageId });
     sendMessageMock.mockResolvedValueOnce({ message_id: dmMessageId });
     sendPhotoMock.mockResolvedValueOnce({ message_id: 808 });
 
@@ -469,6 +500,9 @@ describe('notifyTaskCreated вложения', () => {
       expect(updatePayload.$set?.telegram_photos_chat_id).toBe('-100100');
       expect(updatePayload.$set?.telegram_photos_topic_id).toBe(7777);
       expect(updatePayload.$set?.telegram_photos_message_id).toBe(albumIntroId);
+      expect(updatePayload.$set?.telegram_comment_message_id).toBe(
+        commentMessageId,
+      );
     }
 
     const markupCall = editMessageReplyMarkupMock.mock.calls.find(

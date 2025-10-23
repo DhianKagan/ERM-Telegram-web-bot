@@ -29,6 +29,15 @@ test('expandMapsUrl возвращает полный url', async () => {
   expect(text).not.toHaveBeenCalled();
 });
 
+test('expandMapsUrl нормализует ссылку статической карты', async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    url: 'https://maps.google.com/maps/api/staticmap?center=46.47561,30.709174&zoom=16&size=200x200&markers=46.47561,30.709174&sensor=false',
+    text: jest.fn(),
+  });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/static');
+  expect(res).toBe('https://www.google.com/maps/@46.475610,30.709174,17z');
+});
+
 test('expandMapsUrl парсит ссылку из html-ответа', async () => {
   const html =
     '<html><head><link rel="canonical" href="https://www.google.com/maps/place/Point/@48.123456,30.654321,17z" /></head></html>';

@@ -74,6 +74,36 @@ const buildCoordsUrl = (coords: Coordinates): string =>
     coords.lng,
   )},17z`;
 
+const STATIC_MAP_PATH = '/maps/api/staticmap';
+
+const normalizeMapsUrl = (value: string): string => {
+  if (!value) {
+    return value;
+  }
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    const isGoogleHost =
+      host === 'maps.google.com' ||
+      host === 'maps.googleapis.com' ||
+      host.endsWith('.google.com');
+    if (!isGoogleHost) {
+      return value;
+    }
+    const pathname = parsed.pathname.toLowerCase();
+    if (!pathname.includes(STATIC_MAP_PATH)) {
+      return value;
+    }
+    const coords = extractCoords(value);
+    if (coords) {
+      return buildCoordsUrl(coords);
+    }
+  } catch {
+    // Игнорируем ошибки парсинга и возвращаем исходное значение.
+  }
+  return value;
+};
+
 export type { Coordinates };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
@@ -125,7 +155,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   }
 
   const res = await fetch(urlObj.toString(), { redirect: 'follow' });
-  const finalUrl = res.url || urlObj.toString();
+  const finalUrl = normalizeMapsUrl(res.url || urlObj.toString());
   if (hasCoordsInUrl(finalUrl)) {
     return finalUrl;
   }
@@ -133,7 +163,8 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   if (typeof (res as { text?: () => Promise<string> }).text === 'function') {
     try {
       const body = await (res as { text: () => Promise<string> }).text();
-      const fallbackUrl = findMapsUrlInBody(body);
+      const candidate = findMapsUrlInBody(body);
+      const fallbackUrl = candidate ? normalizeMapsUrl(candidate) : null;
       if (fallbackUrl) {
         return fallbackUrl;
       }

@@ -9,6 +9,72 @@ import {
   type Coords as Coordinates,
 } from 'shared';
 
+const MAPS_URL_PATTERNS = [
+  /https:\/\/(?:www\.)?google\.[^"'\s<>]+/gi,
+  /https:\/\/maps\.google\.[^"'\s<>]+/gi,
+];
+
+const decodeMapsUrlCandidate = (candidate: string): string | null => {
+  if (!candidate) return null;
+  let current = candidate
+    .replace(/\\\//g, '/')
+    .replace(/\\u003d/gi, '=')
+    .replace(/\\u0026/gi, '&')
+    .replace(/&amp;/gi, '&');
+  current = current.replace(/["']+$/g, '');
+  try {
+    const parsed = new URL(current);
+    const host = parsed.hostname.toLowerCase();
+    const isMapsHost =
+      host === 'maps.google.com' ||
+      host.startsWith('maps.google.') ||
+      host.startsWith('www.google.');
+    if (!isMapsHost) {
+      return null;
+    }
+    if (host.startsWith('www.google.') && !parsed.pathname.startsWith('/maps')) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const hasCoordsInUrl = (value: string): boolean => {
+  if (!value) return false;
+  try {
+    return extractCoords(value) !== null;
+  } catch {
+    return false;
+  }
+};
+
+const findMapsUrlInBody = (body: string): string | null => {
+  if (!body) return null;
+  for (const pattern of MAPS_URL_PATTERNS) {
+    pattern.lastIndex = 0;
+    const matches = body.match(pattern);
+    if (!matches) continue;
+    for (const raw of matches) {
+      const decoded = decodeMapsUrlCandidate(raw);
+      if (!decoded) continue;
+      if (hasCoordsInUrl(decoded)) {
+        return decoded;
+      }
+    }
+  }
+  return null;
+};
+
+const formatCoordinate = (value: number): string =>
+  Number.isFinite(value) ? value.toFixed(6) : String(value);
+
+const buildCoordsUrl = (coords: Coordinates): string =>
+  `https://www.google.com/maps/?q=${formatCoordinate(coords.lat)},${formatCoordinate(
+    coords.lng,
+  )}`;
+
 export type { Coordinates };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
@@ -60,7 +126,28 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   }
 
   const res = await fetch(urlObj.toString(), { redirect: 'follow' });
-  return res.url;
+  const finalUrl = res.url || urlObj.toString();
+  if (hasCoordsInUrl(finalUrl)) {
+    return finalUrl;
+  }
+
+  if (typeof (res as { text?: () => Promise<string> }).text === 'function') {
+    try {
+      const body = await (res as { text: () => Promise<string> }).text();
+      const fallbackUrl = findMapsUrlInBody(body);
+      if (fallbackUrl) {
+        return fallbackUrl;
+      }
+      const coords = extractCoords(body);
+      if (coords) {
+        return buildCoordsUrl(coords);
+      }
+    } catch {
+      // Игнорируем ошибки чтения тела, вернём исходный URL ниже
+    }
+  }
+
+  return finalUrl;
 }
 
 // Проверка, что IP-адрес не является внутренним, loopback или link-local

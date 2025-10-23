@@ -16,14 +16,40 @@ const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
 test('expandMapsUrl возвращает полный url', async () => {
-  global.fetch = jest
-    .fn()
-    .mockResolvedValue({ url: 'https://maps.google.com/full' });
+  const text = jest.fn();
+  global.fetch = jest.fn().mockResolvedValue({
+    url: 'https://maps.google.com/@10.1,20.2,15z',
+    text,
+  });
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
   expect(fetch).toHaveBeenCalledWith('https://maps.app.goo.gl/test', {
     redirect: 'follow',
   });
-  expect(res).toBe('https://maps.google.com/full');
+  expect(res).toBe('https://maps.google.com/@10.1,20.2,15z');
+  expect(text).not.toHaveBeenCalled();
+});
+
+test('expandMapsUrl парсит ссылку из html-ответа', async () => {
+  const html =
+    '<html><head><link rel="canonical" href="https://www.google.com/maps/place/Point/@48.123456,30.654321,17z" /></head></html>';
+  global.fetch = jest.fn().mockResolvedValue({
+    url: 'https://maps.app.goo.gl/test',
+    text: jest.fn().mockResolvedValue(html),
+  });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+  expect(res).toBe(
+    'https://www.google.com/maps/place/Point/@48.123456,30.654321,17z',
+  );
+});
+
+test('expandMapsUrl строит ссылку по координатам из тела', async () => {
+  const html = '<html><body>!3d49.98765!4d36.12345</body></html>';
+  global.fetch = jest.fn().mockResolvedValue({
+    url: 'https://maps.app.goo.gl/test',
+    text: jest.fn().mockResolvedValue(html),
+  });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+  expect(res).toBe('https://www.google.com/maps/?q=49.987650,36.123450');
 });
 
 test('extractCoords извлекает широту и долготу', () => {

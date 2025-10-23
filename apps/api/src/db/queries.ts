@@ -81,12 +81,6 @@ const toObjectId = (value: unknown): Types.ObjectId | null => {
   return null;
 };
 
-const buildTransportError = () => {
-  const error = new Error('TRANSPORT_FIELDS_REQUIRED');
-  (error as Error & { code?: string }).code = 'TRANSPORT_FIELDS_REQUIRED';
-  return error;
-};
-
 async function normalizeTransportFields(
   payload: Partial<TaskDocument> & Record<string, unknown>,
   previous: TaskDocument | null,
@@ -118,7 +112,11 @@ async function normalizeTransportFields(
     return;
   }
 
-  if (Object.prototype.hasOwnProperty.call(payload, 'transport_driver_id')) {
+  const driverFieldProvided = Object.prototype.hasOwnProperty.call(
+    payload,
+    'transport_driver_id',
+  );
+  if (driverFieldProvided) {
     const driverRaw = payload.transport_driver_id as unknown;
     const driverValue =
       typeof driverRaw === 'number'
@@ -145,19 +143,27 @@ async function normalizeTransportFields(
     }
   } else if (payload.transport_driver_id === null) {
     payload.transport_driver_name = null;
-  } else if (previous) {
+  } else if (
+    previous &&
+    typeof previous.transport_driver_id === 'number' &&
+    Number.isFinite(previous.transport_driver_id) &&
+    previous.transport_driver_id === payload.transport_driver_id
+  ) {
     const prevName =
       typeof previous.transport_driver_name === 'string'
         ? previous.transport_driver_name.trim()
         : null;
     payload.transport_driver_name = prevName && prevName.length > 0 ? prevName : null;
+  } else {
+    payload.transport_driver_name = null;
   }
 
-  const resolvedDriverId =
-    typeof payload.transport_driver_id === 'number' &&
-    Number.isFinite(payload.transport_driver_id)
+  const resolvedDriverId = driverFieldProvided
+    ? typeof payload.transport_driver_id === 'number' &&
+      Number.isFinite(payload.transport_driver_id)
       ? payload.transport_driver_id
-      : typeof previous?.transport_driver_id === 'number' &&
+      : null
+    : typeof previous?.transport_driver_id === 'number' &&
         Number.isFinite(previous.transport_driver_id)
       ? previous.transport_driver_id
       : null;
@@ -165,9 +171,6 @@ async function normalizeTransportFields(
     typeof payload.transport_driver_name === 'string' &&
     payload.transport_driver_name.trim().length > 0
       ? payload.transport_driver_name.trim()
-      : typeof previous?.transport_driver_name === 'string' &&
-        previous.transport_driver_name.trim().length > 0
-      ? previous.transport_driver_name.trim()
       : null;
 
   if (resolvedDriverId !== null && !currentDriverName) {
@@ -193,7 +196,11 @@ async function normalizeTransportFields(
   }
 
   let vehicleId: Types.ObjectId | null = null;
-  if (Object.prototype.hasOwnProperty.call(payload, 'transport_vehicle_id')) {
+  const vehicleFieldProvided = Object.prototype.hasOwnProperty.call(
+    payload,
+    'transport_vehicle_id',
+  );
+  if (vehicleFieldProvided) {
     vehicleId = toObjectId(payload.transport_vehicle_id);
     if (!vehicleId) {
       payload.transport_vehicle_id = null;
@@ -220,15 +227,6 @@ async function normalizeTransportFields(
       payload.transport_vehicle_name = vehicle.name;
       payload.transport_vehicle_registration = vehicle.registrationNumber;
     }
-  }
-
-  const finalDriver =
-    payload.transport_driver_id ?? previous?.transport_driver_id ?? null;
-  const finalVehicle =
-    payload.transport_vehicle_id ?? previous?.transport_vehicle_id ?? null;
-
-  if (!finalDriver || !finalVehicle) {
-    throw buildTransportError();
   }
 }
 

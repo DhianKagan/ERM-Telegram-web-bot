@@ -1567,26 +1567,37 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (routeLink) payload.google_route_url = routeLink;
     if (distanceKm !== null) payload.route_distance_km = distanceKm;
 
-    if (transportDriverId.trim()) {
+    const driverCandidate = transportDriverId.trim();
+    if (driverCandidate) {
       const driverNumeric = toNumericValue(transportDriverId);
       payload.transport_driver_id =
-        driverNumeric !== null ? driverNumeric : transportDriverId.trim();
+        driverNumeric !== null ? driverNumeric : driverCandidate;
+    } else {
+      payload.transport_driver_id = null;
     }
     const driverNameValue = transportDriverName.trim();
     if (driverNameValue) {
       payload.transport_driver_name = driverNameValue;
-    } else if (!transportDriverId.trim()) {
+    } else if (!driverCandidate) {
       payload.transport_driver_name = null;
     }
-    if (transportVehicleId.trim()) {
-      payload.transport_vehicle_id = transportVehicleId.trim();
+    const vehicleCandidate = transportVehicleId.trim();
+    if (vehicleCandidate) {
+      payload.transport_vehicle_id = vehicleCandidate;
+    } else {
+      payload.transport_vehicle_id = null;
     }
-    if (transportVehicleName.trim()) {
-      payload.transport_vehicle_name = transportVehicleName.trim();
+    const vehicleNameValue = transportVehicleName.trim();
+    if (vehicleNameValue) {
+      payload.transport_vehicle_name = vehicleNameValue;
+    } else if (!vehicleCandidate) {
+      payload.transport_vehicle_name = null;
     }
-    if (transportVehicleRegistration.trim()) {
-      payload.transport_vehicle_registration =
-        transportVehicleRegistration.trim();
+    const vehicleRegistrationValue = transportVehicleRegistration.trim();
+    if (vehicleRegistrationValue) {
+      payload.transport_vehicle_registration = vehicleRegistrationValue;
+    } else if (!vehicleCandidate) {
+      payload.transport_vehicle_registration = null;
     }
 
     if (requestId) {
@@ -2296,25 +2307,38 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         end_location_link: endLink,
         logistics_enabled: showLogistics,
       };
-      const requiresTransport =
-        transportType === "Легковой" || transportType === "Грузовой";
-      if (requiresTransport) {
-        const driverCandidate = transportDriverId.trim();
-        const vehicleCandidate = transportVehicleId.trim();
+      const driverCandidate = transportDriverId.trim();
+      if (driverCandidate) {
         const driverNumeric = Number.parseInt(driverCandidate, 10);
-        if (!driverCandidate || !Number.isFinite(driverNumeric)) {
-          setAlertMsg(t("transportDriverRequired"));
-          return;
-        }
-        if (!vehicleCandidate) {
-          setAlertMsg(t("transportVehicleRequired"));
-          return;
-        }
-        payload.transport_driver_id = driverNumeric;
-        payload.transport_vehicle_id = vehicleCandidate;
+        payload.transport_driver_id = Number.isFinite(driverNumeric)
+          ? driverNumeric
+          : driverCandidate;
       } else {
         payload.transport_driver_id = null;
+      }
+      const driverNameValue = transportDriverName.trim();
+      if (driverNameValue) {
+        payload.transport_driver_name = driverNameValue;
+      } else if (!driverCandidate) {
+        payload.transport_driver_name = null;
+      }
+      const vehicleCandidate = transportVehicleId.trim();
+      if (vehicleCandidate) {
+        payload.transport_vehicle_id = vehicleCandidate;
+      } else {
         payload.transport_vehicle_id = null;
+      }
+      const vehicleNameValue = transportVehicleName.trim();
+      if (vehicleNameValue) {
+        payload.transport_vehicle_name = vehicleNameValue;
+      } else if (!vehicleCandidate) {
+        payload.transport_vehicle_name = null;
+      }
+      const vehicleRegistrationValue = transportVehicleRegistration.trim();
+      if (vehicleRegistrationValue) {
+        payload.transport_vehicle_registration = vehicleRegistrationValue;
+      } else if (!vehicleCandidate) {
+        payload.transport_vehicle_registration = null;
       }
       if (!isNewTask && payload.created_by === null) {
         delete payload.created_by;

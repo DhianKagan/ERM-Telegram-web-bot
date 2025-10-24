@@ -23,7 +23,6 @@ import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
-import { Types } from 'mongoose';
 import { File } from '../db/model';
 import { findTaskIdByPublicIdentifier, syncTaskAttachments } from '../db/queries';
 import { scanFile } from '../services/antivirus';

@@ -96,6 +96,20 @@ if (!/^https:\/\//.test(routingUrlEnv)) {
   throw new Error('ROUTING_URL должен начинаться с https://');
 }
 
+const parseBooleanFlag = (
+  source: string | undefined,
+  defaultValue = false,
+): boolean => {
+  if (source === undefined) {
+    return defaultValue;
+  }
+  const normalized = source.trim().toLowerCase();
+  if (!normalized) {
+    return defaultValue;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
+};
+
 let cookieDomainEnv = (process.env.COOKIE_DOMAIN || '').trim();
 if (cookieDomainEnv) {
   if (/^https?:\/\//.test(cookieDomainEnv)) {
@@ -156,6 +170,10 @@ export const chatId = getChatId();
 export const jwtSecret = process.env.JWT_SECRET;
 export const mongoUrl = mongoUrlEnv;
 export const appUrl = appUrlEnv;
+export const vrpOrToolsEnabled = parseBooleanFlag(
+  process.env.VRP_ORTOOLS_ENABLED,
+  false,
+);
 
 const parsePort = (source: string | undefined | null): number | undefined => {
   if (!source) {
@@ -216,6 +234,7 @@ const config = {
   locale,
   routingUrl,
   cookieDomain,
+  vrpOrToolsEnabled,
 };
 
 export default config;

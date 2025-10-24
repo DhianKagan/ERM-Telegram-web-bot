@@ -84,6 +84,14 @@ API справочников постепенно переезжает с кол
 
 Перед запуском сервер компилируется командой `pnpm --dir apps/api build`.
 
+## Экспериментальный адаптер OR-Tools
+
+- Фича-флаг `VRP_ORTOOLS_ENABLED` по умолчанию выключен. Включите его в `.env`, чтобы Node.js мог вызывать Python-обработчик.
+- Python-скрипт `apps/api/src/services/vrp/or_tools_solver.py` ожидает установленный пакет `ortools`. При отсутствии библиотеки возвращается маршрут в порядке ввода и предупреждение.
+- Для ручной проверки используйте `pnpm ts-node apps/api/src/services/vrp/runSample.ts`. Скрипт печатает JSON с полями `routes`, `totalDistanceKm`, `totalDurationMinutes` и `warnings`.
+- Исходные демо-данные формируются функцией `createSampleProblem` в `apps/api/src/services/vrp/orToolsAdapter.ts`; координаты соответствуют примеру из сервиса `optimizer`.
+- Подробное сравнение сценариев и ограничений приведено в `docs/routing_research.md`.
+
 ### Секреты и ключи
 
 Секреты хранятся в HashiCorp Vault или AWS Secrets Manager,

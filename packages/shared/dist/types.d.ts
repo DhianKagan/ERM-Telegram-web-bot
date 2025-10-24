@@ -49,26 +49,6 @@ export interface User {
     divisionId?: string;
     positionId?: string;
 }
-export interface VehiclePositionDto {
-    lat: number;
-    lon: number;
-    speed?: number;
-    course?: number;
-    updatedAt?: string;
-}
-export interface VehicleSensorDto {
-    name: string;
-    type?: string;
-    value?: unknown;
-    updatedAt?: string;
-}
-export interface VehicleTrackPointDto {
-    lat: number;
-    lon: number;
-    speed?: number;
-    course?: number;
-    timestamp: string;
-}
 export interface FleetVehicleDto {
     id: string;
     name: string;
@@ -93,10 +73,6 @@ export interface FleetVehicleDto {
     unitId?: number;
     remoteName?: string;
     notes?: string;
-    position?: VehiclePositionDto;
-    sensors?: VehicleSensorDto[];
-    customSensors?: VehicleSensorDto[];
-    track?: VehicleTrackPointDto[];
 }
 export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
 export interface RoutePlanStop {

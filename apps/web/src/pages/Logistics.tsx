@@ -29,6 +29,10 @@ const REFRESH_INTERVAL_MS = 60 * 1000;
 
 export default function LogisticsPage() {
   const { t } = useTranslation();
+  const tRef = React.useRef(t);
+  React.useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const tasks = useTaskIndex("logistics:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
@@ -124,18 +128,20 @@ export default function LogisticsPage() {
       setFleetError("");
       if (!data.items.length) {
         setSelectedVehicleId("");
-        setVehiclesHint(t("logistics.noVehicles"));
+        setVehiclesHint(tRef.current("logistics.noVehicles"));
         return;
       }
-      const selected =
-        selectedVehicleId &&
-        data.items.find((vehicle) => vehicle.id === selectedVehicleId);
-      if (!selected) {
-        setSelectedVehicleId(data.items[0].id);
-      }
+      setSelectedVehicleId((prev) => {
+        if (prev && data.items.some((vehicle) => vehicle.id === prev)) {
+          return prev;
+        }
+        return data.items[0].id;
+      });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : t("logistics.loadError");
+        error instanceof Error
+          ? error.message
+          : tRef.current("logistics.loadError");
       setVehiclesHint(message);
       setAvailableVehicles([]);
       setFleetVehicles([]);
@@ -144,7 +150,7 @@ export default function LogisticsPage() {
     } finally {
       setVehiclesLoading(false);
     }
-  }, [role, selectedVehicleId, t]);
+  }, [role]);
 
   const refreshAll = React.useCallback(() => {
     load();
@@ -269,6 +275,17 @@ export default function LogisticsPage() {
       window.clearInterval(timer);
     };
   }, [autoRefresh, loadFleetVehicles, role]);
+
+  React.useEffect(() => {
+    if (role !== "admin" || !withTrack || !selectedVehicleId) return;
+    void loadFleetVehicles();
+    const timer = window.setInterval(() => {
+      void loadFleetVehicles();
+    }, TRACK_INTERVAL_MS);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [loadFleetVehicles, role, selectedVehicleId, withTrack]);
 
   React.useEffect(() => {
     if (hasDialog) return;

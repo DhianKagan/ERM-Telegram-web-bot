@@ -90,8 +90,6 @@
     "transport": "Transport",
     "unselectedVehicle": "Not selected",
     "refreshFleet": "Refresh fleet",
-    "trackLabel": "Show track (1 hour)",
-    "autoRefresh": "Auto refresh",
     "selectedVehicle": "Selected vehicle: {{name}}",
     "noVehicles": "No vehicles found",
     "loadError": "Failed to load fleet vehicles",
@@ -101,7 +99,7 @@
     "linksLabel": "Route {{index}}",
     "tasksHeading": "Tasks",
     "metaTitle": "Logistics — ERM",
-    "metaDescription": "Monitor routes, fleet logistics, and delivery progress in real time."
+    "metaDescription": "Plan routes, manage fleet logistics, and review delivery progress from consolidated updates."
   },
   "save": "Save",
   "saveChangesQuestion": "Save changes?",

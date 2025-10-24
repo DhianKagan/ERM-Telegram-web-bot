@@ -73,7 +73,7 @@ jest.mock("react-i18next", () => {
       "logistics.planOptimizeError": "Ошибка оптимизации",
       "logistics.tasksHeading": "Задачи",
       "logistics.metaTitle": "Логистика — ERM",
-      "logistics.metaDescription": "Контроль логистики и маршрутов",
+      "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
       "logistics.vehicleTasksCount": "Задач: {{count}}",
       "logistics.vehicleMileage": "Пробег: {{value}} км",
     };

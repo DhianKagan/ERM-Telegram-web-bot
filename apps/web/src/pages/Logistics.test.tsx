@@ -8,38 +8,40 @@ import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      if (key === "logistics.selectedVehicle") {
-        return `Выбран транспорт: ${options?.name ?? ""}`.trim();
-      }
-      if (key === "logistics.linksLabel") {
-        return `Маршрут ${options?.index ?? ""}`.trim();
-      }
-      const dictionary: Record<string, string> = {
-        loading: "Загрузка...",
-        reset: "Сбросить",
-        refresh: "Обновить",
-        "logistics.title": "Логистика",
-        "logistics.transport": "Транспорт",
-        "logistics.unselectedVehicle": "Не выбран",
-        "logistics.refreshFleet": "Обновить технику",
-        "logistics.trackLabel": "Показывать трек (1 час)",
-        "logistics.autoRefresh": "Автообновление",
-        "logistics.noVehicles": "Транспорт не найден",
-        "logistics.loadError": "Не удалось загрузить транспорт автопарка",
-        "logistics.adminOnly": "Автопарк доступен только администраторам",
-        "logistics.noAccess": "Нет доступа к автопарку",
-        "logistics.optimize": "Просчёт логистики",
-        "logistics.tasksHeading": "Задачи",
-        "logistics.metaTitle": "Логистика — ERM",
-        "logistics.metaDescription": "Контроль логистики и маршрутов",
-      };
-      return dictionary[key] ?? key;
-    },
-  }),
-}));
+jest.mock("react-i18next", () => {
+  const translate = (key: string, options?: Record<string, unknown>) => {
+    if (key === "logistics.selectedVehicle") {
+      return `Выбран транспорт: ${options?.name ?? ""}`.trim();
+    }
+    if (key === "logistics.linksLabel") {
+      return `Маршрут ${options?.index ?? ""}`.trim();
+    }
+    const dictionary: Record<string, string> = {
+      loading: "Загрузка...",
+      reset: "Сбросить",
+      refresh: "Обновить",
+      "logistics.title": "Логистика",
+      "logistics.transport": "Транспорт",
+      "logistics.unselectedVehicle": "Не выбран",
+      "logistics.refreshFleet": "Обновить технику",
+      "logistics.trackLabel": "Показывать трек (1 час)",
+      "logistics.autoRefresh": "Автообновление",
+      "logistics.noVehicles": "Транспорт не найден",
+      "logistics.loadError": "Не удалось загрузить транспорт автопарка",
+      "logistics.adminOnly": "Автопарк доступен только администраторам",
+      "logistics.noAccess": "Нет доступа к автопарку",
+      "logistics.optimize": "Просчёт логистики",
+      "logistics.tasksHeading": "Задачи",
+      "logistics.metaTitle": "Логистика — ERM",
+      "logistics.metaDescription": "Контроль логистики и маршрутов",
+    };
+    return dictionary[key] ?? key;
+  };
+  const i18n = { language: "ru" };
+  return {
+    useTranslation: () => ({ t: translate, i18n }),
+  };
+});
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 
 const mockTasks = [

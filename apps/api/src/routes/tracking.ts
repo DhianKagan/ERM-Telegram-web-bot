@@ -1,12 +1,12 @@
 // Роутер SSE для событий живого трекинга транспорта
 // Основные модули: express, middleware/auth, services/liveTracking, shared
-import type { Request, Response } from 'express';
-import { Router } from 'express';
+import type { Request, Response, Router as ExpressRouter } from 'express';
+import { Router as createRouter } from 'express';
 import type { TrackingEvent } from 'shared';
 import authMiddleware from '../middleware/auth';
 import { subscribeTrackingEvents } from '../services/liveTracking';
 
-const router = Router();
+const router: ExpressRouter = createRouter();
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 

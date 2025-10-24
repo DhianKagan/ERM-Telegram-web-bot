@@ -59,6 +59,33 @@ export default function TaskTable({
             !filters.priority.includes(t.priority as string)
           )
             return false;
+          if (filters.taskTypes.length) {
+            const taskType =
+              typeof (t as Record<string, unknown>).task_type === "string"
+                ? ((t as Record<string, unknown>).task_type as string).trim()
+                : "";
+            if (!taskType || !filters.taskTypes.includes(taskType)) return false;
+          }
+          if (filters.assignees.length) {
+            const assigned = new Set<number>();
+            const collect = (value: unknown) => {
+              if (typeof value === "number" && Number.isFinite(value)) {
+                assigned.add(value);
+              } else if (typeof value === "string") {
+                const parsed = Number(value.trim());
+                if (Number.isFinite(parsed)) assigned.add(parsed);
+              }
+            };
+            if (Array.isArray((t as Record<string, unknown>).assignees)) {
+              ((t as Record<string, unknown>).assignees as unknown[]).forEach(collect);
+            }
+            collect((t as Record<string, unknown>).assigned_user_id);
+            if (
+              !filters.assignees.some((assignee) => assigned.has(Number(assignee)))
+            ) {
+              return false;
+            }
+          }
           const created = t.createdAt ? new Date(t.createdAt) : null;
           if (filters.from && created && created < new Date(filters.from))
             return false;

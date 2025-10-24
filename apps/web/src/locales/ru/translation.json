@@ -94,7 +94,8 @@
     "transport": "Транспорт",
     "unselectedVehicle": "Не выбран",
     "refreshFleet": "Обновить технику",
-    "trackLabel": "Показывать трек (1 час)",
+    "trackLabel": "Показывать трек",
+    "trackWindowLabel": "История трека: {{hours}} ч",
     "autoRefresh": "Автообновление",
     "selectedVehicle": "Выбран транспорт: {{name}}",
     "noVehicles": "Транспорт не найден",
@@ -142,7 +143,30 @@
     "planDraftCreated": "Создан новый черновик маршрутного плана",
     "planEmpty": "Черновик маршрутного плана не найден",
     "planNoDistance": "нет данных",
-    "planOptimizeError": "Не удалось построить маршрутный план"
+    "planOptimizeError": "Не удалось построить маршрутный план",
+    "layersTitle": "Слои карты",
+    "layerTasks": "Маршруты задач",
+    "layerVehicles": "Транспорт",
+    "layerOptimization": "Оптимизация",
+    "legendTitle": "Легенда",
+    "legendStart": "Старт задачи",
+    "legendFinish": "Финиш задачи",
+    "connectionStatus": {
+      "online": "Онлайн",
+      "stale": "Задержка",
+      "offline": "Нет связи"
+    },
+    "connectionUnknown": "нет данных",
+    "trackingConnected": "Трекинг подключён",
+    "trackingDisconnected": "Нет соединения",
+    "alarmsTitle": "Тревоги",
+    "alarmsEmpty": "Активных тревог нет",
+    "clearAlarms": "Очистить тревоги",
+    "alarmTypes": {
+      "delay": "Опоздание",
+      "route-deviation": "Отклонение от маршрута"
+    },
+    "alarmMeta": "Транспорт {{vehicle}} • {{type}}"
   },
   "save": "Сохранить",
   "saveChangesQuestion": "Сохранить изменения?",

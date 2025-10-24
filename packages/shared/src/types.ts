@@ -83,6 +83,45 @@ export interface VehicleTrackPointDto {
   timestamp: string;
 }
 
+export type TrackingAlarmType = 'delay' | 'route-deviation';
+
+export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';
+
+export interface TrackingAlarmEvent {
+  type: 'alarm';
+  vehicleId: string;
+  alarmType: TrackingAlarmType;
+  message: string;
+  severity: TrackingAlarmSeverity;
+  occurredAt: string;
+  taskId?: string;
+  routeId?: string;
+}
+
+export interface TrackingPositionEvent {
+  type: 'position';
+  vehicleId: string;
+  position: VehiclePositionDto;
+  track?: VehicleTrackPointDto[];
+}
+
+export interface TrackingHeartbeatEvent {
+  type: 'heartbeat';
+  timestamp: string;
+}
+
+export interface TrackingInitEvent {
+  type: 'init';
+  timestamp: string;
+  alarms?: TrackingAlarmEvent[];
+}
+
+export type TrackingEvent =
+  | TrackingAlarmEvent
+  | TrackingPositionEvent
+  | TrackingHeartbeatEvent
+  | TrackingInitEvent;
+
 export interface FleetVehicleDto {
   id: string;
   name: string;

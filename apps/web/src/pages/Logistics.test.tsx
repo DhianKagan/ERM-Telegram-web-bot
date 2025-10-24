@@ -9,6 +9,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
+import type {
+  LiveTrackingDisconnect,
+  LiveTrackingOptions,
+} from "../services/liveTracking";
 jest.mock("react-i18next", () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === "logistics.selectedVehicle") {
@@ -34,7 +38,8 @@ jest.mock("react-i18next", () => {
       "logistics.transport": "Транспорт",
       "logistics.unselectedVehicle": "Не выбран",
       "logistics.refreshFleet": "Обновить технику",
-      "logistics.trackLabel": "Показывать трек (1 час)",
+      "logistics.trackLabel": "Показывать трек",
+      "logistics.trackWindowLabel": "История трека: {{hours}} ч",
       "logistics.autoRefresh": "Автообновление",
       "logistics.noVehicles": "Транспорт не найден",
       "logistics.loadError": "Не удалось загрузить транспорт автопарка",
@@ -181,7 +186,7 @@ const baseVehicle = {
     lat: 10,
     lon: 20,
     speed: 12.5,
-    updatedAt: "2024-05-05T12:00:00.000Z",
+    updatedAt: "2099-01-01T00:00:00.000Z",
   },
 };
 
@@ -371,15 +376,39 @@ jest.mock("../context/useTasks", () => {
       refresh: jest.fn(),
       query: "",
       setQuery: jest.fn(),
-      filters: { status: [], priority: [], from: "", to: "" },
+      filters: {
+        status: [],
+        priority: [],
+        from: "",
+        to: "",
+        taskTypes: [],
+        assignees: [],
+      },
       setFilters: jest.fn(),
+      filterUsers: [],
+      setFilterUsers: jest.fn(),
     }),
   };
 });
 
+const disconnectLiveTrackingMock = jest.fn<ReturnType<LiveTrackingDisconnect>, []>(() =>
+  undefined,
+);
+const connectLiveTrackingMock = jest.fn<
+  LiveTrackingDisconnect,
+  [LiveTrackingOptions | undefined]
+>(() => disconnectLiveTrackingMock);
+
+jest.mock("../services/liveTracking", () => ({
+  connectLiveTracking: (options?: LiveTrackingOptions) =>
+    connectLiveTrackingMock(options),
+}));
+
 describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    disconnectLiveTrackingMock.mockClear();
+    connectLiveTrackingMock.mockClear();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
     listRoutePlansMock.mockReset();
@@ -409,12 +438,12 @@ describe("LogisticsPage", () => {
               {
                 lat: 10,
                 lon: 20,
-                timestamp: "2024-05-05T12:00:00.000Z",
+                timestamp: "2099-01-01T00:00:00.000Z",
               },
               {
                 lat: 11,
                 lon: 21,
-                timestamp: "2024-05-05T12:10:00.000Z",
+                timestamp: "2099-01-01T00:10:00.000Z",
               },
             ],
           },
@@ -453,21 +482,34 @@ describe("LogisticsPage", () => {
       ),
     );
 
-    const trackToggle = screen.getByLabelText("Показывать трек (1 час)");
+    const trackToggle = screen.getByLabelText("Показывать трек");
     fireEvent.click(trackToggle);
 
     await waitFor(() =>
       expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
     );
 
-    await waitFor(() =>
-      expect(mockedLeaflet.polyline).toHaveBeenCalledWith(
-        [
-          [10, 20],
-          [11, 21],
-        ],
-        expect.objectContaining({ color: "#8b5cf6" }),
-      ),
-    );
+    await waitFor(() => {
+      const hasTrackPolyline = mockedLeaflet.polyline.mock.calls.some(
+        ([coords, options]: [unknown, unknown]) => {
+          if (!Array.isArray(coords) || coords.length < 2) return false;
+          const [start, finish] = coords as [
+            [number, number],
+            [number, number],
+          ];
+          const color = (options as { color?: string } | undefined)?.color;
+          return (
+            Array.isArray(start) &&
+            Array.isArray(finish) &&
+            start[0] === 10 &&
+            start[1] === 20 &&
+            finish[0] === 11 &&
+            finish[1] === 21 &&
+            color === "#22c55e"
+          );
+        },
+      );
+      expect(hasTrackPolyline).toBe(true);
+    });
   });
 });

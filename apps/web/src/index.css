@@ -777,20 +777,72 @@ span.flatpickr-weekday,
   @apply opacity-100;
 }
 
-.start-marker {
-  background: #16a34a;
-  border: 2px solid #fff;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+.task-marker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.finish-marker {
-  background: #dc2626;
-  border: 2px solid #fff;
-  width: 20px;
-  height: 20px;
+.task-marker span {
+  display: block;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
+  background: var(--marker-color, #2563eb);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.task-marker--finish span::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.vehicle-marker span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--marker-color, #64748b);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.vehicle-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--marker-color, #64748b);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.legend-color {
+  display: inline-block;
+  width: 18px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #2563eb;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.status-dot--online {
+  background: #22c55e;
+}
+
+.status-dot--offline {
+  background: #64748b;
 }
 
 /*

@@ -16,7 +16,16 @@ import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
-import type { Coords, FleetVehicleDto, RoutePlan, RoutePlanStatus } from "shared";
+import {
+  TASK_STATUSES,
+  type Coords,
+  type FleetVehicleDto,
+  type RoutePlan,
+  type RoutePlanStatus,
+  type TrackingAlarmSeverity,
+  type TrackingAlarmEvent,
+  type TrackingEvent,
+} from "shared";
 import {
   listRoutePlans,
   updateRoutePlan,
@@ -24,10 +33,46 @@ import {
   type RoutePlanUpdatePayload,
 } from "../services/routePlans";
 import type { TaskRow } from "../columns/taskColumns";
+import { connectLiveTracking } from "../services/liveTracking";
 
 type RouteTask = TaskRow & {
   startCoordinates?: Coords;
   finishCoordinates?: Coords;
+};
+
+const TASK_STATUS_COLORS: Record<string, string> = {
+  Новая: "#0ea5e9",
+  "В работе": "#f97316",
+  Выполнена: "#22c55e",
+  Отменена: "#ef4444",
+};
+
+type ConnectionStatus = "online" | "stale" | "offline";
+
+const CONNECTION_COLORS: Record<ConnectionStatus, string> = {
+  online: "#22c55e",
+  stale: "#f97316",
+  offline: "#64748b",
+};
+
+type LayerVisibilityState = {
+  tasks: boolean;
+  vehicles: boolean;
+  optimized: boolean;
+};
+
+const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
+  tasks: true,
+  vehicles: true,
+  optimized: true,
+};
+
+const TRACKING_ALARM_LIMIT = 20;
+
+const ALARM_SEVERITY_COLORS: Record<TrackingAlarmSeverity, string> = {
+  info: "text-sky-600",
+  warning: "text-amber-600",
+  critical: "text-red-600",
 };
 
 const TRACK_INTERVAL_MS = 60 * 60 * 1000;
@@ -60,13 +105,21 @@ export default function LogisticsPage() {
     FleetVehicleDto[]
   >([]);
   const [fleetError, setFleetError] = React.useState("");
-  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string>("");
-  const [fleetInfo, setFleetInfo] = React.useState<FleetVehicleDto | null>(null);
+  const [selectedVehicleIds, setSelectedVehicleIds] = React.useState<string[]>([]);
   const [fleetVehicles, setFleetVehicles] = React.useState<FleetVehicleDto[]>([]);
   const [vehiclesHint, setVehiclesHint] = React.useState("");
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
   const [autoRefresh, setAutoRefresh] = React.useState(false);
   const [withTrack, setWithTrack] = React.useState(false);
+  const [trackWindowHours, setTrackWindowHours] = React.useState(1);
+  const [layerVisibility, setLayerVisibility] = React.useState<LayerVisibilityState>(
+    DEFAULT_LAYER_VISIBILITY,
+  );
+  const [trackingConnected, setTrackingConnected] = React.useState(false);
+  const [trackingAlarms, setTrackingAlarms] = React.useState<
+    TrackingAlarmEvent[]
+  >([]);
+  const trackingDisconnectRef = React.useRef<(() => void) | null>(null);
   const [mapReady, setMapReady] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
@@ -77,6 +130,67 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+
+  const resolveConnectionInfo = React.useCallback(
+    (
+      vehicle: FleetVehicleDto,
+    ): { status: ConnectionStatus; lastUpdate: number | null } => {
+      const timestamps: number[] = [];
+      const pushTimestamp = (value: string | undefined) => {
+        if (!value) return;
+        const parsed = new Date(value).getTime();
+        if (Number.isFinite(parsed)) {
+          timestamps.push(parsed);
+        }
+      };
+      pushTimestamp(vehicle.position?.updatedAt);
+      if (vehicle.track?.length) {
+        vehicle.track.forEach((point) => pushTimestamp(point.timestamp));
+      }
+      if (!timestamps.length) {
+        return { status: "offline", lastUpdate: null };
+      }
+      const lastUpdate = Math.max(...timestamps);
+      const diff = Date.now() - lastUpdate;
+      if (diff <= 5 * 60 * 1000) {
+        return { status: "online", lastUpdate };
+      }
+      if (diff <= 30 * 60 * 1000) {
+        return { status: "stale", lastUpdate };
+      }
+      return { status: "offline", lastUpdate };
+    },
+    [],
+  );
+
+  const formatLastUpdate = React.useCallback(
+    (timestamp: number | null) => {
+      if (!timestamp) {
+        return tRef.current("logistics.connectionUnknown");
+      }
+      try {
+        return new Date(timestamp).toLocaleString();
+      } catch {
+        return tRef.current("logistics.connectionUnknown");
+      }
+    },
+    [],
+  );
+
+  const legendItems = React.useMemo(
+    () =>
+      TASK_STATUSES.map((status) => ({
+        key: status,
+        label: status,
+        color: TASK_STATUS_COLORS[status] ?? "#2563eb",
+      })),
+    [],
+  );
+
+  const connectionLegend = React.useMemo(
+    () => Object.entries(CONNECTION_COLORS) as Array<[ConnectionStatus, string]>,
+    [],
+  );
 
   const clonePlan = React.useCallback(
     (value: RoutePlan | null) =>
@@ -372,15 +486,21 @@ export default function LogisticsPage() {
       setAvailableVehicles(data.items);
       setFleetError("");
       if (!data.items.length) {
-        setSelectedVehicleId("");
+        setSelectedVehicleIds([]);
+        setFleetVehicles([]);
         setVehiclesHint(tRef.current("logistics.noVehicles"));
         return;
       }
-      setSelectedVehicleId((prev) => {
-        if (prev && data.items.some((vehicle) => vehicle.id === prev)) {
-          return prev;
+      setSelectedVehicleIds((prev) => {
+        const valid = prev.filter((id) =>
+          data.items.some((vehicle) => vehicle.id === id),
+        );
+        if (valid.length) {
+          return valid;
         }
-        return data.items[0].id;
+        return data.items
+          .slice(0, Math.min(3, data.items.length))
+          .map((vehicle) => vehicle.id);
       });
     } catch (error) {
       const message =
@@ -390,12 +510,12 @@ export default function LogisticsPage() {
       setVehiclesHint(message);
       setAvailableVehicles([]);
       setFleetVehicles([]);
-      setFleetInfo(null);
+      setSelectedVehicleIds([]);
       setFleetError(message);
     } finally {
       setVehiclesLoading(false);
     }
-  }, [role]);
+  }, [role, tRef]);
 
   const refreshAll = React.useCallback(() => {
     load();
@@ -437,7 +557,10 @@ export default function LogisticsPage() {
       if (optLayerRef.current) {
         optLayerRef.current.remove();
       }
-      const group = L.layerGroup().addTo(mapRef.current);
+      const group = L.layerGroup();
+      if (layerVisibility.optimized) {
+        group.addTo(mapRef.current);
+      }
       optLayerRef.current = group;
       const colors = ['#ef4444', '#22c55e', '#f97316'];
       result.routes.forEach((route, idx) => {
@@ -468,7 +591,7 @@ export default function LogisticsPage() {
     } finally {
       setPlanLoading(false);
     }
-  }, [applyPlan, method, sorted, vehicles]);
+  }, [applyPlan, layerVisibility.optimized, method, sorted, vehicles]);
 
   const formatDistance = React.useCallback(
     (value: number | null | undefined) => {
@@ -528,8 +651,7 @@ export default function LogisticsPage() {
       hasLoadedFleetRef.current = false;
       setAvailableVehicles([]);
       setFleetError(role === "manager" ? translate("logistics.adminOnly") : "");
-      setSelectedVehicleId("");
-      setFleetInfo(null);
+      setSelectedVehicleIds([]);
       setFleetVehicles([]);
       setVehiclesHint(role ? translate("logistics.noAccess") : "");
       setAutoRefresh(false);
@@ -560,47 +682,40 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     if (role !== "admin") return;
-    if (!selectedVehicleId) {
-      setFleetInfo(null);
+    if (!selectedVehicleIds.length) {
       setFleetVehicles([]);
       if (vehiclesLayerRef.current) {
         vehiclesLayerRef.current.clearLayers();
       }
       return;
     }
-    const selected = availableVehicles.find(
-      (vehicle) => vehicle.id === selectedVehicleId,
+    const selected = availableVehicles.filter((vehicle) =>
+      selectedVehicleIds.includes(vehicle.id),
     );
-    if (selected) {
-      setFleetInfo(selected);
-      setFleetVehicles([selected]);
-    } else {
-      setFleetInfo(null);
-      setFleetVehicles([]);
-    }
-  }, [availableVehicles, role, selectedVehicleId]);
+    setFleetVehicles(selected);
+  }, [availableVehicles, role, selectedVehicleIds]);
 
   React.useEffect(() => {
-    if (role === "admin" && selectedVehicleId) return;
-    setFleetInfo(null);
+    if (role === "admin") return;
+    setSelectedVehicleIds([]);
     setFleetVehicles([]);
     if (vehiclesLayerRef.current) {
       vehiclesLayerRef.current.clearLayers();
     }
-  }, [role, selectedVehicleId]);
+  }, [role]);
 
   React.useEffect(() => {
-    if (role !== "admin" || !autoRefresh) return;
+    if (role !== "admin" || !autoRefresh || !selectedVehicleIds.length) return;
     const timer = window.setInterval(() => {
       void loadFleetVehicles();
     }, REFRESH_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
     };
-  }, [autoRefresh, loadFleetVehicles, role]);
+  }, [autoRefresh, loadFleetVehicles, role, selectedVehicleIds.length]);
 
   React.useEffect(() => {
-    if (role !== "admin" || !withTrack || !selectedVehicleId) return;
+    if (role !== "admin" || !withTrack || !selectedVehicleIds.length) return;
     void loadFleetVehicles();
     const timer = window.setInterval(() => {
       void loadFleetVehicles();
@@ -608,7 +723,76 @@ export default function LogisticsPage() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [loadFleetVehicles, role, selectedVehicleId, withTrack]);
+  }, [
+    loadFleetVehicles,
+    role,
+    selectedVehicleIds.length,
+    withTrack,
+  ]);
+
+  React.useEffect(() => {
+    if (selectedVehicleIds.length) return;
+    setAutoRefresh(false);
+  }, [selectedVehicleIds.length]);
+
+  React.useEffect(() => {
+    if (role !== "admin") {
+      if (trackingDisconnectRef.current) {
+        trackingDisconnectRef.current();
+        trackingDisconnectRef.current = null;
+      }
+      setTrackingConnected(false);
+      setTrackingAlarms([]);
+      return;
+    }
+    const disconnect = connectLiveTracking({
+      onOpen: () => setTrackingConnected(true),
+      onError: () => setTrackingConnected(false),
+      onEvent: (event: TrackingEvent) => {
+        if (!event || typeof event !== "object") return;
+        switch (event.type) {
+          case "heartbeat":
+            setTrackingConnected(true);
+            break;
+          case "init":
+            setTrackingConnected(true);
+            if (Array.isArray(event.alarms)) {
+              setTrackingAlarms(event.alarms.slice(0, TRACKING_ALARM_LIMIT));
+            }
+            break;
+          case "position":
+            setTrackingConnected(true);
+            setAvailableVehicles((prev) =>
+              prev.map((vehicle) =>
+                vehicle.id === event.vehicleId
+                  ? {
+                      ...vehicle,
+                      position: event.position,
+                      track: event.track ?? vehicle.track,
+                    }
+                  : vehicle,
+              ),
+            );
+            break;
+          case "alarm":
+            setTrackingConnected(true);
+            setTrackingAlarms((current) => {
+              const next: TrackingAlarmEvent[] = [event, ...current];
+              return next.slice(0, TRACKING_ALARM_LIMIT);
+            });
+            break;
+          default:
+            break;
+        }
+      },
+    });
+    trackingDisconnectRef.current = disconnect;
+    return () => {
+      disconnect();
+      trackingDisconnectRef.current = null;
+      setTrackingConnected(false);
+    };
+  }, [role]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -635,12 +819,27 @@ export default function LogisticsPage() {
   }, [hasDialog]);
 
   React.useEffect(() => {
+    if (!mapRef.current || !optLayerRef.current) return;
+    if (layerVisibility.optimized) {
+      optLayerRef.current.addTo(mapRef.current);
+    } else {
+      optLayerRef.current.remove();
+    }
+  }, [layerVisibility.optimized]);
+
+  React.useEffect(() => {
     const group = tasksLayerRef.current;
     if (!mapRef.current || !group || !mapReady) return;
     group.clearLayers();
+    if (!layerVisibility.tasks) return;
     if (!sorted.length) return;
-    const startIcon = L.divIcon({ className: "start-marker" });
-    const finishIcon = L.divIcon({ className: "finish-marker" });
+    const createMarkerIcon = (kind: "start" | "finish", color: string) =>
+      L.divIcon({
+        className: `task-marker task-marker--${kind}`,
+        html: `<span style="--marker-color:${color}"></span>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
     let cancelled = false;
     (async () => {
       for (const t of sorted) {
@@ -653,14 +852,22 @@ export default function LogisticsPage() {
         const latlngs = coords.map(([lng, lat]) =>
           [lat, lng] as [number, number],
         );
-        L.polyline(latlngs, { color: "blue" }).addTo(group);
+        const statusKey =
+          typeof t.status === "string" ? t.status.trim() : "";
+        const routeColor =
+          TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
+        L.polyline(latlngs, {
+          color: routeColor,
+          weight: 4,
+          opacity: 0.85,
+        }).addTo(group);
         const startMarker = L.marker(latlngs[0], {
-          icon: startIcon,
+          icon: createMarkerIcon("start", routeColor),
         }).bindTooltip(
           `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
         );
         const endMarker = L.marker(latlngs[latlngs.length - 1], {
-          icon: finishIcon,
+          icon: createMarkerIcon("finish", routeColor),
         }).bindTooltip(
           `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
         );
@@ -674,18 +881,21 @@ export default function LogisticsPage() {
       cancelled = true;
       group.clearLayers();
     };
-  }, [sorted, openTask, mapReady]);
+  }, [layerVisibility.tasks, mapReady, openTask, sorted]);
 
   React.useEffect(() => {
     const group = vehiclesLayerRef.current;
     if (!mapRef.current || !group || !mapReady) return;
     group.clearLayers();
+    if (!layerVisibility.vehicles) return;
     if (!fleetVehicles.length) return;
+    const cutoff = Date.now() - trackWindowHours * 60 * 60 * 1000;
     fleetVehicles.forEach((vehicle) => {
+      const { status, lastUpdate } = resolveConnectionInfo(vehicle);
+      const markerColor = CONNECTION_COLORS[status];
+      const statusLabel = t(`logistics.connectionStatus.${status}`);
+      const updatedAtLabel = formatLastUpdate(lastUpdate);
       if (vehicle.position) {
-        const updatedAt = vehicle.position.updatedAt
-          ? new Date(vehicle.position.updatedAt).toLocaleString()
-          : "";
         const speed =
           typeof vehicle.position.speed === "number"
             ? `${vehicle.position.speed.toFixed(1)} км/ч`
@@ -693,30 +903,52 @@ export default function LogisticsPage() {
         const tooltip = [
           '<div class="space-y-1">',
           `<div class="font-semibold">${vehicle.name}</div>`,
-          updatedAt
-            ? `<div class="text-xs text-muted-foreground">${updatedAt}</div>`
+          `<div class="text-xs">${statusLabel}</div>`,
+          updatedAtLabel
+            ? `<div class="text-xs text-muted-foreground">${updatedAtLabel}</div>`
             : "",
           speed ? `<div class="text-xs">Скорость: ${speed}</div>` : "",
           "</div>",
         ].join("");
         L.marker([vehicle.position.lat, vehicle.position.lon], {
           title: vehicle.name,
+          icon: L.divIcon({
+            className: "vehicle-marker",
+            html: `<span style="--marker-color:${markerColor}"></span>`,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          }),
         })
-          .bindTooltip(tooltip, { direction: "top", offset: [0, -8] })
+          .bindTooltip(tooltip, { direction: "top", offset: [0, -10] })
           .addTo(group);
       }
       if (withTrack && vehicle.track?.length) {
-        const latlngs = vehicle.track.map(
-          (point) => [point.lat, point.lon] as [number, number],
-        );
-        L.polyline(latlngs, {
-          color: "#8b5cf6",
-          weight: 3,
-          opacity: 0.7,
-        }).addTo(group);
+        const filteredTrack = vehicle.track.filter((point) => {
+          const ts = new Date(point.timestamp).getTime();
+          return Number.isFinite(ts) && ts >= cutoff;
+        });
+        if (filteredTrack.length > 1) {
+          const latlngs = filteredTrack.map(
+            (point) => [point.lat, point.lon] as [number, number],
+          );
+          L.polyline(latlngs, {
+            color: markerColor,
+            weight: 3,
+            opacity: 0.65,
+          }).addTo(group);
+        }
       }
     });
-  }, [fleetVehicles, mapReady, withTrack]);
+  }, [
+    fleetVehicles,
+    formatLastUpdate,
+    layerVisibility.vehicles,
+    mapReady,
+    resolveConnectionInfo,
+    t,
+    trackWindowHours,
+    withTrack,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -1039,26 +1271,12 @@ export default function LogisticsPage() {
         )}
       </section>
       {role === "admin" ? (
-        <div className="space-y-2 rounded border p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <span>{t("logistics.transport")}</span>
-              <select
-                value={selectedVehicleId}
-                onChange={(event) => setSelectedVehicleId(event.target.value)}
-                className="rounded border px-2 py-1"
-                disabled={!availableVehicles.length || vehiclesLoading}
-              >
-                <option value="">{t("logistics.unselectedVehicle")}</option>
-                {availableVehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <h3 className="font-semibold">{t("logistics.transport")}</h3>
             <Button
               type="button"
+              size="sm"
               onClick={refreshFleet}
               disabled={!availableVehicles.length || vehiclesLoading}
             >
@@ -1067,7 +1285,7 @@ export default function LogisticsPage() {
                 : t("logistics.refreshFleet")}
             </Button>
             <label
-              className="flex items-center gap-1 text-sm"
+              className="flex items-center gap-2 text-xs sm:text-sm"
               htmlFor="routes-with-track"
             >
               <input
@@ -1081,7 +1299,7 @@ export default function LogisticsPage() {
               <span>{t("logistics.trackLabel")}</span>
             </label>
             <label
-              className="flex items-center gap-1 text-sm"
+              className="flex items-center gap-2 text-xs sm:text-sm"
               htmlFor="routes-auto-refresh"
             >
               <input
@@ -1095,31 +1313,295 @@ export default function LogisticsPage() {
                   setAutoRefresh(checked);
                   if (checked) refreshFleet();
                 }}
-                disabled={!selectedVehicleId}
+                disabled={!selectedVehicleIds.length}
               />
               <span>{t("logistics.autoRefresh")}</span>
             </label>
           </div>
-          {fleetInfo ? (
-            <div className="text-sm text-muted-foreground">
-              {t("logistics.selectedVehicle", { name: fleetInfo.name })}
-              {fleetInfo.registrationNumber
-                ? ` (${fleetInfo.registrationNumber})`
-                : ""}
-            </div>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm">
+            <label
+              className="flex items-center gap-2"
+              htmlFor="routes-track-window"
+            >
+              <span>
+                {t("logistics.trackWindowLabel", { hours: trackWindowHours })}
+              </span>
+              <input
+                id="routes-track-window"
+                type="range"
+                min={1}
+                max={24}
+                step={1}
+                value={trackWindowHours}
+                onChange={(event) =>
+                  setTrackWindowHours(Number(event.target.value))
+                }
+                disabled={!withTrack}
+              />
+            </label>
+            <span
+              className={`flex items-center gap-2 text-xs sm:text-sm ${
+                trackingConnected
+                  ? "text-emerald-600"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <span
+                className={`status-dot ${
+                  trackingConnected ? "status-dot--online" : "status-dot--offline"
+                }`}
+                aria-hidden="true"
+              />
+              {trackingConnected
+                ? t("logistics.trackingConnected")
+                : t("logistics.trackingDisconnected")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableVehicles.map((vehicle) => {
+              const isChecked = selectedVehicleIds.includes(vehicle.id);
+              const { status } = resolveConnectionInfo(vehicle);
+              const statusLabel = t(
+                `logistics.connectionStatus.${status}`,
+              );
+              return (
+                <label
+                  key={vehicle.id}
+                  className={`flex items-center gap-2 rounded border px-2 py-1 text-xs sm:text-sm transition-colors ${
+                    isChecked ? "bg-slate-100" : "bg-white"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={isChecked}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setSelectedVehicleIds((prev) => {
+                        if (checked) {
+                          return Array.from(new Set([...prev, vehicle.id]));
+                        }
+                        return prev.filter((id) => id !== vehicle.id);
+                      });
+                    }}
+                    disabled={vehiclesLoading}
+                  />
+                  <span className="flex items-center gap-1">
+                    <span
+                      className="vehicle-status-dot"
+                      style={{ backgroundColor: CONNECTION_COLORS[status] }}
+                      aria-hidden="true"
+                    />
+                    <span>{vehicle.name}</span>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {statusLabel}
+                  </span>
+                </label>
+              );
+            })}
+            {!availableVehicles.length ? (
+              <span className="text-xs text-muted-foreground">
+                {t("logistics.noVehicles")}
+              </span>
+            ) : null}
+          </div>
           {vehiclesHint ? (
             <div className="text-sm text-red-600">{vehiclesHint}</div>
           ) : null}
           {fleetError ? (
             <div className="text-sm text-red-600">{fleetError}</div>
           ) : null}
-        </div>
+          {fleetVehicles.length ? (
+            <ul className="space-y-2 text-xs sm:text-sm">
+              {fleetVehicles.map((vehicle) => {
+                const { status, lastUpdate } = resolveConnectionInfo(vehicle);
+                const statusLabel = t(
+                  `logistics.connectionStatus.${status}`,
+                );
+                const updatedAt = formatLastUpdate(lastUpdate);
+                return (
+                  <li
+                    key={vehicle.id}
+                    className="space-y-1 rounded border bg-slate-50/70 p-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className="vehicle-status-dot"
+                        style={{ backgroundColor: CONNECTION_COLORS[status] }}
+                        aria-hidden="true"
+                      />
+                      <span className="font-medium">{vehicle.name}</span>
+                      {vehicle.registrationNumber ? (
+                        <span className="text-xs text-muted-foreground">
+                          {vehicle.registrationNumber}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {statusLabel} • {updatedAt}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">
+                {t("logistics.alarmsTitle")}
+              </h4>
+              {trackingAlarms.length ? (
+                <button
+                  type="button"
+                  className="text-xs text-accentPrimary hover:underline"
+                  onClick={() => setTrackingAlarms([])}
+                >
+                  {t("logistics.clearAlarms")}
+                </button>
+              ) : null}
+            </div>
+            {trackingAlarms.length ? (
+              <ul className="space-y-1 text-xs sm:text-sm">
+                {trackingAlarms.map((alarm) => {
+                  const severityClass =
+                    ALARM_SEVERITY_COLORS[alarm.severity] ?? "text-amber-600";
+                  const occurredRaw =
+                    typeof alarm.occurredAt === "string"
+                      ? new Date(alarm.occurredAt).getTime()
+                      : null;
+                  const occurred =
+                    typeof occurredRaw === "number" && Number.isFinite(occurredRaw)
+                      ? formatLastUpdate(occurredRaw)
+                      : formatLastUpdate(null);
+                  const alarmTypeLabel = t(
+                    `logistics.alarmTypes.${alarm.alarmType}`,
+                  );
+                  return (
+                    <li
+                      key={`${alarm.vehicleId}-${alarm.occurredAt}-${alarm.alarmType}`}
+                      className="rounded border bg-white/80 p-2"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className={`font-semibold ${severityClass}`}>
+                          {alarm.message}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {occurred}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {t("logistics.alarmMeta", {
+                          vehicle: alarm.vehicleId,
+                          type: alarmTypeLabel,
+                        })}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {t("logistics.alarmsEmpty")}
+              </p>
+            )}
+          </div>
+        </section>
       ) : fleetError ? (
         <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
           {fleetError}
         </p>
       ) : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+          <h3 className="text-sm font-semibold">
+            {t("logistics.layersTitle")}
+          </h3>
+          <div className="flex flex-col gap-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={layerVisibility.tasks}
+                onChange={(event) =>
+                  setLayerVisibility((prev) => ({
+                    ...prev,
+                    tasks: event.target.checked,
+                  }))
+                }
+              />
+              <span>{t("logistics.layerTasks")}</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={layerVisibility.vehicles}
+                onChange={(event) =>
+                  setLayerVisibility((prev) => ({
+                    ...prev,
+                    vehicles: event.target.checked,
+                  }))
+                }
+              />
+              <span>{t("logistics.layerVehicles")}</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={layerVisibility.optimized}
+                onChange={(event) =>
+                  setLayerVisibility((prev) => ({
+                    ...prev,
+                    optimized: event.target.checked,
+                  }))
+                }
+              />
+              <span>{t("logistics.layerOptimization")}</span>
+            </label>
+          </div>
+        </section>
+        <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+          <h3 className="text-sm font-semibold">
+            {t("logistics.legendTitle")}
+          </h3>
+          <ul className="space-y-2 text-sm">
+            {legendItems.map((item) => (
+              <li key={item.key} className="flex items-center gap-2">
+                <span
+                  className="legend-color"
+                  style={{ backgroundColor: item.color }}
+                  aria-hidden="true"
+                />
+                <span>{item.label}</span>
+              </li>
+            ))}
+            <li className="flex items-center gap-2">
+              <span className="task-marker task-marker--start" aria-hidden="true">
+                <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+              </span>
+              <span>{t("logistics.legendStart")}</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="task-marker task-marker--finish" aria-hidden="true">
+                <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+              </span>
+              <span>{t("logistics.legendFinish")}</span>
+            </li>
+            {connectionLegend.map(([status, color]) => (
+              <li key={`connection-${status}`} className="flex items-center gap-2">
+                <span
+                  className="vehicle-status-dot"
+                  style={{ backgroundColor: color }}
+                  aria-hidden="true"
+                />
+                <span>{t(`logistics.connectionStatus.${status}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
       <div
         id="logistics-map"
         className={`h-96 w-full rounded border ${hasDialog ? "hidden" : ""}`}

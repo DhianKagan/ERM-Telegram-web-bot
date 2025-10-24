@@ -878,12 +878,13 @@ export async function updateTaskStatus(
 }
 
 export interface TaskFilters {
-  status?: string;
+  status?: string | string[];
   assignees?: (string | number)[];
   from?: string | Date;
   to?: string | Date;
   kanban?: boolean;
   kind?: TaskKind;
+  taskType?: string | string[];
 }
 
 export async function getTasks(
@@ -908,11 +909,42 @@ export async function getTasks(
   if (filters.kind === 'task' || filters.kind === 'request') {
     q.kind = filters.kind;
   }
-  if (filters.status) q.status = { $eq: filters.status };
+  const statusFilter = filters.status;
+  if (Array.isArray(statusFilter)) {
+    const statuses = statusFilter
+      .map((status) => (typeof status === 'string' ? status.trim() : ''))
+      .filter((status) => status.length > 0);
+    if (statuses.length === 1) {
+      q.status = { $eq: statuses[0] };
+    } else if (statuses.length > 1) {
+      q.status = { $in: statuses };
+    }
+  } else if (typeof statusFilter === 'string') {
+    const normalizedStatus = statusFilter.trim();
+    if (normalizedStatus) {
+      q.status = { $eq: normalizedStatus };
+    }
+  }
   if (filters.assignees && Array.isArray(filters.assignees)) {
     q.assignees = {
       $in: filters.assignees.map((a) => String(a)),
     };
+  }
+  const taskTypeFilter = filters.taskType;
+  if (Array.isArray(taskTypeFilter)) {
+    const types = taskTypeFilter
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter((value) => value.length > 0);
+    if (types.length === 1) {
+      q.task_type = { $eq: types[0] };
+    } else if (types.length > 1) {
+      q.task_type = { $in: types };
+    }
+  } else if (typeof taskTypeFilter === 'string') {
+    const normalizedType = taskTypeFilter.trim();
+    if (normalizedType) {
+      q.task_type = { $eq: normalizedType };
+    }
   }
   if (filters.from || filters.to) q.createdAt = {} as Record<string, Date>;
   if (filters.from)

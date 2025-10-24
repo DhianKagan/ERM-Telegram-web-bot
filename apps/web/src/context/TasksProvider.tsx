@@ -1,7 +1,11 @@
 // Провайдер контекста задач, поиска и фильтров
 import React, { useState } from "react";
 import { taskStateController } from "../controllers/taskStateController";
-import { TasksContext, type TaskFilters } from "./TasksContext";
+import {
+  TasksContext,
+  type TaskFilters,
+  type TaskFilterUser,
+} from "./TasksContext";
 
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -13,7 +17,10 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({
     priority: [],
     from: "",
     to: "",
+    taskTypes: [],
+    assignees: [],
   });
+  const [filterUsers, setFilterUsers] = useState<TaskFilterUser[]>([]);
   const refresh = () => setVersion((v) => v + 1);
   return (
     <TasksContext.Provider
@@ -24,6 +31,8 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({
         setQuery,
         filters,
         setFilters,
+        filterUsers,
+        setFilterUsers,
         controller: taskStateController,
       }}
     >

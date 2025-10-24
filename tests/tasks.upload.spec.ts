@@ -88,6 +88,8 @@ const storedFiles: Array<{
   type: string;
   size: number;
   uploadedAt: Date;
+  taskId?: InstanceType<typeof Types.ObjectId> | null;
+  draftId?: InstanceType<typeof Types.ObjectId> | null;
 }> = [];
 
 const currentUserId = 7;
@@ -128,6 +130,8 @@ jest.mock('../apps/api/src/db/model', () => {
         ...data,
         _id: new Types.ObjectId(),
         uploadedAt: new Date(),
+        taskId: null,
+        draftId: data?.draftId ?? null,
       };
       storedFiles.push(doc);
       return doc;
@@ -156,6 +160,79 @@ jest.mock('../apps/api/src/db/model', () => {
         return files;
       },
     })),
+    updateMany: jest.fn(async (filter: any = {}, update: any = {}) => {
+      const match = (file: any, criteria: any): boolean => {
+        if (!criteria || typeof criteria !== 'object') {
+          return true;
+        }
+        return Object.entries(criteria).every(([key, value]) => {
+          if (key === '$or' && Array.isArray(value)) {
+            return value.some((option) => match(file, option));
+          }
+          if (key === '_id' && value && typeof value === 'object') {
+            const candidate = value as { $in?: unknown[]; $nin?: unknown[] };
+            if (Array.isArray(candidate.$in)) {
+              return candidate.$in.some(
+                (id) => String(file._id) === String(id),
+              );
+            }
+            if (Array.isArray(candidate.$nin)) {
+              return !candidate.$nin.some(
+                (id) => String(file._id) === String(id),
+              );
+            }
+          }
+          if (key === 'taskId' && value && typeof value === 'object') {
+            const candidate = value as { $in?: unknown[]; $nin?: unknown[] };
+            if (Array.isArray(candidate.$nin)) {
+              return !candidate.$nin.some(
+                (id) => String(file.taskId) === String(id),
+              );
+            }
+            if (Array.isArray(candidate.$in)) {
+              return candidate.$in.some(
+                (id) => String(file.taskId) === String(id),
+              );
+            }
+          }
+          if (key === 'taskId') {
+            return String(file.taskId) === String(value);
+          }
+          const current = (file as Record<string, unknown>)[key];
+          if (value && typeof value === 'object') {
+            const candidate = value as { $in?: unknown[]; $nin?: unknown[] };
+            if (Array.isArray(candidate.$in)) {
+              return candidate.$in.some(
+                (entry) => String(current) === String(entry),
+              );
+            }
+            if (Array.isArray(candidate.$nin)) {
+              return !candidate.$nin.some(
+                (entry) => String(current) === String(entry),
+              );
+            }
+          }
+          return value === undefined || String(current) === String(value);
+        });
+      };
+
+      let modified = 0;
+      storedFiles.forEach((file) => {
+        if (!match(file, filter)) return;
+        modified += 1;
+        if (update?.$set && typeof update.$set === 'object') {
+          Object.entries(update.$set).forEach(([key, value]) => {
+            (file as Record<string, unknown>)[key] = value as unknown;
+          });
+        }
+        if (update?.$unset && typeof update.$unset === 'object') {
+          Object.keys(update.$unset).forEach((key) => {
+            delete (file as Record<string, unknown>)[key];
+          });
+        }
+      });
+      return { acknowledged: true, matchedCount: modified, modifiedCount: modified };
+    }),
   };
   const Task = {
     findById: jest.fn(() => ({ lean: async () => null })),
@@ -177,6 +254,7 @@ async function uploadViaChunks(
   chunks: Buffer[],
   filename: string,
   mimetype: string,
+  extraFields: Record<string, string> = {},
 ): Promise<{
   attachment: {
     name: string;
@@ -187,28 +265,34 @@ async function uploadViaChunks(
   content: Buffer;
 }> {
   for (let index = 0; index < chunks.length - 1; index++) {
-    const interim = await request(app)
+    let builder = request(app)
       .post('/upload-chunk')
       .field('fileId', fileId)
       .field('chunkIndex', String(index))
-      .field('totalChunks', String(chunks.length))
-      .attach('file', chunks[index], {
-        filename,
-        contentType: mimetype,
-      });
+      .field('totalChunks', String(chunks.length));
+    Object.entries(extraFields).forEach(([key, value]) => {
+      builder = builder.field(key, value);
+    });
+    const interim = await builder.attach('file', chunks[index], {
+      filename,
+      contentType: mimetype,
+    });
     expect(interim.status).toBe(200);
     expect(interim.body.received).toBe(index);
   }
   const lastIndex = chunks.length - 1;
-  const finalResponse = await request(app)
+  let finalBuilder = request(app)
     .post('/upload-chunk')
     .field('fileId', fileId)
     .field('chunkIndex', String(lastIndex))
-    .field('totalChunks', String(chunks.length))
-    .attach('file', chunks[lastIndex], {
-      filename,
-      contentType: mimetype,
-    });
+    .field('totalChunks', String(chunks.length));
+  Object.entries(extraFields).forEach(([key, value]) => {
+    finalBuilder = finalBuilder.field(key, value);
+  });
+  const finalResponse = await finalBuilder.attach('file', chunks[lastIndex], {
+    filename,
+    contentType: mimetype,
+  });
   expect(finalResponse.status).toBe(200);
   const attachment = finalResponse.body as {
     name: string;
@@ -353,6 +437,24 @@ describe('Chunk upload', () => {
     expect(attachment.name).toBe('instruction.pdf');
     const stored = storedFiles.find((f) => f.path === storedPath);
     expect(stored?.type).toBe('application/pdf');
+  });
+
+  test('привязывает файл к задаче при переданном taskId', async () => {
+    const chunks = [Buffer.from('Task attachment payload')];
+    const taskId = new Types.ObjectId().toHexString();
+    const { attachment } = await uploadViaChunks(
+      'chunk-linked',
+      chunks,
+      'linked.png',
+      'image/png',
+      { taskId },
+    );
+    const match = attachment.url.match(/\/api\/v1\/files\/([0-9a-f]{24})/i);
+    expect(match).not.toBeNull();
+    const fileId = match?.[1];
+    const stored = storedFiles.find((f) => String(f._id) === String(fileId));
+    expect(stored).toBeDefined();
+    expect(String(stored?.taskId)).toBe(taskId);
   });
 
   test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {

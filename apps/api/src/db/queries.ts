@@ -27,7 +27,6 @@ import {
   ACCESS_MANAGER,
   ACCESS_TASK_DELETE,
   ACCESS_USER,
-  hasAccess,
 } from '../utils/accessMask';
 import {
   buildAttachmentsFromCommentHtml,
@@ -534,21 +533,39 @@ export interface UpdateTaskStatusOptions {
   source?: 'web' | 'telegram';
 }
 
-async function syncTaskAttachments(
-  taskId: Types.ObjectId,
+export async function syncTaskAttachments(
+  taskIdInput: Types.ObjectId | string,
   attachments: TaskDocument['attachments'] | undefined,
   userId?: number,
 ): Promise<void> {
   if (attachments === undefined) return;
+  const normalizedTaskId =
+    typeof taskIdInput === 'string'
+      ? Types.ObjectId.isValid(taskIdInput)
+        ? new Types.ObjectId(taskIdInput)
+        : null
+      : taskIdInput;
+  if (!normalizedTaskId) {
+    await logEngine
+      .writeLog(
+        `Некорректный идентификатор задачи при обновлении вложений ${String(
+          taskIdInput,
+        )}`,
+        'warn',
+        { taskId: String(taskIdInput), userId },
+      )
+      .catch(() => undefined);
+    return;
+  }
   const fileModel = File as typeof File | undefined;
   if (!fileModel) {
     await logEngine
       .writeLog(
         `Модель файлов недоступна, пропускаем обновление вложений задачи ${String(
-          taskId,
+          normalizedTaskId,
         )}`,
         'warn',
-        { taskId: String(taskId), userId },
+        { taskId: normalizedTaskId.toHexString(), userId },
       )
       .catch(() => undefined);
     return;
@@ -557,10 +574,10 @@ async function syncTaskAttachments(
     await logEngine
       .writeLog(
         `Метод updateMany отсутствует у модели файлов, пропускаем обновление вложений задачи ${String(
-          taskId,
+          normalizedTaskId,
         )}`,
         'warn',
-        { taskId: String(taskId), userId },
+        { taskId: normalizedTaskId.toHexString(), userId },
       )
       .catch(() => undefined);
     return;
@@ -570,7 +587,7 @@ async function syncTaskAttachments(
   try {
     if (fileIds.length === 0) {
       await fileModel.updateMany(
-        { taskId },
+        { taskId: normalizedTaskId },
         { $unset: { taskId: '', draftId: '' } },
       );
       return;
@@ -578,53 +595,20 @@ async function syncTaskAttachments(
     const filter: Record<string, unknown> = {
       _id: { $in: fileIds },
     };
-    if (userId !== undefined) {
-      let restrictByUser = true;
-      try {
-        const actor = await User.findOne(
-          { telegram_id: { $eq: userId } },
-          { access: 1 },
-        )
-          .lean<{ access?: number }>()
-          .exec();
-        const access =
-          typeof actor?.access === 'number' ? actor.access : undefined;
-        if (access !== undefined && hasAccess(access, ACCESS_MANAGER)) {
-          restrictByUser = false;
-        }
-      } catch (error) {
-        await logEngine
-          .writeLog(
-            `Не удалось определить права пользователя ${String(userId)} при обновлении вложений задачи ${String(
-              taskId,
-            )}`,
-            'warn',
-            {
-              taskId: String(taskId),
-              userId,
-              error: (error as Error).message,
-            },
-          )
-          .catch(() => undefined);
-      }
-      if (restrictByUser) {
-        filter.$or = [{ userId }, { taskId }];
-      }
-    }
     await fileModel.updateMany(filter, {
-      $set: { taskId },
+      $set: { taskId: normalizedTaskId },
       $unset: { draftId: '' },
     });
     await fileModel.updateMany(
-      { taskId, _id: { $nin: fileIds } },
+      { taskId: normalizedTaskId, _id: { $nin: fileIds } },
       { $unset: { taskId: '', draftId: '' } },
     );
   } catch (error) {
     await logEngine.writeLog(
-      `Ошибка обновления вложений задачи ${String(taskId)}`,
+      `Ошибка обновления вложений задачи ${normalizedTaskId.toHexString()}`,
       'error',
       {
-        taskId: String(taskId),
+        taskId: normalizedTaskId.toHexString(),
         fileIds: idsForLog,
         error: (error as Error).message,
       },

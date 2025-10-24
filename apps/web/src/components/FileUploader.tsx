@@ -73,12 +73,14 @@ interface Props {
   disabled?: boolean;
   onUploaded: (a: Attachment) => void;
   onRemove: (a: Attachment) => void;
+  taskId?: string | null;
 }
 
 export default function FileUploader({
   disabled,
   onUploaded,
   onRemove,
+  taskId,
 }: Props) {
   const [items, setItems] = React.useState<UploadItem[]>([]);
   const { t } = useTranslation();
@@ -195,6 +197,9 @@ export default function FileUploader({
       fd.append("chunkIndex", String(i));
       fd.append("totalChunks", String(total));
       fd.append("file", chunk, file.name);
+      if (taskId && typeof taskId === "string" && taskId.trim()) {
+        fd.append("taskId", taskId);
+      }
       const res = await authFetch("/api/v1/tasks/upload-chunk", {
         method: "POST",
         body: fd,

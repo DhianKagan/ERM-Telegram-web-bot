@@ -24,6 +24,7 @@ import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
 import { File } from '../db/model';
+import { syncTaskAttachments } from '../db/queries';
 import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
 import { maxUserFiles, maxUserStorage } from '../config/limits';
@@ -132,6 +133,66 @@ function resolveNumericUserId(value: unknown): number | undefined {
   }
   return undefined;
 }
+
+const selectTaskIdCandidate = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry === 'string') {
+        const trimmed = entry.trim();
+        if (trimmed.length > 0) {
+          return trimmed;
+        }
+      }
+    }
+  }
+  return undefined;
+};
+
+const readTaskIdFromRequest = (req: RequestWithUser): string | undefined => {
+  const body = req.body as Record<string, unknown> | undefined;
+  const bodyTaskId = selectTaskIdCandidate(body?.taskId);
+  if (bodyTaskId) return bodyTaskId;
+  const bodySnakeTaskId = selectTaskIdCandidate(body?.task_id);
+  if (bodySnakeTaskId) return bodySnakeTaskId;
+  const queryTaskId = selectTaskIdCandidate((req.query as Record<string, unknown>)?.taskId);
+  if (queryTaskId) return queryTaskId;
+  const querySnakeTaskId = selectTaskIdCandidate(
+    (req.query as Record<string, unknown>)?.task_id,
+  );
+  if (querySnakeTaskId) return querySnakeTaskId;
+  return undefined;
+};
+
+const syncAttachmentsForRequest = async (
+  req: RequestWithUser,
+  attachments: AttachmentItem[],
+): Promise<void> => {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return;
+  }
+  const taskId = readTaskIdFromRequest(req);
+  if (!taskId) {
+    return;
+  }
+  const userId = resolveNumericUserId(req.user?.id);
+  try {
+    await syncTaskAttachments(
+      taskId,
+      attachments as Parameters<typeof syncTaskAttachments>[1],
+      userId,
+    );
+  } catch (error) {
+    await writeLog('Не удалось привязать вложения к задаче при загрузке', 'error', {
+      taskId,
+      userId,
+      error: (error as Error).message,
+    }).catch(() => undefined);
+  }
+};
 
 export const processUploads: RequestHandler = async (req, res, next) => {
   try {
@@ -349,6 +410,7 @@ const handleInlineUpload: RequestHandler = async (req, res) => {
       res.status(500).json({ error: 'Не удалось сохранить файл' });
       return;
     }
+    await syncAttachmentsForRequest(req as RequestWithUser, [attachment]);
     res.json({
       url: `${attachment.url}?mode=inline`,
       thumbnailUrl: attachment.thumbnailUrl,
@@ -480,6 +542,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
         res.sendStatus(500);
         return;
       }
+      await syncAttachmentsForRequest(req as RequestWithUser, [attachment]);
       res.json(attachment);
       return;
     }

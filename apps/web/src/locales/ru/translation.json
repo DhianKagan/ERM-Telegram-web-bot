@@ -65,6 +65,18 @@
   "map": "Карта",
   "mb": "МБ",
   "menu": "Меню",
+  "nav": {
+    "tasks": "Задачи",
+    "requests": "Заявки",
+    "profile": "Профиль",
+    "kanban": "Канбан",
+    "reports": "Отчёты",
+    "logistics": "Логистика",
+    "settings": "Настройки",
+    "logs": "Логи",
+    "storage": "Файлы",
+    "archive": "Архив"
+  },
   "newMessage": "Новое сообщение",
   "noNotifications": "Нет уведомлений",
   "notifications": "Уведомления",
@@ -91,7 +103,9 @@
     "noAccess": "Нет доступа к автопарку",
     "optimize": "Просчёт логистики",
     "linksLabel": "Маршрут {{index}}",
-    "tasksHeading": "Задачи"
+    "tasksHeading": "Задачи",
+    "metaTitle": "Логистика — ERM",
+    "metaDescription": "Контроль маршрутов, автопарка и доставок в реальном времени."
   },
   "save": "Сохранить",
   "saveChangesQuestion": "Сохранить изменения?",

@@ -65,6 +65,18 @@
   "map": "Map",
   "mb": "MB",
   "menu": "Menu",
+  "nav": {
+    "tasks": "Tasks",
+    "requests": "Requests",
+    "profile": "Profile",
+    "kanban": "Kanban",
+    "reports": "Reports",
+    "logistics": "Logistics",
+    "settings": "Settings",
+    "logs": "Logs",
+    "storage": "Files",
+    "archive": "Archive"
+  },
   "newMessage": "New message",
   "noNotifications": "No notifications",
   "notifications": "Notifications",
@@ -87,7 +99,9 @@
     "noAccess": "No access to fleet",
     "optimize": "Optimize logistics",
     "linksLabel": "Route {{index}}",
-    "tasksHeading": "Tasks"
+    "tasksHeading": "Tasks",
+    "metaTitle": "Logistics — ERM",
+    "metaDescription": "Monitor routes, fleet logistics, and delivery progress in real time."
   },
   "save": "Save",
   "saveChangesQuestion": "Save changes?",

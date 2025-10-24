@@ -70,7 +70,46 @@ const normalizeTitle = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const collectAttachmentLinks = async (
+const toObjectId = (
+  value: string | Types.ObjectId,
+): Types.ObjectId | null => {
+  if (value instanceof Types.ObjectId) {
+    return value;
+  }
+  if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
+    return new Types.ObjectId(value);
+  }
+  return null;
+};
+
+const persistTaskLink = async (
+  fileId: Types.ObjectId | string,
+  taskId: string | Types.ObjectId,
+): Promise<void> => {
+  const normalizedTaskId = toObjectId(taskId);
+  if (!normalizedTaskId) {
+    console.error('Не удалось сохранить привязку файла к задаче', {
+      fileId: String(fileId),
+      taskId: String(taskId),
+      error: new Error('Некорректный идентификатор задачи'),
+    });
+    return;
+  }
+  try {
+    await File.updateOne(
+      { _id: fileId },
+      { $set: { taskId: normalizedTaskId } },
+    ).exec();
+  } catch (error) {
+    console.error('Не удалось сохранить привязку файла к задаче', {
+      fileId: String(fileId),
+      taskId: normalizedTaskId.toHexString(),
+      error,
+    });
+  }
+};
+
+export const collectAttachmentLinks = async (
   candidates: Array<{
     id: string;
     hasTask: boolean;
@@ -145,7 +184,9 @@ export async function listFiles(
         });
       });
     }
-    return files.map((f) => {
+    const updates: Promise<void>[] = [];
+    const result: StoredFile[] = [];
+    for (const f of files) {
       let taskId = f.taskId ? String(f.taskId) : undefined;
       let taskMeta = taskId ? taskMap.get(taskId) : undefined;
       if (!taskId) {
@@ -153,9 +194,12 @@ export async function listFiles(
         if (fallback) {
           taskId = fallback.taskId;
           taskMeta = { title: fallback.title, number: fallback.number };
+          updates.push(
+            persistTaskLink(f._id as Types.ObjectId, fallback.taskId),
+          );
         }
       }
-      return {
+      result.push({
         id: String(f._id),
         taskId,
         taskNumber: taskMeta?.number ?? undefined,
@@ -171,8 +215,12 @@ export async function listFiles(
         uploadedAt: f.uploadedAt,
         url: `/api/v1/files/${String(f._id)}`,
         previewUrl: `/api/v1/files/${String(f._id)}?mode=inline`,
-      } satisfies StoredFile;
-    });
+      } satisfies StoredFile);
+    }
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+    return result;
   } catch {
     return [];
   }
@@ -206,6 +254,10 @@ export async function getFile(id: string): Promise<StoredFile | null> {
         if (matched) {
           taskId = String(fallback._id);
           taskMeta = fallback;
+          await persistTaskLink(
+            doc._id as Types.ObjectId,
+            fallback._id as Types.ObjectId,
+          );
         }
       }
     }

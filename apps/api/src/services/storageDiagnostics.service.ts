@@ -2,9 +2,14 @@
 // Основные модули: tsyringe, mongoose, services/dataStorage
 import { inject, injectable } from 'tsyringe';
 import type { FilterQuery, Model } from 'mongoose';
+import { Types } from 'mongoose';
 import { TOKENS } from '../di/tokens';
 import type { FileDocument } from '../db/model';
-import { deleteFile, getFileSyncSnapshot } from './dataStorage';
+import {
+  collectAttachmentLinks,
+  deleteFile,
+  getFileSyncSnapshot,
+} from './dataStorage';
 
 export interface StorageDiagnosticsReport {
   generatedAt: string;
@@ -51,7 +56,59 @@ export default class StorageDiagnosticsService {
     } satisfies FilterQuery<FileDocument>;
   }
 
+  private async restoreDetachedLinks(): Promise<void> {
+    const candidates = await this.fileModel
+      .find(this.detachedFilter)
+      .select(['_id'])
+      .lean();
+    if (candidates.length === 0) {
+      return;
+    }
+
+    const lookup = await collectAttachmentLinks(
+      candidates.map((candidate) => ({
+        id: String(candidate._id),
+        hasTask: false,
+      })),
+    );
+    if (lookup.size === 0) {
+      return;
+    }
+
+    await Promise.all(
+      Array.from(lookup.entries()).map(async ([fileId, info]) => {
+        const targetTaskId = Types.ObjectId.isValid(info.taskId)
+          ? new Types.ObjectId(info.taskId)
+          : null;
+        if (!targetTaskId) {
+          console.error('Не удалось восстановить привязку файла к задаче', {
+            fileId,
+            taskId: info.taskId,
+            error: new Error('Некорректный идентификатор задачи'),
+          });
+          return;
+        }
+        try {
+          await this.fileModel
+            .updateOne(
+              { _id: new Types.ObjectId(fileId) },
+              { $set: { taskId: targetTaskId } },
+            )
+            .exec();
+        } catch (error) {
+          console.error('Не удалось восстановить привязку файла к задаче', {
+            fileId,
+            taskId: info.taskId,
+            error,
+          });
+        }
+      }),
+    );
+  }
+
   async diagnose(): Promise<StorageDiagnosticsReport> {
+    await this.restoreDetachedLinks();
+
     const [snapshot, detachedDocs] = await Promise.all([
       getFileSyncSnapshot(),
       this.fileModel

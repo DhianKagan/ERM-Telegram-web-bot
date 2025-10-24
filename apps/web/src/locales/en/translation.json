@@ -225,14 +225,7 @@
     "sync": {
       "title": "Attachment synchronisation",
       "ok": "Total files: {{count}}, all linked to tasks.",
-      "warning": "Files without tasks: {{count}}. Review tasks and clear the storage."
-    },
-    "cleanup": {
-      "button": "Auto-clean orphaned files",
-      "progress": "Cleaning...",
-      "success": "Removed orphaned files: {{count}}.",
-      "empty": "No orphaned files found.",
-      "error": "Failed to run auto-clean."
+      "warning": "Files without tasks: {{count}}. Links are restored automatically; refresh later."
     }
   }
 }

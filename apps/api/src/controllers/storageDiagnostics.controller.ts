@@ -3,9 +3,7 @@
 import { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { TOKENS } from '../di/tokens';
-import StorageDiagnosticsService, {
-  type StorageRemediationAction,
-} from '../services/storageDiagnostics.service';
+import StorageDiagnosticsService from '../services/storageDiagnostics.service';
 
 @injectable()
 export default class StorageDiagnosticsController {
@@ -19,11 +17,8 @@ export default class StorageDiagnosticsController {
     res.json(report);
   };
 
-  remediate = async (req: Request, res: Response): Promise<void> => {
-    const payload = Array.isArray(req.body?.actions)
-      ? (req.body.actions as StorageRemediationAction[])
-      : [];
-    const result = await this.service.remediate(payload);
+  remediate = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.service.remediate();
     res.json(result);
   };
 }

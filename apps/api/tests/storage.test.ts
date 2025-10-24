@@ -168,10 +168,7 @@ describe('storage routes', () => {
   });
 
   test('remediate endpoint делегирует контроллеру', async () => {
-    await request(app)
-      .post('/diagnostics/fix')
-      .send({ actions: [] })
-      .expect(200);
+    await request(app).post('/diagnostics/fix').expect(200);
     expect(mockDiagnosticsController.remediate).toHaveBeenCalled();
   });
 });

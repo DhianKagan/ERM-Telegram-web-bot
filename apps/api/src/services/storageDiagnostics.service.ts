@@ -5,11 +5,7 @@ import type { FilterQuery, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { TOKENS } from '../di/tokens';
 import type { FileDocument } from '../db/model';
-import {
-  collectAttachmentLinks,
-  deleteFile,
-  getFileSyncSnapshot,
-} from './dataStorage';
+import { collectAttachmentLinks, getFileSyncSnapshot } from './dataStorage';
 
 export interface StorageDiagnosticsReport {
   generatedAt: string;
@@ -24,17 +20,13 @@ export interface StorageDiagnosticsReport {
   }>;
 }
 
-export interface StorageRemediationAction {
-  type: 'purgeDetachedFiles';
-  limit?: number;
-}
-
 export interface StorageRemediationResultItem {
   action: string;
   status: 'completed' | 'skipped' | 'failed';
   details?: string;
-  removed?: number;
   attempted?: number;
+  repaired?: number;
+  errors?: number;
 }
 
 export interface StorageRemediationReport {
@@ -56,13 +48,17 @@ export default class StorageDiagnosticsService {
     } satisfies FilterQuery<FileDocument>;
   }
 
-  private async restoreDetachedLinks(): Promise<void> {
+  private async restoreDetachedLinks(): Promise<{
+    attempted: number;
+    repaired: number;
+    errors: number;
+  }> {
     const candidates = await this.fileModel
       .find(this.detachedFilter)
       .select(['_id'])
       .lean();
     if (candidates.length === 0) {
-      return;
+      return { attempted: 0, repaired: 0, errors: 0 };
     }
 
     const lookup = await collectAttachmentLinks(
@@ -72,43 +68,56 @@ export default class StorageDiagnosticsService {
       })),
     );
     if (lookup.size === 0) {
-      return;
+      return { attempted: 0, repaired: 0, errors: 0 };
     }
 
-    await Promise.all(
-      Array.from(lookup.entries()).map(async ([fileId, info]) => {
-        const targetTaskId = Types.ObjectId.isValid(info.taskId)
-          ? new Types.ObjectId(info.taskId)
-          : null;
-        if (!targetTaskId) {
-          console.error('Не удалось восстановить привязку файла к задаче', {
-            fileId,
-            taskId: info.taskId,
-            error: new Error('Некорректный идентификатор задачи'),
-          });
-          return;
-        }
-        try {
-          await this.fileModel
-            .updateOne(
-              { _id: new Types.ObjectId(fileId) },
-              { $set: { taskId: targetTaskId } },
-            )
-            .exec();
-        } catch (error) {
-          console.error('Не удалось восстановить привязку файла к задаче', {
-            fileId,
-            taskId: info.taskId,
-            error,
-          });
-        }
-      }),
-    );
+    let repaired = 0;
+    let errors = 0;
+
+    for (const [fileId, info] of lookup.entries()) {
+      let failed = false;
+      const targetTaskId = Types.ObjectId.isValid(info.taskId)
+        ? new Types.ObjectId(info.taskId)
+        : null;
+      if (!targetTaskId) {
+        console.error('Не удалось восстановить привязку файла к задаче', {
+          fileId,
+          taskId: info.taskId,
+          error: new Error('Некорректный идентификатор задачи'),
+        });
+        errors += 1;
+        continue;
+      }
+      try {
+        await this.fileModel
+          .updateOne(
+            { _id: new Types.ObjectId(fileId) },
+            { $set: { taskId: targetTaskId } },
+          )
+          .exec();
+      } catch (error) {
+        failed = true;
+        console.error('Не удалось восстановить привязку файла к задаче', {
+          fileId,
+          taskId: info.taskId,
+          error,
+        });
+      }
+      if (failed) {
+        errors += 1;
+      } else {
+        repaired += 1;
+      }
+    }
+
+    return {
+      attempted: lookup.size,
+      repaired,
+      errors,
+    };
   }
 
-  async diagnose(): Promise<StorageDiagnosticsReport> {
-    await this.restoreDetachedLinks();
-
+  private async generateReport(): Promise<StorageDiagnosticsReport> {
     const [snapshot, detachedDocs] = await Promise.all([
       getFileSyncSnapshot(),
       this.fileModel
@@ -133,85 +142,45 @@ export default class StorageDiagnosticsService {
     };
   }
 
-  private async purgeDetachedFiles(limit?: number): Promise<StorageRemediationResultItem> {
-    const query = this.fileModel.find(this.detachedFilter).select(['_id']);
-    const max = typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 0;
-    if (max > 0) {
-      query.limit(max);
-    }
-    const candidates = await query.lean();
-    if (candidates.length === 0) {
-      return {
-        action: 'purgeDetachedFiles',
-        status: 'skipped',
-        details: 'Несвязанных файлов не найдено.',
-        attempted: 0,
-        removed: 0,
-      };
-    }
-
-    let removed = 0;
-    const attempted = candidates.length;
-    for (const file of candidates) {
-      try {
-        await deleteFile(String(file._id));
-        removed += 1;
-      } catch (error) {
-        const err = error as NodeJS.ErrnoException;
-        if (err.code === 'ENOENT') {
-          removed += 1;
-        } else {
-          return {
-            action: 'purgeDetachedFiles',
-            status: 'failed',
-            details: err.message,
-            attempted,
-            removed,
-          };
-        }
-      }
-    }
-
-    return {
-      action: 'purgeDetachedFiles',
-      status: 'completed',
-      details: 'Несвязанные файлы удалены.',
-      attempted,
-      removed,
-    };
+  async diagnose(): Promise<StorageDiagnosticsReport> {
+    await this.restoreDetachedLinks();
+    return this.generateReport();
   }
 
-  async remediate(
-    actions: StorageRemediationAction[],
-  ): Promise<StorageRemediationReport> {
-    const results: StorageRemediationResultItem[] = [];
-    for (const action of actions) {
-      if (!action || typeof action.type !== 'string') {
-        results.push({
-          action: 'unknown',
-          status: 'skipped',
-          details: 'Недопустимое описание действия.',
-        });
-        continue;
-      }
+  async remediate(): Promise<StorageRemediationReport> {
+    const outcome = await this.restoreDetachedLinks();
+    const report = await this.generateReport();
 
-      if (action.type === 'purgeDetachedFiles') {
-        const result = await this.purgeDetachedFiles(action.limit);
-        results.push(result);
-        continue;
-      }
-
-      results.push({
-        action: action.type,
-        status: 'skipped',
-        details: 'Неизвестное действие, пропуск.',
-      });
+    let status: StorageRemediationResultItem['status'] = 'completed';
+    let details = 'Привязка файлов проверена.';
+    if (outcome.attempted === 0) {
+      status = 'skipped';
+      details = 'Несвязанных файлов не найдено.';
+    } else if (outcome.repaired === 0 && outcome.errors === 0) {
+      status = 'skipped';
+      details = 'Подходящих задач для восстановления не обнаружено.';
+    } else if (outcome.errors > 0 && outcome.repaired === 0) {
+      status = 'failed';
+      details = 'Не удалось восстановить привязку файлов, проверьте журнал.';
+    } else if (outcome.errors > 0) {
+      status = 'completed';
+      details = 'Часть файлов восстановлена, проверьте журнал для деталей.';
+    } else {
+      details = 'Привязка файлов восстановлена автоматически.';
     }
 
-    const report = await this.diagnose();
     return {
       generatedAt: new Date().toISOString(),
-      results,
+      results: [
+        {
+          action: 'restoreDetachedLinks',
+          status,
+          details,
+          attempted: outcome.attempted,
+          repaired: outcome.repaired,
+          errors: outcome.errors,
+        },
+      ],
       report,
     };
   }

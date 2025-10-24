@@ -35,7 +35,7 @@ if (!sharp) {
 
   const pages = [
     { name: "index", text: "ERM Web App" },
-    { name: "routes", text: "Маршруты" },
+    { name: "logistics", text: "Логистика" },
   ];
 
   for (const p of pages) {

@@ -1,11 +1,14 @@
-// Страница отображения маршрутов на карте с фильтрами
+// Страница отображения логистики с картой, маршрутами и фильтрами
+// Основные модули: React, Leaflet, Breadcrumbs, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
 import { Button } from "@/components/ui/button";
+import Breadcrumbs from "../components/Breadcrumbs";
 import TaskTable from "../components/TaskTable";
 import createMultiRouteLink from "../utils/createMultiRouteLink";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -24,8 +27,9 @@ type RouteTask = TaskRow & {
 const TRACK_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 60 * 1000;
 
-export default function RoutesPage() {
-  const tasks = useTaskIndex("routes:all") as RouteTask[];
+export default function LogisticsPage() {
+  const { t } = useTranslation();
+  const tasks = useTaskIndex("logistics:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState("angle");
@@ -56,7 +60,7 @@ export default function RoutesPage() {
   const role = user?.role ?? null;
 
   React.useEffect(() => {
-    const content = "/hero/routes.png";
+    const content = "/hero/logistics.png";
     let meta = document.querySelector('meta[property="og:image"]');
     if (meta) {
       meta.setAttribute("content", content);
@@ -98,7 +102,7 @@ export default function RoutesPage() {
       const list = mapped.filter(
         (task): task is RouteTask => Boolean(task),
       );
-      controller.setIndex("routes:all", list, {
+      controller.setIndex("logistics:all", list, {
         kind: "task",
         mine: false,
         userId,
@@ -120,7 +124,7 @@ export default function RoutesPage() {
       setFleetError("");
       if (!data.items.length) {
         setSelectedVehicleId("");
-        setVehiclesHint("Транспорт не найден");
+        setVehiclesHint(t("logistics.noVehicles"));
         return;
       }
       const selected =
@@ -131,9 +135,7 @@ export default function RoutesPage() {
       }
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Не удалось загрузить транспорт автопарка";
+        error instanceof Error ? error.message : t("logistics.loadError");
       setVehiclesHint(message);
       setAvailableVehicles([]);
       setFleetVehicles([]);
@@ -142,7 +144,7 @@ export default function RoutesPage() {
     } finally {
       setVehiclesLoading(false);
     }
-  }, [role, selectedVehicleId]);
+  }, [role, selectedVehicleId, t]);
 
   const refreshAll = React.useCallback(() => {
     load();
@@ -155,7 +157,7 @@ export default function RoutesPage() {
     if (role === "admin") {
       void loadFleetVehicles();
     }
-  }, [loadFleetVehicles, role]);
+  }, [loadFleetVehicles, role, t]);
 
   const calculate = React.useCallback(() => {
     const ids = sorted.map((t) => t._id);
@@ -210,14 +212,12 @@ export default function RoutesPage() {
     if (role !== "admin") {
       setAvailableVehicles([]);
       setFleetError(
-        role === "manager"
-          ? "Автопарк доступен только администраторам"
-          : "",
+        role === "manager" ? t("logistics.adminOnly") : "",
       );
       setSelectedVehicleId("");
       setFleetInfo(null);
       setFleetVehicles([]);
-      setVehiclesHint(role ? "Нет доступа к автопарку" : "");
+      setVehiclesHint(role ? t("logistics.noAccess") : "");
       setAutoRefresh(false);
       setWithTrack(false);
       if (vehiclesLayerRef.current) {
@@ -273,7 +273,7 @@ export default function RoutesPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = L.map("routes-map").setView([48.3794, 31.1656], 6);
+    const map = L.map("logistics-map").setView([48.3794, 31.1656], 6);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
@@ -380,18 +380,33 @@ export default function RoutesPage() {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs
+        items={[
+          {
+            label: t("logistics.title"),
+            href:
+              role === "admin"
+                ? "/cp/logistics"
+                : role === "manager"
+                  ? "/mg/logistics"
+                  : undefined,
+          },
+          { label: t("logistics.title") },
+        ]}
+      />
+      <h2 className="text-xl font-semibold">{t("logistics.title")}</h2>
       {role === "admin" ? (
         <div className="space-y-2 rounded border p-3">
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm">
-              <span>Транспорт</span>
+              <span>{t("logistics.transport")}</span>
               <select
                 value={selectedVehicleId}
                 onChange={(event) => setSelectedVehicleId(event.target.value)}
                 className="rounded border px-2 py-1"
                 disabled={!availableVehicles.length || vehiclesLoading}
               >
-                <option value="">Не выбран</option>
+                <option value="">{t("logistics.unselectedVehicle")}</option>
                 {availableVehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
                     {vehicle.name}
@@ -404,7 +419,9 @@ export default function RoutesPage() {
               onClick={refreshFleet}
               disabled={!availableVehicles.length || vehiclesLoading}
             >
-              {vehiclesLoading ? "Загрузка..." : "Обновить технику"}
+              {vehiclesLoading
+                ? t("loading")
+                : t("logistics.refreshFleet")}
             </Button>
             <label
               className="flex items-center gap-1 text-sm"
@@ -418,7 +435,7 @@ export default function RoutesPage() {
                 checked={withTrack}
                 onChange={(event) => setWithTrack(event.target.checked)}
               />
-              <span>Показывать трек (1 час)</span>
+              <span>{t("logistics.trackLabel")}</span>
             </label>
             <label
               className="flex items-center gap-1 text-sm"
@@ -437,12 +454,12 @@ export default function RoutesPage() {
                 }}
                 disabled={!selectedVehicleId}
               />
-              <span>Автообновление</span>
+              <span>{t("logistics.autoRefresh")}</span>
             </label>
           </div>
           {fleetInfo ? (
             <div className="text-sm text-muted-foreground">
-              Выбран транспорт: {fleetInfo.name}
+              {t("logistics.selectedVehicle", { name: fleetInfo.name })}
               {fleetInfo.registrationNumber
                 ? ` (${fleetInfo.registrationNumber})`
                 : ""}
@@ -461,7 +478,7 @@ export default function RoutesPage() {
         </p>
       ) : null}
       <div
-        id="routes-map"
+        id="logistics-map"
         className={`h-96 w-full rounded border ${hasDialog ? "hidden" : ""}`}
       />
       <div className="flex justify-end space-x-2">
@@ -482,15 +499,9 @@ export default function RoutesPage() {
           <option value="angle">angle</option>
           <option value="trip">trip</option>
         </select>
-        <Button onClick={calculate}>
-          Просчёт маршрута
-        </Button>
-        <Button onClick={reset}>
-          Сбросить
-        </Button>
-        <Button onClick={refreshAll}>
-          Обновить
-        </Button>
+        <Button onClick={calculate}>{t("logistics.optimize")}</Button>
+        <Button onClick={reset}>{t("reset")}</Button>
+        <Button onClick={refreshAll}>{t("refresh")}</Button>
       </div>
       {!!links.length && (
         <div className="flex flex-col items-end space-y-1">
@@ -502,13 +513,15 @@ export default function RoutesPage() {
               rel="noopener noreferrer"
               className="text-accentPrimary underline"
             >
-              Маршрут {i + 1}
+              {t("logistics.linksLabel", { index: i + 1 })}
             </a>
           ))}
         </div>
       )}
       <div className="max-w-full space-y-2">
-        <h3 className="text-lg font-semibold">Задачи</h3>
+        <h3 className="text-lg font-semibold">
+          {t("logistics.tasksHeading")}
+        </h3>
         <TaskTable
           tasks={tasks}
           onDataChange={(rows) => setSorted(rows as RouteTask[])}

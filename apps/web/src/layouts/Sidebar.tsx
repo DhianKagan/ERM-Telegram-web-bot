@@ -26,7 +26,7 @@ const baseItems = [
 const adminItems = [
   { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/cp/routes", label: "Маршруты", icon: MapIcon },
+  { to: "/cp/logistics", label: "Логистика", icon: MapIcon },
   { to: "/cp/settings", label: "Настройки", icon: Cog6ToothIcon },
   { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
   { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
@@ -35,7 +35,7 @@ const adminItems = [
 const managerItems = [
   { to: "/mg/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
   { to: "/mg/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/mg/routes", label: "Маршруты", icon: MapIcon },
+  { to: "/mg/logistics", label: "Логистика", icon: MapIcon },
 ];
 
 export default function Sidebar() {

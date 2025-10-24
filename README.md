@@ -97,7 +97,7 @@ pnpm ts-node scripts/db/syncUserRoles.ts
 ## Hero-изображения
 
 Скрипт `scripts/generate_hero_images.mjs` создаёт изображения `apps/web/public/hero/index.png`
-и `routes.png` для meta‑тегов. Скрипт запускается автоматически перед `pnpm build`.
+и `logistics.png` для meta‑тегов. Скрипт запускается автоматически перед `pnpm build`.
 
 Файл `.npmrc` перенаправляет scope `@jsr` на `https://registry.npmjs.org/`,
 чтобы установка зависимостей не требовала токена.

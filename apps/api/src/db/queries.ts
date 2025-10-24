@@ -29,7 +29,11 @@ import {
   ACCESS_USER,
   hasAccess,
 } from '../utils/accessMask';
-import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
+import {
+  buildAttachmentsFromCommentHtml,
+  coerceAttachments,
+  extractAttachmentIds,
+} from '../utils/attachments';
 import { deleteFilesForTask } from '../services/dataStorage';
 
 function escapeRegex(text: string): string {
@@ -451,9 +455,20 @@ async function enrichAttachmentsFromContent(
   data: Partial<TaskDocument> & Record<string, unknown>,
   previous: TaskDocument | null,
 ): Promise<Attachment[] | undefined> {
-  const attachmentsRaw = data.attachments as Attachment[] | undefined;
+  let attachmentsRaw = data.attachments as Attachment[] | undefined;
+  const previousAttachments = Array.isArray(previous?.attachments)
+    ? (previous?.attachments as Attachment[])
+    : undefined;
   if (attachmentsRaw === undefined) {
-    return undefined;
+    const commentHtml =
+      typeof data.comment === 'string' ? data.comment : undefined;
+    const derived = buildAttachmentsFromCommentHtml(commentHtml ?? '', {
+      existing: previousAttachments,
+    });
+    if (derived.length === 0) {
+      return undefined;
+    }
+    attachmentsRaw = derived;
   }
   if (!Array.isArray(attachmentsRaw) || attachmentsRaw.length === 0) {
     return [];

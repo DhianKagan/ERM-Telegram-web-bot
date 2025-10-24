@@ -16,7 +16,7 @@ import {
   writeLog,
 } from '../services/service';
 import '../db/model';
-import type { TaskDocument, Comment, UserDocument } from '../db/model';
+import type { TaskDocument, Comment, UserDocument, Attachment } from '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
   taskAcceptConfirmKeyboard,
@@ -35,6 +35,7 @@ import type { Task as SharedTask } from 'shared';
 import TaskSyncController from '../controllers/taskSync.controller';
 import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
 import { buildCommentHtml } from '../tasks/taskComments';
+import { buildAttachmentsFromCommentHtml } from '../utils/attachments';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 
 if (process.env.NODE_ENV !== 'production') {
@@ -1815,9 +1816,22 @@ if (!registerTextHandler) {
           users: authorMeta,
           fallbackNames,
         });
+        const existingAttachments = Array.isArray(task.attachments)
+          ? (task.attachments as Attachment[])
+          : undefined;
+        const commentAttachments = buildAttachmentsFromCommentHtml(commentHtml, {
+          existing: existingAttachments,
+        });
+        const updatePayload: Partial<TaskDocument> = {
+          comment: commentHtml,
+          comments: nextEntries,
+        };
+        if (commentAttachments.length > 0) {
+          updatePayload.attachments = commentAttachments;
+        }
         const updated = await updateTaskRecord(
           commentSession.taskId,
-          { comment: commentHtml, comments: nextEntries },
+          updatePayload,
           userId,
         );
         if (!updated) {

@@ -1,13 +1,24 @@
 // Оптимизация маршрутов по координатам задач
-// Модули: db/queries, services/route
+// Модули: db/queries, services/route, services/routePlans
 import * as q from '../db/queries';
 import * as route from './route';
+import {
+  createDraftFromInputs,
+  type RoutePlanRouteInput,
+  type RoutePlanTaskHint,
+} from './routePlans';
+import type { RoutePlan as SharedRoutePlan } from 'shared';
 
 export type OptimizeMethod = 'angle' | 'trip';
 
 export interface TaskLike {
   _id: { toString(): string };
   startCoordinates?: { lat: number; lng: number };
+  finishCoordinates?: { lat: number; lng: number };
+  start_location?: string | null;
+  end_location?: string | null;
+  route_distance_km?: number | null;
+  title?: string;
 }
 
 interface TripWaypoint {
@@ -22,12 +33,13 @@ export async function optimize(
   taskIds: string[],
   count = 1,
   method: OptimizeMethod = 'angle',
-): Promise<string[][]> {
+  actorId?: number,
+): Promise<SharedRoutePlan | null> {
   count = Math.max(1, Math.min(3, Number(count) || 1));
   const tasks = (
     await Promise.all(taskIds.map((id) => q.getTask(id) as Promise<TaskLike>))
   ).filter((t) => t && t.startCoordinates);
-  if (!tasks.length) return [];
+  if (!tasks.length) return null;
   count = Math.min(count, tasks.length);
 
   const center = {
@@ -52,11 +64,13 @@ export async function optimize(
     groups.push(sorted.slice(i * step, (i + 1) * step));
   }
 
+  let finalGroups = groups;
+
   if (method === 'trip') {
-    const routes: string[][] = [];
+    const orderedGroups: TaskLike[][] = [];
     for (const g of groups) {
       if (g.length < 2) {
-        routes.push(g.map((t) => t._id.toString()));
+        orderedGroups.push(g);
         continue;
       }
       const points = g
@@ -67,13 +81,32 @@ export async function optimize(
         const ordered = data.trips?.[0]?.waypoints
           ? data.trips[0].waypoints.map((wp) => g[wp.waypoint_index])
           : g;
-        routes.push(ordered.map((t) => t._id.toString()));
+        orderedGroups.push(ordered);
       } catch {
-        routes.push(g.map((t) => t._id.toString()));
+        orderedGroups.push(g);
       }
     }
-    return routes;
+    finalGroups = orderedGroups;
   }
 
-  return groups.map((g) => g.map((t) => t._id.toString()));
+  const routeInputs: RoutePlanRouteInput[] = finalGroups.map((group, index) => ({
+    order: index,
+    tasks: group.map((task) => task._id.toString()),
+  }));
+
+  if (!routeInputs.length) {
+    return null;
+  }
+
+  const hints: RoutePlanTaskHint[] = tasks.map((task) => ({
+    _id: task._id,
+    title: task.title,
+    startCoordinates: task.startCoordinates,
+    finishCoordinates: task.finishCoordinates,
+    start_location: task.start_location,
+    end_location: task.end_location,
+    route_distance_km: task.route_distance_km,
+  }));
+
+  return createDraftFromInputs(routeInputs, { actorId, method, count }, hints);
 }

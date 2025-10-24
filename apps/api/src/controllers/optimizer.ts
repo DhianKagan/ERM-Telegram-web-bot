@@ -1,11 +1,12 @@
 // Назначение: контроллер оптимизации маршрутов
 // Основные модули: express-validator, services/optimizer
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { validationResult } from 'express-validator';
 import * as service from '../services/optimizer';
 import { sendProblem } from '../utils/problem';
+import type RequestWithUser from '../types/request';
 
-export async function optimize(req: Request, res: Response): Promise<void> {
+export async function optimize(req: RequestWithUser, res: Response): Promise<void> {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const errorList = errors.array();
@@ -18,10 +19,18 @@ export async function optimize(req: Request, res: Response): Promise<void> {
     });
     return;
   }
-  const routes = await service.optimize(
+  const actorIdRaw = req.user?.id;
+  const actorId =
+    typeof actorIdRaw === 'number' && Number.isFinite(actorIdRaw)
+      ? actorIdRaw
+      : typeof actorIdRaw === 'string' && actorIdRaw.trim()
+      ? Number(actorIdRaw)
+      : undefined;
+  const plan = await service.optimize(
     (req.body.tasks as string[]) || [],
     req.body.count,
     req.body.method,
+    Number.isFinite(actorId) ? (actorId as number) : undefined,
   );
-  res.json({ routes });
+  res.json({ plan });
 }

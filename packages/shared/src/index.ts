@@ -16,5 +16,12 @@ export type {
   VehiclePositionDto,
   VehicleSensorDto,
   VehicleTrackPointDto,
+  RoutePlan,
+  RoutePlanMetrics,
+  RoutePlanRoute,
+  RoutePlanRouteMetrics,
+  RoutePlanStop,
+  RoutePlanTaskRef,
+  RoutePlanStatus,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

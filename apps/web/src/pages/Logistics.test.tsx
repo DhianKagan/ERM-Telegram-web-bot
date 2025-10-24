@@ -8,6 +8,7 @@ import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
+import type { RoutePlan } from "shared";
 jest.mock("react-i18next", () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === "logistics.selectedVehicle") {
@@ -15,6 +16,15 @@ jest.mock("react-i18next", () => {
     }
     if (key === "logistics.linksLabel") {
       return `Маршрут ${options?.index ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteTitle") {
+      return `Маршрут ${options?.index ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteSummary") {
+      return `Задач: ${options?.tasks ?? ""}, остановок: ${options?.stops ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteDistance") {
+      return `Расстояние: ${options?.distance ?? ""}`.trim();
     }
     const dictionary: Record<string, string> = {
       loading: "Загрузка...",
@@ -31,6 +41,38 @@ jest.mock("react-i18next", () => {
       "logistics.adminOnly": "Автопарк доступен только администраторам",
       "logistics.noAccess": "Нет доступа к автопарку",
       "logistics.optimize": "Просчёт логистики",
+      "logistics.planSectionTitle": "Маршрутный план",
+      "logistics.planSummary": "Итоги плана",
+      "logistics.planStatus": "Статус",
+      "logistics.planStatusValue.draft": "Черновик",
+      "logistics.planStatusValue.approved": "Утверждён",
+      "logistics.planStatusValue.completed": "Завершён",
+      "logistics.planReload": "Обновить план",
+      "logistics.planClear": "Сбросить план",
+      "logistics.planApprove": "Опубликовать",
+      "logistics.planComplete": "Завершить",
+      "logistics.planTitleLabel": "Название маршрутного плана",
+      "logistics.planNotesLabel": "Примечания",
+      "logistics.planTotalDistance": "Общее расстояние",
+      "logistics.planTotalRoutes": "Маршрутов",
+      "logistics.planTotalTasks": "Задач",
+      "logistics.planTotalStops": "Остановок",
+      "logistics.planRouteEmpty": "Нет задач",
+      "logistics.planDriver": "Водитель",
+      "logistics.planVehicle": "Транспорт",
+      "logistics.planRouteNotes": "Заметки по маршруту",
+      "logistics.planTaskUp": "Вверх",
+      "logistics.planTaskDown": "Вниз",
+      "logistics.planSaved": "Сохранено",
+      "logistics.planSaveError": "Ошибка сохранения",
+      "logistics.planPublished": "Опубликовано",
+      "logistics.planCompleted": "Завершено",
+      "logistics.planStatusError": "Ошибка статуса",
+      "logistics.planLoadError": "Ошибка загрузки",
+      "logistics.planDraftCreated": "Черновик создан",
+      "logistics.planEmpty": "Нет плана",
+      "logistics.planNoDistance": "нет данных",
+      "logistics.planOptimizeError": "Ошибка оптимизации",
       "logistics.tasksHeading": "Задачи",
       "logistics.metaTitle": "Логистика — ERM",
       "logistics.metaDescription": "Контроль логистики и маршрутов",
@@ -156,9 +198,77 @@ jest.mock("../services/osrm", () =>
   ]),
 );
 
-jest.mock("../services/optimizer", () => jest.fn().mockResolvedValue({ routes: [] }));
+jest.mock("../services/optimizer", () => jest.fn().mockResolvedValue(null));
 
-jest.mock("../utils/createMultiRouteLink", () => jest.fn().mockReturnValue("https://example.com"));
+const listRoutePlansMock = jest.fn();
+const updateRoutePlanMock = jest.fn();
+const changeRoutePlanStatusMock = jest.fn();
+
+jest.mock("../services/routePlans", () => ({
+  listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
+  updateRoutePlan: (...args: unknown[]) => updateRoutePlanMock(...args),
+  changeRoutePlanStatus: (...args: unknown[]) => changeRoutePlanStatusMock(...args),
+}));
+
+const draftPlan: RoutePlan = {
+  id: "plan-1",
+  title: "Черновик маршрута",
+  status: "draft",
+  suggestedBy: null,
+  method: "angle",
+  count: 1,
+  notes: null,
+  metrics: {
+    totalDistanceKm: 24.5,
+    totalRoutes: 1,
+    totalTasks: 1,
+    totalStops: 2,
+  },
+  routes: [
+    {
+      id: "route-1",
+      order: 0,
+      vehicleId: null,
+      vehicleName: null,
+      driverId: null,
+      driverName: null,
+      tasks: [
+        {
+          taskId: "t1",
+          order: 0,
+          title: "Задача 1",
+          start: { lat: 50, lng: 30 },
+          finish: { lat: 51, lng: 31 },
+          startAddress: "Старт",
+          finishAddress: "Финиш",
+          distanceKm: 12.3,
+        },
+      ],
+      stops: [
+        {
+          order: 0,
+          kind: "start",
+          taskId: "t1",
+          coordinates: { lat: 50, lng: 30 },
+          address: "Старт",
+        },
+        {
+          order: 1,
+          kind: "finish",
+          taskId: "t1",
+          coordinates: { lat: 51, lng: 31 },
+          address: "Финиш",
+        },
+      ],
+      metrics: { distanceKm: 12.3, tasks: 1, stops: 2 },
+      routeLink: "https://example.com",
+      notes: null,
+    },
+  ],
+  tasks: ["t1"],
+  createdAt: "2024-01-01T00:00:00.000Z",
+  updatedAt: "2024-01-01T00:00:00.000Z",
+};
 
 jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: { telegram_id: 42, role: "admin" } }),
@@ -272,6 +382,17 @@ describe("LogisticsPage", () => {
     jest.clearAllMocks();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
+    listRoutePlansMock.mockReset();
+    updateRoutePlanMock.mockReset();
+    changeRoutePlanStatusMock.mockReset();
+    listRoutePlansMock
+      .mockResolvedValueOnce({ items: [draftPlan], total: 1 })
+      .mockResolvedValue({ items: [], total: 0 });
+    updateRoutePlanMock.mockResolvedValue(draftPlan);
+    changeRoutePlanStatusMock.mockResolvedValue({
+      ...draftPlan,
+      status: "approved",
+    });
     listFleetVehiclesMock.mockReset();
     listFleetVehiclesMock
       .mockResolvedValueOnce({
@@ -306,9 +427,19 @@ describe("LogisticsPage", () => {
 
   it("отображает маркеры техники и трек после включения", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(listRoutePlansMock).toHaveBeenCalledWith("draft", 1, 1),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByDisplayValue("Черновик маршрута"),
+      ).toBeInTheDocument(),
     );
 
     await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1));

@@ -27,6 +27,7 @@ import {
   ACCESS_MANAGER,
   ACCESS_TASK_DELETE,
   ACCESS_USER,
+  hasAccess,
 } from '../utils/accessMask';
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
 import { deleteFilesForTask } from '../services/dataStorage';
@@ -563,7 +564,37 @@ async function syncTaskAttachments(
       _id: { $in: fileIds },
     };
     if (userId !== undefined) {
-      filter.$or = [{ userId }, { taskId }];
+      let restrictByUser = true;
+      try {
+        const actor = await User.findOne(
+          { telegram_id: { $eq: userId } },
+          { access: 1 },
+        )
+          .lean<{ access?: number }>()
+          .exec();
+        const access =
+          typeof actor?.access === 'number' ? actor.access : undefined;
+        if (access !== undefined && hasAccess(access, ACCESS_MANAGER)) {
+          restrictByUser = false;
+        }
+      } catch (error) {
+        await logEngine
+          .writeLog(
+            `Не удалось определить права пользователя ${String(userId)} при обновлении вложений задачи ${String(
+              taskId,
+            )}`,
+            'warn',
+            {
+              taskId: String(taskId),
+              userId,
+              error: (error as Error).message,
+            },
+          )
+          .catch(() => undefined);
+      }
+      if (restrictByUser) {
+        filter.$or = [{ userId }, { taskId }];
+      }
     }
     await fileModel.updateMany(filter, {
       $set: { taskId },

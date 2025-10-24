@@ -25,6 +25,11 @@ declare const beforeEach: (
 import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
+import {
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_USER,
+} from '../../apps/api/src/utils/accessMask';
 
 describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   const suite = this as { timeout?: (ms: number) => void };
@@ -33,6 +38,7 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let File: typeof import('../../apps/api/src/db/model').File;
+  let User: typeof import('../../apps/api/src/db/model').User;
   let updateTask: typeof import('../../apps/api/src/db/queries').updateTask;
 
   before(async function () {
@@ -49,6 +55,7 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
     const models = await import('../../apps/api/src/db/model');
     Task = models.Task;
     File = models.File;
+    User = models.User;
     ({ updateTask } = await import('../../apps/api/src/db/queries'));
 
     app = express();
@@ -85,6 +92,15 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   });
 
   it('привязывает файлы к задаче через File.updateMany', async () => {
+    await User.create({
+      telegram_id: 111,
+      username: 'admin-user',
+      name: 'Администратор',
+      email: 'admin@example.com',
+      role: 'admin',
+      access: ACCESS_ADMIN | ACCESS_MANAGER | ACCESS_USER,
+    });
+
     const task = await Task.create({
       title: 'Тестовая задача',
       created_by: 111,
@@ -103,6 +119,17 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
       uploadedAt: new Date(),
     });
 
+    const foreignFileId = new Types.ObjectId();
+    await File.create({
+      _id: foreignFileId,
+      userId: 222,
+      name: 'invoice.pdf',
+      path: 'uploads/invoice.pdf',
+      type: 'application/pdf',
+      size: 2048,
+      uploadedAt: new Date(),
+    });
+
     const payload = {
       attachments: [
         {
@@ -114,6 +141,15 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
           type: 'application/pdf',
           size: 1024,
         },
+        {
+          name: 'invoice.pdf',
+          url: `/api/v1/files/${foreignFileId.toHexString()}`,
+          thumbnailUrl: '/uploads/thumbs/invoice.jpg',
+          uploadedBy: 222,
+          uploadedAt: new Date().toISOString(),
+          type: 'application/pdf',
+          size: 2048,
+        },
       ],
     };
 
@@ -123,8 +159,9 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
 
     assert.equal(response.status, 200);
     assert.ok(Array.isArray(response.body.attachments));
-    assert.equal(response.body.attachments.length, 1);
+    assert.equal(response.body.attachments.length, 2);
     assert.equal(response.body.attachments[0].url, payload.attachments[0].url);
+    assert.equal(response.body.attachments[1].url, payload.attachments[1].url);
 
     const updatedFile = await File.findById(fileId).lean();
     assert.ok(updatedFile?.taskId, 'ожидали установленный taskId у файла');
@@ -132,6 +169,17 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
       updatedFile?.taskId?.toString(),
       taskId,
       'taskId файла должен совпадать с обновляемой задачей',
+    );
+
+    const updatedForeignFile = await File.findById(foreignFileId).lean();
+    assert.ok(
+      updatedForeignFile?.taskId,
+      'ожидали установленный taskId у файла другого пользователя',
+    );
+    assert.equal(
+      updatedForeignFile?.taskId?.toString(),
+      taskId,
+      'taskId файла другого пользователя должен совпадать с задачей',
     );
   });
 });

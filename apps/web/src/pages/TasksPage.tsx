@@ -24,7 +24,7 @@ export default function TasksPage() {
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get("mine") === "1");
-  const { version, refresh, controller } = useTasks();
+  const { version, refresh, controller, filters, setFilterUsers } = useTasks();
   const { user, loading: authLoading } = useAuth();
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
@@ -38,14 +38,50 @@ export default function TasksPage() {
 
   const effectiveMine = isPrivileged ? mine : true;
 
+  const filterSignature = React.useMemo(() => {
+    const statusKey = [...filters.status].sort().join(",");
+    const priorityKey = [...filters.priority].sort().join(",");
+    const typeKey = [...filters.taskTypes].sort().join(",");
+    const assigneeKey = [...filters.assignees].sort((a, b) => a - b).join(",");
+    return [
+      statusKey,
+      priorityKey,
+      typeKey,
+      assigneeKey,
+      filters.from,
+      filters.to,
+    ].join("|");
+  }, [filters]);
+
   const scopeKey = React.useMemo(() => {
     const userKey = user?.telegram_id ? String(user.telegram_id) : "anon";
     const mineKey = effectiveMine ? "mine" : "all";
-    return `tasks:task:${userKey}:${mineKey}:page=${page + 1}`;
-  }, [effectiveMine, page, user?.telegram_id]);
+    return `tasks:task:${userKey}:${mineKey}:page=${page + 1}:filters=${filterSignature}`;
+  }, [effectiveMine, filterSignature, page, user?.telegram_id]);
 
   const tasks = useTaskIndex(scopeKey) as TaskExtra[];
   const meta = useTaskIndexMeta(scopeKey);
+
+  const updateFilterUserList = React.useCallback(
+    (list: User[]) => {
+      const map = new Map<number, { id: number; name: string; username?: string | null }>();
+      list.forEach((item) => {
+        const id = Number(item.telegram_id);
+        if (!Number.isFinite(id)) return;
+        const displayName =
+          (typeof item.name === "string" && item.name.trim().length > 0
+            ? item.name.trim()
+            : item.username) ?? `ID ${id}`;
+        map.set(id, {
+          id,
+          name: displayName,
+          username: item.username ?? null,
+        });
+      });
+      setFilterUsers(Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "ru")));
+    },
+    [setFilterUsers],
+  );
 
   const load = React.useCallback(() => {
     if (!user?.telegram_id) {
@@ -61,16 +97,22 @@ export default function TasksPage() {
       return;
     }
     setLoading(true);
-    fetchTasks(
-      {
-        page: page + 1,
-        limit: 25,
-        mine: !isPrivileged || mine ? 1 : undefined,
-        kind: "task",
-      },
-      user.telegram_id,
-      true,
-    )
+    const queryParams: Record<string, unknown> = {
+      page: page + 1,
+      limit: 25,
+      mine: !isPrivileged || mine ? 1 : undefined,
+      kind: "task",
+    };
+    if (filters.status.length) {
+      queryParams.status = filters.status.join(",");
+    }
+    if (filters.taskTypes.length) {
+      queryParams.taskType = filters.taskTypes.join(",");
+    }
+    if (filters.assignees.length) {
+      queryParams.assignees = filters.assignees.join(",");
+    }
+    fetchTasks(queryParams, user.telegram_id, true)
       .then((data) => {
         const rawTasks = data.tasks as TaskExtra[];
         const filteredTasks = isPrivileged
@@ -93,14 +135,19 @@ export default function TasksPage() {
           ? (data.users as User[])
           : (Object.values(data.users || {}) as User[]);
         setUsers(list);
+        updateFilterUserList(list);
       })
       .finally(() => setLoading(false));
     if (isPrivileged) {
       authFetch("/api/v1/users")
         .then((r) => (r.ok ? r.json() : []))
-        .then((list) =>
-          setUsers(Array.isArray(list) ? list : Object.values(list || {})),
-        )
+        .then((list) => {
+          const normalized = Array.isArray(list)
+            ? (list as User[])
+            : (Object.values(list || {}) as User[]);
+          setUsers(normalized);
+          updateFilterUserList(normalized);
+        })
         .catch(() => undefined);
     }
   }, [
@@ -111,6 +158,8 @@ export default function TasksPage() {
     page,
     scopeKey,
     user,
+    filters,
+    updateFilterUserList,
   ]);
 
   React.useEffect(() => {

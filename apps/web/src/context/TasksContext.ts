@@ -8,6 +8,14 @@ export interface TaskFilters {
   priority: string[];
   from: string;
   to: string;
+  taskTypes: string[];
+  assignees: number[];
+}
+
+export interface TaskFilterUser {
+  id: number;
+  name: string;
+  username?: string | null;
 }
 
 export interface TasksState {
@@ -18,6 +26,8 @@ export interface TasksState {
   filters: TaskFilters;
   setFilters: (f: TaskFilters) => void;
   controller: TaskStateController;
+  filterUsers: TaskFilterUser[];
+  setFilterUsers: (users: TaskFilterUser[]) => void;
 }
 
 export const TasksContext = createContext<TasksState | undefined>(undefined);

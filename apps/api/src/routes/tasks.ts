@@ -588,12 +588,16 @@ router.get(
   '/',
   [
     query('status').optional().isString(),
-    query('assignees').optional().isArray(),
+    query('assignees')
+      .optional()
+      .custom((value) => Array.isArray(value) || typeof value === 'string'),
+    query('assignee').optional().isString(),
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1 }),
     query('kind').optional().isIn(['task', 'request']),
+    query('taskType').optional().isString(),
   ] as RequestHandler[],
   ctrl.list as RequestHandler,
 );

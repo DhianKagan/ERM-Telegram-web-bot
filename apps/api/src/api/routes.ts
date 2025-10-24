@@ -41,6 +41,7 @@ import filesRouter from '../routes/files';
 import fleetsRouter from '../routes/fleets';
 import departmentsRouter from '../routes/departments';
 import employeesRouter from '../routes/employees';
+import trackingRouter from '../routes/tracking';
 import type { RequestWithUser } from '../types/request';
 import collectionsRouter from '../routes/collections';
 import archivesRouter from '../routes/archives';
@@ -248,6 +249,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/storage`, storageRouter);
   app.use(`${prefix}/files`, filesRouter);
   app.use(`${prefix}/fleets`, fleetsRouter);
+  app.use(`${prefix}/tracking`, trackingRouter);
   app.use(`${prefix}/departments`, departmentsRouter);
   app.use(`${prefix}/employees`, employeesRouter);
   app.use(`${prefix}/collections`, collectionsRouter);

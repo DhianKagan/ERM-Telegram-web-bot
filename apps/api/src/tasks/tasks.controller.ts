@@ -49,6 +49,7 @@ import {
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
+import { normalizeTaskFilters } from './filterUtils';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -2381,24 +2382,24 @@ export default class TasksController {
 
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;
-    const normalizedFilters: Record<string, unknown> = { ...filters };
-    let kindFilter: 'task' | 'request' | undefined;
-    if (typeof filters.kind === 'string') {
-      const trimmed = filters.kind.trim();
-      if (trimmed === 'task' || trimmed === 'request') {
-        kindFilter = trimmed;
-        normalizedFilters.kind = trimmed;
-      } else {
-        delete normalizedFilters.kind;
-      }
-    }
+    const pageNumber = page ? Number(page) : undefined;
+    const limitNumber = limit ? Number(limit) : undefined;
+
+    const {
+      normalized: normalizedFilters,
+      statusValues,
+      taskTypeValues,
+      assigneeValues,
+      kindFilter,
+    } = normalizeTaskFilters(filters as Record<string, unknown>);
+
     let tasks: TaskEx[];
     let total = 0;
     if (['admin', 'manager'].includes(req.user!.role || '')) {
       const result = await this.service.get(
         normalizedFilters,
-        page ? Number(page) : undefined,
-        limit ? Number(limit) : undefined,
+        pageNumber,
+        limitNumber,
       );
       tasks = result.tasks as unknown as TaskEx[];
       total = result.total;
@@ -2408,6 +2409,43 @@ export default class TasksController {
       )) as unknown as TaskEx[];
       if (kindFilter) {
         tasks = tasks.filter((task) => detectTaskKind(task) === kindFilter);
+      }
+      if (statusValues.length) {
+        const statusSet = new Set(statusValues);
+        tasks = tasks.filter((task) =>
+          typeof task.status === 'string' ? statusSet.has(task.status.trim()) : false,
+        );
+      }
+      if (taskTypeValues.length) {
+        const typeSet = new Set(taskTypeValues);
+        tasks = tasks.filter((task) => {
+          const typeValue =
+            typeof (task as Record<string, unknown>).task_type === 'string'
+              ? ((task as Record<string, unknown>).task_type as string).trim()
+              : '';
+          return typeValue ? typeSet.has(typeValue) : false;
+        });
+      }
+      if (assigneeValues.length) {
+        const assigneeSet = new Set(assigneeValues.map((id) => Number(id)));
+        tasks = tasks.filter((task) => {
+          const recipients = new Set<number>();
+          const collect = (value: unknown) => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+              recipients.add(value);
+            } else if (typeof value === 'string') {
+              const parsed = Number(value.trim());
+              if (Number.isFinite(parsed)) {
+                recipients.add(parsed);
+              }
+            }
+          };
+          if (Array.isArray(task.assignees)) {
+            task.assignees.forEach(collect);
+          }
+          collect((task as Record<string, unknown>).assigned_user_id);
+          return Array.from(recipients).some((recipient) => assigneeSet.has(recipient));
+        });
       }
       total = tasks.length;
     }

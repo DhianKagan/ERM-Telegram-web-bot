@@ -28,11 +28,12 @@ const TRACK_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 60 * 1000;
 
 export default function LogisticsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tRef = React.useRef(t);
   React.useEffect(() => {
     tRef.current = t;
   }, [t]);
+  const language = i18n.language;
   const tasks = useTaskIndex("logistics:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
@@ -55,6 +56,7 @@ export default function LogisticsPage() {
   const [withTrack, setWithTrack] = React.useState(false);
   const [mapReady, setMapReady] = React.useState(false);
   const [page, setPage] = React.useState(0);
+  const hasLoadedFleetRef = React.useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -91,7 +93,7 @@ export default function LogisticsPage() {
     ensureMeta("property", "og:title", title);
     ensureMeta("property", "og:description", description);
     ensureMeta("property", "og:image", image);
-  }, [t]);
+  }, [language]);
 
   const openTask = React.useCallback(
     (id: string) => {
@@ -232,15 +234,15 @@ export default function LogisticsPage() {
   }, [tasks]);
 
   React.useEffect(() => {
+    const translate = tRef.current;
     if (role !== "admin") {
+      hasLoadedFleetRef.current = false;
       setAvailableVehicles([]);
-      setFleetError(
-        role === "manager" ? t("logistics.adminOnly") : "",
-      );
+      setFleetError(role === "manager" ? translate("logistics.adminOnly") : "");
       setSelectedVehicleId("");
       setFleetInfo(null);
       setFleetVehicles([]);
-      setVehiclesHint(role ? t("logistics.noAccess") : "");
+      setVehiclesHint(role ? translate("logistics.noAccess") : "");
       setAutoRefresh(false);
       setWithTrack(false);
       if (vehiclesLayerRef.current) {
@@ -249,8 +251,23 @@ export default function LogisticsPage() {
       return;
     }
     setFleetError("");
-    void loadFleetVehicles();
-  }, [loadFleetVehicles, role, t]);
+    if (!hasLoadedFleetRef.current) {
+      hasLoadedFleetRef.current = true;
+      void loadFleetVehicles();
+    }
+  }, [loadFleetVehicles, role]);
+
+  React.useEffect(() => {
+    const translate = tRef.current;
+    if (role !== "admin") {
+      setFleetError(role === "manager" ? translate("logistics.adminOnly") : "");
+      setVehiclesHint(role ? translate("logistics.noAccess") : "");
+      return;
+    }
+    if (!availableVehicles.length && !fleetError) {
+      setVehiclesHint(translate("logistics.noVehicles"));
+    }
+  }, [availableVehicles.length, fleetError, language, role]);
 
   React.useEffect(() => {
     if (role !== "admin") return;

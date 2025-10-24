@@ -2733,10 +2733,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         onClick={handleBackdropClick}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-950/70 backdrop-blur-sm"
       />
-      <div className="pointer-events-none absolute inset-0 overflow-y-auto">
+      <div className="pointer-events-none absolute inset-0">
         <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
           <div
-            className="pointer-events-auto relative mx-auto w-full max-w-6xl space-y-6 rounded-2xl bg-white p-4 shadow-lg sm:p-6"
+            className="pointer-events-auto relative mx-auto w-full max-w-6xl space-y-6 overflow-y-auto rounded-2xl bg-white p-4 shadow-lg sm:p-6"
+            style={{ WebkitOverflowScrolling: "touch", maxHeight: "calc(100vh - 2rem)" }}
             role="dialog"
             aria-modal="true"
             aria-labelledby={dialogTitleId}

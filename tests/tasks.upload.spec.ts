@@ -114,6 +114,84 @@ jest.mock('../apps/api/src/middleware/auth', () =>
 );
 
 jest.mock('../apps/api/src/db/model', () => {
+  const tasks: Array<Record<string, any>> = [];
+  const wrapSingle = (doc: any) => {
+    const chain: Record<string, unknown> = {};
+    chain.select = jest.fn(() => chain);
+    chain.lean = jest.fn(async () => doc);
+    return chain;
+  };
+  const wrapMulti = (docs: any[]) => {
+    const chain: Record<string, unknown> = {};
+    chain.select = jest.fn(() => chain);
+    chain.lean = jest.fn(async () => docs);
+    return chain;
+  };
+  const extractValues = (source: any, path: string[]): unknown[] => {
+    if (path.length === 0) {
+      return [source];
+    }
+    if (Array.isArray(source)) {
+      return source.flatMap((item) => extractValues(item, path));
+    }
+    if (source === null || source === undefined) {
+      return [];
+    }
+    const [head, ...rest] = path;
+    return extractValues((source as Record<string, unknown>)[head], rest);
+  };
+  const matchesCriteria = (entity: Record<string, unknown>, criteria: any): boolean => {
+    if (!criteria || typeof criteria !== 'object') {
+      return true;
+    }
+    return Object.entries(criteria).every(([key, value]) => {
+      if (key === '$or' && Array.isArray(value)) {
+        return value.some((option) => matchesCriteria(entity, option));
+      }
+      if (key === '$and' && Array.isArray(value)) {
+        return value.every((option) => matchesCriteria(entity, option));
+      }
+      const values = extractValues(entity, key.split('.'));
+      if (value && typeof value === 'object' && !(value instanceof RegExp)) {
+        const candidate = value as {
+          $in?: unknown[];
+          $nin?: unknown[];
+          $eq?: unknown;
+          $regex?: RegExp;
+        };
+        if (Array.isArray(candidate.$in)) {
+          return values.some((current) =>
+            candidate.$in!.some((entry) => String(current) === String(entry)),
+          );
+        }
+        if (Array.isArray(candidate.$nin)) {
+          return values.every(
+            (current) =>
+              !candidate.$nin!.some((entry) => String(current) === String(entry)),
+          );
+        }
+        if (candidate.$regex instanceof RegExp) {
+          return values.some(
+            (current) => typeof current === 'string' && candidate.$regex!.test(current),
+          );
+        }
+        if (Object.prototype.hasOwnProperty.call(candidate, '$eq')) {
+          return values.some(
+            (current) => String(current) === String(candidate.$eq),
+          );
+        }
+      }
+      if (value instanceof RegExp) {
+        return values.some(
+          (current) => typeof current === 'string' && value.test(current),
+        );
+      }
+      if (!values.length) {
+        return value === undefined;
+      }
+      return values.some((current) => String(current) === String(value));
+    });
+  };
   const File = {
     aggregate: jest.fn(async (pipeline: any[]) => {
       let files = [...storedFiles];
@@ -235,15 +313,27 @@ jest.mock('../apps/api/src/db/model', () => {
     }),
   };
   const Task = {
-    findById: jest.fn(() => ({ lean: async () => null })),
+    findById: jest.fn((id: unknown) => ({
+      lean: async () =>
+        tasks.find((task) => String(task._id) === String(id)) || null,
+    })),
+    findOne: jest.fn((criteria: any = {}) => {
+      const doc = tasks.find((task) => matchesCriteria(task, criteria)) || null;
+      return wrapSingle(doc);
+    }),
+    find: jest.fn((criteria: any = {}) => {
+      const docs = tasks.filter((task) => matchesCriteria(task, criteria));
+      return wrapMulti(docs);
+    }),
     updateOne: jest.fn(() => ({ exec: async () => undefined })),
   };
-  return { File, Task, __store: storedFiles };
+  return { File, Task, __store: storedFiles, __tasks: tasks };
 });
 
 let handleChunks: typeof import('../apps/api/src/routes/tasks').handleChunks;
 let uploadsDir: string;
 let deleteFile: typeof import('../apps/api/src/services/dataStorage').deleteFile;
+let listFiles: typeof import('../apps/api/src/services/dataStorage').listFiles;
 let filesRouter: express.Router;
 let tempRoot: string;
 let app: Express;
@@ -317,7 +407,7 @@ beforeAll(async () => {
   const tasksModule = await import('../apps/api/src/routes/tasks');
   handleChunks = tasksModule.handleChunks;
   ({ uploadsDir } = await import('../apps/api/src/config/storage'));
-  ({ deleteFile } = await import('../apps/api/src/services/dataStorage'));
+  ({ deleteFile, listFiles } = await import('../apps/api/src/services/dataStorage'));
   ({ default: filesRouter } = await import('../apps/api/src/routes/files'));
   app = express();
   const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
@@ -352,6 +442,12 @@ beforeAll(async () => {
 beforeEach(() => {
   storedFiles.length = 0;
   scanFile.mockClear();
+  const { Task, __tasks } = require('../apps/api/src/db/model') as {
+    Task: { findOne: jest.Mock };
+    __tasks: Array<Record<string, unknown>>;
+  };
+  Task.findOne.mockClear();
+  __tasks.length = 0;
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   } else {
@@ -484,6 +580,40 @@ describe('Chunk upload', () => {
     expect(response.status).toBe(200);
     expect(Buffer.isBuffer(response.body)).toBe(true);
     expect(Buffer.compare(response.body as Buffer, content)).toBe(0);
+  });
+
+  test('привязывает файл к задаче по номеру при загрузке чанками', async () => {
+    const { Task, __tasks } = require('../apps/api/src/db/model') as {
+      Task: { findOne: jest.Mock };
+      __tasks: Array<Record<string, unknown>>;
+    };
+    const taskId = new Types.ObjectId();
+    __tasks.push({
+      _id: taskId,
+      task_number: 'ERM-123',
+      request_id: 'ERM-123',
+      title: 'Заявка на материалы',
+      attachments: [],
+    });
+    const chunks = [Buffer.from('Task attachment payload')];
+    const { attachment } = await uploadViaChunks(
+      'chunk-link-task',
+      chunks,
+      'task.txt',
+      'text/plain',
+      { taskId: 'ERM-123' },
+    );
+    expect(storedFiles).toHaveLength(1);
+    const stored = storedFiles[0];
+    expect(String(stored.taskId)).toBe(String(taskId));
+    const files = await listFiles({ userId: currentUserId });
+    expect(files).toHaveLength(1);
+    expect(files[0].taskId).toBe(String(taskId));
+    expect(files[0].taskNumber).toBe('ERM-123');
+    expect(files[0].url).toBe(attachment.url);
+    expect(Task.findOne).toHaveBeenCalledWith({
+      $or: [{ task_number: 'ERM-123' }, { request_id: 'ERM-123' }],
+    });
   });
 
   test('удаляет файл и запись через deleteFile', async () => {

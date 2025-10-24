@@ -23,8 +23,9 @@ import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
+import { Types } from 'mongoose';
 import { File } from '../db/model';
-import { syncTaskAttachments } from '../db/queries';
+import { findTaskIdByPublicIdentifier, syncTaskAttachments } from '../db/queries';
 import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
 import { maxUserFiles, maxUserStorage } from '../config/limits';
@@ -179,18 +180,45 @@ const syncAttachmentsForRequest = async (
     return;
   }
   const userId = resolveNumericUserId(req.user?.id);
+  const normalizedAttachments =
+    attachments as Parameters<typeof syncTaskAttachments>[1];
   try {
-    await syncTaskAttachments(
-      taskId,
-      attachments as Parameters<typeof syncTaskAttachments>[1],
-      userId,
-    );
+    await syncTaskAttachments(taskId, normalizedAttachments, userId);
+    return;
   } catch (error) {
-    await writeLog('Не удалось привязать вложения к задаче при загрузке', 'error', {
-      taskId,
-      userId,
-      error: (error as Error).message,
-    }).catch(() => undefined);
+    const trimmedId = typeof taskId === 'string' ? taskId.trim() : undefined;
+    if (trimmedId) {
+      try {
+        const resolvedId = await findTaskIdByPublicIdentifier(trimmedId, userId);
+        if (resolvedId) {
+          await syncTaskAttachments(resolvedId, normalizedAttachments, userId);
+          return;
+        }
+      } catch (fallbackError) {
+        await Promise.resolve(
+          writeLog(
+            'Не удалось привязать вложения после поиска задачи по номеру',
+            'warn',
+            {
+              taskNumber: trimmedId,
+              userId,
+              error: (fallbackError as Error).message,
+            },
+          ),
+        ).catch(() => undefined);
+      }
+    }
+    await Promise.resolve(
+      writeLog(
+        'Не удалось привязать вложения к задаче при загрузке',
+        'error',
+        {
+          taskId,
+          userId,
+          error: (error as Error).message,
+        },
+      ),
+    ).catch(() => undefined);
   }
 };
 

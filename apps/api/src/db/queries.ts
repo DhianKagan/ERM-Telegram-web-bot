@@ -27,6 +27,7 @@ import {
   ACCESS_MANAGER,
   ACCESS_TASK_DELETE,
   ACCESS_USER,
+  hasAccess,
 } from '../utils/accessMask';
 import {
   buildAttachmentsFromCommentHtml,
@@ -584,6 +585,44 @@ export async function syncTaskAttachments(
   }
   const fileIds = extractAttachmentIds(attachments);
   const idsForLog = fileIds.map((id) => id.toHexString());
+  const normalizedUserId =
+    typeof userId === 'number' && Number.isFinite(userId) ? userId : undefined;
+  let canManageForeignAttachments = false;
+  const userModel = User as typeof User | undefined;
+  if (
+    normalizedUserId !== undefined &&
+    userModel &&
+    typeof userModel.findOne === 'function'
+  ) {
+    try {
+      const userRecord = await userModel
+        .findOne({ telegram_id: normalizedUserId })
+        .select({ access: 1 })
+        .lean()
+        .exec();
+      const accessMask =
+        userRecord && typeof userRecord.access === 'number'
+          ? userRecord.access
+          : 0;
+      canManageForeignAttachments =
+        hasAccess(accessMask, ACCESS_ADMIN) ||
+        hasAccess(accessMask, ACCESS_MANAGER);
+    } catch (permissionError) {
+      try {
+        await logEngine.writeLog(
+          `Не удалось проверить права пользователя при обновлении вложений задачи ${normalizedTaskId.toHexString()}`,
+          'warn',
+          {
+            taskId: normalizedTaskId.toHexString(),
+            userId: normalizedUserId,
+            error: (permissionError as Error).message,
+          },
+        );
+      } catch {
+        /* игнорируем сбой логирования */
+      }
+    }
+  }
   try {
     if (fileIds.length === 0) {
       await fileModel.updateMany(
@@ -592,13 +631,68 @@ export async function syncTaskAttachments(
       );
       return;
     }
-    const filter: Record<string, unknown> = {
+    const updateFilter: Record<string, unknown> = {
       _id: { $in: fileIds },
     };
-    await fileModel.updateMany(filter, {
+    if (!canManageForeignAttachments) {
+      const ownership: Record<string, unknown>[] = [
+        { taskId: normalizedTaskId },
+      ];
+      if (normalizedUserId !== undefined) {
+        ownership.push({ userId: normalizedUserId });
+      }
+      updateFilter.$or = ownership;
+    }
+    const updateResult = await fileModel.updateMany(updateFilter, {
       $set: { taskId: normalizedTaskId },
       $unset: { draftId: '' },
     });
+    if (!canManageForeignAttachments) {
+      const matched =
+        updateResult && typeof updateResult === 'object'
+          ? typeof (updateResult as { matchedCount?: unknown }).matchedCount ===
+            'number'
+            ? (updateResult as { matchedCount: number }).matchedCount
+            : typeof (updateResult as { modifiedCount?: unknown })
+                  .modifiedCount === 'number'
+              ? (updateResult as { modifiedCount: number }).modifiedCount
+              : undefined
+          : undefined;
+      if (matched === 0 && fileIds.length > 0) {
+        try {
+          await logEngine.writeLog(
+            `Нет доступных вложений для привязки при обновлении задачи ${normalizedTaskId.toHexString()}`,
+            'warn',
+            {
+              taskId: normalizedTaskId.toHexString(),
+              userId: normalizedUserId,
+              requestedFileIds: idsForLog,
+            },
+          );
+        } catch {
+          /* игнорируем сбой логирования */
+        }
+      } else if (
+        typeof matched === 'number' &&
+        matched >= 0 &&
+        matched < fileIds.length
+      ) {
+        try {
+          await logEngine.writeLog(
+            `Отфильтрованы недоступные вложения при обновлении задачи ${normalizedTaskId.toHexString()}`,
+            'warn',
+            {
+              taskId: normalizedTaskId.toHexString(),
+              userId: normalizedUserId,
+              requestedFileIds: idsForLog,
+              обновлено: matched,
+            },
+          );
+        } catch {
+          /* игнорируем сбой логирования */
+        }
+      }
+    }
     await fileModel.updateMany(
       { taskId: normalizedTaskId, _id: { $nin: fileIds } },
       { $unset: { taskId: '', draftId: '' } },

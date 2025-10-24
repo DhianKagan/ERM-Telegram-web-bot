@@ -635,12 +635,11 @@ export async function syncTaskAttachments(
       _id: { $in: fileIds },
     };
     if (!canManageForeignAttachments) {
-      const ownership: Record<string, unknown>[] = [
-        { taskId: normalizedTaskId },
-      ];
+      const ownership: Record<string, unknown>[] = [];
       if (normalizedUserId !== undefined) {
         ownership.push({ userId: normalizedUserId });
       }
+      ownership.push({ taskId: normalizedTaskId });
       updateFilter.$or = ownership;
     }
     const updateResult = await fileModel.updateMany(updateFilter, {

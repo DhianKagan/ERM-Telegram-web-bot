@@ -18,20 +18,6 @@ export interface StoredFile {
   taskTitle?: string | null;
 }
 
-export interface StorageRemediationResultItem {
-  action: string;
-  status: "completed" | "skipped" | "failed";
-  details?: string;
-  removed?: number;
-  attempted?: number;
-}
-
-export interface StorageRemediationReport {
-  generatedAt: string;
-  results: StorageRemediationResultItem[];
-  report?: unknown;
-}
-
 export const fetchFiles = (params?: { userId?: number; type?: string }) => {
   const qs = new URLSearchParams();
   if (params?.userId) qs.set("userId", String(params.userId));
@@ -52,17 +38,4 @@ export const removeFile = (id: string) =>
     method: "DELETE",
   });
 
-export const purgeDetachedFiles = async (): Promise<StorageRemediationReport> => {
-  const res = await authFetch("/api/v1/storage/diagnostics/fix", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ actions: [{ type: "purgeDetachedFiles" }] }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось очистить хранилище.");
-  }
-  return res.json() as Promise<StorageRemediationReport>;
-};
-
-export default { fetchFiles, fetchFile, removeFile, purgeDetachedFiles };
+export default { fetchFiles, fetchFile, removeFile };

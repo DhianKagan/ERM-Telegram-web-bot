@@ -534,18 +534,71 @@ export interface UpdateTaskStatusOptions {
   source?: 'web' | 'telegram';
 }
 
+function normalizeObjectId(value: unknown): Types.ObjectId | null {
+  if (value instanceof Types.ObjectId) {
+    return value;
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { toHexString?: () => string }).toHexString === 'function'
+  ) {
+    const hex = (value as { toHexString: () => string }).toHexString();
+    return Types.ObjectId.isValid(hex) ? new Types.ObjectId(hex) : null;
+  }
+  if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
+    return new Types.ObjectId(value);
+  }
+  return null;
+}
+
+export async function findTaskIdByPublicIdentifier(
+  identifier: string,
+  userId?: number,
+): Promise<Types.ObjectId | null> {
+  const trimmed = identifier.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const taskModel = Task as typeof Task | undefined;
+  if (!taskModel || typeof taskModel.findOne !== 'function') {
+    return null;
+  }
+  try {
+    const fallbackTask = await taskModel
+      .findOne({
+        $or: [{ task_number: trimmed }, { request_id: trimmed }],
+      })
+      .select({ _id: 1 })
+      .lean<{ _id?: Types.ObjectId | string | { toHexString?: () => string } | null }>();
+    return normalizeObjectId(fallbackTask?._id);
+  } catch (lookupError) {
+    await Promise.resolve(
+      logEngine.writeLog(
+        `Не удалось найти задачу по номеру ${trimmed} при обновлении вложений`,
+        'warn',
+        { taskNumber: trimmed, userId, error: (lookupError as Error).message },
+      ),
+    ).catch(() => undefined);
+    return null;
+  }
+}
+
 export async function syncTaskAttachments(
   taskIdInput: Types.ObjectId | string,
   attachments: TaskDocument['attachments'] | undefined,
   userId?: number,
 ): Promise<void> {
   if (attachments === undefined) return;
-  const normalizedTaskId =
+  let normalizedTaskId =
     typeof taskIdInput === 'string'
       ? Types.ObjectId.isValid(taskIdInput)
         ? new Types.ObjectId(taskIdInput)
         : null
       : taskIdInput;
+  if (!normalizedTaskId && typeof taskIdInput === 'string') {
+    normalizedTaskId = await findTaskIdByPublicIdentifier(taskIdInput, userId);
+  }
   if (!normalizedTaskId) {
     await logEngine
       .writeLog(

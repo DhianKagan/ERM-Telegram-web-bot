@@ -7,6 +7,7 @@ import {
   generateMultiRouteLink,
   type RoutePlan as SharedRoutePlan,
   type RoutePlanRoute as SharedRoutePlanRoute,
+  type RoutePlanStop,
   type RoutePlanStatus,
 } from 'shared';
 import {
@@ -26,7 +27,7 @@ const DRIVER_NAME_MAX_LENGTH = 80;
 const ADDRESS_MAX_LENGTH = 200;
 
 interface TaskSource {
-  _id: Types.ObjectId | string;
+  _id: Types.ObjectId | string | { toString(): string };
   title?: string;
   startCoordinates?: { lat?: number; lng?: number } | null;
   finishCoordinates?: { lat?: number; lng?: number } | null;
@@ -322,12 +323,18 @@ async function buildRoutesFromInput(
     totalStops += metrics.stops ?? 0;
     totalTasks += metrics.tasks ?? 0;
 
-    const sortedStops = stops
-      .map((stop, index) => ({ ...stop, order: Number.isFinite(stop.order) ? stop.order : index }))
+    const sortedStops: RoutePlanRouteEntry['stops'] = stops
+      .map((stop, index) => ({
+        ...stop,
+        order: Number.isFinite(stop.order) ? Number(stop.order) : index,
+      }))
       .sort((a, b) => a.order - b.order)
       .map((stop, index) => ({ ...stop, order: index }));
-    const sortedTasks = routeTasks
-      .map((task, index) => ({ ...task, order: Number.isFinite(task.order) ? task.order : index }))
+    const sortedTasks: RoutePlanRouteEntry['tasks'] = routeTasks
+      .map((task, index) => ({
+        ...task,
+        order: Number.isFinite(task.order) ? Number(task.order) : index,
+      }))
       .sort((a, b) => a.order - b.order)
       .map((task, index) => ({ ...task, order: index }));
 
@@ -391,10 +398,10 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       distanceKm: task.distanceKm,
     }));
 
-  const stops = (route.stops || [])
+  const stops: SharedRoutePlanRoute['stops'] = (route.stops || [])
     .map((stop) => ({
       order: Number.isFinite(stop.order) ? Number(stop.order) : 0,
-      kind: stop.kind === 'finish' ? 'finish' : 'start',
+      kind: (stop.kind === 'finish' ? 'finish' : 'start') as RoutePlanStop['kind'],
       taskId: parseObjectId(stop.taskId) ?? undefined,
       coordinates: cloneCoords(stop.coordinates ?? null),
       address: sanitizeAddress(stop.address),
@@ -406,7 +413,7 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       kind: stop.kind,
       taskId: (stop.taskId as Types.ObjectId).toHexString(),
       coordinates: stop.coordinates,
-      address: stop.address,
+      address: stop.address ?? null,
     }));
 
   const metrics = {
@@ -443,6 +450,7 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     count?: number;
     notes?: string;
     approvedBy?: number;
+    completedBy?: number;
     routes?: RoutePlanRouteEntry[];
     metrics?: {
       totalDistanceKm?: number | null;

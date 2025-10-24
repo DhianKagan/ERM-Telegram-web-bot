@@ -21,7 +21,17 @@ jest.mock('../src/api/middleware', () => ({
 
 const { optimize } = require('../src/services/optimizer');
 jest.mock('../src/services/optimizer', () => ({
-  optimize: jest.fn(async () => [['1']]),
+  optimize: jest.fn(async () => ({
+    routes: [
+      {
+        id: 'route-1',
+        order: 0,
+        tasks: [
+          { taskId: '1', order: 0, title: 'Задача 1' },
+        ],
+      },
+    ],
+  })),
 }));
 const router = require('../src/routes/optimizer').default;
 
@@ -37,8 +47,9 @@ test('POST /api/v1/optimizer возвращает маршрут', async () => {
     .post('/api/v1/optimizer')
     .send({ tasks: ['1'], count: 1 });
   expect(res.status).toBe(200);
-  expect(Array.isArray(res.body.routes)).toBe(true);
-  expect(optimize).toHaveBeenCalledWith(['1'], 1, undefined);
+  expect(res.body.plan).toBeTruthy();
+  expect(Array.isArray(res.body.plan.routes)).toBe(true);
+  expect(optimize).toHaveBeenCalledWith(['1'], 1, undefined, undefined);
 });
 
 afterAll(() => {

@@ -6,7 +6,38 @@ import * as service from '../services/optimizer';
 import { sendProblem } from '../utils/problem';
 import type RequestWithUser from '../types/request';
 
-export async function optimize(req: RequestWithUser, res: Response): Promise<void> {
+type OptimizeRequestBody = {
+  tasks?: unknown;
+  count?: unknown;
+  method?: service.OptimizeMethod;
+};
+
+const normalizeTasks = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((taskId) =>
+      typeof taskId === 'string' ? taskId.trim() : taskId != null ? String(taskId) : '',
+    )
+    .filter((taskId): taskId is string => Boolean(taskId));
+};
+
+const normalizeCount = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+export async function optimize(
+  req: RequestWithUser<Record<string, string>, unknown, OptimizeRequestBody>,
+  res: Response,
+): Promise<void> {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const errorList = errors.array();
@@ -26,10 +57,13 @@ export async function optimize(req: RequestWithUser, res: Response): Promise<voi
       : typeof actorIdRaw === 'string' && actorIdRaw.trim()
       ? Number(actorIdRaw)
       : undefined;
+  const tasks = normalizeTasks(req.body?.tasks);
+  const count = normalizeCount(req.body?.count);
+  const method = req.body?.method;
   const plan = await service.optimize(
-    (req.body.tasks as string[]) || [],
-    req.body.count,
-    req.body.method,
+    tasks,
+    count ?? 1,
+    method,
     Number.isFinite(actorId) ? (actorId as number) : undefined,
   );
   res.json({ plan });

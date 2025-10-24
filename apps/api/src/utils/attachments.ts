@@ -122,11 +122,11 @@ export function coerceAttachments(
 
 const htmlEntityDecode = (value: string): string =>
   value
-    .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'");
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&');
 
 const OBJECT_ID_LENGTH = 24;
 

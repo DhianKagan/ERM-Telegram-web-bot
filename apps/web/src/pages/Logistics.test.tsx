@@ -307,9 +307,11 @@ jest.mock("../context/useAuth", () => ({
 jest.mock("../controllers/taskStateController", () => {
   const ReactActual = jest.requireActual<typeof import("react")>("react");
   const listeners = new Set<() => void>();
+  const defaultKey = "logistics:all";
+  const resolveKey = (value?: string) => value ?? defaultKey;
   let snapshot: any[] = [];
   let meta = {
-    key: "logistics:all",
+    key: defaultKey,
     pageSize: 0,
     total: 0,
     sort: "desc" as const,
@@ -318,10 +320,11 @@ jest.mock("../controllers/taskStateController", () => {
   const notify = () => {
     listeners.forEach((listener) => listener());
   };
-  const updateSnapshot = (rows: any[]) => {
+  const updateSnapshot = (rows: any[], key: string) => {
     snapshot = rows.map((task) => ({ ...task }));
     meta = {
       ...meta,
+      key,
       pageSize: snapshot.length,
       total: snapshot.length,
       updatedAt: Date.now(),
@@ -346,39 +349,55 @@ jest.mock("../controllers/taskStateController", () => {
       notify();
     },
     setIndex(_key: string, list: any[]) {
-      updateSnapshot(Array.isArray(list) ? list : []);
+      const key = resolveKey(_key);
+      updateSnapshot(Array.isArray(list) ? list : [], key);
     },
     getIndexSnapshot(_key: string) {
+      const key = resolveKey(_key);
+      if (meta.key !== key) {
+        return [];
+      }
       return snapshot;
     },
     getIndexMetaSnapshot(_key: string) {
+      const key = resolveKey(_key);
+      if (meta.key !== key) {
+        return {
+          ...meta,
+          key,
+        };
+      }
       return { ...meta };
     },
   };
-  const useTaskIndex = (_key = "logistics:all") => {
-    const [value, setValue] = ReactActual.useState(() => snapshot);
-    ReactActual.useEffect(() => {
-      const listener = () => {
-        setValue([...snapshot]);
-      };
-      const unsubscribe = taskStateController.subscribe(listener);
-      listener();
-      return unsubscribe;
-    }, []);
-    return value;
-  };
-  const useTaskIndexMeta = (_key = "logistics:all") => {
+  const useTaskIndex = (_key = defaultKey) => {
+    const key = resolveKey(_key);
     const [value, setValue] = ReactActual.useState(() =>
-      taskStateController.getIndexMetaSnapshot(_key),
+      taskStateController.getIndexSnapshot(key),
     );
     ReactActual.useEffect(() => {
       const listener = () => {
-        setValue(taskStateController.getIndexMetaSnapshot(_key));
+        setValue([...taskStateController.getIndexSnapshot(key)]);
       };
       const unsubscribe = taskStateController.subscribe(listener);
       listener();
       return unsubscribe;
-    }, [_key]);
+    }, [key]);
+    return value;
+  };
+  const useTaskIndexMeta = (_key = defaultKey) => {
+    const key = resolveKey(_key);
+    const [value, setValue] = ReactActual.useState(() =>
+      taskStateController.getIndexMetaSnapshot(key),
+    );
+    ReactActual.useEffect(() => {
+      const listener = () => {
+        setValue(taskStateController.getIndexMetaSnapshot(key));
+      };
+      const unsubscribe = taskStateController.subscribe(listener);
+      listener();
+      return unsubscribe;
+    }, [key]);
     return value;
   };
   return {

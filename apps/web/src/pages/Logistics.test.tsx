@@ -1,13 +1,43 @@
 /** @jest-environment jsdom */
-// Назначение: тесты страницы маршрутов с отображением техники и треков
+// Назначение: тесты страницы логистики с отображением техники и треков
 // Основные модули: React, @testing-library/react, Leaflet-моки
 
 import "@testing-library/jest-dom";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import RoutesPage from "./Routes";
+import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      if (key === "logistics.selectedVehicle") {
+        return `Выбран транспорт: ${options?.name ?? ""}`.trim();
+      }
+      if (key === "logistics.linksLabel") {
+        return `Маршрут ${options?.index ?? ""}`.trim();
+      }
+      const dictionary: Record<string, string> = {
+        loading: "Загрузка...",
+        reset: "Сбросить",
+        refresh: "Обновить",
+        "logistics.title": "Логистика",
+        "logistics.transport": "Транспорт",
+        "logistics.unselectedVehicle": "Не выбран",
+        "logistics.refreshFleet": "Обновить технику",
+        "logistics.trackLabel": "Показывать трек (1 час)",
+        "logistics.autoRefresh": "Автообновление",
+        "logistics.noVehicles": "Транспорт не найден",
+        "logistics.loadError": "Не удалось загрузить транспорт автопарка",
+        "logistics.adminOnly": "Автопарк доступен только администраторам",
+        "logistics.noAccess": "Нет доступа к автопарку",
+        "logistics.optimize": "Просчёт логистики",
+        "logistics.tasksHeading": "Задачи",
+      };
+      return dictionary[key] ?? key;
+    },
+  }),
+}));
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 
 const mockTasks = [
@@ -135,7 +165,7 @@ jest.mock("../controllers/taskStateController", () => {
   const listeners = new Set<() => void>();
   let snapshot: any[] = [];
   let meta = {
-    key: "routes:all",
+    key: "logistics:all",
     pageSize: 0,
     total: 0,
     sort: "desc" as const,
@@ -233,7 +263,7 @@ jest.mock("../context/useTasks", () => {
   };
 });
 
-describe("RoutesPage", () => {
+describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchTasksMock.mockResolvedValue(mockTasks);
@@ -273,7 +303,7 @@ describe("RoutesPage", () => {
   it("отображает маркеры техники и трек после включения", async () => {
     render(
       <MemoryRouter>
-        <RoutesPage />
+        <LogisticsPage />
       </MemoryRouter>,
     );
 

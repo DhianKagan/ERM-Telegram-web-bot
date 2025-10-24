@@ -23,7 +23,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const LogsPage = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
 const TaskKanban = lazy(() => import("./pages/TaskKanban"));
-const RoutesPage = lazy(() => import("./pages/Routes"));
+const LogisticsPage = lazy(() => import("./pages/Logistics"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
@@ -100,10 +100,10 @@ function AppShell() {
                 }
               />
               <Route
-                path="/mg/routes"
+                path="/mg/logistics"
                 element={
                   <ManagerRoute>
-                    <RoutesPage />
+                    <LogisticsPage />
                   </ManagerRoute>
                 }
               />
@@ -124,10 +124,10 @@ function AppShell() {
                 }
               />
               <Route
-                path="/cp/routes"
+                path="/cp/logistics"
                 element={
                   <AdminRoute>
-                    <RoutesPage />
+                    <LogisticsPage />
                   </AdminRoute>
                 }
               />

@@ -13,12 +13,7 @@ import {
   deleteFleetVehicle,
   type FleetVehiclePayload,
 } from "../../services/fleets";
-import type {
-  FleetVehicleDto,
-  VehiclePositionDto,
-  VehicleSensorDto,
-  VehicleTrackPointDto,
-} from "shared";
+import type { FleetVehicleDto } from "shared";
 import FleetVehicleDialog from "./FleetVehicleDialog";
 import {
   fleetVehicleColumns,
@@ -31,7 +26,6 @@ import {
 } from "./badgeStyles";
 
 const PAGE_LIMIT = 10;
-const TRACK_POINTS_PREVIEW_LIMIT = 20;
 
 const transportHistoryFormatter = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
@@ -40,99 +34,6 @@ const transportHistoryFormatter = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-const formatUnknown = (value: unknown): string => {
-  if (value === undefined || value === null) {
-    return "";
-  }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-};
-
-const formatSensorList = (sensors?: VehicleSensorDto[]): string => {
-  if (!sensors?.length) {
-    return "";
-  }
-  return sensors
-    .map((sensor) => {
-      const parts: string[] = [];
-      if (sensor.name) {
-        parts.push(sensor.name);
-      }
-      if (sensor.type) {
-        parts.push(`тип: ${sensor.type}`);
-      }
-      if (sensor.value !== undefined && sensor.value !== null) {
-        const sensorValue = formatUnknown(sensor.value);
-        if (sensorValue) {
-          parts.push(`значение: ${sensorValue}`);
-        }
-      }
-      if (sensor.updatedAt) {
-        parts.push(`обновлён: ${sensor.updatedAt}`);
-      }
-      return parts.join(" • ");
-    })
-    .filter(Boolean)
-    .join("; ");
-};
-
-const formatTrackList = (track?: VehicleTrackPointDto[]): string => {
-  if (!track?.length) {
-    return "";
-  }
-  const preview = track.slice(0, TRACK_POINTS_PREVIEW_LIMIT);
-  const rendered = preview
-    .map((point, index) => {
-      const parts: string[] = [];
-      parts.push(`#${index + 1}`);
-      parts.push(`широта: ${point.lat}`);
-      parts.push(`долгота: ${point.lon}`);
-      if (point.speed !== undefined) {
-        parts.push(`скорость: ${point.speed}`);
-      }
-      if (point.course !== undefined) {
-        parts.push(`курс: ${point.course}`);
-      }
-      parts.push(`время: ${point.timestamp}`);
-      return parts.join(" • ");
-    })
-    .join("; ");
-  if (track.length > TRACK_POINTS_PREVIEW_LIMIT) {
-    const restCount = track.length - TRACK_POINTS_PREVIEW_LIMIT;
-    return `${rendered}; ещё ${restCount}`;
-  }
-  return rendered;
-};
-
-const formatPositionInfo = (position?: VehiclePositionDto): string => {
-  if (!position) {
-    return "";
-  }
-  const items: string[] = [
-    `широта: ${position.lat}`,
-    `долгота: ${position.lon}`,
-  ];
-  if (position.speed !== undefined) {
-    items.push(`скорость: ${position.speed}`);
-  }
-  if (position.course !== undefined) {
-    items.push(`курс: ${position.course}`);
-  }
-  if (position.updatedAt) {
-    items.push(`обновлено: ${position.updatedAt}`);
-  }
-  return items.join("; ");
-};
 
 const formatHistoryInstant = (value?: string): string => {
   if (!value) {
@@ -174,6 +75,123 @@ const formatTransportHistory = (
   return history.map(buildHistoryLabel).join("; ");
 };
 
+type VehicleCardField = {
+  id: string;
+  label: string;
+  render: (vehicle: FleetVehicleDto) => React.ReactNode;
+};
+
+const vehicleCardFields: VehicleCardField[] = [
+  {
+    id: "id",
+    label: "ID",
+    render: (vehicle) => vehicle.id,
+  },
+  {
+    id: "name",
+    label: "Название",
+    render: (vehicle) => vehicle.name,
+  },
+  {
+    id: "registrationNumber",
+    label: "Регистрационный номер",
+    render: (vehicle) => vehicle.registrationNumber,
+  },
+  {
+    id: "odometerInitial",
+    label: "Одометр начальный",
+    render: (vehicle) => vehicle.odometerInitial,
+  },
+  {
+    id: "odometerCurrent",
+    label: "Одометр текущий",
+    render: (vehicle) => vehicle.odometerCurrent,
+  },
+  {
+    id: "mileageTotal",
+    label: "Пробег",
+    render: (vehicle) => vehicle.mileageTotal,
+  },
+  {
+    id: "transportType",
+    label: "Тип транспорта",
+    render: (vehicle) => vehicle.transportType,
+  },
+  {
+    id: "fuelType",
+    label: "Тип топлива",
+    render: (vehicle) => vehicle.fuelType,
+  },
+  {
+    id: "fuelRefilled",
+    label: "Заправлено",
+    render: (vehicle) => vehicle.fuelRefilled,
+  },
+  {
+    id: "fuelAverageConsumption",
+    label: "Расход",
+    render: (vehicle) => vehicle.fuelAverageConsumption,
+  },
+  {
+    id: "fuelSpentTotal",
+    label: "Израсходовано",
+    render: (vehicle) => vehicle.fuelSpentTotal,
+  },
+  {
+    id: "currentTasks",
+    label: "Задачи",
+    render: (vehicle) =>
+      vehicle.currentTasks.length ? vehicle.currentTasks.join(", ") : "—",
+  },
+  {
+    id: "transportHistory",
+    label: "История задач",
+    render: (vehicle) =>
+      vehicle.transportHistory?.length ? (
+        <ul className="space-y-1 text-sm">
+          {vehicle.transportHistory.map((entry) => (
+            <li
+              key={`${entry.taskId}-${entry.assignedAt}`}
+              className="leading-snug"
+            >
+              {buildHistoryLabel(entry)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        "—"
+      ),
+  },
+  {
+    id: "createdAt",
+    label: "Создан",
+    render: (vehicle) => vehicle.createdAt || "—",
+  },
+  {
+    id: "updatedAt",
+    label: "Обновлён",
+    render: (vehicle) => vehicle.updatedAt || "—",
+  },
+  {
+    id: "unitId",
+    label: "Устройство",
+    render: (vehicle) =>
+      vehicle.unitId !== undefined && vehicle.unitId !== null
+        ? vehicle.unitId
+        : "—",
+  },
+  {
+    id: "remoteName",
+    label: "Удалённое имя",
+    render: (vehicle) => vehicle.remoteName || "—",
+  },
+  {
+    id: "notes",
+    label: "Примечания",
+    render: (vehicle) => vehicle.notes || "—",
+  },
+];
+
 export default function FleetVehiclesTab() {
   const [items, setItems] = useState<FleetVehicleDto[]>([]);
   const [total, setTotal] = useState(0);
@@ -194,10 +212,6 @@ export default function FleetVehiclesTab() {
     () =>
       items.map((item) => ({
         ...item,
-        sensorsInfo: formatSensorList(item.sensors),
-        customSensorsInfo: formatSensorList(item.customSensors),
-        trackInfo: formatTrackList(item.track),
-        positionInfo: formatPositionInfo(item.position),
         transportHistoryInfo: formatTransportHistory(item.transportHistory),
       })),
     [items],
@@ -359,105 +373,12 @@ export default function FleetVehiclesTab() {
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
               <h3 className="text-base font-semibold">Карточка транспорта</h3>
               <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="font-medium text-slate-500">ID</dt>
-                  <dd className="text-slate-900">{selectedVehicle.id}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Название</dt>
-                  <dd className="text-slate-900">{selectedVehicle.name}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Регистрационный номер</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.registrationNumber}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Одометр начальный</dt>
-                  <dd className="text-slate-900">{selectedVehicle.odometerInitial}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Одометр текущий</dt>
-                  <dd className="text-slate-900">{selectedVehicle.odometerCurrent}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Пробег</dt>
-                  <dd className="text-slate-900">{selectedVehicle.mileageTotal}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Тип транспорта</dt>
-                  <dd className="text-slate-900">{selectedVehicle.transportType || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Тип топлива</dt>
-                  <dd className="text-slate-900">{selectedVehicle.fuelType}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Заправлено</dt>
-                  <dd className="text-slate-900">{selectedVehicle.fuelRefilled}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Расход</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.fuelAverageConsumption}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Израсходовано</dt>
-                  <dd className="text-slate-900">{selectedVehicle.fuelSpentTotal}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Задачи</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.currentTasks?.length
-                      ? selectedVehicle.currentTasks.join(", ")
-                      : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">История задач</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.transportHistory?.length ? (
-                      <ul className="space-y-1 text-sm">
-                        {selectedVehicle.transportHistory.map((entry) => (
-                          <li
-                            key={`${entry.taskId}-${entry.assignedAt}`}
-                            className="leading-snug"
-                          >
-                            {buildHistoryLabel(entry)}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      "—"
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Создан</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.createdAt || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Обновлён</dt>
-                  <dd className="text-slate-900">
-                    {selectedVehicle.updatedAt || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Устройство</dt>
-                  <dd className="text-slate-900">{selectedVehicle.unitId ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Удалённое имя</dt>
-                  <dd className="text-slate-900">{selectedVehicle.remoteName || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-500">Примечания</dt>
-                  <dd className="text-slate-900">{selectedVehicle.notes || "—"}</dd>
-                </div>
+                {vehicleCardFields.map(({ id, label, render }) => (
+                  <div key={id}>
+                    <dt className="font-medium text-slate-500">{label}</dt>
+                    <dd className="text-slate-900">{render(selectedVehicle)}</dd>
+                  </div>
+                ))}
               </dl>
             </article>
           ) : null}

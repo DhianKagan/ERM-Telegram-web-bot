@@ -19,10 +19,6 @@ const stringify = (value: unknown) => {
 };
 
 export type FleetVehicleRow = FleetVehicleDto & {
-  sensorsInfo: string;
-  customSensorsInfo: string;
-  trackInfo: string;
-  positionInfo: string;
   transportHistoryInfo: string;
 };
 
@@ -113,30 +109,6 @@ export const fleetVehicleColumns: ColumnDef<FleetVehicleRow>[] = [
     accessorKey: "notes",
     header: "Примечания",
     meta: { minWidth: "10rem", maxWidth: "20rem" },
-  },
-  {
-    accessorKey: "positionInfo",
-    header: "Позиция",
-    cell: ({ getValue }) => stringify(getValue<string | undefined>()),
-    meta: { minWidth: "12rem", maxWidth: "24rem" },
-  },
-  {
-    accessorKey: "sensorsInfo",
-    header: "Датчики",
-    cell: ({ getValue }) => stringify(getValue<string | undefined>()),
-    meta: { minWidth: "12rem", maxWidth: "24rem" },
-  },
-  {
-    accessorKey: "customSensorsInfo",
-    header: "Польз. датчики",
-    cell: ({ getValue }) => stringify(getValue<string | undefined>()),
-    meta: { minWidth: "12rem", maxWidth: "24rem" },
-  },
-  {
-    accessorKey: "trackInfo",
-    header: "Трек",
-    cell: ({ getValue }) => stringify(getValue<string | undefined>()),
-    meta: { minWidth: "12rem", maxWidth: "24rem" },
   },
 ];
 

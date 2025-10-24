@@ -60,29 +60,6 @@ export interface User {
   positionId?: string;
 }
 
-export interface VehiclePositionDto {
-  lat: number;
-  lon: number;
-  speed?: number;
-  course?: number;
-  updatedAt?: string;
-}
-
-export interface VehicleSensorDto {
-  name: string;
-  type?: string;
-  value?: unknown;
-  updatedAt?: string;
-}
-
-export interface VehicleTrackPointDto {
-  lat: number;
-  lon: number;
-  speed?: number;
-  course?: number;
-  timestamp: string;
-}
-
 export type TrackingAlarmType = 'delay' | 'route-deviation';
 
 export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';
@@ -101,8 +78,20 @@ export interface TrackingAlarmEvent {
 export interface TrackingPositionEvent {
   type: 'position';
   vehicleId: string;
-  position: VehiclePositionDto;
-  track?: VehicleTrackPointDto[];
+  position: {
+    lat: number;
+    lon: number;
+    speed?: number;
+    course?: number;
+    updatedAt?: string;
+  };
+  track?: {
+    lat: number;
+    lon: number;
+    speed?: number;
+    course?: number;
+    timestamp: string;
+  }[];
 }
 
 export interface TrackingHeartbeatEvent {
@@ -141,10 +130,6 @@ export interface FleetVehicleDto {
   unitId?: number;
   remoteName?: string;
   notes?: string;
-  position?: VehiclePositionDto;
-  sensors?: VehicleSensorDto[];
-  customSensors?: VehicleSensorDto[];
-  track?: VehicleTrackPointDto[];
 }
 
 export type RoutePlanStatus = 'draft' | 'approved' | 'completed';

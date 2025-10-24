@@ -1,15 +1,14 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, Leaflet, Breadcrumbs, i18next
+// Основные модули: React, Leaflet, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Breadcrumbs from "../components/Breadcrumbs";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
-import L from "leaflet";
+import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
@@ -52,6 +51,19 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   tasks: true,
   optimized: true,
 };
+
+type LogisticsDetails = {
+  transport_type?: string | null;
+  start_location?: string | null;
+  end_location?: string | null;
+};
+
+const MAP_CENTER: [number, number] = [48.3794, 31.1656];
+const MAP_ZOOM = 6;
+const UKRAINE_BOUNDS: LatLngBoundsExpression = [
+  [44, 22],
+  [52.5, 40.5],
+];
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
@@ -357,6 +369,39 @@ export default function LogisticsPage() {
     [location, navigate],
   );
 
+  const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
+    const hasPoint = (coords?: Coords | null) =>
+      typeof coords?.lat === "number" &&
+      Number.isFinite(coords.lat) &&
+      typeof coords?.lng === "number" &&
+      Number.isFinite(coords.lng);
+
+    return input.filter((task) => {
+      const details = (task as Record<string, unknown>)
+        .logistics_details as LogisticsDetails | undefined;
+      const transportTypeRaw =
+        typeof details?.transport_type === "string"
+          ? details.transport_type.trim()
+          : "";
+      const normalizedTransportType = transportTypeRaw.toLowerCase();
+      const hasTransportType =
+        Boolean(transportTypeRaw) && normalizedTransportType !== "без транспорта";
+
+      if (!hasTransportType) {
+        return false;
+      }
+
+      const hasCoordinates = hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
+      const hasAddresses =
+        (typeof details?.start_location === "string" &&
+          details.start_location.trim().length > 0) ||
+        (typeof details?.end_location === "string" &&
+          details.end_location.trim().length > 0);
+
+      return hasCoordinates || hasAddresses;
+    });
+  }, []);
+
   const load = React.useCallback(() => {
     const userId = Number((user as any)?.telegram_id) || undefined;
     fetchTasks({}, userId, true).then((data: any) => {
@@ -378,17 +423,18 @@ export default function LogisticsPage() {
       const list = mapped.filter(
         (task): task is RouteTask => Boolean(task),
       );
-      controller.setIndex("logistics:all", list, {
+      const filtered = filterRouteTasks(list);
+      controller.setIndex("logistics:all", filtered, {
         kind: "task",
         mine: false,
         userId,
-        pageSize: 0,
-        total: list.length,
+        pageSize: filtered.length,
+        total: filtered.length,
         sort: "desc",
       });
-      setSorted(list);
+      setSorted(filtered);
     });
-  }, [controller, user]);
+  }, [controller, filterRouteTasks, user]);
 
   const loadFleetVehicles = React.useCallback(async () => {
     if (role !== "admin") return;
@@ -573,7 +619,12 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = L.map("logistics-map").setView([48.3794, 31.1656], 6);
+    const map = L.map("logistics-map", {
+      maxBounds: UKRAINE_BOUNDS,
+      maxBoundsViscosity: 1,
+      minZoom: 5,
+      maxZoom: 12,
+    }).setView(MAP_CENTER, MAP_ZOOM);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
@@ -654,24 +705,20 @@ export default function LogisticsPage() {
     };
   }, [layerVisibility.tasks, mapReady, openTask, sorted]);
 
+  React.useEffect(() => {
+    if (hasDialog) return;
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (typeof map.invalidateSize === "function") {
+      map.invalidateSize();
+    }
+  }, [hasDialog, mapReady]);
+
   return (
-    <div className="space-y-4">
-      <Breadcrumbs
-        items={[
-          {
-            label: t("logistics.title"),
-            href:
-              role === "admin"
-                ? "/cp/logistics"
-                : role === "manager"
-                  ? "/mg/logistics"
-                  : undefined,
-          },
-          { label: t("logistics.title") },
-        ]}
-      />
+    <div className="space-y-3 sm:space-y-4">
       <h2 className="text-xl font-semibold">{t("logistics.title")}</h2>
-      <section className="space-y-4 rounded border bg-white/80 p-4 shadow-sm">
+      <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">
@@ -975,8 +1022,8 @@ export default function LogisticsPage() {
         )}
       </section>
       {role === "admin" ? (
-        <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
+        <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm sm:p-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <h3 className="font-semibold">{t("logistics.transport")}</h3>
             <Button
               type="button"
@@ -1041,114 +1088,140 @@ export default function LogisticsPage() {
           {fleetError}
         </p>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2">
-        <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
-          <h3 className="text-sm font-semibold">
-            {t("logistics.layersTitle")}
-          </h3>
-          <div className="flex flex-col gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="size-4"
-                checked={layerVisibility.tasks}
-                onChange={(event) =>
-                  setLayerVisibility((prev) => ({
-                    ...prev,
-                    tasks: event.target.checked,
-                  }))
-                }
-              />
-              <span>{t("logistics.layerTasks")}</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="size-4"
-                checked={layerVisibility.optimized}
-                onChange={(event) =>
-                  setLayerVisibility((prev) => ({
-                    ...prev,
-                    optimized: event.target.checked,
-                  }))
-                }
-              />
-              <span>{t("logistics.layerOptimization")}</span>
-            </label>
+      <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
+          <div
+            id="logistics-map"
+            className={`h-[280px] w-full rounded border ${hasDialog ? "hidden" : ""}`}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2">
+                <span className="text-xs font-medium uppercase text-muted-foreground">
+                  {t("logistics.vehicleCountLabel")}
+                </span>
+                <select
+                  value={vehicles}
+                  onChange={(event) => setVehicles(Number(event.target.value))}
+                  className="h-8 rounded border px-2 text-sm"
+                  aria-label={t("logistics.vehicleCountAria")}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-xs font-medium uppercase text-muted-foreground">
+                  {t("logistics.optimizeMethodLabel")}
+                </span>
+                <select
+                  value={method}
+                  onChange={(event) => setMethod(event.target.value)}
+                  className="h-8 rounded border px-2 text-sm"
+                  aria-label={t("logistics.optimizeMethodAria")}
+                >
+                  <option value="angle">angle</option>
+                  <option value="trip">trip</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" onClick={calculate}>
+                {t("logistics.optimize")}
+              </Button>
+              <Button type="button" size="sm" onClick={reset}>
+                {t("reset")}
+              </Button>
+              <Button type="button" size="sm" onClick={refreshAll}>
+                {t("refresh")}
+              </Button>
+            </div>
           </div>
-        </section>
-        <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
-          <h3 className="text-sm font-semibold">
-            {t("logistics.legendTitle")}
-          </h3>
-          <ul className="space-y-2 text-sm">
-            {legendItems.map((item) => (
-              <li key={item.key} className="flex items-center gap-2">
-                <span
-                  className="legend-color"
-                  style={{ backgroundColor: item.color }}
-                  aria-hidden="true"
-                />
-                <span>{item.label}</span>
-              </li>
-            ))}
-            <li className="flex items-center gap-2">
-              <span className="task-marker task-marker--start" aria-hidden="true">
-                <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
-              </span>
-              <span>{t("logistics.legendStart")}</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="task-marker task-marker--finish" aria-hidden="true">
-                <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
-              </span>
-              <span>{t("logistics.legendFinish")}</span>
-            </li>
-          </ul>
-        </section>
-      </div>
-      <div
-        id="logistics-map"
-        className={`h-96 w-full rounded border ${hasDialog ? "hidden" : ""}`}
-      />
-      <div className="flex justify-end space-x-2">
-        <select
-          value={vehicles}
-          onChange={(e) => setVehicles(Number(e.target.value))}
-          className="rounded border px-2 py-1"
-        >
-          <option value={1}>1</option>
-          <option value={2}>2</option>
-          <option value={3}>3</option>
-        </select>
-        <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value)}
-          className="rounded border px-2 py-1"
-        >
-          <option value="angle">angle</option>
-          <option value="trip">trip</option>
-        </select>
-        <Button onClick={calculate}>{t("logistics.optimize")}</Button>
-        <Button onClick={reset}>{t("reset")}</Button>
-        <Button onClick={refreshAll}>{t("refresh")}</Button>
-      </div>
-      {!!links.length && (
-        <div className="flex flex-col items-end space-y-1">
-          {links.map((u, i) => (
-            <a
-              key={i}
-              href={u}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accentPrimary underline"
-            >
-              {t("logistics.linksLabel", { index: i + 1 })}
-            </a>
-          ))}
         </div>
-      )}
-      <div className="max-w-full space-y-2">
+        <div className="space-y-3">
+          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+            <h3 className="text-sm font-semibold">
+              {t("logistics.layersTitle")}
+            </h3>
+            <div className="flex flex-col gap-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={layerVisibility.tasks}
+                  onChange={(event) =>
+                    setLayerVisibility((prev) => ({
+                      ...prev,
+                      tasks: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{t("logistics.layerTasks")}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={layerVisibility.optimized}
+                  onChange={(event) =>
+                    setLayerVisibility((prev) => ({
+                      ...prev,
+                      optimized: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{t("logistics.layerOptimization")}</span>
+              </label>
+            </div>
+            {!!links.length && (
+              <div className="space-y-1 text-sm">
+                {links.map((url, index) => (
+                  <a
+                    key={`${index}-${url}`}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accentPrimary underline"
+                  >
+                    {t("logistics.linksLabel", { index: index + 1 })}
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+            <h3 className="text-sm font-semibold">
+              {t("logistics.legendTitle")}
+            </h3>
+            <ul className="space-y-2 text-sm">
+              {legendItems.map((item) => (
+                <li key={item.key} className="flex items-center gap-2">
+                  <span
+                    className="legend-color"
+                    style={{ backgroundColor: item.color }}
+                    aria-hidden="true"
+                  />
+                  <span>{item.label}</span>
+                </li>
+              ))}
+              <li className="flex items-center gap-2">
+                <span className="task-marker task-marker--start" aria-hidden="true">
+                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                </span>
+                <span>{t("logistics.legendStart")}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="task-marker task-marker--finish" aria-hidden="true">
+                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                </span>
+                <span>{t("logistics.legendFinish")}</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </section>
+      <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
         <h3 className="text-lg font-semibold">
           {t("logistics.tasksHeading")}
         </h3>
@@ -1160,7 +1233,7 @@ export default function LogisticsPage() {
           pageCount={Math.max(1, Math.ceil(tasks.length / 25))}
           onPageChange={setPage}
         />
-      </div>
+      </section>
     </div>
   );
 }

@@ -76,6 +76,10 @@ jest.mock("react-i18next", () => {
       "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
       "logistics.vehicleTasksCount": "Задач: {{count}}",
       "logistics.vehicleMileage": "Пробег: {{value}} км",
+      "logistics.vehicleCountLabel": "Машины",
+      "logistics.vehicleCountAria": "Количество машин",
+      "logistics.optimizeMethodLabel": "Метод",
+      "logistics.optimizeMethodAria": "Метод оптимизации",
     };
     if (dictionary[key]) {
       return dictionary[key];
@@ -99,6 +103,29 @@ const mockTasks = [
     title: "Задача 1",
     startCoordinates: { lat: 50, lng: 30 },
     finishCoordinates: { lat: 51, lng: 31 },
+    logistics_details: {
+      transport_type: "Легковой",
+      start_location: "Київ",
+      end_location: "Львів",
+    },
+  },
+  {
+    _id: "t2",
+    id: "t2",
+    title: "Задача 2",
+    logistics_details: {
+      transport_type: "Без транспорта",
+      start_location: "",
+      end_location: "",
+    },
+  },
+  {
+    _id: "t3",
+    id: "t3",
+    title: "Задача 3",
+    logistics_details: {
+      transport_type: "Легковой",
+    },
   },
 ];
 
@@ -127,6 +154,7 @@ const polylineFactory = () => ({
 const mapInstance = {
   setView: jest.fn().mockReturnThis(),
   remove: jest.fn(),
+  invalidateSize: jest.fn(),
 };
 
 const tileLayerFactory = () => ({
@@ -146,8 +174,6 @@ jest.mock("leaflet", () => {
     divIcon: jest.fn(() => ({})),
   };
 });
-
-jest.mock("../components/Breadcrumbs", () => () => <nav data-testid="breadcrumbs" />);
 
 jest.mock("../components/TaskTable", () => {
   function MockTaskTable({ tasks, onDataChange }: any) {
@@ -322,14 +348,14 @@ jest.mock("../controllers/taskStateController", () => {
     setIndex(_key: string, list: any[]) {
       updateSnapshot(Array.isArray(list) ? list : []);
     },
-    getIndexSnapshot() {
+    getIndexSnapshot(_key: string) {
       return snapshot;
     },
-    getIndexMetaSnapshot() {
+    getIndexMetaSnapshot(_key: string) {
       return { ...meta };
     },
   };
-  const useTaskIndex = () => {
+  const useTaskIndex = (_key = "logistics:all") => {
     const [value, setValue] = ReactActual.useState(() => snapshot);
     ReactActual.useEffect(() => {
       const listener = () => {
@@ -341,18 +367,18 @@ jest.mock("../controllers/taskStateController", () => {
     }, []);
     return value;
   };
-  const useTaskIndexMeta = () => {
+  const useTaskIndexMeta = (_key = "logistics:all") => {
     const [value, setValue] = ReactActual.useState(() =>
-      taskStateController.getIndexMetaSnapshot(),
+      taskStateController.getIndexMetaSnapshot(_key),
     );
     ReactActual.useEffect(() => {
       const listener = () => {
-        setValue(taskStateController.getIndexMetaSnapshot());
+        setValue(taskStateController.getIndexMetaSnapshot(_key));
       };
       const unsubscribe = taskStateController.subscribe(listener);
       listener();
       return unsubscribe;
-    }, []);
+    }, [_key]);
     return value;
   };
   return {
@@ -437,6 +463,12 @@ describe("LogisticsPage", () => {
     expect(listFleetVehiclesMock).toHaveBeenCalledWith("", 1, 100);
 
     expect(screen.getByText("Погрузчик")).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(
+        taskStateController.getIndexSnapshot("logistics:all"),
+      ).toHaveLength(1),
+    );
 
     const refreshButton = screen.getByRole("button", {
       name: "Обновить автопарк",

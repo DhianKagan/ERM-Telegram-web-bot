@@ -64,17 +64,34 @@ export default function LogisticsPage() {
   const role = user?.role ?? null;
 
   React.useEffect(() => {
-    const content = "/hero/logistics.png";
-    let meta = document.querySelector('meta[property="og:image"]');
-    if (meta) {
-      meta.setAttribute("content", content);
-    } else {
-      meta = document.createElement("meta");
-      meta.setAttribute("property", "og:image");
-      meta.setAttribute("content", content);
-      document.head.appendChild(meta);
-    }
-  }, []);
+    const translate = tRef.current;
+    const title = translate("logistics.metaTitle");
+    const description = translate("logistics.metaDescription");
+    const image = "/hero/logistics.png";
+
+    document.title = title;
+
+    const ensureMeta = (
+      attribute: "name" | "property",
+      name: string,
+      value: string,
+    ) => {
+      let element = document.querySelector<HTMLMetaElement>(
+        `meta[${attribute}="${name}"]`,
+      );
+      if (!element) {
+        element = document.createElement("meta");
+        element.setAttribute(attribute, name);
+        document.head.appendChild(element);
+      }
+      element.setAttribute("content", value);
+    };
+
+    ensureMeta("name", "description", description);
+    ensureMeta("property", "og:title", title);
+    ensureMeta("property", "og:description", description);
+    ensureMeta("property", "og:image", image);
+  }, [t]);
 
   const openTask = React.useCallback(
     (id: string) => {
@@ -163,7 +180,7 @@ export default function LogisticsPage() {
     if (role === "admin") {
       void loadFleetVehicles();
     }
-  }, [loadFleetVehicles, role, t]);
+  }, [loadFleetVehicles, role]);
 
   const calculate = React.useCallback(() => {
     const ids = sorted.map((t) => t._id);
@@ -233,7 +250,7 @@ export default function LogisticsPage() {
     }
     setFleetError("");
     void loadFleetVehicles();
-  }, [loadFleetVehicles, role]);
+  }, [loadFleetVehicles, role, t]);
 
   React.useEffect(() => {
     if (role !== "admin") return;

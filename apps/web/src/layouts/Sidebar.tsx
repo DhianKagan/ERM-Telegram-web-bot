@@ -1,6 +1,7 @@
 // Боковое меню с навигацией по разделам
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSidebar } from "../context/useSidebar";
 import { useAuth } from "../context/useAuth";
 import {
@@ -17,51 +18,76 @@ import {
 import { cn } from "@/lib/utils";
 import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
 
-const baseItems = [
-  { to: "/tasks", label: "Задачи", icon: ClipboardDocumentListIcon },
-  { to: "/requests", label: "Заявки", icon: InboxArrowDownIcon },
-  { to: "/profile", label: "Профиль", icon: UserCircleIcon },
-];
-
-const adminItems = [
-  { to: "/cp/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
-  { to: "/cp/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/cp/logistics", label: "Логистика", icon: MapIcon },
-  { to: "/cp/settings", label: "Настройки", icon: Cog6ToothIcon },
-  { to: "/cp/logs", label: "Логи", icon: Cog6ToothIcon },
-  { to: "/cp/storage", label: "Файлы", icon: RectangleStackIcon },
-];
-
-const managerItems = [
-  { to: "/mg/kanban", label: "Канбан", icon: ClipboardDocumentListIcon },
-  { to: "/mg/reports", label: "Отчёты", icon: ChartPieIcon },
-  { to: "/mg/logistics", label: "Логистика", icon: MapIcon },
-];
+type SidebarItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<React.ComponentProps<"svg">>;
+};
 
 export default function Sidebar() {
   const { open, toggle } = useSidebar();
   const { pathname } = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const role = user?.role || "user";
   const access = typeof user?.access === "number" ? user.access : 0;
   const allowArchive =
     role === "admin" && hasAccess(access, ARCHIVE_ACCESS);
+
+  const baseItems = React.useMemo<SidebarItem[]>(
+    () => [
+      { to: "/tasks", label: t("nav.tasks"), icon: ClipboardDocumentListIcon },
+      {
+        to: "/requests",
+        label: t("nav.requests"),
+        icon: InboxArrowDownIcon,
+      },
+      { to: "/profile", label: t("nav.profile"), icon: UserCircleIcon },
+    ],
+    [t],
+  );
+
+  const adminItems = React.useMemo<SidebarItem[]>(
+    () => [
+      { to: "/cp/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
+      { to: "/cp/reports", label: t("nav.reports"), icon: ChartPieIcon },
+      { to: "/cp/logistics", label: t("nav.logistics"), icon: MapIcon },
+      { to: "/cp/settings", label: t("nav.settings"), icon: Cog6ToothIcon },
+      { to: "/cp/logs", label: t("nav.logs"), icon: Cog6ToothIcon },
+      { to: "/cp/storage", label: t("nav.storage"), icon: RectangleStackIcon },
+    ],
+    [t],
+  );
+
+  const managerItems = React.useMemo<SidebarItem[]>(
+    () => [
+      { to: "/mg/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
+      { to: "/mg/reports", label: t("nav.reports"), icon: ChartPieIcon },
+      { to: "/mg/logistics", label: t("nav.logistics"), icon: MapIcon },
+    ],
+    [t],
+  );
+
+  const archiveItem = React.useMemo<SidebarItem>(
+    () => ({ to: "/cp/archive", label: t("nav.archive"), icon: ArchiveBoxIcon }),
+    [t],
+  );
+
   const items = React.useMemo(() => {
     if (role === "admin") {
-      const list = [...adminItems];
-      if (allowArchive) {
-        const archiveItem = {
-          to: "/cp/archive",
-          label: "Архив",
-          icon: ArchiveBoxIcon,
-        };
-        list.splice(4, 0, archiveItem);
-      }
+      const list = allowArchive
+        ? [
+            ...adminItems.slice(0, 4),
+            archiveItem,
+            ...adminItems.slice(4),
+          ]
+        : adminItems;
       return [...baseItems, ...list];
     }
     if (role === "manager") return [...baseItems, ...managerItems];
     return baseItems;
-  }, [role, allowArchive]);
+  }, [role, allowArchive, archiveItem, adminItems, baseItems, managerItems]);
+
   return (
     <aside
       className={cn(

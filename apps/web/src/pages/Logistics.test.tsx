@@ -33,6 +33,8 @@ jest.mock("react-i18next", () => ({
         "logistics.noAccess": "Нет доступа к автопарку",
         "logistics.optimize": "Просчёт логистики",
         "logistics.tasksHeading": "Задачи",
+        "logistics.metaTitle": "Логистика — ERM",
+        "logistics.metaDescription": "Контроль логистики и маршрутов",
       };
       return dictionary[key] ?? key;
     },

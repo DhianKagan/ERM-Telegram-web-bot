@@ -792,7 +792,7 @@ export const buildDirectTaskMessage = (
   }
   const distance = Number(task.route_distance_km);
   if (Number.isFinite(distance) && distance > 0) {
-    lines.push(`Маршрут: <b>${htmlEscape(`${distance} км`)}</b>`);
+    lines.push(`Логистика: <b>${htmlEscape(`${distance} км`)}</b>`);
   }
   const assignees = Array.isArray(task.assignees)
     ? task.assignees

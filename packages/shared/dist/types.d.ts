@@ -1,3 +1,4 @@
+import type { Coords } from './mapUtils';
 export type PaymentMethod = 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
 export interface Task {
     _id: string;
@@ -96,4 +97,64 @@ export interface FleetVehicleDto {
     sensors?: VehicleSensorDto[];
     customSensors?: VehicleSensorDto[];
     track?: VehicleTrackPointDto[];
+}
+export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
+export interface RoutePlanStop {
+    order: number;
+    kind: 'start' | 'finish';
+    taskId: string;
+    coordinates?: Coords;
+    address?: string | null;
+}
+export interface RoutePlanTaskRef {
+    taskId: string;
+    order: number;
+    title?: string;
+    start?: Coords;
+    finish?: Coords;
+    startAddress?: string | null;
+    finishAddress?: string | null;
+    distanceKm?: number | null;
+}
+export interface RoutePlanRouteMetrics {
+    distanceKm?: number | null;
+    tasks?: number;
+    stops?: number;
+}
+export interface RoutePlanRoute {
+    id: string;
+    order: number;
+    vehicleId?: string | null;
+    vehicleName?: string | null;
+    driverId?: number | null;
+    driverName?: string | null;
+    tasks: RoutePlanTaskRef[];
+    stops: RoutePlanStop[];
+    metrics?: RoutePlanRouteMetrics;
+    routeLink?: string | null;
+    notes?: string | null;
+}
+export interface RoutePlanMetrics {
+    totalDistanceKm?: number | null;
+    totalRoutes: number;
+    totalTasks: number;
+    totalStops?: number;
+}
+export interface RoutePlan {
+    id: string;
+    title: string;
+    status: RoutePlanStatus;
+    suggestedBy?: number | null;
+    method?: 'angle' | 'trip';
+    count?: number;
+    notes?: string | null;
+    approvedBy?: number | null;
+    approvedAt?: string | null;
+    completedBy?: number | null;
+    completedAt?: string | null;
+    metrics: RoutePlanMetrics;
+    routes: RoutePlanRoute[];
+    tasks: string[];
+    createdAt?: string;
+    updatedAt?: string;
 }

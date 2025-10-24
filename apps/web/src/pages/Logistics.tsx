@@ -5,9 +5,9 @@ import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute from "../services/optimizer";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Breadcrumbs from "../components/Breadcrumbs";
 import TaskTable from "../components/TaskTable";
-import createMultiRouteLink from "../utils/createMultiRouteLink";
 import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -16,7 +16,13 @@ import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
-import type { Coords, FleetVehicleDto } from "shared";
+import type { Coords, FleetVehicleDto, RoutePlan, RoutePlanStatus } from "shared";
+import {
+  listRoutePlans,
+  updateRoutePlan,
+  changeRoutePlanStatus,
+  type RoutePlanUpdatePayload,
+} from "../services/routePlans";
 import type { TaskRow } from "../columns/taskColumns";
 
 type RouteTask = TaskRow & {
@@ -39,6 +45,13 @@ export default function LogisticsPage() {
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState("angle");
   const [links, setLinks] = React.useState<string[]>([]);
+  const [plan, setPlan] = React.useState<RoutePlan | null>(null);
+  const [planDraft, setPlanDraft] = React.useState<RoutePlan | null>(null);
+  const [planMessage, setPlanMessage] = React.useState("");
+  const [planMessageTone, setPlanMessageTone] = React.useState<
+    "neutral" | "error" | "success"
+  >("neutral");
+  const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<L.Map | null>(null);
   const optLayerRef = React.useRef<L.LayerGroup | null>(null);
   const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
@@ -64,6 +77,219 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+
+  const clonePlan = React.useCallback(
+    (value: RoutePlan | null) =>
+      value ? (JSON.parse(JSON.stringify(value)) as RoutePlan) : null,
+    [],
+  );
+
+  const applyPlan = React.useCallback(
+    (next: RoutePlan | null) => {
+      setPlan(next);
+      setPlanDraft(clonePlan(next));
+      const newLinks = next
+        ? next.routes
+            .map((route) => route.routeLink)
+            .filter((link): link is string => Boolean(link))
+        : [];
+      setLinks(newLinks);
+    },
+    [clonePlan],
+  );
+
+  const loadPlan = React.useCallback(async () => {
+    setPlanLoading(true);
+    setPlanMessage('');
+    setPlanMessageTone('neutral');
+    try {
+      const drafts = await listRoutePlans('draft', 1, 1);
+      if (drafts.items.length > 0) {
+        applyPlan(drafts.items[0]);
+        return;
+      }
+      const latest = await listRoutePlans(undefined, 1, 1);
+      if (latest.items.length > 0) {
+        applyPlan(latest.items[0]);
+        return;
+      }
+      applyPlan(null);
+      setPlanMessage(tRef.current('logistics.planEmpty'));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current('logistics.planLoadError');
+      setPlanMessage(message);
+      setPlanMessageTone('error');
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [applyPlan]);
+
+  const buildUpdatePayload = React.useCallback(
+    (source: RoutePlan): RoutePlanUpdatePayload => ({
+      title: source.title,
+      notes: source.notes ?? null,
+      routes: source.routes.map((route) => ({
+        id: route.id,
+        order: route.order,
+        vehicleId: route.vehicleId ?? null,
+        vehicleName: route.vehicleName ?? null,
+        driverId: route.driverId ?? null,
+        driverName: route.driverName ?? null,
+        notes: route.notes ?? null,
+        tasks: route.tasks.map((task) => task.taskId),
+      })),
+    }),
+    [],
+  );
+
+  const updateRouteDraft = React.useCallback(
+    (
+      routeIndex: number,
+      updater: (route: RoutePlan['routes'][number]) => RoutePlan['routes'][number],
+    ) => {
+      setPlanDraft((current) => {
+        if (!current) return current;
+        const routes = current.routes.map((route, idx) =>
+          idx === routeIndex ? updater(route) : route,
+        );
+        return { ...current, routes };
+      });
+    },
+    [],
+  );
+
+  const handlePlanTitleChange = React.useCallback((value: string) => {
+    setPlanDraft((current) => (current ? { ...current, title: value } : current));
+  }, []);
+
+  const handlePlanNotesChange = React.useCallback((value: string) => {
+    setPlanDraft((current) => (current ? { ...current, notes: value } : current));
+  }, []);
+
+  const handleDriverNameChange = React.useCallback(
+    (routeIndex: number, value: string) => {
+      updateRouteDraft(routeIndex, (route) => ({ ...route, driverName: value }));
+    },
+    [updateRouteDraft],
+  );
+
+  const handleVehicleNameChange = React.useCallback(
+    (routeIndex: number, value: string) => {
+      updateRouteDraft(routeIndex, (route) => ({ ...route, vehicleName: value }));
+    },
+    [updateRouteDraft],
+  );
+
+  const handleRouteNotesChange = React.useCallback(
+    (routeIndex: number, value: string) => {
+      updateRouteDraft(routeIndex, (route) => ({ ...route, notes: value || null }));
+    },
+    [updateRouteDraft],
+  );
+
+  const handleMoveTask = React.useCallback(
+    (routeIndex: number, taskIndex: number, direction: number) => {
+      setPlanDraft((current) => {
+        if (!current) return current;
+        const routes = current.routes.map((route, idx) => {
+          if (idx !== routeIndex) return route;
+          const tasks = [...route.tasks];
+          const targetIndex = taskIndex + direction;
+          if (targetIndex < 0 || targetIndex >= tasks.length) {
+            return route;
+          }
+          const [task] = tasks.splice(taskIndex, 1);
+          tasks.splice(targetIndex, 0, task);
+          return {
+            ...route,
+            tasks: tasks.map((item, order) => ({ ...item, order })),
+          };
+        });
+        return { ...current, routes };
+      });
+    },
+    [],
+  );
+
+  const handleSavePlan = React.useCallback(async () => {
+    if (!planDraft) return;
+    setPlanLoading(true);
+    try {
+      const payload = buildUpdatePayload(planDraft);
+      const updated = await updateRoutePlan(planDraft.id, payload);
+      applyPlan(updated);
+      setPlanMessage(tRef.current('logistics.planSaved'));
+      setPlanMessageTone('success');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current('logistics.planSaveError');
+      setPlanMessage(message);
+      setPlanMessageTone('error');
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [planDraft, buildUpdatePayload, applyPlan]);
+
+  const handleApprovePlan = React.useCallback(async () => {
+    if (!planDraft) return;
+    setPlanLoading(true);
+    try {
+      const updated = await changeRoutePlanStatus(planDraft.id, 'approved');
+      applyPlan(updated);
+      setPlanMessage(tRef.current('logistics.planPublished'));
+      setPlanMessageTone('success');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current('logistics.planStatusError');
+      setPlanMessage(message);
+      setPlanMessageTone('error');
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [planDraft, applyPlan]);
+
+  const handleCompletePlan = React.useCallback(async () => {
+    if (!planDraft) return;
+    setPlanLoading(true);
+    try {
+      const updated = await changeRoutePlanStatus(planDraft.id, 'completed');
+      applyPlan(updated);
+      setPlanMessage(tRef.current('logistics.planCompleted'));
+      setPlanMessageTone('success');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current('logistics.planStatusError');
+      setPlanMessage(message);
+      setPlanMessageTone('error');
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [planDraft, applyPlan]);
+
+  const handleReloadPlan = React.useCallback(async () => {
+    setPlanMessage('');
+    setPlanMessageTone('neutral');
+    await loadPlan();
+  }, [loadPlan]);
+
+  const handleClearPlan = React.useCallback(() => {
+    applyPlan(null);
+    setPlanMessage(tRef.current('logistics.planEmpty'));
+    setPlanMessageTone('neutral');
+  }, [applyPlan]);
+
+  React.useEffect(() => {
+    void loadPlan();
+  }, [loadPlan]);
 
   React.useEffect(() => {
     const translate = tRef.current;
@@ -184,38 +410,101 @@ export default function LogisticsPage() {
     }
   }, [loadFleetVehicles, role]);
 
-  const calculate = React.useCallback(() => {
+  const calculate = React.useCallback(async () => {
     const ids = sorted.map((t) => t._id);
-    optimizeRoute(ids, vehicles, method).then((r) => {
-      if (!r || !mapRef.current) return;
+    if (!ids.length) {
+      applyPlan(null);
+      setPlanMessage(tRef.current('logistics.planEmpty'));
+      setPlanMessageTone('neutral');
+      return;
+    }
+    setPlanLoading(true);
+    setPlanMessage('');
+    setPlanMessageTone('neutral');
+    try {
+      const result = await optimizeRoute(ids, vehicles, method);
+      if (!result) {
+        applyPlan(null);
+        setPlanMessage(tRef.current('logistics.planEmpty'));
+        return;
+      }
+      applyPlan(result);
+      setPlanMessage(tRef.current('logistics.planDraftCreated'));
+      setPlanMessageTone('success');
+      if (!mapRef.current) {
+        return;
+      }
       if (optLayerRef.current) {
         optLayerRef.current.remove();
       }
       const group = L.layerGroup().addTo(mapRef.current);
       optLayerRef.current = group;
-      const colors = ["red", "green", "orange"];
-      const newLinks: string[] = [];
-      r.routes.forEach((route: string[], idx: number) => {
-        const tasksPoints = route
-          .map((id) => sorted.find((t) => t._id === id))
-          .filter((task): task is RouteTask => Boolean(task));
-        const points: Coords[] = tasksPoints.flatMap((task) => {
-          const start = task.startCoordinates as Coords | undefined;
-          const finish = task.finishCoordinates as Coords | undefined;
-          return start && finish ? [start, finish] : [];
+      const colors = ['#ef4444', '#22c55e', '#f97316'];
+      result.routes.forEach((route, idx) => {
+        const latlngs: Array<[number, number]> = [];
+        route.tasks.forEach((task) => {
+          if (task.start) {
+            latlngs.push([task.start.lat, task.start.lng]);
+          }
+          if (task.finish) {
+            latlngs.push([task.finish.lat, task.finish.lng]);
+          }
         });
-        if (points.length < 2) return;
-        const latlngs = points.map((point) =>
-          [point.lat, point.lng] as [number, number],
-        );
-        L.polyline(latlngs, { color: colors[idx % colors.length] }).addTo(
-          group,
-        );
-        newLinks.push(createMultiRouteLink(points));
+        if (latlngs.length < 2) {
+          return;
+        }
+        L.polyline(latlngs, {
+          color: colors[idx % colors.length],
+          weight: 4,
+        }).addTo(group);
       });
-      setLinks(newLinks);
-    });
-  }, [sorted, vehicles, method]);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current('logistics.planOptimizeError');
+      setPlanMessage(message);
+      setPlanMessageTone('error');
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [applyPlan, method, sorted, vehicles]);
+
+  const formatDistance = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return `${value.toFixed(1)} ${tRef.current('km')}`;
+      }
+      return tRef.current('logistics.planNoDistance');
+    },
+    [],
+  );
+
+  const planMessageClass = React.useMemo(() => {
+    if (planMessageTone === 'error') {
+      return 'text-sm text-red-600';
+    }
+    if (planMessageTone === 'success') {
+      return 'text-sm text-emerald-600';
+    }
+    return 'text-sm text-muted-foreground';
+  }, [planMessageTone]);
+
+  const planStatus: RoutePlanStatus = planDraft?.status ?? plan?.status ?? 'draft';
+  const planStatusLabel = t(`logistics.planStatusValue.${planStatus}`);
+  const isPlanEditable = planStatus !== 'completed';
+  const planRoutes = planDraft?.routes ?? [];
+  const totalStops = React.useMemo(() => {
+    if (typeof planDraft?.metrics?.totalStops === 'number') {
+      return planDraft.metrics.totalStops;
+    }
+    if (!planDraft) {
+      return 0;
+    }
+    return planDraft.routes.reduce((acc, route) => acc + route.stops.length, 0);
+  }, [planDraft]);
+  const planTotalRoutes = planDraft?.metrics?.totalRoutes ?? planRoutes.length;
+  const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
 
   const reset = React.useCallback(() => {
     if (optLayerRef.current) {
@@ -446,6 +735,309 @@ export default function LogisticsPage() {
         ]}
       />
       <h2 className="text-xl font-semibold">{t("logistics.title")}</h2>
+      <section className="space-y-4 rounded border bg-white/80 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">
+              {t("logistics.planSectionTitle")}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {t("logistics.planSummary")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">
+              {t("logistics.planStatus")}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+              {planStatusLabel}
+            </span>
+            {planLoading ? (
+              <span className="text-xs text-muted-foreground">
+                {t("loading")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReloadPlan}
+            disabled={planLoading}
+          >
+            {planLoading
+              ? t("loading")
+              : t("logistics.planReload")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClearPlan}
+            disabled={planLoading}
+          >
+            {t("logistics.planClear")}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSavePlan}
+            disabled={!planDraft || !isPlanEditable || planLoading}
+          >
+            {t("save")}
+          </Button>
+          {planDraft?.status === "draft" ? (
+            <Button
+              type="button"
+              variant="success"
+              onClick={handleApprovePlan}
+              disabled={planLoading}
+            >
+              {t("logistics.planApprove")}
+            </Button>
+          ) : null}
+          {planDraft?.status === "approved" ? (
+            <Button
+              type="button"
+              variant="success"
+              onClick={handleCompletePlan}
+              disabled={planLoading}
+            >
+              {t("logistics.planComplete")}
+            </Button>
+          ) : null}
+        </div>
+        {planDraft ? (
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">
+                  {t("logistics.planTitleLabel")}
+                </span>
+                <Input
+                  value={planDraft.title}
+                  onChange={(event) =>
+                    handlePlanTitleChange(event.target.value)
+                  }
+                  disabled={!isPlanEditable || planLoading}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">
+                  {t("logistics.planNotesLabel")}
+                </span>
+                <textarea
+                  value={planDraft.notes ?? ""}
+                  onChange={(event) =>
+                    handlePlanNotesChange(event.target.value)
+                  }
+                  className="min-h-[96px] rounded border px-3 py-2 text-sm"
+                  disabled={!isPlanEditable || planLoading}
+                />
+              </label>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold uppercase text-muted-foreground">
+                {t("logistics.planSummary")}
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalDistance")}
+                  </div>
+                  <div className="font-semibold">
+                    {formatDistance(planDraft.metrics?.totalDistanceKm ?? null)}
+                  </div>
+                </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalRoutes")}
+                  </div>
+                  <div className="font-semibold">{planTotalRoutes}</div>
+                </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalTasks")}
+                  </div>
+                  <div className="font-semibold">{planTotalTasks}</div>
+                </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalStops")}
+                  </div>
+                  <div className="font-semibold">{totalStops}</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {planRoutes.map((route, routeIndex) => {
+                const displayIndex =
+                  typeof route.order === "number" && Number.isFinite(route.order)
+                    ? route.order + 1
+                    : routeIndex + 1;
+                const routeStops = route.metrics?.stops ?? route.stops.length;
+                return (
+                  <div
+                    key={route.id || `${routeIndex}`}
+                    className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-base font-semibold">
+                          {t("logistics.planRouteTitle", { index: displayIndex })}
+                        </h4>
+                        <div className="text-xs text-muted-foreground">
+                          {t("logistics.planRouteSummary", {
+                            tasks: route.tasks.length,
+                            stops: routeStops,
+                          })}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {t("logistics.planRouteDistance", {
+                          distance: formatDistance(route.metrics?.distanceKm ?? null),
+                        })}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="flex flex-col gap-1 text-sm">
+                        <span className="font-medium">
+                          {t("logistics.planDriver")}
+                        </span>
+                        <Input
+                          value={route.driverName ?? ""}
+                          onChange={(event) =>
+                            handleDriverNameChange(routeIndex, event.target.value)
+                          }
+                          disabled={!isPlanEditable || planLoading}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-sm">
+                        <span className="font-medium">
+                          {t("logistics.planVehicle")}
+                        </span>
+                        <Input
+                          value={route.vehicleName ?? ""}
+                          onChange={(event) =>
+                            handleVehicleNameChange(routeIndex, event.target.value)
+                          }
+                          disabled={!isPlanEditable || planLoading}
+                        />
+                      </label>
+                      <label className="md:col-span-2 flex flex-col gap-1 text-sm">
+                        <span className="font-medium">
+                          {t("logistics.planRouteNotes")}
+                        </span>
+                        <textarea
+                          value={route.notes ?? ""}
+                          onChange={(event) =>
+                            handleRouteNotesChange(routeIndex, event.target.value)
+                          }
+                          className="min-h-[80px] rounded border px-3 py-2 text-sm"
+                          disabled={!isPlanEditable || planLoading}
+                        />
+                      </label>
+                      <div className="md:col-span-2 space-y-2">
+                        <ul className="space-y-2">
+                          {route.tasks.length ? (
+                            route.tasks.map((task, taskIndex) => (
+                              <li
+                                key={task.taskId || `${routeIndex}-${taskIndex}`}
+                                className="space-y-2 rounded border bg-white px-3 py-2 text-sm shadow-sm"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <div className="font-medium">
+                                      {task.title ?? task.taskId}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {t("task")}: {task.taskId}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() =>
+                                        handleMoveTask(routeIndex, taskIndex, -1)
+                                      }
+                                      disabled={
+                                        !isPlanEditable ||
+                                        planLoading ||
+                                        taskIndex === 0
+                                      }
+                                    >
+                                      {t("logistics.planTaskUp")}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() =>
+                                        handleMoveTask(routeIndex, taskIndex, 1)
+                                      }
+                                      disabled={
+                                        !isPlanEditable ||
+                                        planLoading ||
+                                        taskIndex === route.tasks.length - 1
+                                      }
+                                    >
+                                      {t("logistics.planTaskDown")}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="space-y-1 text-xs text-muted-foreground">
+                                  {task.startAddress ? (
+                                    <div>
+                                      <span className="font-medium">
+                                        {t("startPoint")}:
+                                      </span>{" "}
+                                      {task.startAddress}
+                                    </div>
+                                  ) : null}
+                                  {task.finishAddress ? (
+                                    <div>
+                                      <span className="font-medium">
+                                        {t("endPoint")}:
+                                      </span>{" "}
+                                      {task.finishAddress}
+                                    </div>
+                                  ) : null}
+                                  {typeof task.distanceKm === "number" &&
+                                  Number.isFinite(task.distanceKm) ? (
+                                    <div>
+                                      {t("logistics.planRouteDistance", {
+                                        distance: formatDistance(task.distanceKm ?? null),
+                                      })}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
+                              {t("logistics.planRouteEmpty")}
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {planMessage ? (
+              <div className={planMessageClass}>{planMessage}</div>
+            ) : null}
+          </div>
+        ) : (
+          <div className={planMessageClass}>
+            {planLoading
+              ? t("loading")
+              : planMessage || t("logistics.planEmpty")}
+          </div>
+        )}
+      </section>
       {role === "admin" ? (
         <div className="space-y-2 rounded border p-3">
           <div className="flex flex-wrap items-center gap-3">

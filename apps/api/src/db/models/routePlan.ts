@@ -9,25 +9,24 @@ import type {
   RoutePlanTaskRef,
 } from 'shared';
 
-export interface RoutePlanTaskEntry extends RoutePlanTaskRef {
+export type RoutePlanTaskEntry = Omit<RoutePlanTaskRef, 'taskId'> & {
   taskId: Types.ObjectId;
-}
+};
 
-export interface RoutePlanStopEntry extends RoutePlanStop {
+export type RoutePlanStopEntry = Omit<RoutePlanStop, 'taskId'> & {
   taskId: Types.ObjectId;
-}
+};
 
-export interface RoutePlanRouteEntry
-  extends Omit<
-    RoutePlanRoute,
-    'tasks' | 'stops' | 'id' | 'metrics' | 'vehicleId'
-  > {
+export type RoutePlanRouteEntry = Omit<
+  RoutePlanRoute,
+  'tasks' | 'stops' | 'vehicleId'
+> & {
   id?: string;
   vehicleId?: Types.ObjectId | null;
   tasks: RoutePlanTaskEntry[];
   stops: RoutePlanStopEntry[];
   metrics?: { distanceKm?: number | null; tasks?: number; stops?: number };
-}
+};
 
 export interface RoutePlanAttrs {
   title: string;
@@ -139,4 +138,4 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
 routePlanSchema.index({ status: 1, createdAt: -1 });
 routePlanSchema.index({ 'routes.tasks.taskId': 1 });
 
-export const RoutePlan = model<RoutePlanDocument>('RoutePlan', routePlanSchema);
+export const RoutePlan = model<RoutePlanAttrs>('RoutePlan', routePlanSchema);

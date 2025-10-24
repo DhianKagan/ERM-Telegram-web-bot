@@ -13,7 +13,7 @@ const ids = [
   '507f1f77bcf86cd799439013',
 ];
 
-const sample = {
+const mockTasks = {
   [ids[0]]: {
     _id: ids[0],
     title: 'Задача 1',
@@ -35,7 +35,7 @@ const sample = {
 };
 
 jest.mock('../src/db/queries', () => ({
-  getTask: jest.fn((id) => Promise.resolve(sample[id])),
+  getTask: jest.fn((id) => Promise.resolve(mockTasks[id])),
 }));
 
 jest.mock('../src/services/route', () => ({

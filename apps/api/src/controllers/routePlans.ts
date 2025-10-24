@@ -16,6 +16,16 @@ import {
 import type RequestWithUser from '../types/request';
 import { sendProblem } from '../utils/problem';
 
+type RoutePlanUpdateRequestBody = {
+  title?: unknown;
+  notes?: unknown;
+  routes?: unknown;
+};
+
+type RoutePlanStatusRequestBody = {
+  status?: unknown;
+};
+
 const parseActorId = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -111,7 +121,7 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
 };
 
 export async function update(
-  req: RequestWithUser,
+  req: RequestWithUser<Record<string, string>, unknown, RoutePlanUpdateRequestBody>,
   res: Response,
 ): Promise<void> {
   const errors = validationResult(req);
@@ -128,12 +138,12 @@ export async function update(
   }
 
   const payload: RoutePlanUpdatePayload = {
-    title: typeof req.body.title === 'string' ? req.body.title : undefined,
+    title: typeof req.body?.title === 'string' ? req.body.title : undefined,
     notes:
-      req.body.notes === null || typeof req.body.notes === 'string'
-        ? req.body.notes
+      req.body?.notes === null || typeof req.body?.notes === 'string'
+        ? (req.body?.notes as string | null)
         : undefined,
-    routes: normalizeRoutesPayload(req.body.routes),
+    routes: normalizeRoutesPayload(req.body?.routes),
   };
 
   const plan = await updatePlan(req.params.id, payload);
@@ -150,7 +160,7 @@ export async function update(
 }
 
 export async function changeStatus(
-  req: RequestWithUser,
+  req: RequestWithUser<Record<string, string>, unknown, RoutePlanStatusRequestBody>,
   res: Response,
 ): Promise<void> {
   const errors = validationResult(req);
@@ -165,7 +175,10 @@ export async function changeStatus(
     });
     return;
   }
-  const status = req.body.status as RoutePlanStatus;
+  const statusValue = req.body?.status;
+  const status = (typeof statusValue === 'string'
+    ? statusValue.trim()
+    : statusValue) as RoutePlanStatus;
   const actorId = parseActorId(req.user?.id);
   const plan = await updatePlanStatus(req.params.id, status, actorId);
   if (!plan) {

@@ -3267,6 +3267,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     disabled={!canUploadAttachments}
                     onUploaded={(a) => setAttachments((p) => [...p, a])}
                     onRemove={(a) => removeAttachment(a)}
+                    taskId={effectiveTaskId}
                   />
                   {editing && !isTitleFilled ? (
                     <p className="mt-1 text-xs text-slate-500">

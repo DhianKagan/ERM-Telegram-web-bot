@@ -534,21 +534,39 @@ export interface UpdateTaskStatusOptions {
   source?: 'web' | 'telegram';
 }
 
-async function syncTaskAttachments(
-  taskId: Types.ObjectId,
+export async function syncTaskAttachments(
+  taskIdInput: Types.ObjectId | string,
   attachments: TaskDocument['attachments'] | undefined,
   userId?: number,
 ): Promise<void> {
   if (attachments === undefined) return;
+  const normalizedTaskId =
+    typeof taskIdInput === 'string'
+      ? Types.ObjectId.isValid(taskIdInput)
+        ? new Types.ObjectId(taskIdInput)
+        : null
+      : taskIdInput;
+  if (!normalizedTaskId) {
+    await logEngine
+      .writeLog(
+        `Некорректный идентификатор задачи при обновлении вложений ${String(
+          taskIdInput,
+        )}`,
+        'warn',
+        { taskId: String(taskIdInput), userId },
+      )
+      .catch(() => undefined);
+    return;
+  }
   const fileModel = File as typeof File | undefined;
   if (!fileModel) {
     await logEngine
       .writeLog(
         `Модель файлов недоступна, пропускаем обновление вложений задачи ${String(
-          taskId,
+          normalizedTaskId,
         )}`,
         'warn',
-        { taskId: String(taskId), userId },
+        { taskId: normalizedTaskId.toHexString(), userId },
       )
       .catch(() => undefined);
     return;
@@ -557,74 +575,134 @@ async function syncTaskAttachments(
     await logEngine
       .writeLog(
         `Метод updateMany отсутствует у модели файлов, пропускаем обновление вложений задачи ${String(
-          taskId,
+          normalizedTaskId,
         )}`,
         'warn',
-        { taskId: String(taskId), userId },
+        { taskId: normalizedTaskId.toHexString(), userId },
       )
       .catch(() => undefined);
     return;
   }
   const fileIds = extractAttachmentIds(attachments);
   const idsForLog = fileIds.map((id) => id.toHexString());
+  const normalizedUserId =
+    typeof userId === 'number' && Number.isFinite(userId) ? userId : undefined;
+  let canManageForeignAttachments = false;
+  const userModel = User as typeof User | undefined;
+  if (
+    normalizedUserId !== undefined &&
+    userModel &&
+    typeof userModel.findOne === 'function'
+  ) {
+    try {
+      const userRecord = await userModel
+        .findOne({ telegram_id: normalizedUserId })
+        .select({ access: 1 })
+        .lean()
+        .exec();
+      const accessMask =
+        userRecord && typeof userRecord.access === 'number'
+          ? userRecord.access
+          : 0;
+      canManageForeignAttachments =
+        hasAccess(accessMask, ACCESS_ADMIN) ||
+        hasAccess(accessMask, ACCESS_MANAGER);
+    } catch (permissionError) {
+      try {
+        await logEngine.writeLog(
+          `Не удалось проверить права пользователя при обновлении вложений задачи ${normalizedTaskId.toHexString()}`,
+          'warn',
+          {
+            taskId: normalizedTaskId.toHexString(),
+            userId: normalizedUserId,
+            error: (permissionError as Error).message,
+          },
+        );
+      } catch {
+        /* игнорируем сбой логирования */
+      }
+    }
+  }
   try {
     if (fileIds.length === 0) {
       await fileModel.updateMany(
-        { taskId },
+        { taskId: normalizedTaskId },
         { $unset: { taskId: '', draftId: '' } },
       );
       return;
     }
-    const filter: Record<string, unknown> = {
+    const updateFilter: Record<string, unknown> = {
       _id: { $in: fileIds },
     };
-    if (userId !== undefined) {
-      let restrictByUser = true;
-      try {
-        const actor = await User.findOne(
-          { telegram_id: { $eq: userId } },
-          { access: 1 },
-        )
-          .lean<{ access?: number }>()
-          .exec();
-        const access =
-          typeof actor?.access === 'number' ? actor.access : undefined;
-        if (access !== undefined && hasAccess(access, ACCESS_MANAGER)) {
-          restrictByUser = false;
-        }
-      } catch (error) {
-        await logEngine
-          .writeLog(
-            `Не удалось определить права пользователя ${String(userId)} при обновлении вложений задачи ${String(
-              taskId,
-            )}`,
-            'warn',
-            {
-              taskId: String(taskId),
-              userId,
-              error: (error as Error).message,
-            },
-          )
-          .catch(() => undefined);
+    if (!canManageForeignAttachments) {
+      const ownership: Record<string, unknown>[] = [
+        { taskId: normalizedTaskId },
+      ];
+      if (normalizedUserId !== undefined) {
+        ownership.push({ userId: normalizedUserId });
       }
-      if (restrictByUser) {
-        filter.$or = [{ userId }, { taskId }];
-      }
+      updateFilter.$or = ownership;
     }
-    await fileModel.updateMany(filter, {
-      $set: { taskId },
+    const updateResult = await fileModel.updateMany(updateFilter, {
+      $set: { taskId: normalizedTaskId },
       $unset: { draftId: '' },
     });
+    if (!canManageForeignAttachments) {
+      const matched =
+        updateResult && typeof updateResult === 'object'
+          ? typeof (updateResult as { matchedCount?: unknown }).matchedCount ===
+            'number'
+            ? (updateResult as { matchedCount: number }).matchedCount
+            : typeof (updateResult as { modifiedCount?: unknown })
+                  .modifiedCount === 'number'
+              ? (updateResult as { modifiedCount: number }).modifiedCount
+              : undefined
+          : undefined;
+      if (matched === 0 && fileIds.length > 0) {
+        try {
+          await logEngine.writeLog(
+            `Нет доступных вложений для привязки при обновлении задачи ${normalizedTaskId.toHexString()}`,
+            'warn',
+            {
+              taskId: normalizedTaskId.toHexString(),
+              userId: normalizedUserId,
+              requestedFileIds: idsForLog,
+            },
+          );
+        } catch {
+          /* игнорируем сбой логирования */
+        }
+      } else if (
+        typeof matched === 'number' &&
+        matched >= 0 &&
+        matched < fileIds.length
+      ) {
+        try {
+          await logEngine.writeLog(
+            `Отфильтрованы недоступные вложения при обновлении задачи ${normalizedTaskId.toHexString()}`,
+            'warn',
+            {
+              taskId: normalizedTaskId.toHexString(),
+              userId: normalizedUserId,
+              requestedFileIds: idsForLog,
+              обновлено: matched,
+            },
+          );
+        } catch {
+          /* игнорируем сбой логирования */
+        }
+      }
+    }
     await fileModel.updateMany(
-      { taskId, _id: { $nin: fileIds } },
+      { taskId: normalizedTaskId, _id: { $nin: fileIds } },
       { $unset: { taskId: '', draftId: '' } },
     );
   } catch (error) {
     await logEngine.writeLog(
-      `Ошибка обновления вложений задачи ${String(taskId)}`,
+      `Ошибка обновления вложений задачи ${normalizedTaskId.toHexString()}`,
       'error',
       {
-        taskId: String(taskId),
+        taskId: normalizedTaskId.toHexString(),
         fileIds: idsForLog,
         error: (error as Error).message,
       },

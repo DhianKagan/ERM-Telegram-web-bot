@@ -9,10 +9,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
-import type {
-  LiveTrackingDisconnect,
-  LiveTrackingOptions,
-} from "../services/liveTracking";
 jest.mock("react-i18next", () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === "logistics.selectedVehicle") {
@@ -37,10 +33,7 @@ jest.mock("react-i18next", () => {
       "logistics.title": "Логистика",
       "logistics.transport": "Транспорт",
       "logistics.unselectedVehicle": "Не выбран",
-      "logistics.refreshFleet": "Обновить технику",
-      "logistics.trackLabel": "Показывать трек",
-      "logistics.trackWindowLabel": "История трека: {{hours}} ч",
-      "logistics.autoRefresh": "Автообновление",
+      "logistics.refreshFleet": "Обновить автопарк",
       "logistics.noVehicles": "Транспорт не найден",
       "logistics.loadError": "Не удалось загрузить транспорт автопарка",
       "logistics.adminOnly": "Автопарк доступен только администраторам",
@@ -81,8 +74,16 @@ jest.mock("react-i18next", () => {
       "logistics.tasksHeading": "Задачи",
       "logistics.metaTitle": "Логистика — ERM",
       "logistics.metaDescription": "Контроль логистики и маршрутов",
+      "logistics.vehicleTasksCount": "Задач: {{count}}",
+      "logistics.vehicleMileage": "Пробег: {{value}} км",
     };
-    return dictionary[key] ?? key;
+    if (dictionary[key]) {
+      return dictionary[key];
+    }
+    if (options && typeof options.defaultValue === "string") {
+      return options.defaultValue;
+    }
+    return key;
   };
   const i18n = { language: "ru" };
   return {
@@ -145,8 +146,6 @@ jest.mock("leaflet", () => {
     divIcon: jest.fn(() => ({})),
   };
 });
-
-const mockedLeaflet = jest.requireMock("leaflet");
 
 jest.mock("../components/Breadcrumbs", () => () => <nav data-testid="breadcrumbs" />);
 
@@ -391,24 +390,9 @@ jest.mock("../context/useTasks", () => {
   };
 });
 
-const disconnectLiveTrackingMock = jest.fn<ReturnType<LiveTrackingDisconnect>, []>(() =>
-  undefined,
-);
-const connectLiveTrackingMock = jest.fn<
-  LiveTrackingDisconnect,
-  [LiveTrackingOptions | undefined]
->(() => disconnectLiveTrackingMock);
-
-jest.mock("../services/liveTracking", () => ({
-  connectLiveTracking: (options?: LiveTrackingOptions) =>
-    connectLiveTrackingMock(options),
-}));
-
 describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    disconnectLiveTrackingMock.mockClear();
-    connectLiveTrackingMock.mockClear();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
     listRoutePlansMock.mockReset();
@@ -423,38 +407,15 @@ describe("LogisticsPage", () => {
       status: "approved",
     });
     listFleetVehiclesMock.mockReset();
-    listFleetVehiclesMock
-      .mockResolvedValueOnce({
-        items: [{ ...baseVehicle }],
-        total: 1,
-        page: 1,
-        limit: 100,
-      })
-      .mockResolvedValue({
-        items: [
-          {
-            ...baseVehicle,
-            track: [
-              {
-                lat: 10,
-                lon: 20,
-                timestamp: "2099-01-01T00:00:00.000Z",
-              },
-              {
-                lat: 11,
-                lon: 21,
-                timestamp: "2099-01-01T00:10:00.000Z",
-              },
-            ],
-          },
-        ],
-        total: 1,
-        page: 1,
-        limit: 100,
-      });
+    listFleetVehiclesMock.mockResolvedValue({
+      items: [{ ...baseVehicle }],
+      total: 1,
+      page: 1,
+      limit: 100,
+    });
   });
 
-  it("отображает маркеры техники и трек после включения", async () => {
+  it("отображает список транспорта и позволяет вручную обновить", async () => {
     render(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
@@ -475,41 +436,16 @@ describe("LogisticsPage", () => {
 
     expect(listFleetVehiclesMock).toHaveBeenCalledWith("", 1, 100);
 
-    await waitFor(() =>
-      expect(mockedLeaflet.marker).toHaveBeenCalledWith(
-        [10, 20],
-        expect.objectContaining({ title: "Погрузчик" }),
-      ),
-    );
+    expect(screen.getByText("Погрузчик")).toBeInTheDocument();
 
-    const trackToggle = screen.getByLabelText("Показывать трек");
-    fireEvent.click(trackToggle);
+    const refreshButton = screen.getByRole("button", {
+      name: "Обновить автопарк",
+    });
+
+    fireEvent.click(refreshButton);
 
     await waitFor(() =>
       expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
     );
-
-    await waitFor(() => {
-      const hasTrackPolyline = mockedLeaflet.polyline.mock.calls.some(
-        ([coords, options]: [unknown, unknown]) => {
-          if (!Array.isArray(coords) || coords.length < 2) return false;
-          const [start, finish] = coords as [
-            [number, number],
-            [number, number],
-          ];
-          const color = (options as { color?: string } | undefined)?.color;
-          return (
-            Array.isArray(start) &&
-            Array.isArray(finish) &&
-            start[0] === 10 &&
-            start[1] === 20 &&
-            finish[0] === 11 &&
-            finish[1] === 21 &&
-            color === "#22c55e"
-          );
-        },
-      );
-      expect(hasTrackPolyline).toBe(true);
-    });
   });
 });

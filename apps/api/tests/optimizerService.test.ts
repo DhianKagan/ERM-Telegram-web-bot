@@ -72,6 +72,12 @@ test('optimize обрабатывает ошибки VRP и возвращает
     { vehicleCapacity: 1, vehicleCount: 1 },
   );
 
-  expect(result.routes).toHaveLength(0);
-  expect(result.warnings[0]).toMatch(/Ошибка VRP/);
+  expect(result.routes).toHaveLength(1);
+  expect(result.routes[0].taskIds).toEqual(['task-1']);
+  expect(result.warnings).toEqual(
+    expect.arrayContaining([
+      expect.stringMatching(/Ошибка VRP/),
+      expect.stringMatching(/эвристик/i),
+    ]),
+  );
 });

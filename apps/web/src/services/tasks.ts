@@ -214,6 +214,7 @@ export interface TransportVehicleOption {
   name: string;
   registrationNumber: string;
   transportType: "Легковой" | "Грузовой";
+  defaultDriverId: number | null;
 }
 
 export interface TransportOptionsResponse {
@@ -234,6 +235,7 @@ export const fetchTransportOptions = async (): Promise<TransportOptionsResponse>
       name: string;
       registrationNumber: string;
       transportType?: "Легковой" | "Грузовой";
+      defaultDriverId?: number | null;
     }>;
   };
   const drivers = Array.isArray(data.drivers)
@@ -254,6 +256,12 @@ export const fetchTransportOptions = async (): Promise<TransportOptionsResponse>
           registrationNumber: vehicle.registrationNumber,
           transportType:
             vehicle.transportType === "Грузовой" ? "Грузовой" : "Легковой",
+          defaultDriverId:
+            typeof vehicle.defaultDriverId === "number" &&
+            Number.isFinite(vehicle.defaultDriverId) &&
+            vehicle.defaultDriverId > 0
+              ? Math.trunc(vehicle.defaultDriverId)
+              : null,
         }),
       )
     : [];

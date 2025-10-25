@@ -15,6 +15,7 @@ export interface FleetVehiclePayload {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
+  defaultDriverId: number | null;
 }
 
 export interface FleetVehicleResponse {

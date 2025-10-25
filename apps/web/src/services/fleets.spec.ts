@@ -63,6 +63,7 @@ describe("mutations", () => {
     fuelRefilled: 5,
     fuelAverageConsumption: 0.2,
     fuelSpentTotal: 2,
+    defaultDriverId: null,
     currentTasks: [],
   };
 

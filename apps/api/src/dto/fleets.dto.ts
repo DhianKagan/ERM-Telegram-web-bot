@@ -26,6 +26,21 @@ function tasksField() {
         throw new Error('currentTasks должны содержать строки');
       }
       return true;
+  });
+}
+
+function defaultDriverField() {
+  return body('defaultDriverId')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') {
+        return true;
+      }
+      const parsed = Number(value);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error('defaultDriverId должен быть положительным целым числом');
+      }
+      return true;
     });
 }
 
@@ -52,6 +67,7 @@ export class CreateFleetDto {
       numberField('fuelAverageConsumption'),
       numberField('fuelSpentTotal'),
       tasksField(),
+      defaultDriverField(),
     ];
   }
 }
@@ -80,6 +96,7 @@ export class UpdateFleetDto {
       numberField('fuelAverageConsumption').optional({ nullable: true }),
       numberField('fuelSpentTotal').optional({ nullable: true }),
       tasksField(),
+      defaultDriverField(),
     ];
   }
 }

@@ -819,6 +819,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [transportVehicleName, setTransportVehicleName] = React.useState<string>("");
   const [transportVehicleRegistration, setTransportVehicleRegistration] =
     React.useState<string>("");
+  const autoDriverRef = React.useRef<string | null>(null);
+  const prevVehicleIdRef = React.useRef<string | null>(null);
+  const initialVehicleSyncRef = React.useRef(true);
   const [transportDriverOptions, setTransportDriverOptions] =
     React.useState<TransportDriverOption[]>([]);
   const [transportVehicleOptions, setTransportVehicleOptions] =
@@ -955,6 +958,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (transportVehicleRegistration) {
         setTransportVehicleRegistration("");
       }
+      if (
+        autoDriverRef.current &&
+        autoDriverRef.current === transportDriverId.trim()
+      ) {
+        autoDriverRef.current = null;
+      }
+      prevVehicleIdRef.current = null;
+      initialVehicleSyncRef.current = false;
       return;
     }
     const option = transportVehicleOptions.find(
@@ -968,11 +979,46 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setTransportVehicleRegistration(option.registrationNumber);
       }
     }
+    const currentDriverValue = transportDriverId.trim();
+    const previousVehicleId = prevVehicleIdRef.current;
+    const vehicleChanged =
+      previousVehicleId !== null && previousVehicleId !== transportVehicleId;
+    const driverWasAuto =
+      autoDriverRef.current !== null &&
+      autoDriverRef.current === currentDriverValue;
+    if (
+      option &&
+      typeof option.defaultDriverId === "number" &&
+      Number.isFinite(option.defaultDriverId) &&
+      option.defaultDriverId > 0
+    ) {
+      const driverValue = String(Math.trunc(option.defaultDriverId));
+      const shouldApplyDefault =
+        currentDriverValue.length === 0 ||
+        driverWasAuto ||
+        (vehicleChanged && !initialVehicleSyncRef.current);
+      if (shouldApplyDefault && currentDriverValue !== driverValue) {
+        setTransportDriverId(driverValue);
+      }
+      if (shouldApplyDefault) {
+        autoDriverRef.current = driverValue;
+      } else if (
+        autoDriverRef.current &&
+        autoDriverRef.current !== currentDriverValue
+      ) {
+        autoDriverRef.current = null;
+      }
+    } else if (driverWasAuto) {
+      autoDriverRef.current = null;
+    }
+    prevVehicleIdRef.current = transportVehicleId;
+    initialVehicleSyncRef.current = false;
   }, [
     transportVehicleId,
     transportVehicleOptions,
     transportVehicleName,
     transportVehicleRegistration,
+    transportDriverId,
   ]);
   const prevTransportRequiresRef = React.useRef(transportRequiresDetails);
   React.useEffect(() => {
@@ -1047,6 +1093,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         name: transportVehicleName || transportVehicleId,
         registrationNumber: transportVehicleRegistration || "",
         transportType: allowedType,
+        defaultDriverId: null,
       });
     }
     return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
@@ -3791,6 +3838,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           onChange={(option) => {
                             const value = option?.value ?? "";
                             setTransportDriverId(value);
+                            autoDriverRef.current = null;
                             if (!value) {
                               setTransportDriverName("");
                               return;

@@ -25,6 +25,7 @@ export interface FleetVehicleAttrs {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
+  defaultDriverId?: number | null;
   transportHistory?: VehicleTaskHistoryEntry[];
 }
 
@@ -68,6 +69,7 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     fuelAverageConsumption: { type: Number, required: true, min: 0 },
     fuelSpentTotal: { type: Number, required: true, min: 0 },
     currentTasks: { type: [String], default: [] },
+    defaultDriverId: { type: Number, min: 1, default: null },
     transportHistory: { type: [vehicleTaskHistorySchema], default: [] },
   },
   {

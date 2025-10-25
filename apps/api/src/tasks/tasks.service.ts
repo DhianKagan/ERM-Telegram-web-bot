@@ -10,6 +10,8 @@ import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
 import { notifyTasksChanged } from '../services/logisticsEvents';
+import { FleetVehicle } from '../db/models/fleet';
+import { Types } from 'mongoose';
 
 interface TasksRepository {
   createTask(
@@ -144,6 +146,7 @@ class TasksService {
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
+    await this.applyDefaultTransportDriver(payload);
     try {
       const task =
         userId === undefined
@@ -185,6 +188,7 @@ class TasksService {
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
+    await this.applyDefaultTransportDriver(payload);
     try {
       const task = await this.repo.updateTask(id, payload, userId);
       await clearRouteCache();
@@ -285,6 +289,83 @@ class TasksService {
         'Не удалось определить тему Telegram для типа задачи',
         error,
       );
+    }
+  }
+
+  private normalizeVehicleId(value: unknown): string | null {
+    if (!value) {
+      return null;
+    }
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      'toString' in value &&
+      typeof (value as { toString?: unknown }).toString === 'function'
+    ) {
+      const converted = (value as { toString(): string }).toString();
+      const trimmed = converted.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return null;
+  }
+
+  private async applyDefaultTransportDriver(
+    data: Partial<TaskDocument> = {},
+  ): Promise<void> {
+    if (!data) return;
+    const hasVehicleField = Object.prototype.hasOwnProperty.call(
+      data,
+      'transport_vehicle_id',
+    );
+    if (!hasVehicleField) {
+      return;
+    }
+    const vehicleId = this.normalizeVehicleId(data.transport_vehicle_id);
+    if (!vehicleId) {
+      return;
+    }
+    const hasDriverField = Object.prototype.hasOwnProperty.call(
+      data,
+      'transport_driver_id',
+    );
+    if (hasDriverField) {
+      const rawDriver = (data as Record<string, unknown>).transport_driver_id;
+      if (
+        rawDriver !== undefined &&
+        rawDriver !== null &&
+        !(typeof rawDriver === 'string' && rawDriver.trim().length === 0)
+      ) {
+        return;
+      }
+    }
+    const vehicle = await FleetVehicle.findById(vehicleId)
+      .select({ defaultDriverId: 1 })
+      .lean<{ defaultDriverId?: number | null }>()
+      .exec();
+    if (
+      !vehicle ||
+      typeof vehicle.defaultDriverId !== 'number' ||
+      !Number.isFinite(vehicle.defaultDriverId) ||
+      vehicle.defaultDriverId <= 0
+    ) {
+      return;
+    }
+    (data as Record<string, unknown>).transport_driver_id = Math.trunc(
+      vehicle.defaultDriverId,
+    );
+    if (
+      Object.prototype.hasOwnProperty.call(data, 'transport_driver_name') &&
+      ((data as Record<string, unknown>).transport_driver_name === '' ||
+        (data as Record<string, unknown>).transport_driver_name === null)
+    ) {
+      delete (data as Record<string, unknown>).transport_driver_name;
     }
   }
 

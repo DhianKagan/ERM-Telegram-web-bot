@@ -83,7 +83,7 @@ const mapSlaSeries = (data?: RoutePlanAnalyticsSummary | null) =>
         : null,
   })) ?? [];
 
-export default function AnalyticsDashboard(): JSX.Element {
+export default function AnalyticsDashboard(): React.ReactElement {
   const { t } = useTranslation();
   const [filters, setFilters] = React.useState<DashboardFilters>({
     from: defaultFrom,

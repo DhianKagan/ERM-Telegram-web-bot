@@ -49,6 +49,46 @@ export interface User {
     divisionId?: string;
     positionId?: string;
 }
+export type TrackingAlarmType = 'delay' | 'route-deviation';
+export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';
+export interface TrackingAlarmEvent {
+    type: 'alarm';
+    vehicleId: string;
+    alarmType: TrackingAlarmType;
+    message: string;
+    severity: TrackingAlarmSeverity;
+    occurredAt: string;
+    taskId?: string;
+    routeId?: string;
+}
+export interface TrackingPositionEvent {
+    type: 'position';
+    vehicleId: string;
+    position: {
+        lat: number;
+        lon: number;
+        speed?: number;
+        course?: number;
+        updatedAt?: string;
+    };
+    track?: {
+        lat: number;
+        lon: number;
+        speed?: number;
+        course?: number;
+        timestamp: string;
+    }[];
+}
+export interface TrackingHeartbeatEvent {
+    type: 'heartbeat';
+    timestamp: string;
+}
+export interface TrackingInitEvent {
+    type: 'init';
+    timestamp: string;
+    alarms?: TrackingAlarmEvent[];
+}
+export type TrackingEvent = TrackingAlarmEvent | TrackingPositionEvent | TrackingHeartbeatEvent | TrackingInitEvent;
 export interface FleetVehicleDto {
     id: string;
     name: string;
@@ -94,6 +134,8 @@ export interface RoutePlanTaskRef {
 }
 export interface RoutePlanRouteMetrics {
     distanceKm?: number | null;
+    etaMinutes?: number | null;
+    load?: number | null;
     tasks?: number;
     stops?: number;
 }
@@ -115,6 +157,8 @@ export interface RoutePlanMetrics {
     totalRoutes: number;
     totalTasks: number;
     totalStops?: number;
+    totalEtaMinutes?: number | null;
+    totalLoad?: number | null;
 }
 export interface RoutePlan {
     id: string;

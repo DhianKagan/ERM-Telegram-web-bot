@@ -155,6 +155,8 @@ export interface RoutePlanTaskRef {
 
 export interface RoutePlanRouteMetrics {
   distanceKm?: number | null;
+  etaMinutes?: number | null;
+  load?: number | null;
   tasks?: number;
   stops?: number;
 }
@@ -178,6 +180,8 @@ export interface RoutePlanMetrics {
   totalRoutes: number;
   totalTasks: number;
   totalStops?: number;
+  totalEtaMinutes?: number | null;
+  totalLoad?: number | null;
 }
 
 export interface RoutePlan {

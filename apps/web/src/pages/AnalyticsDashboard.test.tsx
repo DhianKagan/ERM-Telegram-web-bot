@@ -43,15 +43,17 @@ jest.mock("react-i18next", () => {
       return value === undefined || value === null ? "" : String(value);
     });
 
+  const translate = (key: string, params: Record<string, unknown> = {}) => {
+    const template = templates[key];
+    if (!template) {
+      return key;
+    }
+    return applyTemplate(template, params);
+  };
+
   return {
     useTranslation: () => ({
-      t: (key: string, params: Record<string, unknown> = {}) => {
-        const template = templates[key];
-        if (!template) {
-          return key;
-        }
-        return applyTemplate(template, params);
-      },
+      t: translate,
     }),
   };
 });
@@ -104,16 +106,14 @@ describe("AnalyticsDashboard", () => {
     const initialCalls = mockedFetch.mock.calls.length;
     const statusSelect = screen.getByLabelText("Статус");
     fireEvent.change(statusSelect, { target: { value: "draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Применить" }));
+    expect(statusSelect).toHaveValue("draft");
 
-    await waitFor(() => {
-      expect(
-        mockedFetch.mock.calls.length > initialCalls &&
-          mockedFetch.mock.calls
-            .slice(initialCalls)
-            .some(([args]) => args && args.status === "draft"),
-      ).toBe(true);
-    });
+    const applyButton = await screen.findByRole("button", { name: "Применить" });
+    fireEvent.click(applyButton);
+
+    await waitFor(() =>
+      expect(mockedFetch).toHaveBeenCalledTimes(initialCalls + 1),
+    );
     expect(mockedFetch).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "draft" }),
     );

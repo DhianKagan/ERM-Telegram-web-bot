@@ -1993,6 +1993,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [user, canEditAll, entityKind]);
 
+  const collectDraftPayloadRef = React.useRef(collectDraftPayload);
+
+  React.useEffect(() => {
+    collectDraftPayloadRef.current = collectDraftPayload;
+  }, [collectDraftPayload]);
+
   React.useEffect(() => {
     if (isEdit) {
       setDraft(null);
@@ -2027,7 +2033,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           window.setTimeout(() => {
             if (cancelled) return;
             try {
-              draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+              const snapshot = collectDraftPayloadRef.current();
+              draftSnapshotRef.current = JSON.stringify(snapshot);
             } catch (error) {
               console.warn("Не удалось зафиксировать состояние черновика", error);
             }
@@ -2058,7 +2065,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setTransportVehicleName,
     setTransportVehicleRegistration,
     t,
-    collectDraftPayload,
   ]);
 
   React.useEffect(() => {

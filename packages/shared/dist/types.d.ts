@@ -188,3 +188,28 @@ export interface RoutePlan {
     createdAt?: string;
     updatedAt?: string;
 }
+export interface LogisticsEventBase {
+    type: string;
+    timestamp: string;
+}
+export interface LogisticsTasksChangedEvent extends LogisticsEventBase {
+    type: 'tasks.changed';
+    action: 'created' | 'updated' | 'deleted' | 'bulk';
+    taskIds: string[];
+}
+export interface LogisticsRoutePlanUpdatedEvent extends LogisticsEventBase {
+    type: 'route-plan.updated';
+    reason: 'created' | 'updated' | 'status-changed';
+    plan: RoutePlan;
+}
+export interface LogisticsRoutePlanRemovedEvent extends LogisticsEventBase {
+    type: 'route-plan.removed';
+    planId: string;
+}
+export interface LogisticsInitEvent extends LogisticsEventBase {
+    type: 'logistics.init';
+}
+export interface LogisticsHeartbeatEvent extends LogisticsEventBase {
+    type: 'logistics.heartbeat';
+}
+export type LogisticsEvent = LogisticsTasksChangedEvent | LogisticsRoutePlanUpdatedEvent | LogisticsRoutePlanRemovedEvent | LogisticsInitEvent | LogisticsHeartbeatEvent;

@@ -1,5 +1,5 @@
 // Назначение: сервис управления маршрутными планами и уведомлениями.
-// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries
+// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries, logisticsEvents
 
 import { Types } from 'mongoose';
 import {
@@ -18,6 +18,10 @@ import {
 import { Task } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
+import {
+  notifyRoutePlanRemoved,
+  notifyRoutePlanUpdated,
+} from './logisticsEvents';
 import { getUser } from '../db/queries';
 import haversine from '../utils/haversine';
 
@@ -998,7 +1002,9 @@ export async function createDraftFromInputs(
     metrics,
     tasks: taskIds,
   });
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  notifyRoutePlanUpdated(serialized, 'created');
+  return serialized;
 }
 
 export async function listPlans(
@@ -1059,7 +1065,9 @@ export async function updatePlan(
   }
 
   await plan.save();
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  notifyRoutePlanUpdated(serialized, 'updated');
+  return serialized;
 }
 
 const updateTasksForStatus = async (
@@ -1199,6 +1207,7 @@ export async function updatePlanStatus(
   if (status === 'approved') {
     await notifyPlanApproved(serialized, actorId).catch(() => undefined);
   }
+  notifyRoutePlanUpdated(serialized, 'status-changed');
   return serialized;
 }
 
@@ -1206,7 +1215,12 @@ export async function removePlan(id: string): Promise<boolean> {
   const objectId = parseObjectId(id);
   if (!objectId) return false;
   const res = await RoutePlanModel.findByIdAndDelete(objectId);
-  return Boolean(res);
+  if (!res) {
+    return false;
+  }
+  const removedId = normalizeId(res._id) ?? objectId.toHexString();
+  notifyRoutePlanRemoved(removedId);
+  return true;
 }
 
 export type RoutePlanTaskHint = TaskSource;

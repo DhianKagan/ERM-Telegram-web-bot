@@ -47,6 +47,7 @@ import collectionsRouter from '../routes/collections';
 import archivesRouter from '../routes/archives';
 import systemRouter from '../routes/system';
 import routePlansRouter from '../routes/routePlans';
+import logisticsRouter from '../routes/logistics';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -241,6 +242,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/maps`, mapsRouter);
   app.use(`${prefix}/route`, routeRouter);
   app.use(`${prefix}/route-optimize`, optimizerRouter);
+  app.use(`${prefix}/logistics`, logisticsRouter);
   app.use(`${prefix}/route-plans`, routePlansRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);

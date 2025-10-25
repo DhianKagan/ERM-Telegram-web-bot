@@ -19,6 +19,7 @@ import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
+import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import {
   PROJECT_TIMEZONE,
   TASK_STATUSES,
@@ -154,6 +155,12 @@ export default function LogisticsPage() {
   const mapRef = React.useRef<L.Map | null>(null);
   const optLayerRef = React.useRef<L.LayerGroup | null>(null);
   const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const autoJobRef = React.useRef({
+    refreshTasks: false,
+    refreshPlan: false,
+    recalc: false,
+  });
+  const autoTimerRef = React.useRef<number | null>(null);
   const [availableVehicles, setAvailableVehicles] = React.useState<
     FleetVehicleDto[]
   >([]);
@@ -604,9 +611,10 @@ export default function LogisticsPage() {
     });
   }, []);
 
-  const load = React.useCallback(() => {
+  const load = React.useCallback(async () => {
     const userId = Number((user as any)?.telegram_id) || undefined;
-    fetchTasks({}, userId, true).then((data: any) => {
+    try {
+      const data = await fetchTasks({}, userId, true);
       const raw = Array.isArray(data)
         ? data
         : data.items || data.tasks || data.data || [];
@@ -635,7 +643,20 @@ export default function LogisticsPage() {
         sort: "desc",
       });
       setSorted(filtered);
-    });
+      return filtered;
+    } catch (error) {
+      console.error("Не удалось загрузить задачи логистики", error);
+      setSorted([]);
+      controller.setIndex("logistics:all", [], {
+        kind: "task",
+        mine: false,
+        userId,
+        pageSize: 0,
+        total: 0,
+        sort: "desc",
+      });
+      return [];
+    }
   }, [controller, filterRouteTasks, user]);
 
   const loadFleetVehicles = React.useCallback(async () => {
@@ -664,7 +685,7 @@ export default function LogisticsPage() {
   }, [role, tRef]);
 
   const refreshAll = React.useCallback(() => {
-    load();
+    void load();
     if (role === "admin") {
       void loadFleetVehicles();
     }
@@ -675,6 +696,50 @@ export default function LogisticsPage() {
       void loadFleetVehicles();
     }
   }, [loadFleetVehicles, role]);
+
+  const scheduleAutoRecalculate = React.useCallback(
+    (
+      options: {
+        refreshTasks?: boolean;
+        refreshPlan?: boolean;
+        recalc?: boolean;
+      } = {},
+    ) => {
+      autoJobRef.current = {
+        refreshTasks:
+          autoJobRef.current.refreshTasks || Boolean(options.refreshTasks),
+        refreshPlan:
+          autoJobRef.current.refreshPlan || Boolean(options.refreshPlan),
+        recalc: autoJobRef.current.recalc || Boolean(options.recalc),
+      };
+      if (autoTimerRef.current !== null) {
+        return;
+      }
+      autoTimerRef.current = window.setTimeout(async () => {
+        const job = autoJobRef.current;
+        autoJobRef.current = {
+          refreshTasks: false,
+          refreshPlan: false,
+          recalc: false,
+        };
+        autoTimerRef.current = null;
+        try {
+          if (job.refreshTasks) {
+            await load();
+          }
+          if (job.refreshPlan) {
+            await loadPlan();
+          }
+          if (job.recalc) {
+            await calculate();
+          }
+        } catch (error) {
+          console.error("Не удалось выполнить автообновление логистики", error);
+        }
+      }, 800);
+    },
+    [calculate, load, loadPlan],
+  );
 
   const formatEta = React.useCallback(
     (value: number | null | undefined) => {
@@ -1114,13 +1179,55 @@ export default function LogisticsPage() {
     setLinks([]);
   }, []);
 
+  React.useEffect(
+    () => () => {
+      if (autoTimerRef.current !== null) {
+        window.clearTimeout(autoTimerRef.current);
+        autoTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
   React.useEffect(() => {
-    load();
+    void load();
   }, [load, location.key]);
 
   React.useEffect(() => {
     setPage(0);
   }, [tasks]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof EventSource === "undefined") {
+      return () => undefined;
+    }
+    const unsubscribe = subscribeLogisticsEvents(
+      (event) => {
+        if (event.type === "tasks.changed") {
+          scheduleAutoRecalculate({
+            refreshTasks: true,
+            refreshPlan: true,
+            recalc: true,
+          });
+        } else if (event.type === "route-plan.updated") {
+          applyPlan(event.plan);
+          setPlanMessage(tRef.current("logistics.planSaved"));
+          setPlanMessageTone("success");
+        } else if (event.type === "route-plan.removed") {
+          applyPlan(null);
+          setPlanMessage(tRef.current("logistics.planEmpty"));
+          setPlanMessageTone("neutral");
+        }
+      },
+      () => {
+        setPlanMessage(tRef.current("logistics.planLoadError"));
+        setPlanMessageTone("error");
+      },
+    );
+    return () => {
+      unsubscribe();
+    };
+  }, [applyPlan, scheduleAutoRecalculate, tRef]);
 
   React.useEffect(() => {
     const translate = tRef.current;

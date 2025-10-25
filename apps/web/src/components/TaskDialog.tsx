@@ -40,6 +40,11 @@ import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
+import {
+  list as listTaskTemplates,
+  create as createTaskTemplate,
+  type TaskTemplate as TaskTemplateModel,
+} from "../services/taskTemplates";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import haversine from "../utils/haversine";
@@ -824,6 +829,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     React.useState<string | null>(null);
   const [transportOptionsLoaded, setTransportOptionsLoaded] =
     React.useState(false);
+  const [templates, setTemplates] = React.useState<TaskTemplateModel[]>([]);
+  const [templatesLoading, setTemplatesLoading] = React.useState(false);
+  const [templatesError, setTemplatesError] = React.useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
+  const [templateSaving, setTemplateSaving] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [paymentAmount, setPaymentAmount] = React.useState(() =>
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
@@ -1995,11 +2005,127 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [user, canEditAll, entityKind]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    setTemplatesLoading(true);
+    setTemplatesError(null);
+    listTaskTemplates()
+      .then((items) => {
+        if (cancelled) return;
+        setTemplates(items);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn("Не удалось загрузить шаблоны задач", error);
+        setTemplates([]);
+        const reason =
+          error instanceof Error && error.message
+            ? error.message
+            : t("taskTemplateLoadFailed");
+        setTemplatesError(reason);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTemplatesLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
   const collectDraftPayloadRef = React.useRef(collectDraftPayload);
 
   React.useEffect(() => {
     collectDraftPayloadRef.current = collectDraftPayload;
   }, [collectDraftPayload]);
+
+  const templateOptions = React.useMemo(
+    () =>
+      templates.map((item) => ({
+        value: item._id,
+        label: item.name,
+      })),
+    [templates],
+  );
+
+  const handleTemplateChange = React.useCallback(
+    (templateId: string) => {
+      setSelectedTemplateId(templateId);
+      if (!templateId) {
+        return;
+      }
+      const template = templates.find((item) => item._id === templateId);
+      if (!template) {
+        return;
+      }
+      const payload =
+        template.data && typeof template.data === "object"
+          ? (template.data as Partial<Task> & Record<string, unknown>)
+          : {};
+      applyTaskDetails(payload);
+      setHasDraftChanges(true);
+      skipNextDraftSyncRef.current = false;
+    },
+    [templates, applyTaskDetails, setHasDraftChanges],
+  );
+
+  const handleSaveTemplate = React.useCallback(async () => {
+    if (!editing || templateSaving) {
+      return;
+    }
+    const name = window.prompt(t("taskTemplateNamePrompt"));
+    if (name === null) {
+      return;
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setAlertMsg(t("taskTemplateNameRequired"));
+      return;
+    }
+    let templatePayload: Record<string, unknown>;
+    try {
+      templatePayload = {
+        ...collectDraftPayloadRef.current(),
+        kind: entityKind,
+      };
+    } catch (error) {
+      console.error("Не удалось подготовить данные шаблона", error);
+      setAlertMsg(t("taskTemplateSaveError"));
+      return;
+    }
+    setTemplateSaving(true);
+    try {
+      const created = await createTaskTemplate({
+        name: trimmed,
+        data: templatePayload,
+      });
+      setTemplates((prev) => {
+        const next = prev.filter((item) => item._id !== created._id);
+        next.push(created);
+        return next;
+      });
+      setTemplatesError(null);
+      setSelectedTemplateId(created._id);
+      setAlertMsg(t("taskTemplateSaveSuccess"));
+    } catch (error) {
+      console.error("Не удалось сохранить шаблон задачи", error);
+      const reason =
+        error instanceof Error && error.message
+          ? error.message
+          : t("taskTemplateSaveError");
+      setAlertMsg(reason);
+    } finally {
+      setTemplateSaving(false);
+    }
+  }, [
+    collectDraftPayloadRef,
+    createTaskTemplate,
+    editing,
+    entityKind,
+    t,
+    templateSaving,
+  ]);
 
   React.useEffect(() => {
     if (isEdit) {
@@ -2684,6 +2810,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     );
     setDistanceKm(d.distanceKm);
     setShowLogistics(Boolean(d.showLogistics));
+    setSelectedTemplateId("");
+    setTemplatesError(null);
     skipNextDraftSyncRef.current = true;
   };
 
@@ -2876,6 +3004,60 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               </button>
             </div>
             <>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div>
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="task-template-select"
+                  >
+                    {t("taskTemplateSelect")}
+                  </label>
+                  <select
+                    id="task-template-select"
+                    value={selectedTemplateId}
+                    onChange={(event) =>
+                      handleTemplateChange(event.target.value)
+                    }
+                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                    disabled={
+                      !editing ||
+                      templatesLoading ||
+                      templateOptions.length === 0
+                    }
+                  >
+                    <option value="">
+                      {t("taskTemplateSelectPlaceholder")}
+                    </option>
+                    {templateOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {templatesLoading ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t("loading")}
+                    </p>
+                  ) : templatesError ? (
+                    <p className="mt-1 text-xs text-red-600">{templatesError}</p>
+                  ) : templateOptions.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t("taskTemplateEmpty")}
+                    </p>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveTemplate}
+                  disabled={!editing || templateSaving}
+                  className="justify-self-start sm:justify-self-end"
+                >
+                  {templateSaving
+                    ? t("taskTemplateSaving")
+                    : t("taskTemplateSaveAction")}
+                </Button>
+              </div>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">
                   <div>

@@ -61,7 +61,7 @@ import {
   getPriorityBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
-} from "../columns/taskColumns";
+} from "../columns/taskBadgeClassNames";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
 
@@ -1756,6 +1756,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     status,
     finishCoordinates,
     requestId,
+    DEFAULT_REQUEST_TYPE,
   ]);
 
   React.useEffect(() => {
@@ -1992,6 +1993,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [user, canEditAll, entityKind]);
 
+  const collectDraftPayloadRef = React.useRef(collectDraftPayload);
+
+  React.useEffect(() => {
+    collectDraftPayloadRef.current = collectDraftPayload;
+  }, [collectDraftPayload]);
+
   React.useEffect(() => {
     if (isEdit) {
       setDraft(null);
@@ -2026,7 +2033,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           window.setTimeout(() => {
             if (cancelled) return;
             try {
-              draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+              const snapshot = collectDraftPayloadRef.current();
+              draftSnapshotRef.current = JSON.stringify(snapshot);
             } catch (error) {
               console.warn("Не удалось зафиксировать состояние черновика", error);
             }

@@ -97,6 +97,26 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
   );
   const resolvedDueDate =
     nextDueDate !== undefined ? nextDueDate : previousDueDate;
+  const nextWindowStart = pickStringOrNull(
+    (input as Record<string, unknown>).deliveryWindowStart,
+    (input as Record<string, unknown>).delivery_window_start,
+  );
+  const prevWindowStart = pickStringOrNull(
+    (input as TaskRow & { deliveryWindowStart?: string }).deliveryWindowStart,
+    (input as TaskRow).delivery_window_start,
+  );
+  const resolvedWindowStart =
+    nextWindowStart !== undefined ? nextWindowStart : prevWindowStart;
+  const nextWindowEnd = pickStringOrNull(
+    (input as Record<string, unknown>).deliveryWindowEnd,
+    (input as Record<string, unknown>).delivery_window_end,
+  );
+  const prevWindowEnd = pickStringOrNull(
+    (input as TaskRow & { deliveryWindowEnd?: string }).deliveryWindowEnd,
+    (input as TaskRow).delivery_window_end,
+  );
+  const resolvedWindowEnd =
+    nextWindowEnd !== undefined ? nextWindowEnd : prevWindowEnd;
   const assignees = normalizeAssignees(
     (input as Record<string, unknown>).assignees ??
       (input as Record<string, unknown>).assigned_user_id ??
@@ -118,6 +138,16 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
     created_by: creator as number | string | null | undefined,
     kind: resolveKind(input as Partial<TaskRow> & Partial<Task>),
   };
+  if (resolvedWindowStart !== undefined) {
+    normalized.delivery_window_start = resolvedWindowStart ?? null;
+    (normalized as Record<string, unknown>).deliveryWindowStart =
+      resolvedWindowStart ?? null;
+  }
+  if (resolvedWindowEnd !== undefined) {
+    normalized.delivery_window_end = resolvedWindowEnd ?? null;
+    (normalized as Record<string, unknown>).deliveryWindowEnd =
+      resolvedWindowEnd ?? null;
+  }
   return normalized;
 };
 

@@ -607,6 +607,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     assigneeId: string;
     startDate?: string;
     dueDate?: string;
+    deliveryWindowStart?: string;
+    deliveryWindowEnd?: string;
   };
   const taskFormResolver = React.useCallback<Resolver<TaskFormValues>>(
     async (values) => {
@@ -620,12 +622,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         typeof values.startDate === "string" ? values.startDate.trim() : "";
       const normalizedDueRaw =
         typeof values.dueDate === "string" ? values.dueDate.trim() : "";
+      const normalizedWindowStartRaw =
+        typeof values.deliveryWindowStart === "string"
+          ? values.deliveryWindowStart.trim()
+          : "";
+      const normalizedWindowEndRaw =
+        typeof values.deliveryWindowEnd === "string"
+          ? values.deliveryWindowEnd.trim()
+          : "";
       const normalized: TaskFormValues = {
         title: normalizedTitle,
         description: normalizedDescription,
         assigneeId: normalizedAssignee,
         startDate: normalizedStartRaw || undefined,
         dueDate: normalizedDueRaw || undefined,
+        deliveryWindowStart: normalizedWindowStartRaw || undefined,
+        deliveryWindowEnd: normalizedWindowEndRaw || undefined,
       };
       const fieldErrors: FieldErrors<TaskFormValues> = {};
       if (!normalizedTitle) {
@@ -654,6 +666,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           };
         }
       }
+      if (normalized.deliveryWindowStart && normalized.deliveryWindowEnd) {
+        const windowStart = new Date(normalized.deliveryWindowStart).getTime();
+        const windowEnd = new Date(normalized.deliveryWindowEnd).getTime();
+        if (
+          Number.isFinite(windowStart) &&
+          Number.isFinite(windowEnd) &&
+          windowEnd < windowStart
+        ) {
+          fieldErrors.deliveryWindowEnd = {
+            type: "validate",
+            message: t("deliveryWindowInvalidRange"),
+          };
+        }
+      }
       return {
         values: Object.keys(fieldErrors).length ? {} : normalized,
         errors: fieldErrors,
@@ -679,6 +705,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       assigneeId: user ? String(user.telegram_id) : "",
       startDate: "",
       dueDate: "",
+      deliveryWindowStart: "",
+      deliveryWindowEnd: "",
     },
   });
   const resetRef = React.useRef(reset);
@@ -1280,6 +1308,30 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
             )
           : "";
+      const windowStartCandidate = parseIsoDateMemo(
+        ((taskData as Record<string, unknown>).delivery_window_start as
+          | string
+          | undefined) ??
+          ((taskData as Record<string, unknown>).deliveryWindowStart as
+            | string
+            | undefined) ??
+          null,
+      );
+      const windowEndCandidate = parseIsoDateMemo(
+        ((taskData as Record<string, unknown>).delivery_window_end as
+          | string
+          | undefined) ??
+          ((taskData as Record<string, unknown>).deliveryWindowEnd as
+            | string
+            | undefined) ??
+          null,
+      );
+      const deliveryWindowStart = windowStartCandidate
+        ? formatInputDate(windowStartCandidate)
+        : startDate;
+      const deliveryWindowEnd = windowEndCandidate
+        ? formatInputDate(windowEndCandidate)
+        : dueDate;
       const diff =
         startDate && dueDate
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
@@ -1292,6 +1344,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         assigneeId,
         startDate,
         dueDate,
+        deliveryWindowStart: deliveryWindowStart || "",
+        deliveryWindowEnd: deliveryWindowEnd || "",
       });
       hasAutofilledAssignee.current = true;
       setTaskType(normalizedTaskType);
@@ -1421,6 +1475,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         endLink: endLocationLink,
         startDate,
         dueDate,
+        deliveryWindowStart: deliveryWindowStart || "",
+        deliveryWindowEnd: deliveryWindowEnd || "",
         attachments: ((taskData.attachments as Attachment[]) ||
           []) as Attachment[],
         distanceKm: typeof distanceValue === "number" ? distanceValue : null,
@@ -1558,6 +1614,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
     if (values.startDate) payload.start_date = values.startDate;
     if (values.dueDate) payload.due_date = values.dueDate;
+    if (Object.prototype.hasOwnProperty.call(values, "deliveryWindowStart")) {
+      const windowStartValue = values.deliveryWindowStart?.trim() || "";
+      payload.delivery_window_start = windowStartValue ? windowStartValue : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(values, "deliveryWindowEnd")) {
+      const windowEndValue = values.deliveryWindowEnd?.trim() || "";
+      payload.delivery_window_end = windowEndValue ? windowEndValue : null;
+    }
     if (start) payload.start_location = start;
     if (startLink) payload.start_location_link = startLink;
     if (end) payload.end_location = end;
@@ -1821,6 +1885,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       endLink: "",
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
+      deliveryWindowStart: defaultStartDate,
+      deliveryWindowEnd: defaultDueDate,
       attachments: [],
       distanceKm: null,
       cargoLength: "",
@@ -1846,6 +1912,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
+      deliveryWindowStart: defaultStartDate,
+      deliveryWindowEnd: defaultDueDate,
     });
     hasAutofilledAssignee.current = false;
     setCargoLength("");
@@ -3383,6 +3451,38 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         id="task-dialog-due-date"
                         type="datetime-local"
                         {...register("dueDate", { onChange: handleDueDateChange })}
+                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                        disabled={!editing}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label
+                        className="block text-sm font-medium"
+                        htmlFor="task-dialog-window-start"
+                      >
+                        {t("deliveryWindowStart")}
+                      </label>
+                      <input
+                        id="task-dialog-window-start"
+                        type="datetime-local"
+                        {...register("deliveryWindowStart")}
+                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                        disabled={!editing}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-sm font-medium"
+                        htmlFor="task-dialog-window-end"
+                      >
+                        {t("deliveryWindowEnd")}
+                      </label>
+                      <input
+                        id="task-dialog-window-end"
+                        type="datetime-local"
+                        {...register("deliveryWindowEnd")}
                         className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                         disabled={!editing}
                       />

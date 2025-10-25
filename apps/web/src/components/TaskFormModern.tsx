@@ -113,6 +113,10 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
       ...d,
       startDate: d.startDate || make(8),
       dueDate: d.dueDate || make(18),
+      deliveryWindowStart:
+        d.deliveryWindowStart || d.startDate || d.dueDate || make(8),
+      deliveryWindowEnd:
+        d.deliveryWindowEnd || d.dueDate || d.startDate || make(18),
     }));
   }, []);
   useEffect(() => {

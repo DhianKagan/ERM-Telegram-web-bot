@@ -136,81 +136,87 @@ export default function LogisticsPage() {
       if (!result.routes.length) {
         return null;
       }
-      const planRoutes = result.routes
-        .map((route, routeIndex) => {
-          const tasksForRoute = route.taskIds
-            .map((id) => taskIndex.get(id))
-            .filter((task): task is RouteTask => Boolean(task));
-          if (!tasksForRoute.length) {
-            return null;
-          }
-          const taskRefs = tasksForRoute.map((task, order) => {
-            const details = (task as Record<string, unknown>)
-              .logistics_details as LogisticsDetails | undefined;
-            const startAddress =
-              typeof details?.start_location === "string"
-                ? details.start_location.trim()
-                : "";
-            const finishAddress =
-              typeof details?.end_location === "string"
-                ? details.end_location.trim()
-                : "";
-            const distance = Number(task.route_distance_km);
-            return {
-              taskId: task._id,
-              order,
-              title: task.title,
-              start: task.startCoordinates,
-              finish: task.finishCoordinates,
-              startAddress: startAddress || null,
-              finishAddress: finishAddress || null,
-              distanceKm:
-                Number.isFinite(distance) && !Number.isNaN(distance)
-                  ? distance
-                  : null,
-            } satisfies RoutePlan["routes"][number]["tasks"][number];
-          });
-          const stops = taskRefs.flatMap((taskRef) => {
-            const routeStops: RoutePlan["routes"][number]["stops"] = [];
-            if (taskRef.start) {
-              routeStops.push({
-                order: taskRef.order * 2,
-                kind: "start",
-                taskId: taskRef.taskId,
-                coordinates: taskRef.start,
-                address: taskRef.startAddress ?? null,
-              });
-            }
-            if (taskRef.finish) {
-              routeStops.push({
-                order: taskRef.order * 2 + 1,
-                kind: "finish",
-                taskId: taskRef.taskId,
-                coordinates: taskRef.finish,
-                address: taskRef.finishAddress ?? null,
-              });
-            }
-            return routeStops;
-          });
+      const planRoutes: RoutePlan["routes"] = [];
+
+      result.routes.forEach((route, routeIndex) => {
+        const tasksForRoute = route.taskIds
+          .map((id) => taskIndex.get(id))
+          .filter((task): task is RouteTask => Boolean(task));
+
+        if (!tasksForRoute.length) {
+          return;
+        }
+
+        const taskRefs = tasksForRoute.map((task, order) => {
+          const details = (task as Record<string, unknown>)
+            .logistics_details as LogisticsDetails | undefined;
+          const startAddress =
+            typeof details?.start_location === "string"
+              ? details.start_location.trim()
+              : "";
+          const finishAddress =
+            typeof details?.end_location === "string"
+              ? details.end_location.trim()
+              : "";
+          const distance = Number(task.route_distance_km);
           return {
-            id: `route-${routeIndex + 1}`,
-            order: routeIndex,
-            vehicleId: null,
-            vehicleName: null,
-            driverId: null,
-            driverName: null,
-            tasks: taskRefs,
-            stops,
-            metrics: {
-              distanceKm: route.distanceKm,
-              tasks: taskRefs.length,
-              stops: stops.length,
-            },
-            routeLink: null,
-            notes: null,
-          } satisfies RoutePlan["routes"][number];
-        })
-        .filter((route): route is RoutePlan["routes"][number] => Boolean(route));
+            taskId: task._id,
+            order,
+            title: task.title,
+            start: task.startCoordinates,
+            finish: task.finishCoordinates,
+            startAddress: startAddress || null,
+            finishAddress: finishAddress || null,
+            distanceKm:
+              Number.isFinite(distance) && !Number.isNaN(distance)
+                ? distance
+                : null,
+          } satisfies RoutePlan["routes"][number]["tasks"][number];
+        });
+
+        const stops = taskRefs.flatMap((taskRef) => {
+          const routeStops: RoutePlan["routes"][number]["stops"] = [];
+          if (taskRef.start) {
+            routeStops.push({
+              order: taskRef.order * 2,
+              kind: "start",
+              taskId: taskRef.taskId,
+              coordinates: taskRef.start,
+              address: taskRef.startAddress ?? null,
+            });
+          }
+          if (taskRef.finish) {
+            routeStops.push({
+              order: taskRef.order * 2 + 1,
+              kind: "finish",
+              taskId: taskRef.taskId,
+              coordinates: taskRef.finish,
+              address: taskRef.finishAddress ?? null,
+            });
+          }
+          return routeStops;
+        });
+
+        const planRoute: RoutePlan["routes"][number] = {
+          id: `route-${routeIndex + 1}`,
+          order: routeIndex,
+          vehicleId: null,
+          vehicleName: null,
+          driverId: null,
+          driverName: null,
+          tasks: taskRefs,
+          stops,
+          metrics: {
+            distanceKm: route.distanceKm,
+            tasks: taskRefs.length,
+            stops: stops.length,
+          },
+          routeLink: null,
+          notes: null,
+        };
+
+        planRoutes.push(planRoute);
+      });
 
       if (!planRoutes.length) {
         return null;

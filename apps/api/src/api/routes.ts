@@ -109,7 +109,7 @@ export default async function registerRoutes(
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
     '/api/v1/csrf',
-    '/api/v1/optimizer',
+    '/api/v1/route-optimize',
     '/api/v1/maps/expand',
   ];
   const csrfExcludePrefix = ['/api/tma'];
@@ -240,7 +240,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/auth`, authUserRouter);
   app.use(`${prefix}/maps`, mapsRouter);
   app.use(`${prefix}/route`, routeRouter);
-  app.use(`${prefix}/optimizer`, optimizerRouter);
+  app.use(`${prefix}/route-optimize`, optimizerRouter);
   app.use(`${prefix}/route-plans`, routePlansRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);

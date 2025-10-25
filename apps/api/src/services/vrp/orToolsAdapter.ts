@@ -24,6 +24,7 @@ export interface OrToolsSolveRequest {
   depot_index?: number;
   time_windows?: Array<[number, number]>;
   time_limit_seconds?: number;
+  average_speed_kmph?: number;
 }
 
 export interface OrToolsSolveResult {

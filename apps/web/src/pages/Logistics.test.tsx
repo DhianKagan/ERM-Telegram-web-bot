@@ -228,7 +228,12 @@ jest.mock("../services/osrm", () =>
   ]),
 );
 
-jest.mock("../services/optimizer", () => jest.fn().mockResolvedValue(null));
+const optimizeRouteMock = jest.fn().mockResolvedValue(null);
+
+jest.mock("../services/optimizer", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => optimizeRouteMock(...args),
+}));
 
 const listRoutePlansMock = jest.fn();
 const updateRoutePlanMock = jest.fn();

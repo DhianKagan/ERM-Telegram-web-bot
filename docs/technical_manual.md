@@ -92,6 +92,114 @@ API справочников постепенно переезжает с кол
 - Исходные демо-данные формируются функцией `createSampleProblem` в `apps/api/src/services/vrp/orToolsAdapter.ts`; координаты соответствуют примеру из сервиса `optimizer`.
 - Подробное сравнение сценариев и ограничений приведено в `docs/routing_research.md`.
 
+### API оптимизации маршрута
+
+- Точка входа `POST /api/v1/route-optimize` требует аутентификации и исключена из CSRF-проверки.
+- Запрос принимает JSON-объект согласно схеме:
+
+```json
+{
+  "type": "object",
+  "required": ["tasks", "vehicleCapacity", "vehicleCount"],
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "coordinates"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "coordinates": {
+            "type": "object",
+            "required": ["lat", "lng"],
+            "properties": {
+              "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+              "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+            }
+          },
+          "demand": { "type": "number", "minimum": 0 },
+          "serviceMinutes": { "type": "number", "minimum": 0 },
+          "timeWindow": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "title": { "type": "string" },
+          "startAddress": { "type": "string" },
+          "finishAddress": { "type": "string" }
+        }
+      }
+    },
+    "vehicleCapacity": { "type": "integer", "minimum": 1 },
+    "vehicleCount": { "type": "integer", "minimum": 1 },
+    "timeWindows": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "integer", "minimum": 0 },
+        "minItems": 2,
+        "maxItems": 2
+      }
+    },
+    "averageSpeedKmph": { "type": "number", "minimum": 1 }
+  }
+}
+```
+
+- Пример запроса:
+
+```json
+{
+  "tasks": [
+    {
+      "id": "depot-kyiv",
+      "coordinates": { "lat": 50.4501, "lng": 30.5234 },
+      "demand": 0,
+      "serviceMinutes": 0,
+      "title": "Склад Киев"
+    },
+    {
+      "id": "task-1",
+      "coordinates": { "lat": 50.4547, "lng": 30.5166 },
+      "demand": 1,
+      "serviceMinutes": 15,
+      "timeWindow": [540, 720],
+      "title": "Доставка №1",
+      "startAddress": "Киев, ул. Крещатик 1"
+    }
+  ],
+  "vehicleCapacity": 4,
+  "vehicleCount": 1,
+  "averageSpeedKmph": 35
+}
+```
+
+- Пример ответа:
+
+```json
+{
+  "result": {
+    "routes": [
+      {
+        "vehicleIndex": 0,
+        "taskIds": ["task-1"],
+        "distanceKm": 5.2,
+        "etaMinutes": 38,
+        "load": 1
+      }
+    ],
+    "totalDistanceKm": 5.2,
+    "totalEtaMinutes": 38,
+    "totalLoad": 1,
+    "warnings": []
+  }
+}
+```
+
+- Массив `warnings` содержит диагностические сообщения VRP-движка; при наличии предупреждений клиент отображает их пользователю.
+
 ### Секреты и ключи
 
 Секреты хранятся в HashiCorp Vault или AWS Secrets Manager,
@@ -319,7 +427,7 @@ API использует middleware `lusca.csrf`. Токен сохраняет�
 Маршруты Mini App с префиксом `/api/tma` и запросы с заголовком
 `Authorization` исключены из проверки CSRF. Без токена сервер возвращает
 403 с `application/problem+json`. Для скриптов токен не требуется на
-`/api/v1/optimizer` и `/api/v1/maps/expand`. Переменная `DISABLE_CSRF=1`
+`/api/v1/route-optimize` и `/api/v1/maps/expand`. Переменная `DISABLE_CSRF=1`
 полностью отключает middleware.
 
 Ошибки увеличивают счётчик `csrf_errors_total` и логируются с заголовком и

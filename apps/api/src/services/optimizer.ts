@@ -438,29 +438,32 @@ export async function optimize(
 
   const combinedWarnings: string[] = [];
   if (solverError) {
-    combinedWarnings.push(
-      solverError instanceof Error
-        ? `Ошибка VRP движка: ${solverError.message}`
-        : 'Ошибка VRP движка: неизвестная ошибка',
-    );
-
     const incidentDetails = {
       provider: context.matrixProvider,
       tasks: context.solverTasks.length - 1,
       vehicles: vehicleCount,
     };
 
-    console.error('VRP движок недоступен, маршруты не построены', {
+    const errorMessage =
+      solverError instanceof Error
+        ? `Ошибка VRP движка: ${solverError.message}`
+        : 'Ошибка VRP движка: неизвестная ошибка';
+    const dropMessage =
+      solverError instanceof Error
+        ? `Падение VRP движка: ${solverError.message}. Используем эвристику.`
+        : 'Падение VRP движка: неизвестная ошибка. Используем эвристику.';
+
+    combinedWarnings.push(errorMessage, dropMessage);
+
+    console.error('VRP движок недоступен, используем эвристику', {
       ...incidentDetails,
       error: solverError instanceof Error ? solverError.message : solverError,
     });
 
+    const fallback = buildHeuristicResult(context, options.vehicleCapacity, vehicleCount);
     return {
-      routes: [],
-      totalDistanceKm: 0,
-      totalEtaMinutes: 0,
-      totalLoad: 0,
-      warnings: mergeWarnings(context.warnings, solverResult?.warnings, combinedWarnings),
+      ...fallback,
+      warnings: mergeWarnings(combinedWarnings, context.warnings, fallback.warnings),
     };
   }
 

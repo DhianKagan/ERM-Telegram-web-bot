@@ -62,6 +62,26 @@ const usersMap = users.reduce<Record<string, any>>((acc, u) => {
   return acc;
 }, {});
 
+type TemplateFixture = {
+  _id: string;
+  name: string;
+  data: Record<string, unknown>;
+};
+
+const templateFixtures: TemplateFixture[] = [
+  {
+    _id: "tpl-1",
+    name: "Базовый шаблон",
+    data: {
+      title: "Заголовок из шаблона",
+      task_description: "Описание из шаблона",
+    },
+  },
+];
+
+let templatesStore: TemplateFixture[] = [];
+let lastTemplatePayload: Record<string, unknown> | null = null;
+
 const taskData = {
   title: "Task",
   task_description: "",
@@ -76,7 +96,43 @@ const taskData = {
   history: [],
 };
 
-const defaultAuthFetch = (url: string) => {
+const defaultAuthFetch = (url: string, options?: RequestInit) => {
+  if (url === "/api/v1/task-templates") {
+    if (options?.method === "POST") {
+      let parsed: Record<string, unknown> = {};
+      const body = options.body;
+      if (typeof body === "string") {
+        try {
+          parsed = JSON.parse(body) as Record<string, unknown>;
+        } catch {
+          parsed = {};
+        }
+      }
+      lastTemplatePayload = parsed;
+      const created: TemplateFixture = {
+        _id: `tpl-${templatesStore.length + 1}`,
+        name:
+          typeof parsed.name === "string" && parsed.name.trim()
+            ? (parsed.name as string)
+            : "Новый шаблон",
+        data:
+          parsed.data && typeof parsed.data === "object"
+            ? (parsed.data as Record<string, unknown>)
+            : {},
+      };
+      templatesStore = [...templatesStore, created];
+      return Promise.resolve({
+        ok: true,
+        status: 201,
+        json: async () => created,
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: async () => templatesStore,
+    });
+  }
   if (url === "/api/v1/collections/departments") {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
@@ -99,14 +155,14 @@ const defaultAuthFetch = (url: string) => {
       json: async () => ({}),
     });
   }
-  return Promise.resolve({ ok: true, json: async () => ({}) });
+  return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
 };
 
 const authFetchMock = jest.fn(defaultAuthFetch);
 
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
-  default: (url: string) => authFetchMock(url),
+  default: (url: string, options?: RequestInit) => authFetchMock(url, options),
 }));
 
 const createTaskMock = jest.fn();
@@ -150,6 +206,11 @@ describe("TaskDialog", () => {
       ok: true,
       json: async () => ({ ...taskData, _id: "1" }),
     });
+    templatesStore = templateFixtures.map((tpl) => ({
+      ...tpl,
+      data: { ...tpl.data },
+    }));
+    lastTemplatePayload = null;
   });
 
   it("сохраняет задачу и повторно открывает форму", async () => {
@@ -419,5 +480,70 @@ describe("TaskDialog", () => {
         }),
       ),
     );
+  });
+  it("подставляет данные выбранного шаблона", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const templateSelect = (await screen.findByLabelText(
+      "taskTemplateSelect",
+    )) as HTMLSelectElement;
+
+    await waitFor(() => {
+      expect(templateSelect.disabled).toBe(false);
+    });
+
+    fireEvent.change(templateSelect, { target: { value: "tpl-1" } });
+
+    const titleField = await screen.findByPlaceholderText("title");
+
+    await waitFor(() => {
+      const textarea = titleField as HTMLTextAreaElement;
+      expect(textarea.value).toBe("Заголовок из шаблона");
+    });
+  });
+
+  it("сохраняет форму как шаблон", async () => {
+    const promptSpy = jest
+      .spyOn(window, "prompt")
+      .mockReturnValue("Новый шаблон");
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const titleField = (await screen.findByPlaceholderText(
+      "title",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(titleField, { target: { value: "Из формы" } });
+
+    const saveButton = await screen.findByRole("button", {
+      name: "taskTemplateSaveAction",
+    });
+
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      const call = authFetchMock.mock.calls.find(
+        ([url, opts]) =>
+          url === "/api/v1/task-templates" &&
+          (opts as RequestInit | undefined)?.method === "POST",
+      );
+      expect(call).toBeTruthy();
+    });
+
+    expect(lastTemplatePayload).toMatchObject({
+      name: "Новый шаблон",
+      data: expect.objectContaining({ title: "Из формы" }),
+    });
+
+    promptSpy.mockRestore();
   });
 });

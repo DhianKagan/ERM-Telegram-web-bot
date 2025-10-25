@@ -1,5 +1,6 @@
 // Назначение файла: тесты функции buildTaskFormData.
-// Основные модули: buildTaskFormData, FormData, Jest.
+// Основные модули: buildTaskFormData, FormData, Jest, taskFormSchema.
+import { taskFormSchema } from "shared";
 import { buildTaskFormData } from "./buildTaskFormData";
 
 describe("buildTaskFormData", () => {
@@ -21,7 +22,9 @@ describe("buildTaskFormData", () => {
       assigned_user_id: "15",
       metadata: { flag: true },
     });
-    expect(formData.get("formVersion")).toBe("1");
+    expect(formData.get("formVersion")).toBe(
+      String(taskFormSchema.formVersion),
+    );
     expect(formData.getAll("assignees")).toEqual(["1", "2"]);
     expect(formData.get("assigned_user_id")).toBe("15");
     expect(formData.get("attachments")).toBe(JSON.stringify(attachments));

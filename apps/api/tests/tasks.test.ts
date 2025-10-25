@@ -117,9 +117,12 @@ jest.mock('../src/api/middleware', () => ({
 
 jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
+const { taskFormSchema } = require('shared');
 const router = require('../src/routes/tasks').default;
 const { Task, Archive } = require('../src/db/model');
 const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
+
+const { formVersion: validFormVersion } = taskFormSchema;
 
 let app;
 beforeEach(() => {
@@ -138,7 +141,7 @@ test('создание задачи возвращает 201', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')
     .send({
-      formVersion: 1,
+      formVersion: validFormVersion,
       title: 'T',
       assigned_user_id: 1,
       start_location_link: 'https://maps.google.com',
@@ -166,7 +169,7 @@ test('создание задачи без исполнителей возвра
   const res = await request(app)
     .post('/api/v1/tasks')
     .send({
-      formVersion: 1,
+      formVersion: validFormVersion,
       title: 'T',
       assignees: [''],
     });
@@ -180,7 +183,7 @@ test('создание задачи без исполнителей возвра
 test('создание задачи через multipart', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')
-    .field('formVersion', '1')
+    .field('formVersion', String(validFormVersion))
     .field('title', 'T')
     .field('assignees', '1')
     .field('assignees', '2');
@@ -190,14 +193,14 @@ test('создание задачи через multipart', async () => {
 test('создание задачи с неверными данными', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')
-    .send({ formVersion: 1, title: 1 });
+    .send({ formVersion: validFormVersion, title: 1 });
   expect(res.status).toBe(400);
 });
 
 test('создание задачи с неизвестной версией формы', async () => {
   const res = await request(app)
     .post('/api/v1/tasks')
-    .send({ formVersion: 2, title: 'T' });
+    .send({ formVersion: validFormVersion + 1, title: 'T' });
   expect(res.status).toBe(400);
 });
 

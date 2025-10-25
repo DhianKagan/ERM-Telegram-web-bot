@@ -104,6 +104,7 @@ export interface FleetVehicleDto {
     fuelAverageConsumption: number;
     fuelSpentTotal: number;
     currentTasks: string[];
+    defaultDriverId?: number | null;
     transportHistory?: {
         taskId: string;
         taskTitle?: string;

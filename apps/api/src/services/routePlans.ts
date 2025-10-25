@@ -89,6 +89,24 @@ type BuildResult = {
   taskIds: Types.ObjectId[];
 };
 
+type NormalizedRouteInput = {
+  id?: string;
+  order: number;
+  vehicleId?: Types.ObjectId | null;
+  vehicleName?: string | null;
+  driverId?: number | null;
+  driverName?: string | null;
+  notes?: string | null;
+  tasks: string[];
+  metrics?: {
+    distanceKm?: number | null;
+    etaMinutes?: number | null;
+    load?: number | null;
+    tasks?: number;
+    stops?: number;
+  };
+};
+
 const statusTransitions: Record<RoutePlanStatus, RoutePlanStatus[]> = {
   draft: ['approved'],
   approved: ['draft', 'completed'],
@@ -149,6 +167,26 @@ const parseNumeric = (value: unknown): number | null => {
   return null;
 };
 
+const toOptionalNumber = (value: unknown): number | null | undefined => {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Number(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const parsed = Number.parseFloat(trimmed);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
 const parseObjectId = (value: unknown): Types.ObjectId | null => {
   if (!value) return null;
   if (value instanceof Types.ObjectId) return value;
@@ -181,6 +219,39 @@ const normalizeId = (value: unknown): string | null => {
     return normalizeId((value as { toString(): string }).toString());
   }
   return null;
+};
+
+const normalizeRouteMetricsInput = (
+  input: RoutePlanRouteInput['metrics'],
+): NormalizedRouteInput['metrics'] | undefined => {
+  if (!input || typeof input !== 'object') {
+    return undefined;
+  }
+
+  const distance = toOptionalNumber(input.distanceKm);
+  const eta = toOptionalNumber(input.etaMinutes);
+  const load = toOptionalNumber(input.load);
+  const tasks = toOptionalNumber(input.tasks);
+  const stops = toOptionalNumber(input.stops);
+
+  const metrics: NormalizedRouteInput['metrics'] = {};
+  if (distance !== undefined) {
+    metrics.distanceKm = distance;
+  }
+  if (eta !== undefined) {
+    metrics.etaMinutes = eta;
+  }
+  if (load !== undefined) {
+    metrics.load = load;
+  }
+  if (typeof tasks === 'number' && Number.isFinite(tasks)) {
+    metrics.tasks = Math.max(0, Math.trunc(tasks));
+  }
+  if (typeof stops === 'number' && Number.isFinite(stops)) {
+    metrics.stops = Math.max(0, Math.trunc(stops));
+  }
+
+  return Object.keys(metrics).length ? metrics : undefined;
 };
 
 const cloneCoords = (
@@ -256,20 +327,23 @@ async function buildRoutesFromInput(
   routesInput: RoutePlanRouteInput[] = [],
   taskMap?: TaskMap,
 ): Promise<BuildResult> {
-  const normalizedInputs = routesInput
+  const normalizedInputs: NormalizedRouteInput[] = routesInput
     .map((route, idx) => {
       const tasks = Array.isArray(route.tasks)
         ? route.tasks.map((id) => normalizeId(id)).filter((id): id is string => Boolean(id))
         : [];
+      const driverId = parseNumeric(route.driverId);
+      const metrics = normalizeRouteMetricsInput(route.metrics);
       return {
         id: typeof route.id === 'string' && route.id.trim() ? route.id.trim() : undefined,
         order: Number.isFinite(route.order) ? Number(route.order) : idx,
         vehicleId: parseObjectId(route.vehicleId),
         vehicleName: normalizeString(route.vehicleName, VEHICLE_NAME_MAX_LENGTH),
-        driverId: parseNumeric(route.driverId),
+        driverId,
         driverName: normalizeString(route.driverName, DRIVER_NAME_MAX_LENGTH),
         notes: normalizeString(route.notes, NOTES_MAX_LENGTH),
         tasks,
+        metrics,
       };
     })
     .filter((route) => route.tasks.length);
@@ -513,6 +587,8 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
       totalRoutes?: number;
       totalTasks?: number;
       totalStops?: number;
+      totalEtaMinutes?: number | null;
+      totalLoad?: number | null;
     };
     tasks?: Array<Types.ObjectId | string>;
     createdAt?: Date | string;

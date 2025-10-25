@@ -2120,7 +2120,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [
     collectDraftPayloadRef,
-    createTaskTemplate,
     editing,
     entityKind,
     t,

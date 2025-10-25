@@ -3,7 +3,10 @@
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
-import optimizeRoute from "../services/optimizer";
+import optimizeRoute, {
+  type OptimizeRoutePayload,
+  type RouteOptimizationResult,
+} from "../services/optimizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
@@ -65,6 +68,12 @@ const UKRAINE_BOUNDS: LatLngBoundsExpression = [
   [52.5, 40.5],
 ];
 
+const hasPoint = (coords?: Coords | null) =>
+  typeof coords?.lat === "number" &&
+  Number.isFinite(coords.lat) &&
+  typeof coords?.lng === "number" &&
+  Number.isFinite(coords.lng);
+
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
   const tRef = React.useRef(t);
@@ -115,6 +124,129 @@ export default function LogisticsPage() {
         color: TASK_STATUS_COLORS[status] ?? "#2563eb",
       })),
     [],
+  );
+
+  const taskIndex = React.useMemo(
+    () => new Map(sorted.map((task) => [task._id, task])),
+    [sorted],
+  );
+
+  const buildPlanFromOptimization = React.useCallback(
+    (result: RouteOptimizationResult): RoutePlan | null => {
+      if (!result.routes.length) {
+        return null;
+      }
+      const planRoutes = result.routes
+        .map((route, routeIndex) => {
+          const tasksForRoute = route.taskIds
+            .map((id) => taskIndex.get(id))
+            .filter((task): task is RouteTask => Boolean(task));
+          if (!tasksForRoute.length) {
+            return null;
+          }
+          const taskRefs = tasksForRoute.map((task, order) => {
+            const details = (task as Record<string, unknown>)
+              .logistics_details as LogisticsDetails | undefined;
+            const startAddress =
+              typeof details?.start_location === "string"
+                ? details.start_location.trim()
+                : "";
+            const finishAddress =
+              typeof details?.end_location === "string"
+                ? details.end_location.trim()
+                : "";
+            const distance = Number(task.route_distance_km);
+            return {
+              taskId: task._id,
+              order,
+              title: task.title,
+              start: task.startCoordinates,
+              finish: task.finishCoordinates,
+              startAddress: startAddress || null,
+              finishAddress: finishAddress || null,
+              distanceKm:
+                Number.isFinite(distance) && !Number.isNaN(distance)
+                  ? distance
+                  : null,
+            } satisfies RoutePlan["routes"][number]["tasks"][number];
+          });
+          const stops = taskRefs.flatMap((taskRef) => {
+            const routeStops: RoutePlan["routes"][number]["stops"] = [];
+            if (taskRef.start) {
+              routeStops.push({
+                order: taskRef.order * 2,
+                kind: "start",
+                taskId: taskRef.taskId,
+                coordinates: taskRef.start,
+                address: taskRef.startAddress ?? null,
+              });
+            }
+            if (taskRef.finish) {
+              routeStops.push({
+                order: taskRef.order * 2 + 1,
+                kind: "finish",
+                taskId: taskRef.taskId,
+                coordinates: taskRef.finish,
+                address: taskRef.finishAddress ?? null,
+              });
+            }
+            return routeStops;
+          });
+          return {
+            id: `route-${routeIndex + 1}`,
+            order: routeIndex,
+            vehicleId: null,
+            vehicleName: null,
+            driverId: null,
+            driverName: null,
+            tasks: taskRefs,
+            stops,
+            metrics: {
+              distanceKm: route.distanceKm,
+              tasks: taskRefs.length,
+              stops: stops.length,
+            },
+            routeLink: null,
+            notes: null,
+          } satisfies RoutePlan["routes"][number];
+        })
+        .filter((route): route is RoutePlan["routes"][number] => Boolean(route));
+
+      if (!planRoutes.length) {
+        return null;
+      }
+
+      const totalTasks = planRoutes.reduce((sum, route) => sum + route.tasks.length, 0);
+      const totalStops = planRoutes.reduce(
+        (sum, route) => sum + (route.metrics?.stops ?? 0),
+        0,
+      );
+
+      return {
+        id: "optimization-draft",
+        title: "Черновик оптимизации",
+        status: "draft",
+        suggestedBy: null,
+        method: undefined,
+        count: result.routes.length,
+        notes: null,
+        approvedBy: null,
+        approvedAt: null,
+        completedBy: null,
+        completedAt: null,
+        metrics: {
+          totalDistanceKm: result.totalDistanceKm,
+          totalRoutes: planRoutes.length,
+          totalTasks,
+          totalStops,
+        },
+        routes: planRoutes,
+        tasks: planRoutes.flatMap((route) => route.tasks.map((task) => task.taskId)),
+        createdAt: undefined,
+        updatedAt: undefined,
+      } satisfies RoutePlan;
+    },
+    [taskIndex],
   );
 
   const clonePlan = React.useCallback(
@@ -370,12 +502,6 @@ export default function LogisticsPage() {
   );
 
   const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
-    const hasPoint = (coords?: Coords | null) =>
-      typeof coords?.lat === "number" &&
-      Number.isFinite(coords.lat) &&
-      typeof coords?.lng === "number" &&
-      Number.isFinite(coords.lng);
-
     return input.filter((task) => {
       const details = (task as Record<string, unknown>)
         .logistics_details as LogisticsDetails | undefined;
@@ -475,26 +601,76 @@ export default function LogisticsPage() {
   }, [loadFleetVehicles, role]);
 
   const calculate = React.useCallback(async () => {
-    const ids = sorted.map((t) => t._id);
-    if (!ids.length) {
+    const payloadTasks = sorted
+      .filter((task) => hasPoint(task.startCoordinates))
+      .map((task) => {
+        const details = (task as Record<string, unknown>)
+          .logistics_details as LogisticsDetails | undefined;
+        const startAddress =
+          typeof details?.start_location === 'string'
+            ? details.start_location.trim()
+            : '';
+        const finishAddress =
+          typeof details?.end_location === 'string'
+            ? details.end_location.trim()
+            : '';
+        return {
+          id: task._id,
+          coordinates: task.startCoordinates as Coords,
+          demand: 1,
+          serviceMinutes: undefined,
+          title: task.title,
+          startAddress: startAddress || undefined,
+          finishAddress: finishAddress || undefined,
+        } satisfies OptimizeRoutePayload['tasks'][number];
+      });
+
+    if (!payloadTasks.length) {
       applyPlan(null);
       setPlanMessage(tRef.current('logistics.planEmpty'));
       setPlanMessageTone('neutral');
       return;
     }
+
+    const averageSpeed = method === 'trip' ? 45 : 30;
+    const payload: OptimizeRoutePayload = {
+      tasks: payloadTasks,
+      vehicleCapacity: Math.max(1, payloadTasks.length),
+      vehicleCount: Math.max(1, vehicles),
+      averageSpeedKmph: averageSpeed,
+    };
+
     setPlanLoading(true);
     setPlanMessage('');
     setPlanMessageTone('neutral');
     try {
-      const result = await optimizeRoute(ids, vehicles, method);
-      if (!result) {
+      const result = await optimizeRoute(payload);
+      if (!result || !result.routes.length) {
         applyPlan(null);
         setPlanMessage(tRef.current('logistics.planEmpty'));
         return;
       }
-      applyPlan(result);
-      setPlanMessage(tRef.current('logistics.planDraftCreated'));
-      setPlanMessageTone('success');
+
+      const nextPlan = buildPlanFromOptimization(result);
+      if (!nextPlan) {
+        applyPlan(null);
+        setPlanMessage(tRef.current('logistics.planEmpty'));
+        return;
+      }
+
+      applyPlan(nextPlan);
+      const loadLabel = result.totalLoad.toFixed(2).replace(/\.00$/, '');
+      const summaryParts = [
+        tRef.current('logistics.planDraftCreated'),
+        `ETA: ${result.totalEtaMinutes} мин`,
+        `Загрузка: ${loadLabel}`,
+      ];
+      if (result.warnings.length) {
+        summaryParts.push(result.warnings.join('; '));
+      }
+      setPlanMessage(summaryParts.join(' · '));
+      setPlanMessageTone(result.warnings.length ? 'neutral' : 'success');
+
       if (!mapRef.current) {
         return;
       }
@@ -507,7 +683,7 @@ export default function LogisticsPage() {
       }
       optLayerRef.current = group;
       const colors = ['#ef4444', '#22c55e', '#f97316'];
-      result.routes.forEach((route, idx) => {
+      nextPlan.routes.forEach((route, idx) => {
         const latlngs: Array<[number, number]> = [];
         route.tasks.forEach((task) => {
           if (task.start) {
@@ -535,7 +711,15 @@ export default function LogisticsPage() {
     } finally {
       setPlanLoading(false);
     }
-  }, [applyPlan, layerVisibility.optimized, method, sorted, vehicles]);
+  }, [
+    applyPlan,
+    buildPlanFromOptimization,
+    layerVisibility.optimized,
+    method,
+    sorted,
+    tRef,
+    vehicles,
+  ]);
 
   const formatDistance = React.useCallback(
     (value: number | null | undefined) => {

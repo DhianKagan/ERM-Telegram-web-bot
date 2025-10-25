@@ -461,7 +461,7 @@
   переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT`
   можно не задавать
 - Схема логов допускает уровни debug и log, чтобы перехватывать console.log
-- Маршрут `/api/v1/optimizer` исключён из проверки CSRF
+- Маршрут `/api/v1/route-optimize` исключён из проверки CSRF
 - Тесты устанавливают APP_URL для загрузки конфигурации
 - Исправлена ошибка сборки `docker compose build`: Dockerfile берётся из корня,
   `.dockerignore` больше его не исключает

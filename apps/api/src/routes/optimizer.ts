@@ -14,8 +14,32 @@ router.post(
   authMiddleware(),
   ...validate([
     body('tasks').isArray({ min: 1 }),
-    body('count').optional().isInt({ min: 1, max: 3 }),
-    body('method').optional().isIn(['angle', 'trip']),
+    body('tasks.*.id').isString().trim().notEmpty(),
+    body('tasks.*.coordinates').isObject(),
+    body('tasks.*.coordinates.lat').isFloat({ min: -90, max: 90 }),
+    body('tasks.*.coordinates.lng').isFloat({ min: -180, max: 180 }),
+    body('tasks.*.demand').optional({ nullable: true }).isFloat({ min: 0 }),
+    body('tasks.*.serviceMinutes')
+      .optional({ nullable: true })
+      .isFloat({ min: 0 }),
+    body('tasks.*.timeWindow')
+      .optional({ nullable: true })
+      .isArray({ min: 2, max: 2 }),
+    body('tasks.*.timeWindow.*')
+      .optional({ nullable: true })
+      .isInt({ min: 0 }),
+    body('vehicleCapacity').isInt({ min: 1 }),
+    body('vehicleCount').isInt({ min: 1 }),
+    body('timeWindows')
+      .optional({ nullable: true })
+      .isArray({ min: 1 }),
+    body('timeWindows.*')
+      .optional({ nullable: true })
+      .isArray({ min: 2, max: 2 }),
+    body('timeWindows.*.*')
+      .optional({ nullable: true })
+      .isInt({ min: 0 }),
+    body('averageSpeedKmph').optional({ nullable: true }).isFloat({ min: 1 }),
   ]),
   asyncHandler(ctrl.optimize),
 );

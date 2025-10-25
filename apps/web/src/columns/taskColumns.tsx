@@ -484,8 +484,6 @@ const buildCompletionNote = (
     : `Выполнена с опозданием на ${offset}`;
 };
 
-// Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
-// eslint-disable-next-line react-refresh/only-export-components
 export function DeadlineCountdownBadge({
   startValue,
   dueValue,
@@ -703,7 +701,6 @@ type ActualTimeCellProps = {
   entityKind: EntityKind;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 function ActualTimeCell({
   progressStartValue,
   plannedStartValue,
@@ -916,6 +913,8 @@ function ActualTimeCell({
   );
 }
 
+// Fast Refresh воспринимает конфигурацию таблицы как некомпонентную логику
+// eslint-disable-next-line react-refresh/only-export-components
 export default function taskColumns(
   users: Record<number, AppUser>,
   defaultKind: EntityKind = "task",
@@ -1187,23 +1186,25 @@ export default function taskColumns(
           row.delivery_window_start ?? null,
           row.delivery_window_end ?? null,
         );
-        const parts: React.ReactNode[] = [];
+        const countdownEntry = { key: "due-countdown", node: countdown };
+        const parts: Array<{ key: string; node: React.ReactNode }> = [];
         if (dateCell) {
-          parts.push(
-            typeof dateCell === 'string' ? <span>{dateCell}</span> : dateCell,
-          );
+          parts.push({
+            key: "due-date",
+            node: typeof dateCell === "string" ? <span>{dateCell}</span> : dateCell,
+          });
         }
         if (windowBadge) {
-          parts.push(windowBadge);
+          parts.push({ key: "due-window", node: windowBadge });
         }
-        parts.push(countdown);
+        parts.push(countdownEntry);
         if (parts.length === 1) {
-          return countdown;
+          return parts[0]?.node ?? countdownEntry.node;
         }
         return (
           <div className="flex flex-col items-start gap-1">
-            {parts.map((node, index) => (
-              <React.Fragment key={`due-${index}`}>{node}</React.Fragment>
+            {parts.map(({ key, node }) => (
+              <React.Fragment key={key}>{node}</React.Fragment>
             ))}
           </div>
         );

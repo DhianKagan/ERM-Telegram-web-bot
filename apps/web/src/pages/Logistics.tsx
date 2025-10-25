@@ -676,6 +676,90 @@ export default function LogisticsPage() {
     }
   }, [loadFleetVehicles, role]);
 
+  const formatEta = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return tRef.current("logistics.planNoEta");
+      }
+      const safeValue = Math.max(0, Math.round(value));
+      const hours = Math.floor(safeValue / 60);
+      const minutes = safeValue % 60;
+      const parts: string[] = [];
+      if (hours > 0) {
+        parts.push(tRef.current("logistics.etaHours", { count: hours }));
+      }
+      if (minutes > 0 || parts.length === 0) {
+        parts.push(tRef.current("logistics.etaMinutes", { count: minutes }));
+      }
+      return parts.join(" ");
+    },
+    [tRef],
+  );
+
+  const formatLoad = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return tRef.current("logistics.planNoLoad");
+      }
+      const normalized = Math.max(0, Number(value.toFixed(1)));
+      return tRef.current("logistics.loadValue", {
+        value: loadFormatter.format(normalized),
+      });
+    },
+    [tRef],
+  );
+
+  const formatDelay = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+        return tRef.current("logistics.onTime");
+      }
+      return tRef.current("logistics.delayLabel", {
+        minutes: Math.max(1, Math.round(value)),
+      });
+    },
+    [tRef],
+  );
+
+  const formatWindow = React.useCallback(
+    (start?: number | null, end?: number | null) => {
+      const toLabel = (input?: number | null) => {
+        if (typeof input !== "number" || !Number.isFinite(input)) {
+          return null;
+        }
+        const safe = Math.max(0, Math.round(input));
+        const hours = Math.floor(safe / 60)
+          .toString()
+          .padStart(2, "0");
+        const minutes = (safe % 60).toString().padStart(2, "0");
+        return `${hours}:${minutes}`;
+      };
+      const startLabel = toLabel(start ?? null);
+      const endLabel = toLabel(end ?? null);
+      if (startLabel && endLabel) {
+        return `${startLabel} – ${endLabel}`;
+      }
+      if (startLabel) {
+        return tRef.current("logistics.windowFrom", { value: startLabel });
+      }
+      if (endLabel) {
+        return tRef.current("logistics.windowTo", { value: endLabel });
+      }
+      return tRef.current("logistics.windowUnknown");
+    },
+    [tRef],
+  );
+
+  const formatDistance = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return `${value.toFixed(1)} ${tRef.current('km')}`;
+      }
+      return tRef.current("logistics.planNoDistance");
+    },
+    [tRef],
+  );
+
   const calculate = React.useCallback(async () => {
     const payloadTasks = sorted
       .filter((task) => hasPoint(task.startCoordinates))
@@ -800,96 +884,14 @@ export default function LogisticsPage() {
   }, [
     applyPlan,
     buildPlanFromOptimization,
+    formatEta,
+    formatLoad,
     layerVisibility.optimized,
     method,
     sorted,
     tRef,
     vehicles,
   ]);
-
-  const formatEta = React.useCallback(
-    (value: number | null | undefined) => {
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        return tRef.current("logistics.planNoEta");
-      }
-      const safeValue = Math.max(0, Math.round(value));
-      const hours = Math.floor(safeValue / 60);
-      const minutes = safeValue % 60;
-      const parts: string[] = [];
-      if (hours > 0) {
-        parts.push(tRef.current("logistics.etaHours", { count: hours }));
-      }
-      if (minutes > 0 || parts.length === 0) {
-        parts.push(tRef.current("logistics.etaMinutes", { count: minutes }));
-      }
-      return parts.join(" ");
-    },
-    [],
-  );
-
-  const formatLoad = React.useCallback(
-    (value: number | null | undefined) => {
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        return tRef.current("logistics.planNoLoad");
-      }
-      const normalized = Math.max(0, Number(value.toFixed(1)));
-      return tRef.current("logistics.loadValue", {
-        value: loadFormatter.format(normalized),
-      });
-    },
-    [],
-  );
-
-  const formatDelay = React.useCallback(
-    (value: number | null | undefined) => {
-      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-        return tRef.current("logistics.onTime");
-      }
-      return tRef.current("logistics.delayLabel", {
-        minutes: Math.max(1, Math.round(value)),
-      });
-    },
-    [],
-  );
-
-  const formatWindow = React.useCallback(
-    (start?: number | null, end?: number | null) => {
-      const toLabel = (input?: number | null) => {
-        if (typeof input !== "number" || !Number.isFinite(input)) {
-          return null;
-        }
-        const safe = Math.max(0, Math.round(input));
-        const hours = Math.floor(safe / 60)
-          .toString()
-          .padStart(2, "0");
-        const minutes = (safe % 60).toString().padStart(2, "0");
-        return `${hours}:${minutes}`;
-      };
-      const startLabel = toLabel(start ?? null);
-      const endLabel = toLabel(end ?? null);
-      if (startLabel && endLabel) {
-        return `${startLabel} – ${endLabel}`;
-      }
-      if (startLabel) {
-        return tRef.current("logistics.windowFrom", { value: startLabel });
-      }
-      if (endLabel) {
-        return tRef.current("logistics.windowTo", { value: endLabel });
-      }
-      return tRef.current("logistics.windowUnknown");
-    },
-    [],
-  );
-
-  const formatDistance = React.useCallback(
-    (value: number | null | undefined) => {
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        return `${value.toFixed(1)} ${tRef.current('km')}`;
-      }
-      return tRef.current('logistics.planNoDistance');
-    },
-    [],
-  );
 
   const planMessageClass = React.useMemo(() => {
     if (planMessageTone === 'error') {
@@ -904,7 +906,8 @@ export default function LogisticsPage() {
   const planStatus: RoutePlanStatus = planDraft?.status ?? plan?.status ?? 'draft';
   const planStatusLabel = t(`logistics.planStatusValue.${planStatus}`);
   const isPlanEditable = planStatus !== 'completed';
-  const planRoutes = planDraft?.routes ?? [];
+  const draftRoutes = planDraft?.routes;
+  const planRoutes = React.useMemo(() => draftRoutes ?? [], [draftRoutes]);
   const totalStops = React.useMemo(() => {
     if (typeof planDraft?.metrics?.totalStops === 'number') {
       return planDraft.metrics.totalStops;
@@ -942,7 +945,7 @@ export default function LogisticsPage() {
     let maxLoadValue = 0;
     let maxEtaValue = 0;
 
-    planRoutes.forEach((route, index) => {
+    planRoutes.forEach((route) => {
       const loadValue =
         typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
           ? Number(route.metrics.load)

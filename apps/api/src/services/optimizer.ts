@@ -440,8 +440,8 @@ export async function optimize(
   if (solverError) {
     combinedWarnings.push(
       solverError instanceof Error
-        ? `Падение VRP движка: ${solverError.message}`
-        : 'Падение VRP движка: неизвестная ошибка',
+        ? `Ошибка VRP движка: ${solverError.message}`
+        : 'Ошибка VRP движка: неизвестная ошибка',
     );
   }
 
@@ -457,17 +457,36 @@ export async function optimize(
       solverWarnings: solverResult?.warnings,
     };
     if (solverError) {
-      console.error('VRP движок недоступен, используем эвристику', {
+      console.error('VRP движок недоступен, эвристика не применяется', {
         ...incidentDetails,
         error: solverError instanceof Error ? solverError.message : solverError,
       });
-    } else {
-      console.error('VRP движок вернул пустой результат, используем эвристику', incidentDetails);
+      const warnings = mergeWarnings(
+        combinedWarnings,
+        context.warnings,
+        solverResult?.warnings,
+      );
+      const fallbackWarnings = warnings.length
+        ? warnings
+        : ['Ошибка VRP движка: результат недоступен.'];
+      return {
+        routes: [],
+        totalDistanceKm: 0,
+        totalEtaMinutes: 0,
+        totalLoad: 0,
+        warnings: fallbackWarnings,
+      };
     }
+    console.error('VRP движок вернул пустой результат, используем эвристику', incidentDetails);
     const fallback = buildHeuristicResult(context, options.vehicleCapacity, vehicleCount);
     return {
       ...fallback,
-      warnings: mergeWarnings(context.warnings, solverResult?.warnings, combinedWarnings, fallback.warnings),
+      warnings: mergeWarnings(
+        context.warnings,
+        solverResult?.warnings,
+        combinedWarnings,
+        fallback.warnings,
+      ),
     };
   }
 

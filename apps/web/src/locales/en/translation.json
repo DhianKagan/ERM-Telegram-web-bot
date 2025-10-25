@@ -72,6 +72,7 @@
     "kanban": "Kanban",
     "reports": "Reports",
     "logistics": "Logistics",
+    "analytics": "Analytics",
     "settings": "Settings",
     "logs": "Logs",
     "storage": "Files",
@@ -190,6 +191,38 @@
     "stopDropoff": "Drop-off #{{index}}",
     "stopPickupShort": "Pickup",
     "stopDropoffShort": "Drop-off"
+  },
+  "analytics": {
+    "title": "Route plan analytics",
+    "description": "Track mileage dynamics, vehicle load and delivery SLA for a selected period.",
+    "filters": {
+      "from": "Start date",
+      "to": "End date",
+      "status": "Status"
+    },
+    "status": {
+      "all": "All statuses",
+      "draft": "Draft",
+      "approved": "Approved",
+      "completed": "Completed"
+    },
+    "loading": "Loading...",
+    "apply": "Apply",
+    "reset": "Reset",
+    "loadError": "Failed to load analytics for route plans",
+    "noData": "no data",
+    "cards": {
+      "mileage": "Mileage",
+      "load": "Average load",
+      "loadHint": "Average maximum load per route",
+      "slaHint": "Share of on-time deliveries",
+      "period": "Period: {{from}} — {{to}}"
+    },
+    "charts": {
+      "mileage": "Mileage by day",
+      "load": "Route load",
+      "sla": "Delivery SLA"
+    }
   },
   "save": "Save",
   "saveChangesQuestion": "Save changes?",

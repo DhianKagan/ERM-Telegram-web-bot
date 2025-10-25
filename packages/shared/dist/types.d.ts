@@ -188,6 +188,34 @@ export interface RoutePlan {
     createdAt?: string;
     updatedAt?: string;
 }
+export interface RoutePlanAnalyticsSeriesPoint {
+    date: string;
+    value: number | null;
+}
+export interface RoutePlanAnalyticsSlaPoint {
+    date: string;
+    onTime: number;
+    total: number;
+    rate: number | null;
+}
+export interface RoutePlanAnalyticsSummary {
+    period: {
+        from: string;
+        to: string;
+    };
+    mileage: {
+        total: number;
+        byPeriod: RoutePlanAnalyticsSeriesPoint[];
+    };
+    load: {
+        average: number | null;
+        byPeriod: RoutePlanAnalyticsSeriesPoint[];
+    };
+    sla: {
+        average: number | null;
+        byPeriod: RoutePlanAnalyticsSlaPoint[];
+    };
+}
 export interface LogisticsEventBase {
     type: string;
     timestamp: string;

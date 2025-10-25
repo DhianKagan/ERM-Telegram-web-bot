@@ -24,6 +24,7 @@ const LogsPage = lazy(() => import("./pages/Logs"));
 const Profile = lazy(() => import("./pages/Profile"));
 const TaskKanban = lazy(() => import("./pages/TaskKanban"));
 const LogisticsPage = lazy(() => import("./pages/Logistics"));
+const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const ThemeSettings = lazy(() => import("./pages/ThemeSettings"));
 const StoragePage = lazy(() => import("./pages/Storage"));
@@ -108,6 +109,14 @@ function AppShell() {
                 }
               />
               <Route
+                path="/mg/analytics"
+                element={
+                  <ManagerRoute>
+                    <AnalyticsDashboard />
+                  </ManagerRoute>
+                }
+              />
+              <Route
                 path="/cp/kanban"
                 element={
                   <AdminRoute>
@@ -128,6 +137,14 @@ function AppShell() {
                 element={
                   <AdminRoute>
                     <LogisticsPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/cp/analytics"
+                element={
+                  <AdminRoute>
+                    <AnalyticsDashboard />
                   </AdminRoute>
                 }
               />

@@ -70,7 +70,7 @@ const stringifyTaskId = (task: SolverTask, fallback: string): string => {
   try {
     const value = raw.toString();
     return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
-  } catch (error) {
+  } catch {
     return fallback;
   }
 };

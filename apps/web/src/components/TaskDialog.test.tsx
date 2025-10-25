@@ -5,6 +5,9 @@ import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TaskDialog from "./TaskDialog";
+import type authFetch from "../utils/authFetch";
+
+type AuthFetchOptions = Parameters<typeof authFetch>[1];
 
 const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
 const translate = (value: string) => value;
@@ -96,7 +99,7 @@ const taskData = {
   history: [],
 };
 
-const defaultAuthFetch = (url: string, options?: RequestInit) => {
+const defaultAuthFetch = (url: string, options?: AuthFetchOptions) => {
   if (url === "/api/v1/task-templates") {
     if (options?.method === "POST") {
       let parsed: Record<string, unknown> = {};
@@ -162,7 +165,7 @@ const authFetchMock = jest.fn(defaultAuthFetch);
 
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
-  default: (url: string, options?: RequestInit) => authFetchMock(url, options),
+  default: (url: string, options?: AuthFetchOptions) => authFetchMock(url, options),
 }));
 
 const createTaskMock = jest.fn();
@@ -534,7 +537,7 @@ describe("TaskDialog", () => {
       const call = authFetchMock.mock.calls.find(
         ([url, opts]) =>
           url === "/api/v1/task-templates" &&
-          (opts as RequestInit | undefined)?.method === "POST",
+          (opts as AuthFetchOptions | undefined)?.method === "POST",
       );
       expect(call).toBeTruthy();
     });

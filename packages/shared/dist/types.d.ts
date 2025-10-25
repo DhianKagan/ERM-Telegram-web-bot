@@ -123,6 +123,11 @@ export interface RoutePlanStop {
     taskId: string;
     coordinates?: Coords;
     address?: string | null;
+    etaMinutes?: number | null;
+    load?: number | null;
+    delayMinutes?: number | null;
+    windowStartMinutes?: number | null;
+    windowEndMinutes?: number | null;
 }
 export interface RoutePlanTaskRef {
     taskId: string;
@@ -135,6 +140,7 @@ export interface RoutePlanTaskRef {
     distanceKm?: number | null;
     windowStart?: string | null;
     windowEnd?: string | null;
+    cargoWeightKg?: number | null;
 }
 export interface RoutePlanRouteMetrics {
     distanceKm?: number | null;

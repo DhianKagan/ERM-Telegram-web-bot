@@ -1,6 +1,7 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
 // Основные модули: React, Leaflet, i18next
 import React from "react";
+import clsx from "clsx";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute, {
@@ -55,6 +56,23 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   tasks: true,
   optimized: true,
 };
+
+const LOAD_WARNING_RATIO = 0.85;
+const ETA_WARNING_RATIO = 0.9;
+const ETA_WARNING_MINUTES = 480;
+
+const loadFormatter = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+
+const escapeHtml = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 type LogisticsDetails = {
   transport_type?: string | null;
@@ -728,11 +746,10 @@ export default function LogisticsPage() {
       }
 
       applyPlan(nextPlan);
-      const loadLabel = result.totalLoad.toFixed(2).replace(/\.00$/, '');
       const summaryParts = [
         tRef.current('logistics.planDraftCreated'),
-        `ETA: ${result.totalEtaMinutes} мин`,
-        `Загрузка: ${loadLabel}`,
+        `${tRef.current('logistics.etaLabel')}: ${formatEta(result.totalEtaMinutes)}`,
+        `${tRef.current('logistics.loadLabel')}: ${formatLoad(result.totalLoad)}`,
       ];
       if (result.warnings.length) {
         summaryParts.push(result.warnings.join('; '));
@@ -790,6 +807,80 @@ export default function LogisticsPage() {
     vehicles,
   ]);
 
+  const formatEta = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return tRef.current("logistics.planNoEta");
+      }
+      const safeValue = Math.max(0, Math.round(value));
+      const hours = Math.floor(safeValue / 60);
+      const minutes = safeValue % 60;
+      const parts: string[] = [];
+      if (hours > 0) {
+        parts.push(tRef.current("logistics.etaHours", { count: hours }));
+      }
+      if (minutes > 0 || parts.length === 0) {
+        parts.push(tRef.current("logistics.etaMinutes", { count: minutes }));
+      }
+      return parts.join(" ");
+    },
+    [],
+  );
+
+  const formatLoad = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return tRef.current("logistics.planNoLoad");
+      }
+      const normalized = Math.max(0, Number(value.toFixed(1)));
+      return tRef.current("logistics.loadValue", {
+        value: loadFormatter.format(normalized),
+      });
+    },
+    [],
+  );
+
+  const formatDelay = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+        return tRef.current("logistics.onTime");
+      }
+      return tRef.current("logistics.delayLabel", {
+        minutes: Math.max(1, Math.round(value)),
+      });
+    },
+    [],
+  );
+
+  const formatWindow = React.useCallback(
+    (start?: number | null, end?: number | null) => {
+      const toLabel = (input?: number | null) => {
+        if (typeof input !== "number" || !Number.isFinite(input)) {
+          return null;
+        }
+        const safe = Math.max(0, Math.round(input));
+        const hours = Math.floor(safe / 60)
+          .toString()
+          .padStart(2, "0");
+        const minutes = (safe % 60).toString().padStart(2, "0");
+        return `${hours}:${minutes}`;
+      };
+      const startLabel = toLabel(start ?? null);
+      const endLabel = toLabel(end ?? null);
+      if (startLabel && endLabel) {
+        return `${startLabel} – ${endLabel}`;
+      }
+      if (startLabel) {
+        return tRef.current("logistics.windowFrom", { value: startLabel });
+      }
+      if (endLabel) {
+        return tRef.current("logistics.windowTo", { value: endLabel });
+      }
+      return tRef.current("logistics.windowUnknown");
+    },
+    [],
+  );
+
   const formatDistance = React.useCallback(
     (value: number | null | undefined) => {
       if (typeof value === 'number' && Number.isFinite(value)) {
@@ -825,6 +916,192 @@ export default function LogisticsPage() {
   }, [planDraft]);
   const planTotalRoutes = planDraft?.metrics?.totalRoutes ?? planRoutes.length;
   const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
+  const planTotalEtaMinutes = planDraft?.metrics?.totalEtaMinutes ?? null;
+  const planTotalLoad = planDraft?.metrics?.totalLoad ?? null;
+
+  const routeAnalytics = React.useMemo(() => {
+    const routeStatus = new Map<
+      string,
+      { overloaded: boolean; delayed: boolean; etaMinutes: number | null; load: number | null }
+    >();
+    const taskStatus = new Map<
+      string,
+      {
+        overloaded: boolean;
+        delayed: boolean;
+        delayMinutes: number;
+        etaMinutes: number | null;
+        routeLoad: number | null;
+        routeId: string;
+      }
+    >();
+    const stopDetails = new Map<
+      string,
+      { start?: RoutePlan['routes'][number]['stops'][number]; finish?: RoutePlan['routes'][number]['stops'][number] }
+    >();
+    let maxLoadValue = 0;
+    let maxEtaValue = 0;
+
+    planRoutes.forEach((route, index) => {
+      const loadValue =
+        typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+          ? Number(route.metrics.load)
+          : null;
+      const etaValue =
+        typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+          ? Number(route.metrics.etaMinutes)
+          : null;
+      if (typeof loadValue === 'number' && loadValue > maxLoadValue) {
+        maxLoadValue = loadValue;
+      }
+      if (typeof etaValue === 'number' && etaValue > maxEtaValue) {
+        maxEtaValue = etaValue;
+      }
+      route.tasks.forEach((taskRef) => {
+        if (!stopDetails.has(taskRef.taskId)) {
+          stopDetails.set(taskRef.taskId, {});
+        }
+      });
+    });
+
+    const loadThreshold = maxLoadValue > 0 ? maxLoadValue * LOAD_WARNING_RATIO : 0;
+    const etaThresholdBase = maxEtaValue > 0 ? maxEtaValue * ETA_WARNING_RATIO : 0;
+    const etaThreshold = Math.max(ETA_WARNING_MINUTES, etaThresholdBase);
+
+    planRoutes.forEach((route, index) => {
+      const routeId = route.id || `route-${index}`;
+      const loadValue =
+        typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+          ? Number(route.metrics.load)
+          : null;
+      const etaValue =
+        typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+          ? Number(route.metrics.etaMinutes)
+          : null;
+
+      const overloaded =
+        typeof loadValue === 'number' && loadThreshold > 0 ? loadValue >= loadThreshold : false;
+      const delayed =
+        typeof etaValue === 'number' && etaThreshold > 0 ? etaValue >= etaThreshold : false;
+
+      routeStatus.set(routeId, {
+        overloaded,
+        delayed,
+        etaMinutes: etaValue ?? null,
+        load: loadValue ?? null,
+      });
+
+      route.tasks.forEach((taskRef) => {
+        const key = taskRef.taskId;
+        const current =
+          taskStatus.get(key) ?? {
+            overloaded: false,
+            delayed: false,
+            delayMinutes: 0,
+            etaMinutes: null,
+            routeLoad: null,
+            routeId,
+          };
+        current.overloaded = current.overloaded || overloaded;
+        if (typeof etaValue === 'number') {
+          current.etaMinutes =
+            typeof current.etaMinutes === 'number'
+              ? Math.max(current.etaMinutes, etaValue)
+              : etaValue;
+        }
+        if (typeof loadValue === 'number') {
+          current.routeLoad = loadValue;
+        }
+        current.routeId = routeId;
+        taskStatus.set(key, current);
+      });
+
+      route.stops.forEach((stop) => {
+        const key = stop.taskId;
+        if (!key) return;
+        const current =
+          taskStatus.get(key) ?? {
+            overloaded,
+            delayed: false,
+            delayMinutes: 0,
+            etaMinutes: null,
+            routeLoad: loadValue ?? null,
+            routeId,
+          };
+        if (typeof stop.delayMinutes === 'number' && stop.delayMinutes > 0) {
+          current.delayed = true;
+          current.delayMinutes = Math.max(current.delayMinutes, stop.delayMinutes);
+        }
+        if (typeof stop.etaMinutes === 'number') {
+          current.etaMinutes =
+            typeof current.etaMinutes === 'number'
+              ? Math.max(current.etaMinutes, stop.etaMinutes)
+              : stop.etaMinutes;
+        }
+        if (typeof loadValue === 'number') {
+          current.routeLoad = loadValue;
+        }
+        current.routeId = routeId;
+        taskStatus.set(key, current);
+
+        const info = stopDetails.get(key) ?? {};
+        if (stop.kind === 'start') {
+          info.start = stop;
+        } else {
+          info.finish = stop;
+        }
+        stopDetails.set(key, info);
+      });
+    });
+
+    return { maxLoad: maxLoadValue, maxEta: maxEtaValue, routeStatus, taskStatus, stopDetails };
+  }, [planRoutes]);
+
+  const { maxLoad, maxEta, routeStatus, taskStatus, stopDetails } = routeAnalytics;
+
+  const loadSeries = React.useMemo(
+    () =>
+      planRoutes.map((route, idx) => {
+        const key = route.id || `route-${idx}`;
+        const displayIndex =
+          typeof route.order === 'number' && Number.isFinite(route.order)
+            ? route.order + 1
+            : idx + 1;
+        const value =
+          typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+            ? Number(route.metrics.load)
+            : 0;
+        return {
+          key,
+          index: displayIndex,
+          value,
+          highlighted: routeStatus.get(key)?.overloaded ?? false,
+        };
+      }),
+    [planRoutes, routeStatus],
+  );
+
+  const etaSeries = React.useMemo(
+    () =>
+      planRoutes.map((route, idx) => {
+        const key = route.id || `route-${idx}`;
+        const displayIndex =
+          typeof route.order === 'number' && Number.isFinite(route.order)
+            ? route.order + 1
+            : idx + 1;
+        const value =
+          typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+            ? Number(route.metrics.etaMinutes)
+            : 0;
+        return {
+          key,
+          index: displayIndex,
+          value,
+          highlighted: routeStatus.get(key)?.delayed ?? false,
+        };
+      }),
+    [planRoutes, routeStatus],
+  );
 
   const reset = React.useCallback(() => {
     if (optLayerRef.current) {
@@ -929,23 +1206,54 @@ export default function LogisticsPage() {
         );
         const statusKey =
           typeof t.status === "string" ? t.status.trim() : "";
-        const routeColor =
-          TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
+        const taskInfo = taskStatus.get(t._id);
+        const defaultColor = TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
+        let routeColor = defaultColor;
+        if (taskInfo?.overloaded) {
+          routeColor = "#dc2626";
+        } else if (taskInfo?.delayed) {
+          routeColor = "#f97316";
+        }
+        const markerColor = taskInfo?.delayed ? "#f97316" : routeColor;
+        const stopInfo = stopDetails.get(t._id);
+        const tooltipParts = [
+          `<div class="font-semibold">${escapeHtml(t.title ?? t._id ?? '')}</div>`,
+          `<div>${escapeHtml(tRef.current('logistics.etaLabel'))}: ${escapeHtml(
+            formatEta(taskInfo?.etaMinutes ?? null),
+          )}</div>`,
+          `<div>${escapeHtml(tRef.current('logistics.loadLabel'))}: ${escapeHtml(
+            formatLoad(taskInfo?.routeLoad ?? null),
+          )}</div>`,
+          `<div class="${taskInfo?.delayed ? 'text-red-600' : 'text-emerald-600'}">${escapeHtml(
+            formatDelay(taskInfo?.delayMinutes ?? null),
+          )}</div>`,
+        ];
+        if (stopInfo?.start?.address) {
+          tooltipParts.push(
+            `<div>${escapeHtml(tRef.current('logistics.stopPickupShort'))}: ${escapeHtml(
+              stopInfo.start.address,
+            )}</div>`,
+          );
+        }
+        if (stopInfo?.finish?.address) {
+          tooltipParts.push(
+            `<div>${escapeHtml(tRef.current('logistics.stopDropoffShort'))}: ${escapeHtml(
+              stopInfo.finish.address,
+            )}</div>`,
+          );
+        }
+        const tooltipHtml = `<div class="space-y-1 text-xs">${tooltipParts.join('')}</div>`;
         L.polyline(latlngs, {
           color: routeColor,
           weight: 4,
           opacity: 0.85,
         }).addTo(group);
         const startMarker = L.marker(latlngs[0], {
-          icon: createMarkerIcon("start", routeColor),
-        }).bindTooltip(
-          `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
-        );
+          icon: createMarkerIcon("start", markerColor),
+        }).bindTooltip(tooltipHtml, { opacity: 0.95 });
         const endMarker = L.marker(latlngs[latlngs.length - 1], {
-          icon: createMarkerIcon("finish", routeColor),
-        }).bindTooltip(
-          `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
-        );
+          icon: createMarkerIcon("finish", markerColor),
+        }).bindTooltip(tooltipHtml, { opacity: 0.95 });
         startMarker.on("click", () => openTask(t._id));
         endMarker.on("click", () => openTask(t._id));
         startMarker.addTo(group);
@@ -956,7 +1264,18 @@ export default function LogisticsPage() {
       cancelled = true;
       group.clearLayers();
     };
-  }, [layerVisibility.tasks, mapReady, openTask, sorted]);
+  }, [
+    formatDelay,
+    formatEta,
+    formatLoad,
+    layerVisibility.tasks,
+    mapReady,
+    openTask,
+    sorted,
+    stopDetails,
+    taskStatus,
+    tRef,
+  ]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -1075,7 +1394,7 @@ export default function LogisticsPage() {
               <h4 className="text-sm font-semibold uppercase text-muted-foreground">
                 {t("logistics.planSummary")}
               </h4>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
                   <div className="text-xs uppercase text-muted-foreground">
                     {t("logistics.planTotalDistance")}
@@ -1102,14 +1421,155 @@ export default function LogisticsPage() {
                   </div>
                   <div className="font-semibold">{totalStops}</div>
                 </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalEta")}
+                  </div>
+                  <div className="font-semibold">{formatEta(planTotalEtaMinutes)}</div>
+                </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {t("logistics.planTotalLoad")}
+                  </div>
+                  <div className="font-semibold">{formatLoad(planTotalLoad)}</div>
+                </div>
               </div>
             </div>
+            {planRoutes.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
+                    <span>{t("logistics.routeLoadChartTitle")}</span>
+                    <span>{formatLoad(maxLoad)}</span>
+                  </div>
+                  <svg
+                    className="mt-3 w-full"
+                    height={140}
+                    viewBox={`0 0 ${Math.max(120, loadSeries.length * 44)} 140`}
+                    role="img"
+                    aria-label={t("logistics.routeLoadChartTitle")}
+                  >
+                    {loadSeries.map((item, idx) => {
+                      const ratio = maxLoad > 0 ? Math.min(1, Math.max(0, item.value / maxLoad)) : 0;
+                      const barHeight = Math.max(8, Math.round(ratio * 96));
+                      const x = 16 + idx * 44;
+                      const y = 120 - barHeight;
+                      const width = 24;
+                      const color = item.highlighted ? "#ef4444" : "#0ea5e9";
+                      return (
+                        <g key={item.key}>
+                          <rect
+                            x={x}
+                            y={y}
+                            width={width}
+                            height={barHeight}
+                            rx={4}
+                            fill={color}
+                          >
+                            <title>
+                              {t("logistics.loadBarTooltip", {
+                                index: item.index,
+                                value: formatLoad(item.value),
+                              })}
+                            </title>
+                          </rect>
+                          <text
+                            x={x + width / 2}
+                            y={132}
+                            textAnchor="middle"
+                            className="fill-slate-500 text-[10px]"
+                          >
+                            {t("logistics.planRouteShort", { index: item.index })}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
+                    <span>{t("logistics.routeEtaChartTitle")}</span>
+                    <span>{formatEta(maxEta)}</span>
+                  </div>
+                  <svg
+                    className="mt-3 w-full"
+                    height={140}
+                    viewBox={`0 0 ${Math.max(120, etaSeries.length * 44)} 140`}
+                    role="img"
+                    aria-label={t("logistics.routeEtaChartTitle")}
+                  >
+                    {etaSeries.map((item, idx) => {
+                      const ratio = maxEta > 0 ? Math.min(1, Math.max(0, item.value / maxEta)) : 0;
+                      const barHeight = Math.max(8, Math.round(ratio * 96));
+                      const x = 16 + idx * 44;
+                      const y = 120 - barHeight;
+                      const width = 24;
+                      const color = item.highlighted ? "#f97316" : "#6366f1";
+                      return (
+                        <g key={item.key}>
+                          <rect
+                            x={x}
+                            y={y}
+                            width={width}
+                            height={barHeight}
+                            rx={4}
+                            fill={color}
+                          >
+                            <title>
+                              {t("logistics.etaBarTooltip", {
+                                index: item.index,
+                                value: formatEta(item.value),
+                              })}
+                            </title>
+                          </rect>
+                          <text
+                            x={x + width / 2}
+                            y={132}
+                            textAnchor="middle"
+                            className="fill-slate-500 text-[10px]"
+                          >
+                            {t("logistics.planRouteShort", { index: item.index })}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              </div>
+            ) : null}
             <div className="space-y-3">
               {planRoutes.map((route, routeIndex) => {
                 const displayIndex =
                   typeof route.order === "number" && Number.isFinite(route.order)
                     ? route.order + 1
                     : routeIndex + 1;
+                const routeKey =
+                  typeof route.id === "string" && route.id
+                    ? route.id
+                    : `route-${routeIndex}`;
+                const routeInfo = routeStatus.get(routeKey);
+                const loadValue =
+                  typeof route.metrics?.load === "number" &&
+                  Number.isFinite(route.metrics?.load)
+                    ? Number(route.metrics?.load)
+                    : null;
+                const etaValue =
+                  typeof route.metrics?.etaMinutes === "number" &&
+                  Number.isFinite(route.metrics?.etaMinutes)
+                    ? Number(route.metrics?.etaMinutes)
+                    : null;
+                const loadRatio =
+                  maxLoad > 0 && typeof loadValue === "number"
+                    ? Math.min(1, Math.max(0, loadValue / maxLoad))
+                    : 0;
+                const etaRatio =
+                  maxEta > 0 && typeof etaValue === "number"
+                    ? Math.min(1, Math.max(0, etaValue / maxEta))
+                    : 0;
+                const loadPercent = Math.round(loadRatio * 100);
+                const etaPercent = Math.round(etaRatio * 100);
+                const loadWidth = Math.min(100, Math.max(6, loadPercent));
+                const etaWidth = Math.min(100, Math.max(6, etaPercent));
                 const routeStops = route.metrics?.stops ?? route.stops.length;
                 return (
                   <div
@@ -1127,11 +1587,67 @@ export default function LogisticsPage() {
                             stops: routeStops,
                           })}
                         </div>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {routeInfo?.overloaded ? (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                              {t("logistics.overloadedBadge")}
+                            </span>
+                          ) : null}
+                          {routeInfo?.delayed ? (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                              {t("logistics.delayBadge")}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {t("logistics.planRouteDistance", {
                           distance: formatDistance(route.metrics?.distanceKm ?? null),
                         })}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                          <span>{t("logistics.routeLoadLabel")}</span>
+                          <span>{formatLoad(loadValue)}</span>
+                        </div>
+                        <div
+                          className="h-2 rounded-full bg-slate-200"
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={loadPercent}
+                        >
+                          <div
+                            className={clsx(
+                              "h-2 rounded-full transition-all",
+                              routeInfo?.overloaded ? "bg-red-500" : "bg-emerald-500",
+                            )}
+                            style={{ width: `${loadWidth}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                          <span>{t("logistics.routeEtaLabel")}</span>
+                          <span>{formatEta(etaValue)}</span>
+                        </div>
+                        <div
+                          className="h-2 rounded-full bg-slate-200"
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={etaPercent}
+                        >
+                          <div
+                            className={clsx(
+                              "h-2 rounded-full transition-all",
+                              routeInfo?.delayed ? "bg-amber-500" : "bg-blue-500",
+                            )}
+                            style={{ width: `${etaWidth}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
@@ -1178,7 +1694,16 @@ export default function LogisticsPage() {
                             route.tasks.map((task, taskIndex) => (
                               <li
                                 key={task.taskId || `${routeIndex}-${taskIndex}`}
-                                className="space-y-2 rounded border bg-white px-3 py-2 text-sm shadow-sm"
+                                className={clsx(
+                                  "space-y-2 rounded border px-3 py-2 text-sm shadow-sm",
+                                  {
+                                    "border-red-300 bg-red-50":
+                                      taskStatus.get(task.taskId)?.delayed,
+                                    "border-amber-300 bg-amber-50":
+                                      !taskStatus.get(task.taskId)?.delayed &&
+                                      taskStatus.get(task.taskId)?.overloaded,
+                                  },
+                                )}
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
@@ -1187,6 +1712,27 @@ export default function LogisticsPage() {
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                       {t("task")}: {task.taskId}
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                      <span>{t("logistics.loadLabel")}:</span>
+                                      <span className="font-semibold">
+                                        {formatLoad(taskStatus.get(task.taskId)?.routeLoad ?? loadValue)}
+                                      </span>
+                                      <span>•</span>
+                                      <span>{t("logistics.etaLabel")}:</span>
+                                      <span className="font-semibold">
+                                        {formatEta(taskStatus.get(task.taskId)?.etaMinutes ?? etaValue)}
+                                      </span>
+                                      <span>•</span>
+                                      <span
+                                        className={clsx(
+                                          taskStatus.get(task.taskId)?.delayed
+                                            ? "text-red-600"
+                                            : "text-emerald-600",
+                                        )}
+                                      >
+                                        {formatDelay(taskStatus.get(task.taskId)?.delayMinutes ?? null)}
+                                      </span>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
@@ -1256,6 +1802,102 @@ export default function LogisticsPage() {
                             </li>
                           )}
                         </ul>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full table-fixed text-left text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground">
+                                <th className="px-2 py-1 font-semibold">
+                                  {t("logistics.stopTableHeaderStop")}
+                                </th>
+                                <th className="px-2 py-1 font-semibold">
+                                  {t("logistics.stopTableHeaderEta")}
+                                </th>
+                                <th className="px-2 py-1 font-semibold">
+                                  {t("logistics.stopTableHeaderLoad")}
+                                </th>
+                                <th className="px-2 py-1 font-semibold">
+                                  {t("logistics.stopTableHeaderWindow")}
+                                </th>
+                                <th className="px-2 py-1 font-semibold">
+                                  {t("logistics.stopTableHeaderDelay")}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {route.stops.length
+                                ? route.stops.map((stop) => {
+                                const stopDelay = stop.delayMinutes ?? null;
+                                const stopLoadAlert =
+                                  typeof stop.load === "number" && maxLoad > 0
+                                    ? stop.load >= maxLoad * LOAD_WARNING_RATIO
+                                    : false;
+                                const stopRowClass = clsx("border-t border-slate-200", {
+                                  "bg-red-50": typeof stopDelay === "number" && stopDelay > 0,
+                                  "bg-amber-50": (!stopDelay || stopDelay <= 0) && stopLoadAlert,
+                                });
+                                const stopLoadRatio =
+                                  maxLoad > 0 && typeof stop.load === "number"
+                                    ? Math.min(1, Math.max(0, stop.load / maxLoad))
+                                    : 0;
+                                const stopLoadWidth = Math.min(
+                                  100,
+                                  Math.max(4, Math.round(stopLoadRatio * 100)),
+                                );
+                                return (
+                                  <tr key={`${stop.taskId}-${stop.kind}-${stop.order}`} className={stopRowClass}>
+                                    <td className="px-2 py-1 font-medium">
+                                      {stop.kind === "start"
+                                        ? t("logistics.stopPickup", { index: stop.order + 1 })
+                                        : t("logistics.stopDropoff", { index: stop.order + 1 })}
+                                    </td>
+                                    <td className="px-2 py-1" title={formatEta(stop.etaMinutes ?? null)}>
+                                      {formatEta(stop.etaMinutes ?? null)}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-2 flex-1 rounded-full bg-slate-200">
+                                          <div
+                                            className="h-2 rounded-full bg-indigo-500"
+                                            style={{ width: `${stopLoadWidth}%` }}
+                                          />
+                                        </div>
+                                        <span className="whitespace-nowrap">
+                                          {formatLoad(stop.load ?? null)}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {formatWindow(
+                                        stop.windowStartMinutes ?? null,
+                                        stop.windowEndMinutes ?? null,
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className={clsx({
+                                          "text-red-600 font-semibold":
+                                            typeof stopDelay === "number" && stopDelay > 0,
+                                        })}
+                                      >
+                                        {formatDelay(stopDelay)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                                })
+                                : (
+                                  <tr>
+                                    <td
+                                      className="px-2 py-2 text-center text-sm text-muted-foreground"
+                                      colSpan={5}
+                                    >
+                                      {t("logistics.planRouteEmpty")}
+                                    </td>
+                                  </tr>
+                                )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   </div>

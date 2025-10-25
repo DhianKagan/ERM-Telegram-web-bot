@@ -66,6 +66,11 @@ const pointSchema = new Schema<RoutePlanStopEntry>(
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true },
     coordinates: { lat: Number, lng: Number },
     address: String,
+    etaMinutes: Number,
+    load: Number,
+    delayMinutes: Number,
+    windowStartMinutes: Number,
+    windowEndMinutes: Number,
   },
   { _id: false },
 );
@@ -80,6 +85,9 @@ const taskSchema = new Schema<RoutePlanTaskEntry>(
     startAddress: String,
     finishAddress: String,
     distanceKm: Number,
+    windowStart: String,
+    windowEnd: String,
+    cargoWeightKg: Number,
   },
   { _id: false },
 );

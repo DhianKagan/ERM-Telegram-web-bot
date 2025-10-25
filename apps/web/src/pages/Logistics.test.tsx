@@ -221,7 +221,11 @@ jest.mock("../components/TaskTable", () => {
   return { __esModule: true, default: MockTaskTable };
 });
 
-const fetchTasksMock = jest.fn().mockResolvedValue(mockTasks);
+const fetchTasksMock = jest.fn().mockResolvedValue({
+  tasks: mockTasks,
+  users: [],
+  total: mockTasks.length,
+});
 
 jest.mock("../services/tasks", () => ({
   fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
@@ -487,7 +491,11 @@ jest.mock("../context/useTasks", () => {
 describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchTasksMock.mockResolvedValue(mockTasks);
+    fetchTasksMock.mockResolvedValue({
+      tasks: mockTasks,
+      users: [],
+      total: mockTasks.length,
+    });
     taskStateController.clear();
     listRoutePlansMock.mockReset();
     updateRoutePlanMock.mockReset();

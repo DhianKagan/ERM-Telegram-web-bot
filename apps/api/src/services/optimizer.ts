@@ -457,27 +457,19 @@ export async function optimize(
       solverWarnings: solverResult?.warnings,
     };
     if (solverError) {
-      console.error('VRP движок недоступен, эвристика не применяется', {
+      const dropMessage =
+        solverError instanceof Error
+          ? `Падение VRP движка: ${solverError.message}. Используем эвристику.`
+          : 'Падение VRP движка: неизвестная ошибка. Используем эвристику.';
+      combinedWarnings.push(dropMessage);
+      console.error('VRP движок недоступен, используем эвристику', {
         ...incidentDetails,
         error: solverError instanceof Error ? solverError.message : solverError,
       });
-      const warnings = mergeWarnings(
-        combinedWarnings,
-        context.warnings,
-        solverResult?.warnings,
-      );
-      const fallbackWarnings = warnings.length
-        ? warnings
-        : ['Ошибка VRP движка: результат недоступен.'];
-      return {
-        routes: [],
-        totalDistanceKm: 0,
-        totalEtaMinutes: 0,
-        totalLoad: 0,
-        warnings: fallbackWarnings,
-      };
+    } else {
+      combinedWarnings.push('VRP движок вернул пустой результат, используем эвристику.');
+      console.error('VRP движок вернул пустой результат, используем эвристику', incidentDetails);
     }
-    console.error('VRP движок вернул пустой результат, используем эвристику', incidentDetails);
     const fallback = buildHeuristicResult(context, options.vehicleCapacity, vehicleCount);
     return {
       ...fallback,

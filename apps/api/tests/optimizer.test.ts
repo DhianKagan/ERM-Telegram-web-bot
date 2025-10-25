@@ -83,7 +83,6 @@ test('POST /api/v1/route-optimize возвращает расчёт', async () =
       timeWindows: undefined,
       averageSpeedKmph: undefined,
     },
-    undefined,
   );
 });
 

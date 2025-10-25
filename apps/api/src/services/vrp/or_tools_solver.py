@@ -38,6 +38,7 @@ def solve(payload):
         return _fallback_solution(tasks)
 
     distance_matrix = payload["distance_matrix"]
+    time_matrix = payload.get("time_matrix")
     service_minutes = [task.get("service_minutes", 0) for task in tasks]
     time_windows = payload.get("time_windows")
     vehicle_count = payload.get("vehicle_count", 1)
@@ -50,9 +51,20 @@ def solve(payload):
     if average_speed_kmph <= 0:
         average_speed_kmph = 30.0
 
-    def distance_to_minutes(distance_meters: float) -> int:
+    def distance_to_minutes(distance_meters: float) -> float:
         minutes = (distance_meters * 60.0) / (1000.0 * average_speed_kmph)
-        return int(round(minutes))
+        return float(minutes)
+
+    def travel_minutes(from_node: int, to_node: int) -> float:
+        if isinstance(time_matrix, list):
+            try:
+                seconds = float(time_matrix[from_node][to_node])
+            except (TypeError, ValueError, IndexError):
+                seconds = 0.0
+            if seconds < 0:
+                seconds = 0.0
+            return seconds / 60.0
+        return distance_to_minutes(distance_matrix[from_node][to_node])
 
     manager = pywrapcp.RoutingIndexManager(len(distance_matrix), vehicle_count, depot_index)
     routing = pywrapcp.RoutingModel(manager)
@@ -85,8 +97,8 @@ def solve(payload):
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
-            travel_minutes = distance_to_minutes(distance_matrix[from_node][to_node])
-            return int(travel_minutes + service_minutes[from_node])
+            minutes = travel_minutes(from_node, to_node)
+            return int(round(minutes + service_minutes[from_node]))
         time_callback_index = routing.RegisterTransitCallback(time_callback)
         routing.AddDimension(
             time_callback_index,
@@ -131,7 +143,7 @@ def solve(payload):
             else:
                 route_duration += service_minutes[node_index]
                 next_node_index = manager.IndexToNode(next_index) if not routing.IsEnd(next_index) else depot_index
-                route_duration += distance_to_minutes(distance_matrix[node_index][next_node_index])
+                route_duration += travel_minutes(node_index, next_node_index)
             index = next_index
         routes.append(vehicle_route)
         if time_dimension is None:

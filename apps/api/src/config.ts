@@ -96,6 +96,24 @@ if (!/^https:\/\//.test(routingUrlEnv)) {
   throw new Error('ROUTING_URL должен начинаться с https://');
 }
 
+const graphhopperMatrixUrlEnv = (process.env.GRAPHHOPPER_MATRIX_URL || '').trim();
+let graphhopperMatrixUrl: string | undefined;
+if (graphhopperMatrixUrlEnv) {
+  let parsed: URL;
+  try {
+    parsed = new URL(graphhopperMatrixUrlEnv);
+  } catch {
+    throw new Error('GRAPHHOPPER_MATRIX_URL имеет неверный формат');
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('GRAPHHOPPER_MATRIX_URL должен начинаться с https://');
+  }
+  graphhopperMatrixUrl = parsed.toString();
+}
+
+const graphhopperApiKeyEnv = (process.env.GRAPHHOPPER_API_KEY || '').trim();
+const graphhopperProfileEnv = (process.env.GRAPHHOPPER_PROFILE || '').trim();
+
 const parseBooleanFlag = (
   source: string | undefined,
   defaultValue = false,
@@ -220,6 +238,11 @@ if (
 export const port = selectedPort;
 export const locale = process.env.LOCALE || 'ru';
 export const routingUrl = routingUrlEnv;
+export const graphhopperConfig = {
+  matrixUrl: graphhopperMatrixUrl,
+  apiKey: graphhopperApiKeyEnv ? graphhopperApiKeyEnv : undefined,
+  profile: graphhopperProfileEnv || 'car',
+};
 export const cookieDomain = cookieDomainEnv;
 const config = {
   botToken,
@@ -233,6 +256,7 @@ const config = {
   port,
   locale,
   routingUrl,
+  graphhopper: graphhopperConfig,
   cookieDomain,
   vrpOrToolsEnabled,
 };

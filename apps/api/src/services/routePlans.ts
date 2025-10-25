@@ -45,6 +45,13 @@ export interface RoutePlanRouteInput {
   driverName?: string | null;
   notes?: string | null;
   tasks: string[];
+  metrics?: {
+    distanceKm?: number | null;
+    etaMinutes?: number | null;
+    load?: number | null;
+    tasks?: number;
+    stops?: number;
+  } | null;
 }
 
 export interface RoutePlanUpdatePayload {
@@ -76,6 +83,8 @@ type BuildResult = {
     totalRoutes: number;
     totalTasks: number;
     totalStops: number;
+    totalEtaMinutes?: number | null;
+    totalLoad?: number | null;
   };
   taskIds: Types.ObjectId[];
 };
@@ -91,6 +100,22 @@ const roundDistance = (value: number | null | undefined): number | null => {
     return null;
   }
   return Number(value.toFixed(1));
+};
+
+const roundMinutesValue = (value: unknown): number | null => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+  return Math.max(0, Math.round(numeric));
+};
+
+const normalizeLoadValue = (value: unknown): number | null => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+  return Number(Math.max(0, numeric).toFixed(2));
 };
 
 const normalizeString = (value: unknown, limit: number): string | null => {
@@ -255,6 +280,10 @@ async function buildRoutesFromInput(
   let totalDistance = 0;
   let totalStops = 0;
   let totalTasks = 0;
+  let totalEtaMinutes = 0;
+  let etaRoutesWithValue = 0;
+  let totalLoadValue = 0;
+  let loadRoutesWithValue = 0;
 
   for (const route of normalizedInputs) {
     const routeTasks: RoutePlanRouteEntry['tasks'] = [];
@@ -314,14 +343,31 @@ async function buildRoutesFromInput(
       continue;
     }
 
+    const inputMetrics = route.metrics ?? undefined;
+    let distanceMetric = roundDistance(routeDistance);
+    if (distanceMetric === null && typeof inputMetrics?.distanceKm === 'number') {
+      distanceMetric = roundDistance(Number(inputMetrics.distanceKm));
+    }
+    const etaMetric = inputMetrics ? roundMinutesValue(inputMetrics.etaMinutes) : null;
+    const loadMetric = inputMetrics ? normalizeLoadValue(inputMetrics.load) : null;
     const metrics = {
-      distanceKm: roundDistance(routeDistance),
-      tasks: routeTasks.length,
-      stops: stops.length,
+      distanceKm: distanceMetric,
+      etaMinutes: etaMetric,
+      load: loadMetric,
+      tasks: Number.isFinite(inputMetrics?.tasks) ? Number(inputMetrics?.tasks) : routeTasks.length,
+      stops: Number.isFinite(inputMetrics?.stops) ? Number(inputMetrics?.stops) : stops.length,
     };
     totalDistance += metrics.distanceKm ?? 0;
     totalStops += metrics.stops ?? 0;
     totalTasks += metrics.tasks ?? 0;
+    if (typeof metrics.etaMinutes === 'number') {
+      totalEtaMinutes += metrics.etaMinutes;
+      etaRoutesWithValue += 1;
+    }
+    if (typeof metrics.load === 'number') {
+      totalLoadValue += metrics.load;
+      loadRoutesWithValue += 1;
+    }
 
     const sortedStops: RoutePlanRouteEntry['stops'] = stops
       .map((stop, index) => ({
@@ -367,6 +413,8 @@ async function buildRoutesFromInput(
       totalRoutes: sortedRoutes.length,
       totalTasks,
       totalStops,
+      totalEtaMinutes: etaRoutesWithValue ? Math.max(0, Math.round(totalEtaMinutes)) : null,
+      totalLoad: loadRoutesWithValue ? Number(totalLoadValue.toFixed(2)) : null,
     },
     taskIds: Array.from(uniqueTaskIds.values()),
   };
@@ -420,6 +468,14 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
     distanceKm:
       route.metrics && typeof route.metrics.distanceKm === 'number'
         ? Number(route.metrics.distanceKm)
+        : null,
+    etaMinutes:
+      route.metrics && typeof route.metrics.etaMinutes === 'number'
+        ? Math.max(0, Math.round(route.metrics.etaMinutes))
+        : null,
+    load:
+      route.metrics && typeof route.metrics.load === 'number'
+        ? Number(Math.max(0, route.metrics.load).toFixed(2))
         : null,
     tasks: route.metrics?.tasks ?? tasks.length,
     stops: route.metrics?.stops ?? stops.length,
@@ -506,6 +562,31 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     typeof rawMetrics?.totalStops === 'number'
       ? Number(rawMetrics.totalStops)
       : sortedRoutes.reduce((sum, route) => sum + route.stops.length, 0);
+  const totalEtaMinutes =
+    typeof rawMetrics?.totalEtaMinutes === 'number'
+      ? Math.max(0, Math.round(rawMetrics.totalEtaMinutes))
+      : (() => {
+          const values = sortedRoutes
+            .map((route) => (Number.isFinite(route.metrics?.etaMinutes) ? Number(route.metrics?.etaMinutes) : null))
+            .filter((value): value is number => value !== null);
+          if (!values.length) {
+            return null;
+          }
+          return Math.max(0, Math.round(values.reduce((sum, value) => sum + value, 0)));
+        })();
+  const totalLoad =
+    typeof rawMetrics?.totalLoad === 'number'
+      ? Number(Math.max(0, rawMetrics.totalLoad).toFixed(2))
+      : (() => {
+          const values = sortedRoutes
+            .map((route) => (Number.isFinite(route.metrics?.load) ? Number(route.metrics?.load) : null))
+            .filter((value): value is number => value !== null);
+          if (!values.length) {
+            return null;
+          }
+          const sum = values.reduce((acc, value) => acc + value, 0);
+          return Number(Math.max(0, sum).toFixed(2));
+        })();
 
   const taskIds = Array.isArray(rawTasks)
     ? rawTasks
@@ -547,6 +628,8 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
       totalRoutes: sortedRoutes.length,
       totalTasks,
       totalStops,
+      totalEtaMinutes,
+      totalLoad,
     },
     routes: sortedRoutes,
     tasks: taskIds,

@@ -24,6 +24,7 @@ export interface OrToolsSolveRequest {
     time_window?: [number, number];
   }>;
   distance_matrix: number[][];
+  time_matrix?: number[][];
   vehicle_capacity?: number;
   vehicle_count?: number;
   depot_index?: number;

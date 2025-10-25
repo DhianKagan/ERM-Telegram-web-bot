@@ -10,6 +10,7 @@ type OptimizeTaskBody = {
   id?: unknown;
   coordinates?: unknown;
   demand?: unknown;
+  weight?: unknown;
   serviceMinutes?: unknown;
   timeWindow?: unknown;
   title?: unknown;
@@ -23,6 +24,8 @@ type OptimizeRequestBody = {
   vehicleCount?: unknown;
   timeWindows?: unknown;
   averageSpeedKmph?: unknown;
+  timeLimitSeconds?: unknown;
+  matrixTimeoutMs?: unknown;
 };
 
 const toNumber = (value: unknown): number | undefined => {
@@ -104,6 +107,7 @@ const normalizeTask = (task: OptimizeTaskBody): service.OptimizeTaskInput | null
     return null;
   }
   const demand = toNonNegativeNumber(task.demand);
+  const weight = toNonNegativeNumber(task.weight);
   const serviceMinutes = toNonNegativeNumber(task.serviceMinutes);
   const timeWindow = toTimeWindow(task.timeWindow);
   const title = typeof task.title === 'string' ? task.title.trim() || undefined : undefined;
@@ -115,6 +119,7 @@ const normalizeTask = (task: OptimizeTaskBody): service.OptimizeTaskInput | null
     id,
     coordinates,
     demand,
+    weight,
     serviceMinutes,
     timeWindow,
     title,
@@ -182,6 +187,8 @@ export async function optimize(
   const vehicleCount = toPositiveInt(req.body?.vehicleCount) ?? 1;
   const timeWindows = normalizeTimeWindows(req.body?.timeWindows);
   const averageSpeedKmph = normalizeSpeed(req.body?.averageSpeedKmph);
+  const timeLimitSeconds = toPositiveInt(req.body?.timeLimitSeconds);
+  const matrixTimeoutMs = toPositiveInt(req.body?.matrixTimeoutMs);
 
   const result = await service.optimize(
     tasks,
@@ -190,6 +197,8 @@ export async function optimize(
       vehicleCount,
       timeWindows,
       averageSpeedKmph,
+      timeLimitSeconds: timeLimitSeconds ?? undefined,
+      matrixTimeoutMs: matrixTimeoutMs ?? undefined,
     },
   );
   res.json({ result });

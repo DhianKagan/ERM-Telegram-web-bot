@@ -7,7 +7,7 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-const solveWithOrToolsMock = jest.fn(async () => ({
+const mockSolveWithOrTools = jest.fn(async () => ({
   enabled: true,
   routes: [['__depot__', 'task-1', 'task-2']],
   totalDistanceKm: 12.3,
@@ -16,7 +16,7 @@ const solveWithOrToolsMock = jest.fn(async () => ({
 }));
 
 jest.mock('../src/services/vrp/orToolsAdapter', () => ({
-  solveWithOrTools: (...args: unknown[]) => solveWithOrToolsMock(...args),
+  solveWithOrTools: (...args: unknown[]) => mockSolveWithOrTools(...args),
 }));
 
 const { optimize } = require('../src/services/optimizer');
@@ -52,7 +52,7 @@ test('optimize возвращает маршруты и суммарные ме�
   expect(result.totalDistanceKm).toBeCloseTo(12.3, 1);
   expect(result.totalEtaMinutes).toBeGreaterThan(0);
   expect(result.totalLoad).toBeCloseTo(3, 1);
-  expect(solveWithOrToolsMock).toHaveBeenCalledWith(
+  expect(mockSolveWithOrTools).toHaveBeenCalledWith(
     expect.objectContaining({
       vehicle_capacity: 4,
       vehicle_count: 1,
@@ -61,7 +61,7 @@ test('optimize возвращает маршруты и суммарные ме�
 });
 
 test('optimize обрабатывает ошибки VRP и возвращает предупреждение', async () => {
-  solveWithOrToolsMock.mockRejectedValueOnce(new Error('solver failed'));
+  mockSolveWithOrTools.mockRejectedValueOnce(new Error('solver failed'));
   const result = await optimize(
     [
       {

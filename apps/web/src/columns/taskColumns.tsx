@@ -30,6 +30,9 @@ const dateBadgeClass =
 const dateBadgeTimeClass =
   "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
 
+const windowBadgeClass =
+  `${pillBadgeBaseClass} flex-col items-start gap-0.5 normal-case ${badgeTextClass} text-left ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/25 dark:ring-emerald-300/35`;
+
 const numberBadgeClass =
   `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
@@ -315,6 +318,43 @@ const renderDateCell = (value?: string) => {
   );
 };
 
+const renderWindowRange = (
+  start?: string | null,
+  end?: string | null,
+): React.ReactNode => {
+  const startFormatted = start ? formatDate(start) : null;
+  const endFormatted = end ? formatDate(end) : null;
+  if (!startFormatted && !endFormatted) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (startFormatted) {
+    const startLabel = startFormatted.time
+      ? `${startFormatted.date} ${startFormatted.time}`
+      : startFormatted.date;
+    parts.push(`с ${startLabel}`);
+  }
+  if (endFormatted) {
+    const endLabel = endFormatted.time
+      ? `${endFormatted.date} ${endFormatted.time}`
+      : endFormatted.date;
+    parts.push(`до ${endLabel}`);
+  }
+  const titleParts: string[] = [];
+  if (startFormatted) {
+    titleParts.push(`Начало окна: ${startFormatted.full}`);
+  }
+  if (endFormatted) {
+    titleParts.push(`Конец окна: ${endFormatted.full}`);
+  }
+  const title = titleParts.join('\n') || 'Окно доставки';
+  return (
+    <span className={windowBadgeClass} title={title} role="text">
+      {parts.join(' ')}
+    </span>
+  );
+};
+
 // Делает текст компактнее, добавляя многоточие по необходимости
 const compactText = (value: string, maxLength: number) => {
   const trimmed = value.trim();
@@ -336,6 +376,10 @@ export interface TaskRow extends Task {
   assignees?: number[];
   start_date?: string | null;
   due_date?: string | null;
+  deliveryWindowStart?: string | null;
+  deliveryWindowEnd?: string | null;
+  delivery_window_start?: string | null;
+  delivery_window_end?: string | null;
   start_location?: string | null;
   start_location_link?: string | null;
   end_location?: string | null;
@@ -1253,35 +1297,45 @@ export default function taskColumns(
       },
       cell: (p) => {
         const dueValue = p.getValue<string>();
-        const row = p.row.original;
+        const row = p.row.original as TaskRow;
+        const windowStart =
+          row.delivery_window_start ?? (row.start_date ?? undefined) ?? null;
+        const windowEnd =
+          row.delivery_window_end ?? (row.due_date ?? undefined) ?? null;
+        const fallbackDue = dueValue || row.delivery_window_end || undefined;
         const countdown = (
           <DeadlineCountdownBadge
-            startValue={row.start_date ?? undefined}
-            dueValue={row.due_date ?? undefined}
-            rawDue={dueValue}
+            startValue={windowStart ?? undefined}
+            dueValue={windowEnd ?? undefined}
+            rawDue={fallbackDue}
             status={row.status}
             completedAt={row.completed_at ?? undefined}
           />
         );
-        if (!dueValue) {
-          return countdown;
-        }
-        const dateCell = renderDateCell(dueValue);
-        if (typeof dateCell === "string") {
-          if (!dateCell) {
-            return countdown;
-          }
-          return (
-            <div className="flex flex-col items-start gap-1">
-              {dateCell ? <span>{dateCell}</span> : null}
-              {countdown}
-            </div>
+        const primaryDate = dueValue || windowEnd || undefined;
+        const dateCell = primaryDate ? renderDateCell(primaryDate) : null;
+        const windowBadge = renderWindowRange(
+          row.delivery_window_start ?? null,
+          row.delivery_window_end ?? null,
+        );
+        const parts: React.ReactNode[] = [];
+        if (dateCell) {
+          parts.push(
+            typeof dateCell === 'string' ? <span>{dateCell}</span> : dateCell,
           );
+        }
+        if (windowBadge) {
+          parts.push(windowBadge);
+        }
+        parts.push(countdown);
+        if (parts.length === 1) {
+          return countdown;
         }
         return (
           <div className="flex flex-col items-start gap-1">
-            {dateCell}
-            {countdown}
+            {parts.map((node, index) => (
+              <React.Fragment key={`due-${index}`}>{node}</React.Fragment>
+            ))}
           </div>
         );
       },

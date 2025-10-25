@@ -19,6 +19,7 @@ import useTasks from "../context/useTasks";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
 import {
+  PROJECT_TIMEZONE,
   TASK_STATUSES,
   type Coords,
   type FleetVehicleDto,
@@ -67,6 +68,45 @@ const UKRAINE_BOUNDS: LatLngBoundsExpression = [
   [44, 22],
   [52.5, 40.5],
 ];
+
+const WINDOW_FULL_DAY: [number, number] = [0, 24 * 60];
+
+const timePartFormatter = new Intl.DateTimeFormat("uk-UA", {
+  timeZone: PROJECT_TIMEZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const extractWindowMinutes = (value?: string | null): number | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = timePartFormatter.formatToParts(date);
+  const hourPart = parts.find((part) => part.type === "hour")?.value;
+  const minutePart = parts.find((part) => part.type === "minute")?.value;
+  if (!hourPart || !minutePart) return null;
+  const hours = Number.parseInt(hourPart, 10);
+  const minutes = Number.parseInt(minutePart, 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
+const buildTimeWindow = (
+  start?: string | null,
+  end?: string | null,
+): [number, number] | undefined => {
+  const startMinutes = extractWindowMinutes(start);
+  const endMinutes = extractWindowMinutes(end);
+  if (startMinutes === null && endMinutes === null) {
+    return undefined;
+  }
+  const safeStart = startMinutes ?? WINDOW_FULL_DAY[0];
+  const safeEnd = endMinutes ?? WINDOW_FULL_DAY[1];
+  return [safeStart, Math.max(safeStart, safeEnd)];
+};
 
 const hasPoint = (coords?: Coords | null) =>
   typeof coords?.lat === "number" &&
@@ -158,6 +198,16 @@ export default function LogisticsPage() {
             typeof details?.end_location === "string"
               ? details.end_location.trim()
               : "";
+          const windowStart =
+            typeof (task as Record<string, unknown>).delivery_window_start ===
+            "string"
+              ? ((task as Record<string, unknown>).delivery_window_start as string)
+              : null;
+          const windowEnd =
+            typeof (task as Record<string, unknown>).delivery_window_end ===
+            "string"
+              ? ((task as Record<string, unknown>).delivery_window_end as string)
+              : null;
           const distance = Number(task.route_distance_km);
           return {
             taskId: task._id,
@@ -171,6 +221,8 @@ export default function LogisticsPage() {
               Number.isFinite(distance) && !Number.isNaN(distance)
                 ? distance
                 : null,
+            windowStart,
+            windowEnd,
           } satisfies RoutePlan["routes"][number]["tasks"][number];
         });
 
@@ -620,6 +672,16 @@ export default function LogisticsPage() {
           typeof details?.end_location === 'string'
             ? details.end_location.trim()
             : '';
+        const windowStartRaw =
+          typeof (task as Record<string, unknown>).delivery_window_start ===
+          'string'
+            ? ((task as Record<string, unknown>).delivery_window_start as string)
+            : null;
+        const windowEndRaw =
+          typeof (task as Record<string, unknown>).delivery_window_end === 'string'
+            ? ((task as Record<string, unknown>).delivery_window_end as string)
+            : null;
+        const timeWindow = buildTimeWindow(windowStartRaw, windowEndRaw);
         return {
           id: task._id,
           coordinates: task.startCoordinates as Coords,
@@ -628,6 +690,7 @@ export default function LogisticsPage() {
           title: task.title,
           startAddress: startAddress || undefined,
           finishAddress: finishAddress || undefined,
+          timeWindow: timeWindow ?? undefined,
         } satisfies OptimizeRoutePayload['tasks'][number];
       });
 

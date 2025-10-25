@@ -132,6 +132,43 @@ describe("taskColumns", () => {
     expect(badge as HTMLElement).toHaveClass("bg-rose-500/30");
   });
 
+  it("использует окно доставки при отсутствии дедлайна", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2024-03-02T06:00:00Z"));
+
+    const columns = taskColumns({});
+    const dueColumn = columns.find(
+      (col): col is typeof col & { accessorKey: string } =>
+        typeof (col as { accessorKey?: unknown }).accessorKey === "string" &&
+        (col as { accessorKey?: string }).accessorKey === "due_date",
+    );
+
+    expect(dueColumn).toBeDefined();
+    const cellRenderer = dueColumn?.cell as
+      | ((context: any) => React.ReactNode)
+      | undefined;
+    expect(cellRenderer).toBeDefined();
+
+    const row = {
+      delivery_window_start: "2024-03-02T08:00:00Z",
+      delivery_window_end: "2024-03-02T12:00:00Z",
+      status: "Новая",
+    } as unknown as TaskRow;
+
+    const cell = cellRenderer?.({
+      getValue: () => row.due_date,
+      row: { original: row },
+    } as any);
+
+    render(<MemoryRouter>{cell as React.ReactElement}</MemoryRouter>);
+
+    expect(
+      screen.getByText("с 02.03.2024 10:00 до 02.03.2024 14:00"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/До дедлайна 0 дней 6 часов 0 минут/),
+    ).toBeInTheDocument();
+  });
+
   it("фиксирует отсчёт после завершения задачи и выводит примечание под названием", () => {
     jest.useFakeTimers().setSystemTime(new Date("2024-03-07T08:00:00Z"));
 

@@ -1,5 +1,5 @@
 {
-    "formVersion": 1,
+    "formVersion": 2,
     "sections": [
         {
             "name": "main",
@@ -12,7 +12,17 @@
                     "required": true
                 },
                 { "name": "startDate", "type": "datetime", "label": "Начало" },
-                { "name": "dueDate", "type": "datetime", "label": "Дедлайн" }
+                { "name": "dueDate", "type": "datetime", "label": "Дедлайн" },
+                {
+                    "name": "deliveryWindowStart",
+                    "type": "datetime",
+                    "label": "Окно доставки: с"
+                },
+                {
+                    "name": "deliveryWindowEnd",
+                    "type": "datetime",
+                    "label": "Окно доставки: до"
+                }
             ]
         },
         {

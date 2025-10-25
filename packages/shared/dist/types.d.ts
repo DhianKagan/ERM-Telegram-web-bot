@@ -9,6 +9,8 @@ export interface Task {
     task_number?: string;
     completed_at?: string | null;
     in_progress_at?: string | null;
+    delivery_window_start?: string | null;
+    delivery_window_end?: string | null;
     assignees?: number[];
     cargo_length_m?: number;
     cargo_width_m?: number;
@@ -131,6 +133,8 @@ export interface RoutePlanTaskRef {
     startAddress?: string | null;
     finishAddress?: string | null;
     distanceKm?: number | null;
+    windowStart?: string | null;
+    windowEnd?: string | null;
 }
 export interface RoutePlanRouteMetrics {
     distanceKm?: number | null;

@@ -70,6 +70,8 @@ export async function fetchRoutePlanAnalytics(
 
   const startKey = toDateKey(periodFrom);
   const endKey = toDateKey(periodTo);
+  const rangeFrom = fromDateKey(startKey);
+  const rangeTo = new Date(fromDateKey(endKey).getTime() + DAY_MS - 1);
 
   const pipeline: PipelineStage[] = [
     {
@@ -86,11 +88,11 @@ export async function fetchRoutePlanAnalytics(
   if (filters.status) {
     match.status = filters.status;
   }
-  if (periodFrom) {
-    dateRange.$gte = periodFrom;
+  if (rangeFrom) {
+    dateRange.$gte = rangeFrom;
   }
-  if (periodTo) {
-    dateRange.$lte = periodTo;
+  if (rangeTo) {
+    dateRange.$lte = rangeTo;
   }
   if (Object.keys(dateRange).length) {
     match.effectiveDate = dateRange;

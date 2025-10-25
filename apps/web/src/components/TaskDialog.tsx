@@ -94,6 +94,8 @@ interface InitialValues {
   endLink: string;
   startDate: string;
   dueDate: string;
+  deliveryWindowStart: string;
+  deliveryWindowEnd: string;
   attachments: Attachment[];
   distanceKm: number | null;
   cargoLength: string;

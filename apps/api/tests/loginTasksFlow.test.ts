@@ -21,6 +21,7 @@ jest.mock('../src/db/roleCache', () => ({
   clearRoleCache: jest.fn(),
 }));
 
+const { taskFormSchema } = require('shared');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -149,6 +150,6 @@ test('полный цикл логина и создания задачи', asyn
     .post('/api/v1/tasks')
     .set('X-Forwarded-Proto', 'https')
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
-    .send({ formVersion: 1, title: 'T' });
+    .send({ formVersion: taskFormSchema.formVersion, title: 'T' });
   expect(res.status).toBe(201);
 });

@@ -615,10 +615,25 @@ export default function LogisticsPage() {
     const userId = Number((user as any)?.telegram_id) || undefined;
     try {
       const data = await fetchTasks({}, userId, true);
-      const raw = Array.isArray(data)
-        ? data
-        : data.items || data.tasks || data.data || [];
-      const mapped: Array<RouteTask | null> = raw.map((item: Record<string, unknown>) => {
+      const rawSource = data as unknown;
+      let raw: Array<Record<string, unknown>> = [];
+      if (Array.isArray(rawSource)) {
+        raw = rawSource as Array<Record<string, unknown>>;
+      } else {
+        const response = rawSource as {
+          tasks?: unknown;
+          items?: unknown;
+          data?: unknown;
+        };
+        if (Array.isArray(response.tasks)) {
+          raw = response.tasks as Array<Record<string, unknown>>;
+        } else if (Array.isArray(response.items)) {
+          raw = response.items as Array<Record<string, unknown>>;
+        } else if (Array.isArray(response.data)) {
+          raw = response.data as Array<Record<string, unknown>>;
+        }
+      }
+      const mapped: Array<RouteTask | null> = raw.map((item) => {
         const task = item as RouteTask & { id?: string };
         const identifier = String(task._id ?? task.id ?? "").trim();
         if (!identifier) {
@@ -697,50 +712,6 @@ export default function LogisticsPage() {
     }
   }, [loadFleetVehicles, role]);
 
-  const scheduleAutoRecalculate = React.useCallback(
-    (
-      options: {
-        refreshTasks?: boolean;
-        refreshPlan?: boolean;
-        recalc?: boolean;
-      } = {},
-    ) => {
-      autoJobRef.current = {
-        refreshTasks:
-          autoJobRef.current.refreshTasks || Boolean(options.refreshTasks),
-        refreshPlan:
-          autoJobRef.current.refreshPlan || Boolean(options.refreshPlan),
-        recalc: autoJobRef.current.recalc || Boolean(options.recalc),
-      };
-      if (autoTimerRef.current !== null) {
-        return;
-      }
-      autoTimerRef.current = window.setTimeout(async () => {
-        const job = autoJobRef.current;
-        autoJobRef.current = {
-          refreshTasks: false,
-          refreshPlan: false,
-          recalc: false,
-        };
-        autoTimerRef.current = null;
-        try {
-          if (job.refreshTasks) {
-            await load();
-          }
-          if (job.refreshPlan) {
-            await loadPlan();
-          }
-          if (job.recalc) {
-            await calculate();
-          }
-        } catch (error) {
-          console.error("Не удалось выполнить автообновление логистики", error);
-        }
-      }, 800);
-    },
-    [calculate, load, loadPlan],
-  );
-
   const formatEta = React.useCallback(
     (value: number | null | undefined) => {
       if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -818,7 +789,7 @@ export default function LogisticsPage() {
   const formatDistance = React.useCallback(
     (value: number | null | undefined) => {
       if (typeof value === "number" && Number.isFinite(value)) {
-        return `${value.toFixed(1)} ${tRef.current('km')}`;
+        return `${value.toFixed(1)} ${tRef.current("km")}`;
       }
       return tRef.current("logistics.planNoDistance");
     },
@@ -832,20 +803,19 @@ export default function LogisticsPage() {
         const details = (task as Record<string, unknown>)
           .logistics_details as LogisticsDetails | undefined;
         const startAddress =
-          typeof details?.start_location === 'string'
+          typeof details?.start_location === "string"
             ? details.start_location.trim()
-            : '';
+            : "";
         const finishAddress =
-          typeof details?.end_location === 'string'
+          typeof details?.end_location === "string"
             ? details.end_location.trim()
-            : '';
+            : "";
         const windowStartRaw =
-          typeof (task as Record<string, unknown>).delivery_window_start ===
-          'string'
+          typeof (task as Record<string, unknown>).delivery_window_start === "string"
             ? ((task as Record<string, unknown>).delivery_window_start as string)
             : null;
         const windowEndRaw =
-          typeof (task as Record<string, unknown>).delivery_window_end === 'string'
+          typeof (task as Record<string, unknown>).delivery_window_end === "string"
             ? ((task as Record<string, unknown>).delivery_window_end as string)
             : null;
         const timeWindow = buildTimeWindow(windowStartRaw, windowEndRaw);
@@ -858,17 +828,17 @@ export default function LogisticsPage() {
           startAddress: startAddress || undefined,
           finishAddress: finishAddress || undefined,
           timeWindow: timeWindow ?? undefined,
-        } satisfies OptimizeRoutePayload['tasks'][number];
+        } satisfies OptimizeRoutePayload["tasks"][number];
       });
 
     if (!payloadTasks.length) {
       applyPlan(null);
-      setPlanMessage(tRef.current('logistics.planEmpty'));
-      setPlanMessageTone('neutral');
+      setPlanMessage(tRef.current("logistics.planEmpty"));
+      setPlanMessageTone("neutral");
       return;
     }
 
-    const averageSpeed = method === 'trip' ? 45 : 30;
+    const averageSpeed = method === "trip" ? 45 : 30;
     const payload: OptimizeRoutePayload = {
       tasks: payloadTasks,
       vehicleCapacity: Math.max(1, payloadTasks.length),
@@ -877,34 +847,34 @@ export default function LogisticsPage() {
     };
 
     setPlanLoading(true);
-    setPlanMessage('');
-    setPlanMessageTone('neutral');
+    setPlanMessage("");
+    setPlanMessageTone("neutral");
     try {
       const result = await optimizeRoute(payload);
       if (!result || !result.routes.length) {
         applyPlan(null);
-        setPlanMessage(tRef.current('logistics.planEmpty'));
+        setPlanMessage(tRef.current("logistics.planEmpty"));
         return;
       }
 
       const nextPlan = buildPlanFromOptimization(result);
       if (!nextPlan) {
         applyPlan(null);
-        setPlanMessage(tRef.current('logistics.planEmpty'));
+        setPlanMessage(tRef.current("logistics.planEmpty"));
         return;
       }
 
       applyPlan(nextPlan);
       const summaryParts = [
-        tRef.current('logistics.planDraftCreated'),
-        `${tRef.current('logistics.etaLabel')}: ${formatEta(result.totalEtaMinutes)}`,
-        `${tRef.current('logistics.loadLabel')}: ${formatLoad(result.totalLoad)}`,
+        tRef.current("logistics.planDraftCreated"),
+        `${tRef.current("logistics.etaLabel")}: ${formatEta(result.totalEtaMinutes)}`,
+        `${tRef.current("logistics.loadLabel")}: ${formatLoad(result.totalLoad)}`,
       ];
       if (result.warnings.length) {
-        summaryParts.push(result.warnings.join('; '));
+        summaryParts.push(result.warnings.join("; "));
       }
-      setPlanMessage(summaryParts.join(' · '));
-      setPlanMessageTone(result.warnings.length ? 'neutral' : 'success');
+      setPlanMessage(summaryParts.join(" · "));
+      setPlanMessageTone(result.warnings.length ? "neutral" : "success");
 
       if (!mapRef.current) {
         return;
@@ -917,7 +887,7 @@ export default function LogisticsPage() {
         group.addTo(mapRef.current);
       }
       optLayerRef.current = group;
-      const colors = ['#ef4444', '#22c55e', '#f97316'];
+      const colors = ["#ef4444", "#22c55e", "#f97316"];
       nextPlan.routes.forEach((route, idx) => {
         const latlngs: Array<[number, number]> = [];
         route.tasks.forEach((task) => {
@@ -940,9 +910,9 @@ export default function LogisticsPage() {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current('logistics.planOptimizeError');
+          : tRef.current("logistics.planOptimizeError");
       setPlanMessage(message);
-      setPlanMessageTone('error');
+      setPlanMessageTone("error");
     } finally {
       setPlanLoading(false);
     }
@@ -957,6 +927,50 @@ export default function LogisticsPage() {
     tRef,
     vehicles,
   ]);
+
+  const scheduleAutoRecalculate = React.useCallback(
+    (
+      options: {
+        refreshTasks?: boolean;
+        refreshPlan?: boolean;
+        recalc?: boolean;
+      } = {},
+    ) => {
+      autoJobRef.current = {
+        refreshTasks:
+          autoJobRef.current.refreshTasks || Boolean(options.refreshTasks),
+        refreshPlan:
+          autoJobRef.current.refreshPlan || Boolean(options.refreshPlan),
+        recalc: autoJobRef.current.recalc || Boolean(options.recalc),
+      };
+      if (autoTimerRef.current !== null) {
+        return;
+      }
+      autoTimerRef.current = window.setTimeout(async () => {
+        const job = autoJobRef.current;
+        autoJobRef.current = {
+          refreshTasks: false,
+          refreshPlan: false,
+          recalc: false,
+        };
+        autoTimerRef.current = null;
+        try {
+          if (job.refreshTasks) {
+            await load();
+          }
+          if (job.refreshPlan) {
+            await loadPlan();
+          }
+          if (job.recalc) {
+            await calculate();
+          }
+        } catch (error) {
+          console.error("Не удалось выполнить автообновление логистики", error);
+        }
+      }, 800);
+    },
+    [calculate, load, loadPlan],
+  );
 
   const planMessageClass = React.useMemo(() => {
     if (planMessageTone === 'error') {

@@ -61,7 +61,7 @@ import {
   getPriorityBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
-} from "../columns/taskColumns";
+} from "../columns/taskBadgeClassNames";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
 
@@ -1756,6 +1756,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     status,
     finishCoordinates,
     requestId,
+    DEFAULT_REQUEST_TYPE,
   ]);
 
   React.useEffect(() => {
@@ -2057,6 +2058,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setTransportVehicleName,
     setTransportVehicleRegistration,
     t,
+    collectDraftPayload,
   ]);
 
   React.useEffect(() => {

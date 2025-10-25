@@ -443,6 +443,25 @@ export async function optimize(
         ? `Ошибка VRP движка: ${solverError.message}`
         : 'Ошибка VRP движка: неизвестная ошибка',
     );
+
+    const incidentDetails = {
+      provider: context.matrixProvider,
+      tasks: context.solverTasks.length - 1,
+      vehicles: vehicleCount,
+    };
+
+    console.error('VRP движок недоступен, маршруты не построены', {
+      ...incidentDetails,
+      error: solverError instanceof Error ? solverError.message : solverError,
+    });
+
+    return {
+      routes: [],
+      totalDistanceKm: 0,
+      totalEtaMinutes: 0,
+      totalLoad: 0,
+      warnings: mergeWarnings(context.warnings, solverResult?.warnings, combinedWarnings),
+    };
   }
 
   const solverEnabled = Boolean(solverResult?.enabled);

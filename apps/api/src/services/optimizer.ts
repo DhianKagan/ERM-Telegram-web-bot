@@ -309,9 +309,7 @@ const buildSolverResult = (
   const totalDistanceKm = Number.isFinite(result.totalDistanceKm)
     ? Number(Number(result.totalDistanceKm).toFixed(3))
     : calculatedDistanceKm;
-  const totalEta = Number.isFinite(result.totalDurationMinutes)
-    ? Number(result.totalDurationMinutes)
-    : totalEtaMinutes;
+  const totalEta = totalEtaMinutes;
 
   return {
     routes,

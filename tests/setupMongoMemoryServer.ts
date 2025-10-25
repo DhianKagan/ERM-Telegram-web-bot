@@ -7,6 +7,40 @@ import { mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+const defaultMongoUrl =
+  'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
+
+const normalizeMongoUrl = (value: string | undefined): string => {
+  if (!value) {
+    return defaultMongoUrl;
+  }
+  const candidates = value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+  for (const candidate of candidates.reverse()) {
+    if (!/^mongodb(\+srv)?:\/\//.test(candidate)) {
+      continue;
+    }
+    try {
+      const parsed = new URL(candidate);
+      const dbName = parsed.pathname.replace(/^\/+/, '');
+      if (!dbName) {
+        continue;
+      }
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  return defaultMongoUrl;
+};
+
+process.env.MONGO_DATABASE_URL = normalizeMongoUrl(
+  process.env.MONGO_DATABASE_URL,
+);
+process.env.APP_URL ||= 'https://example.com';
+
 if (!process.env.MONGOMS_DOWNLOAD_DIR) {
   const baseDir = path.join(os.tmpdir(), 'mongodb-memory-server');
   const cacheDir = path.join(baseDir, 'cache');

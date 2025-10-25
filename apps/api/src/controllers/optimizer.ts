@@ -188,8 +188,11 @@ export async function optimize(
   const timeWindows = normalizeTimeWindows(req.body?.timeWindows);
   const averageSpeedKmph = normalizeSpeed(req.body?.averageSpeedKmph);
   const timeLimitSeconds = toPositiveInt(req.body?.timeLimitSeconds);
-  const matrixTimeoutMs = toPositiveInt(req.body?.matrixTimeoutMs);
-
+  const MAX_MATRIX_TIMEOUT_MS = 10000; // 10 seconds upper limit
+  let matrixTimeoutMs = toPositiveInt(req.body?.matrixTimeoutMs);
+  if (typeof matrixTimeoutMs === "number") {
+    matrixTimeoutMs = Math.min(matrixTimeoutMs, MAX_MATRIX_TIMEOUT_MS);
+  }
   const result = await service.optimize(
     tasks,
     {

@@ -1,5 +1,5 @@
 // Назначение: сервис управления маршрутными планами и уведомлениями.
-// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries
+// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries, logisticsEvents
 
 import { Types } from 'mongoose';
 import {
@@ -18,6 +18,11 @@ import {
 import { Task } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
+import {
+  notifyRoutePlanRemoved,
+  notifyRoutePlanUpdated,
+  notifyTasksChanged,
+} from './logisticsEvents';
 import { getUser } from '../db/queries';
 import haversine from '../utils/haversine';
 
@@ -998,7 +1003,9 @@ export async function createDraftFromInputs(
     metrics,
     tasks: taskIds,
   });
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  notifyRoutePlanUpdated(serialized, 'created');
+  return serialized;
 }
 
 export async function listPlans(
@@ -1059,16 +1066,25 @@ export async function updatePlan(
   }
 
   await plan.save();
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  notifyRoutePlanUpdated(serialized, 'updated');
+  return serialized;
 }
 
 const updateTasksForStatus = async (
   taskIds: Types.ObjectId[],
   status: RoutePlanStatus,
-): Promise<void> => {
-  if (!Array.isArray(taskIds) || !taskIds.length) return;
+): Promise<string[]> => {
+  if (!Array.isArray(taskIds) || !taskIds.length) return [];
   const ids = taskIds.filter((id): id is Types.ObjectId => id instanceof Types.ObjectId);
-  if (!ids.length) return;
+  if (!ids.length) return [];
+  const normalizedIds = Array.from(
+    new Set(
+      ids
+        .map((id) => normalizeId(id))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ),
+  );
   if (status === 'approved') {
     await Task.updateMany(
       { _id: { $in: ids } },
@@ -1090,6 +1106,7 @@ const updateTasksForStatus = async (
       },
     );
   }
+  return normalizedIds;
 };
 
 const canTransition = (from: RoutePlanStatus, to: RoutePlanStatus): boolean => {
@@ -1194,10 +1211,14 @@ export async function updatePlanStatus(
   }
 
   await plan.save();
-  await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
+  const updatedTaskIds = await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
   const serialized = serializePlan(plan);
   if (status === 'approved') {
     await notifyPlanApproved(serialized, actorId).catch(() => undefined);
+  }
+  notifyRoutePlanUpdated(serialized, 'status-changed');
+  if (updatedTaskIds.length > 0) {
+    notifyTasksChanged('updated', updatedTaskIds);
   }
   return serialized;
 }
@@ -1206,7 +1227,12 @@ export async function removePlan(id: string): Promise<boolean> {
   const objectId = parseObjectId(id);
   if (!objectId) return false;
   const res = await RoutePlanModel.findByIdAndDelete(objectId);
-  return Boolean(res);
+  if (!res) {
+    return false;
+  }
+  const removedId = normalizeId(res._id) ?? objectId.toHexString();
+  notifyRoutePlanRemoved(removedId);
+  return true;
 }
 
 export type RoutePlanTaskHint = TaskSource;

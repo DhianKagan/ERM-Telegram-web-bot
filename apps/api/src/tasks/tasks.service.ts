@@ -1,5 +1,5 @@
 // Сервис задач через репозиторий.
-// Основные модули: db/queries, services/route, shared
+// Основные модули: db/queries, services/route, shared, logisticsEvents
 import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
@@ -9,6 +9,7 @@ import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
+import { notifyTasksChanged } from '../services/logisticsEvents';
 
 interface TasksRepository {
   createTask(
@@ -72,6 +73,21 @@ const setMetric = (
     return;
   }
   target[key as string] = value;
+};
+
+const extractTaskId = (task: TaskDocument | null | undefined): string | null => {
+  if (!task) {
+    return null;
+  }
+  const rawId = (task as { _id?: unknown; id?: unknown })._id ?? (task as { id?: unknown }).id;
+  if (typeof rawId === 'string' && rawId.trim()) {
+    return rawId.trim();
+  }
+  if (rawId && typeof rawId === 'object' && 'toString' in rawId) {
+    const converted = (rawId as { toString(): string }).toString();
+    return converted.trim() ? converted.trim() : null;
+  }
+  return null;
 };
 
 class TasksService {
@@ -139,6 +155,10 @@ class TasksService {
         task,
         Array.isArray(task.attachments) && task.attachments.length > 0,
       );
+      const identifier = extractTaskId(task);
+      if (identifier) {
+        notifyTasksChanged('created', [identifier]);
+      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка создания задачи с вложениями', 'error', {
@@ -173,6 +193,10 @@ class TasksService {
         task,
         Object.prototype.hasOwnProperty.call(payload, 'attachments'),
       );
+      const identifier = extractTaskId(task);
+      if (identifier) {
+        notifyTasksChanged('updated', [identifier]);
+      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка обновления вложений задачи', 'error', {
@@ -267,6 +291,10 @@ class TasksService {
   async addTime(id: string, minutes: number) {
     const task = await this.repo.addTime(id, minutes);
     await clearRouteCache();
+    const identifier = extractTaskId(task);
+    if (identifier) {
+      notifyTasksChanged('updated', [identifier]);
+    }
     return task;
   }
 
@@ -292,6 +320,10 @@ class TasksService {
     await this.applyTaskTypeTopic(payload);
     await this.repo.bulkUpdate(ids, payload);
     await clearRouteCache();
+    const normalizedIds = ids.map((value) => String(value)).filter((value) => value.trim());
+    if (normalizedIds.length) {
+      notifyTasksChanged('bulk', normalizedIds);
+    }
   }
 
   summary(filters: SummaryFilters) {
@@ -301,6 +333,10 @@ class TasksService {
   async remove(id: string, actorId?: number) {
     const task = await this.repo.deleteTask(id, actorId);
     await clearRouteCache();
+    const identifier = extractTaskId(task);
+    if (identifier) {
+      notifyTasksChanged('deleted', [identifier]);
+    }
     return task;
   }
 

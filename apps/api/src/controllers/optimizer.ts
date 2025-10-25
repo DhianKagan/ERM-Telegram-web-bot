@@ -175,13 +175,6 @@ export async function optimize(
     });
     return;
   }
-  const actorIdRaw = req.user?.id;
-  const actorId =
-    typeof actorIdRaw === 'number' && Number.isFinite(actorIdRaw)
-      ? actorIdRaw
-      : typeof actorIdRaw === 'string' && actorIdRaw.trim()
-      ? Number(actorIdRaw)
-      : undefined;
   const tasks = normalizeTasks(req.body?.tasks);
   const rawCapacity = toPositiveInt(req.body?.vehicleCapacity);
   const vehicleCapacity =
@@ -198,7 +191,6 @@ export async function optimize(
       timeWindows,
       averageSpeedKmph,
     },
-    Number.isFinite(actorId) ? (actorId as number) : undefined,
   );
   res.json({ result });
 }

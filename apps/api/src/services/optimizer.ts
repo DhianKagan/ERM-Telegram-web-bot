@@ -177,7 +177,6 @@ const extractWarnings = (
 export async function optimize(
   tasks: OptimizeTaskInput[],
   options: OptimizeOptions,
-  _actorId?: number,
 ): Promise<RouteOptimizationResult> {
   const validTasks = tasks.filter((task) =>
     Number.isFinite(task.coordinates.lat) && Number.isFinite(task.coordinates.lng),

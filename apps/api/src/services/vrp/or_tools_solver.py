@@ -42,6 +42,17 @@ def solve(payload):
     time_windows = payload.get("time_windows")
     vehicle_count = payload.get("vehicle_count", 1)
     depot_index = payload.get("depot_index", 0)
+    average_speed_kmph = payload.get("average_speed_kmph", 30)
+    try:
+        average_speed_kmph = float(average_speed_kmph)
+    except (TypeError, ValueError):
+        average_speed_kmph = 30.0
+    if average_speed_kmph <= 0:
+        average_speed_kmph = 30.0
+
+    def distance_to_minutes(distance_meters: float) -> int:
+        minutes = (distance_meters * 60.0) / (1000.0 * average_speed_kmph)
+        return int(round(minutes))
 
     manager = pywrapcp.RoutingIndexManager(len(distance_matrix), vehicle_count, depot_index)
     routing = pywrapcp.RoutingModel(manager)
@@ -69,11 +80,13 @@ def solve(payload):
             "Capacity",
         )
 
+    time_dimension = None
     if time_windows:
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
-            return int(distance_matrix[from_node][to_node] + service_minutes[from_node])
+            travel_minutes = distance_to_minutes(distance_matrix[from_node][to_node])
+            return int(travel_minutes + service_minutes[from_node])
         time_callback_index = routing.RegisterTransitCallback(time_callback)
         routing.AddDimension(
             time_callback_index,
@@ -107,15 +120,22 @@ def solve(payload):
     for vehicle_id in range(vehicle_count):
         index = routing.Start(vehicle_id)
         vehicle_route = []
+        route_duration = 0
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
             vehicle_route.append(tasks[node_index]["id"])
             next_index = solution.Value(routing.NextVar(index))
             total_distance += routing.GetArcCostForVehicle(index, next_index, vehicle_id)
-            time_dimension = routing.GetDimensionOrDie("Time")
-            total_duration = max(total_duration, solution.Value(time_dimension.CumulVar(index)))
+            if time_dimension is not None:
+                total_duration = max(total_duration, solution.Value(time_dimension.CumulVar(index)))
+            else:
+                route_duration += service_minutes[node_index]
+                next_node_index = manager.IndexToNode(next_index) if not routing.IsEnd(next_index) else depot_index
+                route_duration += distance_to_minutes(distance_matrix[node_index][next_node_index])
             index = next_index
         routes.append(vehicle_route)
+        if time_dimension is None:
+            total_duration = max(total_duration, route_duration)
 
     return {
         "routes": routes,

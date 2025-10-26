@@ -1,5 +1,7 @@
 // Назначение: проверка валидации создания элементов коллекции.
 // Основные модули: jest, supertest, express, router collections.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

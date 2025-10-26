@@ -1,5 +1,7 @@
 // Назначение: проверка использования индексов MongoDB.
 // Модули: mongoose, mongodb-memory-server, ensureTaskIndexes.
+export {};
+
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import {

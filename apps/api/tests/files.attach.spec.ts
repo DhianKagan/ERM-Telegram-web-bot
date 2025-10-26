@@ -1,4 +1,6 @@
 // Назначение: unit-тесты роута привязки файлов к задачам. Модули: jest, supertest, express.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';

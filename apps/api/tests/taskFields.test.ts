@@ -1,6 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Проверка списка полей формы задачи
 // Модули: jest
+export {};
+
 process.env.NODE_ENV = 'test';
 const { taskFields: fields } = require('shared');
 

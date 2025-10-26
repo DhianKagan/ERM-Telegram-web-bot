@@ -1,4 +1,6 @@
 // Назначение: тесты роутов управления файлами. Модули: jest, supertest.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';

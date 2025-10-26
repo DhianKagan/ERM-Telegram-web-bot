@@ -1,4 +1,6 @@
 // Назначение: тест обработчика processUploads на удаление несуществующего файла. Модули: jest.
+export {};
+
 jest.mock('../src/db/model', () => ({
   File: { aggregate: jest.fn(async () => []), create: jest.fn() },
 }));

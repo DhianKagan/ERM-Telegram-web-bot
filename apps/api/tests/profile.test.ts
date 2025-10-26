@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест профиля через токен Telegram
+export {};
+
 process.env.JWT_SECRET = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

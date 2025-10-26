@@ -1817,20 +1817,40 @@ export async function getTaskTemplate(
   id: string,
   userId: number,
 ): Promise<TaskTemplateDocument | null> {
-  return TaskTemplate.findOne({ _id: id, userId });
+  return TaskTemplate.findOne({
+    _id: id,
+    $or: [
+      { userId },
+      { userId: { $exists: false } },
+      { userId: null },
+    ],
+  });
 }
 
 export async function listTaskTemplates(
   userId: number,
 ): Promise<TaskTemplateDocument[]> {
-  return TaskTemplate.find({ userId }).sort({ createdAt: -1, _id: -1 });
+  return TaskTemplate.find({
+    $or: [
+      { userId },
+      { userId: { $exists: false } },
+      { userId: null },
+    ],
+  }).sort({ createdAt: -1, _id: -1 });
 }
 
 export async function deleteTaskTemplate(
   id: string,
   userId: number,
 ): Promise<TaskTemplateDocument | null> {
-  return TaskTemplate.findOneAndDelete({ _id: id, userId });
+  return TaskTemplate.findOneAndDelete({
+    _id: id,
+    $or: [
+      { userId },
+      { userId: { $exists: false } },
+      { userId: null },
+    ],
+  });
 }
 
 export default {

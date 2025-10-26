@@ -487,6 +487,7 @@ function formatVehicleLine(vehicle: FleetVehicleAttrs): string {
     `Одометр: старт ${vehicle.odometerInitial} км, текущее ${vehicle.odometerCurrent} км`,
   );
   parts.push(`Пробег: ${vehicle.mileageTotal} км`);
+  parts.push(`Грузоподъёмность: ${vehicle.payloadCapacityKg} кг`);
   parts.push(`Топливо: ${vehicle.fuelType}`);
   parts.push(`Заправлено: ${vehicle.fuelRefilled}`);
   parts.push(`Средний расход: ${vehicle.fuelAverageConsumption} л/км`);
@@ -511,6 +512,7 @@ async function sendFleetVehicles(ctx: Context): Promise<void> {
         odometerInitial: vehicle.odometerInitial,
         odometerCurrent: vehicle.odometerCurrent,
         mileageTotal: vehicle.mileageTotal,
+        payloadCapacityKg: vehicle.payloadCapacityKg,
         transportType: vehicle.transportType,
         fuelType: vehicle.fuelType,
         fuelRefilled: vehicle.fuelRefilled,

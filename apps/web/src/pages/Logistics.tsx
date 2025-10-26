@@ -797,22 +797,21 @@ export default function LogisticsPage() {
   );
 
   const optimizationVehicleCapacity = React.useMemo(() => {
-    const validVehicles = availableVehicles
-      .map((vehicle) => {
-        const raw = vehicle.payloadCapacityKg;
-        const capacity =
-          typeof raw === "number" && Number.isFinite(raw) && raw > 0
-            ? Number(raw)
-            : null;
-        if (!capacity) {
-          return null;
-        }
-        return { id: vehicle.id, capacity };
-      })
-      .filter(
-        (item): item is { id: string; capacity: number } =>
-          Boolean(item) && typeof item.id === "string" && item.id.trim().length > 0,
-      );
+    const validVehicles = availableVehicles.reduce<
+      { id: string; capacity: number }[]
+    >((acc, vehicle) => {
+      const raw = vehicle.payloadCapacityKg;
+      const capacity =
+        typeof raw === "number" && Number.isFinite(raw) && raw > 0
+          ? Number(raw)
+          : null;
+      const id = typeof vehicle.id === "string" ? vehicle.id.trim() : "";
+      if (!capacity || !id) {
+        return acc;
+      }
+      acc.push({ id, capacity });
+      return acc;
+    }, []);
 
     if (!validVehicles.length) {
       return undefined;

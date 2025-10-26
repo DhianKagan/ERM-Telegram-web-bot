@@ -7,10 +7,10 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-let lastTaskQueryItems = [];
+let mockLastTaskQueryItems = [];
 
 const createTaskQueryResult = (items = []) => {
-  lastTaskQueryItems = items;
+  mockLastTaskQueryItems = items;
   const query = {
     select: jest.fn(() => query),
     limit: jest.fn(() => query),
@@ -104,7 +104,7 @@ jest.mock('../src/db/model', () => ({
     updateMany: jest.fn(async () => null),
     aggregate: jest.fn(async () => [{ count: 2, time: 30 }]),
     find: jest.fn(() => createTaskQueryResult()),
-    countDocuments: jest.fn(async () => lastTaskQueryItems.length),
+    countDocuments: jest.fn(async () => mockLastTaskQueryItems.length),
   },
   Archive: { create: jest.fn(async () => ({})) },
   File: {
@@ -150,7 +150,7 @@ const { formVersion: validFormVersion } = taskFormSchema;
 
 let app;
 beforeEach(() => {
-  lastTaskQueryItems = [];
+  mockLastTaskQueryItems = [];
   mockDeleteMessage.mockClear();
   mockSendMessage.mockClear();
   mockEditMessageMedia.mockClear();
@@ -158,7 +158,7 @@ beforeEach(() => {
   Task.find.mockClear();
   Task.countDocuments.mockClear();
   Task.find.mockImplementation(() => createTaskQueryResult());
-  Task.countDocuments.mockImplementation(async () => lastTaskQueryItems.length);
+  Task.countDocuments.mockImplementation(async () => mockLastTaskQueryItems.length);
 });
 beforeAll(() => {
   app = express();

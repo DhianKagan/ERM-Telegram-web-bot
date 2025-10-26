@@ -2,6 +2,26 @@
 // Основные модули: React, Leaflet, i18next
 import React from "react";
 import clsx from "clsx";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute, {
@@ -20,6 +40,7 @@ import useTasks from "../context/useTasks";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
+import authFetch from "../utils/authFetch";
 import {
   PROJECT_TIMEZONE,
   TASK_STATUSES,
@@ -40,6 +61,254 @@ type RouteTask = TaskRow & {
   startCoordinates?: Coords;
   finishCoordinates?: Coords;
 };
+
+type TaskStatusInfo = {
+  overloaded: boolean;
+  delayed: boolean;
+  delayMinutes: number;
+  etaMinutes: number | null;
+  routeLoad: number | null;
+  routeId: string;
+  recalculating?: boolean;
+};
+
+type DragData =
+  | { type: "task"; routeIndex: number; index: number }
+  | { type: "route"; routeIndex: number };
+
+type SortableTaskCardProps = {
+  id: string;
+  task: RoutePlan["routes"][number]["tasks"][number];
+  routeIndex: number;
+  taskIndex: number;
+  t: ReturnType<typeof useTranslation>["t"];
+  formatLoad: (value: number | null | undefined) => string;
+  formatEta: (value: number | null | undefined) => string;
+  formatDelay: (value: number | null | undefined) => string;
+  formatDistance: (value: number | null | undefined) => string;
+  taskStatus: Map<string, TaskStatusInfo>;
+  loadValue: number | null;
+  etaValue: number | null;
+  isPlanEditable: boolean;
+  planLoading: boolean;
+};
+
+function SortableTaskCard({
+  id,
+  task,
+  routeIndex,
+  taskIndex,
+  t,
+  formatLoad,
+  formatEta,
+  formatDelay,
+  formatDistance,
+  taskStatus,
+  loadValue,
+  etaValue,
+  isPlanEditable,
+  planLoading,
+}: SortableTaskCardProps) {
+  const canDrag = isPlanEditable && !planLoading;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({
+    id,
+    data: { type: "task", routeIndex, index: taskIndex } satisfies DragData,
+    disabled: !canDrag,
+  });
+  const status = taskStatus.get(task.taskId);
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  const cardClass = clsx(
+    "space-y-2 rounded border px-3 py-2 text-sm shadow-sm bg-white",
+    {
+      "border-red-300 bg-red-50": status?.delayed,
+      "border-amber-300 bg-amber-50": !status?.delayed && status?.overloaded,
+      "border-indigo-300 bg-indigo-50": status?.recalculating,
+      "ring-2 ring-indigo-200": (isDragging || isOver) && canDrag,
+    },
+  );
+  const handleClass = clsx(
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded border bg-slate-50 text-slate-500 transition",
+    canDrag ? "cursor-grab hover:bg-slate-100" : "cursor-not-allowed opacity-60",
+  );
+  const dragAttributes = canDrag ? attributes : {};
+  const dragListeners = canDrag ? listeners : {};
+
+  return (
+    <li ref={setNodeRef} style={style} className={cardClass}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            className={handleClass}
+            aria-label={t("logistics.planTaskDragHandle")}
+            disabled={!canDrag}
+            {...dragAttributes}
+            {...dragListeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div>
+            <div className="font-medium">{task.title ?? task.taskId}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("task")}: {task.taskId}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <span>{t("logistics.loadLabel")}:</span>
+              <span className="font-semibold">
+                {formatLoad(taskStatus.get(task.taskId)?.routeLoad ?? loadValue)}
+              </span>
+              <span>•</span>
+              <span>{t("logistics.etaLabel")}:</span>
+              <span className="font-semibold">
+                {formatEta(taskStatus.get(task.taskId)?.etaMinutes ?? etaValue)}
+              </span>
+              <span>•</span>
+              <span
+                className={clsx(
+                  taskStatus.get(task.taskId)?.delayed
+                    ? "text-red-600"
+                    : "text-emerald-600",
+                )}
+              >
+                {formatDelay(taskStatus.get(task.taskId)?.delayMinutes ?? null)}
+              </span>
+            </div>
+            {status?.recalculating ? (
+              <span className="mt-2 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                {t("logistics.taskRecalculating")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        {task.startAddress ? (
+          <div>
+            <span className="font-medium">{t("startPoint")}:</span> {task.startAddress}
+          </div>
+        ) : null}
+        {task.finishAddress ? (
+          <div>
+            <span className="font-medium">{t("endPoint")}:</span> {task.finishAddress}
+          </div>
+        ) : null}
+        {typeof task.distanceKm === "number" && Number.isFinite(task.distanceKm) ? (
+          <div>
+            {t("logistics.planRouteDistance", {
+              distance: formatDistance(task.distanceKm ?? null),
+            })}
+          </div>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+type RouteTaskListProps = {
+  route: RoutePlan["routes"][number];
+  routeIndex: number;
+  t: ReturnType<typeof useTranslation>["t"];
+  formatLoad: (value: number | null | undefined) => string;
+  formatEta: (value: number | null | undefined) => string;
+  formatDelay: (value: number | null | undefined) => string;
+  formatDistance: (value: number | null | undefined) => string;
+  taskStatus: Map<string, TaskStatusInfo>;
+  loadValue: number | null;
+  etaValue: number | null;
+  isPlanEditable: boolean;
+  planLoading: boolean;
+};
+
+function RouteTaskList({
+  route,
+  routeIndex,
+  t,
+  formatLoad,
+  formatEta,
+  formatDelay,
+  formatDistance,
+  taskStatus,
+  loadValue,
+  etaValue,
+  isPlanEditable,
+  planLoading,
+}: RouteTaskListProps) {
+  const droppableActive = isPlanEditable && !planLoading;
+  const { setNodeRef, isOver } = useDroppable({
+    id: `route-droppable-${routeIndex}`,
+    data: { type: "route", routeIndex } satisfies DragData,
+    disabled: !droppableActive,
+  });
+  const sortableItems = React.useMemo(
+    () =>
+      route.tasks.map(
+        (task, index) => task.taskId || `${routeIndex}-${index}`,
+      ),
+    [route.tasks, routeIndex],
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={clsx(
+        "space-y-2 rounded border border-transparent p-2 transition-colors",
+        {
+          "border-indigo-300 bg-indigo-50/80": isOver && droppableActive,
+        },
+      )}
+    >
+      <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+        <ul className="space-y-2">
+          {route.tasks.length
+            ? route.tasks.map((task, taskIndex) => (
+                <SortableTaskCard
+                  key={sortableItems[taskIndex]}
+                  id={sortableItems[taskIndex]}
+                  task={task}
+                  routeIndex={routeIndex}
+                  taskIndex={taskIndex}
+                  t={t}
+                  formatLoad={formatLoad}
+                  formatEta={formatEta}
+                  formatDelay={formatDelay}
+                  formatDistance={formatDistance}
+                  taskStatus={taskStatus}
+                  loadValue={loadValue}
+                  etaValue={etaValue}
+                  isPlanEditable={isPlanEditable}
+                  planLoading={planLoading}
+                />
+              ))
+            : null}
+        </ul>
+      </SortableContext>
+      {route.tasks.length === 0 ? (
+        <div
+          className={clsx(
+            "rounded border border-dashed px-3 py-2 text-sm text-muted-foreground",
+            {
+              "border-indigo-400 bg-indigo-50 text-indigo-700":
+                isOver && droppableActive,
+            },
+          )}
+        >
+          {t("logistics.planDropAllowed")}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const TASK_STATUS_COLORS: Record<string, string> = {
   Новая: "#0ea5e9",
@@ -209,6 +478,16 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+  const [planSyncing, setPlanSyncing] = React.useState(false);
+  const [recalcInProgress, setRecalcInProgress] = React.useState(false);
 
   const legendItems = React.useMemo(
     () =>
@@ -477,29 +756,216 @@ export default function LogisticsPage() {
     [updateRouteDraft],
   );
 
+  const persistPlanDraft = React.useCallback(
+    async (nextDraft: RoutePlan) => {
+      if (!nextDraft.id) {
+        return;
+      }
+      setPlanSyncing(true);
+      try {
+        const payload = buildUpdatePayload(nextDraft);
+        const updated = await updateRoutePlan(nextDraft.id, payload);
+        applyPlan(updated);
+        setPlanMessage(tRef.current("logistics.planReorderSaved"));
+        setPlanMessageTone("success");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : tRef.current("logistics.planReorderError");
+        setPlanMessage(message);
+        setPlanMessageTone("error");
+        scheduleAutoRecalculate({ refreshPlan: true });
+      } finally {
+        setPlanSyncing(false);
+      }
+    },
+    [applyPlan, buildUpdatePayload, scheduleAutoRecalculate, tRef],
+  );
+
   const handleMoveTask = React.useCallback(
-    (routeIndex: number, taskIndex: number, direction: number) => {
+    ({
+      taskId,
+      sourceRouteIndex,
+      fromIndex,
+      targetRouteIndex,
+      targetIndex,
+    }: {
+      taskId: string;
+      sourceRouteIndex?: number;
+      fromIndex?: number;
+      targetRouteIndex: number;
+      targetIndex: number;
+    }) => {
+      let nextDraft: RoutePlan | null = null;
       setPlanDraft((current) => {
         if (!current) return current;
-        const routes = current.routes.map((route, idx) => {
-          if (idx !== routeIndex) return route;
-          const tasks = [...route.tasks];
-          const targetIndex = taskIndex + direction;
-          if (targetIndex < 0 || targetIndex >= tasks.length) {
-            return route;
+        const draftCopy = clonePlan(current);
+        let actualSourceRouteIndex =
+          typeof sourceRouteIndex === "number" ? sourceRouteIndex : draftCopy.routes.findIndex((route) =>
+            route.tasks.some((task) => task.taskId === taskId),
+          );
+        if (actualSourceRouteIndex < 0) {
+          return current;
+        }
+        const sourceRoute = draftCopy.routes[actualSourceRouteIndex];
+        let actualFromIndex =
+          typeof fromIndex === "number" && fromIndex >= 0
+            ? fromIndex
+            : sourceRoute.tasks.findIndex((task) => task.taskId === taskId);
+        if (actualFromIndex < 0) {
+          return current;
+        }
+        const targetRoute = draftCopy.routes[targetRouteIndex];
+        if (!targetRoute) {
+          return current;
+        }
+        if (
+          actualSourceRouteIndex === targetRouteIndex &&
+          actualFromIndex === targetIndex
+        ) {
+          return current;
+        }
+        const [moved] = sourceRoute.tasks.splice(actualFromIndex, 1);
+        let insertionIndex = targetIndex;
+        if (actualSourceRouteIndex === targetRouteIndex) {
+          if (actualFromIndex < insertionIndex) {
+            insertionIndex -= 1;
           }
-          const [task] = tasks.splice(taskIndex, 1);
-          tasks.splice(targetIndex, 0, task);
-          return {
-            ...route,
-            tasks: tasks.map((item, order) => ({ ...item, order })),
-          };
-        });
-        return { ...current, routes };
+          insertionIndex = Math.max(0, Math.min(insertionIndex, sourceRoute.tasks.length));
+        } else {
+          insertionIndex = Math.max(0, Math.min(insertionIndex, targetRoute.tasks.length));
+        }
+        targetRoute.tasks.splice(insertionIndex, 0, moved);
+        draftCopy.routes = draftCopy.routes.map((route, idx) => ({
+          ...route,
+          order: idx,
+          tasks: route.tasks.map((task, order) => ({ ...task, order })),
+        }));
+        draftCopy.tasks = draftCopy.routes.flatMap((route) =>
+          route.tasks.map((task) => task.taskId),
+        );
+        nextDraft = draftCopy;
+        return draftCopy;
       });
+      if (nextDraft) {
+        void persistPlanDraft(nextDraft);
+      }
     },
-    [],
+    [clonePlan, persistPlanDraft],
   );
+
+  const updateTaskCoordinates = React.useCallback(
+    async (
+      taskId: string,
+      payload: { kind: "start" | "finish"; coordinates: Coords },
+    ) => {
+      setRecalcInProgress(true);
+      setPlanMessage(tRef.current("logistics.coordinatesUpdating"));
+      setPlanMessageTone("neutral");
+      setTaskStatus((prev) => {
+        const next = new Map(prev);
+        const current = next.get(taskId);
+        if (current) {
+          next.set(taskId, {
+            ...current,
+            recalculating: true,
+            etaMinutes: null,
+          });
+        }
+        return next;
+      });
+      try {
+        const response = await authFetch(
+          `/api/v1/tasks/${taskId}/coordinates`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              [payload.kind]: payload.coordinates,
+            }),
+          },
+        );
+        if (!response.ok) {
+          let message = tRef.current("logistics.coordinatesUpdateError");
+          try {
+            const data = await response.clone().json();
+            if (data && typeof data === "object") {
+              const info = data as Record<string, unknown>;
+              const raw =
+                typeof info.message === "string"
+                  ? info.message
+                  : typeof info.error === "string"
+                  ? info.error
+                  : "";
+              if (raw.trim()) {
+                message = raw.trim();
+              }
+            }
+          } catch {
+            try {
+              const text = await response.text();
+              if (text.trim()) {
+                message = text.trim();
+              }
+            } catch {
+              // игнорируем
+            }
+          }
+          throw new Error(message);
+        }
+        const nextSorted = sorted.map((task) => {
+          if (task._id !== taskId) {
+            return task;
+          }
+          const updated: RouteTask = { ...task };
+          if (payload.kind === "start") {
+            updated.startCoordinates = payload.coordinates;
+          } else {
+            updated.finishCoordinates = payload.coordinates;
+          }
+          return updated;
+        });
+        setSorted(nextSorted);
+        await calculate(nextSorted);
+        setPlanMessage(tRef.current("logistics.coordinatesUpdated"));
+        setPlanMessageTone("success");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : tRef.current("logistics.coordinatesUpdateError");
+        setPlanMessage(message);
+        setPlanMessageTone("error");
+      } finally {
+        setTaskStatus((prev) => {
+          const next = new Map(prev);
+          const current = next.get(taskId);
+          if (current) {
+            next.set(taskId, { ...current, recalculating: false });
+          }
+          return next;
+        });
+        setRecalcInProgress(false);
+      }
+    },
+    [calculate, sorted, tRef],
+  );
+
+  const handleTaskCoordinatesChange = React.useCallback(
+    (taskId: string, kind: "start" | "finish", latlng: L.LatLng) => {
+      const coordinates: Coords = {
+        lat: Number(latlng.lat),
+        lng: Number(latlng.lng),
+      };
+      void updateTaskCoordinates(taskId, { kind, coordinates });
+    },
+    [updateTaskCoordinates],
+  );
+
+  
 
   const handleSavePlan = React.useCallback(async () => {
     if (!planDraft) return;
@@ -878,13 +1344,15 @@ export default function LogisticsPage() {
     return undefined;
   }, [availableVehicles, planDraft, vehicles]);
 
-  const calculate = React.useCallback(async () => {
-    const payloadTasks = sorted.reduce<OptimizeRoutePayload["tasks"]>(
-      (acc, task) => {
-        const hasStartPoint = hasPoint(task.startCoordinates);
-        const hasFinishPoint = hasPoint(task.finishCoordinates);
-        if (!hasStartPoint && !hasFinishPoint) {
-          return acc;
+  const calculate = React.useCallback(
+    async (tasksOverride?: RouteTask[]) => {
+      const sourceTasks = tasksOverride ?? sorted;
+      const payloadTasks = sourceTasks.reduce<OptimizeRoutePayload["tasks"]>(
+        (acc, task) => {
+          const hasStartPoint = hasPoint(task.startCoordinates);
+          const hasFinishPoint = hasPoint(task.finishCoordinates);
+          if (!hasStartPoint && !hasFinishPoint) {
+            return acc;
         }
         const useDropPoint = !hasStartPoint && hasFinishPoint;
         const coordinates = (useDropPoint
@@ -940,112 +1408,114 @@ export default function LogisticsPage() {
         });
         return acc;
       },
-      [],
-    );
+        [],
+      );
 
-    if (!payloadTasks.length) {
-      applyPlan(null);
-      setPlanMessage(tRef.current("logistics.planEmpty"));
+      if (!payloadTasks.length) {
+        applyPlan(null);
+        setPlanMessage(tRef.current("logistics.planEmpty"));
+        setPlanMessageTone("neutral");
+        return;
+      }
+
+      const averageSpeed = method === "trip" ? 45 : 30;
+      const capacityValue =
+        typeof optimizationVehicleCapacity === "number" &&
+        Number.isFinite(optimizationVehicleCapacity) &&
+        optimizationVehicleCapacity > 0
+          ? optimizationVehicleCapacity
+          : undefined;
+      const payload: OptimizeRoutePayload = {
+        tasks: payloadTasks,
+        vehicleCapacity: capacityValue ?? Math.max(1, payloadTasks.length),
+        vehicleCount: Math.max(1, vehicles),
+        averageSpeedKmph: averageSpeed,
+      };
+
+      setPlanLoading(true);
+      setPlanMessage("");
       setPlanMessageTone("neutral");
-      return;
-    }
-
-    const averageSpeed = method === "trip" ? 45 : 30;
-    const capacityValue =
-      typeof optimizationVehicleCapacity === "number" &&
-      Number.isFinite(optimizationVehicleCapacity) &&
-      optimizationVehicleCapacity > 0
-        ? optimizationVehicleCapacity
-        : undefined;
-    const payload: OptimizeRoutePayload = {
-      tasks: payloadTasks,
-      vehicleCapacity: capacityValue ?? Math.max(1, payloadTasks.length),
-      vehicleCount: Math.max(1, vehicles),
-      averageSpeedKmph: averageSpeed,
-    };
-
-    setPlanLoading(true);
-    setPlanMessage("");
-    setPlanMessageTone("neutral");
-    try {
-      const result = await optimizeRoute(payload);
-      if (!result || !result.routes.length) {
-        applyPlan(null);
-        setPlanMessage(tRef.current("logistics.planEmpty"));
-        return;
-      }
-
-      const nextPlan = buildPlanFromOptimization(result);
-      if (!nextPlan) {
-        applyPlan(null);
-        setPlanMessage(tRef.current("logistics.planEmpty"));
-        return;
-      }
-
-      applyPlan(nextPlan);
-      const summaryParts = [
-        tRef.current("logistics.planDraftCreated"),
-        `${tRef.current("logistics.etaLabel")}: ${formatEta(result.totalEtaMinutes)}`,
-        `${tRef.current("logistics.loadLabel")}: ${formatLoad(result.totalLoad)}`,
-      ];
-      if (result.warnings.length) {
-        summaryParts.push(result.warnings.join("; "));
-      }
-      setPlanMessage(summaryParts.join(" · "));
-      setPlanMessageTone(result.warnings.length ? "neutral" : "success");
-
-      if (!mapRef.current) {
-        return;
-      }
-      if (optLayerRef.current) {
-        optLayerRef.current.remove();
-      }
-      const group = L.layerGroup();
-      if (visibleLayers.optimized) {
-        group.addTo(mapRef.current);
-      }
-      optLayerRef.current = group;
-      const colors = ["#ef4444", "#22c55e", "#f97316"];
-      nextPlan.routes.forEach((route, idx) => {
-        const latlngs: Array<[number, number]> = [];
-        route.tasks.forEach((task) => {
-          if (task.start) {
-            latlngs.push([task.start.lat, task.start.lng]);
-          }
-          if (task.finish) {
-            latlngs.push([task.finish.lat, task.finish.lng]);
-          }
-        });
-        if (latlngs.length < 2) {
+      try {
+        const result = await optimizeRoute(payload);
+        if (!result || !result.routes.length) {
+          applyPlan(null);
+          setPlanMessage(tRef.current("logistics.planEmpty"));
           return;
         }
-        L.polyline(latlngs, {
-          color: colors[idx % colors.length],
-          weight: 4,
-        }).addTo(group);
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : tRef.current("logistics.planOptimizeError");
-      setPlanMessage(message);
-      setPlanMessageTone("error");
-    } finally {
-      setPlanLoading(false);
-    }
-  }, [
-    applyPlan,
-    buildPlanFromOptimization,
-    formatEta,
-    formatLoad,
-    visibleLayers.optimized,
-    optimizationVehicleCapacity,
-    method,
-    sorted,
-    tRef,
-    vehicles,
-  ]);
+
+        const nextPlan = buildPlanFromOptimization(result);
+        if (!nextPlan) {
+          applyPlan(null);
+          setPlanMessage(tRef.current("logistics.planEmpty"));
+          return;
+        }
+
+        applyPlan(nextPlan);
+        const summaryParts = [
+          tRef.current("logistics.planDraftCreated"),
+          `${tRef.current("logistics.etaLabel")}: ${formatEta(result.totalEtaMinutes)}`,
+          `${tRef.current("logistics.loadLabel")}: ${formatLoad(result.totalLoad)}`,
+        ];
+        if (result.warnings.length) {
+          summaryParts.push(result.warnings.join("; "));
+        }
+        setPlanMessage(summaryParts.join(" · "));
+        setPlanMessageTone(result.warnings.length ? "neutral" : "success");
+
+        if (!mapRef.current) {
+          return;
+        }
+        if (optLayerRef.current) {
+          optLayerRef.current.remove();
+        }
+        const group = L.layerGroup();
+        if (visibleLayers.optimized) {
+          group.addTo(mapRef.current);
+        }
+        optLayerRef.current = group;
+        const colors = ["#ef4444", "#22c55e", "#f97316"];
+        nextPlan.routes.forEach((route, idx) => {
+          const latlngs: Array<[number, number]> = [];
+          route.tasks.forEach((task) => {
+            if (task.start) {
+              latlngs.push([task.start.lat, task.start.lng]);
+            }
+            if (task.finish) {
+              latlngs.push([task.finish.lat, task.finish.lng]);
+            }
+          });
+          if (latlngs.length < 2) {
+            return;
+          }
+          L.polyline(latlngs, {
+            color: colors[idx % colors.length],
+            weight: 4,
+          }).addTo(group);
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : tRef.current("logistics.planOptimizeError");
+        setPlanMessage(message);
+        setPlanMessageTone("error");
+      } finally {
+        setPlanLoading(false);
+      }
+    },
+    [
+      applyPlan,
+      buildPlanFromOptimization,
+      formatEta,
+      formatLoad,
+      visibleLayers.optimized,
+      optimizationVehicleCapacity,
+      method,
+      sorted,
+      tRef,
+      vehicles,
+    ],
+  );
 
   const scheduleAutoRecalculate = React.useCallback(
     (
@@ -1119,6 +1589,42 @@ export default function LogisticsPage() {
   const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
   const planTotalEtaMinutes = planDraft?.metrics?.totalEtaMinutes ?? null;
   const planTotalLoad = planDraft?.metrics?.totalLoad ?? null;
+
+  const handleDragEnd = React.useCallback(
+    (event: DragEndEvent) => {
+      if (!isPlanEditable || planLoading || planSyncing) {
+        return;
+      }
+      const { active, over } = event;
+      if (!over) {
+        return;
+      }
+      const activeData = active.data.current as DragData | undefined;
+      const overData = over.data.current as DragData | undefined;
+      if (!activeData || activeData.type !== 'task' || !overData) {
+        return;
+      }
+      const taskId = String(active.id);
+      let targetRouteIndex: number;
+      let targetIndex: number;
+      if (overData.type === 'task') {
+        targetRouteIndex = overData.routeIndex;
+        targetIndex = overData.index;
+      } else {
+        targetRouteIndex = overData.routeIndex;
+        const targetRoute = planRoutes[targetRouteIndex];
+        targetIndex = targetRoute ? targetRoute.tasks.length : 0;
+      }
+      handleMoveTask({
+        taskId,
+        sourceRouteIndex: activeData.routeIndex,
+        fromIndex: activeData.index,
+        targetRouteIndex,
+        targetIndex,
+      });
+    },
+    [handleMoveTask, isPlanEditable, planLoading, planRoutes, planSyncing],
+  );
 
   const routeAnalytics = React.useMemo(() => {
     const routeStatus = new Map<
@@ -1202,6 +1708,7 @@ export default function LogisticsPage() {
             etaMinutes: null,
             routeLoad: null,
             routeId,
+            recalculating: false,
           };
         current.overloaded = current.overloaded || overloaded;
         if (typeof etaValue === 'number') {
@@ -1228,6 +1735,7 @@ export default function LogisticsPage() {
             etaMinutes: null,
             routeLoad: loadValue ?? null,
             routeId,
+            recalculating: false,
           };
         if (typeof stop.delayMinutes === 'number' && stop.delayMinutes > 0) {
           current.delayed = true;
@@ -1258,7 +1766,35 @@ export default function LogisticsPage() {
     return { maxLoad: maxLoadValue, maxEta: maxEtaValue, routeStatus, taskStatus, stopDetails };
   }, [planRoutes]);
 
-  const { maxLoad, maxEta, routeStatus, taskStatus, stopDetails } = routeAnalytics;
+  const {
+    maxLoad,
+    maxEta,
+    routeStatus,
+    taskStatus: analyticsTaskStatus,
+    stopDetails,
+  } = routeAnalytics;
+
+  const [taskStatus, setTaskStatus] = React.useState<Map<string, TaskStatusInfo>>(() => {
+    const initial = new Map<string, TaskStatusInfo>();
+    analyticsTaskStatus.forEach((value, key) => {
+      initial.set(key, { ...value });
+    });
+    return initial;
+  });
+
+  React.useEffect(() => {
+    setTaskStatus((prev) => {
+      const next = new Map<string, TaskStatusInfo>();
+      analyticsTaskStatus.forEach((value, key) => {
+        const previous = prev.get(key);
+        next.set(key, {
+          ...value,
+          recalculating: previous?.recalculating ?? false,
+        });
+      });
+      return next;
+    });
+  }, [analyticsTaskStatus]);
 
   const vehiclesOnMap = React.useMemo(() => {
     const items: {
@@ -1699,12 +2235,22 @@ export default function LogisticsPage() {
         }).addTo(group);
         const startMarker = L.marker(latlngs[0], {
           icon: createMarkerIcon("start", markerColor),
+          draggable: true,
         }).bindTooltip(tooltipHtml, { opacity: 0.95 });
         const endMarker = L.marker(latlngs[latlngs.length - 1], {
           icon: createMarkerIcon("finish", markerColor),
+          draggable: true,
         }).bindTooltip(tooltipHtml, { opacity: 0.95 });
         startMarker.on("click", () => openTask(t._id));
         endMarker.on("click", () => openTask(t._id));
+        startMarker.on("dragend", (event) => {
+          const marker = event.target as L.Marker;
+          handleTaskCoordinatesChange(t._id, "start", marker.getLatLng());
+        });
+        endMarker.on("dragend", (event) => {
+          const marker = event.target as L.Marker;
+          handleTaskCoordinatesChange(t._id, "finish", marker.getLatLng());
+        });
         startMarker.addTo(group);
         endMarker.addTo(group);
       }
@@ -1723,6 +2269,7 @@ export default function LogisticsPage() {
     sorted,
     stopDetails,
     taskStatus,
+    handleTaskCoordinatesChange,
     tRef,
   ]);
 
@@ -1843,7 +2390,7 @@ export default function LogisticsPage() {
             type="button"
             variant="outline"
             onClick={handleReloadPlan}
-            disabled={planLoading}
+            disabled={planLoading || planSyncing}
           >
             {planLoading
               ? t("loading")
@@ -1853,14 +2400,14 @@ export default function LogisticsPage() {
             type="button"
             variant="outline"
             onClick={handleClearPlan}
-            disabled={planLoading}
+            disabled={planLoading || planSyncing}
           >
             {t("logistics.planClear")}
           </Button>
           <Button
             type="button"
             onClick={handleSavePlan}
-            disabled={!planDraft || !isPlanEditable || planLoading}
+            disabled={!planDraft || !isPlanEditable || planLoading || planSyncing}
           >
             {t("save")}
           </Button>
@@ -1869,7 +2416,7 @@ export default function LogisticsPage() {
               type="button"
               variant="success"
               onClick={handleApprovePlan}
-              disabled={planLoading}
+              disabled={planLoading || planSyncing}
             >
               {t("logistics.planApprove")}
             </Button>
@@ -1879,7 +2426,7 @@ export default function LogisticsPage() {
               type="button"
               variant="success"
               onClick={handleCompletePlan}
-              disabled={planLoading}
+              disabled={planLoading || planSyncing}
             >
               {t("logistics.planComplete")}
             </Button>
@@ -1897,7 +2444,7 @@ export default function LogisticsPage() {
                   onChange={(event) =>
                     handlePlanTitleChange(event.target.value)
                   }
-                  disabled={!isPlanEditable || planLoading}
+                  disabled={!isPlanEditable || planLoading || planSyncing}
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
@@ -1910,7 +2457,7 @@ export default function LogisticsPage() {
                     handlePlanNotesChange(event.target.value)
                   }
                   className="min-h-[96px] rounded border px-3 py-2 text-sm"
-                  disabled={!isPlanEditable || planLoading}
+                  disabled={!isPlanEditable || planLoading || planSyncing}
                 />
               </label>
             </div>
@@ -2062,271 +2609,198 @@ export default function LogisticsPage() {
               </div>
             ) : null}
             <div className="space-y-3">
-              {planRoutes.map((route, routeIndex) => {
-                const displayIndex =
-                  typeof route.order === "number" && Number.isFinite(route.order)
-                    ? route.order + 1
-                    : routeIndex + 1;
-                const routeKey =
-                  typeof route.id === "string" && route.id
-                    ? route.id
-                    : `route-${routeIndex}`;
-                const routeInfo = routeStatus.get(routeKey);
-                const loadValue =
-                  typeof route.metrics?.load === "number" &&
-                  Number.isFinite(route.metrics?.load)
-                    ? Number(route.metrics?.load)
-                    : null;
-                const etaValue =
-                  typeof route.metrics?.etaMinutes === "number" &&
-                  Number.isFinite(route.metrics?.etaMinutes)
-                    ? Number(route.metrics?.etaMinutes)
-                    : null;
-                const loadRatio =
-                  maxLoad > 0 && typeof loadValue === "number"
-                    ? Math.min(1, Math.max(0, loadValue / maxLoad))
-                    : 0;
-                const etaRatio =
-                  maxEta > 0 && typeof etaValue === "number"
-                    ? Math.min(1, Math.max(0, etaValue / maxEta))
-                    : 0;
-                const loadPercent = Math.round(loadRatio * 100);
-                const etaPercent = Math.round(etaRatio * 100);
-                const loadWidth = Math.min(100, Math.max(6, loadPercent));
-                const etaWidth = Math.min(100, Math.max(6, etaPercent));
-                const routeStops = route.metrics?.stops ?? route.stops.length;
-                return (
-                  <div
-                    key={route.id || `${routeIndex}`}
-                    className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h4 className="text-base font-semibold">
-                          {t("logistics.planRouteTitle", { index: displayIndex })}
-                        </h4>
+              {isPlanEditable || planSyncing || recalcInProgress ? (
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  {isPlanEditable ? (
+                    <span className="text-muted-foreground">
+                      {t("logistics.planDragHint")}
+                    </span>
+                  ) : null}
+                  {planSyncing ? (
+                    <span className="flex items-center gap-1 text-indigo-600">
+                      <span className="h-2 w-2 animate-ping rounded-full bg-indigo-500" />
+                      {t("logistics.planReorderSync")}
+                    </span>
+                  ) : null}
+                  {recalcInProgress ? (
+                    <span className="flex items-center gap-1 text-indigo-600">
+                      <span className="h-2 w-2 animate-ping rounded-full bg-indigo-400" />
+                      {t("logistics.recalculateInProgress")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                {planRoutes.map((route, routeIndex) => {
+                  const displayIndex =
+                    typeof route.order === "number" && Number.isFinite(route.order)
+                      ? route.order + 1
+                      : routeIndex + 1;
+                  const routeKey =
+                    typeof route.id === "string" && route.id
+                      ? route.id
+                      : `route-${routeIndex}`;
+                  const routeInfo = routeStatus.get(routeKey);
+                  const loadValue =
+                    typeof route.metrics?.load === "number" &&
+                    Number.isFinite(route.metrics?.load)
+                      ? Number(route.metrics?.load)
+                      : null;
+                  const etaValue =
+                    typeof route.metrics?.etaMinutes === "number" &&
+                    Number.isFinite(route.metrics?.etaMinutes)
+                      ? Number(route.metrics?.etaMinutes)
+                      : null;
+                  const loadRatio =
+                    maxLoad > 0 && typeof loadValue === "number"
+                      ? Math.min(1, Math.max(0, loadValue / maxLoad))
+                      : 0;
+                  const etaRatio =
+                    maxEta > 0 && typeof etaValue === "number"
+                      ? Math.min(1, Math.max(0, etaValue / maxEta))
+                      : 0;
+                  const loadPercent = Math.round(loadRatio * 100);
+                  const etaPercent = Math.round(etaRatio * 100);
+                  const loadWidth = Math.min(100, Math.max(6, loadPercent));
+                  const etaWidth = Math.min(100, Math.max(6, etaPercent));
+                  const routeStops = route.metrics?.stops ?? route.stops.length;
+                  return (
+                    <div
+                      key={route.id || `${routeIndex}`}
+                      className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h4 className="text-base font-semibold">
+                            {t("logistics.planRouteTitle", { index: displayIndex })}
+                          </h4>
+                          <div className="text-xs text-muted-foreground">
+                            {t("logistics.planRouteSummary", {
+                              tasks: route.tasks.length,
+                              stops: routeStops,
+                            })}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {routeInfo?.overloaded ? (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                                {t("logistics.overloadedBadge")}
+                              </span>
+                            ) : null}
+                            {routeInfo?.delayed ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                                {t("logistics.delayBadge")}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
                         <div className="text-xs text-muted-foreground">
-                          {t("logistics.planRouteSummary", {
-                            tasks: route.tasks.length,
-                            stops: routeStops,
+                          {t("logistics.planRouteDistance", {
+                            distance: formatDistance(route.metrics?.distanceKm ?? null),
                           })}
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {routeInfo?.overloaded ? (
-                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700">
-                              {t("logistics.overloadedBadge")}
-                            </span>
-                          ) : null}
-                          {routeInfo?.delayed ? (
-                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-                              {t("logistics.delayBadge")}
-                            </span>
-                          ) : null}
-                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {t("logistics.planRouteDistance", {
-                          distance: formatDistance(route.metrics?.distanceKm ?? null),
-                        })}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
-                          <span>{t("logistics.routeLoadLabel")}</span>
-                          <span>{formatLoad(loadValue)}</span>
-                        </div>
-                        <div
-                          className="h-2 rounded-full bg-slate-200"
-                          role="progressbar"
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={loadPercent}
-                        >
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                            <span>{t("logistics.routeLoadLabel")}</span>
+                            <span>{formatLoad(loadValue)}</span>
+                          </div>
                           <div
-                            className={clsx(
-                              "h-2 rounded-full transition-all",
-                              routeInfo?.overloaded ? "bg-red-500" : "bg-emerald-500",
-                            )}
-                            style={{ width: `${loadWidth}%` }}
-                          />
+                            className="h-2 rounded-full bg-slate-200"
+                            role="progressbar"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={loadPercent}
+                          >
+                            <div
+                              className={clsx(
+                                "h-2 rounded-full transition-all",
+                                routeInfo?.overloaded ? "bg-red-500" : "bg-emerald-500",
+                              )}
+                              style={{ width: `${loadWidth}%` }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
-                          <span>{t("logistics.routeEtaLabel")}</span>
-                          <span>{formatEta(etaValue)}</span>
-                        </div>
-                        <div
-                          className="h-2 rounded-full bg-slate-200"
-                          role="progressbar"
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={etaPercent}
-                        >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                            <span>{t("logistics.routeEtaLabel")}</span>
+                            <span>{formatEta(etaValue)}</span>
+                          </div>
                           <div
-                            className={clsx(
-                              "h-2 rounded-full transition-all",
-                              routeInfo?.delayed ? "bg-amber-500" : "bg-blue-500",
-                            )}
-                            style={{ width: `${etaWidth}%` }}
-                          />
+                            className="h-2 rounded-full bg-slate-200"
+                            role="progressbar"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={etaPercent}
+                          >
+                            <div
+                              className={clsx(
+                                "h-2 rounded-full transition-all",
+                                routeInfo?.delayed ? "bg-amber-500" : "bg-blue-500",
+                              )}
+                              style={{ width: `${etaWidth}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planDriver")}
-                        </span>
-                        <Input
-                          value={route.driverName ?? ""}
-                          onChange={(event) =>
-                            handleDriverNameChange(routeIndex, event.target.value)
-                          }
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planVehicle")}
-                        </span>
-                        <Input
-                          value={route.vehicleName ?? ""}
-                          onChange={(event) =>
-                            handleVehicleNameChange(routeIndex, event.target.value)
-                          }
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <label className="md:col-span-2 flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planRouteNotes")}
-                        </span>
-                        <textarea
-                          value={route.notes ?? ""}
-                          onChange={(event) =>
-                            handleRouteNotesChange(routeIndex, event.target.value)
-                          }
-                          className="min-h-[80px] rounded border px-3 py-2 text-sm"
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <div className="md:col-span-2 space-y-2">
-                        <ul className="space-y-2">
-                          {route.tasks.length ? (
-                            route.tasks.map((task, taskIndex) => (
-                              <li
-                                key={task.taskId || `${routeIndex}-${taskIndex}`}
-                                className={clsx(
-                                  "space-y-2 rounded border px-3 py-2 text-sm shadow-sm",
-                                  {
-                                    "border-red-300 bg-red-50":
-                                      taskStatus.get(task.taskId)?.delayed,
-                                    "border-amber-300 bg-amber-50":
-                                      !taskStatus.get(task.taskId)?.delayed &&
-                                      taskStatus.get(task.taskId)?.overloaded,
-                                  },
-                                )}
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div>
-                                    <div className="font-medium">
-                                      {task.title ?? task.taskId}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {t("task")}: {task.taskId}
-                                    </div>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-                                      <span>{t("logistics.loadLabel")}:</span>
-                                      <span className="font-semibold">
-                                        {formatLoad(taskStatus.get(task.taskId)?.routeLoad ?? loadValue)}
-                                      </span>
-                                      <span>•</span>
-                                      <span>{t("logistics.etaLabel")}:</span>
-                                      <span className="font-semibold">
-                                        {formatEta(taskStatus.get(task.taskId)?.etaMinutes ?? etaValue)}
-                                      </span>
-                                      <span>•</span>
-                                      <span
-                                        className={clsx(
-                                          taskStatus.get(task.taskId)?.delayed
-                                            ? "text-red-600"
-                                            : "text-emerald-600",
-                                        )}
-                                      >
-                                        {formatDelay(taskStatus.get(task.taskId)?.delayMinutes ?? null)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() =>
-                                        handleMoveTask(routeIndex, taskIndex, -1)
-                                      }
-                                      disabled={
-                                        !isPlanEditable ||
-                                        planLoading ||
-                                        taskIndex === 0
-                                      }
-                                    >
-                                      {t("logistics.planTaskUp")}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() =>
-                                        handleMoveTask(routeIndex, taskIndex, 1)
-                                      }
-                                      disabled={
-                                        !isPlanEditable ||
-                                        planLoading ||
-                                        taskIndex === route.tasks.length - 1
-                                      }
-                                    >
-                                      {t("logistics.planTaskDown")}
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                  {task.startAddress ? (
-                                    <div>
-                                      <span className="font-medium">
-                                        {t("startPoint")}:
-                                      </span>{" "}
-                                      {task.startAddress}
-                                    </div>
-                                  ) : null}
-                                  {task.finishAddress ? (
-                                    <div>
-                                      <span className="font-medium">
-                                        {t("endPoint")}:
-                                      </span>{" "}
-                                      {task.finishAddress}
-                                    </div>
-                                  ) : null}
-                                  {typeof task.distanceKm === "number" &&
-                                  Number.isFinite(task.distanceKm) ? (
-                                    <div>
-                                      {t("logistics.planRouteDistance", {
-                                        distance: formatDistance(task.distanceKm ?? null),
-                                      })}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
-                              {t("logistics.planRouteEmpty")}
-                            </li>
-                          )}
-                        </ul>
-                        <div className="overflow-x-auto">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="font-medium">
+                            {t("logistics.planDriver")}
+                          </span>
+                          <Input
+                            value={route.driverName ?? ""}
+                            onChange={(event) =>
+                              handleDriverNameChange(routeIndex, event.target.value)
+                            }
+                            disabled={!isPlanEditable || planLoading || planSyncing}
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="font-medium">
+                            {t("logistics.planVehicle")}
+                          </span>
+                          <Input
+                            value={route.vehicleName ?? ""}
+                            onChange={(event) =>
+                              handleVehicleNameChange(routeIndex, event.target.value)
+                            }
+                            disabled={!isPlanEditable || planLoading || planSyncing}
+                          />
+                        </label>
+                        <label className="md:col-span-2 flex flex-col gap-1 text-sm">
+                          <span className="font-medium">
+                            {t("logistics.planRouteNotes")}
+                          </span>
+                          <textarea
+                            value={route.notes ?? ""}
+                            onChange={(event) =>
+                              handleRouteNotesChange(routeIndex, event.target.value)
+                            }
+                            className="min-h-[80px] rounded border px-3 py-2 text-sm"
+                            disabled={!isPlanEditable || planLoading || planSyncing}
+                          />
+                        </label>
+                        <div className="md:col-span-2 space-y-2">
+                          <RouteTaskList
+                            route={route}
+                            routeIndex={routeIndex}
+                            t={t}
+                            formatLoad={formatLoad}
+                            formatEta={formatEta}
+                            formatDelay={formatDelay}
+                            formatDistance={formatDistance}
+                            taskStatus={taskStatus}
+                            loadValue={loadValue}
+                            etaValue={etaValue}
+                            isPlanEditable={isPlanEditable}
+                            planLoading={planLoading || planSyncing}
+                          />
+                          <div className="overflow-x-auto">
                           <table className="min-w-full table-fixed text-left text-xs">
                             <thead>
                               <tr className="text-muted-foreground">
@@ -2427,6 +2901,7 @@ export default function LogisticsPage() {
                   </div>
                 );
               })}
+              </DndContext>
             </div>
             {planMessage ? (
               <div className={planMessageClass}>{planMessage}</div>
@@ -2565,7 +3040,13 @@ export default function LogisticsPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={calculate}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  void calculate();
+                }}
+              >
                 {t("logistics.optimize")}
               </Button>
               <Button type="button" size="sm" onClick={reset}>

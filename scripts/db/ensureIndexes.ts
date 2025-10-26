@@ -1,5 +1,7 @@
 // Назначение файла: идемпотентное создание индексов задач и загрузок
 // Модули: mongoose, dotenv
+import type { Connection } from 'mongoose';
+
 try {
   require('dotenv/config');
 } catch {
@@ -19,10 +21,18 @@ function planKey(key: IndexKey, fields: [string, 1 | -1][]) {
   return fields.every(([f, order]) => key[f] === order);
 }
 
-export async function ensureTaskIndexes(conn?: mongoose.Connection) {
-  const connection =
-    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!));
-  const tasks = connection.db.collection('tasks');
+const getDatabase = (connection: Connection) => {
+  const db = connection.db;
+  if (!db) {
+    throw new Error('Соединение MongoDB не содержит доступной базы данных');
+  }
+  return db;
+};
+
+export async function ensureTaskIndexes(conn?: Connection) {
+  const connection: Connection =
+    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!)).connection;
+  const tasks = getDatabase(connection).collection('tasks');
   const indexes = (await tasks.indexes()) as { key: IndexKey }[];
 
   if (
@@ -46,11 +56,12 @@ export async function ensureTaskIndexes(conn?: mongoose.Connection) {
   if (!conn) await connection.close();
 }
 
-export async function ensureUploadIndexes(conn?: mongoose.Connection) {
-  const connection =
-    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!));
-  await connection.db.createCollection('uploads').catch(() => {});
-  const uploads = connection.db.collection('uploads');
+export async function ensureUploadIndexes(conn?: Connection) {
+  const connection: Connection =
+    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!)).connection;
+  const uploadDb = getDatabase(connection);
+  await uploadDb.createCollection('uploads').catch(() => {});
+  const uploads = uploadDb.collection('uploads');
   const indexes = (await uploads.indexes()) as { key: IndexKey }[];
   if (!indexes.some((i) => planKey(i.key, [['key', 1]]))) {
     await uploads.createIndex({ key: 1 }, { name: 'key_unique', unique: true });
@@ -61,11 +72,12 @@ export async function ensureUploadIndexes(conn?: mongoose.Connection) {
   if (!conn) await connection.close();
 }
 
-export async function ensureCollectionItemIndexes(conn?: mongoose.Connection) {
-  const connection =
-    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!));
-  await connection.db.createCollection('collectionitems').catch(() => {});
-  const items = connection.db.collection('collectionitems');
+export async function ensureCollectionItemIndexes(conn?: Connection) {
+  const connection: Connection =
+    conn ?? (await mongoose.connect(process.env.MONGO_DATABASE_URL!)).connection;
+  const collectionDb = getDatabase(connection);
+  await collectionDb.createCollection('collectionitems').catch(() => {});
+  const items = collectionDb.collection('collectionitems');
   const indexes = (await items.indexes()) as {
     key: Record<string, unknown>;
     name?: string;

@@ -2,6 +2,11 @@
 // Модули: jest
 export {};
 
+import type {
+  OrToolsSolveRequest,
+  OrToolsSolveResult,
+} from '../src/services/vrp/orToolsAdapter';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -9,16 +14,18 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-const mockSolveWithOrTools = jest.fn(async () => ({
-  enabled: true,
-  routes: [['__depot__', 'task-1', 'task-2']],
-  totalDistanceKm: 12.3,
-  totalDurationMinutes: 55,
-  warnings: [],
-}));
+const mockSolveWithOrTools = jest.fn(
+  async (_payload: OrToolsSolveRequest): Promise<OrToolsSolveResult> => ({
+    enabled: true,
+    routes: [['__depot__', 'task-1', 'task-2']],
+    totalDistanceKm: 12.3,
+    totalDurationMinutes: 55,
+    warnings: [],
+  }),
+);
 
 jest.mock('../src/services/vrp/orToolsAdapter', () => ({
-  solveWithOrTools: (...args: unknown[]) => mockSolveWithOrTools(...args),
+  solveWithOrTools: mockSolveWithOrTools,
 }));
 
 const { optimize } = require('../src/services/optimizer');

@@ -3,8 +3,12 @@
 // Модули: jest
 export {};
 
+import { taskFields } from 'shared';
+import type { TaskField } from 'shared';
+
 process.env.NODE_ENV = 'test';
-const { taskFields: fields } = require('shared');
+
+const fields: TaskField[] = taskFields;
 
 test('содержит все обязательные поля', () => {
   const names = fields.map((f) => f.name);
@@ -32,5 +36,6 @@ test('содержит все обязательные поля', () => {
 
 test('поле title обязательно', () => {
   const title = fields.find((f) => f.name === 'title');
-  expect(title.required).toBe(true);
+  expect(title).toBeDefined();
+  expect(title?.required).toBe(true);
 });

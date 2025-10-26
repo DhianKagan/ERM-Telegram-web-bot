@@ -208,10 +208,11 @@ describe('Привязка вложений к задачам', () => {
     if (!callArgs) {
       throw new Error('updateTask не вызвал обновление файла');
     }
-    const [filter, updatePayload] = callArgs as [
+    const typedCallArgs = callArgs as unknown as [
       Record<string, unknown>,
       { $set?: { attachments?: unknown[] } },
     ];
+    const [filter, updatePayload] = typedCallArgs;
     expect(filter).toMatchObject({ status: 'Новая' });
     const setArg = updatePayload.$set ?? {};
     const attachments = setArg.attachments ?? [];

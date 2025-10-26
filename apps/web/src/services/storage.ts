@@ -38,4 +38,25 @@ export const removeFile = (id: string) =>
     method: "DELETE",
   });
 
-export default { fetchFiles, fetchFile, removeFile };
+export const attachFileToTask = async (fileId: string, taskId: string) => {
+  const response = await authFetch(
+    `/api/v1/files/${encodeURIComponent(fileId)}/attach`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId }),
+    },
+  );
+  if (!response.ok) {
+    const error = new Error("attach") as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+  try {
+    return (await response.json()) as { ok?: boolean; taskId?: string };
+  } catch {
+    return { ok: true, taskId };
+  }
+};
+
+export default { fetchFiles, fetchFile, removeFile, attachFileToTask };

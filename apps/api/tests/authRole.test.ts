@@ -1,6 +1,14 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты middleware checkRole: проверка доступа по ролям
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
+
+interface AuthedRequest extends Request {
+  user?: {
+    role: string;
+    access: number;
+    telegram_id: number;
+  };
+}
 
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -19,11 +27,11 @@ const {
   ACCESS_USER,
 } = require('../src/utils/accessMask');
 
-function appWithRole(role) {
+function appWithRole(role: string): Express {
   const app = express();
   app.get(
     '/cp',
-    (req, res, next) => {
+    (req: AuthedRequest, _res: Response, next: NextFunction) => {
       req.user = {
         role,
         access:
@@ -35,21 +43,21 @@ function appWithRole(role) {
       next();
     },
     checkRole(ACCESS_ADMIN),
-    (_req, res) => res.sendStatus(200),
+    (_req: Request, res: Response) => res.sendStatus(200),
   );
   return app;
 }
 
-function appWithMask(mask) {
+function appWithMask(mask: number): Express {
   const app = express();
   app.get(
     '/mask',
-    (req, res, next) => {
+    (req: AuthedRequest, _res: Response, next: NextFunction) => {
       req.user = { role: 'user', access: mask, telegram_id: 1 };
       next();
     },
     checkRole(ACCESS_MANAGER),
-    (_req, res) => res.sendStatus(200),
+    (_req: Request, res: Response) => res.sendStatus(200),
   );
   return app;
 }

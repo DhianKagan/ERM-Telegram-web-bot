@@ -1,6 +1,6 @@
 // Назначение: проверка CRUD-роутов автопарка
 // Основные модули: express, supertest, mongodb-memory-server
-export {};
+import type { NextFunction } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -19,11 +19,20 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import fleetsRouter from '../src/routes/fleets';
 import { FleetVehicle } from '../src/db/models/fleet';
 
-jest.mock('../src/utils/rateLimiter', () => () => (_req: any, _res: any, next: () => void) => next());
-jest.mock('../src/middleware/auth', () => () => (_req: any, _res: any, next: () => void) => next());
-jest.mock('../src/auth/roles.guard', () => (_req: any, _res: any, next: () => void) => next());
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
+jest.mock(
+  '../src/auth/roles.guard',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 
 let mongod: MongoMemoryServer;

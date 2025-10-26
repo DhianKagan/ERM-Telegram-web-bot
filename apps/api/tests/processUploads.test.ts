@@ -1,5 +1,5 @@
 // Назначение: тест обработчика processUploads на удаление несуществующего файла. Модули: jest.
-export {};
+import type { NextFunction, Request, Response } from 'express';
 
 jest.mock('../src/db/model', () => ({
   File: { aggregate: jest.fn(async () => []), create: jest.fn() },
@@ -31,13 +31,22 @@ test('возвращает 500 если файл нельзя удалить', a
     ],
     user: { id: 1 },
     body: {},
+  } as unknown as Request & {
+    files: Array<{
+      destination: string;
+      filename: string;
+      originalname: string;
+      mimetype: string;
+      size: number;
+    }>;
+    user: { id: number };
   };
   const res = {
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
     sendStatus: jest.fn(),
-  };
-  const next = jest.fn();
+  } as unknown as Response;
+  const next: NextFunction = jest.fn();
   await processUploads(req, res, next);
   expect(mockWriteLog).toHaveBeenCalled();
   expect(res.sendStatus).toHaveBeenCalledWith(500);

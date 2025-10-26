@@ -1,6 +1,6 @@
 // Назначение: проверка агрегирующего эндпойнта аналитики маршрутных планов.
 // Основные модули: jest, supertest, mongodb-memory-server
-export {};
+import type { NextFunction } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
@@ -16,8 +16,14 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import analyticsRouter from '../src/routes/analytics';
 import { RoutePlan } from '../src/db/models/routePlan';
 
-jest.mock('../src/middleware/auth', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/utils/rateLimiter', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 
 let mongod: MongoMemoryServer;
 let app: express.Express;

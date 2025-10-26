@@ -1,6 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест эндпойнта /api/v1/routes/all
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
+
+type AuthedRequest = Request & { user?: { id: number; telegram_id: number } };
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -22,18 +24,18 @@ jest.mock('../src/db/queries', () => ({
 
 const { listRoutes } = require('../src/db/queries');
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req, _res, next) => {
+  verifyToken: (req: AuthedRequest, _res: Response, next: NextFunction) => {
     req.user = { id: 1, telegram_id: 1 };
     next();
   },
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
+  asyncHandler: <T>(fn: T) => fn,
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
 }));
 const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const routesRouter = require('../src/routes/routes').default;
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());

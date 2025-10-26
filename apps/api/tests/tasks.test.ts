@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -9,15 +9,18 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-let mockLastTaskQueryItems = [];
+let mockLastTaskQueryItems: unknown[] = [];
 
-const createTaskQueryResult = (items = []) => {
+const createTaskQueryResult = (items: unknown[] = []) => {
   mockLastTaskQueryItems = items;
-  const query = {
-    select: jest.fn(() => query),
-    limit: jest.fn(() => query),
-    skip: jest.fn(() => query),
-    sort: jest.fn(() => query),
+  const chain = {
+    select: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    sort: jest.fn().mockReturnThis(),
+  };
+  return {
+    ...chain,
     lean: jest.fn().mockResolvedValue(items),
     exec: jest.fn().mockResolvedValue(items),
     then: jest.fn((resolve, reject) =>
@@ -28,7 +31,6 @@ const createTaskQueryResult = (items = []) => {
       Promise.resolve(items).finally(onFinally),
     ),
   };
-  return query;
 };
 
 const request = require('supertest');
@@ -63,7 +65,7 @@ jest.mock('../src/bot/bot', () => ({
 
 jest.mock('../src/db/model', () => ({
   Task: {
-    create: jest.fn(async (d) => ({
+    create: jest.fn(async (d: Record<string, unknown>) => ({
       _id: '1',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
@@ -72,7 +74,12 @@ jest.mock('../src/db/model', () => ({
       status: 'Новая',
       time_spent: 0,
     })),
-    findOneAndUpdate: jest.fn(async (query, d) => ({ _id: query._id, ...(d.$set || d) })),
+    findOneAndUpdate: jest.fn(
+      async (
+        query: Record<string, unknown>,
+        d: Record<string, unknown> & { $set?: Record<string, unknown> },
+      ) => ({ _id: query._id, ...(d.$set ?? d) }),
+    ),
     findById: jest.fn(async () => ({
       _id: '1',
       time_spent: 0,
@@ -128,20 +135,23 @@ jest
   .mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } });
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req, _res, next) => {
-    const role = String(req.headers['x-role'] || 'admin');
-    const access = Number(req.headers['x-access'] || 6);
+  verifyToken: (req: Request & { user?: { role: string; id: number; telegram_id: number; access: number } }, _res: Response, next: NextFunction) => {
+    const role = String(req.headers['x-role'] ?? 'admin');
+    const access = Number(req.headers['x-access'] ?? 6);
     req.user = { role, id: 1, telegram_id: 1, access };
     next();
   },
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
+  asyncHandler: <T>(fn: T) => fn,
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
-  checkRole: () => (_req, _res, next) => next(),
-  checkTaskAccess: (_req, _res, next) => next(),
+  checkRole: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  checkTaskAccess: (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 
-jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
+jest.mock(
+  '../src/middleware/taskAccess',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 
 const { taskFormSchema } = require('shared');
 const router = require('../src/routes/tasks').default;
@@ -150,7 +160,7 @@ const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
 
 const { formVersion: validFormVersion } = taskFormSchema;
 
-let app;
+let app: Express;
 beforeEach(() => {
   mockLastTaskQueryItems = [];
   mockDeleteMessage.mockClear();
@@ -206,7 +216,7 @@ test('создание задачи без исполнителей возвра
     });
   expect(res.status).toBe(400);
   const messages = Array.isArray(res.body?.errors)
-    ? res.body.errors.map((err) => err.msg)
+    ? res.body.errors.map((err: { msg: string }) => err.msg)
     : [];
   expect(messages).toContain('Укажите хотя бы одного исполнителя');
 });

@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты проверки CSRF-маршрутов аутентификации.
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -16,19 +16,19 @@ const lusca = require('lusca');
 const request = require('supertest');
 
 jest.mock('../src/auth/auth.controller.ts', () => ({
-  sendCode: jest.fn((_req, res) => res.json({ status: 'ok' })),
-  verifyCode: jest.fn((_req, res) => res.json({ token: 't' })),
-  profile: jest.fn((_req, res) => res.json({ ok: true })),
-  updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
-  logout: jest.fn((_req, res) => res.json({ status: 'ok' })),
-  refresh: jest.fn((_req, res) => res.json({ token: 't' })),
+  sendCode: jest.fn((_req: Request, res: Response) => res.json({ status: 'ok' })),
+  verifyCode: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
+  profile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  updateProfile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  logout: jest.fn((_req: Request, res: Response) => res.json({ status: 'ok' })),
+  refresh: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
 }));
 
 const authRouter = require('../src/routes/authUser').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());
@@ -45,7 +45,7 @@ beforeAll(() => {
     }),
   );
   const csrf = lusca.csrf({ angular: true });
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl.split('?')[0];
     if (['/api/v1/auth/send_code', '/api/v1/auth/verify_code'].includes(url)) {
       return next();

@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest, shared.
 // Тест маршрута /api/maps/expand
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -34,9 +34,9 @@ jest.mock('../src/services/taskLinks', () => ({
 }));
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req, _res, next) => next(),
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
+  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  asyncHandler: <T>(fn: T) => fn,
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -49,7 +49,7 @@ const {
 } = require('../src/services/shortLinks');
 const { normalizeManagedShortLink } = require('../src/services/taskLinks');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());

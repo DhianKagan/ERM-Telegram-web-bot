@@ -1,6 +1,6 @@
 // Назначение: проверка маршрутов оркестратора стека
 // Основные модули: jest, supertest, express
-export {};
+import type { NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
@@ -9,24 +9,24 @@ const express = require('express');
 const request = require('supertest');
 
 const mockOrchestratorController = {
-  overview: jest.fn((_req: any, res: any) =>
+  overview: jest.fn((_req: Request, res: Response) =>
     res.json({
       generatedAt: '2024-01-01T00:00:00.000Z',
       fileSync: { totalFiles: 0, linkedFiles: 0, detachedFiles: 0 },
       logAnalysis: null,
     }),
   ),
-  coordinate: jest.fn((_req: any, res: any) =>
+  coordinate: jest.fn((_req: Request, res: Response) =>
     res.json({
       generatedAt: '2024-01-01T00:00:00.000Z',
       fileSync: { totalFiles: 0, linkedFiles: 0, detachedFiles: 0 },
       logAnalysis: null,
     }),
   ),
-  latestLogAnalysis: jest.fn((_req: any, res: any) =>
+  latestLogAnalysis: jest.fn((_req: Request, res: Response) =>
     res.json({ summary: null }),
   ),
-  codexBrief: jest.fn((_req: any, res: any) =>
+  codexBrief: jest.fn((_req: Request, res: Response) =>
     res.json({
       generatedAt: '2024-01-01T00:00:00.000Z',
       prompt: 'demo',
@@ -47,14 +47,14 @@ jest.mock('../src/di', () => {
 
 jest.mock(
   '../src/middleware/auth',
-  () => () => (_req: any, _res: any, next: any) => next(),
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 jest.mock(
   '../src/auth/roles.guard',
-  () => (_req: any, _res: any, next: any) => next(),
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (_req: any, _res: any, next: any) => next(),
+  Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 
 const router = require('../src/routes/system').default;

@@ -1,5 +1,7 @@
 // Назначение: тесты роута скачивания файлов. Модули: jest, supertest.
-export {};
+import type { NextFunction, Request, Response } from 'express';
+
+type AuthedRequest = Request & { user?: { id: number; access: number } };
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
@@ -16,7 +18,7 @@ jest.mock('../src/db/model', () => ({
     findById: jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) })),
   },
 }));
-jest.mock('../src/middleware/auth', () => () => (req, _res, next) => {
+jest.mock('../src/middleware/auth', () => () => (req: AuthedRequest, _res: Response, next: NextFunction) => {
   req.user = { id: 1, access: 1 };
   next();
 });

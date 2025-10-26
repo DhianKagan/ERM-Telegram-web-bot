@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты middleware verifyToken: доступ без и с JWT
-export {};
+import type { Express, Request, Response } from 'express';
 
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -13,13 +13,14 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const lusca = require('lusca');
 const request = require('supertest');
+const rateLimit = require('express-rate-limit');
 jest.unmock('jsonwebtoken');
 const jwt = require('jsonwebtoken');
 const { verifyToken } = require('../src/api/middleware');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(cookieParser());
@@ -35,7 +36,13 @@ beforeAll(() => {
     }),
   );
   app.use(lusca.csrf());
-  app.get('/secure', verifyToken, (_req, res) => res.send('OK'));
+  // Add simple rate limiter for test purposes
+  const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute window
+    max: 50, // limit each IP to 50 requests per windowMs
+  });
+  app.use('/secure', limiter);
+  app.get('/secure', verifyToken, (_req: Request, res: Response) => res.send('OK'));
 });
 
 test('без токена возвращает problem+json с 401', async () => {

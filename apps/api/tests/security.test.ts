@@ -1,5 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
-export {};
+import type { Request, Response } from 'express';
 
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -18,7 +18,7 @@ test('CSP работает в режиме report-only', async () => {
   process.env.CSP_REPORT_URI = 'https://csp.example.com/report';
   const app = express();
   applySecurity(app);
-  app.get('/', (_req, res) => res.send('ok'));
+  app.get('/', (_req: Request, res: Response) => res.send('ok'));
   const res = await request(app).get('/');
   const ro = res.headers['content-security-policy-report-only'];
   expect(ro).toBeDefined();
@@ -35,7 +35,7 @@ test('CSP включается в строгом режиме', async () => {
   process.env.CSP_REPORT_URI = 'https://csp.example.com/report';
   const app = express();
   applySecurity(app);
-  app.get('/', (_req, res) => res.send('ok'));
+  app.get('/', (_req: Request, res: Response) => res.send('ok'));
   const res = await request(app).get('/');
   const csp = res.headers['content-security-policy'] || '';
   expect(csp).toContain('upgrade-insecure-requests');

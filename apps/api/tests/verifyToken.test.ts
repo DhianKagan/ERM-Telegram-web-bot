@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const lusca = require('lusca');
 const request = require('supertest');
+const rateLimit = require('express-rate-limit');
 jest.unmock('jsonwebtoken');
 const jwt = require('jsonwebtoken');
 const { verifyToken } = require('../src/api/middleware');
@@ -35,6 +36,12 @@ beforeAll(() => {
     }),
   );
   app.use(lusca.csrf());
+  // Add simple rate limiter for test purposes
+  const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute window
+    max: 50, // limit each IP to 50 requests per windowMs
+  });
+  app.use('/secure', limiter);
   app.get('/secure', verifyToken, (_req: Request, res: Response) => res.send('OK'));
 });
 

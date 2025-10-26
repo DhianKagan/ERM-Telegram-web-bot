@@ -10,14 +10,17 @@ process.env.APP_URL = 'https://localhost';
 const crypto = require('crypto');
 const verify = require('../src/utils/verifyInitData').default;
 
-function buildInitData(ts) {
-  const data = {
+type InitDataKeys = 'query_id' | 'user' | 'auth_date' | 'signature';
+
+function buildInitData(ts: number): string {
+  const data: Record<InitDataKeys, string> = {
     query_id: '1',
     user: JSON.stringify({ id: 1, first_name: 'a' }),
     auth_date: String(ts),
     signature: 'sig',
   };
-  const str = Object.keys(data)
+  const keys = Object.keys(data) as InitDataKeys[];
+  const str = keys
     .sort()
     .map((k) => `${k}=${data[k]}`)
     .join('\n');

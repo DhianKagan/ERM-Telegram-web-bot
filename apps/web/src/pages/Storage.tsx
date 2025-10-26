@@ -24,7 +24,10 @@ import {
   fetchFile,
   fetchFiles,
   removeFile,
-  attachFileToTask,
+
+  runDiagnostics,
+  type StorageDiagnosticsReport,
+
   type StoredFile,
 } from "../services/storage";
 import { fetchUsers } from "../services/users";
@@ -114,11 +117,15 @@ export default function StoragePage() {
   const [selectedFile, setSelectedFile] = React.useState<StoredFile | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const [preview, setPreview] = React.useState<PreviewState | null>(null);
-  const [taskOptions, setTaskOptions] = React.useState<TaskOption[]>([]);
-  const [taskMetaById, setTaskMetaById] = React.useState<Record<string, TaskOption>>({});
-  const [tasksLoading, setTasksLoading] = React.useState(false);
-  const [selectionByFile, setSelectionByFile] = React.useState<Record<string, string>>({});
-  const [attachLoadingId, setAttachLoadingId] = React.useState<string | null>(null);
+
+  const [diagnostics, setDiagnostics] = React.useState<
+    StorageDiagnosticsReport | null
+  >(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = React.useState(false);
+  const [diagnosticsError, setDiagnosticsError] = React.useState<string | null>(
+    null,
+  );
+
 
   const loadFiles = React.useCallback(() => {
     setLoading(true);
@@ -136,6 +143,24 @@ export default function StoragePage() {
     () => files.filter((file) => !file.taskId).length,
     [files],
   );
+
+  const handleDiagnostics = React.useCallback(() => {
+    setDiagnosticsLoading(true);
+    setDiagnosticsError(null);
+    return runDiagnostics()
+      .then((report) => {
+        setDiagnostics(report);
+        showToast(t("storage.diagnostics.success"), "success");
+        return loadFiles();
+      })
+      .catch(() => {
+        setDiagnosticsError(t("storage.diagnostics.error"));
+        showToast(t("storage.diagnostics.error"), "error");
+      })
+      .finally(() => {
+        setDiagnosticsLoading(false);
+      });
+  }, [loadFiles, t]);
 
   React.useEffect(() => {
     void loadFiles();
@@ -642,19 +667,66 @@ export default function StoragePage() {
   }, [selectedRow, t]);
 
   const previewIcon = preview ? previewIcons[preview.mode] : null;
+  const diagnosticsTimestamp = React.useMemo(
+    () => (diagnostics ? formatDate(diagnostics.generatedAt) : null),
+    [diagnostics],
+  );
 
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: t("storage.title") }]} />
-      <section className="rounded border border-border bg-card/60 p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-foreground">
-          {t("storage.sync.title")}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {detachedCount === 0
-            ? t("storage.sync.ok", { count: files.length })
-            : t("storage.sync.warning", { count: detachedCount })}
-        </p>
+      <section className="rounded border border-amber-300 bg-amber-50 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <h2 className="text-base font-semibold text-amber-900">
+              {t("storage.diagnostics.title")}
+            </h2>
+            <p className="text-sm text-amber-800">
+              {t("storage.diagnostics.description")}
+            </p>
+            <p className="text-sm text-amber-900">
+              {detachedCount === 0
+                ? t("storage.sync.ok", { count: files.length })
+                : t("storage.sync.warning", { count: detachedCount })}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+            disabled={diagnosticsLoading}
+            onClick={() => {
+              void handleDiagnostics();
+            }}
+          >
+            {diagnosticsLoading
+              ? t("storage.diagnostics.progress")
+              : t("storage.diagnostics.cta")}
+          </Button>
+        </div>
+        {diagnosticsError ? (
+          <p className="mt-3 text-sm text-red-700">{diagnosticsError}</p>
+        ) : null}
+        {diagnostics ? (
+          <div className="mt-3 space-y-1 text-sm text-amber-900">
+            <p>
+              {t("storage.diagnostics.lastRun", {
+                date: diagnosticsTimestamp ?? "—",
+              })}
+            </p>
+            <p>
+              {t("storage.diagnostics.snapshot", {
+                total: diagnostics.snapshot.totalFiles,
+                linked: diagnostics.snapshot.linkedFiles,
+                detached: diagnostics.snapshot.detachedFiles,
+              })}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-amber-800">
+            {t("storage.diagnostics.placeholder")}
+          </p>
+        )}
       </section>
       <section className="space-y-5 rounded border border-border bg-card p-5 shadow-sm">
         <header className="flex flex-col gap-4 border-b border-border pb-4">

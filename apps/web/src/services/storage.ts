@@ -18,6 +18,23 @@ export interface StoredFile {
   taskTitle?: string | null;
 }
 
+export interface StorageDiagnosticsReport {
+  generatedAt: string;
+  snapshot: {
+    totalFiles: number;
+    linkedFiles: number;
+    detachedFiles: number;
+  };
+  detachedFiles: Array<{
+    id: string;
+    name: string;
+    path: string;
+    size: number;
+    uploadedAt: string;
+    userId: number;
+  }>;
+}
+
 export const fetchFiles = (params?: { userId?: number; type?: string }) => {
   const qs = new URLSearchParams();
   if (params?.userId) qs.set("userId", String(params.userId));
@@ -38,25 +55,13 @@ export const removeFile = (id: string) =>
     method: "DELETE",
   });
 
-export const attachFileToTask = async (fileId: string, taskId: string) => {
-  const response = await authFetch(
-    `/api/v1/files/${encodeURIComponent(fileId)}/attach`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId }),
-    },
-  );
+export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
+  const response = await authFetch(`/api/v1/storage/diagnostics`);
   if (!response.ok) {
-    const error = new Error("attach") as Error & { status?: number };
-    error.status = response.status;
-    throw error;
+    throw new Error("diagnostics");
   }
-  try {
-    return (await response.json()) as { ok?: boolean; taskId?: string };
-  } catch {
-    return { ok: true, taskId };
-  }
+  return (await response.json()) as StorageDiagnosticsReport;
 };
 
-export default { fetchFiles, fetchFile, removeFile, attachFileToTask };
+export default { fetchFiles, fetchFile, removeFile, runDiagnostics };
+

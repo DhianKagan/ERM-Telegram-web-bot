@@ -395,20 +395,18 @@
       "ok": "Total files: {{count}}, all linked to tasks.",
       "warning": "Files without tasks: {{count}}. Links are restored automatically; refresh later."
     },
-    "attach": {
-      "title": "Attach to task",
-      "placeholder": "Choose a task",
-      "button": "Attach",
-      "processing": "Attaching...",
-      "success": "File attached to the task.",
-      "error": "Failed to attach the file.",
-      "forbidden": "You are not allowed to attach this file.",
-      "empty": "No available tasks for attachment.",
-      "loading": "Loading tasks...",
-      "tasksLoadError": "Failed to load recent tasks.",
-      "optionNumber": "{{number}} — {{title}}",
-      "optionId": "ID {{id}} — {{title}}",
-      "untitled": "Untitled"
+
+    "diagnostics": {
+      "title": "Storage cleanup",
+      "description": "Files without a task are removed on schedule. Run a manual check when you need an instant report.",
+      "cta": "Run check now",
+      "progress": "Checking...",
+      "success": "Diagnostics completed.",
+      "error": "Diagnostics failed.",
+      "lastRun": "Latest report: {{date}}.",
+      "snapshot": "Total: {{total}}, linked: {{linked}}, detached: {{detached}}.",
+      "placeholder": "Run the first check to see the report here."
+
     }
   }
 }

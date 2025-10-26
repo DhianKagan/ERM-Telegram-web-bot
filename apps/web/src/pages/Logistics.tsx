@@ -31,6 +31,8 @@ import optimizeRoute, {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
+import FleetTable from "../components/FleetTable";
+import Modal from "../components/Modal";
 import { useTranslation } from "react-i18next";
 import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -70,6 +72,119 @@ type TaskStatusInfo = {
   routeLoad: number | null;
   routeId: string;
   recalculating?: boolean;
+};
+
+const parseTaskWeightValue = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().replace(/,/, ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number.parseFloat(normalized);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const getTaskIdentifier = (task: RouteTask): string => {
+  const source = task as Record<string, unknown>;
+  const candidates: unknown[] = [
+    source["_id"],
+    source["id"],
+    source["taskId"],
+    source["task_id"],
+  ];
+  const rawId = candidates.find(
+    (value) => value !== undefined && value !== null,
+  );
+  if (typeof rawId === "string") {
+    const trimmed = rawId.trim();
+    return trimmed ? trimmed : "";
+  }
+  if (typeof rawId === "number" && Number.isFinite(rawId)) {
+    return rawId.toString();
+  }
+  return "";
+};
+
+const getRouteTaskWeight = (task: RouteTask): number | null => {
+  const source = task as Record<string, unknown>;
+  const direct =
+    parseTaskWeightValue(source["cargo_weight_kg"]) ??
+    parseTaskWeightValue(source["cargoWeightKg"]) ??
+    parseTaskWeightValue(source["weight"]);
+  if (direct !== null) {
+    return direct;
+  }
+  const details = source["logistics_details"] as
+    | Record<string, unknown>
+    | undefined;
+  if (details && typeof details === "object") {
+    const detailWeight =
+      parseTaskWeightValue(details["cargo_weight_kg"]) ??
+      parseTaskWeightValue(details["cargoWeightKg"]) ??
+      parseTaskWeightValue(details["weight"]) ??
+      parseTaskWeightValue(details["payload"]) ??
+      parseTaskWeightValue(details["payloadKg"]);
+    if (detailWeight !== null) {
+      return detailWeight;
+    }
+  }
+  return null;
+};
+
+const extractVehicleTaskIds = (vehicle: FleetVehicleDto): string[] => {
+  const vehicleSource = vehicle as unknown as Record<string, unknown>;
+  const rawTasks = vehicleSource["currentTasks"];
+  if (!Array.isArray(rawTasks)) {
+    return [];
+  }
+  const ids = new Set<string>();
+  (rawTasks as unknown[]).forEach((entry) => {
+    if (typeof entry === "string") {
+      const trimmed = entry.trim();
+      if (trimmed) {
+        ids.add(trimmed);
+      }
+      return;
+    }
+    if (typeof entry === "number" && Number.isFinite(entry)) {
+      ids.add(entry.toString());
+      return;
+    }
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+    const source = entry as Record<string, unknown>;
+    const rawId =
+      source["taskId"] ??
+      source["task_id"] ??
+      source["id"] ??
+      source["task"] ??
+      null;
+    if (typeof rawId === "string") {
+      const trimmed = rawId.trim();
+      if (trimmed) {
+        ids.add(trimmed);
+      }
+    } else if (typeof rawId === "number" && Number.isFinite(rawId)) {
+      ids.add(rawId.toString());
+    }
+  });
+  return Array.from(ids);
+};
+
+const normalizeVehicleCapacity = (vehicle: FleetVehicleDto): number | null => {
+  const raw = vehicle.payloadCapacityKg;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) {
+    return null;
+  }
+  return raw;
 };
 
 type DragData =
@@ -139,7 +254,9 @@ function SortableTaskCard({
   );
   const handleClass = clsx(
     "flex h-8 w-8 shrink-0 items-center justify-center rounded border bg-slate-50 text-slate-500 transition",
-    canDrag ? "cursor-grab hover:bg-slate-100" : "cursor-not-allowed opacity-60",
+    canDrag
+      ? "cursor-grab hover:bg-slate-100"
+      : "cursor-not-allowed opacity-60",
   );
   const dragAttributes = canDrag ? attributes : {};
   const dragListeners = canDrag ? listeners : {};
@@ -160,13 +277,15 @@ function SortableTaskCard({
           </button>
           <div>
             <div className="font-medium">{task.title ?? task.taskId}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-muted-foreground text-xs">
               {t("task")}: {task.taskId}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+            <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-[11px] tracking-wide uppercase">
               <span>{t("logistics.loadLabel")}:</span>
               <span className="font-semibold">
-                {formatLoad(taskStatus.get(task.taskId)?.routeLoad ?? loadValue)}
+                {formatLoad(
+                  taskStatus.get(task.taskId)?.routeLoad ?? loadValue,
+                )}
               </span>
               <span>•</span>
               <span>{t("logistics.etaLabel")}:</span>
@@ -185,25 +304,28 @@ function SortableTaskCard({
               </span>
             </div>
             {status?.recalculating ? (
-              <span className="mt-2 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+              <span className="mt-2 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-indigo-700 uppercase">
                 {t("logistics.taskRecalculating")}
               </span>
             ) : null}
           </div>
         </div>
       </div>
-      <div className="space-y-1 text-xs text-muted-foreground">
+      <div className="text-muted-foreground space-y-1 text-xs">
         {task.startAddress ? (
           <div>
-            <span className="font-medium">{t("startPoint")}:</span> {task.startAddress}
+            <span className="font-medium">{t("startPoint")}:</span>{" "}
+            {task.startAddress}
           </div>
         ) : null}
         {task.finishAddress ? (
           <div>
-            <span className="font-medium">{t("endPoint")}:</span> {task.finishAddress}
+            <span className="font-medium">{t("endPoint")}:</span>{" "}
+            {task.finishAddress}
           </div>
         ) : null}
-        {typeof task.distanceKm === "number" && Number.isFinite(task.distanceKm) ? (
+        {typeof task.distanceKm === "number" &&
+        Number.isFinite(task.distanceKm) ? (
           <div>
             {t("logistics.planRouteDistance", {
               distance: formatDistance(task.distanceKm ?? null),
@@ -252,9 +374,7 @@ function RouteTaskList({
   });
   const sortableItems = React.useMemo(
     () =>
-      route.tasks.map(
-        (task, index) => task.taskId || `${routeIndex}-${index}`,
-      ),
+      route.tasks.map((task, index) => task.taskId || `${routeIndex}-${index}`),
     [route.tasks, routeIndex],
   );
 
@@ -268,7 +388,10 @@ function RouteTaskList({
         },
       )}
     >
-      <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={sortableItems}
+        strategy={verticalListSortingStrategy}
+      >
         <ul className="space-y-2">
           {route.tasks.length
             ? route.tasks.map((task, taskIndex) => (
@@ -296,7 +419,7 @@ function RouteTaskList({
       {route.tasks.length === 0 ? (
         <div
           className={clsx(
-            "rounded border border-dashed px-3 py-2 text-sm text-muted-foreground",
+            "text-muted-foreground rounded border border-dashed px-3 py-2 text-sm",
             {
               "border-indigo-400 bg-indigo-50 text-indigo-700":
                 isOver && droppableActive,
@@ -363,7 +486,8 @@ const UKRAINE_BOUNDS: LatLngBoundsExpression = [
   [52.5, 40.5],
 ];
 
-const TRAFFIC_TILE_URL = "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
+const TRAFFIC_TILE_URL =
+  "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
 const CARGO_TILE_URL = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
 
 const WINDOW_FULL_DAY: [number, number] = [0, 24 * 60];
@@ -454,9 +578,8 @@ export default function LogisticsPage() {
   const [fleetError, setFleetError] = React.useState("");
   const [vehiclesHint, setVehiclesHint] = React.useState("");
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
-  const [visibleLayers, setVisibleLayers] = React.useState<LayerVisibilityState>(
-    DEFAULT_LAYER_VISIBILITY,
-  );
+  const [visibleLayers, setVisibleLayers] =
+    React.useState<LayerVisibilityState>(DEFAULT_LAYER_VISIBILITY);
   const [vehiclePositions, setVehiclePositions] = React.useState<
     Record<
       string,
@@ -488,6 +611,13 @@ export default function LogisticsPage() {
   );
   const [planSyncing, setPlanSyncing] = React.useState(false);
   const [recalcInProgress, setRecalcInProgress] = React.useState(false);
+  const [assignVehicle, setAssignVehicle] =
+    React.useState<FleetVehicleDto | null>(null);
+  const [assignSelected, setAssignSelected] = React.useState<string[]>([]);
+  const [assignLoading, setAssignLoading] = React.useState(false);
+  const [assignError, setAssignError] = React.useState("");
+  const [assignResult, setAssignResult] =
+    React.useState<RouteOptimizationResult | null>(null);
 
   const legendItems = React.useMemo(
     () =>
@@ -534,12 +664,14 @@ export default function LogisticsPage() {
           const windowStart =
             typeof (task as Record<string, unknown>).delivery_window_start ===
             "string"
-              ? ((task as Record<string, unknown>).delivery_window_start as string)
+              ? ((task as Record<string, unknown>)
+                  .delivery_window_start as string)
               : null;
           const windowEnd =
             typeof (task as Record<string, unknown>).delivery_window_end ===
             "string"
-              ? ((task as Record<string, unknown>).delivery_window_end as string)
+              ? ((task as Record<string, unknown>)
+                  .delivery_window_end as string)
               : null;
           const distance = Number(task.route_distance_km);
           return {
@@ -609,7 +741,10 @@ export default function LogisticsPage() {
         return null;
       }
 
-      const totalTasks = planRoutes.reduce((sum, route) => sum + route.tasks.length, 0);
+      const totalTasks = planRoutes.reduce(
+        (sum, route) => sum + route.tasks.length,
+        0,
+      );
       const totalStops = planRoutes.reduce(
         (sum, route) => sum + (route.metrics?.stops ?? 0),
         0,
@@ -636,7 +771,9 @@ export default function LogisticsPage() {
           totalLoad: result.totalLoad,
         },
         routes: planRoutes,
-        tasks: planRoutes.flatMap((route) => route.tasks.map((task) => task.taskId)),
+        tasks: planRoutes.flatMap((route) =>
+          route.tasks.map((task) => task.taskId),
+        ),
         createdAt: undefined,
         updatedAt: undefined,
       } satisfies RoutePlan;
@@ -666,10 +803,10 @@ export default function LogisticsPage() {
 
   const loadPlan = React.useCallback(async () => {
     setPlanLoading(true);
-    setPlanMessage('');
-    setPlanMessageTone('neutral');
+    setPlanMessage("");
+    setPlanMessageTone("neutral");
     try {
-      const drafts = await listRoutePlans('draft', 1, 1);
+      const drafts = await listRoutePlans("draft", 1, 1);
       if (drafts.items.length > 0) {
         applyPlan(drafts.items[0]);
         return;
@@ -680,14 +817,14 @@ export default function LogisticsPage() {
         return;
       }
       applyPlan(null);
-      setPlanMessage(tRef.current('logistics.planEmpty'));
+      setPlanMessage(tRef.current("logistics.planEmpty"));
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current('logistics.planLoadError');
+          : tRef.current("logistics.planLoadError");
       setPlanMessage(message);
-      setPlanMessageTone('error');
+      setPlanMessageTone("error");
     } finally {
       setPlanLoading(false);
     }
@@ -714,7 +851,9 @@ export default function LogisticsPage() {
   const updateRouteDraft = React.useCallback(
     (
       routeIndex: number,
-      updater: (route: RoutePlan['routes'][number]) => RoutePlan['routes'][number],
+      updater: (
+        route: RoutePlan["routes"][number],
+      ) => RoutePlan["routes"][number],
     ) => {
       setPlanDraft((current) => {
         if (!current) return current;
@@ -728,35 +867,46 @@ export default function LogisticsPage() {
   );
 
   const handlePlanTitleChange = React.useCallback((value: string) => {
-    setPlanDraft((current) => (current ? { ...current, title: value } : current));
+    setPlanDraft((current) =>
+      current ? { ...current, title: value } : current,
+    );
   }, []);
 
   const handlePlanNotesChange = React.useCallback((value: string) => {
-    setPlanDraft((current) => (current ? { ...current, notes: value } : current));
+    setPlanDraft((current) =>
+      current ? { ...current, notes: value } : current,
+    );
   }, []);
 
   const handleDriverNameChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, driverName: value }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        driverName: value,
+      }));
     },
     [updateRouteDraft],
   );
 
   const handleVehicleNameChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, vehicleName: value }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        vehicleName: value,
+      }));
     },
     [updateRouteDraft],
   );
 
   const handleRouteNotesChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, notes: value || null }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        notes: value || null,
+      }));
     },
     [updateRouteDraft],
   );
-
-  
 
   const handleSavePlan = React.useCallback(async () => {
     if (!planDraft) return;
@@ -765,15 +915,15 @@ export default function LogisticsPage() {
       const payload = buildUpdatePayload(planDraft);
       const updated = await updateRoutePlan(planDraft.id, payload);
       applyPlan(updated);
-      setPlanMessage(tRef.current('logistics.planSaved'));
-      setPlanMessageTone('success');
+      setPlanMessage(tRef.current("logistics.planSaved"));
+      setPlanMessageTone("success");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current('logistics.planSaveError');
+          : tRef.current("logistics.planSaveError");
       setPlanMessage(message);
-      setPlanMessageTone('error');
+      setPlanMessageTone("error");
     } finally {
       setPlanLoading(false);
     }
@@ -783,17 +933,17 @@ export default function LogisticsPage() {
     if (!planDraft) return;
     setPlanLoading(true);
     try {
-      const updated = await changeRoutePlanStatus(planDraft.id, 'approved');
+      const updated = await changeRoutePlanStatus(planDraft.id, "approved");
       applyPlan(updated);
-      setPlanMessage(tRef.current('logistics.planPublished'));
-      setPlanMessageTone('success');
+      setPlanMessage(tRef.current("logistics.planPublished"));
+      setPlanMessageTone("success");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current('logistics.planStatusError');
+          : tRef.current("logistics.planStatusError");
       setPlanMessage(message);
-      setPlanMessageTone('error');
+      setPlanMessageTone("error");
     } finally {
       setPlanLoading(false);
     }
@@ -803,32 +953,32 @@ export default function LogisticsPage() {
     if (!planDraft) return;
     setPlanLoading(true);
     try {
-      const updated = await changeRoutePlanStatus(planDraft.id, 'completed');
+      const updated = await changeRoutePlanStatus(planDraft.id, "completed");
       applyPlan(updated);
-      setPlanMessage(tRef.current('logistics.planCompleted'));
-      setPlanMessageTone('success');
+      setPlanMessage(tRef.current("logistics.planCompleted"));
+      setPlanMessageTone("success");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current('logistics.planStatusError');
+          : tRef.current("logistics.planStatusError");
       setPlanMessage(message);
-      setPlanMessageTone('error');
+      setPlanMessageTone("error");
     } finally {
       setPlanLoading(false);
     }
   }, [planDraft, applyPlan]);
 
   const handleReloadPlan = React.useCallback(async () => {
-    setPlanMessage('');
-    setPlanMessageTone('neutral');
+    setPlanMessage("");
+    setPlanMessageTone("neutral");
     await loadPlan();
   }, [loadPlan]);
 
   const handleClearPlan = React.useCallback(() => {
     applyPlan(null);
-    setPlanMessage(tRef.current('logistics.planEmpty'));
-    setPlanMessageTone('neutral');
+    setPlanMessage(tRef.current("logistics.planEmpty"));
+    setPlanMessageTone("neutral");
   }, [applyPlan]);
 
   React.useEffect(() => {
@@ -876,21 +1026,24 @@ export default function LogisticsPage() {
 
   const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
     return input.filter((task) => {
-      const details = (task as Record<string, unknown>)
-        .logistics_details as LogisticsDetails | undefined;
+      const details = (task as Record<string, unknown>).logistics_details as
+        | LogisticsDetails
+        | undefined;
       const transportTypeRaw =
         typeof details?.transport_type === "string"
           ? details.transport_type.trim()
           : "";
       const normalizedTransportType = transportTypeRaw.toLowerCase();
       const hasTransportType =
-        Boolean(transportTypeRaw) && normalizedTransportType !== "без транспорта";
+        Boolean(transportTypeRaw) &&
+        normalizedTransportType !== "без транспорта";
 
       if (!hasTransportType) {
         return false;
       }
 
-      const hasCoordinates = hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
+      const hasCoordinates =
+        hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
       const hasAddresses =
         (typeof details?.start_location === "string" &&
           details.start_location.trim().length > 0) ||
@@ -935,9 +1088,7 @@ export default function LogisticsPage() {
           _id: identifier,
         } satisfies RouteTask;
       });
-      const list = mapped.filter(
-        (task): task is RouteTask => Boolean(task),
-      );
+      const list = mapped.filter((task): task is RouteTask => Boolean(task));
       const filtered = filterRouteTasks(list);
       controller.setIndex("logistics:all", filtered, {
         kind: "task",
@@ -970,7 +1121,7 @@ export default function LogisticsPage() {
     setVehiclesHint("");
     setFleetError("");
     try {
-      const data = await listFleetVehicles("", 1, 100);
+      const data = await listFleetVehicles({ page: 1, limit: 100 });
       setAvailableVehicles(data.items);
       if (!data.items.length) {
         setVehiclesHint(tRef.current("logistics.noVehicles"));
@@ -1090,11 +1241,7 @@ export default function LogisticsPage() {
     const validVehicles = availableVehicles.reduce<
       { id: string; capacity: number }[]
     >((acc, vehicle) => {
-      const raw = vehicle.payloadCapacityKg;
-      const capacity =
-        typeof raw === "number" && Number.isFinite(raw) && raw > 0
-          ? Number(raw)
-          : null;
+      const capacity = normalizeVehicleCapacity(vehicle);
       const id = typeof vehicle.id === "string" ? vehicle.id.trim() : "";
       if (!capacity || !id) {
         return acc;
@@ -1135,72 +1282,249 @@ export default function LogisticsPage() {
     return undefined;
   }, [availableVehicles, planDraft, vehicles]);
 
+  const buildOptimizeTasks = React.useCallback((sourceTasks: RouteTask[]) => {
+    return sourceTasks.reduce<OptimizeRoutePayload["tasks"]>((acc, task) => {
+      const taskId = getTaskIdentifier(task);
+      if (!taskId) {
+        return acc;
+      }
+      const hasStartPoint = hasPoint(task.startCoordinates);
+      const hasFinishPoint = hasPoint(task.finishCoordinates);
+      if (!hasStartPoint && !hasFinishPoint) {
+        return acc;
+      }
+      const useDropPoint = !hasStartPoint && hasFinishPoint;
+      const coordinates = (
+        useDropPoint ? task.finishCoordinates : task.startCoordinates
+      ) as Coords;
+      const details = (task as Record<string, unknown>).logistics_details as
+        | LogisticsDetails
+        | undefined;
+      const startAddress =
+        typeof details?.start_location === "string"
+          ? details.start_location.trim()
+          : "";
+      const finishAddress =
+        typeof details?.end_location === "string"
+          ? details.end_location.trim()
+          : "";
+      const windowStartRaw =
+        typeof (task as Record<string, unknown>).delivery_window_start ===
+        "string"
+          ? ((task as Record<string, unknown>).delivery_window_start as string)
+          : null;
+      const windowEndRaw =
+        typeof (task as Record<string, unknown>).delivery_window_end ===
+        "string"
+          ? ((task as Record<string, unknown>).delivery_window_end as string)
+          : null;
+      const timeWindow = buildTimeWindow(windowStartRaw, windowEndRaw);
+      const weightValue = getRouteTaskWeight(task);
+      const demandValue = typeof weightValue === "number" ? weightValue : 1;
+      const normalizedStartAddress = startAddress || undefined;
+      const normalizedFinishAddress = finishAddress || undefined;
+      const dropAddress =
+        normalizedFinishAddress ?? normalizedStartAddress ?? undefined;
+      acc.push({
+        id: taskId,
+        coordinates,
+        demand: demandValue,
+        weight: weightValue ?? undefined,
+        serviceMinutes: undefined,
+        title: task.title,
+        startAddress: useDropPoint ? undefined : normalizedStartAddress,
+        finishAddress: useDropPoint ? dropAddress : normalizedFinishAddress,
+        timeWindow: timeWindow ?? undefined,
+      });
+      return acc;
+    }, []);
+  }, []);
+
+  const taskWeightMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    tasks.forEach((task) => {
+      if (!task) {
+        return;
+      }
+      const id = getTaskIdentifier(task);
+      if (!id) {
+        return;
+      }
+      const weight = getRouteTaskWeight(task);
+      if (typeof weight === "number") {
+        map.set(id, weight);
+      }
+    });
+    return map;
+  }, [tasks]);
+
+  const openAssignDialog = React.useCallback((vehicle: FleetVehicleDto) => {
+    setAssignVehicle(vehicle);
+    setAssignError("");
+    setAssignResult(null);
+    setAssignLoading(false);
+    const initialSelection = extractVehicleTaskIds(vehicle);
+    setAssignSelected(initialSelection);
+  }, []);
+
+  const closeAssignDialog = React.useCallback(() => {
+    setAssignVehicle(null);
+    setAssignSelected([]);
+    setAssignError("");
+    setAssignLoading(false);
+    setAssignResult(null);
+  }, []);
+
+  const toggleAssignTask = React.useCallback((taskId: string) => {
+    if (!taskId) {
+      return;
+    }
+    setAssignSelected((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((value) => value !== taskId)
+        : [...prev, taskId],
+    );
+  }, []);
+
+  const assignableTasks = React.useMemo(() => {
+    if (!assignVehicle) {
+      return [];
+    }
+    const vehicleType =
+      typeof assignVehicle.transportType === "string"
+        ? assignVehicle.transportType.trim().toLowerCase()
+        : "";
+    const filtered = tasks.filter((task) => {
+      const taskId = getTaskIdentifier(task);
+      if (!taskId) {
+        return false;
+      }
+      const details = (task as Record<string, unknown>).logistics_details as
+        | LogisticsDetails
+        | undefined;
+      const taskType =
+        typeof details?.transport_type === "string"
+          ? details.transport_type.trim().toLowerCase()
+          : "";
+      if (!taskType) {
+        return false;
+      }
+      if (vehicleType && taskType && vehicleType !== taskType) {
+        return false;
+      }
+      return true;
+    });
+    return filtered
+      .slice()
+      .sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));
+  }, [assignVehicle, tasks]);
+
+  React.useEffect(() => {
+    if (!assignVehicle) {
+      return;
+    }
+    const allowed = new Set(
+      assignableTasks.map((task) => getTaskIdentifier(task)).filter(Boolean),
+    );
+    setAssignSelected((prev) => prev.filter((id) => allowed.has(id)));
+  }, [assignVehicle, assignableTasks]);
+
+  const handleAssignConfirm = React.useCallback(async () => {
+    if (!assignVehicle) {
+      return;
+    }
+    const selectedSet = new Set(assignSelected);
+    if (!selectedSet.size) {
+      setAssignError(tRef.current("logistics.assignDialogSelectError"));
+      return;
+    }
+    const selectedTasks = tasks.filter((task) =>
+      selectedSet.has(getTaskIdentifier(task)),
+    );
+    if (!selectedTasks.length) {
+      setAssignError(tRef.current("logistics.assignDialogSelectError"));
+      return;
+    }
+    const payloadTasks = buildOptimizeTasks(selectedTasks);
+    if (!payloadTasks.length) {
+      setAssignError(tRef.current("logistics.assignDialogNoCoordinates"));
+      return;
+    }
+    const capacity = normalizeVehicleCapacity(assignVehicle);
+    const averageSpeed = method === "trip" ? 45 : 30;
+    const payload: OptimizeRoutePayload = {
+      tasks: payloadTasks,
+      vehicleCapacity: capacity ?? Math.max(1, payloadTasks.length),
+      vehicleCount: 1,
+      averageSpeedKmph: averageSpeed,
+    };
+    setAssignLoading(true);
+    setAssignError("");
+    setAssignResult(null);
+    try {
+      const result = await optimizeRoute(payload);
+      if (!result) {
+        setAssignError(tRef.current("logistics.assignDialogError"));
+        return;
+      }
+      setAssignResult(result);
+      setAssignError("");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : tRef.current("logistics.assignDialogError");
+      setAssignError(message);
+    } finally {
+      setAssignLoading(false);
+    }
+  }, [
+    assignSelected,
+    assignVehicle,
+    buildOptimizeTasks,
+    method,
+    optimizeRoute,
+    tasks,
+    tRef,
+  ]);
+
+  const assignCapacity = React.useMemo(
+    () => (assignVehicle ? normalizeVehicleCapacity(assignVehicle) : null),
+    [assignVehicle],
+  );
+
+  const assignCurrentLoad = React.useMemo(() => {
+    if (!assignVehicle) {
+      return null;
+    }
+    const ids = extractVehicleTaskIds(assignVehicle);
+    if (!ids.length) {
+      return 0;
+    }
+    let total = 0;
+    ids.forEach((id) => {
+      const weight = taskWeightMap.get(id);
+      if (typeof weight === "number") {
+        total += weight;
+      }
+    });
+    return total;
+  }, [assignVehicle, taskWeightMap]);
+
+  const assignResultMessage = React.useMemo(() => {
+    if (!assignResult) {
+      return "";
+    }
+    return tRef.current("logistics.assignDialogResult", {
+      load: formatLoad(assignResult.totalLoad),
+      eta: formatEta(assignResult.totalEtaMinutes),
+    });
+  }, [assignResult, formatEta, formatLoad, tRef]);
+
   const calculate = React.useCallback(
     async (tasksOverride?: RouteTask[]) => {
       const sourceTasks = tasksOverride ?? sorted;
-      const payloadTasks = sourceTasks.reduce<OptimizeRoutePayload["tasks"]>(
-        (acc, task) => {
-          const hasStartPoint = hasPoint(task.startCoordinates);
-          const hasFinishPoint = hasPoint(task.finishCoordinates);
-          if (!hasStartPoint && !hasFinishPoint) {
-            return acc;
-        }
-        const useDropPoint = !hasStartPoint && hasFinishPoint;
-        const coordinates = (useDropPoint
-          ? task.finishCoordinates
-          : task.startCoordinates) as Coords;
-        const details = (task as Record<string, unknown>)
-          .logistics_details as LogisticsDetails | undefined;
-        const startAddress =
-          typeof details?.start_location === "string"
-            ? details.start_location.trim()
-            : "";
-        const finishAddress =
-          typeof details?.end_location === "string"
-            ? details.end_location.trim()
-            : "";
-        const windowStartRaw =
-          typeof (task as Record<string, unknown>).delivery_window_start === "string"
-            ? ((task as Record<string, unknown>).delivery_window_start as string)
-            : null;
-        const windowEndRaw =
-          typeof (task as Record<string, unknown>).delivery_window_end === "string"
-            ? ((task as Record<string, unknown>).delivery_window_end as string)
-            : null;
-        const timeWindow = buildTimeWindow(windowStartRaw, windowEndRaw);
-        const cargoWeightSource = (task as Record<string, unknown>).cargo_weight_kg;
-        const parsedWeight =
-          typeof cargoWeightSource === "number"
-            ? cargoWeightSource
-            : typeof cargoWeightSource === "string"
-            ? Number.parseFloat(cargoWeightSource)
-            : NaN;
-        const weightValue =
-          Number.isFinite(parsedWeight) && parsedWeight > 0
-            ? Math.max(0, Number(parsedWeight))
-            : null;
-        const demandValue = typeof weightValue === "number" ? weightValue : 1;
-        const normalizedStartAddress = startAddress || undefined;
-        const normalizedFinishAddress = finishAddress || undefined;
-        const dropAddress =
-          normalizedFinishAddress ?? normalizedStartAddress ?? undefined;
-        acc.push({
-          id: task._id,
-          coordinates,
-          demand: demandValue,
-          weight: weightValue ?? undefined,
-          serviceMinutes: undefined,
-          title: task.title,
-          startAddress: useDropPoint ? undefined : normalizedStartAddress,
-          finishAddress: useDropPoint
-            ? dropAddress
-            : normalizedFinishAddress,
-          timeWindow: timeWindow ?? undefined,
-        });
-        return acc;
-      },
-        [],
-      );
+      const payloadTasks = buildOptimizeTasks(sourceTasks);
 
       if (!payloadTasks.length) {
         applyPlan(null);
@@ -1296,6 +1620,7 @@ export default function LogisticsPage() {
     },
     [
       applyPlan,
+      buildOptimizeTasks,
       buildPlanFromOptimization,
       formatEta,
       formatLoad,
@@ -1505,8 +1830,8 @@ export default function LogisticsPage() {
                 typeof info.message === "string"
                   ? info.message
                   : typeof info.error === "string"
-                  ? info.error
-                  : "";
+                    ? info.error
+                    : "";
               if (raw.trim()) {
                 message = raw.trim();
               }
@@ -1573,22 +1898,23 @@ export default function LogisticsPage() {
   );
 
   const planMessageClass = React.useMemo(() => {
-    if (planMessageTone === 'error') {
-      return 'text-sm text-red-600';
+    if (planMessageTone === "error") {
+      return "text-sm text-red-600";
     }
-    if (planMessageTone === 'success') {
-      return 'text-sm text-emerald-600';
+    if (planMessageTone === "success") {
+      return "text-sm text-emerald-600";
     }
-    return 'text-sm text-muted-foreground';
+    return "text-sm text-muted-foreground";
   }, [planMessageTone]);
 
-  const planStatus: RoutePlanStatus = planDraft?.status ?? plan?.status ?? 'draft';
+  const planStatus: RoutePlanStatus =
+    planDraft?.status ?? plan?.status ?? "draft";
   const planStatusLabel = t(`logistics.planStatusValue.${planStatus}`);
-  const isPlanEditable = planStatus !== 'completed';
+  const isPlanEditable = planStatus !== "completed";
   const draftRoutes = planDraft?.routes;
   const planRoutes = React.useMemo(() => draftRoutes ?? [], [draftRoutes]);
   const totalStops = React.useMemo(() => {
-    if (typeof planDraft?.metrics?.totalStops === 'number') {
+    if (typeof planDraft?.metrics?.totalStops === "number") {
       return planDraft.metrics.totalStops;
     }
     if (!planDraft) {
@@ -1597,7 +1923,8 @@ export default function LogisticsPage() {
     return planDraft.routes.reduce((acc, route) => acc + route.stops.length, 0);
   }, [planDraft]);
   const planTotalRoutes = planDraft?.metrics?.totalRoutes ?? planRoutes.length;
-  const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
+  const planTotalTasks =
+    planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
   const planTotalEtaMinutes = planDraft?.metrics?.totalEtaMinutes ?? null;
   const planTotalLoad = planDraft?.metrics?.totalLoad ?? null;
 
@@ -1612,13 +1939,13 @@ export default function LogisticsPage() {
       }
       const activeData = active.data.current as DragData | undefined;
       const overData = over.data.current as DragData | undefined;
-      if (!activeData || activeData.type !== 'task' || !overData) {
+      if (!activeData || activeData.type !== "task" || !overData) {
         return;
       }
       const taskId = String(active.id);
       let targetRouteIndex: number;
       let targetIndex: number;
-      if (overData.type === 'task') {
+      if (overData.type === "task") {
         targetRouteIndex = overData.routeIndex;
         targetIndex = overData.index;
       } else {
@@ -1640,7 +1967,12 @@ export default function LogisticsPage() {
   const routeAnalytics = React.useMemo(() => {
     const routeStatus = new Map<
       string,
-      { overloaded: boolean; delayed: boolean; etaMinutes: number | null; load: number | null }
+      {
+        overloaded: boolean;
+        delayed: boolean;
+        etaMinutes: number | null;
+        load: number | null;
+      }
     >();
     const taskStatus = new Map<
       string,
@@ -1655,24 +1987,29 @@ export default function LogisticsPage() {
     >();
     const stopDetails = new Map<
       string,
-      { start?: RoutePlan['routes'][number]['stops'][number]; finish?: RoutePlan['routes'][number]['stops'][number] }
+      {
+        start?: RoutePlan["routes"][number]["stops"][number];
+        finish?: RoutePlan["routes"][number]["stops"][number];
+      }
     >();
     let maxLoadValue = 0;
     let maxEtaValue = 0;
 
     planRoutes.forEach((route) => {
       const loadValue =
-        typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+        typeof route.metrics?.load === "number" &&
+        Number.isFinite(route.metrics.load)
           ? Number(route.metrics.load)
           : null;
       const etaValue =
-        typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+        typeof route.metrics?.etaMinutes === "number" &&
+        Number.isFinite(route.metrics.etaMinutes)
           ? Number(route.metrics.etaMinutes)
           : null;
-      if (typeof loadValue === 'number' && loadValue > maxLoadValue) {
+      if (typeof loadValue === "number" && loadValue > maxLoadValue) {
         maxLoadValue = loadValue;
       }
-      if (typeof etaValue === 'number' && etaValue > maxEtaValue) {
+      if (typeof etaValue === "number" && etaValue > maxEtaValue) {
         maxEtaValue = etaValue;
       }
       route.tasks.forEach((taskRef) => {
@@ -1682,25 +2019,33 @@ export default function LogisticsPage() {
       });
     });
 
-    const loadThreshold = maxLoadValue > 0 ? maxLoadValue * LOAD_WARNING_RATIO : 0;
-    const etaThresholdBase = maxEtaValue > 0 ? maxEtaValue * ETA_WARNING_RATIO : 0;
+    const loadThreshold =
+      maxLoadValue > 0 ? maxLoadValue * LOAD_WARNING_RATIO : 0;
+    const etaThresholdBase =
+      maxEtaValue > 0 ? maxEtaValue * ETA_WARNING_RATIO : 0;
     const etaThreshold = Math.max(ETA_WARNING_MINUTES, etaThresholdBase);
 
     planRoutes.forEach((route, index) => {
       const routeId = route.id || `route-${index}`;
       const loadValue =
-        typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+        typeof route.metrics?.load === "number" &&
+        Number.isFinite(route.metrics.load)
           ? Number(route.metrics.load)
           : null;
       const etaValue =
-        typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+        typeof route.metrics?.etaMinutes === "number" &&
+        Number.isFinite(route.metrics.etaMinutes)
           ? Number(route.metrics.etaMinutes)
           : null;
 
       const overloaded =
-        typeof loadValue === 'number' && loadThreshold > 0 ? loadValue >= loadThreshold : false;
+        typeof loadValue === "number" && loadThreshold > 0
+          ? loadValue >= loadThreshold
+          : false;
       const delayed =
-        typeof etaValue === 'number' && etaThreshold > 0 ? etaValue >= etaThreshold : false;
+        typeof etaValue === "number" && etaThreshold > 0
+          ? etaValue >= etaThreshold
+          : false;
 
       routeStatus.set(routeId, {
         overloaded,
@@ -1711,24 +2056,23 @@ export default function LogisticsPage() {
 
       route.tasks.forEach((taskRef) => {
         const key = taskRef.taskId;
-        const current =
-          taskStatus.get(key) ?? {
-            overloaded: false,
-            delayed: false,
-            delayMinutes: 0,
-            etaMinutes: null,
-            routeLoad: null,
-            routeId,
-            recalculating: false,
-          };
+        const current = taskStatus.get(key) ?? {
+          overloaded: false,
+          delayed: false,
+          delayMinutes: 0,
+          etaMinutes: null,
+          routeLoad: null,
+          routeId,
+          recalculating: false,
+        };
         current.overloaded = current.overloaded || overloaded;
-        if (typeof etaValue === 'number') {
+        if (typeof etaValue === "number") {
           current.etaMinutes =
-            typeof current.etaMinutes === 'number'
+            typeof current.etaMinutes === "number"
               ? Math.max(current.etaMinutes, etaValue)
               : etaValue;
         }
-        if (typeof loadValue === 'number') {
+        if (typeof loadValue === "number") {
           current.routeLoad = loadValue;
         }
         current.routeId = routeId;
@@ -1738,34 +2082,36 @@ export default function LogisticsPage() {
       route.stops.forEach((stop) => {
         const key = stop.taskId;
         if (!key) return;
-        const current =
-          taskStatus.get(key) ?? {
-            overloaded,
-            delayed: false,
-            delayMinutes: 0,
-            etaMinutes: null,
-            routeLoad: loadValue ?? null,
-            routeId,
-            recalculating: false,
-          };
-        if (typeof stop.delayMinutes === 'number' && stop.delayMinutes > 0) {
+        const current = taskStatus.get(key) ?? {
+          overloaded,
+          delayed: false,
+          delayMinutes: 0,
+          etaMinutes: null,
+          routeLoad: loadValue ?? null,
+          routeId,
+          recalculating: false,
+        };
+        if (typeof stop.delayMinutes === "number" && stop.delayMinutes > 0) {
           current.delayed = true;
-          current.delayMinutes = Math.max(current.delayMinutes, stop.delayMinutes);
+          current.delayMinutes = Math.max(
+            current.delayMinutes,
+            stop.delayMinutes,
+          );
         }
-        if (typeof stop.etaMinutes === 'number') {
+        if (typeof stop.etaMinutes === "number") {
           current.etaMinutes =
-            typeof current.etaMinutes === 'number'
+            typeof current.etaMinutes === "number"
               ? Math.max(current.etaMinutes, stop.etaMinutes)
               : stop.etaMinutes;
         }
-        if (typeof loadValue === 'number') {
+        if (typeof loadValue === "number") {
           current.routeLoad = loadValue;
         }
         current.routeId = routeId;
         taskStatus.set(key, current);
 
         const info = stopDetails.get(key) ?? {};
-        if (stop.kind === 'start') {
+        if (stop.kind === "start") {
           info.start = stop;
         } else {
           info.finish = stop;
@@ -1774,7 +2120,13 @@ export default function LogisticsPage() {
       });
     });
 
-    return { maxLoad: maxLoadValue, maxEta: maxEtaValue, routeStatus, taskStatus, stopDetails };
+    return {
+      maxLoad: maxLoadValue,
+      maxEta: maxEtaValue,
+      routeStatus,
+      taskStatus,
+      stopDetails,
+    };
   }, [planRoutes]);
 
   const {
@@ -1785,7 +2137,9 @@ export default function LogisticsPage() {
     stopDetails,
   } = routeAnalytics;
 
-  const [taskStatus, setTaskStatus] = React.useState<Map<string, TaskStatusInfo>>(() => {
+  const [taskStatus, setTaskStatus] = React.useState<
+    Map<string, TaskStatusInfo>
+  >(() => {
     const initial = new Map<string, TaskStatusInfo>();
     analyticsTaskStatus.forEach((value, key) => {
       initial.set(key, { ...value });
@@ -1835,7 +2189,8 @@ export default function LogisticsPage() {
       ) {
         return;
       }
-      const updatedAt = override?.updatedAt ?? vehicle.coordinatesUpdatedAt ?? null;
+      const updatedAt =
+        override?.updatedAt ?? vehicle.coordinatesUpdatedAt ?? null;
       const speedValue =
         override?.speedKph ??
         (typeof vehicle.currentSpeedKph === "number" &&
@@ -1858,11 +2213,12 @@ export default function LogisticsPage() {
       planRoutes.map((route, idx) => {
         const key = route.id || `route-${idx}`;
         const displayIndex =
-          typeof route.order === 'number' && Number.isFinite(route.order)
+          typeof route.order === "number" && Number.isFinite(route.order)
             ? route.order + 1
             : idx + 1;
         const value =
-          typeof route.metrics?.load === 'number' && Number.isFinite(route.metrics.load)
+          typeof route.metrics?.load === "number" &&
+          Number.isFinite(route.metrics.load)
             ? Number(route.metrics.load)
             : 0;
         return {
@@ -1880,11 +2236,12 @@ export default function LogisticsPage() {
       planRoutes.map((route, idx) => {
         const key = route.id || `route-${idx}`;
         const displayIndex =
-          typeof route.order === 'number' && Number.isFinite(route.order)
+          typeof route.order === "number" && Number.isFinite(route.order)
             ? route.order + 1
             : idx + 1;
         const value =
-          typeof route.metrics?.etaMinutes === 'number' && Number.isFinite(route.metrics.etaMinutes)
+          typeof route.metrics?.etaMinutes === "number" &&
+          Number.isFinite(route.metrics.etaMinutes)
             ? Number(route.metrics.etaMinutes)
             : 0;
         return {
@@ -2195,13 +2552,12 @@ export default function LogisticsPage() {
         const coords = (await fetchRouteGeometry(
           t.startCoordinates,
           t.finishCoordinates,
-        )) as ([number, number][] | null);
+        )) as [number, number][] | null;
         if (!coords || cancelled) continue;
-        const latlngs = coords.map(([lng, lat]) =>
-          [lat, lng] as [number, number],
+        const latlngs = coords.map(
+          ([lng, lat]) => [lat, lng] as [number, number],
         );
-        const statusKey =
-          typeof t.status === "string" ? t.status.trim() : "";
+        const statusKey = typeof t.status === "string" ? t.status.trim() : "";
         const taskInfo = taskStatus.get(t._id);
         const defaultColor = TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
         let routeColor = defaultColor;
@@ -2213,32 +2569,32 @@ export default function LogisticsPage() {
         const markerColor = taskInfo?.delayed ? "#f97316" : routeColor;
         const stopInfo = stopDetails.get(t._id);
         const tooltipParts = [
-          `<div class="font-semibold">${escapeHtml(t.title ?? t._id ?? '')}</div>`,
-          `<div>${escapeHtml(tRef.current('logistics.etaLabel'))}: ${escapeHtml(
+          `<div class="font-semibold">${escapeHtml(t.title ?? t._id ?? "")}</div>`,
+          `<div>${escapeHtml(tRef.current("logistics.etaLabel"))}: ${escapeHtml(
             formatEta(taskInfo?.etaMinutes ?? null),
           )}</div>`,
-          `<div>${escapeHtml(tRef.current('logistics.loadLabel'))}: ${escapeHtml(
+          `<div>${escapeHtml(tRef.current("logistics.loadLabel"))}: ${escapeHtml(
             formatLoad(taskInfo?.routeLoad ?? null),
           )}</div>`,
-          `<div class="${taskInfo?.delayed ? 'text-red-600' : 'text-emerald-600'}">${escapeHtml(
+          `<div class="${taskInfo?.delayed ? "text-red-600" : "text-emerald-600"}">${escapeHtml(
             formatDelay(taskInfo?.delayMinutes ?? null),
           )}</div>`,
         ];
         if (stopInfo?.start?.address) {
           tooltipParts.push(
-            `<div>${escapeHtml(tRef.current('logistics.stopPickupShort'))}: ${escapeHtml(
+            `<div>${escapeHtml(tRef.current("logistics.stopPickupShort"))}: ${escapeHtml(
               stopInfo.start.address,
             )}</div>`,
           );
         }
         if (stopInfo?.finish?.address) {
           tooltipParts.push(
-            `<div>${escapeHtml(tRef.current('logistics.stopDropoffShort'))}: ${escapeHtml(
+            `<div>${escapeHtml(tRef.current("logistics.stopDropoffShort"))}: ${escapeHtml(
               stopInfo.finish.address,
             )}</div>`,
           );
         }
-        const tooltipHtml = `<div class="space-y-1 text-xs">${tooltipParts.join('')}</div>`;
+        const tooltipHtml = `<div class="space-y-1 text-xs">${tooltipParts.join("")}</div>`;
         L.polyline(latlngs, {
           color: routeColor,
           weight: 4,
@@ -2347,12 +2703,7 @@ export default function LogisticsPage() {
     return () => {
       layer.clearLayers();
     };
-  }, [
-    tRef,
-    vehiclesOnMap,
-    visibleLayers.transport,
-    mapReady,
-  ]);
+  }, [tRef, vehiclesOnMap, visibleLayers.transport, mapReady]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -2378,7 +2729,7 @@ export default function LogisticsPage() {
             <h3 className="text-lg font-semibold">
               {t("logistics.planSectionTitle")}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {t("logistics.planSummary")}
             </p>
           </div>
@@ -2386,11 +2737,11 @@ export default function LogisticsPage() {
             <span className="text-sm font-medium">
               {t("logistics.planStatus")}
             </span>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tracking-wide text-slate-700 uppercase">
               {planStatusLabel}
             </span>
             {planLoading ? (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 {t("loading")}
               </span>
             ) : null}
@@ -2403,9 +2754,7 @@ export default function LogisticsPage() {
             onClick={handleReloadPlan}
             disabled={planLoading || planSyncing}
           >
-            {planLoading
-              ? t("loading")
-              : t("logistics.planReload")}
+            {planLoading ? t("loading") : t("logistics.planReload")}
           </Button>
           <Button
             type="button"
@@ -2418,7 +2767,9 @@ export default function LogisticsPage() {
           <Button
             type="button"
             onClick={handleSavePlan}
-            disabled={!planDraft || !isPlanEditable || planLoading || planSyncing}
+            disabled={
+              !planDraft || !isPlanEditable || planLoading || planSyncing
+            }
           >
             {t("save")}
           </Button>
@@ -2473,12 +2824,12 @@ export default function LogisticsPage() {
               </label>
             </div>
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold uppercase text-muted-foreground">
+              <h4 className="text-muted-foreground text-sm font-semibold uppercase">
                 {t("logistics.planSummary")}
               </h4>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalDistance")}
                   </div>
                   <div className="font-semibold">
@@ -2486,41 +2837,45 @@ export default function LogisticsPage() {
                   </div>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalRoutes")}
                   </div>
                   <div className="font-semibold">{planTotalRoutes}</div>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalTasks")}
                   </div>
                   <div className="font-semibold">{planTotalTasks}</div>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalStops")}
                   </div>
                   <div className="font-semibold">{totalStops}</div>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalEta")}
                   </div>
-                  <div className="font-semibold">{formatEta(planTotalEtaMinutes)}</div>
+                  <div className="font-semibold">
+                    {formatEta(planTotalEtaMinutes)}
+                  </div>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground text-xs uppercase">
                     {t("logistics.planTotalLoad")}
                   </div>
-                  <div className="font-semibold">{formatLoad(planTotalLoad)}</div>
+                  <div className="font-semibold">
+                    {formatLoad(planTotalLoad)}
+                  </div>
                 </div>
               </div>
             </div>
             {planRoutes.length ? (
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center justify-between text-xs uppercase">
                     <span>{t("logistics.routeLoadChartTitle")}</span>
                     <span>{formatLoad(maxLoad)}</span>
                   </div>
@@ -2532,7 +2887,10 @@ export default function LogisticsPage() {
                     aria-label={t("logistics.routeLoadChartTitle")}
                   >
                     {loadSeries.map((item, idx) => {
-                      const ratio = maxLoad > 0 ? Math.min(1, Math.max(0, item.value / maxLoad)) : 0;
+                      const ratio =
+                        maxLoad > 0
+                          ? Math.min(1, Math.max(0, item.value / maxLoad))
+                          : 0;
                       const barHeight = Math.max(8, Math.round(ratio * 96));
                       const x = 16 + idx * 44;
                       const y = 120 - barHeight;
@@ -2561,7 +2919,9 @@ export default function LogisticsPage() {
                             textAnchor="middle"
                             className="fill-slate-500 text-[10px]"
                           >
-                            {t("logistics.planRouteShort", { index: item.index })}
+                            {t("logistics.planRouteShort", {
+                              index: item.index,
+                            })}
                           </text>
                         </g>
                       );
@@ -2569,7 +2929,7 @@ export default function LogisticsPage() {
                   </svg>
                 </div>
                 <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center justify-between text-xs uppercase">
                     <span>{t("logistics.routeEtaChartTitle")}</span>
                     <span>{formatEta(maxEta)}</span>
                   </div>
@@ -2581,7 +2941,10 @@ export default function LogisticsPage() {
                     aria-label={t("logistics.routeEtaChartTitle")}
                   >
                     {etaSeries.map((item, idx) => {
-                      const ratio = maxEta > 0 ? Math.min(1, Math.max(0, item.value / maxEta)) : 0;
+                      const ratio =
+                        maxEta > 0
+                          ? Math.min(1, Math.max(0, item.value / maxEta))
+                          : 0;
                       const barHeight = Math.max(8, Math.round(ratio * 96));
                       const x = 16 + idx * 44;
                       const y = 120 - barHeight;
@@ -2610,7 +2973,9 @@ export default function LogisticsPage() {
                             textAnchor="middle"
                             className="fill-slate-500 text-[10px]"
                           >
-                            {t("logistics.planRouteShort", { index: item.index })}
+                            {t("logistics.planRouteShort", {
+                              index: item.index,
+                            })}
                           </text>
                         </g>
                       );
@@ -2648,7 +3013,8 @@ export default function LogisticsPage() {
               >
                 {planRoutes.map((route, routeIndex) => {
                   const displayIndex =
-                    typeof route.order === "number" && Number.isFinite(route.order)
+                    typeof route.order === "number" &&
+                    Number.isFinite(route.order)
                       ? route.order + 1
                       : routeIndex + 1;
                   const routeKey =
@@ -2687,9 +3053,11 @@ export default function LogisticsPage() {
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h4 className="text-base font-semibold">
-                            {t("logistics.planRouteTitle", { index: displayIndex })}
+                            {t("logistics.planRouteTitle", {
+                              index: displayIndex,
+                            })}
                           </h4>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-muted-foreground text-xs">
                             {t("logistics.planRouteSummary", {
                               tasks: route.tasks.length,
                               stops: routeStops,
@@ -2697,26 +3065,28 @@ export default function LogisticsPage() {
                           </div>
                           <div className="mt-1 flex flex-wrap gap-2">
                             {routeInfo?.overloaded ? (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-red-700 uppercase">
                                 {t("logistics.overloadedBadge")}
                               </span>
                             ) : null}
                             {routeInfo?.delayed ? (
-                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-amber-700 uppercase">
                                 {t("logistics.delayBadge")}
                               </span>
                             ) : null}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-muted-foreground text-xs">
                           {t("logistics.planRouteDistance", {
-                            distance: formatDistance(route.metrics?.distanceKm ?? null),
+                            distance: formatDistance(
+                              route.metrics?.distanceKm ?? null,
+                            ),
                           })}
                         </div>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                          <div className="text-muted-foreground flex items-center justify-between text-xs font-semibold uppercase">
                             <span>{t("logistics.routeLoadLabel")}</span>
                             <span>{formatLoad(loadValue)}</span>
                           </div>
@@ -2730,14 +3100,16 @@ export default function LogisticsPage() {
                             <div
                               className={clsx(
                                 "h-2 rounded-full transition-all",
-                                routeInfo?.overloaded ? "bg-red-500" : "bg-emerald-500",
+                                routeInfo?.overloaded
+                                  ? "bg-red-500"
+                                  : "bg-emerald-500",
                               )}
                               style={{ width: `${loadWidth}%` }}
                             />
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                          <div className="text-muted-foreground flex items-center justify-between text-xs font-semibold uppercase">
                             <span>{t("logistics.routeEtaLabel")}</span>
                             <span>{formatEta(etaValue)}</span>
                           </div>
@@ -2751,7 +3123,9 @@ export default function LogisticsPage() {
                             <div
                               className={clsx(
                                 "h-2 rounded-full transition-all",
-                                routeInfo?.delayed ? "bg-amber-500" : "bg-blue-500",
+                                routeInfo?.delayed
+                                  ? "bg-amber-500"
+                                  : "bg-blue-500",
                               )}
                               style={{ width: `${etaWidth}%` }}
                             />
@@ -2766,9 +3140,14 @@ export default function LogisticsPage() {
                           <Input
                             value={route.driverName ?? ""}
                             onChange={(event) =>
-                              handleDriverNameChange(routeIndex, event.target.value)
+                              handleDriverNameChange(
+                                routeIndex,
+                                event.target.value,
+                              )
                             }
-                            disabled={!isPlanEditable || planLoading || planSyncing}
+                            disabled={
+                              !isPlanEditable || planLoading || planSyncing
+                            }
                           />
                         </label>
                         <label className="flex flex-col gap-1 text-sm">
@@ -2778,25 +3157,35 @@ export default function LogisticsPage() {
                           <Input
                             value={route.vehicleName ?? ""}
                             onChange={(event) =>
-                              handleVehicleNameChange(routeIndex, event.target.value)
+                              handleVehicleNameChange(
+                                routeIndex,
+                                event.target.value,
+                              )
                             }
-                            disabled={!isPlanEditable || planLoading || planSyncing}
+                            disabled={
+                              !isPlanEditable || planLoading || planSyncing
+                            }
                           />
                         </label>
-                        <label className="md:col-span-2 flex flex-col gap-1 text-sm">
+                        <label className="flex flex-col gap-1 text-sm md:col-span-2">
                           <span className="font-medium">
                             {t("logistics.planRouteNotes")}
                           </span>
                           <textarea
                             value={route.notes ?? ""}
                             onChange={(event) =>
-                              handleRouteNotesChange(routeIndex, event.target.value)
+                              handleRouteNotesChange(
+                                routeIndex,
+                                event.target.value,
+                              )
                             }
                             className="min-h-[80px] rounded border px-3 py-2 text-sm"
-                            disabled={!isPlanEditable || planLoading || planSyncing}
+                            disabled={
+                              !isPlanEditable || planLoading || planSyncing
+                            }
                           />
                         </label>
-                        <div className="md:col-span-2 space-y-2">
+                        <div className="space-y-2 md:col-span-2">
                           <RouteTaskList
                             route={route}
                             routeIndex={routeIndex}
@@ -2812,106 +3201,137 @@ export default function LogisticsPage() {
                             planLoading={planLoading || planSyncing}
                           />
                           <div className="overflow-x-auto">
-                          <table className="min-w-full table-fixed text-left text-xs">
-                            <thead>
-                              <tr className="text-muted-foreground">
-                                <th className="px-2 py-1 font-semibold">
-                                  {t("logistics.stopTableHeaderStop")}
-                                </th>
-                                <th className="px-2 py-1 font-semibold">
-                                  {t("logistics.stopTableHeaderEta")}
-                                </th>
-                                <th className="px-2 py-1 font-semibold">
-                                  {t("logistics.stopTableHeaderLoad")}
-                                </th>
-                                <th className="px-2 py-1 font-semibold">
-                                  {t("logistics.stopTableHeaderWindow")}
-                                </th>
-                                <th className="px-2 py-1 font-semibold">
-                                  {t("logistics.stopTableHeaderDelay")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {route.stops.length
-                                ? route.stops.map((stop) => {
-                                const stopDelay = stop.delayMinutes ?? null;
-                                const stopLoadAlert =
-                                  typeof stop.load === "number" && maxLoad > 0
-                                    ? stop.load >= maxLoad * LOAD_WARNING_RATIO
-                                    : false;
-                                const stopRowClass = clsx("border-t border-slate-200", {
-                                  "bg-red-50": typeof stopDelay === "number" && stopDelay > 0,
-                                  "bg-amber-50": (!stopDelay || stopDelay <= 0) && stopLoadAlert,
-                                });
-                                const stopLoadRatio =
-                                  maxLoad > 0 && typeof stop.load === "number"
-                                    ? Math.min(1, Math.max(0, stop.load / maxLoad))
-                                    : 0;
-                                const stopLoadWidth = Math.min(
-                                  100,
-                                  Math.max(4, Math.round(stopLoadRatio * 100)),
-                                );
-                                return (
-                                  <tr key={`${stop.taskId}-${stop.kind}-${stop.order}`} className={stopRowClass}>
-                                    <td className="px-2 py-1 font-medium">
-                                      {stop.kind === "start"
-                                        ? t("logistics.stopPickup", { index: stop.order + 1 })
-                                        : t("logistics.stopDropoff", { index: stop.order + 1 })}
-                                    </td>
-                                    <td className="px-2 py-1" title={formatEta(stop.etaMinutes ?? null)}>
-                                      {formatEta(stop.etaMinutes ?? null)}
-                                    </td>
-                                    <td className="px-2 py-1">
-                                      <div className="flex items-center gap-2">
-                                        <div className="h-2 flex-1 rounded-full bg-slate-200">
-                                          <div
-                                            className="h-2 rounded-full bg-indigo-500"
-                                            style={{ width: `${stopLoadWidth}%` }}
-                                          />
-                                        </div>
-                                        <span className="whitespace-nowrap">
-                                          {formatLoad(stop.load ?? null)}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="px-2 py-1">
-                                      {formatWindow(
-                                        stop.windowStartMinutes ?? null,
-                                        stop.windowEndMinutes ?? null,
-                                      )}
-                                    </td>
-                                    <td className="px-2 py-1">
-                                      <span
-                                        className={clsx({
-                                          "text-red-600 font-semibold":
-                                            typeof stopDelay === "number" && stopDelay > 0,
-                                        })}
+                            <table className="min-w-full table-fixed text-left text-xs">
+                              <thead>
+                                <tr className="text-muted-foreground">
+                                  <th className="px-2 py-1 font-semibold">
+                                    {t("logistics.stopTableHeaderStop")}
+                                  </th>
+                                  <th className="px-2 py-1 font-semibold">
+                                    {t("logistics.stopTableHeaderEta")}
+                                  </th>
+                                  <th className="px-2 py-1 font-semibold">
+                                    {t("logistics.stopTableHeaderLoad")}
+                                  </th>
+                                  <th className="px-2 py-1 font-semibold">
+                                    {t("logistics.stopTableHeaderWindow")}
+                                  </th>
+                                  <th className="px-2 py-1 font-semibold">
+                                    {t("logistics.stopTableHeaderDelay")}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {route.stops.length ? (
+                                  route.stops.map((stop) => {
+                                    const stopDelay = stop.delayMinutes ?? null;
+                                    const stopLoadAlert =
+                                      typeof stop.load === "number" &&
+                                      maxLoad > 0
+                                        ? stop.load >=
+                                          maxLoad * LOAD_WARNING_RATIO
+                                        : false;
+                                    const stopRowClass = clsx(
+                                      "border-t border-slate-200",
+                                      {
+                                        "bg-red-50":
+                                          typeof stopDelay === "number" &&
+                                          stopDelay > 0,
+                                        "bg-amber-50":
+                                          (!stopDelay || stopDelay <= 0) &&
+                                          stopLoadAlert,
+                                      },
+                                    );
+                                    const stopLoadRatio =
+                                      maxLoad > 0 &&
+                                      typeof stop.load === "number"
+                                        ? Math.min(
+                                            1,
+                                            Math.max(0, stop.load / maxLoad),
+                                          )
+                                        : 0;
+                                    const stopLoadWidth = Math.min(
+                                      100,
+                                      Math.max(
+                                        4,
+                                        Math.round(stopLoadRatio * 100),
+                                      ),
+                                    );
+                                    return (
+                                      <tr
+                                        key={`${stop.taskId}-${stop.kind}-${stop.order}`}
+                                        className={stopRowClass}
                                       >
-                                        {formatDelay(stopDelay)}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                );
-                                })
-                                : (
+                                        <td className="px-2 py-1 font-medium">
+                                          {stop.kind === "start"
+                                            ? t("logistics.stopPickup", {
+                                                index: stop.order + 1,
+                                              })
+                                            : t("logistics.stopDropoff", {
+                                                index: stop.order + 1,
+                                              })}
+                                        </td>
+                                        <td
+                                          className="px-2 py-1"
+                                          title={formatEta(
+                                            stop.etaMinutes ?? null,
+                                          )}
+                                        >
+                                          {formatEta(stop.etaMinutes ?? null)}
+                                        </td>
+                                        <td className="px-2 py-1">
+                                          <div className="flex items-center gap-2">
+                                            <div className="h-2 flex-1 rounded-full bg-slate-200">
+                                              <div
+                                                className="h-2 rounded-full bg-indigo-500"
+                                                style={{
+                                                  width: `${stopLoadWidth}%`,
+                                                }}
+                                              />
+                                            </div>
+                                            <span className="whitespace-nowrap">
+                                              {formatLoad(stop.load ?? null)}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="px-2 py-1">
+                                          {formatWindow(
+                                            stop.windowStartMinutes ?? null,
+                                            stop.windowEndMinutes ?? null,
+                                          )}
+                                        </td>
+                                        <td className="px-2 py-1">
+                                          <span
+                                            className={clsx({
+                                              "font-semibold text-red-600":
+                                                typeof stopDelay === "number" &&
+                                                stopDelay > 0,
+                                            })}
+                                          >
+                                            {formatDelay(stopDelay)}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                ) : (
                                   <tr>
                                     <td
-                                      className="px-2 py-2 text-center text-sm text-muted-foreground"
+                                      className="text-muted-foreground px-2 py-2 text-center text-sm"
                                       colSpan={5}
                                     >
                                       {t("logistics.planRouteEmpty")}
                                     </td>
                                   </tr>
                                 )}
-                            </tbody>
-                          </table>
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </DndContext>
             </div>
             {planMessage ? (
@@ -2947,49 +3367,16 @@ export default function LogisticsPage() {
             <div className="text-sm text-red-600">{fleetError}</div>
           ) : null}
           {vehiclesHint && !availableVehicles.length ? (
-            <div className="text-sm text-muted-foreground">{vehiclesHint}</div>
+            <div className="text-muted-foreground text-sm">{vehiclesHint}</div>
           ) : null}
-          {availableVehicles.length ? (
-            <ul className="space-y-2 text-sm">
-              {availableVehicles.map((vehicle) => (
-                <li
-                  key={vehicle.id}
-                  className="space-y-1 rounded border bg-white/70 p-3 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{vehicle.name}</span>
-                    {vehicle.registrationNumber ? (
-                      <span className="text-xs text-muted-foreground">
-                        {vehicle.registrationNumber}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    {vehicle.transportType ? <span>{vehicle.transportType}</span> : null}
-                    {Array.isArray(vehicle.currentTasks) ? (
-                      <span>
-                        {t("logistics.vehicleTasksCount", {
-                          count: vehicle.currentTasks.length,
-                          defaultValue: `Задач: ${vehicle.currentTasks.length}`,
-                        })}
-                      </span>
-                    ) : null}
-                    {typeof vehicle.odometerCurrent === "number" ? (
-                      <span>
-                        {t("logistics.vehicleMileage", {
-                          value: vehicle.odometerCurrent,
-                          defaultValue: `Пробег: ${vehicle.odometerCurrent} км`,
-                        })}
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <FleetTable
+            vehicles={availableVehicles}
+            taskWeightMap={taskWeightMap}
+            onAssign={openAssignDialog}
+          />
         </section>
       ) : fleetError ? (
-        <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
+        <p className="text-muted-foreground rounded border border-dashed p-3 text-sm">
           {fleetError}
         </p>
       ) : null}
@@ -3006,7 +3393,7 @@ export default function LogisticsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2">
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-muted-foreground text-xs font-medium uppercase">
                   {t("logistics.vehicleCountLabel")}
                 </span>
                 <select
@@ -3021,7 +3408,7 @@ export default function LogisticsPage() {
                 </select>
               </label>
               <label className="flex items-center gap-2">
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-muted-foreground text-xs font-medium uppercase">
                   {t("logistics.optimizeMethodLabel")}
                 </span>
                 <select
@@ -3115,9 +3502,11 @@ export default function LogisticsPage() {
                     }))
                   }
                 />
-                <span>{t("logistics.layerTransport", {
-                  defaultValue: "Транспорт",
-                })}</span>
+                <span>
+                  {t("logistics.layerTransport", {
+                    defaultValue: "Транспорт",
+                  })}
+                </span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -3131,9 +3520,11 @@ export default function LogisticsPage() {
                     }))
                   }
                 />
-                <span>{t("logistics.layerTraffic", {
-                  defaultValue: "Пробки",
-                })}</span>
+                <span>
+                  {t("logistics.layerTraffic", {
+                    defaultValue: "Пробки",
+                  })}
+                </span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -3147,9 +3538,11 @@ export default function LogisticsPage() {
                     }))
                   }
                 />
-                <span>{t("logistics.layerCargo", {
-                  defaultValue: "Грузы",
-                })}</span>
+                <span>
+                  {t("logistics.layerCargo", {
+                    defaultValue: "Грузы",
+                  })}
+                </span>
               </label>
             </div>
             {!!links.length && (
@@ -3184,14 +3577,28 @@ export default function LogisticsPage() {
                 </li>
               ))}
               <li className="flex items-center gap-2">
-                <span className="task-marker task-marker--start" aria-hidden="true">
-                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                <span
+                  className="task-marker task-marker--start"
+                  aria-hidden="true"
+                >
+                  <span
+                    style={
+                      { "--marker-color": "#2563eb" } as React.CSSProperties
+                    }
+                  />
                 </span>
                 <span>{t("logistics.legendStart")}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="task-marker task-marker--finish" aria-hidden="true">
-                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                <span
+                  className="task-marker task-marker--finish"
+                  aria-hidden="true"
+                >
+                  <span
+                    style={
+                      { "--marker-color": "#2563eb" } as React.CSSProperties
+                    }
+                  />
                 </span>
                 <span>{t("logistics.legendFinish")}</span>
               </li>
@@ -3200,9 +3607,7 @@ export default function LogisticsPage() {
         </div>
       </section>
       <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
-        <h3 className="text-lg font-semibold">
-          {t("logistics.tasksHeading")}
-        </h3>
+        <h3 className="text-lg font-semibold">{t("logistics.tasksHeading")}</h3>
         <TaskTable
           tasks={tasks}
           onDataChange={(rows) => setSorted(rows as RouteTask[])}
@@ -3212,6 +3617,129 @@ export default function LogisticsPage() {
           onPageChange={setPage}
         />
       </section>
+      <Modal open={Boolean(assignVehicle)} onClose={closeAssignDialog}>
+        {assignVehicle ? (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">
+                {t("logistics.assignDialogTitle", {
+                  name:
+                    assignVehicle.name?.trim() ||
+                    t("logistics.assignDialogUnknownVehicle"),
+                })}
+              </h3>
+              {assignVehicle.registrationNumber ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("logistics.assignDialogRegistration", {
+                    value: assignVehicle.registrationNumber,
+                  })}
+                </p>
+              ) : null}
+              <p className="text-muted-foreground text-xs">
+                {t("logistics.assignDialogHint")}
+              </p>
+            </div>
+            <div className="grid gap-2 text-sm sm:grid-cols-2">
+              <div className="rounded border bg-slate-50/60 p-2">
+                <div className="text-muted-foreground text-xs uppercase">
+                  {t("logistics.assignDialogCapacityLabel")}
+                </div>
+                <div className="font-semibold">
+                  {assignCapacity !== null
+                    ? `${assignCapacity.toLocaleString("ru-RU")} кг`
+                    : t("logistics.assignDialogUnknown")}
+                </div>
+              </div>
+              <div className="rounded border bg-slate-50/60 p-2">
+                <div className="text-muted-foreground text-xs uppercase">
+                  {t("logistics.assignDialogLoadLabel")}
+                </div>
+                <div className="font-semibold">
+                  {assignCurrentLoad !== null
+                    ? `${assignCurrentLoad.toLocaleString("ru-RU")} кг`
+                    : t("logistics.assignDialogUnknown")}
+                </div>
+              </div>
+            </div>
+            {assignError ? (
+              <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                {assignError}
+              </div>
+            ) : null}
+            {assignResult ? (
+              <div className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
+                {assignResultMessage}
+              </div>
+            ) : null}
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {assignableTasks.length ? (
+                assignableTasks.map((task, index) => {
+                  const taskId = getTaskIdentifier(task);
+                  const checked = taskId
+                    ? assignSelected.includes(taskId)
+                    : false;
+                  const weight = getRouteTaskWeight(task);
+                  const key = taskId || `${index}`;
+                  return (
+                    <label
+                      key={key}
+                      className={clsx(
+                        "flex items-start gap-2 rounded border p-2 text-sm transition-colors",
+                        checked
+                          ? "border-primary bg-primary/5"
+                          : "border-slate-200 bg-white",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={checked}
+                        onChange={() => toggleAssignTask(taskId)}
+                        disabled={!taskId}
+                      />
+                      <div className="space-y-1">
+                        <div className="font-semibold">
+                          {task.title || taskId || t("task")}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {weight !== null
+                            ? t("logistics.assignDialogTaskWeight", {
+                                value: weight.toLocaleString("ru-RU"),
+                              })
+                            : t("logistics.assignDialogTaskWeightUnknown")}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })
+              ) : (
+                <div className="text-muted-foreground rounded border border-dashed p-3 text-sm">
+                  {t("logistics.assignDialogEmpty")}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeAssignDialog}
+                disabled={assignLoading}
+              >
+                {t("logistics.assignDialogCancel")}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleAssignConfirm()}
+                disabled={assignLoading || !assignSelected.length}
+              >
+                {assignLoading
+                  ? t("logistics.assignDialogSubmitting")
+                  : t("logistics.assignDialogSubmit")}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

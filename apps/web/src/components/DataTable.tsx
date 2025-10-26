@@ -19,7 +19,7 @@ import {
 } from "./ui/table";
 import TableToolbar from "./TableToolbar";
 
-interface DataTableProps<T> {
+export interface DataTableProps<T> {
   columns: ColumnDef<T, any>[];
   data: T[];
   pageIndex: number;

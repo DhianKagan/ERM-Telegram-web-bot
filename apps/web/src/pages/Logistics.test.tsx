@@ -5,7 +5,13 @@
 import "@testing-library/jest-dom";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
@@ -31,6 +37,23 @@ jest.mock("react-i18next", () => {
     "logistics.optimize": "Просчёт логистики",
     "logistics.vehicleTasksCount": "Задач: {{count}}",
     "logistics.vehicleMileage": "Пробег: {{value}} км",
+    "logistics.assignDialogTitle": "Назначение задач для {{name}}",
+    "logistics.assignDialogUnknownVehicle": "транспорта",
+    "logistics.assignDialogRegistration": "Госномер: {{value}}",
+    "logistics.assignDialogHint": "Выберите задачи",
+    "logistics.assignDialogCapacityLabel": "Грузоподъёмность",
+    "logistics.assignDialogLoadLabel": "Текущая загрузка",
+    "logistics.assignDialogUnknown": "нет данных",
+    "logistics.assignDialogTaskWeight": "Вес: {{value}} кг",
+    "logistics.assignDialogTaskWeightUnknown": "Вес не указан",
+    "logistics.assignDialogEmpty": "Нет подходящих задач",
+    "logistics.assignDialogCancel": "Отмена",
+    "logistics.assignDialogSubmit": "Рассчитать",
+    "logistics.assignDialogSubmitting": "Назначаем...",
+    "logistics.assignDialogSelectError": "Выберите хотя бы одну задачу",
+    "logistics.assignDialogNoCoordinates": "Недостаточно данных",
+    "logistics.assignDialogError": "Ошибка",
+    "logistics.assignDialogResult": "Маршрут рассчитан: {{load}}, {{eta}}",
     "logistics.vehicleCountLabel": "Машины",
     "logistics.vehicleCountAria": "Количество машин",
     "logistics.optimizeMethodLabel": "Метод",
@@ -38,7 +61,8 @@ jest.mock("react-i18next", () => {
     "logistics.linksLabel": "Маршрут {{index}}",
     "logistics.tasksHeading": "Задачи",
     "logistics.metaTitle": "ERM WEB",
-    "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
+    "logistics.metaDescription":
+      "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
     "logistics.planSectionTitle": "Маршрутный план",
     "logistics.planSummary": "Итоги плана",
     "logistics.planStatus": "Статус",
@@ -258,6 +282,7 @@ const baseVehicle = {
   odometerCurrent: 1200,
   mileageTotal: 200,
   payloadCapacityKg: 750,
+  transportType: "Легковой" as const,
   fuelType: "Бензин" as const,
   fuelRefilled: 50,
   fuelAverageConsumption: 0.1,
@@ -298,7 +323,8 @@ const changeRoutePlanStatusMock = jest.fn();
 jest.mock("../services/routePlans", () => ({
   listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
   updateRoutePlan: (...args: unknown[]) => updateRoutePlanMock(...args),
-  changeRoutePlanStatus: (...args: unknown[]) => changeRoutePlanStatusMock(...args),
+  changeRoutePlanStatus: (...args: unknown[]) =>
+    changeRoutePlanStatusMock(...args),
 }));
 
 const draftPlan: RoutePlan = {
@@ -363,7 +389,13 @@ const draftPlan: RoutePlan = {
           windowEndMinutes: 540,
         },
       ],
-      metrics: { distanceKm: 12.3, etaMinutes: 600, load: 12.3, tasks: 1, stops: 2 },
+      metrics: {
+        distanceKm: 12.3,
+        etaMinutes: 600,
+        load: 12.3,
+        tasks: 1,
+        stops: 2,
+      },
       routeLink: "https://example.com",
       notes: null,
     },
@@ -541,7 +573,9 @@ describe("LogisticsPage", () => {
 
   it("отображает список транспорта и позволяет вручную обновить", async () => {
     render(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
         <LogisticsPage />
       </MemoryRouter>,
     );
@@ -551,16 +585,18 @@ describe("LogisticsPage", () => {
     );
 
     await waitFor(() =>
-      expect(
-        screen.getByDisplayValue("Черновик маршрута"),
-      ).toBeInTheDocument(),
+      expect(screen.getByDisplayValue("Черновик маршрута")).toBeInTheDocument(),
     );
 
     await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1));
 
-    expect(listFleetVehiclesMock).toHaveBeenCalledWith("", 1, 100);
+    expect(listFleetVehiclesMock).toHaveBeenCalledWith({ page: 1, limit: 100 });
 
     expect(screen.getByText("Погрузчик")).toBeInTheDocument();
+    const assignButton = await screen.findByRole("button", {
+      name: "Назначить задачи",
+    });
+    expect(assignButton).toBeInTheDocument();
 
     await waitFor(() =>
       expect(
@@ -574,14 +610,64 @@ describe("LogisticsPage", () => {
 
     fireEvent.click(refreshButton);
 
-    await waitFor(() =>
-      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
+    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("открывает назначение задач и вызывает оптимизацию", async () => {
+    const optimizationResult = {
+      routes: [
+        {
+          vehicleIndex: 0,
+          taskIds: ["t1"],
+          distanceKm: 15,
+          etaMinutes: 120,
+          load: 150,
+        },
+      ],
+      totalDistanceKm: 15,
+      totalEtaMinutes: 120,
+      totalLoad: 150,
+      warnings: [],
+    };
+    optimizeRouteMock.mockResolvedValueOnce(optimizationResult);
+
+    render(
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <LogisticsPage />
+      </MemoryRouter>,
     );
+
+    const assignButton = await screen.findByRole("button", {
+      name: "Назначить задачи",
+    });
+    fireEvent.click(assignButton);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Назначение задач для Погрузчик"),
+    ).toBeInTheDocument();
+
+    const checkboxes = within(dialog).getAllByRole("checkbox");
+    expect(checkboxes).not.toHaveLength(0);
+    fireEvent.click(checkboxes[0]);
+
+    const submit = within(dialog).getByRole("button", { name: "Рассчитать" });
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(optimizeRouteMock).toHaveBeenCalledTimes(1));
+    expect(optimizeRouteMock).toHaveBeenCalledWith(
+      expect.objectContaining({ vehicleCount: 1 }),
+    );
+    expect(within(dialog).getByText(/Маршрут рассчитан:/)).toBeInTheDocument();
   });
 
   it("показывает аналитику плана, прогресс-бары и таблицу остановок", async () => {
     render(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
         <LogisticsPage />
       </MemoryRouter>,
     );
@@ -610,14 +696,28 @@ describe("LogisticsPage", () => {
     expect(progressBars[0]).toHaveAttribute("aria-valuenow", "100");
     expect(progressBars[1]).toHaveAttribute("aria-valuenow", "100");
     expect(within(routeCard).getByText("Перегрузка")).toBeInTheDocument();
-    expect(within(routeCard).getAllByText("Опоздание").length).toBeGreaterThan(0);
+    expect(within(routeCard).getAllByText("Опоздание").length).toBeGreaterThan(
+      0,
+    );
 
-    const stopsTable = screen.getByRole("table");
+    const stopsTable = screen
+      .getAllByRole("table")
+      .find((table) =>
+        within(table).queryByText("Погрузка №1", { selector: "td" }),
+      );
+    expect(stopsTable).toBeTruthy();
+    if (!stopsTable) return;
     expect(within(stopsTable).getByText("Погрузка №1")).toBeInTheDocument();
     expect(within(stopsTable).getByText("Выгрузка №2")).toBeInTheDocument();
-    expect(within(stopsTable).getAllByText("08:00 – 09:00").length).toBeGreaterThan(0);
-    expect(within(stopsTable).getByText("Опоздание 80 мин")).toBeInTheDocument();
-    expect(within(stopsTable).getAllByText("12,3 кг").length).toBeGreaterThan(0);
+    expect(
+      within(stopsTable).getAllByText("08:00 – 09:00").length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(stopsTable).getByText("Опоздание 80 мин"),
+    ).toBeInTheDocument();
+    expect(within(stopsTable).getAllByText("12,3 кг").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("обновляет черновик после оптимизации и показывает ETA и загрузку", async () => {
@@ -639,7 +739,9 @@ describe("LogisticsPage", () => {
     optimizeRouteMock.mockResolvedValueOnce(optimizationResult);
 
     render(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
         <LogisticsPage />
       </MemoryRouter>,
     );
@@ -656,9 +758,7 @@ describe("LogisticsPage", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(
-          "Черновик создан · ETA: 2 ч 5 мин · Загрузка: 7,5 кг",
-        ),
+        screen.getByText("Черновик создан · ETA: 2 ч 5 мин · Загрузка: 7,5 кг"),
       ).toBeInTheDocument(),
     );
 
@@ -706,7 +806,9 @@ describe("LogisticsPage", () => {
     optimizeRouteMock.mockResolvedValueOnce(optimizationResult);
 
     render(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
         <LogisticsPage />
       </MemoryRouter>,
     );

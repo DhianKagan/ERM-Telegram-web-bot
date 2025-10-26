@@ -1,5 +1,5 @@
 // Роут скачивания файлов с проверкой прав
-// Модули: express, middleware/auth, utils/accessMask, db/model, config/storage, wgLogEngine
+// Модули: express, middleware/auth, utils/accessMask, db/model, db/queries, config/storage, wgLogEngine
 import { Router, RequestHandler, NextFunction } from 'express';
 import path from 'path';
 import { body, param } from 'express-validator';
@@ -11,7 +11,7 @@ import { uploadsDir } from '../config/storage';
 import { sendProblem } from '../utils/problem';
 import { writeLog } from '../services/wgLogEngine';
 import { deleteFile } from '../services/dataStorage';
-import { syncTaskAttachments } from '../db/queries';
+import { updateTask } from '../db/queries';
 import { extractFileIdFromUrl } from '../utils/attachments';
 import validate from '../utils/validate';
 
@@ -308,12 +308,21 @@ router.post(
       );
       nextAttachments.push(payload);
 
-      await Task.updateOne(
-        { _id: task._id },
-        { $set: { attachments: nextAttachments } },
+      const operatorId = Number.isFinite(uid) ? uid : 0;
+      const updatedTask = await updateTask(
+        taskId,
+        { attachments: nextAttachments },
+        operatorId,
       );
-      const userIdForSync = Number.isFinite(uid) ? uid : undefined;
-      await syncTaskAttachments(taskId, nextAttachments, userIdForSync);
+      if (!updatedTask) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Не удалось обновить задачу',
+          status: 409,
+          detail: 'Conflict',
+        });
+        return;
+      }
 
       res.json({ ok: true, taskId });
     } catch (error) {

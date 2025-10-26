@@ -17,11 +17,11 @@ jest.mock('../src/db/model', () => ({
 }));
 
 jest.mock('../src/db/queries', () => ({
-  syncTaskAttachments: jest.fn(),
+  updateTask: jest.fn(),
 }));
 
 const { File, Task } = require('../src/db/model');
-const { syncTaskAttachments } = require('../src/db/queries');
+const { updateTask } = require('../src/db/queries');
 const router = require('../src/routes/files').default;
 
 describe('POST /api/v1/files/:id/attach', () => {
@@ -60,8 +60,10 @@ describe('POST /api/v1/files/:id/attach', () => {
         }),
     });
 
-    (Task.updateOne as jest.Mock).mockResolvedValue(undefined);
-    (syncTaskAttachments as jest.Mock).mockResolvedValue(undefined);
+    (updateTask as jest.Mock).mockResolvedValue({
+      _id: taskId,
+      attachments: [],
+    });
 
     const response = await request(app)
       .post(`/${fileId}/attach`)
@@ -69,25 +71,23 @@ describe('POST /api/v1/files/:id/attach', () => {
       .expect(200);
 
     expect(response.body).toEqual({ ok: true, taskId });
-    expect(Task.updateOne).toHaveBeenCalledWith(
-      { _id: taskId },
+    expect(updateTask).toHaveBeenCalledWith(
+      taskId,
       {
-        $set: {
-          attachments: [
-            {
-              name: 'invoice.pdf',
-              url: `/api/v1/files/${fileId}`,
-              thumbnailUrl: '/uploads/thumbs/invoice.jpg',
-              uploadedBy: 1,
-              uploadedAt,
-              type: 'application/pdf',
-              size: 2048,
-            },
-          ],
-        },
+        attachments: [
+          {
+            name: 'invoice.pdf',
+            url: `/api/v1/files/${fileId}`,
+            thumbnailUrl: '/uploads/thumbs/invoice.jpg',
+            uploadedBy: 1,
+            uploadedAt,
+            type: 'application/pdf',
+            size: 2048,
+          },
+        ],
       },
+      1,
     );
-    expect(syncTaskAttachments).toHaveBeenCalledWith(taskId, expect.any(Array), 1);
   });
 
   it('отклоняет привязку чужого файла', async () => {
@@ -109,8 +109,7 @@ describe('POST /api/v1/files/:id/attach', () => {
       .expect(403);
 
     expect(Task.findById).not.toHaveBeenCalled();
-    expect(Task.updateOne).not.toHaveBeenCalled();
-    expect(syncTaskAttachments).not.toHaveBeenCalled();
+    expect(updateTask).not.toHaveBeenCalled();
   });
 
   it('возвращает 404, если задача не найдена', async () => {
@@ -136,7 +135,7 @@ describe('POST /api/v1/files/:id/attach', () => {
       .expect(404);
 
     expect(Task.updateOne).not.toHaveBeenCalled();
-    expect(syncTaskAttachments).not.toHaveBeenCalled();
+    expect(updateTask).not.toHaveBeenCalled();
   });
 
   it('проверяет обязательность taskId', async () => {

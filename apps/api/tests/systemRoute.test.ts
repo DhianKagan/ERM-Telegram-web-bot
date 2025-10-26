@@ -1,5 +1,7 @@
 // Назначение: проверка маршрутов оркестратора стека
 // Основные модули: jest, supertest, express
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 

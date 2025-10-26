@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest, express-rate-limit.
 // Тесты TMA-эндпоинтов задач
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест глобального лимитера запросов
+export {};
+
 const express = require('express');
 const request = require('supertest');
 const globalLimiter = require('../src/middleware/globalLimiter').default;

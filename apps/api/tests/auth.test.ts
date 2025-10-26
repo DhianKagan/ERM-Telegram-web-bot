@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты модуля auth: генерация JWT и проверка кода
+export {};
+
 jest.mock('telegraf', () => ({
   Telegraf: jest.fn(),
 }));

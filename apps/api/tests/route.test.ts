@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты маршрута /api/route и сервиса
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

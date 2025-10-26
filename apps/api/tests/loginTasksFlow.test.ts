@@ -1,6 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест полного цикла логина и создания задачи
 // Модули: express, cookie-parser, express-session, lusca, supertest
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

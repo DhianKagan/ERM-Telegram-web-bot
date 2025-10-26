@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест маршрута /api/auth/tma-login
+export {};
+
 process.env.BOT_TOKEN = 'x';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';

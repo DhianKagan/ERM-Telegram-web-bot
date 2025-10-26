@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тестирование модели MongoDB. Используется Mongoose модель Task.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.BOT_TOKEN = 't';

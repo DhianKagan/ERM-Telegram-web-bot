@@ -1,5 +1,6 @@
 // Назначение: проверка агрегирующего эндпойнта аналитики маршрутных планов.
 // Основные модули: jest, supertest, mongodb-memory-server
+export {};
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';

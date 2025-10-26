@@ -1,5 +1,7 @@
 // Назначение: проверка прав на создание задач через Roles
 // Основные модули: express, supertest, roles.decorator, roles.guard
+export {};
+
 import express = require('express');
 import request = require('supertest');
 import { Roles } from '../src/auth/roles.decorator';

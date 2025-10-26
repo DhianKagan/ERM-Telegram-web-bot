@@ -117,6 +117,17 @@ export default function StoragePage() {
   const [selectedFile, setSelectedFile] = React.useState<StoredFile | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const [preview, setPreview] = React.useState<PreviewState | null>(null);
+  const [tasksLoading, setTasksLoading] = React.useState(false);
+  const [taskOptions, setTaskOptions] = React.useState<TaskOption[]>([]);
+  const [taskMetaById, setTaskMetaById] = React.useState<
+    Record<string, TaskOption>
+  >({});
+  const [selectionByFile, setSelectionByFile] = React.useState<
+    Record<string, string>
+  >({});
+  const [attachLoadingId, setAttachLoadingId] = React.useState<string | null>(
+    null,
+  );
 
   const [diagnostics, setDiagnostics] = React.useState<
     StorageDiagnosticsReport | null
@@ -126,6 +137,25 @@ export default function StoragePage() {
     null,
   );
 
+  const attachFileToTask = React.useCallback(
+    async (fileId: string, taskId: string): Promise<void> => {
+      const response = await authFetch(
+        `/api/v1/files/${encodeURIComponent(fileId)}/attach`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId }),
+        },
+      );
+      if (!response.ok) {
+        const error = new Error("attach");
+        (error as { status?: number }).status = response.status;
+        throw error;
+      }
+      await response.json().catch(() => ({}));
+    },
+    [],
+  );
 
   const loadFiles = React.useCallback(() => {
     setLoading(true);
@@ -273,7 +303,9 @@ export default function StoragePage() {
 
   React.useEffect(() => {
     if (!taskOptions.length) {
-      setSelectionByFile((current) => (Object.keys(current).length ? {} : current));
+      setSelectionByFile((current) =>
+        Object.keys(current).length ? ({} as Record<string, string>) : current,
+      );
       return;
     }
     const validIds = new Set(taskOptions.map((option) => option.id));
@@ -490,6 +522,7 @@ export default function StoragePage() {
         });
     },
     [
+      attachFileToTask,
       selectionByFile,
       taskOptions,
       taskMetaById,

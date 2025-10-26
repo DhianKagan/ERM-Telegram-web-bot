@@ -9,7 +9,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
-import type { RouteOptimizationResult } from "../services/optimizer";
+import type {
+  OptimizeRoutePayload,
+  RouteOptimizationResult,
+} from "../services/optimizer";
 jest.mock("react-i18next", () => {
   const templates: Record<string, string> = {
     appTitle: "ERM WEB",
@@ -647,5 +650,80 @@ describe("LogisticsPage", () => {
 
     expect(screen.getAllByText("2 ч 5 мин").length).toBeGreaterThan(0);
     expect(screen.getAllByText("7,5 кг").length).toBeGreaterThan(0);
+  });
+
+  it("учитывает задачи только с точкой выгрузки при оптимизации", async () => {
+    const dropTask = {
+      _id: "drop-1",
+      id: "drop-1",
+      title: "Выгрузка в Харкове",
+      finishCoordinates: { lat: 50.004, lng: 36.231 },
+      logistics_details: {
+        transport_type: "Грузовой",
+        start_location: "",
+        end_location: "Харків, вул. Сумська, 1",
+      },
+      delivery_window_start: "2099-01-01T08:00:00+02:00",
+      delivery_window_end: "2099-01-01T11:00:00+02:00",
+    };
+
+    fetchTasksMock.mockResolvedValue({
+      tasks: [dropTask],
+      users: [],
+      total: 1,
+    });
+
+    const optimizationResult: RouteOptimizationResult = {
+      routes: [
+        {
+          vehicleIndex: 0,
+          taskIds: [dropTask._id],
+          distanceKm: 18.5,
+          etaMinutes: 95,
+          load: 3.2,
+        },
+      ],
+      totalDistanceKm: 18.5,
+      totalEtaMinutes: 95,
+      totalLoad: 3.2,
+      warnings: [],
+    };
+
+    optimizeRouteMock.mockResolvedValueOnce(optimizationResult);
+
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    const optimizeButton = await screen.findByRole("button", {
+      name: "Просчёт логистики",
+    });
+
+    fireEvent.click(optimizeButton);
+
+    await waitFor(() => expect(optimizeRouteMock).toHaveBeenCalled());
+
+    const payload = optimizeRouteMock.mock.calls[0][0] as OptimizeRoutePayload;
+    const dropPayload = payload.tasks.find((task) => task.id === dropTask._id);
+    expect(dropPayload).toBeDefined();
+    expect(dropPayload?.coordinates).toEqual(dropTask.finishCoordinates);
+    expect(dropPayload?.startAddress).toBeUndefined();
+    expect(dropPayload?.finishAddress).toBe("Харків, вул. Сумська, 1");
+    expect(dropPayload?.timeWindow).toEqual([480, 660]);
+
+    await waitFor(() =>
+      expect(screen.getByText("Выгрузка в Харкове")).toBeInTheDocument(),
+    );
+
+    const taskCard = screen.getByText("Выгрузка в Харкове").closest("li");
+    expect(taskCard).not.toBeNull();
+    if (!taskCard) {
+      throw new Error("Карточка задачи не найдена");
+    }
+    expect(within(taskCard).queryByText(/startPoint/i)).toBeNull();
+    expect(within(taskCard).getByText(/endPoint/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Выгрузка №/i).length).toBeGreaterThan(0);
   });
 });

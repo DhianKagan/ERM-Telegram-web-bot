@@ -1063,6 +1063,28 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+  const attachmentsPayload = React.useMemo(() => {
+    if (attachments.length === 0) {
+      return [] as Attachment[];
+    }
+    const map = new Map<string, Attachment>();
+    attachments.forEach((item) => {
+      if (!item || typeof item.url !== "string") {
+        return;
+      }
+      map.set(item.url, item);
+    });
+    return Array.from(map.values());
+  }, [attachments]);
+  const handleAttachmentUploaded = React.useCallback((attachment: Attachment) => {
+    if (!attachment || typeof attachment.url !== "string") {
+      return;
+    }
+    setAttachments((prev) => {
+      const filtered = prev.filter((item) => item?.url !== attachment.url);
+      return [...filtered, attachment];
+    });
+  }, []);
   const [previewAttachment, setPreviewAttachment] = React.useState<
     { name: string; url: string } | null
   >(null);
@@ -1823,7 +1845,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       payment_method: paymentMethod,
       status,
       logistics_enabled: showLogistics,
-      attachments,
+      attachments: attachmentsPayload,
     };
 
     if (resolvedAssignee !== undefined) {
@@ -1952,7 +1974,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
     return payload;
   }, [
-    attachments,
+    attachmentsPayload,
     cargoHeight,
     cargoLength,
     cargoVolume,
@@ -2917,7 +2939,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
       if (distanceKm !== null) payload.route_distance_km = distanceKm;
       if (routeLink) payload.google_route_url = routeLink;
-      const sendPayload = { ...payload, attachments };
+      const sendPayload = { ...payload, attachments: attachmentsPayload };
       let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
       const currentTaskId = effectiveTaskId ?? "";
       let savedId = currentTaskId;
@@ -3923,7 +3945,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   ) : null}
                   <FileUploader
                     disabled={!canUploadAttachments}
-                    onUploaded={(a) => setAttachments((p) => [...p, a])}
+                    onUploaded={handleAttachmentUploaded}
                     onRemove={(a) => removeAttachment(a)}
                     taskId={effectiveTaskId}
                   />

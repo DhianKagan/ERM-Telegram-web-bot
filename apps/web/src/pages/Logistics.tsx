@@ -285,6 +285,8 @@ export default function LogisticsPage() {
           stops,
           metrics: {
             distanceKm: route.distanceKm,
+            etaMinutes: route.etaMinutes,
+            load: route.load,
             tasks: taskRefs.length,
             stops: stops.length,
           },
@@ -322,6 +324,8 @@ export default function LogisticsPage() {
           totalRoutes: planRoutes.length,
           totalTasks,
           totalStops,
+          totalEtaMinutes: result.totalEtaMinutes,
+          totalLoad: result.totalLoad,
         },
         routes: planRoutes,
         tasks: planRoutes.flatMap((route) => route.tasks.map((task) => task.taskId)),

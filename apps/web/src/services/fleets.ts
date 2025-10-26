@@ -26,6 +26,15 @@ export interface FleetVehicleResponse {
   limit: number;
 }
 
+export interface FleetVehicleListParams {
+  search?: string;
+  page?: number;
+  limit?: number;
+  transportType?: string[];
+  status?: string[];
+  sort?: string;
+}
+
 function parseResponse(res: Response, fallback: string) {
   if (res.ok) return res.json();
   return res.text().then((text) => {
@@ -90,15 +99,19 @@ const normalizeVehicle = (vehicle: FleetVehicleDto): FleetVehicleDto => {
   const updatedAtCandidate =
     typeof source.coordinatesUpdatedAt === "string"
       ? source.coordinatesUpdatedAt
-      : typeof (positionCandidate as Record<string, unknown> | undefined)?.updatedAt ===
-        "string"
-      ? ((positionCandidate as Record<string, unknown>).updatedAt as string)
-      : null;
+      : typeof (positionCandidate as Record<string, unknown> | undefined)
+            ?.updatedAt === "string"
+        ? ((positionCandidate as Record<string, unknown>).updatedAt as string)
+        : null;
 
   const speedCandidate =
     toNumber(source.currentSpeedKph) ??
-    toNumber((positionCandidate as Record<string, unknown> | undefined)?.speed) ??
-    toNumber((positionCandidate as Record<string, unknown> | undefined)?.speedKph);
+    toNumber(
+      (positionCandidate as Record<string, unknown> | undefined)?.speed,
+    ) ??
+    toNumber(
+      (positionCandidate as Record<string, unknown> | undefined)?.speedKph,
+    );
 
   return {
     ...vehicle,
@@ -108,15 +121,25 @@ const normalizeVehicle = (vehicle: FleetVehicleDto): FleetVehicleDto => {
   } satisfies FleetVehicleDto;
 };
 
-export async function listFleetVehicles(
+export async function listFleetVehicles({
   search = "",
   page = 1,
   limit = 10,
-): Promise<FleetVehicleResponse> {
+  transportType = [],
+  status = [],
+  sort,
+}: FleetVehicleListParams = {}): Promise<FleetVehicleResponse> {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
   if (search) params.set("search", search);
+  transportType
+    .filter((value) => typeof value === "string" && value.trim().length)
+    .forEach((value) => params.append("transportType", value.trim()));
+  status
+    .filter((value) => typeof value === "string" && value.trim().length)
+    .forEach((value) => params.append("status", value.trim()));
+  if (sort) params.set("sort", sort);
   const res = await authFetch(`/api/v1/fleets?${params.toString()}`);
   const data = (await parseResponse(
     res,
@@ -142,7 +165,9 @@ export async function fetchFleetVehicles(
   };
 }
 
-export async function createFleetVehicle(payload: FleetVehiclePayload): Promise<FleetVehicleDto> {
+export async function createFleetVehicle(
+  payload: FleetVehiclePayload,
+): Promise<FleetVehicleDto> {
   const res = await authFetch("/api/v1/fleets", {
     method: "POST",
     confirmed: true,

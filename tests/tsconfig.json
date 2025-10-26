@@ -12,7 +12,10 @@
     "paths": {
       "@/*": ["apps/web/src/*"],
       "shared": ["packages/shared/src"],
-      "shared/*": ["packages/shared/src/*"]
+      "shared/*": ["packages/shared/src/*"],
+      "@dnd-kit/core": ["tests/stubs/dndKitCore"],
+      "@dnd-kit/sortable": ["tests/stubs/dndKitSortable"],
+      "@dnd-kit/utilities": ["tests/stubs/dndKitUtilities"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

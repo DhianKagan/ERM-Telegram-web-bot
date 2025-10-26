@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 // Назначение файла: проверяет сохранение задачи и повторное открытие формы.
 // Основные модули: React, @testing-library/react, TaskDialog.
+import "@testing-library/jest-dom";
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -302,6 +303,7 @@ describe("TaskDialog", () => {
     );
 
     const templateSelect = await screen.findByLabelText("taskTemplateSelect");
+    await waitFor(() => expect(templateSelect).not.toBeDisabled());
     await act(async () => {
       fireEvent.change(templateSelect, { target: { value: "tpl-1" } });
       await Promise.resolve();

@@ -850,9 +850,17 @@ export default function LogisticsPage() {
   }, [availableVehicles, planDraft, vehicles]);
 
   const calculate = React.useCallback(async () => {
-    const payloadTasks = sorted
-      .filter((task) => hasPoint(task.startCoordinates))
-      .map((task) => {
+    const payloadTasks = sorted.reduce<OptimizeRoutePayload["tasks"]>(
+      (acc, task) => {
+        const hasStartPoint = hasPoint(task.startCoordinates);
+        const hasFinishPoint = hasPoint(task.finishCoordinates);
+        if (!hasStartPoint && !hasFinishPoint) {
+          return acc;
+        }
+        const useDropPoint = !hasStartPoint && hasFinishPoint;
+        const coordinates = (useDropPoint
+          ? task.finishCoordinates
+          : task.startCoordinates) as Coords;
         const details = (task as Record<string, unknown>)
           .logistics_details as LogisticsDetails | undefined;
         const startAddress =
@@ -884,18 +892,27 @@ export default function LogisticsPage() {
             ? Math.max(0, Number(parsedWeight))
             : null;
         const demandValue = typeof weightValue === "number" ? weightValue : 1;
-        return {
+        const normalizedStartAddress = startAddress || undefined;
+        const normalizedFinishAddress = finishAddress || undefined;
+        const dropAddress =
+          normalizedFinishAddress ?? normalizedStartAddress ?? undefined;
+        acc.push({
           id: task._id,
-          coordinates: task.startCoordinates as Coords,
+          coordinates,
           demand: demandValue,
           weight: weightValue ?? undefined,
           serviceMinutes: undefined,
           title: task.title,
-          startAddress: startAddress || undefined,
-          finishAddress: finishAddress || undefined,
+          startAddress: useDropPoint ? undefined : normalizedStartAddress,
+          finishAddress: useDropPoint
+            ? dropAddress
+            : normalizedFinishAddress,
           timeWindow: timeWindow ?? undefined,
-        } satisfies OptimizeRoutePayload["tasks"][number];
-      });
+        });
+        return acc;
+      },
+      [],
+    );
 
     if (!payloadTasks.length) {
       applyPlan(null);

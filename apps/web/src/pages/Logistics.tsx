@@ -756,215 +756,6 @@ export default function LogisticsPage() {
     [updateRouteDraft],
   );
 
-  const persistPlanDraft = React.useCallback(
-    async (nextDraft: RoutePlan) => {
-      if (!nextDraft.id) {
-        return;
-      }
-      setPlanSyncing(true);
-      try {
-        const payload = buildUpdatePayload(nextDraft);
-        const updated = await updateRoutePlan(nextDraft.id, payload);
-        applyPlan(updated);
-        setPlanMessage(tRef.current("logistics.planReorderSaved"));
-        setPlanMessageTone("success");
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : tRef.current("logistics.planReorderError");
-        setPlanMessage(message);
-        setPlanMessageTone("error");
-        scheduleAutoRecalculate({ refreshPlan: true });
-      } finally {
-        setPlanSyncing(false);
-      }
-    },
-    [applyPlan, buildUpdatePayload, scheduleAutoRecalculate, tRef],
-  );
-
-  const handleMoveTask = React.useCallback(
-    ({
-      taskId,
-      sourceRouteIndex,
-      fromIndex,
-      targetRouteIndex,
-      targetIndex,
-    }: {
-      taskId: string;
-      sourceRouteIndex?: number;
-      fromIndex?: number;
-      targetRouteIndex: number;
-      targetIndex: number;
-    }) => {
-      let nextDraft: RoutePlan | null = null;
-      setPlanDraft((current) => {
-        if (!current) return current;
-        const draftCopy = clonePlan(current);
-        let actualSourceRouteIndex =
-          typeof sourceRouteIndex === "number" ? sourceRouteIndex : draftCopy.routes.findIndex((route) =>
-            route.tasks.some((task) => task.taskId === taskId),
-          );
-        if (actualSourceRouteIndex < 0) {
-          return current;
-        }
-        const sourceRoute = draftCopy.routes[actualSourceRouteIndex];
-        let actualFromIndex =
-          typeof fromIndex === "number" && fromIndex >= 0
-            ? fromIndex
-            : sourceRoute.tasks.findIndex((task) => task.taskId === taskId);
-        if (actualFromIndex < 0) {
-          return current;
-        }
-        const targetRoute = draftCopy.routes[targetRouteIndex];
-        if (!targetRoute) {
-          return current;
-        }
-        if (
-          actualSourceRouteIndex === targetRouteIndex &&
-          actualFromIndex === targetIndex
-        ) {
-          return current;
-        }
-        const [moved] = sourceRoute.tasks.splice(actualFromIndex, 1);
-        let insertionIndex = targetIndex;
-        if (actualSourceRouteIndex === targetRouteIndex) {
-          if (actualFromIndex < insertionIndex) {
-            insertionIndex -= 1;
-          }
-          insertionIndex = Math.max(0, Math.min(insertionIndex, sourceRoute.tasks.length));
-        } else {
-          insertionIndex = Math.max(0, Math.min(insertionIndex, targetRoute.tasks.length));
-        }
-        targetRoute.tasks.splice(insertionIndex, 0, moved);
-        draftCopy.routes = draftCopy.routes.map((route, idx) => ({
-          ...route,
-          order: idx,
-          tasks: route.tasks.map((task, order) => ({ ...task, order })),
-        }));
-        draftCopy.tasks = draftCopy.routes.flatMap((route) =>
-          route.tasks.map((task) => task.taskId),
-        );
-        nextDraft = draftCopy;
-        return draftCopy;
-      });
-      if (nextDraft) {
-        void persistPlanDraft(nextDraft);
-      }
-    },
-    [clonePlan, persistPlanDraft],
-  );
-
-  const updateTaskCoordinates = React.useCallback(
-    async (
-      taskId: string,
-      payload: { kind: "start" | "finish"; coordinates: Coords },
-    ) => {
-      setRecalcInProgress(true);
-      setPlanMessage(tRef.current("logistics.coordinatesUpdating"));
-      setPlanMessageTone("neutral");
-      setTaskStatus((prev) => {
-        const next = new Map(prev);
-        const current = next.get(taskId);
-        if (current) {
-          next.set(taskId, {
-            ...current,
-            recalculating: true,
-            etaMinutes: null,
-          });
-        }
-        return next;
-      });
-      try {
-        const response = await authFetch(
-          `/api/v1/tasks/${taskId}/coordinates`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              [payload.kind]: payload.coordinates,
-            }),
-          },
-        );
-        if (!response.ok) {
-          let message = tRef.current("logistics.coordinatesUpdateError");
-          try {
-            const data = await response.clone().json();
-            if (data && typeof data === "object") {
-              const info = data as Record<string, unknown>;
-              const raw =
-                typeof info.message === "string"
-                  ? info.message
-                  : typeof info.error === "string"
-                  ? info.error
-                  : "";
-              if (raw.trim()) {
-                message = raw.trim();
-              }
-            }
-          } catch {
-            try {
-              const text = await response.text();
-              if (text.trim()) {
-                message = text.trim();
-              }
-            } catch {
-              // игнорируем
-            }
-          }
-          throw new Error(message);
-        }
-        const nextSorted = sorted.map((task) => {
-          if (task._id !== taskId) {
-            return task;
-          }
-          const updated: RouteTask = { ...task };
-          if (payload.kind === "start") {
-            updated.startCoordinates = payload.coordinates;
-          } else {
-            updated.finishCoordinates = payload.coordinates;
-          }
-          return updated;
-        });
-        setSorted(nextSorted);
-        await calculate(nextSorted);
-        setPlanMessage(tRef.current("logistics.coordinatesUpdated"));
-        setPlanMessageTone("success");
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : tRef.current("logistics.coordinatesUpdateError");
-        setPlanMessage(message);
-        setPlanMessageTone("error");
-      } finally {
-        setTaskStatus((prev) => {
-          const next = new Map(prev);
-          const current = next.get(taskId);
-          if (current) {
-            next.set(taskId, { ...current, recalculating: false });
-          }
-          return next;
-        });
-        setRecalcInProgress(false);
-      }
-    },
-    [calculate, sorted, tRef],
-  );
-
-  const handleTaskCoordinatesChange = React.useCallback(
-    (taskId: string, kind: "start" | "finish", latlng: L.LatLng) => {
-      const coordinates: Coords = {
-        lat: Number(latlng.lat),
-        lng: Number(latlng.lng),
-      };
-      void updateTaskCoordinates(taskId, { kind, coordinates });
-    },
-    [updateTaskCoordinates],
-  );
-
   
 
   const handleSavePlan = React.useCallback(async () => {
@@ -1559,6 +1350,226 @@ export default function LogisticsPage() {
       }, 800);
     },
     [calculate, load, loadPlan],
+  );
+
+  const persistPlanDraft = React.useCallback(
+    async (nextDraft: RoutePlan) => {
+      if (!nextDraft.id) {
+        return;
+      }
+      setPlanSyncing(true);
+      try {
+        const payload = buildUpdatePayload(nextDraft);
+        const updated = await updateRoutePlan(nextDraft.id, payload);
+        applyPlan(updated);
+        setPlanMessage(tRef.current("logistics.planReorderSaved"));
+        setPlanMessageTone("success");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : tRef.current("logistics.planReorderError");
+        setPlanMessage(message);
+        setPlanMessageTone("error");
+        scheduleAutoRecalculate({ refreshPlan: true });
+      } finally {
+        setPlanSyncing(false);
+      }
+    },
+    [applyPlan, buildUpdatePayload, scheduleAutoRecalculate, tRef],
+  );
+
+  const handleMoveTask = React.useCallback(
+    ({
+      taskId,
+      sourceRouteIndex,
+      fromIndex,
+      targetRouteIndex,
+      targetIndex,
+    }: {
+      taskId: string;
+      sourceRouteIndex?: number;
+      fromIndex?: number;
+      targetRouteIndex: number;
+      targetIndex: number;
+    }) => {
+      let nextDraft: RoutePlan | null = null;
+      setPlanDraft((current) => {
+        if (!current) return current;
+        const draftCopy = clonePlan(current);
+        if (!draftCopy) {
+          return current;
+        }
+        let actualSourceRouteIndex =
+          typeof sourceRouteIndex === "number"
+            ? sourceRouteIndex
+            : draftCopy.routes.findIndex((route) =>
+                route.tasks.some((task) => task.taskId === taskId),
+              );
+        if (actualSourceRouteIndex < 0) {
+          return current;
+        }
+        const sourceRoute = draftCopy.routes[actualSourceRouteIndex];
+        let actualFromIndex =
+          typeof fromIndex === "number" && fromIndex >= 0
+            ? fromIndex
+            : sourceRoute.tasks.findIndex((task) => task.taskId === taskId);
+        if (actualFromIndex < 0) {
+          return current;
+        }
+        const targetRoute = draftCopy.routes[targetRouteIndex];
+        if (!targetRoute) {
+          return current;
+        }
+        if (
+          actualSourceRouteIndex === targetRouteIndex &&
+          actualFromIndex === targetIndex
+        ) {
+          return current;
+        }
+        const [moved] = sourceRoute.tasks.splice(actualFromIndex, 1);
+        let insertionIndex = targetIndex;
+        if (actualSourceRouteIndex === targetRouteIndex) {
+          if (actualFromIndex < insertionIndex) {
+            insertionIndex -= 1;
+          }
+          insertionIndex = Math.max(
+            0,
+            Math.min(insertionIndex, sourceRoute.tasks.length),
+          );
+        } else {
+          insertionIndex = Math.max(
+            0,
+            Math.min(insertionIndex, targetRoute.tasks.length),
+          );
+        }
+        targetRoute.tasks.splice(insertionIndex, 0, moved);
+        draftCopy.routes = draftCopy.routes.map((route, idx) => ({
+          ...route,
+          order: idx,
+          tasks: route.tasks.map((task, order) => ({ ...task, order })),
+        }));
+        draftCopy.tasks = draftCopy.routes.flatMap((route) =>
+          route.tasks.map((task) => task.taskId),
+        );
+        nextDraft = draftCopy;
+        return draftCopy;
+      });
+      if (nextDraft) {
+        void persistPlanDraft(nextDraft);
+      }
+    },
+    [clonePlan, persistPlanDraft],
+  );
+
+  const updateTaskCoordinates = React.useCallback(
+    async (
+      taskId: string,
+      payload: { kind: "start" | "finish"; coordinates: Coords },
+    ) => {
+      setRecalcInProgress(true);
+      setPlanMessage(tRef.current("logistics.coordinatesUpdating"));
+      setPlanMessageTone("neutral");
+      setTaskStatus((prev) => {
+        const next = new Map(prev);
+        const current = next.get(taskId);
+        if (current) {
+          next.set(taskId, {
+            ...current,
+            recalculating: true,
+            etaMinutes: null,
+          });
+        }
+        return next;
+      });
+      try {
+        const response = await authFetch(
+          `/api/v1/tasks/${taskId}/coordinates`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              [payload.kind]: payload.coordinates,
+            }),
+          },
+        );
+        if (!response.ok) {
+          let message = tRef.current("logistics.coordinatesUpdateError");
+          try {
+            const data = await response.clone().json();
+            if (data && typeof data === "object") {
+              const info = data as Record<string, unknown>;
+              const raw =
+                typeof info.message === "string"
+                  ? info.message
+                  : typeof info.error === "string"
+                  ? info.error
+                  : "";
+              if (raw.trim()) {
+                message = raw.trim();
+              }
+            }
+          } catch {
+            try {
+              const text = await response.text();
+              if (text.trim()) {
+                message = text.trim();
+              }
+            } catch {
+              // игнорируем
+            }
+          }
+          throw new Error(message);
+        }
+        const nextSorted = sorted.map((task) => {
+          if (task._id !== taskId) {
+            return task;
+          }
+          const updated: RouteTask = { ...task };
+          if (payload.kind === "start") {
+            updated.startCoordinates = payload.coordinates;
+          } else {
+            updated.finishCoordinates = payload.coordinates;
+          }
+          return updated;
+        });
+        setSorted(nextSorted);
+        await calculate(nextSorted);
+        setPlanMessage(tRef.current("logistics.coordinatesUpdated"));
+        setPlanMessageTone("success");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : tRef.current("logistics.coordinatesUpdateError");
+        setPlanMessage(message);
+        setPlanMessageTone("error");
+      } finally {
+        setTaskStatus((prev) => {
+          const next = new Map(prev);
+          const current = next.get(taskId);
+          if (current) {
+            next.set(taskId, { ...current, recalculating: false });
+          }
+          return next;
+        });
+        setRecalcInProgress(false);
+      }
+    },
+    [calculate, sorted, tRef],
+  );
+
+  const handleTaskCoordinatesChange = React.useCallback(
+    (taskId: string, kind: "start" | "finish", latlng: L.LatLng) => {
+      const coordinates: Coords = {
+        lat: Number(latlng.lat),
+        lng: Number(latlng.lng),
+      };
+      void updateTaskCoordinates(taskId, { kind, coordinates });
+    },
+    [updateTaskCoordinates],
   );
 
   const planMessageClass = React.useMemo(() => {

@@ -6,7 +6,22 @@ import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
-import ru from '../../apps/web/src/locales/ru/translation.json';
+const ru = {
+  storage: {
+    taskLabel: 'Задача #{{id}}',
+    taskNumberLabel: 'Задача {{number}}',
+    taskMissing: 'Без задачи',
+    attach: {
+      title: 'Привязать к задаче',
+      placeholder: 'Выберите задачу',
+      button: 'Привязать',
+      success: 'Файл привязан к задаче.',
+      forbidden: 'Нет доступа к привязке файла.',
+      error: 'Не удалось привязать файл.',
+      tasksLoadError: 'Не удалось загрузить список задач.',
+    },
+  },
+} as const;
 
 type FileInfo = {
   id: string;
@@ -85,15 +100,13 @@ app.post('/api/v1/files/:id/attach', (req, res) => {
 });
 
 app.get('/cp/storage', (_req, res) => {
-  const attach = (ru as any).storage.attach;
-  const taskLabel = (ru as any).storage.taskLabel as string;
-  const taskNumberLabel = (ru as any).storage.taskNumberLabel as string;
-  const taskMissing = (ru as any).storage.taskMissing as string;
-  const success = attach.success as string;
-  const error = attach.forbidden as string;
-  const loadTasksError = attach.tasksLoadError as string;
-  const buttonLabel = attach.button as string;
-  const placeholder = attach.placeholder as string;
+  const attach = ru.storage.attach;
+  const { taskLabel, taskNumberLabel, taskMissing } = ru.storage;
+  const success = attach.success;
+  const error = attach.forbidden;
+  const loadTasksError = attach.tasksLoadError;
+  const buttonLabel = attach.button;
+  const placeholder = attach.placeholder;
 
   const script = `(() => {
     const rowsContainer = document.getElementById('rows');

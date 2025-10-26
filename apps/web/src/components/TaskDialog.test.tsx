@@ -5,6 +5,7 @@ import "@testing-library/jest-dom";
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import L from "leaflet";
 import TaskDialog from "./TaskDialog";
 import type authFetch from "../utils/authFetch";
 
@@ -20,6 +21,48 @@ jest.mock("../context/useAuth", () => ({
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: translate }),
 }));
+
+jest.mock("leaflet/dist/leaflet.css", () => ({}));
+
+jest.mock("leaflet", () => {
+  const maps: { map: any; handlers: Record<string, (event: any) => void> }[] = [];
+  const createMap = () => {
+    const handlers: Record<string, (event: any) => void> = {};
+    const instance: any = {};
+    instance.setView = jest.fn(() => instance);
+    instance.remove = jest.fn();
+    instance.on = jest.fn((event: string, handler: (event: any) => void) => {
+      handlers[event] = handler;
+      return instance;
+    });
+    instance.off = jest.fn((event?: string) => {
+      if (event) delete handlers[event];
+      return instance;
+    });
+    instance.invalidateSize = jest.fn();
+    instance.panTo = jest.fn();
+    return { map: instance, handlers };
+  };
+  const circleMarker = jest.fn(() => ({
+    addTo: jest.fn().mockReturnThis(),
+    setLatLng: jest.fn().mockReturnThis(),
+    remove: jest.fn(),
+  }));
+  const tileLayer = jest.fn(() => ({ addTo: jest.fn() }));
+  const mock = {
+    map: jest.fn(() => {
+      const created = createMap();
+      maps.push(created);
+      return created.map;
+    }),
+    tileLayer,
+    circleMarker,
+    latLng: jest.fn((lat: number, lng: number) => ({ lat, lng })),
+    __mock: { maps, circleMarker, tileLayer },
+  } as any;
+  mock.default = mock;
+  return mock;
+});
 
 jest.mock("./CKEditorPopup", () => () => <div />);
 jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
@@ -244,6 +287,21 @@ describe("TaskDialog", () => {
     }));
     lastTemplatePayload = null;
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const leafletMock = (L as any).__mock;
+    if (leafletMock) {
+      leafletMock.maps.length = 0;
+      leafletMock.circleMarker.mockClear();
+      leafletMock.tileLayer.mockClear();
+    }
+    if (typeof (L as any).map?.mockClear === "function") {
+      (L as any).map.mockClear();
+    }
+    if (typeof (L as any).tileLayer?.mockClear === "function") {
+      (L as any).tileLayer.mockClear();
+    }
+    if (typeof (L as any).circleMarker?.mockClear === "function") {
+      (L as any).circleMarker.mockClear();
+    }
   });
 
   afterEach(() => {
@@ -555,6 +613,92 @@ describe("TaskDialog", () => {
         }),
       ),
     );
+  });
+
+  it("сохраняет координаты при выборе точек на карте", async () => {
+    createTaskMock.mockResolvedValue({ _id: "map-task" });
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    const titleInput = screen.getByPlaceholderText("title");
+    fireEvent.change(titleInput, { target: { value: "Маршрут" } });
+
+    const assigneeSelect = (await screen.findByTestId("assignee")) as HTMLSelectElement;
+    await screen.findByText("Alice");
+    await act(async () => {
+      fireEvent.change(assigneeSelect, { target: { value: "1" } });
+      await Promise.resolve();
+    });
+
+    const logisticsToggle = screen.getByLabelText("logisticsToggle") as HTMLInputElement;
+    fireEvent.click(logisticsToggle);
+
+    const startMapButtons = await screen.findAllByRole("button", {
+      name: "selectOnMap",
+    });
+
+    await act(async () => {
+      fireEvent.click(startMapButtons[0]);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText("selectStartPoint")).toBeTruthy();
+
+    const leafletMock = (L as any).__mock;
+    const startMap = leafletMock.maps[leafletMock.maps.length - 1];
+    act(() => {
+      startMap.handlers.click({ latlng: { lat: 50.45, lng: 30.523 } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "accept" }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("selectStartPoint")).not.toBeInTheDocument(),
+    );
+
+    const finishButtons = screen.getAllByRole("button", { name: "selectOnMap" });
+
+    await act(async () => {
+      fireEvent.click(finishButtons[1]);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText("selectFinishPoint")).toBeTruthy();
+
+    const finishMap = leafletMock.maps[leafletMock.maps.length - 1];
+    act(() => {
+      finishMap.handlers.click({ latlng: { lat: 49.8397, lng: 24.0297 } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "accept" }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("selectFinishPoint")).not.toBeInTheDocument(),
+    );
+
+    await clickSubmitButton();
+
+    await waitFor(() => expect(createTaskMock).toHaveBeenCalled());
+
+    const payload = createTaskMock.mock.calls[0][0];
+    expect(payload.startCoordinates).toEqual({ lat: 50.45, lng: 30.523 });
+    expect(payload.finishCoordinates).toEqual({ lat: 49.8397, lng: 24.0297 });
+    expect(typeof payload.start_location_link).toBe("string");
+    expect(payload.start_location_link).not.toBe("");
+    expect(typeof payload.end_location_link).toBe("string");
+    expect(payload.end_location_link).not.toBe("");
+    expect(payload.google_route_url).toContain("google.com/maps/dir");
   });
   it("подставляет данные выбранного шаблона", async () => {
     render(

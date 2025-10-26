@@ -64,6 +64,12 @@
   "link": "ссылка",
   "loading": "Загрузка...",
   "map": "Карта",
+  "selectOnMap": "Выбрать на карте",
+  "selectStartPoint": "Выбор начальной точки",
+  "selectFinishPoint": "Выбор конечной точки",
+  "mapSelectionHint": "Кликните по карте, чтобы поставить точку.",
+  "startCoordinatesRequired": "Укажите начальную точку на карте",
+  "finishCoordinatesRequired": "Укажите конечную точку на карте",
   "mb": "МБ",
   "menu": "Меню",
   "nav": {

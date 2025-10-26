@@ -2,6 +2,8 @@
 // Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, SingleSelect, логирование, coerceTaskId
 import React from "react";
 import { createPortal } from "react-dom";
+import L, { type LatLngBoundsExpression } from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +12,7 @@ import MultiUserSelect from "./MultiUserSelect";
 import SingleSelect from "./SingleSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import AlertDialog from "./AlertDialog";
+import Modal from "./Modal";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
 import {
@@ -299,6 +302,164 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
     : String(coords.lng);
   return `${lat}, ${lng}`;
 };
+
+const MAP_CENTER: [number, number] = [48.3794, 31.1656];
+const MAP_ZOOM = 6;
+const UKRAINE_BOUNDS: LatLngBoundsExpression = [
+  [44, 22],
+  [52.5, 40.5],
+];
+
+type MapPickerTarget = "start" | "finish";
+
+interface MapPickerDialogProps {
+  open: boolean;
+  target: MapPickerTarget | null;
+  initialValue: { lat: number; lng: number } | null;
+  onClose: () => void;
+  onConfirm: (coords: { lat: number; lng: number }) => Promise<void> | void;
+  title: string;
+  hint: string;
+  cancelLabel: string;
+  confirmLabel: string;
+}
+
+function MapPickerDialog({
+  open,
+  target,
+  initialValue,
+  onClose,
+  onConfirm,
+  title,
+  hint,
+  cancelLabel,
+  confirmLabel,
+}: MapPickerDialogProps) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const mapRef = React.useRef<L.Map | null>(null);
+  const markerRef = React.useRef<L.CircleMarker | null>(null);
+  const [selection, setSelection] = React.useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    if (open) {
+      setSelection(initialValue);
+    } else {
+      setSelection(null);
+    }
+  }, [open, initialValue]);
+
+  React.useEffect(() => {
+    if (!open || typeof window === "undefined") return undefined;
+    const container = containerRef.current;
+    if (!container) return undefined;
+    const map = L.map(container, {
+      maxBounds: UKRAINE_BOUNDS,
+      maxBoundsViscosity: 1,
+      minZoom: 5,
+      maxZoom: 12,
+    });
+    mapRef.current = map;
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+    const applyInitial = initialValue ?? null;
+    if (applyInitial) {
+      map.setView([applyInitial.lat, applyInitial.lng], 13);
+      markerRef.current = L.circleMarker([applyInitial.lat, applyInitial.lng], {
+        radius: 8,
+        color: "#2563eb",
+        fillColor: "#2563eb",
+        fillOpacity: 0.85,
+        weight: 2,
+      }).addTo(map);
+    } else {
+      map.setView(MAP_CENTER, MAP_ZOOM);
+    }
+    const handleClick = (event: L.LeafletMouseEvent) => {
+      const { lat, lng } = event.latlng;
+      setSelection({ lat, lng });
+    };
+    map.on("click", handleClick);
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+    return () => {
+      map.off("click", handleClick);
+      markerRef.current?.remove();
+      markerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [open, initialValue, target]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const current = selection;
+    if (!current) {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      return;
+    }
+    const latLng: [number, number] = [current.lat, current.lng];
+    if (!markerRef.current) {
+      markerRef.current = L.circleMarker(latLng, {
+        radius: 8,
+        color: "#2563eb",
+        fillColor: "#2563eb",
+        fillOpacity: 0.85,
+        weight: 2,
+      }).addTo(map);
+    } else {
+      markerRef.current.setLatLng(latLng);
+    }
+    map.panTo(latLng);
+  }, [selection, open]);
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+          <p className="mt-1 text-sm text-slate-600">{hint}</p>
+        </div>
+        <div
+          ref={containerRef}
+          className="h-[360px] w-full overflow-hidden rounded-xl border border-slate-200"
+        />
+        <div className="text-sm font-medium text-slate-700">
+          {selection ? formatCoords(selection) : "—"}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {cancelLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            disabled={!selection}
+            onClick={async () => {
+              if (!selection) return;
+              await onConfirm(selection);
+            }}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+interface MapLinkOptions {
+  coords?: { lat: number; lng: number } | null;
+  label?: string;
+}
 
 const sanitizeLocationLink = (value: unknown): string => {
   if (typeof value !== "string") {
@@ -884,6 +1045,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
+  const [logisticsError, setLogisticsError] = React.useState("");
+  const [mapTarget, setMapTarget] = React.useState<MapPickerTarget | null>(null);
   const canonicalStartLink = React.useMemo(
     () => sanitizeLocationLink(startLink),
     [startLink],
@@ -1586,6 +1749,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const handleLogisticsToggle = (checked: boolean) => {
     setShowLogistics(checked);
   };
+
+  React.useEffect(() => {
+    if (!showLogistics) {
+      setLogisticsError("");
+    }
+  }, [showLogistics]);
 
   React.useEffect(() => {
     if (!isEdit) {
@@ -2315,85 +2484,148 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     hasAutofilledAssignee.current = true;
   }, [assigneeValue, isEdit, user, users, setValue]);
 
-  const handleStartLink = async (value: string) => {
-    autoRouteRef.current = true;
-    const sanitized = sanitizeLocationLink(value);
-    if (!sanitized) {
-      setStart("");
-      setStartCoordinates(null);
-      setStartLink("");
-      return;
-    }
-    let link = sanitized;
-    let resolved = sanitized;
-    let coords = extractCoords(resolved);
-    if (
-      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-      isManagedShortLink(sanitized)
-    ) {
-      const data = await expandLink(sanitized);
-      if (data?.url) {
-        const expanded = sanitizeLocationLink(data.url) || sanitized;
-        resolved = expanded;
-        const backendCoords = toCoordsValue(data.coords);
-        if (backendCoords) {
-          coords = backendCoords;
+  const handleStartLink = React.useCallback(
+    async (value: string, options?: MapLinkOptions) => {
+      autoRouteRef.current = true;
+      const sanitized = sanitizeLocationLink(value);
+      if (!sanitized) {
+        setStart("");
+        setStartCoordinates(null);
+        setStartLink("");
+        return;
+      }
+      const overrideCoords = options?.coords ?? null;
+      const overrideLabel = options?.label;
+      let link = sanitized;
+      let resolved = sanitized;
+      let coords: { lat: number; lng: number } | null =
+        overrideCoords ?? extractCoords(resolved);
+      if (
+        /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+        isManagedShortLink(sanitized)
+      ) {
+        const data = await expandLink(sanitized);
+        if (data?.url) {
+          const expanded = sanitizeLocationLink(data.url) || sanitized;
+          resolved = expanded;
+          if (!overrideCoords) {
+            const backendCoords = toCoordsValue(data.coords);
+            if (backendCoords) {
+              coords = backendCoords;
+            }
+          }
+          if (typeof data.short === "string") {
+            const shortCandidate = sanitizeLocationLink(data.short);
+            link = shortCandidate || sanitized;
+          } else {
+            link = expanded;
+          }
         }
-        if (typeof data.short === "string") {
-          const shortCandidate = sanitizeLocationLink(data.short);
-          link = shortCandidate || sanitized;
-        } else {
-          link = expanded;
+        if (!overrideCoords && !coords) {
+          coords = extractCoords(resolved);
         }
       }
       if (!coords) {
         coords = extractCoords(resolved);
       }
-    }
-    setStart(parseGoogleAddress(resolved));
-    setStartCoordinates(coords ?? extractCoords(resolved));
-    setStartLink(link);
-  };
+      setStart(overrideLabel ?? parseGoogleAddress(resolved));
+      setStartCoordinates(coords ?? null);
+      setStartLink(link);
+    },
+    [],
+  );
 
-  const handleEndLink = async (value: string) => {
-    autoRouteRef.current = true;
-    const sanitized = sanitizeLocationLink(value);
-    if (!sanitized) {
-      setEnd("");
-      setFinishCoordinates(null);
-      setEndLink("");
-      return;
-    }
-    let link = sanitized;
-    let resolved = sanitized;
-    let coords = extractCoords(resolved);
-    if (
-      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-      isManagedShortLink(sanitized)
-    ) {
-      const data = await expandLink(sanitized);
-      if (data?.url) {
-        const expanded = sanitizeLocationLink(data.url) || sanitized;
-        resolved = expanded;
-        const backendCoords = toCoordsValue(data.coords);
-        if (backendCoords) {
-          coords = backendCoords;
+  const handleEndLink = React.useCallback(
+    async (value: string, options?: MapLinkOptions) => {
+      autoRouteRef.current = true;
+      const sanitized = sanitizeLocationLink(value);
+      if (!sanitized) {
+        setEnd("");
+        setFinishCoordinates(null);
+        setEndLink("");
+        return;
+      }
+      const overrideCoords = options?.coords ?? null;
+      const overrideLabel = options?.label;
+      let link = sanitized;
+      let resolved = sanitized;
+      let coords: { lat: number; lng: number } | null =
+        overrideCoords ?? extractCoords(resolved);
+      if (
+        /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+        isManagedShortLink(sanitized)
+      ) {
+        const data = await expandLink(sanitized);
+        if (data?.url) {
+          const expanded = sanitizeLocationLink(data.url) || sanitized;
+          resolved = expanded;
+          if (!overrideCoords) {
+            const backendCoords = toCoordsValue(data.coords);
+            if (backendCoords) {
+              coords = backendCoords;
+            }
+          }
+          if (typeof data.short === "string") {
+            const shortCandidate = sanitizeLocationLink(data.short);
+            link = shortCandidate || sanitized;
+          } else {
+            link = expanded;
+          }
         }
-        if (typeof data.short === "string") {
-          const shortCandidate = sanitizeLocationLink(data.short);
-          link = shortCandidate || sanitized;
-        } else {
-          link = expanded;
+        if (!overrideCoords && !coords) {
+          coords = extractCoords(resolved);
         }
       }
       if (!coords) {
         coords = extractCoords(resolved);
       }
-    }
-    setEnd(parseGoogleAddress(resolved));
-    setFinishCoordinates(coords ?? extractCoords(resolved));
-    setEndLink(link);
-  };
+      setEnd(overrideLabel ?? parseGoogleAddress(resolved));
+      setFinishCoordinates(coords ?? null);
+      setEndLink(link);
+    },
+    [],
+  );
+
+  const closeMapPicker = React.useCallback(() => {
+    setMapTarget(null);
+  }, []);
+
+  const openMapPicker = React.useCallback(
+    (target: MapPickerTarget) => {
+      if (!editing) return;
+      setMapTarget(target);
+    },
+    [editing],
+  );
+
+  const confirmMapSelection = React.useCallback(
+    async (coords: { lat: number; lng: number }) => {
+      if (!mapTarget) return;
+      const formattedLabel = formatCoords(coords);
+      if (mapTarget === "start") {
+        await handleStartLink(createRouteLink(coords, coords), {
+          coords,
+          label: formattedLabel,
+        });
+      } else {
+        await handleEndLink(createRouteLink(coords, coords), {
+          coords,
+          label: formattedLabel,
+        });
+      }
+      setLogisticsError("");
+      setMapTarget(null);
+    },
+    [mapTarget, handleStartLink, handleEndLink, setLogisticsError],
+  );
+
+  const mapPickerInitialValue =
+    mapTarget === "start" ? startCoordinates : finishCoordinates;
+  const mapPickerTitle =
+    mapTarget === "finish" ? t("selectFinishPoint") : t("selectStartPoint");
+  const mapPickerHint = t("mapSelectionHint");
+  const mapPickerCancel = t("cancel");
+  const mapPickerConfirm = t("accept");
 
   React.useEffect(() => {
     if (startCoordinates && finishCoordinates) {
@@ -2463,6 +2695,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const submit = handleSubmit(async (formData) => {
     try {
+      if (showLogistics) {
+        if (!startCoordinates) {
+          const message = t("startCoordinatesRequired");
+          setLogisticsError(message);
+          setAlertMsg(message);
+          return;
+        }
+        if (!finishCoordinates) {
+          const message = t("finishCoordinatesRequired");
+          setLogisticsError(message);
+          setAlertMsg(message);
+          return;
+        }
+        setLogisticsError("");
+      }
       const creationDate = parseIsoDate(created);
       if (formData.startDate && creationDate) {
         const parsedStart = parseIsoDate(formData.startDate);
@@ -3248,15 +3495,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              {editing && (
-                                <button
+                              <div className="flex items-center gap-2">
+                                <Button
                                   type="button"
-                                  onClick={() => handleStartLink("")}
-                                  className="shrink-0 text-red-600"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openMapPicker("start")}
+                                  disabled={!editing}
                                 >
-                                  ✖
-                                </button>
-                              )}
+                                  {t("selectOnMap")}
+                                </Button>
+                                {editing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartLink("")}
+                                    className="shrink-0 text-red-600"
+                                  >
+                                    ✖
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -3269,6 +3527,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openMapPicker("start")}
+                                disabled={!editing}
+                              >
+                                {t("selectOnMap")}
+                              </Button>
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3316,15 +3583,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              {editing && (
-                                <button
+                              <div className="flex items-center gap-2">
+                                <Button
                                   type="button"
-                                  onClick={() => handleEndLink("")}
-                                  className="shrink-0 text-red-600"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openMapPicker("finish")}
+                                  disabled={!editing}
                                 >
-                                  ✖
-                                </button>
-                              )}
+                                  {t("selectOnMap")}
+                                </Button>
+                                {editing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEndLink("")}
+                                    className="shrink-0 text-red-600"
+                                  >
+                                    ✖
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -3337,6 +3615,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openMapPicker("finish")}
+                                disabled={!editing}
+                              >
+                                {t("selectOnMap")}
+                              </Button>
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3354,6 +3641,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             </div>
                           )}
                         </div>
+                        {logisticsError && (
+                          <p className="sm:col-span-2 md:col-span-3 xl:col-span-4 text-sm text-red-600">
+                            {logisticsError}
+                          </p>
+                        )}
                         <div>
                           <label
                             className="block text-sm font-medium"
@@ -4193,6 +4485,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           </div>
         </div>
       )}
+      <MapPickerDialog
+        open={mapTarget !== null}
+        target={mapTarget}
+        initialValue={mapPickerInitialValue}
+        onClose={closeMapPicker}
+        onConfirm={confirmMapSelection}
+        title={mapPickerTitle}
+        hint={mapPickerHint}
+        cancelLabel={mapPickerCancel}
+        confirmLabel={mapPickerConfirm}
+      />
       <AlertDialog
         open={alertMsg !== null}
         message={alertMsg || ""}

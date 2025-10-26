@@ -64,6 +64,12 @@
   "link": "link",
   "loading": "Loading...",
   "map": "Map",
+  "selectOnMap": "Select on map",
+  "selectStartPoint": "Choose start point",
+  "selectFinishPoint": "Choose finish point",
+  "mapSelectionHint": "Click on the map to place a marker.",
+  "startCoordinatesRequired": "Select a start point on the map",
+  "finishCoordinatesRequired": "Select a finish point on the map",
   "mb": "MB",
   "menu": "Menu",
   "nav": {

@@ -1,6 +1,6 @@
 // Назначение: проверка агрегации коллекций с данными Department и Employee.
 // Основные модули: jest, supertest, express, mongodb-memory-server.
-export {};
+import type { NextFunction } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -20,9 +20,18 @@ import { Employee } from '../src/db/models/employee';
 import { CollectionItem } from '../src/db/models/CollectionItem';
 import collectionsRouter from '../src/routes/collections';
 
-jest.mock('../src/utils/rateLimiter', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/middleware/auth', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/middleware/requireRole', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
+jest.mock(
+  '../src/middleware/requireRole',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 
 let app: express.Express;
 let mongod: MongoMemoryServer;

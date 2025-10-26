@@ -1,5 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
-export {};
+import type { NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -26,10 +26,10 @@ jest.mock('../src/db/model', () => ({
 }));
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req, _res, next) => next(),
-  errorHandler: (err, _req, res, _next) =>
+  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
-  checkRole: () => (_req, _res, next) => next(),
+  checkRole: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 
 test('лимитер detailLimiter возвращает 429', async () => {

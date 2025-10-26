@@ -7,14 +7,20 @@ export {};
 import express = require('express');
 import request = require('supertest');
 import { Types } from 'mongoose';
-import type { RequestHandler } from 'express';
+import type {
+  Express,
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+} from 'express';
 
 const createdTaskId = new Types.ObjectId();
 const mockExistingTaskId = new Types.ObjectId();
 const existingTaskId = mockExistingTaskId;
 const fileId = new Types.ObjectId();
 
-const mockTaskCreate = jest.fn(async (data: any) => ({
+const mockTaskCreate = jest.fn(async (data: Record<string, unknown>) => ({
   ...data,
   _id: createdTaskId,
 }));
@@ -88,15 +94,17 @@ const defaultTaskAccess = {
 
 type TestUser = { id: number; access: number };
 
+type AuthedRequest = Request & { user?: TestUser };
+
 // Хелпер создаёт Express-приложение с префиксом /tasks и предзаполненным пользователем.
 const createTasksApp = (
   user: TestUser,
   register: (router: express.Router) => void,
-) => {
+): Express => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
-    (req as any).user = user;
+  app.use((req: AuthedRequest, _res: Response, next: NextFunction) => {
+    req.user = user;
     next();
   });
   const router = express.Router();
@@ -196,12 +204,19 @@ describe('Привязка вложений к задачам', () => {
       1,
     );
 
-    const call = mockTaskFindOneAndUpdate.mock.calls[0];
-    expect(call).toBeTruthy();
-    expect(call[0]).toMatchObject({ status: 'Новая' });
-    const setArg = call[1]?.$set as { attachments?: unknown[] };
-    expect(Array.isArray(setArg.attachments)).toBe(true);
-    const [attachment] = setArg.attachments as Record<string, unknown>[];
+    const callArgs = mockTaskFindOneAndUpdate.mock.calls[0];
+    if (!callArgs) {
+      throw new Error('updateTask не вызвал обновление файла');
+    }
+    const [filter, updatePayload] = callArgs as [
+      Record<string, unknown>,
+      { $set?: { attachments?: unknown[] } },
+    ];
+    expect(filter).toMatchObject({ status: 'Новая' });
+    const setArg = updatePayload.$set ?? {};
+    const attachments = setArg.attachments ?? [];
+    expect(Array.isArray(attachments)).toBe(true);
+    const [attachment] = attachments as Record<string, unknown>[];
     expect(attachment.url).toBe(`/api/v1/files/${fileId}`);
     expect(attachment.name).toBe('doc.pdf');
     expect(attachment.type).toBe('application/pdf');
@@ -218,9 +233,13 @@ describe('Проверка доступа к задаче другим поль�
 
   test('возвращает 403 при попытке обновления без прав', async () => {
     const app = createTasksApp({ id: 99, access: ACCESS_USER }, (router) => {
-      router.patch('/:id', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app).patch(`/tasks/${existingTaskId}`);
     expect(response.status).toBe(403);
@@ -233,9 +252,13 @@ describe('Проверка доступа к задаче другим поль�
       status: 'Новая',
     });
     const app = createTasksApp({ id: 7, access: ACCESS_USER }, (router) => {
-      router.patch('/:id', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -250,9 +273,13 @@ describe('Проверка доступа к задаче другим поль�
       status: 'В работе',
     });
     const app = createTasksApp({ id: 7, access: ACCESS_USER }, (router) => {
-      router.patch('/:id', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -267,9 +294,13 @@ describe('Проверка доступа к задаче другим поль�
       assignees: [8],
     });
     const app = createTasksApp({ id: 8, access: ACCESS_USER }, (router) => {
-      router.patch('/:id', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -284,9 +315,13 @@ describe('Проверка доступа к задаче другим поль�
       assignees: [8],
     });
     const app = createTasksApp({ id: 8, access: ACCESS_USER }, (router) => {
-      router.patch('/:id', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
@@ -302,9 +337,13 @@ describe('Проверка доступа к задаче другим поль�
       status: 'В работе',
     });
     const app = createTasksApp({ id: 12, access: ACCESS_USER }, (router) => {
-      router.patch('/:id/status', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id/status',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}/status`)
@@ -319,9 +358,13 @@ describe('Проверка доступа к задаче другим поль�
       assignees: [15],
     });
     const app = createTasksApp({ id: 15, access: ACCESS_USER }, (router) => {
-      router.patch('/:id/status', checkTaskAccess, (_req, res) => {
-        res.json({ ok: true });
-      });
+      router.patch(
+        '/:id/status',
+        checkTaskAccess,
+        (_req: Request, res: Response) => {
+          res.json({ ok: true });
+        },
+      );
     });
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}/status`)

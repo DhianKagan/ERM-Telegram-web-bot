@@ -1,7 +1,19 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест полного цикла логина и создания задачи
 // Модули: express, cookie-parser, express-session, lusca, supertest
-export {};
+import type {
+  Express,
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+} from 'express';
+import type { Server as HttpsServer } from 'https';
+import type { AddressInfo } from 'net';
+
+interface CsrfRequest extends Request {
+  csrfToken(): string;
+}
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -39,7 +51,7 @@ jest.mock('../src/services/userInfoService', () => ({
 }));
 
 jest.mock('../src/services/tasks', () => ({
-  create: jest.fn(async (d) => ({ _id: '1', ...d })),
+  create: jest.fn(async (d: Record<string, unknown>) => ({ _id: '1', ...d })),
   get: jest.fn(),
   getById: jest.fn(),
   update: jest.fn(),
@@ -50,7 +62,10 @@ jest.mock('../src/services/tasks', () => ({
   mentioned: jest.fn(),
 }));
 
-jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
+jest.mock(
+  '../src/middleware/taskAccess',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ roleId: mockManagerRoleId })),
@@ -70,12 +85,12 @@ const { stopQueue } = require('../src/services/messageQueue');
 const key = fs.readFileSync(__dirname + '/test-key.pem');
 const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 
-let app;
-let server;
-let baseUrl;
+let app: Express;
+let server: HttpsServer;
+let baseUrl: string;
 beforeAll(
   () =>
-    new Promise((res) => {
+    new Promise<void>((resolve) => {
       app = express();
       app.use(express.json());
       app.use(cookieParser());
@@ -97,7 +112,7 @@ beforeAll(
         angular: true,
         cookie: { options: { sameSite: 'none', domain: 'localhost' } },
       });
-      app.use((req, res, next) => {
+      app.use((req: Request, res: Response, next: NextFunction) => {
         const url = req.originalUrl.split('?')[0];
         if (
           [
@@ -111,16 +126,21 @@ beforeAll(
         if (req.headers.authorization) return next();
         return csrf(req, res, next);
       });
-      app.get('/api/v1/csrf', csrf, (req, res) => {
-        res.json({ csrfToken: req.csrfToken() });
-      });
+      const csrfHandler: RequestHandler = (req, res) => {
+        const csrfReq = req as CsrfRequest;
+        res.json({ csrfToken: csrfReq.csrfToken() });
+      };
+      app.get('/api/v1/csrf', csrf, csrfHandler);
       app.use('/api/v1/auth', authRouter);
       app.use('/api/v1/tasks', tasksRouter);
       app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
-        baseUrl = `https://localhost:${server.address().port}`;
-        res();
+        const address = server.address();
+        if (address && typeof address !== 'string') {
+          baseUrl = `https://localhost:${(address as AddressInfo).port}`;
+        }
+        resolve();
       });
     }),
 );

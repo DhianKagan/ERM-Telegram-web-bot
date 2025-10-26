@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест оптимизации маршрута /api/v1/route-optimize
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -15,9 +15,9 @@ const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req, _res, next) => next(),
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
+  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  asyncHandler: <T>(fn: T) => fn,
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -41,7 +41,7 @@ jest.mock('../src/services/optimizer', () => ({
 }));
 const router = require('../src/routes/optimizer').default;
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());

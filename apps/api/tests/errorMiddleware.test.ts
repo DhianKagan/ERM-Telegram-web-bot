@@ -1,6 +1,10 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест обработчика ошибок API. Проверяем ответ на request.aborted
-export {};
+import type { Express, NextFunction, Request, Response } from 'express';
+
+interface RequestError extends Error {
+  type?: string;
+}
 
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -16,11 +20,11 @@ const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
-  app.get('/aborted', (_req, _res, next) => {
-    const err = new Error('aborted');
+  app.get('/aborted', (_req: Request, _res: Response, next: NextFunction) => {
+    const err: RequestError = new Error('aborted');
     err.type = 'request.aborted';
     next(err);
   });
@@ -59,7 +63,7 @@ test('errorMiddleware возвращает проблему при ошибке 
   );
   const csrf = require('lusca').csrf({ angular: true });
   appCsrf.use(csrf);
-  appCsrf.post('/csrf', (_req, res) => res.json({ ok: true }));
+  appCsrf.post('/csrf', (_req: Request, res: Response) => res.json({ ok: true }));
   appCsrf.use(errorMiddleware);
   const res = await request(appCsrf).post('/csrf');
   expect(res.status).toBe(403);

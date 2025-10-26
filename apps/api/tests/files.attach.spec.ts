@@ -1,5 +1,5 @@
 // Назначение: unit-тесты роута привязки файлов к задачам. Модули: jest, supertest, express.
-export {};
+import type { NextFunction, Request, Response } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
@@ -8,10 +8,15 @@ process.env.APP_URL = 'https://localhost';
 import express from 'express';
 import request from 'supertest';
 
-jest.mock('../src/middleware/auth', () => () => (req: any, _res: any, next: () => void) => {
-  req.user = { id: 1, access: 1 };
-  next();
-});
+type AuthedRequest = Request & { user?: { id: number; access: number } };
+
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (req: AuthedRequest, _res: Response, next: NextFunction) => {
+    req.user = { id: 1, access: 1 };
+    next();
+  },
+);
 
 jest.mock('../src/db/model', () => ({
   File: { findById: jest.fn() },

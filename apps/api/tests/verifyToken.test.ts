@@ -1,6 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты middleware verifyToken: доступ без и с JWT
-export {};
+import type { Express, Request, Response } from 'express';
 
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -19,7 +19,7 @@ const { verifyToken } = require('../src/api/middleware');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(cookieParser());
@@ -35,7 +35,7 @@ beforeAll(() => {
     }),
   );
   app.use(lusca.csrf());
-  app.get('/secure', verifyToken, (_req, res) => res.send('OK'));
+  app.get('/secure', verifyToken, (_req: Request, res: Response) => res.send('OK'));
 });
 
 test('без токена возвращает problem+json с 401', async () => {

@@ -81,6 +81,25 @@
   "newMessage": "New message",
   "noNotifications": "No notifications",
   "notifications": "Notifications",
+  "kanban": {
+    "filters": {
+      "title": "Task filters",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Title or task number",
+      "transportLabel": "Transport",
+      "transportAny": "Any transport",
+      "transportCar": "Passenger",
+      "transportTruck": "Cargo",
+      "transportNone": "No transport",
+      "sortLabel": "Sort",
+      "sortTitleAsc": "Name ↑",
+      "sortTitleDesc": "Name ↓",
+      "apply": "Search",
+      "result": "Tasks found: {{count}}"
+    },
+    "untitled": "Untitled",
+    "transportIconLabel": "Transport: {{type}}"
+  },
   "paymentMethod": "Payment method",
   "actualTime": "Time spent",
   "priority": "Priority",

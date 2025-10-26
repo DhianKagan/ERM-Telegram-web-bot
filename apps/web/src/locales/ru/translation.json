@@ -81,6 +81,25 @@
   "newMessage": "Новое сообщение",
   "noNotifications": "Нет уведомлений",
   "notifications": "Уведомления",
+  "kanban": {
+    "filters": {
+      "title": "Фильтр задач",
+      "searchLabel": "Поиск",
+      "searchPlaceholder": "Название или номер задачи",
+      "transportLabel": "Транспорт",
+      "transportAny": "Любой транспорт",
+      "transportCar": "Легковой",
+      "transportTruck": "Грузовой",
+      "transportNone": "Без транспорта",
+      "sortLabel": "Сортировка",
+      "sortTitleAsc": "Название ↑",
+      "sortTitleDesc": "Название ↓",
+      "apply": "Искать",
+      "result": "Найдено задач: {{count}}"
+    },
+    "untitled": "Без названия",
+    "transportIconLabel": "Транспорт: {{type}}"
+  },
   "paymentMethod": "Способ оплаты",
   "paymentAmount": "Сумма",
   "paymentAmountFormat": "Формат 1 000 000,00 грн.",

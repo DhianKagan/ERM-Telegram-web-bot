@@ -6,6 +6,7 @@ export interface OptimizeTaskPayload {
   id: string;
   coordinates: { lat: number; lng: number };
   demand?: number;
+  weight?: number;
   serviceMinutes?: number;
   timeWindow?: [number, number];
   title?: string;

@@ -113,6 +113,14 @@ const vehicleCardFields: VehicleCardField[] = [
     render: (vehicle) => vehicle.mileageTotal,
   },
   {
+    id: "payloadCapacityKg",
+    label: "Грузоподъёмность, кг",
+    render: (vehicle) =>
+      typeof vehicle.payloadCapacityKg === "number"
+        ? vehicle.payloadCapacityKg
+        : "—",
+  },
+  {
     id: "transportType",
     label: "Тип транспорта",
     render: (vehicle) => vehicle.transportType,

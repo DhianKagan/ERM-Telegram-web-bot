@@ -819,10 +819,23 @@ export default function LogisticsPage() {
             ? ((task as Record<string, unknown>).delivery_window_end as string)
             : null;
         const timeWindow = buildTimeWindow(windowStartRaw, windowEndRaw);
+        const cargoWeightSource = (task as Record<string, unknown>).cargo_weight_kg;
+        const parsedWeight =
+          typeof cargoWeightSource === "number"
+            ? cargoWeightSource
+            : typeof cargoWeightSource === "string"
+            ? Number.parseFloat(cargoWeightSource)
+            : NaN;
+        const weightValue =
+          Number.isFinite(parsedWeight) && parsedWeight > 0
+            ? Math.max(0, Number(parsedWeight))
+            : null;
+        const demandValue = typeof weightValue === "number" ? weightValue : 1;
         return {
           id: task._id,
           coordinates: task.startCoordinates as Coords,
-          demand: 1,
+          demand: demandValue,
+          weight: weightValue ?? undefined,
           serviceMinutes: undefined,
           title: task.title,
           startAddress: startAddress || undefined,
@@ -839,9 +852,15 @@ export default function LogisticsPage() {
     }
 
     const averageSpeed = method === "trip" ? 45 : 30;
+    const capacityValue =
+      typeof optimizationVehicleCapacity === "number" &&
+      Number.isFinite(optimizationVehicleCapacity) &&
+      optimizationVehicleCapacity > 0
+        ? optimizationVehicleCapacity
+        : undefined;
     const payload: OptimizeRoutePayload = {
       tasks: payloadTasks,
-      vehicleCapacity: Math.max(1, payloadTasks.length),
+      vehicleCapacity: capacityValue ?? Math.max(1, payloadTasks.length),
       vehicleCount: Math.max(1, vehicles),
       averageSpeedKmph: averageSpeed,
     };
@@ -922,6 +941,7 @@ export default function LogisticsPage() {
     formatEta,
     formatLoad,
     layerVisibility.optimized,
+    optimizationVehicleCapacity,
     method,
     sorted,
     tRef,
@@ -1000,6 +1020,55 @@ export default function LogisticsPage() {
   const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
   const planTotalEtaMinutes = planDraft?.metrics?.totalEtaMinutes ?? null;
   const planTotalLoad = planDraft?.metrics?.totalLoad ?? null;
+  const optimizationVehicleCapacity = React.useMemo(() => {
+    const validVehicles = availableVehicles
+      .map((vehicle) => {
+        const raw = vehicle.payloadCapacityKg;
+        const capacity =
+          typeof raw === "number" && Number.isFinite(raw) && raw > 0
+            ? Number(raw)
+            : null;
+        if (!capacity) {
+          return null;
+        }
+        return { id: vehicle.id, capacity };
+      })
+      .filter(
+        (item): item is { id: string; capacity: number } =>
+          Boolean(item) && typeof item.id === "string" && item.id.trim().length > 0,
+      );
+
+    if (!validVehicles.length) {
+      return undefined;
+    }
+
+    const selectedIds = new Set(
+      (planDraft?.routes ?? [])
+        .map((route) =>
+          typeof route.vehicleId === "string" ? route.vehicleId.trim() : "",
+        )
+        .filter(Boolean),
+    );
+
+    if (selectedIds.size) {
+      const selectedCapacities = validVehicles
+        .filter((vehicle) => selectedIds.has(vehicle.id))
+        .map((vehicle) => vehicle.capacity);
+      if (selectedCapacities.length) {
+        return Math.min(...selectedCapacities);
+      }
+    }
+
+    const fallbackCount = Math.max(1, vehicles);
+    const fallbackCapacities = validVehicles
+      .slice(0, fallbackCount)
+      .map((vehicle) => vehicle.capacity);
+    if (fallbackCapacities.length) {
+      return Math.min(...fallbackCapacities);
+    }
+
+    return undefined;
+  }, [availableVehicles, planDraft, vehicles]);
 
   const routeAnalytics = React.useMemo(() => {
     const routeStatus = new Map<

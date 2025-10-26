@@ -239,6 +239,7 @@ const baseVehicle = {
   odometerInitial: 1000,
   odometerCurrent: 1200,
   mileageTotal: 200,
+  payloadCapacityKg: 750,
   fuelType: "Бензин" as const,
   fuelRefilled: 50,
   fuelAverageConsumption: 0.1,

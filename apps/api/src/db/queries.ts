@@ -35,9 +35,120 @@ import {
   extractAttachmentIds,
 } from '../utils/attachments';
 import { deleteFilesForTask } from '../services/dataStorage';
+import { updateFleetUsage } from '../services/fleetUsage';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface TaskFleetSnapshot {
+  _id?: unknown;
+  id?: unknown;
+  status?: TaskDocument['status'];
+  transport_vehicle_id?: unknown;
+  route_distance_km?: unknown;
+}
+
+const extractIdentifier = (value: unknown): string | null => {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (value instanceof Types.ObjectId) {
+    return value.toHexString();
+  }
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toString' in value &&
+    typeof (value as { toString?: unknown }).toString === 'function'
+  ) {
+    const converted = (value as { toString(): string }).toString();
+    const trimmed = converted.trim();
+    return trimmed ? trimmed : null;
+  }
+  return null;
+};
+
+const extractVehicleId = (snapshot: TaskFleetSnapshot | null | undefined): string | null => {
+  if (!snapshot) {
+    return null;
+  }
+  return extractIdentifier(snapshot.transport_vehicle_id);
+};
+
+const extractRouteDistance = (
+  snapshot: TaskFleetSnapshot | null | undefined,
+): number | null => {
+  if (!snapshot) {
+    return null;
+  }
+  const candidate = snapshot.route_distance_km;
+  if (typeof candidate === 'number') {
+    return Number.isFinite(candidate) ? candidate : null;
+  }
+  if (typeof candidate === 'string') {
+    const normalized = candidate.trim().replace(/\s+/g, '').replace(/,/g, '.');
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+async function applyFleetUsageOnCompletion(
+  prev: TaskFleetSnapshot | null | undefined,
+  next: TaskFleetSnapshot | null | undefined,
+): Promise<void> {
+  if (!next) {
+    return;
+  }
+  const currentStatus =
+    typeof next.status === 'string'
+      ? (next.status as TaskDocument['status'])
+      : undefined;
+  const previousStatus =
+    prev && typeof prev.status === 'string'
+      ? (prev.status as TaskDocument['status'])
+      : undefined;
+  if (currentStatus !== 'Выполнена' || previousStatus === 'Выполнена') {
+    return;
+  }
+
+  const vehicleId = extractVehicleId(next) ?? extractVehicleId(prev);
+  const routeDistance =
+    extractRouteDistance(next) ?? extractRouteDistance(prev);
+  if (!vehicleId || routeDistance == null) {
+    return;
+  }
+  const taskId =
+    extractIdentifier(next._id) ??
+    extractIdentifier(next.id) ??
+    extractIdentifier(prev?._id) ??
+    extractIdentifier(prev?.id);
+  if (!taskId) {
+    return;
+  }
+
+  try {
+    await updateFleetUsage({
+      taskId,
+      vehicleId,
+      routeDistanceKm: routeDistance,
+    });
+  } catch (error) {
+    console.error('Не удалось применить пробег транспорта', {
+      taskId,
+      vehicleId,
+      routeDistanceKm: routeDistance,
+      error,
+    });
+  }
 }
 
 // Отфильтровывает ключи с операторами, чтобы предотвратить NoSQL-инъекции
@@ -939,6 +1050,7 @@ export async function updateTask(
   }
   if (updated) {
     await safeSyncVehicleAssignments(prev, updated);
+    await applyFleetUsageOnCompletion(prev as TaskFleetSnapshot, updated as TaskFleetSnapshot);
   }
   return updated;
 }
@@ -1201,6 +1313,7 @@ export async function bulkUpdate(
   data: Partial<TaskDocument>,
 ): Promise<void> {
   const payload: Partial<TaskDocument> = { ...data };
+  let fleetSnapshots: TaskFleetSnapshot[] = [];
   if (Object.prototype.hasOwnProperty.call(payload, 'kind')) {
     delete (payload as Record<string, unknown>).kind;
   }
@@ -1221,6 +1334,15 @@ export async function bulkUpdate(
     } else {
       payload.completed_at = null;
     }
+    if (status === 'Выполнена') {
+      fleetSnapshots = await Task.find({ _id: { $in: ids } })
+        .select({
+          status: 1,
+          transport_vehicle_id: 1,
+          route_distance_km: 1,
+        })
+        .lean<TaskFleetSnapshot[]>();
+    }
   }
   await Task.updateMany(
     { _id: { $in: ids } },
@@ -1235,6 +1357,40 @@ export async function bulkUpdate(
       },
     },
   );
+  if (fleetSnapshots.length > 0) {
+    const previousById = new Map<string, TaskFleetSnapshot>();
+    const candidates: string[] = [];
+    for (const snapshot of fleetSnapshots) {
+      const identifier =
+        extractIdentifier(snapshot._id) ?? extractIdentifier(snapshot.id);
+      if (!identifier) {
+        continue;
+      }
+      previousById.set(identifier, snapshot);
+      if (snapshot.status !== 'Выполнена') {
+        candidates.push(identifier);
+      }
+    }
+    if (candidates.length > 0) {
+      const updatedTasks = await Task.find({ _id: { $in: candidates } })
+        .select({
+          status: 1,
+          transport_vehicle_id: 1,
+          route_distance_km: 1,
+        })
+        .lean<TaskFleetSnapshot[]>();
+      for (const next of updatedTasks) {
+        const identifier =
+          extractIdentifier(next._id) ?? extractIdentifier(next.id);
+        if (!identifier) {
+          continue;
+        }
+        const prev = previousById.get(identifier);
+        // eslint-disable-next-line no-await-in-loop
+        await applyFleetUsageOnCompletion(prev, next);
+      }
+    }
+  }
 }
 
 export async function deleteTask(

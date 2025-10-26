@@ -8,7 +8,7 @@ const resolvePositiveInteger = (
 ): number => {
   if (!source) return fallback;
   const parsed = Number.parseInt(source.trim(), 10);
-  if (Number.isNaN(parsed) || parsed <= 0) {
+  if (Number.isNaN(parsed) || parsed < 0) {
     return fallback;
   }
   return parsed;

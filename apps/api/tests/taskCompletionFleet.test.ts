@@ -165,5 +165,100 @@ describe('завершение задач с транспортом', () => {
     expect(updatedVehicle?.mileageTotal).toBe(100);
     expect(updatedVehicle?.fuelSpentTotal).toBe(30);
   });
+
+  it('учитывает завершение через updateTaskStatus', async () => {
+    const vehicle = await FleetVehicle.create({
+      name: 'Пикап',
+      registrationNumber: 'EE 3333 FF',
+      odometerInitial: 800,
+      odometerCurrent: 915,
+      mileageTotal: 115,
+      transportType: 'Грузовой',
+      fuelType: 'Бензин',
+      fuelRefilled: 35,
+      fuelAverageConsumption: 0.18,
+      fuelSpentTotal: 32,
+      currentTasks: [],
+    });
+
+    const executorId = 404;
+    const task = await Task.create({
+      title: 'Доставка стройматериалов',
+      status: 'В работе',
+      created_by: executorId,
+      assigned_user_id: executorId,
+      assignees: [executorId],
+      transport_type: 'Грузовой',
+      transport_vehicle_id: vehicle._id,
+      transport_vehicle_name: vehicle.name,
+      transport_vehicle_registration: vehicle.registrationNumber,
+      transport_driver_id: 8080,
+      route_distance_km: 23.4,
+      history: [],
+    });
+
+    await queries.updateTaskStatus(String(task._id), 'Выполнена', executorId);
+
+    const updatedVehicle = await FleetVehicle.findById(vehicle._id).lean();
+    expect(updatedVehicle?.odometerCurrent).toBeCloseTo(938.4, 3);
+    expect(updatedVehicle?.mileageTotal).toBeCloseTo(138.4, 3);
+    expect(updatedVehicle?.fuelSpentTotal).toBeCloseTo(36.212, 3);
+  });
+
+  it('добавляет пробег при пакетном завершении задач', async () => {
+    const vehicle = await FleetVehicle.create({
+      name: 'Микроавтобус',
+      registrationNumber: 'GG 4444 HH',
+      odometerInitial: 1_500,
+      odometerCurrent: 1_620,
+      mileageTotal: 120,
+      transportType: 'Грузовой',
+      fuelType: 'Газ',
+      fuelRefilled: 60,
+      fuelAverageConsumption: 0.15,
+      fuelSpentTotal: 18,
+      currentTasks: [],
+    });
+
+    const firstTask = await Task.create({
+      title: 'Рейс 1',
+      status: 'В работе',
+      created_by: 1,
+      assigned_user_id: 1,
+      assignees: [1],
+      transport_type: 'Грузовой',
+      transport_vehicle_id: vehicle._id,
+      transport_vehicle_name: vehicle.name,
+      transport_vehicle_registration: vehicle.registrationNumber,
+      transport_driver_id: 501,
+      route_distance_km: 18.2,
+      history: [],
+    });
+
+    const secondTask = await Task.create({
+      title: 'Рейс 2',
+      status: 'В работе',
+      created_by: 2,
+      assigned_user_id: 2,
+      assignees: [2],
+      transport_type: 'Грузовой',
+      transport_vehicle_id: vehicle._id,
+      transport_vehicle_name: vehicle.name,
+      transport_vehicle_registration: vehicle.registrationNumber,
+      transport_driver_id: 502,
+      route_distance_km: 27.6,
+      history: [],
+    });
+
+    await queries.bulkUpdate(
+      [String(firstTask._id), String(secondTask._id)],
+      { status: 'Выполнена' },
+    );
+
+    const updatedVehicle = await FleetVehicle.findById(vehicle._id).lean();
+    expect(updatedVehicle?.odometerCurrent).toBeCloseTo(1_665.8, 3);
+    expect(updatedVehicle?.mileageTotal).toBeCloseTo(165.8, 3);
+    expect(updatedVehicle?.fuelSpentTotal).toBeCloseTo(24.87, 3);
+  });
 });
 

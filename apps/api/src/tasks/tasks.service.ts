@@ -3,7 +3,7 @@
 import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
-import type { TaskDocument, HistoryEntry } from '../db/model';
+import type { TaskDocument } from '../db/model';
 import type { TaskFilters, SummaryFilters } from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
@@ -11,7 +11,6 @@ import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
 import { notifyTasksChanged } from '../services/logisticsEvents';
 import { FleetVehicle } from '../db/models/fleet';
-import { updateFleetUsage } from '../services/fleetUsage';
 import { Types } from 'mongoose';
 
 interface TasksRepository {
@@ -192,45 +191,6 @@ class TasksService {
     await this.applyDefaultTransportDriver(payload);
     try {
       const task = await this.repo.updateTask(id, payload, userId);
-      if (task && payload.status === 'Выполнена') {
-        const status =
-          typeof (task as { status?: unknown }).status === 'string'
-            ? ((task as { status: TaskDocument['status'] }).status)
-            : undefined;
-        const historyList = Array.isArray((task as { history?: unknown }).history)
-          ? ((task as { history?: HistoryEntry[] }).history)
-          : [];
-        const lastChange = historyList.length
-          ? historyList[historyList.length - 1]
-          : undefined;
-        const statusChangedToCompleted =
-          status === 'Выполнена' &&
-          (lastChange?.changes?.to?.status as TaskDocument['status'] | undefined) === 'Выполнена';
-        if (statusChangedToCompleted) {
-          const vehicleId = this.normalizeVehicleId(
-            (task as { transport_vehicle_id?: unknown }).transport_vehicle_id,
-          );
-          const routeDistance =
-            typeof (task as { route_distance_km?: unknown }).route_distance_km === 'number'
-              ? ((task as { route_distance_km: number }).route_distance_km)
-              : undefined;
-          const taskId = extractTaskId(task) ?? id;
-          if (vehicleId && typeof routeDistance === 'number' && Number.isFinite(routeDistance)) {
-            await updateFleetUsage({
-              taskId,
-              vehicleId,
-              routeDistanceKm: routeDistance,
-            }).catch((error) => {
-              console.error('Не удалось применить пробег транспорта', {
-                taskId,
-                vehicleId,
-                routeDistanceKm: routeDistance,
-                error,
-              });
-            });
-          }
-        }
-      }
       await clearRouteCache();
       await this.logAttachmentSync(
         'update',

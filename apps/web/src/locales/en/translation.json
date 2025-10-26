@@ -394,6 +394,21 @@
       "title": "Attachment synchronisation",
       "ok": "Total files: {{count}}, all linked to tasks.",
       "warning": "Files without tasks: {{count}}. Links are restored automatically; refresh later."
+    },
+    "attach": {
+      "title": "Attach to task",
+      "placeholder": "Choose a task",
+      "button": "Attach",
+      "processing": "Attaching...",
+      "success": "File attached to the task.",
+      "error": "Failed to attach the file.",
+      "forbidden": "You are not allowed to attach this file.",
+      "empty": "No available tasks for attachment.",
+      "loading": "Loading tasks...",
+      "tasksLoadError": "Failed to load recent tasks.",
+      "optionNumber": "{{number}} — {{title}}",
+      "optionId": "ID {{id}} — {{title}}",
+      "untitled": "Untitled"
     }
   }
 }

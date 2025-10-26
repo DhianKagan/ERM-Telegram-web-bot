@@ -18,6 +18,23 @@ export interface StoredFile {
   taskTitle?: string | null;
 }
 
+export interface StorageDiagnosticsReport {
+  generatedAt: string;
+  snapshot: {
+    totalFiles: number;
+    linkedFiles: number;
+    detachedFiles: number;
+  };
+  detachedFiles: Array<{
+    id: string;
+    name: string;
+    path: string;
+    size: number;
+    uploadedAt: string;
+    userId: number;
+  }>;
+}
+
 export const fetchFiles = (params?: { userId?: number; type?: string }) => {
   const qs = new URLSearchParams();
   if (params?.userId) qs.set("userId", String(params.userId));
@@ -38,4 +55,12 @@ export const removeFile = (id: string) =>
     method: "DELETE",
   });
 
-export default { fetchFiles, fetchFile, removeFile };
+export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
+  const response = await authFetch(`/api/v1/storage/diagnostics`);
+  if (!response.ok) {
+    throw new Error("diagnostics");
+  }
+  return (await response.json()) as StorageDiagnosticsReport;
+};
+
+export default { fetchFiles, fetchFile, removeFile, runDiagnostics };

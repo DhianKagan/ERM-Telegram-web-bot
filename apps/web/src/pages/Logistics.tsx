@@ -51,11 +51,17 @@ const TASK_STATUS_COLORS: Record<string, string> = {
 type LayerVisibilityState = {
   tasks: boolean;
   optimized: boolean;
+  transport: boolean;
+  traffic: boolean;
+  cargo: boolean;
 };
 
 const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   tasks: true,
   optimized: true,
+  transport: true,
+  traffic: false,
+  cargo: false,
 };
 
 const LOAD_WARNING_RATIO = 0.85;
@@ -88,6 +94,9 @@ const UKRAINE_BOUNDS: LatLngBoundsExpression = [
   [52.5, 40.5],
 ];
 
+const TRAFFIC_TILE_URL = "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
+const CARGO_TILE_URL = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
+
 const WINDOW_FULL_DAY: [number, number] = [0, 24 * 60];
 
 const timePartFormatter = new Intl.DateTimeFormat("uk-UA", {
@@ -95,6 +104,12 @@ const timePartFormatter = new Intl.DateTimeFormat("uk-UA", {
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
+});
+
+const positionTimeFormatter = new Intl.DateTimeFormat("uk-UA", {
+  timeZone: PROJECT_TIMEZONE,
+  dateStyle: "short",
+  timeStyle: "short",
 });
 
 const extractWindowMinutes = (value?: string | null): number | null => {
@@ -155,6 +170,9 @@ export default function LogisticsPage() {
   const mapRef = React.useRef<L.Map | null>(null);
   const optLayerRef = React.useRef<L.LayerGroup | null>(null);
   const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const vehicleLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const trafficLayerRef = React.useRef<L.TileLayer | null>(null);
+  const cargoLayerRef = React.useRef<L.TileLayer | null>(null);
   const autoJobRef = React.useRef({
     refreshTasks: false,
     refreshPlan: false,
@@ -167,9 +185,20 @@ export default function LogisticsPage() {
   const [fleetError, setFleetError] = React.useState("");
   const [vehiclesHint, setVehiclesHint] = React.useState("");
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
-  const [layerVisibility, setLayerVisibility] = React.useState<LayerVisibilityState>(
+  const [visibleLayers, setVisibleLayers] = React.useState<LayerVisibilityState>(
     DEFAULT_LAYER_VISIBILITY,
   );
+  const [vehiclePositions, setVehiclePositions] = React.useState<
+    Record<
+      string,
+      {
+        coordinates: Coords;
+        updatedAt: string | null;
+        speedKph: number | null;
+      }
+    >
+  >({});
+  const [isMapExpanded, setIsMapExpanded] = React.useState(false);
   const [mapReady, setMapReady] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
@@ -972,7 +1001,7 @@ export default function LogisticsPage() {
         optLayerRef.current.remove();
       }
       const group = L.layerGroup();
-      if (layerVisibility.optimized) {
+      if (visibleLayers.optimized) {
         group.addTo(mapRef.current);
       }
       optLayerRef.current = group;
@@ -1010,7 +1039,7 @@ export default function LogisticsPage() {
     buildPlanFromOptimization,
     formatEta,
     formatLoad,
-    layerVisibility.optimized,
+    visibleLayers.optimized,
     optimizationVehicleCapacity,
     method,
     sorted,
@@ -1231,6 +1260,52 @@ export default function LogisticsPage() {
 
   const { maxLoad, maxEta, routeStatus, taskStatus, stopDetails } = routeAnalytics;
 
+  const vehiclesOnMap = React.useMemo(() => {
+    const items: {
+      id: string;
+      vehicle: FleetVehicleDto;
+      coordinates: Coords;
+      updatedAt: string | null;
+      speedKph: number | null;
+    }[] = [];
+    const seen = new Set<string>();
+    availableVehicles.forEach((vehicle) => {
+      if (!vehicle || typeof vehicle.id !== "string") {
+        return;
+      }
+      if (seen.has(vehicle.id)) {
+        return;
+      }
+      seen.add(vehicle.id);
+      const override = vehiclePositions[vehicle.id];
+      const coords = override?.coordinates ?? vehicle.coordinates ?? null;
+      if (
+        !coords ||
+        typeof coords.lat !== "number" ||
+        typeof coords.lng !== "number" ||
+        !Number.isFinite(coords.lat) ||
+        !Number.isFinite(coords.lng)
+      ) {
+        return;
+      }
+      const updatedAt = override?.updatedAt ?? vehicle.coordinatesUpdatedAt ?? null;
+      const speedValue =
+        override?.speedKph ??
+        (typeof vehicle.currentSpeedKph === "number" &&
+        Number.isFinite(vehicle.currentSpeedKph)
+          ? vehicle.currentSpeedKph
+          : null);
+      items.push({
+        id: vehicle.id,
+        vehicle,
+        coordinates: coords,
+        updatedAt,
+        speedKph: speedValue ?? null,
+      });
+    });
+    return items;
+  }, [availableVehicles, vehiclePositions]);
+
   const loadSeries = React.useMemo(
     () =>
       planRoutes.map((route, idx) => {
@@ -1321,6 +1396,41 @@ export default function LogisticsPage() {
           applyPlan(null);
           setPlanMessage(tRef.current("logistics.planEmpty"));
           setPlanMessageTone("neutral");
+        } else if (event.type === "fleet.position.updated") {
+          const { vehicleId, coordinates, updatedAt, speedKph } = event;
+          if (!vehicleId || !coordinates) {
+            return;
+          }
+          const lat = Number(coordinates.lat);
+          const lng = Number(coordinates.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return;
+          }
+          setVehiclePositions((current) => {
+            const prev = current[vehicleId];
+            const normalizedSpeed =
+              typeof speedKph === "number" && Number.isFinite(speedKph)
+                ? speedKph
+                : null;
+            const nextValue = {
+              coordinates: { lat, lng } satisfies Coords,
+              updatedAt: typeof updatedAt === "string" ? updatedAt : null,
+              speedKph: normalizedSpeed,
+            } as const;
+            if (
+              prev &&
+              prev.coordinates.lat === nextValue.coordinates.lat &&
+              prev.coordinates.lng === nextValue.coordinates.lng &&
+              prev.updatedAt === nextValue.updatedAt &&
+              prev.speedKph === nextValue.speedKph
+            ) {
+              return current;
+            }
+            return {
+              ...current,
+              [vehicleId]: nextValue,
+            };
+          });
         }
       },
       () => {
@@ -1361,6 +1471,69 @@ export default function LogisticsPage() {
   }, [availableVehicles.length, fleetError, role, vehiclesLoading]);
 
   React.useEffect(() => {
+    setVehiclePositions((current) => {
+      let nextState = current;
+      const allowed = new Set<string>();
+      availableVehicles.forEach((vehicle) => {
+        if (!vehicle || typeof vehicle.id !== "string") {
+          return;
+        }
+        const id = vehicle.id;
+        allowed.add(id);
+        const coords = vehicle.coordinates;
+        const hasCoords =
+          coords &&
+          typeof coords.lat === "number" &&
+          Number.isFinite(coords.lat) &&
+          typeof coords.lng === "number" &&
+          Number.isFinite(coords.lng);
+        if (!hasCoords) {
+          return;
+        }
+        const speedValue =
+          typeof vehicle.currentSpeedKph === "number" &&
+          Number.isFinite(vehicle.currentSpeedKph)
+            ? vehicle.currentSpeedKph
+            : null;
+        const updatedAtValue =
+          typeof vehicle.coordinatesUpdatedAt === "string"
+            ? vehicle.coordinatesUpdatedAt
+            : null;
+        const prev = current[id];
+        if (
+          !prev ||
+          prev.coordinates.lat !== coords.lat ||
+          prev.coordinates.lng !== coords.lng ||
+          prev.updatedAt !== updatedAtValue ||
+          prev.speedKph !== speedValue
+        ) {
+          if (nextState === current) {
+            nextState = { ...current };
+          }
+          nextState[id] = {
+            coordinates: coords,
+            updatedAt: updatedAtValue,
+            speedKph: speedValue,
+          };
+        }
+      });
+      if (nextState === current) {
+        const missing = Object.keys(current).some((id) => !allowed.has(id));
+        if (!missing) {
+          return current;
+        }
+        nextState = { ...current };
+      }
+      Object.keys(nextState).forEach((id) => {
+        if (!allowed.has(id)) {
+          delete nextState[id];
+        }
+      });
+      return nextState;
+    });
+  }, [availableVehicles]);
+
+  React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
     const map = L.map("logistics-map", {
@@ -1374,11 +1547,24 @@ export default function LogisticsPage() {
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
     tasksLayerRef.current = L.layerGroup().addTo(map);
+    vehicleLayerRef.current = L.layerGroup();
     setMapReady(true);
     return () => {
       map.remove();
       if (optLayerRef.current) optLayerRef.current.remove();
       tasksLayerRef.current = null;
+      if (vehicleLayerRef.current) {
+        vehicleLayerRef.current.remove();
+      }
+      vehicleLayerRef.current = null;
+      if (trafficLayerRef.current) {
+        trafficLayerRef.current.remove();
+      }
+      if (cargoLayerRef.current) {
+        cargoLayerRef.current.remove();
+      }
+      trafficLayerRef.current = null;
+      cargoLayerRef.current = null;
       mapRef.current = null;
       setMapReady(false);
     };
@@ -1386,18 +1572,67 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     if (!mapRef.current || !optLayerRef.current) return;
-    if (layerVisibility.optimized) {
+    if (visibleLayers.optimized) {
       optLayerRef.current.addTo(mapRef.current);
     } else {
       optLayerRef.current.remove();
     }
-  }, [layerVisibility.optimized]);
+  }, [visibleLayers.optimized]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (!vehicleLayerRef.current) {
+      vehicleLayerRef.current = L.layerGroup();
+    }
+    const layer = vehicleLayerRef.current;
+    if (!layer) return;
+    if (visibleLayers.transport) {
+      layer.addTo(map);
+    } else {
+      layer.remove();
+      layer.clearLayers();
+    }
+  }, [visibleLayers.transport, mapReady]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (visibleLayers.traffic) {
+      if (!trafficLayerRef.current) {
+        trafficLayerRef.current = L.tileLayer(TRAFFIC_TILE_URL, {
+          opacity: 0.6,
+        });
+      }
+      trafficLayerRef.current.addTo(map);
+    } else if (trafficLayerRef.current) {
+      trafficLayerRef.current.remove();
+    }
+  }, [visibleLayers.traffic, mapReady]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (visibleLayers.cargo) {
+      if (!cargoLayerRef.current) {
+        cargoLayerRef.current = L.tileLayer(CARGO_TILE_URL, {
+          opacity: 0.5,
+        });
+      }
+      cargoLayerRef.current.addTo(map);
+    } else if (cargoLayerRef.current) {
+      cargoLayerRef.current.remove();
+    }
+  }, [visibleLayers.cargo, mapReady]);
 
   React.useEffect(() => {
     const group = tasksLayerRef.current;
     if (!mapRef.current || !group || !mapReady) return;
     group.clearLayers();
-    if (!layerVisibility.tasks) return;
+    if (!visibleLayers.tasks) return;
     if (!sorted.length) return;
     const createMarkerIcon = (kind: "start" | "finish", color: string) =>
       L.divIcon({
@@ -1482,13 +1717,83 @@ export default function LogisticsPage() {
     formatDelay,
     formatEta,
     formatLoad,
-    layerVisibility.tasks,
+    visibleLayers.tasks,
     mapReady,
     openTask,
     sorted,
     stopDetails,
     taskStatus,
     tRef,
+  ]);
+
+  React.useEffect(() => {
+    const layer = vehicleLayerRef.current;
+    if (!layer || !mapReady) return;
+    layer.clearLayers();
+    if (!visibleLayers.transport) return;
+    if (!vehiclesOnMap.length) return;
+    vehiclesOnMap.forEach(({ vehicle, coordinates, updatedAt, speedKph }) => {
+      const marker = L.circleMarker([coordinates.lat, coordinates.lng], {
+        radius: 6,
+        color: "#0f172a",
+        weight: 2,
+        fillColor: "#22c55e",
+        fillOpacity: 0.9,
+      });
+      const tooltipParts = [
+        `<div class="font-semibold">${escapeHtml(vehicle.name)}</div>`,
+      ];
+      if (vehicle.registrationNumber) {
+        tooltipParts.push(
+          `<div>${escapeHtml(vehicle.registrationNumber)}</div>`,
+        );
+      }
+      if (speedKph !== null) {
+        const speedLabel = `${Math.round(speedKph * 10) / 10} ${escapeHtml(
+          tRef.current("logistics.speedUnit", {
+            defaultValue: "км/ч",
+          }),
+        )}`;
+        tooltipParts.push(
+          `<div>${escapeHtml(
+            tRef.current("logistics.vehicleSpeed", {
+              value: speedLabel,
+              defaultValue: `Скорость: ${speedLabel}`,
+            }),
+          )}</div>`,
+        );
+      }
+      let updatedLabel = tRef.current("logistics.vehicleNoTimestamp", {
+        defaultValue: "Нет данных",
+      });
+      if (updatedAt) {
+        const parsed = new Date(updatedAt);
+        if (!Number.isNaN(parsed.getTime())) {
+          updatedLabel = positionTimeFormatter.format(parsed);
+        }
+      }
+      tooltipParts.push(
+        `<div>${escapeHtml(
+          tRef.current("logistics.vehicleUpdatedAt", {
+            value: updatedLabel,
+            defaultValue: `Обновлено: ${updatedLabel}`,
+          }),
+        )}</div>`,
+      );
+      marker.bindTooltip(
+        `<div class="space-y-1 text-xs">${tooltipParts.join("")}</div>`,
+        { opacity: 0.95 },
+      );
+      marker.addTo(layer);
+    });
+    return () => {
+      layer.clearLayers();
+    };
+  }, [
+    tRef,
+    vehiclesOnMap,
+    visibleLayers.transport,
+    mapReady,
   ]);
 
   React.useEffect(() => {
@@ -1499,7 +1804,12 @@ export default function LogisticsPage() {
     if (typeof map.invalidateSize === "function") {
       map.invalidateSize();
     }
-  }, [hasDialog, mapReady]);
+  }, [hasDialog, mapReady, isMapExpanded]);
+
+  const mapHeight = React.useMemo(
+    () => (isMapExpanded ? 520 : 280),
+    [isMapExpanded],
+  );
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -2201,7 +2511,11 @@ export default function LogisticsPage() {
         <div className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
           <div
             id="logistics-map"
-            className={`h-[280px] w-full rounded border ${hasDialog ? "hidden" : ""}`}
+            className={clsx(
+              "w-full rounded border bg-slate-50/40 transition-[height] duration-300 ease-out",
+              { hidden: hasDialog },
+            )}
+            style={{ height: mapHeight }}
           />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -2234,6 +2548,21 @@ export default function LogisticsPage() {
                   <option value="trip">trip</option>
                 </select>
               </label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsMapExpanded((prev) => !prev)}
+                aria-pressed={isMapExpanded}
+              >
+                {isMapExpanded
+                  ? t("logistics.mapCollapse", {
+                      defaultValue: "Свернуть карту",
+                    })
+                  : t("logistics.mapExpand", {
+                      defaultValue: "Развернуть карту",
+                    })}
+              </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" onClick={calculate}>
@@ -2258,9 +2587,9 @@ export default function LogisticsPage() {
                 <input
                   type="checkbox"
                   className="size-4"
-                  checked={layerVisibility.tasks}
+                  checked={visibleLayers.tasks}
                   onChange={(event) =>
-                    setLayerVisibility((prev) => ({
+                    setVisibleLayers((prev) => ({
                       ...prev,
                       tasks: event.target.checked,
                     }))
@@ -2272,15 +2601,63 @@ export default function LogisticsPage() {
                 <input
                   type="checkbox"
                   className="size-4"
-                  checked={layerVisibility.optimized}
+                  checked={visibleLayers.optimized}
                   onChange={(event) =>
-                    setLayerVisibility((prev) => ({
+                    setVisibleLayers((prev) => ({
                       ...prev,
                       optimized: event.target.checked,
                     }))
                   }
                 />
                 <span>{t("logistics.layerOptimization")}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={visibleLayers.transport}
+                  onChange={(event) =>
+                    setVisibleLayers((prev) => ({
+                      ...prev,
+                      transport: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{t("logistics.layerTransport", {
+                  defaultValue: "Транспорт",
+                })}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={visibleLayers.traffic}
+                  onChange={(event) =>
+                    setVisibleLayers((prev) => ({
+                      ...prev,
+                      traffic: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{t("logistics.layerTraffic", {
+                  defaultValue: "Пробки",
+                })}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={visibleLayers.cargo}
+                  onChange={(event) =>
+                    setVisibleLayers((prev) => ({
+                      ...prev,
+                      cargo: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{t("logistics.layerCargo", {
+                  defaultValue: "Грузы",
+                })}</span>
               </label>
             </div>
             {!!links.length && (

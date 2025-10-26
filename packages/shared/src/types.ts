@@ -134,6 +134,9 @@ export interface FleetVehicleDto {
   unitId?: number;
   remoteName?: string;
   notes?: string;
+  coordinates?: Coords | null;
+  coordinatesUpdatedAt?: string | null;
+  currentSpeedKph?: number | null;
 }
 
 export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
@@ -273,9 +276,18 @@ export interface LogisticsHeartbeatEvent extends LogisticsEventBase {
   type: 'logistics.heartbeat';
 }
 
+export interface LogisticsFleetPositionUpdatedEvent extends LogisticsEventBase {
+  type: 'fleet.position.updated';
+  vehicleId: string;
+  coordinates: Coords;
+  updatedAt: string;
+  speedKph?: number | null;
+}
+
 export type LogisticsEvent =
   | LogisticsTasksChangedEvent
   | LogisticsRoutePlanUpdatedEvent
   | LogisticsRoutePlanRemovedEvent
   | LogisticsInitEvent
-  | LogisticsHeartbeatEvent;
+  | LogisticsHeartbeatEvent
+  | LogisticsFleetPositionUpdatedEvent;

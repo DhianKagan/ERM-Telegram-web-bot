@@ -6,6 +6,29 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
+
+let lastTaskQueryItems = [];
+
+const createTaskQueryResult = (items = []) => {
+  lastTaskQueryItems = items;
+  const query = {
+    select: jest.fn(() => query),
+    limit: jest.fn(() => query),
+    skip: jest.fn(() => query),
+    sort: jest.fn(() => query),
+    lean: jest.fn().mockResolvedValue(items),
+    exec: jest.fn().mockResolvedValue(items),
+    then: jest.fn((resolve, reject) =>
+      Promise.resolve(items).then(resolve, reject),
+    ),
+    catch: jest.fn((reject) => Promise.resolve(items).catch(reject)),
+    finally: jest.fn((onFinally) =>
+      Promise.resolve(items).finally(onFinally),
+    ),
+  };
+  return query;
+};
+
 const request = require('supertest');
 const express = require('express');
 const { stopScheduler } = require('../src/services/scheduler');
@@ -80,7 +103,8 @@ jest.mock('../src/db/model', () => ({
     })),
     updateMany: jest.fn(async () => null),
     aggregate: jest.fn(async () => [{ count: 2, time: 30 }]),
-    find: jest.fn(async () => []),
+    find: jest.fn(() => createTaskQueryResult()),
+    countDocuments: jest.fn(async () => lastTaskQueryItems.length),
   },
   Archive: { create: jest.fn(async () => ({})) },
   File: {
@@ -126,10 +150,15 @@ const { formVersion: validFormVersion } = taskFormSchema;
 
 let app;
 beforeEach(() => {
+  lastTaskQueryItems = [];
   mockDeleteMessage.mockClear();
   mockSendMessage.mockClear();
   mockEditMessageMedia.mockClear();
   mockEditMessageText.mockClear();
+  Task.find.mockClear();
+  Task.countDocuments.mockClear();
+  Task.find.mockImplementation(() => createTaskQueryResult());
+  Task.countDocuments.mockImplementation(async () => lastTaskQueryItems.length);
 });
 beforeAll(() => {
   app = express();
@@ -250,9 +279,11 @@ test('bulk update статуса', async () => {
 });
 
 test('получение списка задач возвращает пользователей', async () => {
-  Task.find.mockReturnValueOnce([
-    { _id: '1', assignees: [1], controllers: [], created_by: 1 },
-  ]);
+  Task.find.mockReturnValueOnce(
+    createTaskQueryResult([
+      { _id: '1', assignees: [1], controllers: [], created_by: 1 },
+    ]),
+  );
   const res = await request(app).get('/api/v1/tasks');
   expect(res.body.users['1'].name).toBe('User');
   expect(Array.isArray(res.body.tasks)).toBe(true);
@@ -260,9 +291,11 @@ test('получение списка задач возвращает польз
 });
 
 test('получение всех задач для роли manager', async () => {
-  Task.find.mockReturnValueOnce([
-    { _id: '1', assignees: [1], controllers: [], created_by: 1 },
-  ]);
+  Task.find.mockReturnValueOnce(
+    createTaskQueryResult([
+      { _id: '1', assignees: [1], controllers: [], created_by: 1 },
+    ]),
+  );
   const res = await request(app).get('/api/v1/tasks').set('x-role', 'manager');
   expect(res.body.total).toBe(1);
 });

@@ -13,6 +13,7 @@ export interface Fleet extends BaseItem {
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
+  payloadCapacityKg: number;
   fuelType: 'Бензин' | 'Дизель';
   fuelRefilled: number;
   fuelAverageConsumption: number;

@@ -39,6 +39,7 @@ test.beforeAll(async () => {
     odometerInitial: 0,
     odometerCurrent: 0,
     mileageTotal: 0,
+    payloadCapacityKg: 500,
     fuelType: 'Бензин',
     fuelRefilled: 0,
     fuelAverageConsumption: 0,

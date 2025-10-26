@@ -54,6 +54,7 @@ export function validateFleet(fleet: Fleet): boolean {
     Number.isFinite(fleet.odometerInitial) &&
     Number.isFinite(fleet.odometerCurrent) &&
     Number.isFinite(fleet.mileageTotal) &&
+    Number.isFinite(fleet.payloadCapacityKg) &&
     ['Бензин', 'Дизель'].includes(fleet.fuelType) &&
     Number.isFinite(fleet.fuelRefilled) &&
     Number.isFinite(fleet.fuelAverageConsumption) &&

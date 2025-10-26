@@ -58,6 +58,7 @@ describe("mutations", () => {
     odometerInitial: 0,
     odometerCurrent: 10,
     mileageTotal: 10,
+    payloadCapacityKg: 500,
     transportType: "Легковой",
     fuelType: "Бензин",
     fuelRefilled: 5,

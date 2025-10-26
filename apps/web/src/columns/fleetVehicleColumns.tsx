@@ -49,6 +49,11 @@ export const fleetVehicleColumns: ColumnDef<FleetVehicleRow>[] = [
     meta: { minWidth: "6rem", maxWidth: "12rem" },
   },
   {
+    accessorKey: "payloadCapacityKg",
+    header: "Грузоподъёмность, кг",
+    meta: { minWidth: "8rem", maxWidth: "14rem" },
+  },
+  {
     accessorKey: "transportType",
     header: "Тип транспорта",
     meta: { minWidth: "8rem", maxWidth: "14rem" },

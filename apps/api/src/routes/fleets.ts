@@ -70,6 +70,7 @@ function mapVehicle(
     odometerInitial: doc.odometerInitial,
     odometerCurrent: doc.odometerCurrent,
     mileageTotal: doc.mileageTotal,
+    payloadCapacityKg: doc.payloadCapacityKg,
     transportType: doc.transportType ?? 'Легковой',
     fuelType: doc.fuelType,
     fuelRefilled: doc.fuelRefilled,
@@ -156,6 +157,7 @@ router.post(
       fuelRefilled: parseNumber(req.body.fuelRefilled),
       fuelAverageConsumption: parseNumber(req.body.fuelAverageConsumption),
       fuelSpentTotal: parseNumber(req.body.fuelSpentTotal),
+      payloadCapacityKg: parseNumber(req.body.payloadCapacityKg ?? 0),
       currentTasks: Array.isArray(req.body.currentTasks)
         ? (req.body.currentTasks as string[]).map((task) => String(task))
         : [],
@@ -186,6 +188,9 @@ router.put(
     }
     if (req.body.mileageTotal !== undefined) {
       update.mileageTotal = parseNumber(req.body.mileageTotal);
+    }
+    if (req.body.payloadCapacityKg !== undefined) {
+      update.payloadCapacityKg = parseNumber(req.body.payloadCapacityKg);
     }
     if (typeof req.body.transportType === 'string') {
       update.transportType = req.body.transportType;

@@ -9,6 +9,7 @@ export interface FleetVehiclePayload {
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
+  payloadCapacityKg: number;
   transportType: "Легковой" | "Грузовой";
   fuelType: "Бензин" | "Дизель" | "Газ";
   fuelRefilled: number;

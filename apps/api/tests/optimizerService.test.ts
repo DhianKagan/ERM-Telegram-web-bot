@@ -23,6 +23,10 @@ const { optimize } = require('../src/services/optimizer');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
+beforeEach(() => {
+  mockSolveWithOrTools.mockClear();
+});
+
 afterAll(() => {
   stopScheduler();
   stopQueue();
@@ -58,6 +62,14 @@ test('optimize возвращает маршруты и суммарные ме�
       vehicle_count: 1,
     }),
   );
+  const solverPayload = mockSolveWithOrTools.mock.calls[0]?.[0];
+  expect(solverPayload?.tasks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: '__depot__', demand: 0 }),
+      expect.objectContaining({ id: 'task-1', demand: 2 }),
+      expect.objectContaining({ id: 'task-2', demand: 1 }),
+    ]),
+  );
 });
 
 test('optimize обрабатывает ошибки VRP и возвращает предупреждение', async () => {
@@ -78,6 +90,32 @@ test('optimize обрабатывает ошибки VRP и возвращает
     expect.arrayContaining([
       expect.stringMatching(/Ошибка VRP/),
       expect.stringMatching(/эвристик/i),
+    ]),
+  );
+});
+
+test('optimize добавляет предупреждение при превышении грузоподъёмности', async () => {
+  const result = await optimize(
+    [
+      {
+        id: 'heavy-task',
+        coordinates: { lat: 50.5, lng: 30.5 },
+        weight: 12,
+      },
+    ],
+    { vehicleCapacity: 5, vehicleCount: 1 },
+  );
+
+  expect(mockSolveWithOrTools).toHaveBeenCalled();
+  const solverPayload = mockSolveWithOrTools.mock.calls[0]?.[0];
+  expect(solverPayload?.tasks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: 'heavy-task', demand: 12 }),
+    ]),
+  );
+  expect(result.warnings).toEqual(
+    expect.arrayContaining([
+      'Задача heavy-task превышает грузоподъёмность 5 кг.',
     ]),
   );
 });

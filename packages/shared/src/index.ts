@@ -37,5 +37,6 @@ export type {
   LogisticsRoutePlanRemovedEvent,
   LogisticsInitEvent,
   LogisticsHeartbeatEvent,
+  LogisticsFleetPositionUpdatedEvent,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

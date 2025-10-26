@@ -196,12 +196,14 @@ const mapInstance = {
 
 const tileLayerFactory = () => ({
   addTo: jest.fn(),
+  remove: jest.fn(),
 });
 
 jest.mock("leaflet", () => {
   const marker = jest.fn(() => markerFactory());
   const polyline = jest.fn(() => polylineFactory());
   const layerGroup = jest.fn(() => layerGroupFactory());
+  const circleMarker = jest.fn(() => markerFactory());
   return {
     map: jest.fn(() => mapInstance),
     tileLayer: jest.fn(() => tileLayerFactory()),
@@ -209,6 +211,7 @@ jest.mock("leaflet", () => {
     marker,
     polyline,
     divIcon: jest.fn(() => ({})),
+    circleMarker,
   };
 });
 

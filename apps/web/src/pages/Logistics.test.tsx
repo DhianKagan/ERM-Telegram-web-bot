@@ -9,6 +9,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
+import type { RouteOptimizationResult } from "../services/optimizer";
 jest.mock("react-i18next", () => {
   const templates: Record<string, string> = {
     appTitle: "ERM WEB",
@@ -502,6 +503,8 @@ describe("LogisticsPage", () => {
     listRoutePlansMock.mockReset();
     updateRoutePlanMock.mockReset();
     changeRoutePlanStatusMock.mockReset();
+    optimizeRouteMock.mockReset();
+    optimizeRouteMock.mockResolvedValue(null);
     listRoutePlansMock
       .mockResolvedValueOnce({ items: [draftPlan], total: 1 })
       .mockResolvedValue({ items: [], total: 0 });
@@ -598,5 +601,51 @@ describe("LogisticsPage", () => {
     expect(within(stopsTable).getAllByText("08:00 – 09:00").length).toBeGreaterThan(0);
     expect(within(stopsTable).getByText("Опоздание 80 мин")).toBeInTheDocument();
     expect(within(stopsTable).getAllByText("12,3 кг").length).toBeGreaterThan(0);
+  });
+
+  it("обновляет черновик после оптимизации и показывает ETA и загрузку", async () => {
+    const optimizationResult: RouteOptimizationResult = {
+      routes: [
+        {
+          vehicleIndex: 0,
+          taskIds: ["t1"],
+          distanceKm: 15.2,
+          etaMinutes: 125,
+          load: 7.5,
+        },
+      ],
+      totalDistanceKm: 15.2,
+      totalEtaMinutes: 125,
+      totalLoad: 7.5,
+      warnings: [],
+    };
+    optimizeRouteMock.mockResolvedValueOnce(optimizationResult);
+
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    const optimizeButton = await screen.findByRole("button", {
+      name: "Просчёт логистики",
+    });
+
+    expect(screen.getAllByText("10 ч").length).toBeGreaterThan(0);
+
+    fireEvent.click(optimizeButton);
+
+    await waitFor(() => expect(optimizeRouteMock).toHaveBeenCalled());
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Черновик создан · ETA: 2 ч 5 мин · Загрузка: 7,5 кг",
+        ),
+      ).toBeInTheDocument(),
+    );
+
+    expect(screen.getAllByText("2 ч 5 мин").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("7,5 кг").length).toBeGreaterThan(0);
   });
 });

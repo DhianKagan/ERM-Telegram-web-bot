@@ -1,6 +1,6 @@
 <!-- Назначение файла: краткое описание возможностей проекта. Основные модули: api, web. -->
 
-# Task Manager Bot + Web App
+# ERM Web Enterprise Bot
 
 «О проекте»:
 

@@ -796,6 +796,56 @@ export default function LogisticsPage() {
     [tRef],
   );
 
+  const optimizationVehicleCapacity = React.useMemo(() => {
+    const validVehicles = availableVehicles
+      .map((vehicle) => {
+        const raw = vehicle.payloadCapacityKg;
+        const capacity =
+          typeof raw === "number" && Number.isFinite(raw) && raw > 0
+            ? Number(raw)
+            : null;
+        if (!capacity) {
+          return null;
+        }
+        return { id: vehicle.id, capacity };
+      })
+      .filter(
+        (item): item is { id: string; capacity: number } =>
+          Boolean(item) && typeof item.id === "string" && item.id.trim().length > 0,
+      );
+
+    if (!validVehicles.length) {
+      return undefined;
+    }
+
+    const selectedIds = new Set(
+      (planDraft?.routes ?? [])
+        .map((route) =>
+          typeof route.vehicleId === "string" ? route.vehicleId.trim() : "",
+        )
+        .filter(Boolean),
+    );
+
+    if (selectedIds.size) {
+      const selectedCapacities = validVehicles
+        .filter((vehicle) => selectedIds.has(vehicle.id))
+        .map((vehicle) => vehicle.capacity);
+      if (selectedCapacities.length) {
+        return Math.min(...selectedCapacities);
+      }
+    }
+
+    const fallbackCount = Math.max(1, vehicles);
+    const fallbackCapacities = validVehicles
+      .slice(0, fallbackCount)
+      .map((vehicle) => vehicle.capacity);
+    if (fallbackCapacities.length) {
+      return Math.min(...fallbackCapacities);
+    }
+
+    return undefined;
+  }, [availableVehicles, planDraft, vehicles]);
+
   const calculate = React.useCallback(async () => {
     const payloadTasks = sorted
       .filter((task) => hasPoint(task.startCoordinates))
@@ -1020,55 +1070,6 @@ export default function LogisticsPage() {
   const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
   const planTotalEtaMinutes = planDraft?.metrics?.totalEtaMinutes ?? null;
   const planTotalLoad = planDraft?.metrics?.totalLoad ?? null;
-  const optimizationVehicleCapacity = React.useMemo(() => {
-    const validVehicles = availableVehicles
-      .map((vehicle) => {
-        const raw = vehicle.payloadCapacityKg;
-        const capacity =
-          typeof raw === "number" && Number.isFinite(raw) && raw > 0
-            ? Number(raw)
-            : null;
-        if (!capacity) {
-          return null;
-        }
-        return { id: vehicle.id, capacity };
-      })
-      .filter(
-        (item): item is { id: string; capacity: number } =>
-          Boolean(item) && typeof item.id === "string" && item.id.trim().length > 0,
-      );
-
-    if (!validVehicles.length) {
-      return undefined;
-    }
-
-    const selectedIds = new Set(
-      (planDraft?.routes ?? [])
-        .map((route) =>
-          typeof route.vehicleId === "string" ? route.vehicleId.trim() : "",
-        )
-        .filter(Boolean),
-    );
-
-    if (selectedIds.size) {
-      const selectedCapacities = validVehicles
-        .filter((vehicle) => selectedIds.has(vehicle.id))
-        .map((vehicle) => vehicle.capacity);
-      if (selectedCapacities.length) {
-        return Math.min(...selectedCapacities);
-      }
-    }
-
-    const fallbackCount = Math.max(1, vehicles);
-    const fallbackCapacities = validVehicles
-      .slice(0, fallbackCount)
-      .map((vehicle) => vehicle.capacity);
-    if (fallbackCapacities.length) {
-      return Math.min(...fallbackCapacities);
-    }
-
-    return undefined;
-  }, [availableVehicles, planDraft, vehicles]);
 
   const routeAnalytics = React.useMemo(() => {
     const routeStatus = new Map<

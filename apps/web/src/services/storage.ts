@@ -64,3 +64,4 @@ export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
 };
 
 export default { fetchFiles, fetchFile, removeFile, runDiagnostics };
+

@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты middleware pinoLogger
+export {};
+
 const express = require('express');
 const request = require('supertest');
 

@@ -1,5 +1,6 @@
 // Назначение: автотесты восстановления клавиатуры Telegram при обновлении задачи
 // Основные модули: jest, taskSync.controller, taskButtons
+export {};
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';

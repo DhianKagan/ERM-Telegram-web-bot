@@ -1,5 +1,7 @@
 // Назначение: интеграционные тесты завершения задач с автопарком.
 // Основные модули: mongodb-memory-server, mongoose, tasks.service, db/models.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

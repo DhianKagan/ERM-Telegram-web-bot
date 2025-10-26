@@ -1,5 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты функции getRouteDistance сервиса маршрутов
+export {};
+
 process.env.ROUTING_URL = 'https://localhost:8000/route';
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';

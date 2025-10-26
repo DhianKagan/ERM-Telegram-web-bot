@@ -395,6 +395,7 @@
       "ok": "Total files: {{count}}, all linked to tasks.",
       "warning": "Files without tasks: {{count}}. Links are restored automatically; refresh later."
     },
+
     "diagnostics": {
       "title": "Storage cleanup",
       "description": "Files without a task are removed on schedule. Run a manual check when you need an instant report.",
@@ -405,6 +406,7 @@
       "lastRun": "Latest report: {{date}}.",
       "snapshot": "Total: {{total}}, linked: {{linked}}, detached: {{detached}}.",
       "placeholder": "Run the first check to see the report here."
+
     }
   }
 }

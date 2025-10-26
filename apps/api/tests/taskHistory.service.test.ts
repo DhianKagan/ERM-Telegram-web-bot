@@ -1,4 +1,6 @@
 // Назначение: автотесты. Модули: jest.
+export {};
+
 const { describeAction } = require('../src/tasks/taskHistory.service.ts');
 
 describe('describeAction', () => {

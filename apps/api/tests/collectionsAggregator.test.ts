@@ -1,5 +1,7 @@
 // Назначение: проверка агрегации коллекций с данными Department и Employee.
 // Основные модули: jest, supertest, express, mongodb-memory-server.
+export {};
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';

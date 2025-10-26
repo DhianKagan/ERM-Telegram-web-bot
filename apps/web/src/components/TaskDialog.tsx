@@ -43,6 +43,7 @@ import { expandLink } from "../services/maps";
 import {
   list as listTaskTemplates,
   create as createTaskTemplate,
+  remove as deleteTaskTemplate,
   type TaskTemplate as TaskTemplateModel,
 } from "../services/taskTemplates";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -837,6 +838,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [templatesError, setTemplatesError] = React.useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
   const [templateSaving, setTemplateSaving] = React.useState(false);
+  const [templateDeleting, setTemplateDeleting] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [paymentAmount, setPaymentAmount] = React.useState(() =>
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
@@ -2118,7 +2120,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
 
   const handleSaveTemplate = React.useCallback(async () => {
-    if (!editing || templateSaving) {
+    if (!editing || templateSaving || templateDeleting) {
       return;
     }
     const name = window.prompt(t("taskTemplateNamePrompt"));
@@ -2170,6 +2172,47 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     editing,
     entityKind,
     t,
+    templateSaving,
+    templateDeleting,
+  ]);
+
+  const handleDeleteTemplate = React.useCallback(async () => {
+    if (!editing || templateSaving || templateDeleting) {
+      return;
+    }
+    if (!selectedTemplateId) {
+      setAlertMsg(t("taskTemplateDeleteUnavailable"));
+      return;
+    }
+    const confirmed = window.confirm(t("taskTemplateDeleteConfirm"));
+    if (!confirmed) {
+      return;
+    }
+    setTemplateDeleting(true);
+    try {
+      await deleteTaskTemplate(selectedTemplateId);
+      setTemplates((prev) =>
+        prev.filter((item) => item._id !== selectedTemplateId),
+      );
+      setTemplatesError(null);
+      setSelectedTemplateId("");
+      setAlertMsg(t("taskTemplateDeleteSuccess"));
+    } catch (error) {
+      console.error("Не удалось удалить шаблон задачи", error);
+      const reason =
+        error instanceof Error && error.message
+          ? error.message
+          : t("taskTemplateDeleteError");
+      setAlertMsg(reason);
+    } finally {
+      setTemplateDeleting(false);
+    }
+  }, [
+    deleteTaskTemplate,
+    editing,
+    selectedTemplateId,
+    t,
+    templateDeleting,
     templateSaving,
   ]);
 
@@ -3068,7 +3111,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     disabled={
                       !editing ||
                       templatesLoading ||
-                      templateOptions.length === 0
+                      templateOptions.length === 0 ||
+                      templateDeleting
                     }
                   >
                     <option value="">
@@ -3092,17 +3136,33 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     </p>
                   ) : null}
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSaveTemplate}
-                  disabled={!editing || templateSaving}
-                  className="justify-self-start sm:justify-self-end"
-                >
-                  {templateSaving
-                    ? t("taskTemplateSaving")
-                    : t("taskTemplateSaveAction")}
-                </Button>
+                <div className="flex flex-wrap justify-self-start gap-2 sm:justify-self-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSaveTemplate}
+                    disabled={!editing || templateSaving || templateDeleting}
+                  >
+                    {templateSaving
+                      ? t("taskTemplateSaving")
+                      : t("taskTemplateSaveAction")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDeleteTemplate}
+                    disabled={
+                      !editing ||
+                      !selectedTemplateId ||
+                      templateSaving ||
+                      templateDeleting
+                    }
+                  >
+                    {templateDeleting
+                      ? t("taskTemplateDeleting")
+                      : t("taskTemplateDeleteAction")}
+                  </Button>
+                </div>
               </div>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">

@@ -1815,18 +1815,22 @@ export async function createTaskTemplate(
 
 export async function getTaskTemplate(
   id: string,
+  userId: number,
 ): Promise<TaskTemplateDocument | null> {
-  return TaskTemplate.findById(id);
+  return TaskTemplate.findOne({ _id: id, userId });
 }
 
-export async function listTaskTemplates(): Promise<TaskTemplateDocument[]> {
-  return TaskTemplate.find();
+export async function listTaskTemplates(
+  userId: number,
+): Promise<TaskTemplateDocument[]> {
+  return TaskTemplate.find({ userId }).sort({ createdAt: -1, _id: -1 });
 }
 
 export async function deleteTaskTemplate(
   id: string,
+  userId: number,
 ): Promise<TaskTemplateDocument | null> {
-  return TaskTemplate.findByIdAndDelete(id);
+  return TaskTemplate.findOneAndDelete({ _id: id, userId });
 }
 
 export default {

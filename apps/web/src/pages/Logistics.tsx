@@ -547,7 +547,7 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     const translate = tRef.current;
-    const title = translate("logistics.metaTitle");
+    const title = translate("appTitle");
     const description = translate("logistics.metaDescription");
     const image = "/hero/logistics.png";
 

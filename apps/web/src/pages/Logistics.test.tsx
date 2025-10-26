@@ -11,6 +11,7 @@ import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
 jest.mock("react-i18next", () => {
   const templates: Record<string, string> = {
+    appTitle: "ERM WEB",
     loading: "Загрузка...",
     reset: "Сбросить",
     refresh: "Обновить",
@@ -32,7 +33,7 @@ jest.mock("react-i18next", () => {
     "logistics.optimizeMethodAria": "Метод оптимизации",
     "logistics.linksLabel": "Маршрут {{index}}",
     "logistics.tasksHeading": "Задачи",
-    "logistics.metaTitle": "Логистика — ERM",
+    "logistics.metaTitle": "ERM WEB",
     "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
     "logistics.planSectionTitle": "Маршрутный план",
     "logistics.planSummary": "Итоги плана",

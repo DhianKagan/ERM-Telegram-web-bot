@@ -136,6 +136,32 @@ const defaultAuthFetch = (url: string, options?: AuthFetchOptions) => {
       json: async () => templatesStore,
     });
   }
+  if (url.startsWith("/api/v1/task-templates/")) {
+    const match = url.match(/^\/api\/v1\/task-templates\/(.+)$/);
+    const templateId = match ? decodeURIComponent(match[1]) : "";
+    if (options?.method === "DELETE") {
+      const initialLength = templatesStore.length;
+      templatesStore = templatesStore.filter((tpl) => tpl._id !== templateId);
+      if (templatesStore.length === initialLength) {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          text: async () => "Not Found",
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 204,
+        text: async () => "",
+      });
+    }
+    const found = templatesStore.find((tpl) => tpl._id === templateId) ?? null;
+    return Promise.resolve({
+      ok: true,
+      status: found ? 200 : 404,
+      json: async () => found,
+    });
+  }
   if (url === "/api/v1/collections/departments") {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
@@ -162,6 +188,8 @@ const defaultAuthFetch = (url: string, options?: AuthFetchOptions) => {
 };
 
 const authFetchMock = jest.fn(defaultAuthFetch);
+
+let confirmSpy: jest.SpyInstance<boolean, [string?]>;
 
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
@@ -214,6 +242,11 @@ describe("TaskDialog", () => {
       data: { ...tpl.data },
     }));
     lastTemplatePayload = null;
+    confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    confirmSpy.mockRestore();
   });
 
   it("сохраняет задачу и повторно открывает форму", async () => {
@@ -259,6 +292,43 @@ describe("TaskDialog", () => {
     });
 
     await waitFor(() => expect(summaryCalls()).toHaveLength(1));
+  });
+
+  it("удаляет выбранный шаблон задачи", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const templateSelect = await screen.findByLabelText("taskTemplateSelect");
+    await act(async () => {
+      fireEvent.change(templateSelect, { target: { value: "tpl-1" } });
+      await Promise.resolve();
+    });
+
+    const deleteButton = await screen.findByRole("button", {
+      name: "taskTemplateDeleteAction",
+    });
+
+    await act(async () => {
+      fireEvent.click(deleteButton);
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(
+        authFetchMock.mock.calls.some(
+          ([url, options]) =>
+            url === "/api/v1/task-templates/tpl-1" &&
+            options?.method === "DELETE",
+        ),
+      ).toBe(true),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledWith("taskTemplateDeleteConfirm");
+    expect(templateSelect).toHaveValue("");
+    expect(templatesStore.find((tpl) => tpl._id === "tpl-1")).toBeUndefined();
   });
 
   it("обновляет ObjectId после открытия по request_id", async () => {

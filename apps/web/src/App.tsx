@@ -49,7 +49,7 @@ function AppContent({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isLogin = location.pathname.startsWith("/login");
   const isAttachmentMenu = location.pathname.startsWith("/menu");
   useEffect(() => {
@@ -60,6 +60,12 @@ function AppContent({
       navigate("/tasks", { replace: true });
     }
   }, [isAttachmentMenu, isLogin, loading, navigate, user]);
+  React.useEffect(() => {
+    const appTitle = t("appTitle", { defaultValue: "ERM WEB" });
+    if (typeof document !== "undefined") {
+      document.title = appTitle;
+    }
+  }, [t, i18n.language]);
   const alert = (
     <AlertDialog
       open={!!initialAlert}

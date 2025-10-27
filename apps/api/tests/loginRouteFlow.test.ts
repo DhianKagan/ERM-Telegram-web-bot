@@ -32,6 +32,7 @@ jest.mock('../src/db/roleCache', () => ({
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => null),
+  getUsersMap: jest.fn(async () => ({})),
   createUser: jest.fn(async () => ({ username: 'u' })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),

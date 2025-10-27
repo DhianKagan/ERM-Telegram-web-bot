@@ -28,6 +28,7 @@ jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async (id: string) =>
     id === '1' ? { telegram_id: 1, username: 'test' } : null,
   ),
+  getUsersMap: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 

@@ -20,6 +20,8 @@ import { useTranslation } from "react-i18next";
 import {
   PROJECT_TIMEZONE,
   PROJECT_TIMEZONE_LABEL,
+  buildAttachmentsFromCommentHtml,
+  extractFileIdFromUrl,
   taskFields as fields,
 } from "shared";
 import {
@@ -823,6 +825,54 @@ const hasDimensionValues = (
     (value) => typeof value === "string" && value.trim().length > 0,
   );
 
+const areAttachmentListsEqual = (
+  current: Attachment[],
+  next: Attachment[],
+): boolean => {
+  if (current === next) {
+    return true;
+  }
+  if (current.length !== next.length) {
+    return false;
+  }
+  for (let index = 0; index < current.length; index += 1) {
+    const left = current[index];
+    const right = next[index];
+    if (!left && !right) {
+      continue;
+    }
+    if (!left || !right) {
+      return false;
+    }
+    const leftUrl = typeof left.url === "string" ? left.url : "";
+    const rightUrl = typeof right.url === "string" ? right.url : "";
+    if (leftUrl !== rightUrl) {
+      return false;
+    }
+    const leftName = typeof left.name === "string" ? left.name : "";
+    const rightName = typeof right.name === "string" ? right.name : "";
+    if (leftName !== rightName) {
+      return false;
+    }
+    const leftThumb = typeof left.thumbnailUrl === "string" ? left.thumbnailUrl : "";
+    const rightThumb = typeof right.thumbnailUrl === "string" ? right.thumbnailUrl : "";
+    if (leftThumb !== rightThumb) {
+      return false;
+    }
+    const leftType = typeof left.type === "string" ? left.type : "";
+    const rightType = typeof right.type === "string" ? right.type : "";
+    if (leftType !== rightType) {
+      return false;
+    }
+    const leftSize = typeof left.size === "number" ? left.size : 0;
+    const rightSize = typeof right.size === "number" ? right.size : 0;
+    if (leftSize !== rightSize) {
+      return false;
+    }
+  }
+  return true;
+};
+
 const START_OFFSET_MS = 60 * 60 * 1000;
 const ACCESS_TASK_DELETE = 8;
 
@@ -1093,6 +1143,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const startDateValue = watch("startDate");
   const dueDateValue = watch("dueDate");
   const assigneeValue = watch("assigneeId");
+  const descriptionValue = watch("description", "");
   const shouldAutoSyncDueDate = React.useMemo(() => {
     if (!startDateValue) return false;
     if (!isEdit) return true;
@@ -1212,18 +1263,47 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+  React.useEffect(() => {
+    const html = typeof descriptionValue === "string" ? descriptionValue : "";
+    setAttachments((prev) => {
+      const merged = buildAttachmentsFromCommentHtml<Attachment>(html, {
+        existing: prev,
+        createPlaceholder: (_fileId, url) => ({
+          url,
+          name: "",
+          type: "application/octet-stream",
+          size: 0,
+        }),
+      });
+      return areAttachmentListsEqual(prev, merged) ? prev : merged;
+    });
+  }, [descriptionValue]);
   const attachmentsPayload = React.useMemo(() => {
     if (attachments.length === 0) {
       return [] as Attachment[];
     }
-    const map = new Map<string, Attachment>();
+    const byFileId = new Map<string, Attachment>();
+    const byUrl = new Map<string, Attachment>();
     attachments.forEach((item) => {
       if (!item || typeof item.url !== "string") {
         return;
       }
-      map.set(item.url, item);
+      const trimmedUrl = item.url.trim();
+      if (!trimmedUrl) {
+        return;
+      }
+      const fileId = extractFileIdFromUrl(trimmedUrl);
+      if (fileId) {
+        if (!byFileId.has(fileId)) {
+          byFileId.set(fileId, item);
+        }
+        return;
+      }
+      if (!byUrl.has(trimmedUrl)) {
+        byUrl.set(trimmedUrl, item);
+      }
     });
-    return Array.from(map.values());
+    return [...byFileId.values(), ...byUrl.values()];
   }, [attachments]);
   const handleAttachmentUploaded = React.useCallback((attachment: Attachment) => {
     if (!attachment || typeof attachment.url !== "string") {
@@ -3170,6 +3250,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           | null;
         savedTask = updated;
         const updatedIdCandidate =
+          ((updated as Record<string, unknown>).taskId as string | undefined) ??
           ((updated as Record<string, unknown>)._id as string | undefined) ??
           ((updated as Record<string, unknown>).id as string | undefined) ??
           currentTaskId;
@@ -3181,6 +3262,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (!created) throw new Error("SAVE_FAILED");
         savedTask = created as Partial<Task> & Record<string, unknown>;
         const createdIdCandidate =
+          ((created as Record<string, unknown>).taskId as string | undefined) ??
           ((created as Record<string, unknown>)._id as string | undefined) ??
           ((created as Record<string, unknown>).id as string | undefined) ??
           savedId;

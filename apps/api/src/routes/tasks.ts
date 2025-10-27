@@ -214,6 +214,20 @@ const withAttachmentSync = (
           capturedId = converted.trim() || undefined;
         }
       }
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        payload !== null &&
+        'taskId' in (payload as Record<string, unknown>)
+      ) {
+        const candidate = (payload as Record<string, unknown>).taskId;
+        if (typeof candidate === 'string') {
+          const normalized = candidate.trim();
+          if (normalized) {
+            capturedId = normalized;
+          }
+        }
+      }
       return originalJson(payload);
     }) as typeof res.json;
     try {

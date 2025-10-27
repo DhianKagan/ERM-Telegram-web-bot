@@ -40,6 +40,12 @@ pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 
+## CI/CD
+
+- GitHub Actions содержит обязательные workflow: CI, Pre PR Check, CodeQL, Deploy, Docker, Lighthouse и Release.
+- Для деплоя и релизов задайте секреты `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, `RAILWAY_SERVICE_ID`, `RAILWAY_SERVICE_NAME` и `RAILWAY_TOKEN`.
+- При локальной отладке обновляйте `railway.json` через GitHub Actions или вручную командой `railway link`.
+
 ## Прототип маршрутизации OR-Tools
 
 - Включите флаг `VRP_ORTOOLS_ENABLED=1` в `.env`, чтобы активировать экспериментальный вызов Python-решателя.

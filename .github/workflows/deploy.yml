@@ -20,19 +20,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Проверка обязательных секретов Railway
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -a missing=()
+          declare -a required=(
+            "RAILWAY_PROJECT_ID"
+            "RAILWAY_ENVIRONMENT_ID"
+            "RAILWAY_SERVICE_ID"
+            "RAILWAY_TOKEN"
+          )
+          for var in "${required[@]}"; do
+            value="${!var:-}"
+            if [ -z "$value" ] || [[ "$value" =~ ^0{8}-0{4}-0{4}-0{4}-0{12}$ ]]; then
+              missing+=("$var")
+            fi
+          done
+          if [ ${#missing[@]} -ne 0 ]; then
+            {
+              echo "Отсутствуют или не заполнены секреты Railway:" >&2
+              printf ' - %s\n' "${missing[@]}" >&2
+            }
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Включение corepack
+        run: corepack enable
+
       - name: Установка зависимостей
         run: ./scripts/install_bot_deps.sh
+
       - name: Сборка проекта
         run: pnpm build
+
       - name: Установка Railway CLI
         run: npm install -g @railway/cli
+
       - name: Обновление railway.json секретами
-        if: env.RAILWAY_PROJECT_ID != '' && env.RAILWAY_ENVIRONMENT_ID != '' && env.RAILWAY_SERVICE_ID != ''
         run: |
-          cat <<EOF > railway.json
+          cat <<JSON > railway.json
           {
             "$schema": "https://railway.app/railway.schema.json",
             "_comment": "Назначение файла: хранение идентификаторов проекта Railway для CLI и GitHub Actions.",
@@ -40,22 +72,15 @@ jobs:
             "environmentId": "${RAILWAY_ENVIRONMENT_ID}",
             "serviceId": "${RAILWAY_SERVICE_ID}"
           }
-          EOF
+          JSON
+
       - name: Деплой на Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${RAILWAY_TOKEN:-}" ]; then
-            echo "Секрет RAILWAY_TOKEN не задан." >&2
-            exit 1
-          fi
           SERVICE_NAME="${RAILWAY_SERVICE_NAME:-bot}"
           ARGS=("--service" "$SERVICE_NAME" "--detach")
-          if [ -n "${RAILWAY_PROJECT_ID:-}" ]; then
-            ARGS+=("--project" "$RAILWAY_PROJECT_ID")
-          fi
-          if [ -n "${RAILWAY_ENVIRONMENT_ID:-}" ]; then
-            ARGS+=("--environment" "$RAILWAY_ENVIRONMENT_ID")
-          fi
+          ARGS+=("--project" "$RAILWAY_PROJECT_ID")
+          ARGS+=("--environment" "$RAILWAY_ENVIRONMENT_ID")
           railway up "${ARGS[@]}"

@@ -5,4 +5,5 @@
 Все технические инструкции сведены в файл [technical_manual.md](technical_manual.md).
 Разделы API и карта запросов перенесены в него,
 отдельные файлы `api_reference.md` и `db_request_map.md` удалены.
+Обязательные проверки перед PR собраны в отдельном чек-листе [pre_pr_checklist.md](pre_pr_checklist.md).
 Устаревшие материалы перемещены в каталог [archive](archive) для справки.

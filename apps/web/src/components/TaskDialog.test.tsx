@@ -79,7 +79,9 @@ jest.mock("maplibre-gl", () => {
     constructor() {}
   }
   class MarkerMock {
-    constructor(_: Record<string, unknown> = {}) {}
+    constructor(options: Record<string, unknown> = {}) {
+      void options;
+    }
     setLngLat() {
       return this;
     }
@@ -127,7 +129,9 @@ jest.mock("../utils/logisticsGeozonesEvents", () => {
   };
 });
 
-const logisticsEvents = require("../utils/logisticsGeozonesEvents") as {
+const logisticsEvents = jest.requireMock(
+  "../utils/logisticsGeozonesEvents",
+) as {
   dispatchLogisticsGeozonesApply: jest.Mock;
   dispatchLogisticsGeozonesChange: jest.Mock;
   dispatchLogisticsGeozonesRequest: jest.Mock;
@@ -356,11 +360,15 @@ describe("TaskDialog", () => {
     }));
     lastTemplatePayload = null;
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-    const mapModule = require("maplibre-gl");
+    const mapModule = jest.requireMock("maplibre-gl") as {
+      __instances?: unknown[];
+    };
     if (Array.isArray(mapModule.__instances)) {
       mapModule.__instances.length = 0;
     }
-    const drawMock = require("maplibre-gl-draw");
+    const drawMock = jest.requireMock("maplibre-gl-draw") as {
+      mockClear?: () => void;
+    };
     if (typeof drawMock.mockClear === "function") {
       drawMock.mockClear();
     }
@@ -780,7 +788,9 @@ describe("TaskDialog", () => {
 
     expect(await screen.findByText("selectStartPoint")).toBeTruthy();
 
-    const mapModule = require("maplibre-gl");
+    const mapModule = jest.requireMock("maplibre-gl") as {
+      __instances?: unknown[];
+    };
     const mapList: any[] = mapModule.__instances || [];
     const startMap = mapList[mapList.length - 1];
     act(() => {
@@ -857,8 +867,12 @@ describe("TaskDialog", () => {
       await Promise.resolve();
     });
 
-    const mapModule = require("maplibre-gl");
-    const drawModule = require("maplibre-gl-draw");
+    const mapModule = jest.requireMock("maplibre-gl") as {
+      __instances?: unknown[];
+    };
+    const drawModule = jest.requireMock("maplibre-gl-draw") as {
+      mockClear?: () => void;
+    };
     const mapList: any[] = mapModule.__instances || [];
     const mapInstance = mapList[mapList.length - 1];
     const drawInstance =

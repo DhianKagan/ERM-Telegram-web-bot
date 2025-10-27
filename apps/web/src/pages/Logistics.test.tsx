@@ -211,7 +211,8 @@ jest.mock(
     addControl() {
       return this;
     }
-    addSource(id: string, _spec?: unknown) {
+    addSource(id: string, spec?: unknown) {
+      void spec;
       this.sources[id] = new GeoJSONSourceMock();
       return this;
     }
@@ -873,8 +874,8 @@ describe("LogisticsPage", () => {
       expect(screen.getByDisplayValue("Черновик маршрута")).toBeInTheDocument(),
     );
 
-    const maplibre: any = require("maplibre-gl");
-    const drawModule: any = require("maplibre-gl-draw");
+    const maplibre: any = jest.requireMock("maplibre-gl");
+    const drawModule: any = jest.requireMock("maplibre-gl-draw");
     const mapInstances = (maplibre.Map as unknown as {
       __instances: any[];
     }).__instances;
@@ -1100,8 +1101,8 @@ describe("LogisticsPage", () => {
       expect(taskStateController.getIndexSnapshot("logistics:all")).toHaveLength(2),
     );
 
-    const maplibre: any = require("maplibre-gl");
-    const drawModule: any = require("maplibre-gl-draw");
+    const maplibre: any = jest.requireMock("maplibre-gl");
+    const drawModule: any = jest.requireMock("maplibre-gl-draw");
     const mapInstances = (maplibre.Map as unknown as {
       __instances: any[];
     }).__instances;

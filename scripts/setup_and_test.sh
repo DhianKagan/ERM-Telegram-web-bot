@@ -9,6 +9,11 @@ if [ ! -f .env ]; then
   ./scripts/create_env_from_exports.sh
 fi
 
+# Сбрасываем URL MongoDB из окружения, чтобы тесты использовали безопасные значения
+unset MONGO_DATABASE_URL
+unset MONGODB_URI
+unset DATABASE_URL
+
 # Устанавливаем зависимости корня, бота и клиента
 pnpm install --frozen-lockfile || pnpm install
 pnpm install --dir apps/api --frozen-lockfile || pnpm install --dir apps/api

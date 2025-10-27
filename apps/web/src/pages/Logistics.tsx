@@ -38,6 +38,11 @@ import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
+import type {
+  FeatureCollection,
+  GeoJsonProperties,
+  Geometry,
+} from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
@@ -189,10 +194,7 @@ const MAPLIBRE_POLYGON_SOURCE_ID = "logistics-polygons";
 const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
 const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
 
-type MapFeatureCollection = GeoJSON.FeatureCollection<
-  GeoJSON.Geometry,
-  GeoJSON.GeoJsonProperties
->;
+type MapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>;
 
 const areFeatureCollectionsEqual = (
   left: MapFeatureCollection,

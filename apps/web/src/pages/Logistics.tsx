@@ -68,6 +68,8 @@ import {
   type LogisticsGeozonesCustomEvent,
 } from "../utils/logisticsGeozonesEvents";
 import { useTaskIndex } from "../controllers/taskStateController";
+
+type WindowEventListener = (event: Event) => void;
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import authFetch from "../utils/authFetch";
@@ -814,12 +816,12 @@ export default function LogisticsPage() {
     };
     window.addEventListener(
       LOGISTICS_GEOZONES_EVENT,
-      handleEvent as EventListener,
+      handleEvent as WindowEventListener,
     );
     return () => {
       window.removeEventListener(
         LOGISTICS_GEOZONES_EVENT,
-        handleEvent as EventListener,
+        handleEvent as WindowEventListener,
       );
     };
   }, []);

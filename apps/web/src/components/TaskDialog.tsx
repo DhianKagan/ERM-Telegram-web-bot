@@ -81,7 +81,6 @@ import {
   EMPTY_GEOZONE_COLLECTION,
   areGeozoneCollectionsEqual,
   cloneGeozoneCollection,
-  hasPolygonGeometry,
   sanitizeGeozoneCollection,
   type GeozoneFeatureCollection,
 } from "../utils/geozones";
@@ -91,6 +90,8 @@ import {
   dispatchLogisticsGeozonesRequest,
   type LogisticsGeozonesCustomEvent,
 } from "../utils/logisticsGeozonesEvents";
+
+type WindowEventListener = (event: Event) => void;
 
 type TaskKind = "task" | "request";
 
@@ -359,6 +360,7 @@ function MapPickerDialog({
   geozones,
   onGeozonesChange,
 }: MapPickerDialogProps) {
+  void _target;
   const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<maplibregl.Map | null>(null);
@@ -2037,13 +2039,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     };
     window.addEventListener(
       LOGISTICS_GEOZONES_EVENT,
-      handleEvent as EventListener,
+      handleEvent as WindowEventListener,
     );
     dispatchLogisticsGeozonesRequest();
     return () => {
       window.removeEventListener(
         LOGISTICS_GEOZONES_EVENT,
-        handleEvent as EventListener,
+        handleEvent as WindowEventListener,
       );
     };
   }, []);

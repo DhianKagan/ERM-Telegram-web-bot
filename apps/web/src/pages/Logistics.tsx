@@ -1,5 +1,5 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, Leaflet, i18next
+// Основные модули: React, MapLibre GL, Turf, i18next
 import React from "react";
 import clsx from "clsx";
 import {
@@ -22,7 +22,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
-import { booleanPointInPolygon, point } from "@turf/turf";
+import {
+  area as turfArea,
+  booleanPointInPolygon,
+  buffer as turfBuffer,
+  length as turfLength,
+  point,
+  polygonToLine,
+} from "@turf/turf";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute, {
@@ -195,6 +202,7 @@ const MAPLIBRE_STYLE_URL = "https://demotiles.maplibre.org/style.json";
 const MAPLIBRE_POLYGON_SOURCE_ID = "logistics-polygons";
 const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
 const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
+const GEOZONE_BUFFER_METERS = 150;
 
 type MapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>;
 type PolygonGeometry = Extract<Geometry, { type: "Polygon" }>;
@@ -257,6 +265,85 @@ const isCoordinateInsidePolygons = (
   }
   const geoPoint = point([coords.lng, coords.lat]);
   return polygons.some((polygon) => booleanPointInPolygon(geoPoint, polygon));
+};
+
+const buildBufferedFeatureCollection = (
+  collection: MapFeatureCollection,
+  bufferMeters: number,
+): MapFeatureCollection => {
+  if (!Number.isFinite(bufferMeters) || bufferMeters <= 0) {
+    return cloneFeatureCollection(collection);
+  }
+  const distanceKm = bufferMeters / 1000;
+  const bufferedFeatures = collection.features.map((feature) => {
+    if (!isPolygonFeature(feature)) {
+      return feature;
+    }
+    try {
+      const buffered = turfBuffer(feature, distanceKm, {
+        units: "kilometers",
+      });
+      if (!buffered || !buffered.geometry) {
+        return feature;
+      }
+      return {
+        type: "Feature",
+        id: feature.id,
+        properties: { ...feature.properties },
+        geometry: buffered.geometry,
+      } satisfies MapPolygonFeature;
+    } catch {
+      return feature;
+    }
+  });
+  return { type: "FeatureCollection", features: bufferedFeatures };
+};
+
+const calculateGeozoneMetrics = (
+  feature: MapPolygonFeature,
+): { areaSqKm: number | null; perimeterKm: number | null } => {
+  let areaSqKm: number | null = null;
+  let perimeterKm: number | null = null;
+  try {
+    const areaValue = turfArea(feature);
+    if (Number.isFinite(areaValue) && areaValue > 0) {
+      areaSqKm = areaValue / 1_000_000;
+    }
+  } catch {
+    areaSqKm = null;
+  }
+  try {
+    const line = polygonToLine(feature);
+    const perimeterValue = turfLength(line, { units: "kilometers" });
+    if (Number.isFinite(perimeterValue) && perimeterValue > 0) {
+      perimeterKm = perimeterValue;
+    }
+  } catch {
+    perimeterKm = null;
+  }
+  return { areaSqKm, perimeterKm };
+};
+
+const collectTaskPoints = (task: RouteTask): Coords[] => {
+  const points: Coords[] = [];
+  if (hasPoint(task.startCoordinates)) {
+    points.push(task.startCoordinates as Coords);
+  }
+  if (hasPoint(task.finishCoordinates)) {
+    points.push(task.finishCoordinates as Coords);
+  }
+  return points;
+};
+
+const isTaskInsidePolygons = (
+  task: RouteTask,
+  polygons: MapFeatureCollection,
+): boolean => {
+  const points = collectTaskPoints(task);
+  if (!points.length) {
+    return false;
+  }
+  return points.some((coords) => isCoordinateInsidePolygons(polygons, coords));
 };
 
 const hasPolygonGeometry = (collection: MapFeatureCollection) =>
@@ -708,6 +795,11 @@ export default function LogisticsPage() {
       cloneFeatureCollection(EMPTY_FEATURE_COLLECTION),
     );
   const drawnPolygonsRef = React.useRef(drawnPolygons);
+  const bufferedPolygons = React.useMemo(
+    () => buildBufferedFeatureCollection(drawnPolygons, GEOZONE_BUFFER_METERS),
+    [drawnPolygons],
+  );
+  const bufferedPolygonsRef = React.useRef(bufferedPolygons);
   const geozoneChangeInitRef = React.useRef(false);
   const [activeGeozoneId, setActiveGeozoneId] = React.useState<string | null>(
     null,
@@ -744,6 +836,10 @@ export default function LogisticsPage() {
     drawnPolygonsRef.current = drawnPolygons;
   }, [drawnPolygons]);
 
+  React.useEffect(() => {
+    bufferedPolygonsRef.current = bufferedPolygons;
+  }, [bufferedPolygons]);
+
   const geozoneFeatures = React.useMemo(
     () => drawnPolygons.features.filter(isPolygonFeature),
     [drawnPolygons],
@@ -763,15 +859,45 @@ export default function LogisticsPage() {
             index: index + 1,
             defaultValue: `Геозона ${index + 1}`,
           });
+        const metrics = calculateGeozoneMetrics(feature);
         return {
           key: id ?? `zone-${index}`,
           id,
           label,
           active: Boolean(id) && id === activeGeozoneId,
+          areaSqKm: metrics.areaSqKm,
+          perimeterKm: metrics.perimeterKm,
         };
       }),
     [activeGeozoneId, geozoneFeatures, t],
   );
+
+  const zoneFilter = React.useMemo(() => {
+    if (!hasPolygonGeometry(bufferedPolygons)) {
+      return { tasks, ids: null as Set<string> | null };
+    }
+    const filtered = tasks.filter((task) =>
+      isTaskInsidePolygons(task, bufferedPolygons),
+    );
+    const ids = new Set<string>();
+    filtered.forEach((task) => {
+      const taskId = getTaskIdentifier(task);
+      if (taskId) {
+        ids.add(taskId);
+      }
+    });
+    return { tasks: filtered, ids };
+  }, [bufferedPolygons, tasks]);
+
+  const displayedTasks = zoneFilter.tasks;
+  const zoneTaskIds = zoneFilter.ids;
+
+  React.useEffect(() => {
+    setPage((current) => {
+      const maxPage = Math.max(0, Math.ceil(displayedTasks.length / 25) - 1);
+      return Math.min(current, maxPage);
+    });
+  }, [displayedTasks.length]);
 
   const handleSelectGeozone = React.useCallback((id: string | null) => {
     const drawControl = drawControlRef.current;
@@ -1246,6 +1372,25 @@ export default function LogisticsPage() {
     [location, navigate],
   );
 
+  const handleTableDataChange = React.useCallback(
+    (rows: TaskRow[]) => {
+      if (!rows.length) {
+        setSorted([]);
+        return;
+      }
+      if (!zoneTaskIds) {
+        setSorted(rows as RouteTask[]);
+        return;
+      }
+      const filtered = (rows as RouteTask[]).filter((task) => {
+        const id = getTaskIdentifier(task);
+        return id ? zoneTaskIds.has(id) : false;
+      });
+      setSorted(filtered);
+    },
+    [zoneTaskIds],
+  );
+
   const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
     return input.filter((task) => {
       const details = (task as Record<string, unknown>).logistics_details as
@@ -1459,6 +1604,70 @@ export default function LogisticsPage() {
     [tRef],
   );
 
+  const areaFormatter = React.useMemo(
+    () => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }),
+    [],
+  );
+  const hectareFormatter = React.useMemo(
+    () => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
+    [],
+  );
+  const kmFormatter = React.useMemo(
+    () => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
+    [],
+  );
+  const meterFormatter = React.useMemo(
+    () => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }),
+    [],
+  );
+
+  const formatGeozoneArea = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+        return tRef.current("logistics.geozoneAreaUnknown");
+      }
+      if (value >= 1) {
+        return tRef.current("logistics.geozoneArea", {
+          value: `${areaFormatter.format(value)} ${tRef.current("km2")}`,
+        });
+      }
+      const hectares = value * 100;
+      return tRef.current("logistics.geozoneArea", {
+        value: `${hectareFormatter.format(hectares)} ${tRef.current(
+          "hectare",
+        )}`,
+      });
+    },
+    [areaFormatter, hectareFormatter, tRef],
+  );
+
+  const formatGeozonePerimeter = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+        return tRef.current("logistics.geozonePerimeterUnknown");
+      }
+      if (value >= 1) {
+        return tRef.current("logistics.geozonePerimeter", {
+          value: `${kmFormatter.format(value)} ${tRef.current("km")}`,
+        });
+      }
+      const meters = value * 1000;
+      return tRef.current("logistics.geozonePerimeter", {
+        value: `${meterFormatter.format(meters)} ${tRef.current("meter")}`,
+      });
+    },
+    [kmFormatter, meterFormatter, tRef],
+  );
+
+  const geozoneBufferLabel = React.useMemo(() => {
+    if (GEOZONE_BUFFER_METERS <= 0) {
+      return "";
+    }
+    return t("logistics.geozoneBuffer", {
+      value: `${meterFormatter.format(GEOZONE_BUFFER_METERS)} ${t("meter")}`,
+    });
+  }, [meterFormatter, t]);
+
   const optimizationVehicleCapacity = React.useMemo(() => {
     const validVehicles = availableVehicles.reduce<
       { id: string; capacity: number }[]
@@ -1505,7 +1714,7 @@ export default function LogisticsPage() {
   }, [availableVehicles, planDraft, vehicles]);
 
   const buildOptimizeTasks = React.useCallback((sourceTasks: RouteTask[]) => {
-    const polygons = drawnPolygonsRef.current;
+    const polygons = bufferedPolygonsRef.current;
     const shouldFilterByZone = hasPolygonGeometry(polygons);
     return sourceTasks.reduce<OptimizeRoutePayload["tasks"]>((acc, task) => {
       const taskId = getTaskIdentifier(task);
@@ -1518,17 +1727,7 @@ export default function LogisticsPage() {
         return acc;
       }
       if (shouldFilterByZone) {
-        const pointsToCheck: Coords[] = [];
-        if (hasStartPoint) {
-          pointsToCheck.push(task.startCoordinates as Coords);
-        }
-        if (hasFinishPoint) {
-          pointsToCheck.push(task.finishCoordinates as Coords);
-        }
-        const insideZone = pointsToCheck.some((coords) =>
-          isCoordinateInsidePolygons(polygons, coords),
-        );
-        if (!insideZone) {
+        if (!isTaskInsidePolygons(task, polygons)) {
           return acc;
         }
       }
@@ -1633,7 +1832,7 @@ export default function LogisticsPage() {
       typeof assignVehicle.transportType === "string"
         ? assignVehicle.transportType.trim().toLowerCase()
         : "";
-    const polygons = drawnPolygonsRef.current;
+    const polygons = bufferedPolygonsRef.current;
     const shouldFilterByZone = hasPolygonGeometry(polygons);
     const filtered = tasks.filter((task) => {
       const taskId = getTaskIdentifier(task);
@@ -1641,17 +1840,7 @@ export default function LogisticsPage() {
         return false;
       }
       if (shouldFilterByZone) {
-        const points: Coords[] = [];
-        if (hasPoint(task.startCoordinates)) {
-          points.push(task.startCoordinates as Coords);
-        }
-        if (hasPoint(task.finishCoordinates)) {
-          points.push(task.finishCoordinates as Coords);
-        }
-        if (
-          !points.length ||
-          !points.some((coords) => isCoordinateInsidePolygons(polygons, coords))
-        ) {
+        if (!isTaskInsidePolygons(task, polygons)) {
           return false;
         }
       }
@@ -2397,9 +2586,22 @@ export default function LogisticsPage() {
     maxLoad,
     maxEta,
     routeStatus,
-    taskStatus: analyticsTaskStatus,
+    taskStatus: rawAnalyticsTaskStatus,
     stopDetails,
   } = routeAnalytics;
+
+  const analyticsTaskStatus = React.useMemo(() => {
+    if (!zoneTaskIds) {
+      return rawAnalyticsTaskStatus;
+    }
+    const filtered = new Map<string, TaskStatusInfo>();
+    rawAnalyticsTaskStatus.forEach((value, key) => {
+      if (zoneTaskIds.has(key)) {
+        filtered.set(key, value);
+      }
+    });
+    return filtered;
+  }, [rawAnalyticsTaskStatus, zoneTaskIds]);
 
   const [taskStatus, setTaskStatus] = React.useState<
     Map<string, TaskStatusInfo>
@@ -3898,22 +4100,31 @@ export default function LogisticsPage() {
             {geozoneItems.length ? (
               <ul className="space-y-1 text-sm">
                 {geozoneItems.map((zone) => (
-                  <li key={zone.key} className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={zone.active ? "default" : "outline"}
-                      className="flex-1 justify-start"
-                      aria-pressed={zone.active}
-                      onClick={() =>
-                        zone.id
-                          ? handleSelectGeozone(zone.active ? null : zone.id)
-                          : undefined
-                      }
-                      disabled={!zone.id}
-                    >
-                      {zone.label}
-                    </Button>
+                  <li key={zone.key} className="flex items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={zone.active ? "default" : "outline"}
+                        className="flex w-full justify-start"
+                        aria-pressed={zone.active}
+                        onClick={() =>
+                          zone.id
+                            ? handleSelectGeozone(zone.active ? null : zone.id)
+                            : undefined
+                        }
+                        disabled={!zone.id}
+                      >
+                        {zone.label}
+                      </Button>
+                      <div className="text-muted-foreground flex flex-col text-[11px] leading-4">
+                        <span>{formatGeozoneArea(zone.areaSqKm)}</span>
+                        <span>{formatGeozonePerimeter(zone.perimeterKm)}</span>
+                        {geozoneBufferLabel ? (
+                          <span>{geozoneBufferLabel}</span>
+                        ) : null}
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       size="icon"
@@ -4161,11 +4372,11 @@ export default function LogisticsPage() {
       <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
         <h3 className="text-lg font-semibold">{t("logistics.tasksHeading")}</h3>
         <TaskTable
-          tasks={tasks}
-          onDataChange={(rows) => setSorted(rows as RouteTask[])}
+          tasks={displayedTasks}
+          onDataChange={handleTableDataChange}
           onRowClick={openTask}
           page={page}
-          pageCount={Math.max(1, Math.ceil(tasks.length / 25))}
+          pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
           onPageChange={setPage}
         />
       </section>

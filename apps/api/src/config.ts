@@ -47,12 +47,22 @@ for (const key of required) {
   }
 }
 
-const mongoUrlEnv = (
-  process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+const mongoUrlSources = [
+  { key: 'MONGO_DATABASE_URL', value: process.env.MONGO_DATABASE_URL },
+  { key: 'MONGO_URL', value: process.env.MONGO_URL },
+  { key: 'MONGODB_URL', value: process.env.MONGODB_URL },
+  { key: 'MONGO_PUBLIC_URL', value: process.env.MONGO_PUBLIC_URL },
+  { key: 'MONGODB_URI', value: process.env.MONGODB_URI },
+  { key: 'DATABASE_URL', value: process.env.DATABASE_URL },
+] as const;
+
+const selectedMongoSource = mongoUrlSources.find((item) =>
+  Boolean(item.value && item.value.trim()),
+);
+
+const mongoUrlSourceKey = selectedMongoSource?.key ?? 'MONGO_DATABASE_URL';
+let mongoUrlEnv = (selectedMongoSource?.value || '').trim();
+
 if (!/^mongodb(\+srv)?:\/\//.test(mongoUrlEnv)) {
   throw new Error(
     'MONGO_DATABASE_URL должен начинаться с mongodb:// или mongodb+srv://',
@@ -66,21 +76,40 @@ try {
   throw new Error('MONGO_DATABASE_URL имеет неверный формат');
 }
 
-const dbName = parsedMongoUrl.pathname.replace(/^\/+/, '');
-if (!dbName) {
-  throw new Error(
-    'MONGO_DATABASE_URL должен содержать имя базы данных после хоста, например /ermdb',
-  );
-}
-
-const authSource = parsedMongoUrl.searchParams.get('authSource');
 const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
 const isRailwayInternal = /\.railway\.internal$/i.test(parsedMongoUrl.hostname);
+
+let dbName = parsedMongoUrl.pathname.replace(/^\/+/, '');
+if (!dbName) {
+  const dbFromEnv = (process.env.MONGO_DATABASE_NAME || '').trim();
+  const fallbackDb = dbFromEnv || (mongoUrlSourceKey === 'MONGO_DATABASE_URL' ? '' : 'ermdb');
+  if (!fallbackDb) {
+    throw new Error(
+      'MONGO_DATABASE_URL должен содержать имя базы данных после хоста, например /ermdb',
+    );
+  }
+  parsedMongoUrl.pathname = `/${fallbackDb}`;
+  dbName = fallbackDb;
+}
+
+let authSource = parsedMongoUrl.searchParams.get('authSource');
+const authSourceFromEnv = (process.env.MONGO_AUTH_SOURCE || '').trim();
+if (!authSource && authSourceFromEnv) {
+  parsedMongoUrl.searchParams.set('authSource', authSourceFromEnv);
+  authSource = authSourceFromEnv;
+}
+if (!authSource && isRailwayInternal && mongoUsername === 'mongo') {
+  parsedMongoUrl.searchParams.set('authSource', 'admin');
+  authSource = 'admin';
+}
 if (!authSource && isRailwayInternal && mongoUsername === 'mongo') {
   throw new Error(
     'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
   );
 }
+
+mongoUrlEnv = parsedMongoUrl.toString();
+process.env.MONGO_DATABASE_URL = mongoUrlEnv;
 
 const appUrlEnv = (process.env.APP_URL || '').trim();
 if (!/^https:\/\//.test(appUrlEnv)) {

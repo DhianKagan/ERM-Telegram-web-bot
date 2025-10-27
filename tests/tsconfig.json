@@ -15,7 +15,8 @@
       "shared/*": ["packages/shared/src/*"],
       "@dnd-kit/core": ["tests/stubs/dndKitCore"],
       "@dnd-kit/sortable": ["tests/stubs/dndKitSortable"],
-      "@dnd-kit/utilities": ["tests/stubs/dndKitUtilities"]
+      "@dnd-kit/utilities": ["tests/stubs/dndKitUtilities"],
+      "geojson": ["tests/stubs/geojson"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -27,6 +28,7 @@
       "@testing-library/jest-dom",
       "express",
       "multer",
+      "geojson",
       "../apps/web/src/types/telegram",
       "../apps/web/src/types/leaflet",
       "../apps/web/src/types/maplibre",

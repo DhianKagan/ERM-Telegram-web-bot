@@ -168,9 +168,16 @@ jest.mock("react-i18next", () => {
 });
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
-jest.mock("maplibre-gl-draw/dist/maplibre-gl-draw.css", () => ({}));
+jest.mock(
+  "maplibre-gl-draw/dist/mapbox-gl-draw.css",
+  () => ({}),
+  { virtual: true },
+);
+jest.mock("geojson", () => ({}), { virtual: true });
 
-jest.mock("maplibre-gl", () => {
+jest.mock(
+  "maplibre-gl",
+  () => {
   class GeoJSONSourceMock {
     setData = jest.fn();
   }
@@ -218,7 +225,9 @@ jest.mock("maplibre-gl", () => {
       constructor(public options?: Record<string, unknown>) {}
     },
   };
-});
+},
+  { virtual: true },
+);
 
 type FeatureCollectionMock = {
   type: "FeatureCollection";
@@ -234,29 +243,33 @@ interface MockDrawApi {
   changeMode: jest.Mock<void, [string | undefined]>;
 }
 
-jest.mock("maplibre-gl-draw", () => {
-  return jest.fn().mockImplementation(() => {
-    let collection: FeatureCollectionMock = {
-      type: "FeatureCollection",
-      features: [],
-    };
-    const api: MockDrawApi = {
-      onAdd: jest.fn(),
-      onRemove: jest.fn(),
-      set: jest.fn<MockDrawApi, [FeatureCollectionMock]>((value) => {
-        collection = value;
-        return api;
-      }),
-      getAll: jest.fn<FeatureCollectionMock, []>(() => collection),
-      deleteAll: jest.fn<MockDrawApi, []>(() => {
-        collection = { type: "FeatureCollection", features: [] };
-        return api;
-      }),
-      changeMode: jest.fn(),
-    };
-    return api;
-  });
-});
+jest.mock(
+  "maplibre-gl-draw",
+  () => {
+    return jest.fn().mockImplementation(() => {
+      let collection: FeatureCollectionMock = {
+        type: "FeatureCollection",
+        features: [],
+      };
+      const api: MockDrawApi = {
+        onAdd: jest.fn(),
+        onRemove: jest.fn(),
+        set: jest.fn<MockDrawApi, [FeatureCollectionMock]>((value) => {
+          collection = value;
+          return api;
+        }),
+        getAll: jest.fn<FeatureCollectionMock, []>(() => collection),
+        deleteAll: jest.fn<MockDrawApi, []>(() => {
+          collection = { type: "FeatureCollection", features: [] };
+          return api;
+        }),
+        changeMode: jest.fn(),
+      };
+      return api;
+    });
+  },
+  { virtual: true },
+);
 
 const mockTasks = [
   {

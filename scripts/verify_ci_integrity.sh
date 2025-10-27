@@ -47,6 +47,7 @@ check_tests() {
 
 check_file ".github/workflows/ci.yml" "Workflow CI"
 check_file ".github/workflows/codeql.yml" "Workflow CodeQL"
+check_file ".github/workflows/deploy.yml" "Workflow Deploy"
 check_file ".github/workflows/docker.yml" "Workflow Docker"
 check_file ".github/workflows/lighthouse.yml" "Workflow Lighthouse"
 check_file ".github/workflows/release.yml" "Workflow Release"
@@ -55,6 +56,7 @@ check_file "Procfile.railway" "Procfile Railway"
 check_dir "Railway" "Каталог Railway"
 check_dir "Railway/config" "Каталог конфигурации Railway"
 check_file "Railway/.env" "Railway .env"
+check_file "railway.json" "Railway JSON конфигурация"
 check_tests "tests"
 
 if [ ${#missing[@]} -ne 0 ]; then

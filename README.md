@@ -96,6 +96,12 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 - Push в `main` дополнительно активирует workflow `Release`, который собирает проект и деплоит его на Railway через `pnpm dlx @railway/cli up`.
 - Для ручного релиза по тегу сохранена поддержка схемы `v*.*.*`; тег запускает тот же pipeline деплоя.
 
+## Секреты CI/CD и переменные окружения Railway
+
+- В настройках GitHub Actions добавьте секреты `RAILWAY_TOKEN` (токен доступа Railway для `release.yml`) и `LHCI_GITHUB_APP_TOKEN` (токен установленного Lighthouse CI App).
+- На Railway задайте обязательные переменные `BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `SESSION_SECRET`, `APP_URL`, `MONGO_DATABASE_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`, `NODE_ENV=production`, а также дополнительные токены (например, `LHCI_GITHUB_APP_TOKEN`) при необходимости отчётности.
+- Файл `railway.json` фиксирует использование Nixpacks (`nixpacks.toml`) и запуск через `pm2`. При автосборке Railway выполнит `pnpm build`, после чего `Procfile` или CLI из `release.yml` развернёт свежую версию.
+
 ## Миграции
 
 Скрипты для обновления базы находятся в `scripts/db`. Для добавления роли

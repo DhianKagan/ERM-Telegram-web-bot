@@ -36,6 +36,14 @@ import Modal from "../components/Modal";
 import { useTranslation } from "react-i18next";
 import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import * as maplibregl from "maplibre-gl";
+import type {
+  GeoJSONFeatureCollection,
+  GeoJSONSource,
+} from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
@@ -177,6 +185,31 @@ const extractVehicleTaskIds = (vehicle: FleetVehicleDto): string[] => {
     }
   });
   return Array.from(ids);
+};
+
+const MAPLIBRE_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+const MAPLIBRE_POLYGON_SOURCE_ID = "logistics-polygons";
+const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
+const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
+
+const areFeatureCollectionsEqual = (
+  left: GeoJSONFeatureCollection,
+  right: GeoJSONFeatureCollection,
+): boolean => {
+  if (left.features.length !== right.features.length) {
+    return false;
+  }
+  for (let index = 0; index < left.features.length; index += 1) {
+    const leftFeature = left.features[index];
+    const rightFeature = right.features[index];
+    if (!leftFeature || !rightFeature) {
+      return false;
+    }
+    if (JSON.stringify(leftFeature) !== JSON.stringify(rightFeature)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const normalizeVehicleCapacity = (vehicle: FleetVehicleDto): number | null => {
@@ -592,6 +625,17 @@ export default function LogisticsPage() {
   >({});
   const [isMapExpanded, setIsMapExpanded] = React.useState(false);
   const [mapReady, setMapReady] = React.useState(false);
+  const mapLibreContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const mapLibreRef = React.useRef<maplibregl.Map | null>(null);
+  const drawControlRef = React.useRef<MapboxDraw | null>(null);
+  const [mapLibreReady, setMapLibreReady] = React.useState(false);
+  const [drawnPolygons, setDrawnPolygons] =
+    React.useState<GeoJSONFeatureCollection>({
+      type: "FeatureCollection",
+      features: [],
+    });
+  const drawnPolygonsRef = React.useRef(drawnPolygons);
+  const [isDrawing, setIsDrawing] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
   const navigate = useNavigate();
@@ -618,6 +662,10 @@ export default function LogisticsPage() {
   const [assignError, setAssignError] = React.useState("");
   const [assignResult, setAssignResult] =
     React.useState<RouteOptimizationResult | null>(null);
+
+  React.useEffect(() => {
+    drawnPolygonsRef.current = drawnPolygons;
+  }, [drawnPolygons]);
 
   const legendItems = React.useMemo(
     () =>
@@ -2475,6 +2523,139 @@ export default function LogisticsPage() {
   }, [hasDialog]);
 
   React.useEffect(() => {
+    if (hasDialog) return;
+    const container = mapLibreContainerRef.current;
+    if (!container) return;
+    if (mapLibreRef.current) return;
+    const map = new maplibregl.Map({
+      container,
+      style: MAPLIBRE_STYLE_URL,
+      center: [MAP_CENTER.lng, MAP_CENTER.lat],
+      zoom: MAP_ZOOM,
+      attributionControl: false,
+    });
+    mapLibreRef.current = map;
+    const navigation = new maplibregl.NavigationControl({
+      showCompass: false,
+    });
+    map.addControl(navigation, "top-right");
+    const drawControl = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true,
+      },
+    });
+    drawControlRef.current = drawControl;
+    map.addControl(drawControl, "top-left");
+    let cancelled = false;
+    const ensureSource = () => {
+      if (map.getSource(MAPLIBRE_POLYGON_SOURCE_ID)) {
+        return;
+      }
+      map.addSource(MAPLIBRE_POLYGON_SOURCE_ID, {
+        type: "geojson",
+        data: drawnPolygonsRef.current,
+      });
+      map.addLayer({
+        id: MAPLIBRE_POLYGON_FILL_LAYER_ID,
+        type: "fill",
+        source: MAPLIBRE_POLYGON_SOURCE_ID,
+        paint: {
+          "fill-color": "#6366f1",
+          "fill-opacity": 0.18,
+        },
+      });
+      map.addLayer({
+        id: MAPLIBRE_POLYGON_LINE_LAYER_ID,
+        type: "line",
+        source: MAPLIBRE_POLYGON_SOURCE_ID,
+        paint: {
+          "line-color": "#4338ca",
+          "line-width": 2,
+          "line-dasharray": [2, 2],
+        },
+      });
+      if (drawnPolygonsRef.current.features.length) {
+        drawControl.set(drawnPolygonsRef.current);
+      }
+      if (!cancelled) {
+        setMapLibreReady(true);
+      }
+    };
+    const maybeLoaded = (
+      map as unknown as { isStyleLoaded?: () => boolean }
+    ).isStyleLoaded;
+    if (typeof maybeLoaded === "function" && maybeLoaded()) {
+      ensureSource();
+    } else {
+      map.once("load", ensureSource);
+    }
+    const handleModeChange = (event: { mode?: unknown }) => {
+      const mode = typeof event.mode === "string" ? event.mode : "";
+      setIsDrawing(mode.startsWith("draw_"));
+    };
+    const syncDrawFeatures = () => {
+      const collection = drawControl.getAll() as GeoJSONFeatureCollection;
+      if (!areFeatureCollectionsEqual(collection, drawnPolygonsRef.current)) {
+        setDrawnPolygons(collection);
+      } else {
+        const source = map.getSource(
+          MAPLIBRE_POLYGON_SOURCE_ID,
+        ) as GeoJSONSource | undefined;
+        source?.setData(collection);
+      }
+    };
+    map.on("draw.modechange", handleModeChange);
+    map.on("draw.create", syncDrawFeatures);
+    map.on("draw.update", syncDrawFeatures);
+    map.on("draw.delete", syncDrawFeatures);
+    return () => {
+      cancelled = true;
+      setIsDrawing(false);
+      setMapLibreReady(false);
+      map.off("draw.modechange", handleModeChange);
+      map.off("draw.create", syncDrawFeatures);
+      map.off("draw.update", syncDrawFeatures);
+      map.off("draw.delete", syncDrawFeatures);
+      map.off("load", ensureSource);
+      drawControlRef.current = null;
+      map.remove();
+      mapLibreRef.current = null;
+    };
+  }, [hasDialog]);
+
+  React.useEffect(() => {
+    if (!mapLibreReady) return;
+    const map = mapLibreRef.current;
+    if (!map) return;
+    const source = map.getSource(
+      MAPLIBRE_POLYGON_SOURCE_ID,
+    ) as GeoJSONSource | undefined;
+    source?.setData(drawnPolygons);
+  }, [drawnPolygons, mapLibreReady]);
+
+  React.useEffect(() => {
+    if (!mapLibreReady) return;
+    const drawControl = drawControlRef.current;
+    if (!drawControl) return;
+    const collection = drawControl.getAll() as GeoJSONFeatureCollection;
+    if (!areFeatureCollectionsEqual(collection, drawnPolygons)) {
+      drawControl.deleteAll();
+      if (drawnPolygons.features.length) {
+        drawControl.set(drawnPolygons);
+      }
+    }
+  }, [drawnPolygons, mapLibreReady]);
+
+  React.useEffect(() => {
+    if (!mapLibreReady) return;
+    const map = mapLibreRef.current;
+    if (!map) return;
+    map.resize();
+  }, [mapLibreReady, isMapExpanded, hasDialog]);
+
+  React.useEffect(() => {
     if (!mapRef.current || !optLayerRef.current) return;
     if (visibleLayers.optimized) {
       optLayerRef.current.addTo(mapRef.current);
@@ -3390,6 +3571,35 @@ export default function LogisticsPage() {
             )}
             style={{ height: mapHeight }}
           />
+          <div
+            ref={mapLibreContainerRef}
+            className={clsx(
+              "relative w-full overflow-hidden rounded border bg-slate-50/40",
+              { hidden: hasDialog },
+            )}
+            style={{ height: mapHeight }}
+          >
+            {!mapLibreReady ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">
+                {t("logistics.mapLibreLoading", {
+                  defaultValue: "Инициализация слоя рисования…",
+                })}
+              </div>
+            ) : null}
+            {isDrawing ? (
+              <div className="pointer-events-none absolute left-2 top-2 rounded bg-indigo-500/90 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                {t("logistics.mapDrawing", {
+                  defaultValue: "Режим рисования",
+                })}
+              </div>
+            ) : null}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {t("logistics.mapPolygonCount", {
+              count: drawnPolygons.features.length,
+              defaultValue: "Полигонов: {{count}}",
+            })}
+          </p>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2">

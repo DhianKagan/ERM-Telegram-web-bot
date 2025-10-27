@@ -1,0 +1,22 @@
+# Назначение файла: автоматический запуск локального скрипта pre_pr_check.sh для пулл-реквестов.
+# Модули: GitHub Actions, pnpm, bash-скрипты в каталоге scripts.
+name: "Pre PR Check"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pre-pr-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Включение corepack
+        run: corepack enable
+      - name: Установка зависимостей
+        run: ./scripts/install_bot_deps.sh
+      - name: Предварительная проверка перед PR
+        run: ./scripts/pre_pr_check.sh

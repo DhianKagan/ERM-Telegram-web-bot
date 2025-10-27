@@ -47,6 +47,7 @@ check_tests() {
 
 check_file ".github/workflows/ci.yml" "Workflow CI"
 check_file ".github/workflows/codeql.yml" "Workflow CodeQL"
+check_file ".github/workflows/pre-pr-check.yml" "Workflow Pre PR Check"
 check_file ".github/workflows/deploy.yml" "Workflow Deploy"
 check_file ".github/workflows/docker.yml" "Workflow Docker"
 check_file ".github/workflows/lighthouse.yml" "Workflow Lighthouse"

@@ -2,8 +2,10 @@
 // Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, SingleSelect, логирование, coerceTaskId
 import React from "react";
 import { createPortal } from "react-dom";
-import L, { type LatLngBoundsExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import * as maplibregl from "maplibre-gl";
+import MapLibreDraw from "maplibre-gl-draw";
+import "maplibre-gl/dist/maplibre-gl.css";
+import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,6 +75,20 @@ import {
 } from "../columns/taskBadgeClassNames";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
+import {
+  EMPTY_GEOZONE_COLLECTION,
+  areGeozoneCollectionsEqual,
+  cloneGeozoneCollection,
+  hasPolygonGeometry,
+  sanitizeGeozoneCollection,
+  type GeozoneFeatureCollection,
+} from "../utils/geozones";
+import {
+  LOGISTICS_GEOZONES_EVENT,
+  dispatchLogisticsGeozonesApply,
+  dispatchLogisticsGeozonesRequest,
+  type LogisticsGeozonesCustomEvent,
+} from "../utils/logisticsGeozonesEvents";
 
 type TaskKind = "task" | "request";
 
@@ -305,10 +321,6 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
 
 const MAP_CENTER: [number, number] = [48.3794, 31.1656];
 const MAP_ZOOM = 6;
-const UKRAINE_BOUNDS: LatLngBoundsExpression = [
-  [44, 22],
-  [52.5, 40.5],
-];
 
 type MapPickerTarget = "start" | "finish";
 
@@ -322,11 +334,19 @@ interface MapPickerDialogProps {
   hint: string;
   cancelLabel: string;
   confirmLabel: string;
+  geozones?: GeozoneFeatureCollection | null;
+  onGeozonesChange?: (collection: GeozoneFeatureCollection) => void;
 }
+
+const MAP_PICKER_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+const MAP_PICKER_BOUNDS: [[number, number], [number, number]] = [
+  [22, 44],
+  [40.5, 52.5],
+];
 
 function MapPickerDialog({
   open,
-  target,
+  target: _target,
   initialValue,
   onClose,
   onConfirm,
@@ -334,13 +354,24 @@ function MapPickerDialog({
   hint,
   cancelLabel,
   confirmLabel,
+  geozones,
+  onGeozonesChange,
 }: MapPickerDialogProps) {
+  const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const mapRef = React.useRef<L.Map | null>(null);
-  const markerRef = React.useRef<L.CircleMarker | null>(null);
-  const [selection, setSelection] = React.useState<{ lat: number; lng: number } | null>(
-    null,
+  const mapRef = React.useRef<maplibregl.Map | null>(null);
+  const markerRef = React.useRef<maplibregl.Marker | null>(null);
+  const drawRef = React.useRef<MapLibreDraw | null>(null);
+  const syncingRef = React.useRef(false);
+  const [selection, setSelection] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [zoneDraft, setZoneDraft] = React.useState<GeozoneFeatureCollection>(() =>
+    cloneGeozoneCollection(geozones ?? EMPTY_GEOZONE_COLLECTION),
   );
+  const zoneDraftRef = React.useRef(zoneDraft);
+
+  React.useEffect(() => {
+    zoneDraftRef.current = zoneDraft;
+  }, [zoneDraft]);
 
   React.useEffect(() => {
     if (open) {
@@ -351,75 +382,174 @@ function MapPickerDialog({
   }, [open, initialValue]);
 
   React.useEffect(() => {
-    if (!open || typeof window === "undefined") return undefined;
+    const incoming = cloneGeozoneCollection(geozones ?? EMPTY_GEOZONE_COLLECTION);
+    if (!areGeozoneCollectionsEqual(incoming, zoneDraftRef.current)) {
+      setZoneDraft(incoming);
+    }
+  }, [geozones]);
+
+  React.useEffect(() => {
+    if (!open || typeof window === "undefined") {
+      return;
+    }
     const container = containerRef.current;
-    if (!container) return undefined;
-    const map = L.map(container, {
-      maxBounds: UKRAINE_BOUNDS,
-      maxBoundsViscosity: 1,
-      minZoom: 5,
-      maxZoom: 12,
+    if (!container) {
+      return;
+    }
+    const initialCenter: [number, number] = initialValue
+      ? [initialValue.lng, initialValue.lat]
+      : [MAP_CENTER[1], MAP_CENTER[0]];
+    const initialZoom = initialValue ? 13 : MAP_ZOOM;
+    const map = new maplibregl.Map({
+      container,
+      style: MAP_PICKER_STYLE_URL,
+      center: initialCenter,
+      zoom: initialZoom,
+      maxBounds: MAP_PICKER_BOUNDS,
+      attributionControl: false,
     });
     mapRef.current = map;
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
-    const applyInitial = initialValue ?? null;
-    if (applyInitial) {
-      map.setView([applyInitial.lat, applyInitial.lng], 13);
-      markerRef.current = L.circleMarker([applyInitial.lat, applyInitial.lng], {
-        radius: 8,
-        color: "#2563eb",
-        fillColor: "#2563eb",
-        fillOpacity: 0.85,
-        weight: 2,
-      }).addTo(map);
-    } else {
-      map.setView(MAP_CENTER, MAP_ZOOM);
-    }
-    const handleClick = (event: L.LeafletMouseEvent) => {
-      const { lat, lng } = event.latlng;
+    const navigation = new maplibregl.NavigationControl({ showCompass: false });
+    map.addControl(navigation, "top-right");
+    const draw = new MapLibreDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true,
+      },
+    });
+    drawRef.current = draw;
+    map.addControl(draw as unknown as maplibregl.IControl, "top-left");
+
+    const syncZones = () => {
+      if (syncingRef.current) {
+        return;
+      }
+      const current = cloneGeozoneCollection(
+        (draw.getAll() as GeozoneFeatureCollection) ?? EMPTY_GEOZONE_COLLECTION,
+      );
+      if (!areGeozoneCollectionsEqual(current, zoneDraftRef.current)) {
+        setZoneDraft(current);
+        onGeozonesChange?.(current);
+      }
+    };
+
+    const handleDrawCreate = () => syncZones();
+    const handleDrawUpdate = () => syncZones();
+    const handleDrawDelete = () => syncZones();
+
+    map.on("draw.create", handleDrawCreate);
+    map.on("draw.update", handleDrawUpdate);
+    map.on("draw.delete", handleDrawDelete);
+
+    const handleClick = (event: maplibregl.MapMouseEvent) => {
+      const { lat, lng } = event.lngLat;
       setSelection({ lat, lng });
     };
     map.on("click", handleClick);
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-    });
+
+    const applyInitial = () => {
+      const initialCollection = cloneGeozoneCollection(zoneDraftRef.current);
+      if (initialCollection.features.length) {
+        syncingRef.current = true;
+        draw.set(initialCollection);
+        syncingRef.current = false;
+      }
+      requestAnimationFrame(() => {
+        map.resize();
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      applyInitial();
+    } else {
+      map.once("load", applyInitial);
+    }
+
     return () => {
       map.off("click", handleClick);
+      map.off("draw.create", handleDrawCreate);
+      map.off("draw.update", handleDrawUpdate);
+      map.off("draw.delete", handleDrawDelete);
+      map.off("load", applyInitial);
+      drawRef.current = null;
       markerRef.current?.remove();
       markerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
-  }, [open, initialValue, target]);
+  }, [open, initialValue, onGeozonesChange]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+    const draw = drawRef.current;
+    if (!draw) {
+      return;
+    }
+    const current = cloneGeozoneCollection(
+      (draw.getAll() as GeozoneFeatureCollection) ?? EMPTY_GEOZONE_COLLECTION,
+    );
+    if (areGeozoneCollectionsEqual(current, zoneDraft)) {
+      return;
+    }
+    syncingRef.current = true;
+    draw.deleteAll();
+    if (zoneDraft.features.length) {
+      draw.set(cloneGeozoneCollection(zoneDraft));
+    }
+    syncingRef.current = false;
+  }, [zoneDraft, open]);
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
     const map = mapRef.current;
-    if (!map) return;
-    const current = selection;
-    if (!current) {
+    if (!map) {
+      return;
+    }
+    if (!selection) {
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;
       }
       return;
     }
-    const latLng: [number, number] = [current.lat, current.lng];
+    const lngLat: [number, number] = [selection.lng, selection.lat];
     if (!markerRef.current) {
-      markerRef.current = L.circleMarker(latLng, {
-        radius: 8,
-        color: "#2563eb",
-        fillColor: "#2563eb",
-        fillOpacity: 0.85,
-        weight: 2,
-      }).addTo(map);
+      markerRef.current = new maplibregl.Marker({ color: "#2563eb" })
+        .setLngLat(lngLat)
+        .addTo(map);
     } else {
-      markerRef.current.setLatLng(latLng);
+      markerRef.current.setLngLat(lngLat);
     }
-    map.panTo(latLng);
+    map.easeTo({ center: lngLat, duration: 300 });
   }, [selection, open]);
+
+  const handleClearZones = React.useCallback(() => {
+    const empty = cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION);
+    const draw = drawRef.current;
+    if (draw) {
+      syncingRef.current = true;
+      draw.deleteAll();
+      syncingRef.current = false;
+    }
+    if (!areGeozoneCollectionsEqual(empty, zoneDraftRef.current)) {
+      setZoneDraft(empty);
+      onGeozonesChange?.(empty);
+    }
+  }, [onGeozonesChange]);
+
+  const geozoneCountLabel = React.useMemo(
+    () =>
+      t("logistics.mapPolygonCount", {
+        count: zoneDraft.features.length,
+        defaultValue: "Полигонов: {{count}}",
+      }),
+    [t, zoneDraft.features.length],
+  );
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -432,6 +562,18 @@ function MapPickerDialog({
           ref={containerRef}
           className="h-[360px] w-full overflow-hidden rounded-xl border border-slate-200"
         />
+        <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-600">
+          <span>{geozoneCountLabel}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleClearZones}
+            disabled={zoneDraft.features.length === 0}
+          >
+            {t("logistics.geozoneClear", { defaultValue: "Очистить" })}
+          </Button>
+        </div>
         <div className="text-sm font-medium text-slate-700">
           {selection ? formatCoords(selection) : "—"}
         </div>
@@ -1046,6 +1188,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lng: number;
   } | null>(null);
   const [logisticsError, setLogisticsError] = React.useState("");
+  const [logisticsGeozones, setLogisticsGeozones] =
+    React.useState<GeozoneFeatureCollection>(() =>
+      cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION),
+    );
+  const logisticsGeozonesRef = React.useRef(logisticsGeozones);
+  const [customData, setCustomData] = React.useState<Record<string, unknown>>({});
+  const customDataRef = React.useRef(customData);
   const [mapTarget, setMapTarget] = React.useState<MapPickerTarget | null>(null);
   const canonicalStartLink = React.useMemo(
     () => sanitizeLocationLink(startLink),
@@ -1689,6 +1838,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const albumMessage = (taskData as Record<string, unknown>)
         .telegram_photos_message_id;
       setPhotosLink(buildTelegramMessageLink(albumChat, albumMessage));
+      const rawCustom = toRecord((taskData as Record<string, unknown>).custom);
+      const { logisticsGeozones: storedGeozones, ...restCustom } = rawCustom;
+      setCustomData(restCustom);
+      setLogisticsGeozones(sanitizeGeozoneCollection(storedGeozones));
       if (usersMap) {
         setUsers((prev) => {
           const list = [...prev];
@@ -1777,6 +1930,43 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setLogisticsError("");
     }
   }, [showLogistics]);
+
+  React.useEffect(() => {
+    logisticsGeozonesRef.current = logisticsGeozones;
+  }, [logisticsGeozones]);
+
+  React.useEffect(() => {
+    customDataRef.current = customData;
+  }, [customData]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handleEvent = (event: Event) => {
+      const detail = (event as LogisticsGeozonesCustomEvent).detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.type === "change") {
+        const next = cloneGeozoneCollection(detail.collection);
+        setLogisticsGeozones((current) =>
+          areGeozoneCollectionsEqual(current, next) ? current : next,
+        );
+      }
+    };
+    window.addEventListener(
+      LOGISTICS_GEOZONES_EVENT,
+      handleEvent as EventListener,
+    );
+    dispatchLogisticsGeozonesRequest();
+    return () => {
+      window.removeEventListener(
+        LOGISTICS_GEOZONES_EVENT,
+        handleEvent as EventListener,
+      );
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!isEdit) {
@@ -1970,6 +2160,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       payload.draftMeta = draftMeta;
     }
 
+    const customSnapshot: Record<string, unknown> = {
+      ...customDataRef.current,
+    };
+    const zonesSnapshot = cloneGeozoneCollection(logisticsGeozonesRef.current);
+    customSnapshot.logisticsGeozones = zonesSnapshot;
+    payload.custom = customSnapshot;
+
     payload.kind = entityKind;
 
     return payload;
@@ -2075,6 +2272,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setCompletedAt("");
     setHistory([]);
     setResolvedTaskId(null);
+    setLogisticsGeozones(cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION));
+    setCustomData({});
     const summaryUrl =
       initialKind === "request"
         ? "/api/v1/tasks/report/summary?kind=request"
@@ -2620,6 +2819,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [editing],
   );
 
+  const handleGeozonesChange = React.useCallback(
+    (collection: GeozoneFeatureCollection) => {
+      const next = cloneGeozoneCollection(collection);
+      if (areGeozoneCollectionsEqual(logisticsGeozonesRef.current, next)) {
+        return;
+      }
+      logisticsGeozonesRef.current = next;
+      setLogisticsGeozones(next);
+      dispatchLogisticsGeozonesApply(next);
+    },
+    [],
+  );
+
   const confirmMapSelection = React.useCallback(
     async (coords: { lat: number; lng: number }) => {
       if (!mapTarget) return;
@@ -2869,6 +3081,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         end_location_link: endLink,
         logistics_enabled: showLogistics,
       };
+      const customPayload: Record<string, unknown> = {
+        ...customDataRef.current,
+      };
+      customPayload.logisticsGeozones = cloneGeozoneCollection(
+        logisticsGeozonesRef.current,
+      );
+      payload.custom = customPayload;
       const driverCandidate = transportDriverId.trim();
       if (driverCandidate) {
         const driverNumeric = Number.parseInt(driverCandidate, 10);
@@ -4517,6 +4736,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         hint={mapPickerHint}
         cancelLabel={mapPickerCancel}
         confirmLabel={mapPickerConfirm}
+        geozones={logisticsGeozones}
+        onGeozonesChange={handleGeozonesChange}
       />
       <AlertDialog
         open={alertMsg !== null}

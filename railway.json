@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksConfigPath": "nixpacks.toml"
+  },
+  "deploy": {
+    "preDeployCommand": "pnpm build && ./scripts/set_bot_commands.sh",
+    "startCommand": "npx pm2-runtime apps/api/ecosystem.config.cjs"
+  }
+}

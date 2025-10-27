@@ -3,6 +3,7 @@
 # Дорожная карта проекта
 
 - Конфигурация `nixpacks.toml` обеспечивает успешную сборку на Railway.
+- `railway.json` фиксирует запуск через `pm2-runtime`, а Release workflow использует `railway up --yes` для безынтерактивного деплоя.
 - Реализован архив задач: API `/api/v1/archives`, веб-раздел `/cp/archive`, очистка сообщений при удалении и полное удаление для маски 8.
 - Pretest e2e запускает установку Firefox и Chromium и диагностику `playwright doctor` с запасным `--list`,
   а CI публикует отчёт в сводке job.

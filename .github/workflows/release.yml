@@ -30,7 +30,7 @@ jobs:
       - name: Сборка Docker-образа
         run: docker build -t task-bot .
       - name: Деплой на Railway
-        run: pnpm dlx @railway/cli@latest up --service bot --detach
+        run: pnpm dlx @railway/cli@latest up --service bot --yes --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       - name: Публикация релиза

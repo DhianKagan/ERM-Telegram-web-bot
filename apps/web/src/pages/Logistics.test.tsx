@@ -6,6 +6,7 @@ import "@testing-library/jest-dom";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -181,46 +182,55 @@ jest.mock(
   class GeoJSONSourceMock {
     setData = jest.fn();
   }
+  const instances: any[] = [];
+  class Map {
+    private sources: Record<string, GeoJSONSourceMock> = {};
+    private events: Record<string, Set<(event?: unknown) => void>> = {};
+    constructor(public options: Record<string, unknown>) {
+      instances.push(this);
+    }
+    addControl() {
+      return this;
+    }
+    addSource(id: string, _spec?: unknown) {
+      this.sources[id] = new GeoJSONSourceMock();
+      return this;
+    }
+    addLayer() {
+      return this;
+    }
+    getSource(id: string) {
+      return this.sources[id];
+    }
+    on(type: string, callback: (event?: unknown) => void) {
+      if (!this.events[type]) {
+        this.events[type] = new Set();
+      }
+      this.events[type].add(callback);
+      return this;
+    }
+    once(type: string, callback: (event?: unknown) => void) {
+      callback({ type });
+      return this;
+    }
+    off(type: string, callback: (event?: unknown) => void) {
+      this.events[type]?.delete(callback);
+      return this;
+    }
+    fire(type: string, event?: unknown) {
+      this.events[type]?.forEach((handler) => handler(event));
+      return this;
+    }
+    remove() {
+      return undefined;
+    }
+    resize() {
+      return this;
+    }
+  }
+  (Map as unknown as { __instances: any[] }).__instances = instances;
   return {
-    Map: class {
-      private sources: Record<string, GeoJSONSourceMock> = {};
-      private events: Record<string, Set<(...args: unknown[]) => void>> = {};
-      constructor(public options: Record<string, unknown>) {}
-      addControl() {
-        return this;
-      }
-      addSource(id: string) {
-        this.sources[id] = new GeoJSONSourceMock();
-        return this;
-      }
-      addLayer() {
-        return this;
-      }
-      getSource(id: string) {
-        return this.sources[id];
-      }
-      on(type: string, callback: (...args: unknown[]) => void) {
-        if (!this.events[type]) {
-          this.events[type] = new Set();
-        }
-        this.events[type].add(callback);
-        return this;
-      }
-      once(type: string, callback: (...args: unknown[]) => void) {
-        callback();
-        return this;
-      }
-      off(type: string, callback: (...args: unknown[]) => void) {
-        this.events[type]?.delete(callback);
-        return this;
-      }
-      remove() {
-        return undefined;
-      }
-      resize() {
-        return this;
-      }
-    },
+    Map,
     NavigationControl: class {
       constructor(public options?: Record<string, unknown>) {}
     },
@@ -240,33 +250,86 @@ interface MockDrawApi {
   set: jest.Mock<MockDrawApi, [FeatureCollectionMock]>;
   getAll: jest.Mock<FeatureCollectionMock, []>;
   deleteAll: jest.Mock<MockDrawApi, []>;
-  changeMode: jest.Mock<void, [string | undefined]>;
+  delete: jest.Mock<MockDrawApi, [string | string[]]>;
+  changeMode: jest.Mock<MockDrawApi, [string | undefined, any?]>;
+  getSelectedIds: jest.Mock<string[], []>;
+  __collection: FeatureCollectionMock;
 }
 
 jest.mock(
   "maplibre-gl-draw",
   () => {
-    return jest.fn().mockImplementation(() => {
+    const instances: MockDrawApi[] = [];
+    const factory = jest.fn().mockImplementation(() => {
       let collection: FeatureCollectionMock = {
         type: "FeatureCollection",
         features: [],
       };
+      let selectedIds: string[] = [];
       const api: MockDrawApi = {
         onAdd: jest.fn(),
         onRemove: jest.fn(),
         set: jest.fn<MockDrawApi, [FeatureCollectionMock]>((value) => {
           collection = value;
+          api.__collection = collection;
           return api;
         }),
         getAll: jest.fn<FeatureCollectionMock, []>(() => collection),
         deleteAll: jest.fn<MockDrawApi, []>(() => {
           collection = { type: "FeatureCollection", features: [] };
+          api.__collection = collection;
+          selectedIds = [];
           return api;
         }),
-        changeMode: jest.fn(),
+        delete: jest.fn<MockDrawApi, [string | string[]]>((value) => {
+          const removeIds = (Array.isArray(value) ? value : [value]).map((id) =>
+            typeof id === "string" ? id : String(id),
+          );
+          collection = {
+            type: "FeatureCollection",
+            features: collection.features.filter((feature) => {
+              const featureId =
+                typeof (feature as any)?.id === "string"
+                  ? ((feature as any).id as string)
+                  : typeof (feature as any)?.id === "number"
+                  ? String((feature as any).id)
+                  : null;
+              if (!featureId) {
+                return true;
+              }
+              return !removeIds.includes(featureId);
+            }),
+          };
+          api.__collection = collection;
+          selectedIds = selectedIds.filter((id) => !removeIds.includes(id));
+          return api;
+        }),
+        changeMode: jest.fn<MockDrawApi, [string | undefined, any?]>((mode, options) => {
+          if (mode === "simple_select") {
+            if (Array.isArray(options?.featureIds)) {
+              const normalized = (options.featureIds as unknown[]).map(
+                (value) =>
+                  typeof value === "string" || typeof value === "number"
+                    ? String(value)
+                    : null,
+              ) as Array<string | null>;
+              selectedIds = normalized.filter(
+                (value): value is string => value !== null,
+              );
+            } else {
+              selectedIds = [];
+            }
+          }
+          return api;
+        }),
+        getSelectedIds: jest.fn<string[], []>(() => [...selectedIds]),
+        __collection: collection,
       };
+      instances.push(api);
       return api;
     });
+    (factory as unknown as { __instances: MockDrawApi[] }).__instances = instances;
+    return factory;
   },
   { virtual: true },
 );
@@ -674,6 +737,10 @@ describe("LogisticsPage", () => {
     });
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("отображает список транспорта и позволяет вручную обновить", async () => {
     render(
       <MemoryRouter
@@ -764,6 +831,113 @@ describe("LogisticsPage", () => {
       expect.objectContaining({ vehicleCount: 1 }),
     );
     expect(within(dialog).getByText(/Маршрут рассчитан:/)).toBeInTheDocument();
+  });
+
+  it("управляет геозонами и пересчитывает задачи", async () => {
+    optimizeRouteMock.mockResolvedValue({
+      routes: [],
+      totalDistanceKm: 0,
+      totalEtaMinutes: 0,
+      totalLoad: 0,
+      warnings: [],
+    });
+
+    render(
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Черновик маршрута")).toBeInTheDocument(),
+    );
+
+    const maplibre: any = require("maplibre-gl");
+    const drawModule: any = require("maplibre-gl-draw");
+    const mapInstances = (maplibre.Map as unknown as {
+      __instances: any[];
+    }).__instances;
+    const drawInstances = (drawModule as unknown as {
+      __instances: MockDrawApi[];
+    }).__instances;
+    const mapInstance = mapInstances[mapInstances.length - 1];
+    const drawInstance = drawInstances[drawInstances.length - 1];
+    if (!mapInstance || !drawInstance) {
+      throw new Error("Инстансы MapLibre не инициализировались");
+    }
+
+    const polygonFeature = {
+      id: "zone-1",
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [29.5, 49.5],
+            [29.5, 50.5],
+            [30.5, 50.5],
+            [30.5, 49.5],
+            [29.5, 49.5],
+          ],
+        ],
+      },
+    };
+
+    jest.useFakeTimers();
+    jest.runOnlyPendingTimers();
+    jest.clearAllTimers();
+
+    act(() => {
+      drawInstance.__collection.features = [polygonFeature];
+      mapInstance.fire("draw.create", { features: [polygonFeature] });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Геозона 1" }),
+      ).toBeInTheDocument(),
+    );
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+
+    jest.useRealTimers();
+
+    optimizeRouteMock.mockClear();
+
+    const optimizeButton = screen.getByRole("button", {
+      name: "Просчёт логистики",
+    });
+    act(() => {
+      fireEvent.click(optimizeButton);
+    });
+
+    await waitFor(() => expect(optimizeRouteMock).toHaveBeenCalledTimes(1));
+    const payload = optimizeRouteMock.mock.calls[0][0] as OptimizeRoutePayload;
+    expect(payload.tasks).toHaveLength(1);
+
+    jest.useFakeTimers();
+    const deleteButton = screen.getByRole("button", {
+      name: "Удалить геозону Геозона 1",
+    });
+    act(() => {
+      fireEvent.click(deleteButton);
+    });
+    act(() => {
+      jest.advanceTimersByTime(800);
+    });
+    jest.useRealTimers();
+
+    await waitFor(() =>
+      expect(drawInstance.__collection.features).toHaveLength(0),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Геозоны не добавлены")).toBeInTheDocument(),
+    );
   });
 
   it("показывает аналитику плана, прогресс-бары и таблицу остановок", async () => {

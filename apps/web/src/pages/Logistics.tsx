@@ -21,7 +21,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
+import { booleanPointInPolygon, point } from "@turf/turf";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
 import optimizeRoute, {
@@ -39,6 +40,7 @@ import "leaflet/dist/leaflet.css";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
 import type {
+  Feature,
   FeatureCollection,
   GeoJsonProperties,
   Geometry,
@@ -195,6 +197,74 @@ const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
 const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
 
 type MapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>;
+type PolygonGeometry = Extract<Geometry, { type: "Polygon" }>;
+type MultiPolygonGeometry = Extract<Geometry, { type: "MultiPolygon" }>;
+type MapPolygonFeature = Feature<
+  PolygonGeometry | MultiPolygonGeometry,
+  GeoJsonProperties
+>;
+
+const EMPTY_FEATURE_COLLECTION: MapFeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+const POLYGON_GEOMETRY_TYPES = new Set<Geometry["type"]>([
+  "Polygon",
+  "MultiPolygon",
+]);
+
+const cloneFeatureCollection = (
+  source: MapFeatureCollection,
+): MapFeatureCollection =>
+  JSON.parse(JSON.stringify(source)) as MapFeatureCollection;
+
+const getFeatureId = (input?: { id?: unknown }): string | null => {
+  if (!input) {
+    return null;
+  }
+  const raw = input.id;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw.toString();
+  }
+  return null;
+};
+
+const isPolygonFeature = (
+  feature: MapFeatureCollection["features"][number],
+): feature is MapPolygonFeature => {
+  if (!feature || typeof feature !== "object") {
+    return false;
+  }
+  const geometry = feature.geometry;
+  if (!geometry || typeof geometry !== "object") {
+    return false;
+  }
+  return POLYGON_GEOMETRY_TYPES.has(geometry.type);
+};
+
+const isCoordinateInsidePolygons = (
+  collection: MapFeatureCollection,
+  coords: Coords,
+): boolean => {
+  const polygons = collection.features.filter(isPolygonFeature);
+  if (!polygons.length) {
+    return false;
+  }
+  const geoPoint = point([coords.lng, coords.lat]);
+  return polygons.some((polygon) => booleanPointInPolygon(geoPoint, polygon));
+};
+
+const hasPolygonGeometry = (collection: MapFeatureCollection) =>
+  collection.features.some(isPolygonFeature);
+
+type DrawEventPayload = {
+  features?: Array<Feature<Geometry, GeoJsonProperties>>;
+};
 
 const areFeatureCollectionsEqual = (
   left: MapFeatureCollection,
@@ -634,11 +704,14 @@ export default function LogisticsPage() {
   const drawControlRef = React.useRef<MapLibreDraw | null>(null);
   const [mapLibreReady, setMapLibreReady] = React.useState(false);
   const [drawnPolygons, setDrawnPolygons] =
-    React.useState<MapFeatureCollection>({
-      type: "FeatureCollection",
-      features: [],
-    });
+    React.useState<MapFeatureCollection>(() =>
+      cloneFeatureCollection(EMPTY_FEATURE_COLLECTION),
+    );
   const drawnPolygonsRef = React.useRef(drawnPolygons);
+  const geozoneChangeInitRef = React.useRef(false);
+  const [activeGeozoneId, setActiveGeozoneId] = React.useState<string | null>(
+    null,
+  );
   const [isDrawing, setIsDrawing] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
@@ -670,6 +743,103 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     drawnPolygonsRef.current = drawnPolygons;
   }, [drawnPolygons]);
+
+  const geozoneFeatures = React.useMemo(
+    () => drawnPolygons.features.filter(isPolygonFeature),
+    [drawnPolygons],
+  );
+
+  const geozoneItems = React.useMemo(
+    () =>
+      geozoneFeatures.map((feature, index) => {
+        const id = getFeatureId(feature);
+        const nameProperty =
+          typeof feature?.properties?.name === "string"
+            ? feature.properties.name.trim()
+            : "";
+        const label =
+          nameProperty ||
+          t("logistics.geozoneDefaultName", {
+            index: index + 1,
+            defaultValue: `Геозона ${index + 1}`,
+          });
+        return {
+          key: id ?? `zone-${index}`,
+          id,
+          label,
+          active: Boolean(id) && id === activeGeozoneId,
+        };
+      }),
+    [activeGeozoneId, geozoneFeatures, t],
+  );
+
+  const handleSelectGeozone = React.useCallback((id: string | null) => {
+    const drawControl = drawControlRef.current;
+    if (drawControl) {
+      if (id) {
+        drawControl.changeMode("simple_select", { featureIds: [id] });
+      } else {
+        drawControl.changeMode("simple_select", { featureIds: [] });
+      }
+    }
+    setActiveGeozoneId(id);
+  }, []);
+
+  const handleDeleteGeozone = React.useCallback((id: string) => {
+    if (!id) {
+      return;
+    }
+    const drawControl = drawControlRef.current;
+    if (drawControl) {
+      drawControl.delete(id);
+      const updated = cloneFeatureCollection(
+        drawControl.getAll() as MapFeatureCollection,
+      );
+      setDrawnPolygons(updated);
+      setActiveGeozoneId((current) => (current === id ? null : current));
+      const map = mapLibreRef.current;
+      const source = map?.getSource(
+        MAPLIBRE_POLYGON_SOURCE_ID,
+      ) as GeoJSONSource | undefined;
+      source?.setData(updated);
+      return;
+    }
+    setDrawnPolygons((current) => {
+      const next: MapFeatureCollection = {
+        type: "FeatureCollection",
+        features: current.features.filter(
+          (feature) => getFeatureId(feature) !== id,
+        ),
+      };
+      const map = mapLibreRef.current;
+      const source = map?.getSource(
+        MAPLIBRE_POLYGON_SOURCE_ID,
+      ) as GeoJSONSource | undefined;
+      source?.setData(next);
+      return next;
+    });
+    setActiveGeozoneId((current) => (current === id ? null : current));
+  }, []);
+
+  const handleClearGeozones = React.useCallback(() => {
+    const drawControl = drawControlRef.current;
+    if (drawControl) {
+      drawControl.deleteAll();
+    }
+    setDrawnPolygons((current) => {
+      if (!current.features.length) {
+        return current;
+      }
+      const next = cloneFeatureCollection(EMPTY_FEATURE_COLLECTION);
+      const map = mapLibreRef.current;
+      const source = map?.getSource(
+        MAPLIBRE_POLYGON_SOURCE_ID,
+      ) as GeoJSONSource | undefined;
+      source?.setData(next);
+      return next;
+    });
+    setActiveGeozoneId(null);
+  }, []);
 
   const legendItems = React.useMemo(
     () =>
@@ -1335,6 +1505,8 @@ export default function LogisticsPage() {
   }, [availableVehicles, planDraft, vehicles]);
 
   const buildOptimizeTasks = React.useCallback((sourceTasks: RouteTask[]) => {
+    const polygons = drawnPolygonsRef.current;
+    const shouldFilterByZone = hasPolygonGeometry(polygons);
     return sourceTasks.reduce<OptimizeRoutePayload["tasks"]>((acc, task) => {
       const taskId = getTaskIdentifier(task);
       if (!taskId) {
@@ -1344,6 +1516,21 @@ export default function LogisticsPage() {
       const hasFinishPoint = hasPoint(task.finishCoordinates);
       if (!hasStartPoint && !hasFinishPoint) {
         return acc;
+      }
+      if (shouldFilterByZone) {
+        const pointsToCheck: Coords[] = [];
+        if (hasStartPoint) {
+          pointsToCheck.push(task.startCoordinates as Coords);
+        }
+        if (hasFinishPoint) {
+          pointsToCheck.push(task.finishCoordinates as Coords);
+        }
+        const insideZone = pointsToCheck.some((coords) =>
+          isCoordinateInsidePolygons(polygons, coords),
+        );
+        if (!insideZone) {
+          return acc;
+        }
       }
       const useDropPoint = !hasStartPoint && hasFinishPoint;
       const coordinates = (
@@ -1446,10 +1633,27 @@ export default function LogisticsPage() {
       typeof assignVehicle.transportType === "string"
         ? assignVehicle.transportType.trim().toLowerCase()
         : "";
+    const polygons = drawnPolygonsRef.current;
+    const shouldFilterByZone = hasPolygonGeometry(polygons);
     const filtered = tasks.filter((task) => {
       const taskId = getTaskIdentifier(task);
       if (!taskId) {
         return false;
+      }
+      if (shouldFilterByZone) {
+        const points: Coords[] = [];
+        if (hasPoint(task.startCoordinates)) {
+          points.push(task.startCoordinates as Coords);
+        }
+        if (hasPoint(task.finishCoordinates)) {
+          points.push(task.finishCoordinates as Coords);
+        }
+        if (
+          !points.length ||
+          !points.some((coords) => isCoordinateInsidePolygons(polygons, coords))
+        ) {
+          return false;
+        }
       }
       const details = (task as Record<string, unknown>).logistics_details as
         | LogisticsDetails
@@ -1728,6 +1932,14 @@ export default function LogisticsPage() {
     },
     [calculate, load, loadPlan],
   );
+
+  React.useEffect(() => {
+    if (!geozoneChangeInitRef.current) {
+      geozoneChangeInitRef.current = true;
+      return;
+    }
+    scheduleAutoRecalculate({ recalc: true });
+  }, [drawnPolygons, scheduleAutoRecalculate]);
 
   const persistPlanDraft = React.useCallback(
     async (nextDraft: RoutePlan) => {
@@ -2553,35 +2765,44 @@ export default function LogisticsPage() {
     drawControlRef.current = drawControl;
     map.addControl(drawControl as unknown as maplibregl.IControl, "top-left");
     let cancelled = false;
+    const updateSource = (collection: MapFeatureCollection) => {
+      const source = map.getSource(
+        MAPLIBRE_POLYGON_SOURCE_ID,
+      ) as GeoJSONSource | undefined;
+      source?.setData(collection);
+    };
     const ensureSource = () => {
-      if (map.getSource(MAPLIBRE_POLYGON_SOURCE_ID)) {
-        return;
+      const existing = map.getSource(MAPLIBRE_POLYGON_SOURCE_ID);
+      const initial = cloneFeatureCollection(drawnPolygonsRef.current);
+      if (!existing) {
+        map.addSource(MAPLIBRE_POLYGON_SOURCE_ID, {
+          type: "geojson",
+          data: initial,
+        });
+        map.addLayer({
+          id: MAPLIBRE_POLYGON_FILL_LAYER_ID,
+          type: "fill",
+          source: MAPLIBRE_POLYGON_SOURCE_ID,
+          paint: {
+            "fill-color": "#6366f1",
+            "fill-opacity": 0.18,
+          },
+        });
+        map.addLayer({
+          id: MAPLIBRE_POLYGON_LINE_LAYER_ID,
+          type: "line",
+          source: MAPLIBRE_POLYGON_SOURCE_ID,
+          paint: {
+            "line-color": "#4338ca",
+            "line-width": 2,
+            "line-dasharray": [2, 2],
+          },
+        });
+      } else {
+        updateSource(initial);
       }
-      map.addSource(MAPLIBRE_POLYGON_SOURCE_ID, {
-        type: "geojson",
-        data: drawnPolygonsRef.current,
-      });
-      map.addLayer({
-        id: MAPLIBRE_POLYGON_FILL_LAYER_ID,
-        type: "fill",
-        source: MAPLIBRE_POLYGON_SOURCE_ID,
-        paint: {
-          "fill-color": "#6366f1",
-          "fill-opacity": 0.18,
-        },
-      });
-      map.addLayer({
-        id: MAPLIBRE_POLYGON_LINE_LAYER_ID,
-        type: "line",
-        source: MAPLIBRE_POLYGON_SOURCE_ID,
-        paint: {
-          "line-color": "#4338ca",
-          "line-width": 2,
-          "line-dasharray": [2, 2],
-        },
-      });
-      if (drawnPolygonsRef.current.features.length) {
-        drawControl.set(drawnPolygonsRef.current);
+      if (initial.features.length) {
+        drawControl.set(initial);
       }
       if (!cancelled) {
         setMapLibreReady(true);
@@ -2599,29 +2820,55 @@ export default function LogisticsPage() {
       const mode = typeof event.mode === "string" ? event.mode : "";
       setIsDrawing(mode.startsWith("draw_"));
     };
-    const syncDrawFeatures = () => {
-      const collection = drawControl.getAll() as MapFeatureCollection;
-      if (!areFeatureCollectionsEqual(collection, drawnPolygonsRef.current)) {
-        setDrawnPolygons(collection);
+    const syncDrawFeatures = (collection?: MapFeatureCollection) => {
+      const rawCollection =
+        collection ?? (drawControl.getAll() as MapFeatureCollection);
+      const nextCollection = cloneFeatureCollection(rawCollection);
+      if (!areFeatureCollectionsEqual(nextCollection, drawnPolygonsRef.current)) {
+        setDrawnPolygons(nextCollection);
       } else {
-        const source = map.getSource(
-          MAPLIBRE_POLYGON_SOURCE_ID,
-        ) as GeoJSONSource | undefined;
-        source?.setData(collection);
+        updateSource(nextCollection);
       }
     };
+    const handleDrawCreate = (event: DrawEventPayload) => {
+      syncDrawFeatures();
+      const createdId = getFeatureId(event?.features?.[0]);
+      if (createdId) {
+        setActiveGeozoneId(createdId);
+      }
+    };
+    const handleDrawUpdate = () => {
+      syncDrawFeatures();
+    };
+    const handleDrawDelete = (event: DrawEventPayload) => {
+      syncDrawFeatures();
+      const removedIds = (event?.features ?? [])
+        .map((feature) => getFeatureId(feature))
+        .filter((value): value is string => Boolean(value));
+      if (removedIds.length) {
+        setActiveGeozoneId((current) =>
+          current && removedIds.includes(current) ? null : current,
+        );
+      }
+    };
+    const handleSelectionChange = (event: DrawEventPayload) => {
+      const selectedId = getFeatureId(event?.features?.[0]);
+      setActiveGeozoneId(selectedId);
+    };
     map.on("draw.modechange", handleModeChange);
-    map.on("draw.create", syncDrawFeatures);
-    map.on("draw.update", syncDrawFeatures);
-    map.on("draw.delete", syncDrawFeatures);
+    map.on("draw.create", handleDrawCreate);
+    map.on("draw.update", handleDrawUpdate);
+    map.on("draw.delete", handleDrawDelete);
+    map.on("draw.selectionchange", handleSelectionChange);
     return () => {
       cancelled = true;
       setIsDrawing(false);
       setMapLibreReady(false);
       map.off("draw.modechange", handleModeChange);
-      map.off("draw.create", syncDrawFeatures);
-      map.off("draw.update", syncDrawFeatures);
-      map.off("draw.delete", syncDrawFeatures);
+      map.off("draw.create", handleDrawCreate);
+      map.off("draw.update", handleDrawUpdate);
+      map.off("draw.delete", handleDrawDelete);
+      map.off("draw.selectionchange", handleSelectionChange);
       map.off("load", ensureSource);
       drawControlRef.current = null;
       map.remove();
@@ -2636,7 +2883,7 @@ export default function LogisticsPage() {
     const source = map.getSource(
       MAPLIBRE_POLYGON_SOURCE_ID,
     ) as GeoJSONSource | undefined;
-    source?.setData(drawnPolygons);
+    source?.setData(cloneFeatureCollection(drawnPolygons));
   }, [drawnPolygons, mapLibreReady]);
 
   React.useEffect(() => {
@@ -2647,10 +2894,37 @@ export default function LogisticsPage() {
     if (!areFeatureCollectionsEqual(collection, drawnPolygons)) {
       drawControl.deleteAll();
       if (drawnPolygons.features.length) {
-        drawControl.set(drawnPolygons);
+        drawControl.set(cloneFeatureCollection(drawnPolygons));
       }
     }
   }, [drawnPolygons, mapLibreReady]);
+
+  React.useEffect(() => {
+    if (!activeGeozoneId) {
+      return;
+    }
+    const exists = drawnPolygons.features.some(
+      (feature) => getFeatureId(feature) === activeGeozoneId,
+    );
+    if (!exists) {
+      setActiveGeozoneId(null);
+    }
+  }, [activeGeozoneId, drawnPolygons]);
+
+  React.useEffect(() => {
+    if (!mapLibreReady) return;
+    const drawControl = drawControlRef.current;
+    if (!drawControl) return;
+    const selectedIds = drawControl.getSelectedIds();
+    if (activeGeozoneId) {
+      if (selectedIds.length === 1 && selectedIds[0] === activeGeozoneId) {
+        return;
+      }
+      drawControl.changeMode("simple_select", { featureIds: [activeGeozoneId] });
+    } else if (selectedIds.length) {
+      drawControl.changeMode("simple_select", { featureIds: [] });
+    }
+  }, [activeGeozoneId, mapLibreReady]);
 
   React.useEffect(() => {
     if (!mapLibreReady) return;
@@ -3604,6 +3878,70 @@ export default function LogisticsPage() {
               defaultValue: "Полигонов: {{count}}",
             })}
           </p>
+          <div className="space-y-2 rounded border bg-white/70 p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">
+                {t("logistics.geozonesTitle", { defaultValue: "Геозоны" })}
+              </h3>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleClearGeozones}
+                disabled={!geozoneItems.length}
+              >
+                {t("logistics.geozoneClear", {
+                  defaultValue: "Очистить",
+                })}
+              </Button>
+            </div>
+            {geozoneItems.length ? (
+              <ul className="space-y-1 text-sm">
+                {geozoneItems.map((zone) => (
+                  <li key={zone.key} className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={zone.active ? "default" : "outline"}
+                      className="flex-1 justify-start"
+                      aria-pressed={zone.active}
+                      onClick={() =>
+                        zone.id
+                          ? handleSelectGeozone(zone.active ? null : zone.id)
+                          : undefined
+                      }
+                      disabled={!zone.id}
+                    >
+                      {zone.label}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => zone.id && handleDeleteGeozone(zone.id)}
+                      disabled={!zone.id}
+                      aria-label={t("logistics.geozoneDeleteAria", {
+                        name: zone.label,
+                        defaultValue: `Удалить геозону ${zone.label}`,
+                      })}
+                      title={t("logistics.geozoneDeleteAria", {
+                        name: zone.label,
+                        defaultValue: `Удалить геозону ${zone.label}`,
+                      })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                {t("logistics.geozoneEmpty", {
+                  defaultValue: "Геозоны не добавлены",
+                })}
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2">

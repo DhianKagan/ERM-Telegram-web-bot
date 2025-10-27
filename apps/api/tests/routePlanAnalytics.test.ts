@@ -6,14 +6,14 @@ process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL =
+  'mongodb://localhost:27017/ermdb?authSource=admin';
 process.env.APP_URL = 'https://localhost';
 
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import analyticsRouter from '../src/routes/analytics';
 import { RoutePlan } from '../src/db/models/routePlan';
 
 jest.mock(
@@ -33,6 +33,7 @@ beforeAll(async () => {
   await mongoose.connect(mongod.getUri());
   app = express();
   app.use(express.json());
+  const { default: analyticsRouter } = await import('../src/routes/analytics');
   app.use('/api/v1/analytics', analyticsRouter);
 });
 

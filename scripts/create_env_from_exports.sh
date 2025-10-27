@@ -29,7 +29,53 @@ while IFS= read -r line; do
   [[ -z $line || $line == \#* ]] && continue
   key=${line%%=*}
   def=${line#*=}
-  val="${!key:-${DEFAULTS[$key]:-$def}}"
+  fallback="${DEFAULTS[$key]:-$def}"
+  val="${!key:-$fallback}"
+  if [[ $key == MONGO_DATABASE_URL ]]; then
+    val="$(
+      MONGO_CANDIDATE="$val" MONGO_FALLBACK="$fallback" node <<'EOF'
+const candidate = process.env.MONGO_CANDIDATE ?? '';
+const fallback = process.env.MONGO_FALLBACK ?? '';
+
+const normalize = (input, alternative) => {
+  const trimmed = input.trim().split(/\s+/)[0] ?? '';
+  if (!trimmed || !trimmed.startsWith('mongodb://')) {
+    if (alternative) {
+      return normalize(alternative, '');
+    }
+    throw new Error('invalid mongo url');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch (error) {
+    if (alternative) {
+      return normalize(alternative, '');
+    }
+    throw error;
+  }
+
+  if (!parsed.pathname || parsed.pathname === '/' || parsed.pathname === '') {
+    if (alternative) {
+      return normalize(alternative, '');
+    }
+    throw new Error('mongo url must contain db name');
+  }
+
+  if (!parsed.searchParams.get('authSource')) {
+    parsed.searchParams.set('authSource', 'admin');
+  }
+
+  return parsed.toString();
+};
+
+process.stdout.write(normalize(candidate, fallback));
+EOF
+    )"
+    printf '%s=%s\n' "$key" "$val"
+    continue
+  fi
   printf '%s=%q\n' "$key" "$val"
 done < "$EXAMPLE" > "$ENV_FILE"
 echo "$ENV_FILE обновлён"

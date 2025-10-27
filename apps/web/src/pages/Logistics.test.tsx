@@ -168,7 +168,7 @@ jest.mock("react-i18next", () => {
 });
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
-jest.mock("maplibre-gl-draw/dist/mapbox-gl-draw.css", () => ({}));
+jest.mock("maplibre-gl-draw/dist/maplibre-gl-draw.css", () => ({}));
 
 jest.mock("maplibre-gl", () => {
   class GeoJSONSourceMock {

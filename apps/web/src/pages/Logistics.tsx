@@ -68,8 +68,6 @@ import {
   type LogisticsGeozonesCustomEvent,
 } from "../utils/logisticsGeozonesEvents";
 import { useTaskIndex } from "../controllers/taskStateController";
-
-type WindowEventListener = (event: Event) => void;
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import authFetch from "../utils/authFetch";
@@ -88,6 +86,7 @@ import {
   type RoutePlanUpdatePayload,
 } from "../services/routePlans";
 import type { TaskRow } from "../columns/taskColumns";
+import type { WindowEventHandler } from "../types/events";
 
 type RouteTask = TaskRow & {
   startCoordinates?: Coords;
@@ -797,7 +796,7 @@ export default function LogisticsPage() {
   }, [drawnPolygons]);
 
   React.useEffect(() => {
-    const handleEvent = (event: Event) => {
+    const handleEvent: WindowEventHandler = (event) => {
       const custom = event as LogisticsGeozonesCustomEvent;
       const detail = custom.detail;
       if (!detail) {
@@ -814,15 +813,9 @@ export default function LogisticsPage() {
         }
       }
     };
-    window.addEventListener(
-      LOGISTICS_GEOZONES_EVENT,
-      handleEvent as WindowEventListener,
-    );
+    window.addEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
     return () => {
-      window.removeEventListener(
-        LOGISTICS_GEOZONES_EVENT,
-        handleEvent as WindowEventListener,
-      );
+      window.removeEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
     };
   }, []);
 
@@ -1909,15 +1902,7 @@ export default function LogisticsPage() {
     } finally {
       setAssignLoading(false);
     }
-  }, [
-    assignSelected,
-    assignVehicle,
-    buildOptimizeTasks,
-    method,
-    optimizeRoute,
-    tasks,
-    tRef,
-  ]);
+  }, [assignSelected, assignVehicle, buildOptimizeTasks, method, tasks, tRef]);
 
   const assignCapacity = React.useMemo(
     () => (assignVehicle ? normalizeVehicleCapacity(assignVehicle) : null),

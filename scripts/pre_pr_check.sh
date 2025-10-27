@@ -4,6 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Проверяем, что критичные инструменты CI/CD на месте
+./scripts/verify_ci_integrity.sh
+
 # Запускаем MongoDB в памяти
 pnpm --dir apps/api exec node <<'NODE' &
 import { MongoMemoryServer } from 'mongodb-memory-server';

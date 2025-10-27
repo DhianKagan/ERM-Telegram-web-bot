@@ -19,6 +19,7 @@
     "format": "prettier --write .",
     "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
     "prepare-client": "./scripts/build_client.sh",
+    "verify:ci": "./scripts/verify_ci_integrity.sh",
     "size": "size-limit",
     "repair:collections": "node dist/scripts/db/repairCollections.js"
   },

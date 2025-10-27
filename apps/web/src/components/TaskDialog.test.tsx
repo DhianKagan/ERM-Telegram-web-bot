@@ -5,7 +5,6 @@ import "@testing-library/jest-dom";
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import L from "leaflet";
 import TaskDialog from "./TaskDialog";
 import type authFetch from "../utils/authFetch";
 
@@ -22,47 +21,117 @@ jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: translate }),
 }));
 
-jest.mock("leaflet/dist/leaflet.css", () => ({}));
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
+jest.mock(
+  "maplibre-gl-draw/dist/mapbox-gl-draw.css",
+  () => ({}),
+  { virtual: true },
+);
 
-jest.mock("leaflet", () => {
-  const maps: { map: any; handlers: Record<string, (event: any) => void> }[] = [];
-  const createMap = () => {
-    const handlers: Record<string, (event: any) => void> = {};
-    const instance: any = {};
-    instance.setView = jest.fn(() => instance);
-    instance.remove = jest.fn();
-    instance.on = jest.fn((event: string, handler: (event: any) => void) => {
-      handlers[event] = handler;
-      return instance;
-    });
-    instance.off = jest.fn((event?: string) => {
-      if (event) delete handlers[event];
-      return instance;
-    });
-    instance.invalidateSize = jest.fn();
-    instance.panTo = jest.fn();
-    return { map: instance, handlers };
-  };
-  const circleMarker = jest.fn(() => ({
-    addTo: jest.fn().mockReturnThis(),
-    setLatLng: jest.fn().mockReturnThis(),
-    remove: jest.fn(),
-  }));
-  const tileLayer = jest.fn(() => ({ addTo: jest.fn() }));
-  const mock = {
-    map: jest.fn(() => {
-      const created = createMap();
-      maps.push(created);
-      return created.map;
-    }),
-    tileLayer,
-    circleMarker,
-    latLng: jest.fn((lat: number, lng: number) => ({ lat, lng })),
-    __mock: { maps, circleMarker, tileLayer },
+jest.mock("maplibre-gl", () => {
+  const instances: any[] = [];
+  class MapMock {
+    options: Record<string, unknown>;
+    handlers: Record<string, (event?: unknown) => void>;
+    constructor(options: Record<string, unknown>) {
+      this.options = options;
+      this.handlers = {};
+      instances.push(this);
+    }
+    on(event: string, handler: (event?: unknown) => void) {
+      this.handlers[event] = handler;
+      return this;
+    }
+    off(event?: string) {
+      if (event) {
+        delete this.handlers[event];
+      }
+      return this;
+    }
+    once(event: string, handler: (event?: unknown) => void) {
+      this.handlers[event] = handler;
+      handler();
+      return this;
+    }
+    addControl() {
+      return this;
+    }
+    remove() {
+      return this;
+    }
+    easeTo() {
+      return this;
+    }
+    resize() {
+      return this;
+    }
+    isStyleLoaded() {
+      return true;
+    }
+    fire(event: string, payload?: unknown) {
+      const handler = this.handlers[event];
+      if (handler) {
+        handler(payload);
+      }
+    }
+  }
+  class NavigationControlMock {
+    constructor() {}
+  }
+  class MarkerMock {
+    constructor(_: Record<string, unknown> = {}) {}
+    setLngLat() {
+      return this;
+    }
+    addTo() {
+      return this;
+    }
+    remove() {
+      return this;
+    }
+  }
+  return {
+    Map: MapMock,
+    NavigationControl: NavigationControlMock,
+    Marker: MarkerMock,
+    __instances: instances,
   } as any;
-  mock.default = mock;
-  return mock;
 });
+
+jest.mock("maplibre-gl-draw", () => {
+  return jest.fn().mockImplementation(() => ({
+    __collection: { type: "FeatureCollection", features: [] },
+    getAll() {
+      return this.__collection;
+    },
+    set(collection: unknown) {
+      this.__collection = JSON.parse(JSON.stringify(collection));
+      return this.__collection;
+    },
+    deleteAll() {
+      this.__collection = { type: "FeatureCollection", features: [] };
+    },
+    changeMode: jest.fn(),
+  }));
+});
+
+jest.mock("../utils/logisticsGeozonesEvents", () => {
+  const dispatchLogisticsGeozonesApply = jest.fn();
+  const dispatchLogisticsGeozonesChange = jest.fn();
+  const dispatchLogisticsGeozonesRequest = jest.fn();
+  return {
+    LOGISTICS_GEOZONES_EVENT: "logistics:geozones",
+    dispatchLogisticsGeozonesApply,
+    dispatchLogisticsGeozonesChange,
+    dispatchLogisticsGeozonesRequest,
+  };
+});
+
+const logisticsEvents = require("../utils/logisticsGeozonesEvents") as {
+  dispatchLogisticsGeozonesApply: jest.Mock;
+  dispatchLogisticsGeozonesChange: jest.Mock;
+  dispatchLogisticsGeozonesRequest: jest.Mock;
+};
 
 jest.mock("./CKEditorPopup", () => () => <div />);
 jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
@@ -287,21 +356,17 @@ describe("TaskDialog", () => {
     }));
     lastTemplatePayload = null;
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-    const leafletMock = (L as any).__mock;
-    if (leafletMock) {
-      leafletMock.maps.length = 0;
-      leafletMock.circleMarker.mockClear();
-      leafletMock.tileLayer.mockClear();
+    const mapModule = require("maplibre-gl");
+    if (Array.isArray(mapModule.__instances)) {
+      mapModule.__instances.length = 0;
     }
-    if (typeof (L as any).map?.mockClear === "function") {
-      (L as any).map.mockClear();
+    const drawMock = require("maplibre-gl-draw");
+    if (typeof drawMock.mockClear === "function") {
+      drawMock.mockClear();
     }
-    if (typeof (L as any).tileLayer?.mockClear === "function") {
-      (L as any).tileLayer.mockClear();
-    }
-    if (typeof (L as any).circleMarker?.mockClear === "function") {
-      (L as any).circleMarker.mockClear();
-    }
+    logisticsEvents.dispatchLogisticsGeozonesApply.mockClear();
+    logisticsEvents.dispatchLogisticsGeozonesChange.mockClear();
+    logisticsEvents.dispatchLogisticsGeozonesRequest.mockClear();
   });
 
   afterEach(() => {
@@ -329,6 +394,72 @@ describe("TaskDialog", () => {
     unmount();
     renderDialog();
     expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+  });
+
+  it("сохраняет пользовательские поля custom вместе с геозонами", async () => {
+    const existingCollection = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [
+                [31.1, 49.9],
+                [31.2, 49.9],
+                [31.2, 50.0],
+                [31.1, 50.0],
+                [31.1, 49.9],
+              ],
+            ],
+          },
+          properties: { name: "Loaded" },
+        },
+      ],
+    };
+    authFetchMock.mockImplementation((url: string, options?: AuthFetchOptions) => {
+      if (url === "/api/v1/tasks/1") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            task: {
+              ...taskData,
+              custom: {
+                foo: "bar",
+                logisticsGeozones: existingCollection,
+              },
+            },
+            users: usersMap,
+          }),
+        });
+      }
+      return defaultAuthFetch(url, options);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    await clickSubmitButton();
+
+    await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
+
+    const [, payload] = updateTaskMock.mock.calls[0];
+    expect(payload.custom).toBeDefined();
+    expect(payload.custom.foo).toBe("bar");
+    expect(payload.custom.logisticsGeozones).toEqual({
+      type: "FeatureCollection",
+      features: [
+        expect.objectContaining({
+          geometry: expect.objectContaining({ type: "Polygon" }),
+        }),
+      ],
+    });
   });
 
   it("не дублирует запрос summary при редактировании черновика", async () => {
@@ -649,10 +780,11 @@ describe("TaskDialog", () => {
 
     expect(await screen.findByText("selectStartPoint")).toBeTruthy();
 
-    const leafletMock = (L as any).__mock;
-    const startMap = leafletMock.maps[leafletMock.maps.length - 1];
+    const mapModule = require("maplibre-gl");
+    const mapList: any[] = mapModule.__instances || [];
+    const startMap = mapList[mapList.length - 1];
     act(() => {
-      startMap.handlers.click({ latlng: { lat: 50.45, lng: 30.523 } });
+      startMap.fire("click", { lngLat: { lat: 50.45, lng: 30.523 } });
     });
 
     await act(async () => {
@@ -673,9 +805,9 @@ describe("TaskDialog", () => {
 
     expect(await screen.findByText("selectFinishPoint")).toBeTruthy();
 
-    const finishMap = leafletMock.maps[leafletMock.maps.length - 1];
+    const finishMap = mapList[mapList.length - 1];
     act(() => {
-      finishMap.handlers.click({ latlng: { lat: 49.8397, lng: 24.0297 } });
+      finishMap.fire("click", { lngLat: { lat: 49.8397, lng: 24.0297 } });
     });
 
     await act(async () => {
@@ -699,6 +831,79 @@ describe("TaskDialog", () => {
     expect(typeof payload.end_location_link).toBe("string");
     expect(payload.end_location_link).not.toBe("");
     expect(payload.google_route_url).toContain("google.com/maps/dir");
+    expect(payload.custom).toMatchObject({
+      logisticsGeozones: { type: "FeatureCollection", features: [] },
+    });
+  });
+
+  it("не дублирует событие apply при неизменных геозонах", async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+
+    const logisticsToggle = screen.getByLabelText("logisticsToggle");
+    fireEvent.click(logisticsToggle);
+
+    const mapButtons = await screen.findAllByRole("button", {
+      name: "selectOnMap",
+    });
+
+    await act(async () => {
+      fireEvent.click(mapButtons[0]);
+      await Promise.resolve();
+    });
+
+    const mapModule = require("maplibre-gl");
+    const drawModule = require("maplibre-gl-draw");
+    const mapList: any[] = mapModule.__instances || [];
+    const mapInstance = mapList[mapList.length - 1];
+    const drawInstance =
+      drawModule.mock && drawModule.mock.results.length
+        ? drawModule.mock.results[drawModule.mock.results.length - 1].value
+        : null;
+
+    expect(drawInstance).toBeTruthy();
+    const polygon = {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [30.5, 50.5],
+            [30.6, 50.5],
+            [30.6, 50.6],
+            [30.5, 50.6],
+            [30.5, 50.5],
+          ],
+        ],
+      },
+      properties: { name: "Test" },
+    };
+
+    drawInstance.__collection = {
+      type: "FeatureCollection",
+      features: [polygon],
+    };
+
+    act(() => {
+      mapInstance.fire("draw.create");
+    });
+
+    expect(
+      logisticsEvents.dispatchLogisticsGeozonesApply,
+    ).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      mapInstance.fire("draw.update");
+    });
+
+    expect(
+      logisticsEvents.dispatchLogisticsGeozonesApply,
+    ).toHaveBeenCalledTimes(1);
   });
   it("подставляет данные выбранного шаблона", async () => {
     render(

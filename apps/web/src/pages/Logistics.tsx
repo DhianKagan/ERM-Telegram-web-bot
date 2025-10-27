@@ -46,18 +46,27 @@ import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
-import type {
-  Feature,
-  FeatureCollection,
-  GeoJsonProperties,
-  Geometry,
-} from "geojson";
+import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MapLibreDraw from "maplibre-gl-draw";
 import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
+import {
+  EMPTY_GEOZONE_COLLECTION,
+  areGeozoneCollectionsEqual,
+  cloneGeozoneCollection,
+  hasPolygonGeometry,
+  isPolygonFeature,
+  type GeozoneFeature,
+  type GeozoneFeatureCollection,
+} from "../utils/geozones";
+import {
+  LOGISTICS_GEOZONES_EVENT,
+  dispatchLogisticsGeozonesChange,
+  type LogisticsGeozonesCustomEvent,
+} from "../utils/logisticsGeozonesEvents";
 import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
@@ -204,29 +213,6 @@ const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
 const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
 const GEOZONE_BUFFER_METERS = 150;
 
-type MapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>;
-type PolygonGeometry = Extract<Geometry, { type: "Polygon" }>;
-type MultiPolygonGeometry = Extract<Geometry, { type: "MultiPolygon" }>;
-type MapPolygonFeature = Feature<
-  PolygonGeometry | MultiPolygonGeometry,
-  GeoJsonProperties
->;
-
-const EMPTY_FEATURE_COLLECTION: MapFeatureCollection = {
-  type: "FeatureCollection",
-  features: [],
-};
-
-const POLYGON_GEOMETRY_TYPES = new Set<Geometry["type"]>([
-  "Polygon",
-  "MultiPolygon",
-]);
-
-const cloneFeatureCollection = (
-  source: MapFeatureCollection,
-): MapFeatureCollection =>
-  JSON.parse(JSON.stringify(source)) as MapFeatureCollection;
-
 const getFeatureId = (input?: { id?: unknown }): string | null => {
   if (!input) {
     return null;
@@ -242,21 +228,8 @@ const getFeatureId = (input?: { id?: unknown }): string | null => {
   return null;
 };
 
-const isPolygonFeature = (
-  feature: MapFeatureCollection["features"][number],
-): feature is MapPolygonFeature => {
-  if (!feature || typeof feature !== "object") {
-    return false;
-  }
-  const geometry = feature.geometry;
-  if (!geometry || typeof geometry !== "object") {
-    return false;
-  }
-  return POLYGON_GEOMETRY_TYPES.has(geometry.type);
-};
-
 const isCoordinateInsidePolygons = (
-  collection: MapFeatureCollection,
+  collection: GeozoneFeatureCollection,
   coords: Coords,
 ): boolean => {
   const polygons = collection.features.filter(isPolygonFeature);
@@ -268,11 +241,11 @@ const isCoordinateInsidePolygons = (
 };
 
 const buildBufferedFeatureCollection = (
-  collection: MapFeatureCollection,
+  collection: GeozoneFeatureCollection,
   bufferMeters: number,
-): MapFeatureCollection => {
+): GeozoneFeatureCollection => {
   if (!Number.isFinite(bufferMeters) || bufferMeters <= 0) {
-    return cloneFeatureCollection(collection);
+    return cloneGeozoneCollection(collection);
   }
   const distanceKm = bufferMeters / 1000;
   const bufferedFeatures = collection.features.map((feature) => {
@@ -291,7 +264,7 @@ const buildBufferedFeatureCollection = (
         id: feature.id,
         properties: { ...feature.properties },
         geometry: buffered.geometry,
-      } satisfies MapPolygonFeature;
+      } satisfies GeozoneFeature;
     } catch {
       return feature;
     }
@@ -300,7 +273,7 @@ const buildBufferedFeatureCollection = (
 };
 
 const calculateGeozoneMetrics = (
-  feature: MapPolygonFeature,
+  feature: GeozoneFeature,
 ): { areaSqKm: number | null; perimeterKm: number | null } => {
   let areaSqKm: number | null = null;
   let perimeterKm: number | null = null;
@@ -337,7 +310,7 @@ const collectTaskPoints = (task: RouteTask): Coords[] => {
 
 const isTaskInsidePolygons = (
   task: RouteTask,
-  polygons: MapFeatureCollection,
+  polygons: GeozoneFeatureCollection,
 ): boolean => {
   const points = collectTaskPoints(task);
   if (!points.length) {
@@ -346,31 +319,8 @@ const isTaskInsidePolygons = (
   return points.some((coords) => isCoordinateInsidePolygons(polygons, coords));
 };
 
-const hasPolygonGeometry = (collection: MapFeatureCollection) =>
-  collection.features.some(isPolygonFeature);
-
 type DrawEventPayload = {
   features?: Array<Feature<Geometry, GeoJsonProperties>>;
-};
-
-const areFeatureCollectionsEqual = (
-  left: MapFeatureCollection,
-  right: MapFeatureCollection,
-): boolean => {
-  if (left.features.length !== right.features.length) {
-    return false;
-  }
-  for (let index = 0; index < left.features.length; index += 1) {
-    const leftFeature = left.features[index];
-    const rightFeature = right.features[index];
-    if (!leftFeature || !rightFeature) {
-      return false;
-    }
-    if (JSON.stringify(leftFeature) !== JSON.stringify(rightFeature)) {
-      return false;
-    }
-  }
-  return true;
 };
 
 const normalizeVehicleCapacity = (vehicle: FleetVehicleDto): number | null => {
@@ -791,8 +741,8 @@ export default function LogisticsPage() {
   const drawControlRef = React.useRef<MapLibreDraw | null>(null);
   const [mapLibreReady, setMapLibreReady] = React.useState(false);
   const [drawnPolygons, setDrawnPolygons] =
-    React.useState<MapFeatureCollection>(() =>
-      cloneFeatureCollection(EMPTY_FEATURE_COLLECTION),
+    React.useState<GeozoneFeatureCollection>(() =>
+      cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION),
     );
   const drawnPolygonsRef = React.useRef(drawnPolygons);
   const bufferedPolygons = React.useMemo(
@@ -839,6 +789,40 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     bufferedPolygonsRef.current = bufferedPolygons;
   }, [bufferedPolygons]);
+
+  React.useEffect(() => {
+    dispatchLogisticsGeozonesChange(drawnPolygons);
+  }, [drawnPolygons]);
+
+  React.useEffect(() => {
+    const handleEvent = (event: Event) => {
+      const custom = event as LogisticsGeozonesCustomEvent;
+      const detail = custom.detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.type === "request") {
+        dispatchLogisticsGeozonesChange(drawnPolygonsRef.current);
+        return;
+      }
+      if (detail.type === "apply") {
+        const next = cloneGeozoneCollection(detail.collection);
+        if (!areGeozoneCollectionsEqual(next, drawnPolygonsRef.current)) {
+          setDrawnPolygons(next);
+        }
+      }
+    };
+    window.addEventListener(
+      LOGISTICS_GEOZONES_EVENT,
+      handleEvent as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        LOGISTICS_GEOZONES_EVENT,
+        handleEvent as EventListener,
+      );
+    };
+  }, []);
 
   const geozoneFeatures = React.useMemo(
     () => drawnPolygons.features.filter(isPolygonFeature),
@@ -918,8 +902,8 @@ export default function LogisticsPage() {
     const drawControl = drawControlRef.current;
     if (drawControl) {
       drawControl.delete(id);
-      const updated = cloneFeatureCollection(
-        drawControl.getAll() as MapFeatureCollection,
+      const updated = cloneGeozoneCollection(
+        drawControl.getAll() as GeozoneFeatureCollection,
       );
       setDrawnPolygons(updated);
       setActiveGeozoneId((current) => (current === id ? null : current));
@@ -931,7 +915,7 @@ export default function LogisticsPage() {
       return;
     }
     setDrawnPolygons((current) => {
-      const next: MapFeatureCollection = {
+      const next: GeozoneFeatureCollection = {
         type: "FeatureCollection",
         features: current.features.filter(
           (feature) => getFeatureId(feature) !== id,
@@ -956,7 +940,7 @@ export default function LogisticsPage() {
       if (!current.features.length) {
         return current;
       }
-      const next = cloneFeatureCollection(EMPTY_FEATURE_COLLECTION);
+      const next = cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION);
       const map = mapLibreRef.current;
       const source = map?.getSource(
         MAPLIBRE_POLYGON_SOURCE_ID,
@@ -2967,7 +2951,7 @@ export default function LogisticsPage() {
     drawControlRef.current = drawControl;
     map.addControl(drawControl as unknown as maplibregl.IControl, "top-left");
     let cancelled = false;
-    const updateSource = (collection: MapFeatureCollection) => {
+    const updateSource = (collection: GeozoneFeatureCollection) => {
       const source = map.getSource(
         MAPLIBRE_POLYGON_SOURCE_ID,
       ) as GeoJSONSource | undefined;
@@ -2975,7 +2959,7 @@ export default function LogisticsPage() {
     };
     const ensureSource = () => {
       const existing = map.getSource(MAPLIBRE_POLYGON_SOURCE_ID);
-      const initial = cloneFeatureCollection(drawnPolygonsRef.current);
+      const initial = cloneGeozoneCollection(drawnPolygonsRef.current);
       if (!existing) {
         map.addSource(MAPLIBRE_POLYGON_SOURCE_ID, {
           type: "geojson",
@@ -3022,11 +3006,11 @@ export default function LogisticsPage() {
       const mode = typeof event.mode === "string" ? event.mode : "";
       setIsDrawing(mode.startsWith("draw_"));
     };
-    const syncDrawFeatures = (collection?: MapFeatureCollection) => {
+    const syncDrawFeatures = (collection?: GeozoneFeatureCollection) => {
       const rawCollection =
-        collection ?? (drawControl.getAll() as MapFeatureCollection);
-      const nextCollection = cloneFeatureCollection(rawCollection);
-      if (!areFeatureCollectionsEqual(nextCollection, drawnPolygonsRef.current)) {
+        collection ?? (drawControl.getAll() as GeozoneFeatureCollection);
+      const nextCollection = cloneGeozoneCollection(rawCollection);
+      if (!areGeozoneCollectionsEqual(nextCollection, drawnPolygonsRef.current)) {
         setDrawnPolygons(nextCollection);
       } else {
         updateSource(nextCollection);
@@ -3085,18 +3069,18 @@ export default function LogisticsPage() {
     const source = map.getSource(
       MAPLIBRE_POLYGON_SOURCE_ID,
     ) as GeoJSONSource | undefined;
-    source?.setData(cloneFeatureCollection(drawnPolygons));
+    source?.setData(cloneGeozoneCollection(drawnPolygons));
   }, [drawnPolygons, mapLibreReady]);
 
   React.useEffect(() => {
     if (!mapLibreReady) return;
     const drawControl = drawControlRef.current;
     if (!drawControl) return;
-    const collection = drawControl.getAll() as MapFeatureCollection;
-    if (!areFeatureCollectionsEqual(collection, drawnPolygons)) {
+    const collection = drawControl.getAll() as GeozoneFeatureCollection;
+    if (!areGeozoneCollectionsEqual(collection, drawnPolygons)) {
       drawControl.deleteAll();
       if (drawnPolygons.features.length) {
-        drawControl.set(cloneFeatureCollection(drawnPolygons));
+        drawControl.set(cloneGeozoneCollection(drawnPolygons));
       }
     }
   }, [drawnPolygons, mapLibreReady]);

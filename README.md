@@ -90,7 +90,9 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 ## Ветвление и CI
 
 - Основная ветка — `main`. История поддерживается линейной: приливочные ветки мержатся через rebase/squash без веток `staging` и `production`.
+
 - Любой pull request (включая ветки, временно нацеленные не на `main`) автоматически запускает workflows `CI`, `Lighthouse`, `Docker` и CodeQL‑проверку.
+
 - Push в `main` дополнительно активирует workflow `Release`, который собирает проект и деплоит его на Railway через `pnpm dlx @railway/cli up`.
 - Для ручного релиза по тегу сохранена поддержка схемы `v*.*.*`; тег запускает тот же pipeline деплоя.
 

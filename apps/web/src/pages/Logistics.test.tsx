@@ -168,7 +168,7 @@ jest.mock("react-i18next", () => {
 });
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
 jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
-jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}));
+jest.mock("maplibre-gl-draw/dist/mapbox-gl-draw.css", () => ({}));
 
 jest.mock("maplibre-gl", () => {
   class GeoJSONSourceMock {
@@ -234,7 +234,7 @@ interface MockDrawApi {
   changeMode: jest.Mock<void, [string | undefined]>;
 }
 
-jest.mock("@mapbox/mapbox-gl-draw", () => {
+jest.mock("maplibre-gl-draw", () => {
   return jest.fn().mockImplementation(() => {
     let collection: FeatureCollectionMock = {
       type: "FeatureCollection",

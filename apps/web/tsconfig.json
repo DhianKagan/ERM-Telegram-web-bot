@@ -28,7 +28,9 @@
       "vite/client",
       "./src/types/telegram",
       "./src/types/leaflet",
-      "./src/types/maplibre"
+      "./src/types/maplibre",
+      "./src/types/mapbox-gl",
+      "./src/types/maplibre-gl-draw"
     ],
     "typeRoots": ["./src/types", "../../node_modules/@types"]
   },

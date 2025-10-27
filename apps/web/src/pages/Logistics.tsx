@@ -44,8 +44,8 @@ import type {
   Geometry,
 } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
-import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import MapLibreDraw from "maplibre-gl-draw";
+import "maplibre-gl-draw/dist/maplibre-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
@@ -631,7 +631,7 @@ export default function LogisticsPage() {
   const [mapReady, setMapReady] = React.useState(false);
   const mapLibreContainerRef = React.useRef<HTMLDivElement | null>(null);
   const mapLibreRef = React.useRef<maplibregl.Map | null>(null);
-  const drawControlRef = React.useRef<MapboxDraw | null>(null);
+  const drawControlRef = React.useRef<MapLibreDraw | null>(null);
   const [mapLibreReady, setMapLibreReady] = React.useState(false);
   const [drawnPolygons, setDrawnPolygons] =
     React.useState<MapFeatureCollection>({
@@ -2543,7 +2543,7 @@ export default function LogisticsPage() {
       showCompass: false,
     });
     map.addControl(navigation, "top-right");
-    const drawControl = new MapboxDraw({
+    const drawControl = new MapLibreDraw({
       displayControlsDefault: false,
       controls: {
         polygon: true,

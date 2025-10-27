@@ -9,8 +9,16 @@ on:
     branches: [main]
 
 jobs:
+  integrity-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Проверка обязательных инструментов CI/CD
+        run: ./scripts/verify_ci_integrity.sh
+
   audit-deps:
     runs-on: ubuntu-latest
+    needs: integrity-check
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4

@@ -8,6 +8,10 @@ process.env.JWT_SECRET = 'secret';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
+import '../../../tests/setupMongoMemoryServer';
+
+jest.setTimeout(120_000);
+
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -31,7 +35,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongod.stop();
+  if (mongod) {
+    await mongod.stop();
+  }
 });
 
 beforeEach(async () => {

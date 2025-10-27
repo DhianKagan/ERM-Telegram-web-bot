@@ -167,6 +167,82 @@ jest.mock("react-i18next", () => {
   };
 });
 jest.mock("leaflet/dist/leaflet.css", () => ({}));
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
+jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}));
+
+jest.mock("maplibre-gl", () => {
+  class GeoJSONSourceMock {
+    setData = jest.fn();
+  }
+  return {
+    Map: class {
+      private sources: Record<string, GeoJSONSourceMock> = {};
+      private events: Record<string, Set<(...args: unknown[]) => void>> = {};
+      constructor(public options: Record<string, unknown>) {}
+      addControl() {
+        return this;
+      }
+      addSource(id: string) {
+        this.sources[id] = new GeoJSONSourceMock();
+        return this;
+      }
+      addLayer() {
+        return this;
+      }
+      getSource(id: string) {
+        return this.sources[id];
+      }
+      on(type: string, callback: (...args: unknown[]) => void) {
+        if (!this.events[type]) {
+          this.events[type] = new Set();
+        }
+        this.events[type].add(callback);
+        return this;
+      }
+      once(type: string, callback: (...args: unknown[]) => void) {
+        callback();
+        return this;
+      }
+      off(type: string, callback: (...args: unknown[]) => void) {
+        this.events[type]?.delete(callback);
+        return this;
+      }
+      remove() {
+        return undefined;
+      }
+      resize() {
+        return this;
+      }
+    },
+    NavigationControl: class {
+      constructor(public options?: Record<string, unknown>) {}
+    },
+  };
+});
+
+jest.mock("@mapbox/mapbox-gl-draw", () => {
+  return jest.fn().mockImplementation(() => {
+    let collection = {
+      type: "FeatureCollection",
+      features: [] as unknown[],
+    };
+    const api = {
+      onAdd: jest.fn(),
+      onRemove: jest.fn(),
+      set: jest.fn((value) => {
+        collection = value;
+        return api;
+      }),
+      getAll: jest.fn(() => collection),
+      deleteAll: jest.fn(() => {
+        collection = { type: "FeatureCollection", features: [] };
+        return api;
+      }),
+      changeMode: jest.fn(),
+    };
+    return api;
+  });
+});
 
 const mockTasks = [
   {

@@ -3687,6 +3687,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           value={field.value || ""}
                           onChange={field.onChange}
                           readOnly={!editing}
+                          taskId={effectiveTaskId}
                         />
                       )}
                     />
@@ -4077,6 +4078,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       value={comment}
                       onChange={setComment}
                       readOnly={!editing}
+                      taskId={effectiveTaskId}
                     />
                   </div>
                   {attachments.length > 0 && (

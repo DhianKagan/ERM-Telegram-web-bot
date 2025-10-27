@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты HTTP API: проверяем /health и /api/tasks.
-import type { Express, Request, Response } from 'express';
-
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
@@ -19,7 +17,7 @@ const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 jest.unmock('jsonwebtoken');
 
-let app: Express;
+let app;
 beforeAll(async () => {
   tasksService.get.mockResolvedValue({ tasks: [{ id: 1 }], users: {} });
   const { verifyToken, asyncHandler } = require('../src/api/middleware');
@@ -40,12 +38,12 @@ beforeAll(async () => {
     }),
   );
   app.use(lusca.csrf());
-  app.get('/health', (_req: Request, res: Response) => res.json({ status: 'ok' }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   const token = generateToken({ id: 1, username: 'test', isAdmin: true });
   app.get(
     '/api/v1/tasks',
     verifyToken,
-    asyncHandler(async (_req: Request, res: Response) => {
+    asyncHandler(async (_req, res) => {
       res.json(await tasksService.get());
     }),
   );

@@ -1,9 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест профиля через токен Telegram
-export {};
-
-import type { Express } from 'express';
-
 process.env.JWT_SECRET = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -27,7 +23,7 @@ jest.mock('../src/db/queries', () => ({
 
 const ctrl = require('../src/auth/auth.controller.ts');
 
-let app: Express;
+let app;
 beforeAll(() => {
   app = express();
   app.use(express.json());

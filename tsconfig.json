@@ -1,10 +1,6 @@
 {
   // Назначение файла: объединяющая конфигурация TypeScript для пакетов
   // Основные модули: typescript
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "typeRoots": ["./node_modules/@types", "./apps/web/src/types"]
-  },
   "files": [],
   "references": [
     { "path": "./packages/shared" },

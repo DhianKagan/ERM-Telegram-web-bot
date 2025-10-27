@@ -1,6 +1,4 @@
 // Назначение: тесты роутов управления файлами. Модули: jest, supertest.
-import type { NextFunction, Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
@@ -13,8 +11,8 @@ const fs = require('fs');
 const path = require('path');
 
 const mockDiagnosticsController = {
-  diagnose: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
-  remediate: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  diagnose: jest.fn((_req: any, res: any) => res.json({ ok: true })),
+  remediate: jest.fn((_req: any, res: any) => res.json({ ok: true })),
 };
 
 jest.mock('../src/di', () => {
@@ -68,14 +66,14 @@ const { stopScheduler } = require('../src/services/scheduler');
 
 jest.mock(
   '../src/middleware/auth',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  () => () => (_req: any, _res: any, next: any) => next(),
 );
 jest.mock(
   '../src/auth/roles.guard',
-  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  () => (_req: any, _res: any, next: any) => next(),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  Roles: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 describe('storage routes', () => {
@@ -139,11 +137,11 @@ describe('storage routes', () => {
         taskId: '64d000000000000000000003',
       }),
     });
-    const taskQuery = {
-      select: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
-    };
-    mockTaskFindById.mockReturnValue(taskQuery);
+    mockTaskFindById.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
+      }),
+    });
     const res = await request(app).get('/64d000000000000000000002');
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('single.txt');

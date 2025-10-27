@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты сервиса maps: разворачивание ссылок и координаты
-export {};
-
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';

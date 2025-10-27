@@ -1,6 +1,4 @@
 // Назначение: тесты сервиса антивируса. Модули: jest, node:fs/promises, clamdjs, wgLogEngine
-export {};
-
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

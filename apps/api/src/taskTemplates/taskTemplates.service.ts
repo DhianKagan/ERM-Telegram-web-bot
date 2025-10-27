@@ -6,15 +6,9 @@ interface TaskTemplatesRepository {
   createTaskTemplate(
     data: Partial<TaskTemplateDocument>,
   ): Promise<TaskTemplateDocument>;
-  listTaskTemplates(userId: number): Promise<TaskTemplateDocument[]>;
-  getTaskTemplate(
-    id: string,
-    userId: number,
-  ): Promise<TaskTemplateDocument | null>;
-  deleteTaskTemplate(
-    id: string,
-    userId: number,
-  ): Promise<TaskTemplateDocument | null>;
+  listTaskTemplates(): Promise<TaskTemplateDocument[]>;
+  getTaskTemplate(id: string): Promise<TaskTemplateDocument | null>;
+  deleteTaskTemplate?(id: string): Promise<TaskTemplateDocument | null>;
 }
 
 export default class TaskTemplatesService {
@@ -27,15 +21,15 @@ export default class TaskTemplatesService {
     return this.repo.createTaskTemplate(data);
   }
 
-  list(userId: number) {
-    return this.repo.listTaskTemplates(userId);
+  list() {
+    return this.repo.listTaskTemplates();
   }
 
-  getById(id: string, userId: number) {
-    return this.repo.getTaskTemplate(id, userId);
+  getById(id: string) {
+    return this.repo.getTaskTemplate(id);
   }
 
-  remove(id: string, userId: number) {
-    return this.repo.deleteTaskTemplate(id, userId);
+  remove(id: string) {
+    return this.repo.deleteTaskTemplate?.(id) || null;
   }
 }

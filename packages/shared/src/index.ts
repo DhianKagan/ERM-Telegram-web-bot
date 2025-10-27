@@ -2,13 +2,6 @@
 // Модули: constants, taskFields, mapUtils, types, taskFormSchema
 
 export * from './constants';
-export {
-  buildAttachmentsFromCommentHtml,
-  extractFileIdFromUrl,
-  extractIdsFromCommentHtml,
-  normalizeObjectIdCandidate,
-  type AttachmentCandidate,
-} from './attachments';
 export { taskFields, type TaskField } from './taskFields';
 export {
   extractCoords,
@@ -44,6 +37,5 @@ export type {
   LogisticsRoutePlanRemovedEvent,
   LogisticsInitEvent,
   LogisticsHeartbeatEvent,
-  LogisticsFleetPositionUpdatedEvent,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

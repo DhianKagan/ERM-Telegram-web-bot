@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест маршрута /api/auth/tma-login
-import type { Request, Response } from 'express';
-
 process.env.BOT_TOKEN = 'x';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
@@ -18,17 +16,14 @@ const tmaLoginRateLimiter = createRateLimiter({
   name: 'tma-login',
 });
 
-type InitDataKeys = 'query_id' | 'user' | 'auth_date' | 'signature';
-
-function buildInitData(ts: number): string {
-  const data: Record<InitDataKeys, string> = {
+function buildInitData(ts) {
+  const data = {
     query_id: '1',
     user: JSON.stringify({ id: 1, first_name: 'a' }),
     auth_date: String(ts),
     signature: 'sig',
   };
-  const keys = Object.keys(data) as InitDataKeys[];
-  const str = keys
+  const str = Object.keys(data)
     .sort()
     .map((k) => `${k}=${data[k]}`)
     .join('\n');
@@ -43,7 +38,7 @@ test('валидный initData возвращает 200', async () => {
     '/api/auth/tma-login',
     tmaLoginRateLimiter,
     tmaAuthGuard,
-    (_req: Request, res: Response) => res.json({ token: 'ok' }),
+    (_req, res) => res.json({ token: 'ok' }),
   );
   const now = Math.floor(Date.now() / 1000);
   const initData = buildInitData(now);
@@ -59,7 +54,7 @@ test('неверный hash возвращает 401', async () => {
     '/api/auth/tma-login',
     tmaLoginRateLimiter,
     tmaAuthGuard,
-    (_req: Request, res: Response) => res.json({ token: 'ok' }),
+    (_req, res) => res.json({ token: 'ok' }),
   );
   const now = Math.floor(Date.now() / 1000);
   const bad = `query_id=1&user=%7B%22id%22%3A1%2C%22first_name%22%3A%22a%22%7D&auth_date=${now}&hash=bad&signature=sig`;
@@ -75,7 +70,7 @@ test('просроченный auth_date возвращает 401', async () => 
     '/api/auth/tma-login',
     tmaLoginRateLimiter,
     tmaAuthGuard,
-    (_req: Request, res: Response) => res.json({ token: 'ok' }),
+    (_req, res) => res.json({ token: 'ok' }),
   );
   const old = Math.floor(Date.now() / 1000) - 600;
   const initData = buildInitData(old);

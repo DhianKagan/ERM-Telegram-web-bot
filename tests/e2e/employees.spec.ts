@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import request from 'supertest';
-import type { Mongoose } from 'mongoose';
+import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Employee } from '../../apps/api/src/db/models/employee';
 import { Department } from '../../apps/api/src/db/models/department';
@@ -14,43 +14,11 @@ import { Fleet } from '../../apps/api/src/db/models/fleet';
 
 const app = express();
 
-const mongoose: Mongoose = Fleet.db.base;
 let mongod: MongoMemoryServer;
-
-async function waitForMongo(timeoutMs = 60000): Promise<void> {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
-      try {
-        await mongoose.connection.db.command({ ping: 1 });
-        return;
-      } catch (error) {
-        if (Date.now() - started > timeoutMs - 1000) {
-          console.error('MongoDB остаётся недоступной', error);
-        }
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error('MongoDB не стал доступен вовремя');
-}
-
-async function connectMongo(dbName: string): Promise<void> {
-  mongoose.set('bufferTimeoutMS', 60000);
-  const uri = mongod.getUri(dbName);
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-  }
-  await mongoose.connect(uri, {
-    serverSelectionTimeoutMS: 60000,
-    bufferTimeoutMS: 60000,
-  });
-  await waitForMongo();
-}
 
 test.beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
-  await connectMongo('employees-e2e');
+  await mongoose.connect(mongod.getUri());
 
   app.get('/employees', async (req, res) => {
     const fields =
@@ -71,7 +39,6 @@ test.beforeAll(async () => {
     odometerInitial: 0,
     odometerCurrent: 0,
     mileageTotal: 0,
-    payloadCapacityKg: 500,
     fuelType: 'Бензин',
     fuelRefilled: 0,
     fuelAverageConsumption: 0,

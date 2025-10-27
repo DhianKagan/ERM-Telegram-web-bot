@@ -1,7 +1,5 @@
 // Назначение: проверка единственного реестра метрик
 // Модули: jest
-export {};
-
 const { register } = require('../src/metrics');
 
 test('register singleton', () => {

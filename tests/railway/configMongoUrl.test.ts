@@ -17,11 +17,6 @@ describe('MONGO_DATABASE_URL validation', () => {
     jest.resetModules();
     process.env.MONGO_DATABASE_URL =
       'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
-    delete process.env.MONGO_URL;
-    delete process.env.MONGO_PUBLIC_URL;
-    delete process.env.MONGODB_URL;
-    delete process.env.MONGO_DATABASE_NAME;
-    delete process.env.MONGO_AUTH_SOURCE;
   });
 
   afterEach(() => {
@@ -39,30 +34,8 @@ describe('MONGO_DATABASE_URL validation', () => {
   test('бросает ошибку для Railway без authSource=admin', () => {
     process.env.MONGO_DATABASE_URL =
       'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb';
-    const config = require('../../apps/api/src/config');
-    expect(config.mongoUrl).toBe(
-      'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin',
-    );
-  });
-
-  test('использует MONGO_URL и добавляет имя базы', () => {
-    delete process.env.MONGO_DATABASE_URL;
-    process.env.MONGO_URL =
-      'mongodb://mongo:pass@erm-mongodb.railway.internal:27017';
-    const config = require('../../apps/api/src/config');
-    expect(config.mongoUrl).toBe(
-      'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin',
-    );
-  });
-
-  test('подставляет имя базы из MONGO_DATABASE_NAME', () => {
-    delete process.env.MONGO_DATABASE_URL;
-    process.env.MONGO_URL =
-      'mongodb://mongo:pass@erm-mongodb.railway.internal:27017';
-    process.env.MONGO_DATABASE_NAME = 'customdb';
-    const config = require('../../apps/api/src/config');
-    expect(config.mongoUrl).toBe(
-      'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/customdb?authSource=admin',
+    expect(() => require('../../apps/api/src/config')).toThrow(
+      'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
     );
   });
 });

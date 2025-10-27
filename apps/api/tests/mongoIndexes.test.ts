@@ -1,7 +1,5 @@
 // Назначение: проверка использования индексов MongoDB.
 // Модули: mongoose, mongodb-memory-server, ensureTaskIndexes.
-export {};
-
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import {
@@ -26,21 +24,13 @@ function planHasStage(plan: Plan | undefined, stage: string): boolean {
   return false;
 }
 
-const requireDb = () => {
-  const { db } = mongoose.connection;
-  if (!db) {
-    throw new Error('Подключение MongoDB не содержит активную базы данных');
-  }
-  return db;
-};
-
 describe('индексы MongoDB', () => {
   let mongod: MongoMemoryServer;
 
   const cleanDatabase = async () => {
     if (mongoose.connection.readyState !== 1) return;
     try {
-      await requireDb().dropDatabase();
+      await mongoose.connection.db.dropDatabase();
     } catch (error) {
       const maybe = error as { codeName?: string; message?: string };
       if (maybe?.codeName !== 'NamespaceNotFound' && !maybe?.message?.includes('ns not found')) {
@@ -63,8 +53,7 @@ describe('индексы MongoDB', () => {
   describe('индексы задач', () => {
     beforeEach(async () => {
       await cleanDatabase();
-      const db = requireDb();
-      await db.collection('tasks').insertOne({
+      await mongoose.connection.db.collection('tasks').insertOne({
         assigneeId: 1,
         status: 'Новая',
         dueAt: new Date(),
@@ -78,7 +67,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('запрос по исполнителю и статусу использует композитный индекс', async () => {
-      const cursor = requireDb()
+      const cursor = mongoose.connection.db
         .collection('tasks')
         .find({ assigneeId: 1, status: 'Новая', dueAt: { $gte: new Date(0) } })
         .sort({ dueAt: 1 });
@@ -87,7 +76,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('сортировка по дате создания использует индекс', async () => {
-      const cursor = requireDb()
+      const cursor = mongoose.connection.db
         .collection('tasks')
         .find()
         .sort({ createdAt: -1 });
@@ -103,7 +92,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются индексы ключа и владельца', async () => {
-      const indexes = await requireDb()
+      const indexes = await mongoose.connection.db
         .collection('uploads')
         .indexes();
       expect(indexes.some((i) => i.name === 'key_unique')).toBe(true);
@@ -122,7 +111,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются уникальный и текстовый индексы', async () => {
-      const indexes = await requireDb()
+      const indexes = await mongoose.connection.db
         .collection('collectionitems')
         .indexes();
       expect(indexes.some((i) => i.name === 'type_name_unique')).toBe(true);

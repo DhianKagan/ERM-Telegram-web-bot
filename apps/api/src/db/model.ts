@@ -676,7 +676,6 @@ export const TaskDraft = mongoose.model<TaskDraftDocument>(
 export interface TaskTemplateAttrs {
   name: string;
   data: Record<string, unknown>;
-  userId: number;
 }
 
 export interface TaskTemplateDocument extends TaskTemplateAttrs, Document {}
@@ -685,12 +684,9 @@ const taskTemplateSchema = new Schema<TaskTemplateDocument>(
   {
     name: { type: String, required: true },
     data: Schema.Types.Mixed,
-    userId: { type: Number, required: true, index: true },
   },
   { timestamps: true },
 );
-
-taskTemplateSchema.index({ userId: 1, createdAt: -1 }, { name: 'task_templates_user_created_idx' });
 
 export const TaskTemplate = mongoose.model<TaskTemplateDocument>(
   'TaskTemplate',

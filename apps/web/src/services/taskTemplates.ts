@@ -6,7 +6,6 @@ export interface TaskTemplate {
   _id: string;
   name: string;
   data: Record<string, unknown>;
-  userId?: number;
 }
 
 export interface CreateTaskTemplatePayload {
@@ -21,7 +20,6 @@ const normalizeTemplate = (candidate: unknown): TaskTemplate | null => {
   const record = candidate as Record<string, unknown>;
   const idRaw = record._id;
   const nameRaw = record.name;
-  const userIdRaw = record.userId;
   if (typeof idRaw !== "string" || !idRaw.trim()) {
     return null;
   }
@@ -37,10 +35,6 @@ const normalizeTemplate = (candidate: unknown): TaskTemplate | null => {
     _id: idRaw,
     name: nameRaw,
     data,
-    userId:
-      typeof userIdRaw === "number" && Number.isFinite(userIdRaw)
-        ? userIdRaw
-        : undefined,
   };
 };
 
@@ -85,23 +79,4 @@ export const create = async (
   return normalized;
 };
 
-export const remove = async (id: string): Promise<void> => {
-  const trimmed = id.trim();
-  if (!trimmed) {
-    throw new Error("Некорректный идентификатор шаблона");
-  }
-  const response = await authFetch(
-    `/api/v1/task-templates/${encodeURIComponent(trimmed)}`,
-    {
-      method: "DELETE",
-    },
-  );
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(
-      body.trim() || "Не удалось удалить шаблон задачи",
-    );
-  }
-};
-
-export default { list, create, remove };
+export default { list, create };

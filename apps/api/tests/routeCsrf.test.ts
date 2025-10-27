@@ -1,19 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест эндпойнта /api/v1/route с проверкой CSRF
-import type {
-  Express,
-  NextFunction,
-  Request,
-  RequestHandler,
-  Response,
-} from 'express';
-import type { Server as HttpsServer } from 'https';
-import type { AddressInfo } from 'net';
-
-interface CsrfRequest extends Request {
-  csrfToken(): string;
-}
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -37,9 +23,9 @@ const key = fs.readFileSync(__dirname + '/test-key.pem');
 const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
-  asyncHandler: <T>(fn: T) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
+  verifyToken: (_req, _res, next) => next(),
+  asyncHandler: (fn) => fn,
+  errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -49,12 +35,12 @@ jest.mock('../src/services/route', () => ({
 
 const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 
-let app: Express;
-let server: HttpsServer;
-let baseUrl: string;
+let app;
+let server;
+let baseUrl;
 beforeAll(
   () =>
-    new Promise<void>((resolve) => {
+    new Promise((res) => {
       app = express();
       app.use(express.json());
       app.use(cookieParser());
@@ -71,25 +57,20 @@ beforeAll(
         angular: true,
         cookie: { options: { sameSite: 'lax', domain: 'localhost' } },
       });
-      app.use((req: Request, res: Response, next: NextFunction) => {
+      app.use((req, res, next) => {
         const url = req.originalUrl.split('?')[0];
         if (['/api/v1/csrf'].includes(url)) return next();
         return csrf(req, res, next);
       });
-      const csrfHandler: RequestHandler = (req, res) => {
-        const csrfReq = req as CsrfRequest;
-        res.json({ csrfToken: csrfReq.csrfToken() });
-      };
-      app.get('/api/v1/csrf', csrf, csrfHandler);
+      app.get('/api/v1/csrf', csrf, (req, res) =>
+        res.json({ csrfToken: req.csrfToken() }),
+      );
       app.use('/api/v1/route', routeRouter);
       app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
-        const address = server.address();
-        if (address && typeof address !== 'string') {
-          baseUrl = `https://localhost:${(address as AddressInfo).port}`;
-        }
-        resolve();
+        baseUrl = `https://localhost:${server.address().port}`;
+        res();
       });
     }),
 );

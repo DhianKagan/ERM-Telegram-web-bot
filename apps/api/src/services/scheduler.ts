@@ -1,24 +1,17 @@
 // Планировщик напоминаний для задач
 // Модули: node-cron, telegramApi, messageQueue, config
 import { schedule, ScheduledTask } from 'node-cron';
-import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
-
-import { getChatId, chatId as staticChatId } from '../config';
-import {
-  storageCleanupCron,
-  storageCleanupRetentionDays,
-} from '../config/storage';
 import { Task, User } from '../db/model';
-import { removeDetachedFilesOlderThan } from './dataStorage';
-import { enqueue } from './messageQueue';
-import buildChatMessageLink from '../utils/messageLink';
 import { call } from './telegramApi';
+import { enqueue } from './messageQueue';
+import { getChatId, chatId as staticChatId } from '../config';
 
 const resolveChatId = (): string | undefined =>
   typeof getChatId === 'function' ? getChatId() : staticChatId;
+import buildChatMessageLink from '../utils/messageLink';
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 
-let reminderTask: ScheduledTask | undefined;
-let cleanupTask: ScheduledTask | undefined;
+let task: ScheduledTask | undefined;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -55,7 +48,7 @@ const formatDuration = (ms: number) => {
 
 export function startScheduler(): void {
   const expr = process.env.SCHEDULE_CRON || '0 * * * *';
-  reminderTask = schedule(expr, async () => {
+  task = schedule(expr, async () => {
     const now = new Date();
     const tasks = await Task.find({
       remind_at: { $lte: now },
@@ -203,29 +196,11 @@ export function startScheduler(): void {
       }
     }
   });
-
-  if (storageCleanupRetentionDays > 0) {
-    const retentionMs = storageCleanupRetentionDays * 24 * 60 * 60 * 1000;
-    cleanupTask = schedule(storageCleanupCron, async () => {
-      const cutoff = new Date(Date.now() - retentionMs);
-      const removed = await removeDetachedFilesOlderThan(cutoff);
-      if (removed > 0) {
-        console.info(
-          'Очистка хранилища завершена, удалено файлов:',
-          removed,
-        );
-      }
-    });
-  }
 }
 
 export function stopScheduler(): void {
-  if (reminderTask) {
-    reminderTask.stop();
-    reminderTask = undefined;
-  }
-  if (cleanupTask) {
-    cleanupTask.stop();
-    cleanupTask = undefined;
+  if (task) {
+    task.stop();
+    task = undefined;
   }
 }

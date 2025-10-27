@@ -1,7 +1,5 @@
 // Назначение: проверка удаления департамента с проверкой ссылок
 // Основные модули: jest, supertest, express, router collections
-import type { Express, NextFunction } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -14,17 +12,11 @@ const request = require('supertest');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-jest.mock(
-  '../src/utils/rateLimiter',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
-jest.mock(
-  '../src/middleware/auth',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
+jest.mock('../src/utils/rateLimiter', () => () => (_req, _res, next) => next());
+jest.mock('../src/middleware/auth', () => () => (_req, _res, next) => next());
 jest.mock(
   '../src/middleware/requireRole',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  () => () => (_req, _res, next) => next(),
 );
 
 const item = { _id: 'd1', type: 'departments', deleteOne: jest.fn() };
@@ -37,7 +29,7 @@ const { Employee } = require('../src/db/models/employee');
 
 const collectionsRouter = require('../src/routes/collections').default;
 
-let app: Express;
+let app;
 beforeAll(() => {
   app = express();
   app.use(express.json());

@@ -17,18 +17,10 @@ class InlineUploadAdapter {
   private loader: unknown;
   private controller = new AbortController();
   private onError?: (message: string) => void;
-  private taskId?: string;
 
-  constructor(
-    loader: unknown,
-    onError?: (message: string) => void,
-    taskId?: string | null,
-  ) {
+  constructor(loader: unknown, onError?: (message: string) => void) {
     this.loader = loader;
     this.onError = onError;
-    const trimmedTaskId =
-      typeof taskId === "string" ? taskId.trim() : undefined;
-    this.taskId = trimmedTaskId ? trimmedTaskId : undefined;
   }
 
   async upload() {
@@ -39,12 +31,7 @@ class InlineUploadAdapter {
       }
       const fd = new FormData();
       fd.append("upload", file);
-      const endpoint = this.taskId
-        ? `/api/v1/tasks/upload-inline?taskId=${encodeURIComponent(
-            this.taskId,
-          )}`
-        : "/api/v1/tasks/upload-inline";
-      const response = await authFetch(endpoint, {
+      const response = await authFetch("/api/v1/tasks/upload-inline", {
         method: "POST",
         body: fd,
         signal: this.controller.signal,
@@ -97,15 +84,9 @@ interface Props {
   value: string;
   onChange?: (val: string) => void;
   readOnly?: boolean;
-  taskId?: string | null;
 }
 
-export default function CKEditorPopup({
-  value,
-  onChange,
-  readOnly,
-  taskId,
-}: Props) {
+export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const sanitizedPreview = useMemo(
@@ -128,11 +109,10 @@ export default function CKEditorPopup({
           fileRepository.createUploadAdapter = (loader: unknown) =>
             new InlineUploadAdapter(loader, (message) =>
               showToast(message, "error"),
-              taskId,
             );
         }
       },
-    [taskId],
+    [],
   );
   const editorConfig = useMemo(
     () => ({

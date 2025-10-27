@@ -7,7 +7,7 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests', '<rootDir>/apps/web/src', '<rootDir>/apps/api/tests'],
+  roots: ['<rootDir>/tests', '<rootDir>/apps/web/src'],
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',
     '<rootDir>/tests/api/',
@@ -18,9 +18,6 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^shared$': '<rootDir>/packages/shared/src',
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
-    '^@dnd-kit/core$': '<rootDir>/tests/stubs/dndKitCore.tsx',
-    '^@dnd-kit/sortable$': '<rootDir>/tests/stubs/dndKitSortable.tsx',
-    '^@dnd-kit/utilities$': '<rootDir>/tests/stubs/dndKitUtilities.ts',
   },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',

@@ -1,9 +1,5 @@
 // Карточка задачи в канбане
 import React from "react";
-import type { LucideIcon } from "lucide-react";
-import { CarIcon, TruckIcon } from "lucide-react";
-import { useTranslation } from "react-i18next";
-
 import { type Task } from "shared";
 import { DeadlineCountdownBadge } from "../columns/taskColumns";
 import {
@@ -23,16 +19,15 @@ interface TaskCardProps {
   onOpen?: (id: string) => void;
 }
 
-const titleButtonClass =
+const numberBadgeClass =
   [
-    "group inline-flex w-full items-center gap-2 rounded-md border border-border/40 bg-muted/60 px-2 py-1",
-    "text-left text-sm font-semibold text-foreground shadow-xs transition",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-    "hover:bg-muted/80 dark:bg-muted/40 dark:hover:bg-muted/50",
+    "inline-flex min-w-[6rem] items-center justify-center gap-1",
+    "whitespace-nowrap rounded-full border border-slate-500/30 bg-slate-100/80 px-2 py-1",
+    "text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-900 shadow-xs",
+    "transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "hover:bg-slate-200 dark:border-slate-500/40 dark:bg-slate-700/70 dark:text-slate-100",
+    "dark:hover:bg-slate-600/70",
   ].join(" ");
-
-const secondaryTextClass =
-  "truncate text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground";
 
 const resolveDueDate = (
   task: TaskCardProps["task"],
@@ -44,34 +39,6 @@ const resolveDueDate = (
     if (typeof value === "string" && value.trim()) {
       return value;
     }
-  }
-  return null;
-};
-
-const resolveStartDate = (
-  task: TaskCardProps["task"],
-): string | null => {
-  const source = (task as Record<string, unknown>).start_date;
-  if (typeof source === "string" && source.trim()) {
-    return source;
-  }
-  const camelCase = (task as Record<string, unknown>).startDate;
-  if (typeof camelCase === "string" && camelCase.trim()) {
-    return camelCase;
-  }
-  return null;
-};
-
-const resolveCompletedAt = (
-  task: TaskCardProps["task"],
-): string | null => {
-  const source = (task as Record<string, unknown>).completed_at;
-  if (typeof source === "string" && source.trim()) {
-    return source;
-  }
-  const camelCase = (task as Record<string, unknown>).completedAt;
-  if (typeof camelCase === "string" && camelCase.trim()) {
-    return camelCase;
   }
   return null;
 };
@@ -118,35 +85,35 @@ const resolveTypeLabel = (task: TaskCardProps["task"]): string | null => {
   return trimmed ? trimmed : null;
 };
 
-const resolveTransportType = (task: TaskCardProps["task"]): string | null => {
-  const raw = (task as Record<string, unknown>).transport_type;
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  if (trimmed.toLowerCase() === "без транспорта") return null;
-  return trimmed;
+const resolveStartDate = (
+  task: TaskCardProps["task"],
+): string | null => {
+  const source = (task as Record<string, unknown>).start_date;
+  if (typeof source === "string" && source.trim()) {
+    return source;
+  }
+  const camelCase = (task as Record<string, unknown>).startDate;
+  if (typeof camelCase === "string" && camelCase.trim()) {
+    return camelCase;
+  }
+  return null;
 };
 
-const resolveTaskTitle = (task: TaskCardProps["task"]): string | null => {
-  const raw = (task as Record<string, unknown>).title;
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  return trimmed ? trimmed : null;
-};
-
-const pickTransportIcon = (transportType: string): LucideIcon | null => {
-  const normalized = transportType.toLowerCase();
-  if (normalized.includes("груз")) {
-    return TruckIcon;
+const resolveCompletedAt = (
+  task: TaskCardProps["task"],
+): string | null => {
+  const source = (task as Record<string, unknown>).completed_at;
+  if (typeof source === "string" && source.trim()) {
+    return source;
   }
-  if (normalized.includes("легк")) {
-    return CarIcon;
+  const camelCase = (task as Record<string, unknown>).completedAt;
+  if (typeof camelCase === "string" && camelCase.trim()) {
+    return camelCase;
   }
-  return CarIcon;
+  return null;
 };
 
 export default function TaskCard({ task, onOpen }: TaskCardProps) {
-  const { t } = useTranslation();
   const dueDate = resolveDueDate(task);
   const startDate = resolveStartDate(task);
   const completedAt = resolveCompletedAt(task);
@@ -158,42 +125,28 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const typeClass = typeLabel
     ? getTypeBadgeClass(typeLabel) ?? `${fallbackBadgeClass} normal-case`
     : null;
-  const transportType = resolveTransportType(task);
-  const TransportIcon = transportType ? pickTransportIcon(transportType) : null;
-  const titleText = resolveTaskTitle(task) ?? t("kanban.untitled");
-  const titleHint = transportType
-    ? `${titleText} • ${transportType}`
-    : titleText;
 
   return (
     <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-md border border-border bg-card/80 p-2 shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
-      <button
-        type="button"
-        className={titleButtonClass}
-        title={titleHint}
-        onClick={(event) => {
-          event.stopPropagation();
-          if (taskId) {
-            onOpen?.(taskId);
-          }
-        }}
-      >
-        {TransportIcon ? (
-          <span className="flex items-center justify-center">
-            <TransportIcon
-              aria-hidden="true"
-              className="size-4 text-muted-foreground transition group-hover:text-primary"
-            />
-            <span className="sr-only">
-              {t("kanban.transportIconLabel", { type: transportType })}
-            </span>
-          </span>
-        ) : null}
-        <span className="line-clamp-2 text-sm font-semibold leading-snug">
-          {titleText}
+      {taskNumber ? (
+        <button
+          type="button"
+          className={numberBadgeClass}
+          title={taskNumber}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (taskId) {
+              onOpen?.(taskId);
+            }
+          }}
+        >
+          <span className="truncate">{taskNumber}</span>
+        </button>
+      ) : (
+        <span className="text-[0.7rem] font-semibold uppercase text-muted-foreground">
+          ERM_000000
         </span>
-      </button>
-      {taskNumber ? <span className={secondaryTextClass}>{taskNumber}</span> : null}
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         <span className={statusClass}>{task.status}</span>
         {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}

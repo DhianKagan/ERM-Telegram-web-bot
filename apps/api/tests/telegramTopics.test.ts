@@ -1,6 +1,5 @@
 // Назначение файла: проверка парсинга ссылок на темы Telegram.
 // Основные модули: parseTelegramTopicUrl.
-export {};
 
 import { parseTelegramTopicUrl } from '../src/utils/telegramTopics';
 

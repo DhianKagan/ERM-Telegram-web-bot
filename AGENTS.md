@@ -51,7 +51,6 @@
 - Скрипт `pretest:e2e` устанавливает Firefox и Chromium и запускает `playwright doctor`
   с запасным вызовом `playwright install --list`; не удаляйте диагностический шаг.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха, запускает аудит зависимостей и записывает лог в `/tmp/apps/api_start.log`.
-- Workflow Deploy и Release проверяют наличие секретов Railway (`RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, `RAILWAY_SERVICE_ID`, `RAILWAY_SERVICE_NAME`, `RAILWAY_TOKEN`) перед запуском CLI.
 - Lighthouse CI использует GitHub App, токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты размещаются во временном публичном хранилище.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти; `scripts/check_mongo.mjs` пропускает проверку при `CI=true`.
 - `pnpm run dev` устанавливает `PNPM_SCRIPT_TIMEOUT=0`, чтобы серверы не завершались через 10 минут.

@@ -58,14 +58,6 @@ const toNonNegativeNumber = (value: unknown): number | undefined => {
   return numeric >= 0 ? numeric : undefined;
 };
 
-const toPositiveNumber = (value: unknown): number | undefined => {
-  const numeric = toNumber(value);
-  if (typeof numeric !== 'number') {
-    return undefined;
-  }
-  return numeric > 0 ? numeric : undefined;
-};
-
 const toCoordinate = (value: unknown): { lat: number; lng: number } | undefined => {
   if (!value || typeof value !== 'object') {
     return undefined;
@@ -115,14 +107,7 @@ const normalizeTask = (task: OptimizeTaskBody): service.OptimizeTaskInput | null
     return null;
   }
   const demand = toNonNegativeNumber(task.demand);
-  const rawWeight = toNonNegativeNumber(task.weight);
-  const normalizedWeight = typeof rawWeight === 'number' ? rawWeight : undefined;
-  const normalizedDemand =
-    typeof demand === 'number'
-      ? demand
-      : typeof normalizedWeight === 'number'
-        ? normalizedWeight
-        : undefined;
+  const weight = toNonNegativeNumber(task.weight);
   const serviceMinutes = toNonNegativeNumber(task.serviceMinutes);
   const timeWindow = toTimeWindow(task.timeWindow);
   const title = typeof task.title === 'string' ? task.title.trim() || undefined : undefined;
@@ -133,8 +118,8 @@ const normalizeTask = (task: OptimizeTaskBody): service.OptimizeTaskInput | null
   return {
     id,
     coordinates,
-    demand: normalizedDemand,
-    weight: normalizedWeight,
+    demand,
+    weight,
     serviceMinutes,
     timeWindow,
     title,
@@ -196,7 +181,7 @@ export async function optimize(
     return;
   }
   const tasks = normalizeTasks(req.body?.tasks);
-  const rawCapacity = toPositiveNumber(req.body?.vehicleCapacity);
+  const rawCapacity = toPositiveInt(req.body?.vehicleCapacity);
   const vehicleCapacity =
     typeof rawCapacity === 'number' ? rawCapacity : Math.max(1, tasks.length || 1);
   const vehicleCount = toPositiveInt(req.body?.vehicleCount) ?? 1;

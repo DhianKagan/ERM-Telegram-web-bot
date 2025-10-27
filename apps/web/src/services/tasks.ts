@@ -151,8 +151,12 @@ const submitTask = async (
       reason: await extractReason(response),
     });
   }
-  const result = (await response.json()) as { _id?: string; id?: string };
-  const id = result._id || result.id;
+  const result = (await response.json()) as {
+    _id?: string;
+    id?: string;
+    taskId?: string;
+  };
+  const id = result.taskId || result._id || result.id;
   if (id && window.Telegram?.WebApp) {
     window.Telegram.WebApp.sendData(`task_created:${id}`);
   }

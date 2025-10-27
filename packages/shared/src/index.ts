@@ -2,6 +2,13 @@
 // Модули: constants, taskFields, mapUtils, types, taskFormSchema
 
 export * from './constants';
+export {
+  buildAttachmentsFromCommentHtml,
+  extractFileIdFromUrl,
+  extractIdsFromCommentHtml,
+  normalizeObjectIdCandidate,
+  type AttachmentCandidate,
+} from './attachments';
 export { taskFields, type TaskField } from './taskFields';
 export {
   extractCoords,

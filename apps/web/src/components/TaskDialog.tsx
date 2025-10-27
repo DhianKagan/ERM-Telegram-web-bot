@@ -90,8 +90,7 @@ import {
   dispatchLogisticsGeozonesRequest,
   type LogisticsGeozonesCustomEvent,
 } from "../utils/logisticsGeozonesEvents";
-
-type WindowEventListener = (event: Event) => void;
+import type { WindowEventHandler } from "../types/events";
 
 type TaskKind = "task" | "request";
 
@@ -2025,7 +2024,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (typeof window === "undefined") {
       return;
     }
-    const handleEvent = (event: Event) => {
+    const handleEvent: WindowEventHandler = (event) => {
       const detail = (event as LogisticsGeozonesCustomEvent).detail;
       if (!detail) {
         return;
@@ -2037,16 +2036,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         );
       }
     };
-    window.addEventListener(
-      LOGISTICS_GEOZONES_EVENT,
-      handleEvent as WindowEventListener,
-    );
+    window.addEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
     dispatchLogisticsGeozonesRequest();
     return () => {
-      window.removeEventListener(
-        LOGISTICS_GEOZONES_EVENT,
-        handleEvent as WindowEventListener,
-      );
+      window.removeEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
     };
   }, []);
 
@@ -2679,14 +2672,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     } finally {
       setTemplateDeleting(false);
     }
-  }, [
-    deleteTaskTemplate,
-    editing,
-    selectedTemplateId,
-    t,
-    templateDeleting,
-    templateSaving,
-  ]);
+  }, [editing, selectedTemplateId, t, templateDeleting, templateSaving]);
 
   React.useEffect(() => {
     if (isEdit) {

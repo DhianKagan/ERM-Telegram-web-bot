@@ -14,12 +14,19 @@ import {
   within,
 } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
-import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
 import type {
   OptimizeRoutePayload,
   RouteOptimizationResult,
 } from "../services/optimizer";
+
+type TasksServiceModule = typeof import("../services/tasks");
+type FleetsServiceModule = typeof import("../services/fleets");
+type OptimizerServiceModule = typeof import("../services/optimizer");
+type RoutePlansServiceModule = typeof import("../services/routePlans");
+type TaskStateControllerModule = typeof import(
+  "../controllers/taskStateController"
+);
 jest.mock("react-i18next", () => {
   const templates: Record<string, string> = {
     appTitle: "ERM WEB",
@@ -450,14 +457,8 @@ jest.mock("../components/TaskTable", () => {
   return { __esModule: true, default: MockTaskTable };
 });
 
-const fetchTasksMock = jest.fn().mockResolvedValue({
-  tasks: mockTasks,
-  users: [],
-  total: mockTasks.length,
-});
-
 jest.mock("../services/tasks", () => ({
-  fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
+  fetchTasks: jest.fn(),
 }));
 
 const baseVehicle = {
@@ -482,10 +483,8 @@ const baseVehicle = {
   },
 };
 
-const listFleetVehiclesMock = jest.fn();
-
 jest.mock("../services/fleets", () => ({
-  listFleetVehicles: (...args: unknown[]) => listFleetVehiclesMock(...args),
+  listFleetVehicles: jest.fn(),
 }));
 
 jest.mock("../services/osrm", () =>
@@ -495,23 +494,46 @@ jest.mock("../services/osrm", () =>
   ]),
 );
 
-const optimizeRouteMock = jest.fn().mockResolvedValue(null);
-
 jest.mock("../services/optimizer", () => ({
   __esModule: true,
-  default: (...args: unknown[]) => optimizeRouteMock(...args),
+  default: jest.fn(),
 }));
-
-const listRoutePlansMock = jest.fn();
-const updateRoutePlanMock = jest.fn();
-const changeRoutePlanStatusMock = jest.fn();
 
 jest.mock("../services/routePlans", () => ({
-  listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
-  updateRoutePlan: (...args: unknown[]) => updateRoutePlanMock(...args),
-  changeRoutePlanStatus: (...args: unknown[]) =>
-    changeRoutePlanStatusMock(...args),
+  listRoutePlans: jest.fn(),
+  updateRoutePlan: jest.fn(),
+  changeRoutePlanStatus: jest.fn(),
 }));
+
+const tasksServiceMock = jest.requireMock(
+  "../services/tasks",
+) as jest.Mocked<TasksServiceModule>;
+const fetchTasksMock = tasksServiceMock.fetchTasks;
+
+const fleetsServiceMock = jest.requireMock(
+  "../services/fleets",
+) as jest.Mocked<FleetsServiceModule>;
+const listFleetVehiclesMock = fleetsServiceMock.listFleetVehicles;
+
+const optimizerServiceMock = jest.requireMock(
+  "../services/optimizer",
+) as jest.Mocked<OptimizerServiceModule>;
+const optimizeRouteMock = optimizerServiceMock.default;
+
+const routePlansServiceMock = jest.requireMock(
+  "../services/routePlans",
+) as jest.Mocked<RoutePlansServiceModule>;
+const { listRoutePlans: listRoutePlansMock } = routePlansServiceMock;
+const { updateRoutePlan: updateRoutePlanMock } = routePlansServiceMock;
+const { changeRoutePlanStatus: changeRoutePlanStatusMock } =
+  routePlansServiceMock;
+
+fetchTasksMock.mockResolvedValue({
+  tasks: mockTasks,
+  users: [],
+  total: mockTasks.length,
+});
+optimizeRouteMock.mockResolvedValue(null);
 
 const draftPlan: RoutePlan = {
   id: "plan-1",
@@ -698,6 +720,11 @@ jest.mock("../controllers/taskStateController", () => {
     useTaskIndexMeta,
   };
 });
+
+const taskStateControllerModule = jest.requireMock(
+  "../controllers/taskStateController",
+) as TaskStateControllerModule;
+const { taskStateController } = taskStateControllerModule;
 
 jest.mock("../context/useTasks", () => {
   const { taskStateController } = jest.requireMock(

@@ -6,12 +6,7 @@ on:
   push:
     branches:
       - main
-      - staging
-      - production
-      - release/**
   pull_request:
-    branches:
-      - '**'
   workflow_dispatch:
 
 jobs:

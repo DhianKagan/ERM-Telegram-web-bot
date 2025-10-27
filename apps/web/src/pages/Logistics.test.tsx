@@ -220,21 +220,35 @@ jest.mock("maplibre-gl", () => {
   };
 });
 
+type FeatureCollectionMock = {
+  type: "FeatureCollection";
+  features: unknown[];
+};
+
+interface MockDrawApi {
+  onAdd: jest.Mock<void, []>;
+  onRemove: jest.Mock<void, []>;
+  set: jest.Mock<MockDrawApi, [FeatureCollectionMock]>;
+  getAll: jest.Mock<FeatureCollectionMock, []>;
+  deleteAll: jest.Mock<MockDrawApi, []>;
+  changeMode: jest.Mock<void, [string | undefined]>;
+}
+
 jest.mock("@mapbox/mapbox-gl-draw", () => {
   return jest.fn().mockImplementation(() => {
-    let collection = {
+    let collection: FeatureCollectionMock = {
       type: "FeatureCollection",
-      features: [] as unknown[],
+      features: [],
     };
-    const api = {
+    const api: MockDrawApi = {
       onAdd: jest.fn(),
       onRemove: jest.fn(),
-      set: jest.fn((value) => {
+      set: jest.fn<MockDrawApi, [FeatureCollectionMock]>((value) => {
         collection = value;
         return api;
       }),
-      getAll: jest.fn(() => collection),
-      deleteAll: jest.fn(() => {
+      getAll: jest.fn<FeatureCollectionMock, []>(() => collection),
+      deleteAll: jest.fn<MockDrawApi, []>(() => {
         collection = { type: "FeatureCollection", features: [] };
         return api;
       }),

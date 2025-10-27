@@ -10,7 +10,7 @@
 - `NODE_ENV=production` соответствует чек-листу деплоя на Railway.
 
 ## MongoDB
-- Новое значение `MONGO_DATABASE_URL` в Railway уже включает имя базы и `authSource` (`mongodb://mongo:***@erm-mongodb.railway.internal:27017/test?authSource=admin`), поэтому проверка конфигурации проходит без ошибок.
+- Новое значение `MONGO_DATABASE_URL` в Railway уже включает имя базы и `authSource` (`mongodb://mongo:***@erm-mongodb.railway.internal:27017/test?authSource=admin`), поэтому проверка конфигурации проходит без ошибок. Если сервис отдаёт только `MONGO_URL`/`MONGO_PUBLIC_URL`, конфиг сам добавит имя базы (`MONGO_DATABASE_NAME`, по умолчанию `ermdb`) и `authSource=admin`.
 - В окружении Codex всё ещё используется публичный прокси `shinkansen.proxy.rlwy.net`. Для стабильности и меньшей задержки приведите строку к приватному адресу `erm-mongodb.railway.internal` и при необходимости добавьте `directConnection=true`.
 - Если вы захотите сменить базу данных с `test` на `ermdb`, не забудьте скорректировать имя базы в URI и выполнить миграции, чтобы структура коллекций совпадала.
 

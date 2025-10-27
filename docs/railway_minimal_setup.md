@@ -9,7 +9,7 @@
 2. Подключите GitHub-репозиторий `ERM-Telegram-web-bot` через **New Service → Deploy from GitHub**.
 3. В разделе **Variables** задайте значения:
    - `BOT_TOKEN` — токен вашего Telegram-бота от BotFather.
-   - `MONGO_DATABASE_URL` — строка подключения к MongoDB (можно взять из плагина Railway MongoDB или собственного кластера).
+   - `MONGO_DATABASE_URL` — строка подключения к MongoDB (можно взять из плагина Railway MongoDB или собственного кластера). Если Railway отдаёт только `MONGO_URL` или `MONGO_PUBLIC_URL`, достаточно их: сервер добавит имя базы (`MONGO_DATABASE_NAME`) и `authSource=admin` автоматически.
    - `APP_URL` — домен Railway вида `https://<имя>.up.railway.app`.
    - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://osrm-production.up.railway.app`).
    - `NODE_ENV=production`.

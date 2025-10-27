@@ -85,6 +85,8 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 Команда `pnpm size` ищет файлы `index-*.js` в `apps/api/public/js`.
 
+Полный перечень обязательных шагов собран в [docs/pre_pr_checklist.md](docs/pre_pr_checklist.md).
+
 Статусы Lighthouse CI добавляет установленный GitHub App, его токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты публикуются во временном публичном хранилище.
 
 ## Миграции

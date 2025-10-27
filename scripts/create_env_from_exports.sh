@@ -39,35 +39,48 @@ const fallback = process.env.MONGO_FALLBACK ?? '';
 
 const normalize = (input, alternative) => {
   const trimmed = input.trim().split(/\s+/)[0] ?? '';
-  if (!trimmed || !trimmed.startsWith('mongodb://')) {
+  if (!trimmed || !/^mongodb(\+srv)?:\/\//.test(trimmed)) {
     if (alternative) {
       return normalize(alternative, '');
     }
     throw new Error('invalid mongo url');
   }
 
-  let parsed;
-  try {
-    parsed = new URL(trimmed);
-  } catch (error) {
-    if (alternative) {
-      return normalize(alternative, '');
-    }
-    throw error;
-  }
+  const protocolEnd = trimmed.indexOf('://');
+  const protocol = trimmed.slice(0, protocolEnd).toLowerCase();
+  const remainder = trimmed.slice(protocolEnd + 3);
 
-  if (!parsed.pathname || parsed.pathname === '/' || parsed.pathname === '') {
+  const slashIndex = remainder.indexOf('/');
+  if (slashIndex === -1) {
     if (alternative) {
       return normalize(alternative, '');
     }
     throw new Error('mongo url must contain db name');
   }
 
-  if (!parsed.searchParams.get('authSource')) {
-    parsed.searchParams.set('authSource', 'admin');
+  const authority = remainder.slice(0, slashIndex);
+  const pathAndQuery = remainder.slice(slashIndex + 1);
+
+  const questionIndex = pathAndQuery.indexOf('?');
+  const dbName = questionIndex === -1 ? pathAndQuery : pathAndQuery.slice(0, questionIndex);
+  const query = questionIndex === -1 ? '' : pathAndQuery.slice(questionIndex + 1);
+
+  if (!dbName) {
+    if (alternative) {
+      return normalize(alternative, '');
+    }
+    throw new Error('mongo url must contain db name');
   }
 
-  return parsed.toString();
+  const params = new URLSearchParams(query);
+  if (!params.get('authSource')) {
+    params.set('authSource', 'admin');
+  }
+
+  const serializedParams = params.toString();
+  const suffix = serializedParams ? `?${serializedParams}` : '';
+
+  return `${protocol}://${authority}/${dbName}${suffix}`;
 };
 
 process.stdout.write(normalize(candidate, fallback));

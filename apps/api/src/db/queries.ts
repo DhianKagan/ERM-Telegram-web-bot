@@ -1386,7 +1386,6 @@ export async function bulkUpdate(
           continue;
         }
         const prev = previousById.get(identifier);
-        // eslint-disable-next-line no-await-in-loop
         await applyFleetUsageOnCompletion(prev, next);
       }
     }

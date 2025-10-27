@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Назначение: тесты страницы логистики с отображением техники и треков
-// Основные модули: React, @testing-library/react, Leaflet-моки
+// Основные модули: React, @testing-library/react, MapLibre GL-моки, Turf
 
 import "@testing-library/jest-dom";
 import React from "react";
@@ -55,6 +55,21 @@ jest.mock("react-i18next", () => {
     "logistics.assignDialogNoCoordinates": "Недостаточно данных",
     "logistics.assignDialogError": "Ошибка",
     "logistics.assignDialogResult": "Маршрут рассчитан: {{load}}, {{eta}}",
+    "logistics.mapLibreLoading": "Инициализация слоя рисования…",
+    "logistics.mapDrawing": "Режим рисования",
+    "logistics.mapPolygonCount": "Полигонов: {{count}}",
+    "logistics.mapExpand": "Развернуть карту",
+    "logistics.mapCollapse": "Свернуть карту",
+    "logistics.geozonesTitle": "Геозоны",
+    "logistics.geozoneClear": "Очистить",
+    "logistics.geozoneEmpty": "Геозоны не добавлены",
+    "logistics.geozoneDeleteAria": "Удалить геозону {{name}}",
+    "logistics.geozoneDefaultName": "Геозона {{index}}",
+    "logistics.geozoneArea": "Площадь: {{value}}",
+    "logistics.geozoneAreaUnknown": "Площадь: нет данных",
+    "logistics.geozonePerimeter": "Периметр: {{value}}",
+    "logistics.geozonePerimeterUnknown": "Периметр: нет данных",
+    "logistics.geozoneBuffer": "Буфер: {{value}}",
     "logistics.vehicleCountLabel": "Машины",
     "logistics.vehicleCountAria": "Количество машин",
     "logistics.optimizeMethodLabel": "Метод",
@@ -64,6 +79,10 @@ jest.mock("react-i18next", () => {
     "logistics.metaTitle": "ERM WEB",
     "logistics.metaDescription":
       "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
+    "km": "км",
+    "km2": "км²",
+    "hectare": "га",
+    "meter": "м",
     "logistics.planSectionTitle": "Маршрутный план",
     "logistics.planSummary": "Итоги плана",
     "logistics.planStatus": "Статус",
@@ -886,10 +905,6 @@ describe("LogisticsPage", () => {
       },
     };
 
-    jest.useFakeTimers();
-    jest.runOnlyPendingTimers();
-    jest.clearAllTimers();
-
     act(() => {
       drawInstance.__collection.features = [polygonFeature];
       mapInstance.fire("draw.create", { features: [polygonFeature] });
@@ -900,12 +915,6 @@ describe("LogisticsPage", () => {
         screen.getByRole("button", { name: "Геозона 1" }),
       ).toBeInTheDocument(),
     );
-    await act(async () => {
-      jest.advanceTimersByTime(800);
-      await Promise.resolve();
-    });
-
-    jest.useRealTimers();
 
     optimizeRouteMock.mockClear();
 
@@ -920,17 +929,12 @@ describe("LogisticsPage", () => {
     const payload = optimizeRouteMock.mock.calls[0][0] as OptimizeRoutePayload;
     expect(payload.tasks).toHaveLength(1);
 
-    jest.useFakeTimers();
     const deleteButton = screen.getByRole("button", {
       name: "Удалить геозону Геозона 1",
     });
     act(() => {
       fireEvent.click(deleteButton);
     });
-    act(() => {
-      jest.advanceTimersByTime(800);
-    });
-    jest.useRealTimers();
 
     await waitFor(() =>
       expect(drawInstance.__collection.features).toHaveLength(0),
@@ -938,7 +942,232 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(screen.getByText("Геозоны не добавлены")).toBeInTheDocument(),
     );
-  });
+  }, 10000);
+
+  it(
+    "фильтрует задачи и статусы по геозонам с учётом буфера",
+    async () => {
+    const insideTask = {
+      _id: "zone-inside",
+      id: "zone-inside",
+      title: "Внутренняя задача",
+      startCoordinates: { lat: 50.05, lng: 30.05 },
+      finishCoordinates: { lat: 50.15, lng: 30.15 },
+      logistics_details: {
+        transport_type: "Легковой",
+        start_location: "Київ",
+        end_location: "Київ",
+      },
+      delivery_window_start: "2099-01-01T08:00:00+02:00",
+      delivery_window_end: "2099-01-01T10:00:00+02:00",
+    } as const;
+
+    const outsideTask = {
+      _id: "zone-outside",
+      id: "zone-outside",
+      title: "Внешняя задача",
+      startCoordinates: { lat: 52.0, lng: 32.0 },
+      finishCoordinates: { lat: 52.1, lng: 32.1 },
+      logistics_details: {
+        transport_type: "Легковой",
+        start_location: "Харків",
+        end_location: "Харків",
+      },
+      delivery_window_start: "2099-01-02T08:00:00+02:00",
+      delivery_window_end: "2099-01-02T10:00:00+02:00",
+    } as const;
+
+    fetchTasksMock.mockResolvedValue({
+      tasks: [insideTask, outsideTask],
+      users: [],
+      total: 2,
+    });
+
+    const planWithTwo: RoutePlan = {
+      ...draftPlan,
+      metrics: {
+        totalDistanceKm: 45,
+        totalRoutes: 1,
+        totalTasks: 2,
+        totalStops: 4,
+        totalEtaMinutes: 720,
+        totalLoad: 18,
+      },
+      routes: [
+        {
+          ...draftPlan.routes[0],
+          tasks: [
+            {
+              taskId: insideTask._id,
+              order: 0,
+              title: insideTask.title,
+              start: insideTask.startCoordinates,
+              finish: insideTask.finishCoordinates,
+              startAddress: "Київ, вул. Хрещатик, 1",
+              finishAddress: "Київ, просп. Перемоги, 10",
+              distanceKm: 15,
+            },
+            {
+              taskId: outsideTask._id,
+              order: 1,
+              title: outsideTask.title,
+              start: outsideTask.startCoordinates,
+              finish: outsideTask.finishCoordinates,
+              startAddress: "Харків, вул. Сумська, 1",
+              finishAddress: "Харків, вул. Полтавський Шлях, 20",
+              distanceKm: 30,
+            },
+          ],
+          stops: [
+            {
+              order: 0,
+              kind: "start",
+              taskId: insideTask._id,
+              coordinates: insideTask.startCoordinates,
+              address: "Київ, вул. Хрещатик, 1",
+              etaMinutes: 15,
+              load: 10,
+              delayMinutes: 0,
+              windowStartMinutes: 480,
+              windowEndMinutes: 540,
+            },
+            {
+              order: 1,
+              kind: "finish",
+              taskId: insideTask._id,
+              coordinates: insideTask.finishCoordinates,
+              address: "Київ, просп. Перемоги, 10",
+              etaMinutes: 120,
+              load: 8,
+              delayMinutes: 15,
+              windowStartMinutes: 540,
+              windowEndMinutes: 600,
+            },
+            {
+              order: 2,
+              kind: "start",
+              taskId: outsideTask._id,
+              coordinates: outsideTask.startCoordinates,
+              address: "Харків, вул. Сумська, 1",
+              etaMinutes: 300,
+              load: 8,
+              delayMinutes: 0,
+              windowStartMinutes: 600,
+              windowEndMinutes: 660,
+            },
+            {
+              order: 3,
+              kind: "finish",
+              taskId: outsideTask._id,
+              coordinates: outsideTask.finishCoordinates,
+              address: "Харків, вул. Полтавський Шлях, 20",
+              etaMinutes: 420,
+              load: 0,
+              delayMinutes: 0,
+              windowStartMinutes: 660,
+              windowEndMinutes: 720,
+            },
+          ],
+          metrics: {
+            distanceKm: 45,
+            etaMinutes: 720,
+            stops: 4,
+            load: 18,
+          },
+        },
+      ],
+    };
+
+    listRoutePlansMock.mockReset();
+    listRoutePlansMock
+      .mockResolvedValueOnce({ items: [planWithTwo], total: 1 })
+      .mockResolvedValue({ items: [], total: 0 });
+    updateRoutePlanMock.mockResolvedValue(planWithTwo);
+    changeRoutePlanStatusMock.mockResolvedValue({
+      ...planWithTwo,
+      status: "approved",
+    });
+
+    render(
+      <MemoryRouter
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(taskStateController.getIndexSnapshot("logistics:all")).toHaveLength(2),
+    );
+
+    const maplibre: any = require("maplibre-gl");
+    const drawModule: any = require("maplibre-gl-draw");
+    const mapInstances = (maplibre.Map as unknown as {
+      __instances: any[];
+    }).__instances;
+    const drawInstances = (drawModule as unknown as {
+      __instances: MockDrawApi[];
+    }).__instances;
+    const mapInstance = mapInstances[mapInstances.length - 1];
+    const drawInstance = drawInstances[drawInstances.length - 1];
+    if (!mapInstance || !drawInstance) {
+      throw new Error("Не удалось инициализировать MapLibre или Draw");
+    }
+
+    const polygonFeature = {
+      id: "zone-test",
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [29.5, 49.5],
+            [29.5, 50.5],
+            [30.5, 50.5],
+            [30.5, 49.5],
+            [29.5, 49.5],
+          ],
+        ],
+      },
+    };
+
+    act(() => {
+      drawInstance.__collection.features = [polygonFeature];
+      mapInstance.fire("draw.create", { features: [polygonFeature] });
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Внешняя задача")).not.toBeInTheDocument(),
+    );
+    const assignButton = await screen.findByRole("button", {
+      name: "Назначить задачи",
+    });
+    fireEvent.click(assignButton);
+    const assignDialog = await screen.findByRole("dialog");
+    expect(
+      within(assignDialog).getByText("Внутренняя задача"),
+    ).toBeInTheDocument();
+    expect(
+      within(assignDialog).queryByText("Внешняя задача"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(within(assignDialog).getByRole("button", { name: "Отмена" }));
+    expect(screen.getByText(/Площадь:/)).toBeInTheDocument();
+    expect(screen.getByText(/Периметр:/)).toBeInTheDocument();
+    expect(screen.getByText("Буфер: 150 м")).toBeInTheDocument();
+
+    optimizeRouteMock.mockClear();
+
+    const optimizeButton = screen.getByRole("button", {
+      name: "Просчёт логистики",
+    });
+    fireEvent.click(optimizeButton);
+
+    await waitFor(() => expect(optimizeRouteMock).toHaveBeenCalledTimes(1));
+    const payload = optimizeRouteMock.mock.calls[0][0] as OptimizeRoutePayload;
+    expect(payload.tasks).toHaveLength(1);
+    expect(payload.tasks[0]?.id).toBe(insideTask._id);
+  }, 10000);
 
   it("показывает аналитику плана, прогресс-бары и таблицу остановок", async () => {
     render(

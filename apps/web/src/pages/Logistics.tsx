@@ -37,10 +37,7 @@ import { useTranslation } from "react-i18next";
 import L, { type LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import * as maplibregl from "maplibre-gl";
-import type {
-  GeoJSONFeatureCollection,
-  GeoJSONSource,
-} from "maplibre-gl";
+import type { GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
@@ -192,9 +189,14 @@ const MAPLIBRE_POLYGON_SOURCE_ID = "logistics-polygons";
 const MAPLIBRE_POLYGON_FILL_LAYER_ID = "logistics-polygons-fill";
 const MAPLIBRE_POLYGON_LINE_LAYER_ID = "logistics-polygons-line";
 
+type MapFeatureCollection = GeoJSON.FeatureCollection<
+  GeoJSON.Geometry,
+  GeoJSON.GeoJsonProperties
+>;
+
 const areFeatureCollectionsEqual = (
-  left: GeoJSONFeatureCollection,
-  right: GeoJSONFeatureCollection,
+  left: MapFeatureCollection,
+  right: MapFeatureCollection,
 ): boolean => {
   if (left.features.length !== right.features.length) {
     return false;
@@ -630,7 +632,7 @@ export default function LogisticsPage() {
   const drawControlRef = React.useRef<MapboxDraw | null>(null);
   const [mapLibreReady, setMapLibreReady] = React.useState(false);
   const [drawnPolygons, setDrawnPolygons] =
-    React.useState<GeoJSONFeatureCollection>({
+    React.useState<MapFeatureCollection>({
       type: "FeatureCollection",
       features: [],
     });
@@ -2530,7 +2532,7 @@ export default function LogisticsPage() {
     const map = new maplibregl.Map({
       container,
       style: MAPLIBRE_STYLE_URL,
-      center: [MAP_CENTER.lng, MAP_CENTER.lat],
+      center: [MAP_CENTER[1], MAP_CENTER[0]],
       zoom: MAP_ZOOM,
       attributionControl: false,
     });
@@ -2547,7 +2549,7 @@ export default function LogisticsPage() {
       },
     });
     drawControlRef.current = drawControl;
-    map.addControl(drawControl, "top-left");
+    map.addControl(drawControl as unknown as maplibregl.IControl, "top-left");
     let cancelled = false;
     const ensureSource = () => {
       if (map.getSource(MAPLIBRE_POLYGON_SOURCE_ID)) {
@@ -2596,7 +2598,7 @@ export default function LogisticsPage() {
       setIsDrawing(mode.startsWith("draw_"));
     };
     const syncDrawFeatures = () => {
-      const collection = drawControl.getAll() as GeoJSONFeatureCollection;
+      const collection = drawControl.getAll() as MapFeatureCollection;
       if (!areFeatureCollectionsEqual(collection, drawnPolygonsRef.current)) {
         setDrawnPolygons(collection);
       } else {
@@ -2639,7 +2641,7 @@ export default function LogisticsPage() {
     if (!mapLibreReady) return;
     const drawControl = drawControlRef.current;
     if (!drawControl) return;
-    const collection = drawControl.getAll() as GeoJSONFeatureCollection;
+    const collection = drawControl.getAll() as MapFeatureCollection;
     if (!areFeatureCollectionsEqual(collection, drawnPolygons)) {
       drawControl.deleteAll();
       if (drawnPolygons.features.length) {

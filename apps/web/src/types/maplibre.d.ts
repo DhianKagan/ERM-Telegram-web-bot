@@ -1,5 +1,5 @@
-// Назначение: типы MapLibre GL и MapLibre Draw для веб-клиента
-// Модули: maplibre-gl, @mapbox/mapbox-gl-draw
+// Назначение: типы MapLibre GL для веб-клиента
+// Модули: maplibre-gl
 
 declare module "maplibre-gl" {
   import type { Feature, FeatureCollection, Geometry } from "geojson";
@@ -205,57 +205,3 @@ declare module "maplibre-gl" {
   export default Map;
 }
 
-declare module "@mapbox/mapbox-gl-draw" {
-  import type { Feature, FeatureCollection, Geometry } from "geojson";
-  import type { IControl, Map } from "maplibre-gl";
-
-  export type DrawModeControl =
-    | "point"
-    | "line_string"
-    | "polygon"
-    | "trash"
-    | "combine_features"
-    | "uncombine_features";
-
-  export type DrawFeature = Feature<Geometry, Record<string, unknown>>;
-  export type DrawFeatureCollection = FeatureCollection<
-    Geometry,
-    Record<string, unknown>
-  >;
-
-  export interface MapboxDrawOptions {
-    displayControlsDefault?: boolean;
-    controls?: Partial<Record<DrawModeControl, boolean>>;
-    defaultMode?: string;
-    userProperties?: boolean;
-    styles?: unknown[];
-    modes?: Record<string, unknown>;
-  }
-
-  export default class MapboxDraw implements IControl {
-    constructor(options?: MapboxDrawOptions);
-    onAdd(map: Map): HTMLElement;
-    onRemove(map: Map): void;
-    getDefaultPosition?(): import("maplibre-gl").ControlPosition;
-    add(feature: DrawFeature | DrawFeatureCollection): string | string[];
-    set(featureCollection: DrawFeatureCollection): this;
-    get(featureId: string): DrawFeature | null;
-    getAll(): DrawFeatureCollection;
-    getSelected(): DrawFeatureCollection;
-    changeMode(mode: string, options?: Record<string, unknown>): this;
-    getMode(): string;
-    delete(id: string | string[]): this;
-    deleteAll(): this;
-    setFeatureProperty(id: string, property: string, value: unknown): this;
-  }
-}
-
-declare module "@maplibre/maplibre-gl-draw" {
-  export {
-    default,
-    type MapboxDrawOptions as MaplibreGlDrawOptions,
-    type DrawFeature,
-    type DrawFeatureCollection,
-    type DrawModeControl,
-  } from "@mapbox/mapbox-gl-draw";
-}

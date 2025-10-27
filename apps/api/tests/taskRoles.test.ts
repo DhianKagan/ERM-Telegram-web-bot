@@ -1,25 +1,21 @@
 // Назначение: проверка прав на создание задач через Roles
 // Основные модули: express, supertest, roles.decorator, roles.guard
-import type { NextFunction, Request, Response } from 'express';
-
 import express = require('express');
 import request = require('supertest');
 import { Roles } from '../src/auth/roles.decorator';
 import rolesGuard from '../src/auth/roles.guard';
 import { ACCESS_MANAGER } from '../src/utils/accessMask';
 
-type AuthedRequest = Request & { user?: { access: number } };
-
 const app = express();
 app.post(
   '/tasks',
-  (req: AuthedRequest, _res: Response, next: NextFunction) => {
-    req.user = { access: Number(req.headers['x-access'] || 1) };
+  (req, _res, next) => {
+    (req as any).user = { access: Number(req.headers['x-access'] || 1) };
     next();
   },
   Roles(ACCESS_MANAGER) as any,
   rolesGuard as any,
-  (_req: Request, res: Response) => res.sendStatus(201),
+  (_req, res) => res.sendStatus(201),
 );
 
 describe('Права менеджера', () => {

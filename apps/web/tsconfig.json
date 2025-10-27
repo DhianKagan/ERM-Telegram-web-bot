@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Node",
@@ -24,14 +25,7 @@
       "shared/*": ["../../packages/shared/src/*"]
     },
     "composite": true,
-    "types": [
-      "vite/client",
-      "./src/types/telegram",
-      "./src/types/leaflet",
-      "./src/types/maplibre",
-      "./src/types/mapbox-gl",
-      "./src/types/maplibre-gl-draw"
-    ],
+    "types": ["vite/client", "./src/types/telegram", "./src/types/leaflet"],
     "typeRoots": ["./src/types", "../../node_modules/@types"]
   },
   "include": ["src"],

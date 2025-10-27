@@ -19,7 +19,6 @@ export interface FleetVehicleAttrs {
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
-  payloadCapacityKg: number;
   transportType: TransportType;
   fuelType: FuelType;
   fuelRefilled: number;
@@ -55,7 +54,6 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     odometerInitial: { type: Number, required: true, min: 0 },
     odometerCurrent: { type: Number, required: true, min: 0 },
     mileageTotal: { type: Number, required: true, min: 0 },
-    payloadCapacityKg: { type: Number, required: true, min: 0, default: 0 },
     transportType: {
       type: String,
       required: true,

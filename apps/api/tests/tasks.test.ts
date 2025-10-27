@@ -1,38 +1,11 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
-import type { Express, NextFunction, Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-
-let mockLastTaskQueryItems: unknown[] = [];
-
-const createTaskQueryResult = (items: unknown[] = []) => {
-  mockLastTaskQueryItems = items;
-  const chain = {
-    select: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockReturnThis(),
-  };
-  return {
-    ...chain,
-    lean: jest.fn().mockResolvedValue(items),
-    exec: jest.fn().mockResolvedValue(items),
-    then: jest.fn((resolve, reject) =>
-      Promise.resolve(items).then(resolve, reject),
-    ),
-    catch: jest.fn((reject) => Promise.resolve(items).catch(reject)),
-    finally: jest.fn((onFinally) =>
-      Promise.resolve(items).finally(onFinally),
-    ),
-  };
-};
-
 const request = require('supertest');
 const express = require('express');
 const { stopScheduler } = require('../src/services/scheduler');
@@ -65,7 +38,7 @@ jest.mock('../src/bot/bot', () => ({
 
 jest.mock('../src/db/model', () => ({
   Task: {
-    create: jest.fn(async (d: Record<string, unknown>) => ({
+    create: jest.fn(async (d) => ({
       _id: '1',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
@@ -74,12 +47,7 @@ jest.mock('../src/db/model', () => ({
       status: 'Новая',
       time_spent: 0,
     })),
-    findOneAndUpdate: jest.fn(
-      async (
-        query: Record<string, unknown>,
-        d: Record<string, unknown> & { $set?: Record<string, unknown> },
-      ) => ({ _id: query._id, ...(d.$set ?? d) }),
-    ),
+    findOneAndUpdate: jest.fn(async (query, d) => ({ _id: query._id, ...(d.$set || d) })),
     findById: jest.fn(async () => ({
       _id: '1',
       time_spent: 0,
@@ -112,8 +80,7 @@ jest.mock('../src/db/model', () => ({
     })),
     updateMany: jest.fn(async () => null),
     aggregate: jest.fn(async () => [{ count: 2, time: 30 }]),
-    find: jest.fn(() => createTaskQueryResult()),
-    countDocuments: jest.fn(async () => mockLastTaskQueryItems.length),
+    find: jest.fn(async () => []),
   },
   Archive: { create: jest.fn(async () => ({})) },
   File: {
@@ -135,23 +102,20 @@ jest
   .mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } });
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req: Request & { user?: { role: string; id: number; telegram_id: number; access: number } }, _res: Response, next: NextFunction) => {
-    const role = String(req.headers['x-role'] ?? 'admin');
-    const access = Number(req.headers['x-access'] ?? 6);
+  verifyToken: (req, _res, next) => {
+    const role = String(req.headers['x-role'] || 'admin');
+    const access = Number(req.headers['x-access'] || 6);
     req.user = { role, id: 1, telegram_id: 1, access };
     next();
   },
-  asyncHandler: <T>(fn: T) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
+  asyncHandler: (fn) => fn,
+  errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
-  checkRole: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-  checkTaskAccess: (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  checkRole: () => (_req, _res, next) => next(),
+  checkTaskAccess: (_req, _res, next) => next(),
 }));
 
-jest.mock(
-  '../src/middleware/taskAccess',
-  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
+jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 const { taskFormSchema } = require('shared');
 const router = require('../src/routes/tasks').default;
@@ -160,17 +124,12 @@ const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
 
 const { formVersion: validFormVersion } = taskFormSchema;
 
-let app: Express;
+let app;
 beforeEach(() => {
-  mockLastTaskQueryItems = [];
   mockDeleteMessage.mockClear();
   mockSendMessage.mockClear();
   mockEditMessageMedia.mockClear();
   mockEditMessageText.mockClear();
-  Task.find.mockClear();
-  Task.countDocuments.mockClear();
-  Task.find.mockImplementation(() => createTaskQueryResult());
-  Task.countDocuments.mockImplementation(async () => mockLastTaskQueryItems.length);
 });
 beforeAll(() => {
   app = express();
@@ -216,7 +175,7 @@ test('создание задачи без исполнителей возвра
     });
   expect(res.status).toBe(400);
   const messages = Array.isArray(res.body?.errors)
-    ? res.body.errors.map((err: { msg: string }) => err.msg)
+    ? res.body.errors.map((err) => err.msg)
     : [];
   expect(messages).toContain('Укажите хотя бы одного исполнителя');
 });
@@ -291,11 +250,9 @@ test('bulk update статуса', async () => {
 });
 
 test('получение списка задач возвращает пользователей', async () => {
-  Task.find.mockReturnValueOnce(
-    createTaskQueryResult([
-      { _id: '1', assignees: [1], controllers: [], created_by: 1 },
-    ]),
-  );
+  Task.find.mockReturnValueOnce([
+    { _id: '1', assignees: [1], controllers: [], created_by: 1 },
+  ]);
   const res = await request(app).get('/api/v1/tasks');
   expect(res.body.users['1'].name).toBe('User');
   expect(Array.isArray(res.body.tasks)).toBe(true);
@@ -303,11 +260,9 @@ test('получение списка задач возвращает польз
 });
 
 test('получение всех задач для роли manager', async () => {
-  Task.find.mockReturnValueOnce(
-    createTaskQueryResult([
-      { _id: '1', assignees: [1], controllers: [], created_by: 1 },
-    ]),
-  );
+  Task.find.mockReturnValueOnce([
+    { _id: '1', assignees: [1], controllers: [], created_by: 1 },
+  ]);
   const res = await request(app).get('/api/v1/tasks').set('x-role', 'manager');
   expect(res.body.total).toBe(1);
 });

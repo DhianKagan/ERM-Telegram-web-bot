@@ -54,7 +54,6 @@ describe('API коллекций', () => {
         odometerInitial: 1000,
         odometerCurrent: 1500,
         mileageTotal: 500,
-        payloadCapacityKg: 750,
         fuelType: 'Бензин',
         fuelRefilled: 120,
         fuelAverageConsumption: 0.12,

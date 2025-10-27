@@ -1,7 +1,5 @@
 // Назначение: проверка фильтрации и пагинации в collectionRepo
 // Модули: mongodb-memory-server, mongoose, collectionRepo, ensureIndexes
-export {};
-
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { create, list } from '../src/db/repos/collectionRepo';

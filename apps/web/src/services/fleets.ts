@@ -1,7 +1,7 @@
 // Назначение: сервисные функции для работы с объектами автопарка
 // Основные модули: authFetch, shared/FleetVehicleDto
 import authFetch from "../utils/authFetch";
-import type { Coords, FleetVehicleDto } from "shared";
+import type { FleetVehicleDto } from "shared";
 
 export interface FleetVehiclePayload {
   name: string;
@@ -9,7 +9,6 @@ export interface FleetVehiclePayload {
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
-  payloadCapacityKg: number;
   transportType: "Легковой" | "Грузовой";
   fuelType: "Бензин" | "Дизель" | "Газ";
   fuelRefilled: number;
@@ -26,15 +25,6 @@ export interface FleetVehicleResponse {
   limit: number;
 }
 
-export interface FleetVehicleListParams {
-  search?: string;
-  page?: number;
-  limit?: number;
-  transportType?: string[];
-  status?: string[];
-  sort?: string;
-}
-
 function parseResponse(res: Response, fallback: string) {
   if (res.ok) return res.json();
   return res.text().then((text) => {
@@ -42,111 +32,17 @@ function parseResponse(res: Response, fallback: string) {
   });
 }
 
-const toNumber = (value: unknown): number | null => {
-  if (typeof value !== "number") {
-    return null;
-  }
-  return Number.isFinite(value) ? value : null;
-};
-
-const toCoords = (value: unknown): Coords | null => {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const source = value as Record<string, unknown>;
-  const lat =
-    toNumber(source.lat) ??
-    toNumber(source.latitude) ??
-    toNumber(source.latDeg) ??
-    toNumber(source.y);
-  const lng =
-    toNumber(source.lng) ??
-    toNumber(source.lon) ??
-    toNumber(source.longitude) ??
-    toNumber(source.long) ??
-    toNumber(source.x);
-  if (lat === null || lng === null) {
-    return null;
-  }
-  return { lat, lng } satisfies Coords;
-};
-
-const normalizeVehicle = (vehicle: FleetVehicleDto): FleetVehicleDto => {
-  const source = vehicle as FleetVehicleDto & Record<string, unknown>;
-  const positionCandidate =
-    (source.position as unknown) ??
-    (source.lastPosition as unknown) ??
-    (source.location as unknown);
-  const coordinateCandidate =
-    toCoords(source.coordinates) ??
-    toCoords(positionCandidate) ??
-    toCoords(source.lastKnownPosition);
-  const latFallback =
-    toNumber(source.lat) ??
-    toNumber(source.latitude) ??
-    toNumber((positionCandidate as Record<string, unknown> | undefined)?.lat);
-  const lngFallback =
-    toNumber(source.lng) ??
-    toNumber(source.lon) ??
-    toNumber(source.longitude) ??
-    toNumber((positionCandidate as Record<string, unknown> | undefined)?.lon);
-  const coordinates =
-    coordinateCandidate ??
-    (latFallback !== null && lngFallback !== null
-      ? ({ lat: latFallback, lng: lngFallback } as Coords)
-      : null);
-
-  const updatedAtCandidate =
-    typeof source.coordinatesUpdatedAt === "string"
-      ? source.coordinatesUpdatedAt
-      : typeof (positionCandidate as Record<string, unknown> | undefined)
-            ?.updatedAt === "string"
-        ? ((positionCandidate as Record<string, unknown>).updatedAt as string)
-        : null;
-
-  const speedCandidate =
-    toNumber(source.currentSpeedKph) ??
-    toNumber(
-      (positionCandidate as Record<string, unknown> | undefined)?.speed,
-    ) ??
-    toNumber(
-      (positionCandidate as Record<string, unknown> | undefined)?.speedKph,
-    );
-
-  return {
-    ...vehicle,
-    coordinates: coordinates ?? null,
-    coordinatesUpdatedAt: updatedAtCandidate ?? null,
-    currentSpeedKph: speedCandidate ?? null,
-  } satisfies FleetVehicleDto;
-};
-
-export async function listFleetVehicles({
+export async function listFleetVehicles(
   search = "",
   page = 1,
   limit = 10,
-  transportType = [],
-  status = [],
-  sort,
-}: FleetVehicleListParams = {}): Promise<FleetVehicleResponse> {
+): Promise<FleetVehicleResponse> {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
   if (search) params.set("search", search);
-  transportType
-    .filter((value) => typeof value === "string" && value.trim().length)
-    .forEach((value) => params.append("transportType", value.trim()));
-  status
-    .filter((value) => typeof value === "string" && value.trim().length)
-    .forEach((value) => params.append("status", value.trim()));
-  if (sort) params.set("sort", sort);
   const res = await authFetch(`/api/v1/fleets?${params.toString()}`);
-  const data = (await parseResponse(
-    res,
-    "Не удалось загрузить транспорт",
-  )) as FleetVehicleResponse;
-  const items = data.items.map((vehicle) => normalizeVehicle(vehicle));
-  return { ...data, items } satisfies FleetVehicleResponse;
+  return parseResponse(res, "Не удалось загрузить транспорт");
 }
 
 export interface LegacyFleetVehiclesResponse {
@@ -165,9 +61,7 @@ export async function fetchFleetVehicles(
   };
 }
 
-export async function createFleetVehicle(
-  payload: FleetVehiclePayload,
-): Promise<FleetVehicleDto> {
+export async function createFleetVehicle(payload: FleetVehiclePayload): Promise<FleetVehicleDto> {
   const res = await authFetch("/api/v1/fleets", {
     method: "POST",
     confirmed: true,

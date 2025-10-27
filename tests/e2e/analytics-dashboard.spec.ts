@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
-import type { Mongoose } from 'mongoose';
+import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { routePlanSummary } from '../../apps/api/src/controllers/analytics';
 import { RoutePlan } from '../../apps/api/src/db/models/routePlan';
@@ -29,42 +29,6 @@ app.get('/api/v1/analytics/route-plans/summary', (req, res) => {
 let mongod: MongoMemoryServer;
 let server: Server;
 let baseURL: string;
-
-const mongoose: Mongoose = RoutePlan.db.base;
-
-async function waitForMongo(timeoutMs = 60000): Promise<void> {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
-      try {
-        await mongoose.connection.db.command({ ping: 1 });
-        return;
-      } catch (error) {
-        if (Date.now() - started > timeoutMs - 1000) {
-          console.error('MongoDB остаётся недоступной', error);
-        }
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error('MongoDB не стал доступен вовремя');
-}
-
-async function connectMongo(dbName: string): Promise<void> {
-  mongoose.set('bufferTimeoutMS', 60000);
-  const uri = mongod.getUri(dbName);
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-  }
-  await mongoose.connect(uri, {
-    serverSelectionTimeoutMS: 60000,
-    bufferTimeoutMS: 60000,
-  });
-  if (mongoose.connection.readyState !== 1) {
-    await mongoose.connection.asPromise();
-  }
-  await waitForMongo();
-}
 
 async function seedPlans(): Promise<void> {
   await RoutePlan.deleteMany({});
@@ -208,7 +172,7 @@ async function seedPlans(): Promise<void> {
 
 test.beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
-  await connectMongo('analytics-e2e');
+  await mongoose.connect(mongod.getUri());
   server = app.listen(0);
   const { port } = server.address() as AddressInfo;
   baseURL = `http://127.0.0.1:${port}`;

@@ -4,8 +4,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
-  testMatch: ['playwright/**/*.spec.ts', 'e2e/**/*.spec.ts'],
+  testDir: './tests/playwright',
   workers: process.env.CI ? 1 : undefined,
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

@@ -25,7 +25,6 @@ interface FormState {
   odometerInitial: string;
   odometerCurrent: string;
   mileageTotal: string;
-  payloadCapacityKg: string;
   transportType: "Легковой" | "Грузовой";
   fuelType: "Бензин" | "Дизель" | "Газ";
   fuelRefilled: string;
@@ -41,7 +40,6 @@ const emptyForm: FormState = {
   odometerInitial: "0",
   odometerCurrent: "0",
   mileageTotal: "0",
-  payloadCapacityKg: "0",
   transportType: "Легковой",
   fuelType: "Бензин",
   fuelRefilled: "0",
@@ -104,7 +102,6 @@ export default function FleetVehicleDialog({
         odometerInitial: String(vehicle.odometerInitial),
         odometerCurrent: String(vehicle.odometerCurrent),
         mileageTotal: String(vehicle.mileageTotal),
-        payloadCapacityKg: String(vehicle.payloadCapacityKg ?? 0),
         transportType: vehicle.transportType,
         fuelType: vehicle.fuelType,
         fuelRefilled: String(vehicle.fuelRefilled),
@@ -155,7 +152,6 @@ export default function FleetVehicleDialog({
       odometerInitial: Number(form.odometerInitial || "0"),
       odometerCurrent: Number(form.odometerCurrent || "0"),
       mileageTotal: Number(form.mileageTotal || "0"),
-      payloadCapacityKg: Number(form.payloadCapacityKg || "0"),
       transportType: form.transportType,
       fuelType: form.fuelType,
       fuelRefilled: Number(form.fuelRefilled || "0"),
@@ -335,22 +331,6 @@ export default function FleetVehicleDialog({
             value={form.mileageTotal}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, mileageTotal: event.target.value }))
-            }
-            disabled={saving}
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Грузоподъёмность, кг</span>
-          <input
-            type="number"
-            min="0"
-            id="fleet-vehicle-payload"
-            name="payloadCapacityKg"
-            className="h-10 w-full rounded border px-3"
-            value={form.payloadCapacityKg}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, payloadCapacityKg: event.target.value }))
             }
             disabled={saving}
             required

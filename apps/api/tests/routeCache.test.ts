@@ -1,5 +1,3 @@
-export {};
-
 process.env.APP_URL = 'https://localhost';
 const { table, clearRouteCache } = require('../src/services/route');
 

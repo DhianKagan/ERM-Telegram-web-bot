@@ -57,8 +57,8 @@ async function verifyCode(
     if (!['creator', 'administrator', 'member'].includes(status)) {
       throw new Error('not in group');
     }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === 'not in group') throw error;
+  } catch (e) {
+    if (e.message === 'not in group') throw e;
     throw new Error('member check failed');
   }
   let u = user;

@@ -1,7 +1,5 @@
 // Назначение: интеграционный тест эндпойнта /metrics
 // Модули: jest, supertest
-import type { Express, Request, Response } from 'express';
-
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
@@ -15,14 +13,14 @@ const trace = require('../src/middleware/trace').default;
 const pinoLogger = require('../src/middleware/pinoLogger').default;
 const metrics = require('../src/middleware/metrics').default;
 
-let app: Express;
+let app;
 beforeAll(() => {
   app = express();
   app.use(trace);
   app.use(pinoLogger);
   app.use(metrics);
-  app.get('/ping', (_req: Request, res: Response) => res.send('pong'));
-  app.get('/metrics', async (_req: Request, res: Response) => {
+  app.get('/ping', (_req, res) => res.send('pong'));
+  app.get('/metrics', async (_req, res) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   });

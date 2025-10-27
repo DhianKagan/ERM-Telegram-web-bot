@@ -1,29 +1,22 @@
 // Назначение: проверка агрегирующего эндпойнта аналитики маршрутных планов.
 // Основные модули: jest, supertest, mongodb-memory-server
-import type { NextFunction } from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL =
-  'mongodb://localhost:27017/ermdb?authSource=admin';
+process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import analyticsRouter from '../src/routes/analytics';
 import { RoutePlan } from '../src/db/models/routePlan';
 
-jest.mock(
-  '../src/middleware/auth',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
-jest.mock(
-  '../src/utils/rateLimiter',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
+jest.mock('../src/middleware/auth', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
+jest.mock('../src/utils/rateLimiter', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
 
 let mongod: MongoMemoryServer;
 let app: express.Express;
@@ -33,7 +26,6 @@ beforeAll(async () => {
   await mongoose.connect(mongod.getUri());
   app = express();
   app.use(express.json());
-  const { default: analyticsRouter } = await import('../src/routes/analytics');
   app.use('/api/v1/analytics', analyticsRouter);
 });
 

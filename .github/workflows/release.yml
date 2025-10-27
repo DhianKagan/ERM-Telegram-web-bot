@@ -1,100 +1,29 @@
-# Назначение файла: автоматический релиз при публикации тега и деплой на Railway.
-# Модули: GitHub Actions, pnpm, Railway CLI, docker/setup-buildx-action.
+# Назначение файла: автоматический релиз при публикации тега
 name: Release
-
 on:
   push:
     tags:
       - 'v*.*.*'
-
-env:
-  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-  RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
-  RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-  RAILWAY_SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME }}
-  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Проверка обязательных секретов Railway
-        shell: bash
-        run: |
-          set -euo pipefail
-          declare -a missing=()
-          declare -a required=(
-            "RAILWAY_PROJECT_ID"
-            "RAILWAY_ENVIRONMENT_ID"
-            "RAILWAY_SERVICE_ID"
-            "RAILWAY_TOKEN"
-          )
-          for var in "${required[@]}"; do
-            value="${!var:-}"
-            if [ -z "$value" ] || [[ "$value" =~ ^0{8}-0{4}-0{4}-0{4}-0{12}$ ]]; then
-              missing+=("$var")
-            fi
-          done
-          if [ ${#missing[@]} -ne 0 ]; then
-            {
-              echo "Отсутствуют или не заполнены секреты Railway:" >&2
-              printf ' - %s\n' "${missing[@]}" >&2
-            }
-            exit 1
-          fi
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Включение corepack
-        run: corepack enable
-
-      - name: Установка зависимостей
-        run: ./scripts/install_bot_deps.sh
-
-      - name: Линтер и тесты
-        run: |
-          pnpm lint
-          pnpm test:unit
-          pnpm test:api
-
-      - name: Сборка проекта
-        run: pnpm build
-
+      - run: ./scripts/install_bot_deps.sh
+      - run: npm --prefix bot test
+      - run: npm --prefix bot run build-client
       - uses: docker/setup-buildx-action@v3
-
       - name: Сборка Docker-образа
         run: docker build -t task-bot .
-
       - name: Установка Railway CLI
         run: npm install -g @railway/cli
-
-      - name: Обновление railway.json секретами
-        run: |
-          cat <<JSON > railway.json
-          {
-            "$schema": "https://railway.app/railway.schema.json",
-            "_comment": "Назначение файла: хранение идентификаторов проекта Railway для CLI и GitHub Actions.",
-            "projectId": "${RAILWAY_PROJECT_ID}",
-            "environmentId": "${RAILWAY_ENVIRONMENT_ID}",
-            "serviceId": "${RAILWAY_SERVICE_ID}"
-          }
-          JSON
-
       - name: Деплой на Railway
+        run: railway up --service bot --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          set -euo pipefail
-          SERVICE_NAME="${RAILWAY_SERVICE_NAME:-bot}"
-          ARGS=("--service" "$SERVICE_NAME" "--detach")
-          ARGS+=("--project" "$RAILWAY_PROJECT_ID")
-          ARGS+=("--environment" "$RAILWAY_ENVIRONMENT_ID")
-          railway up "${ARGS[@]}"
-
       - uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true

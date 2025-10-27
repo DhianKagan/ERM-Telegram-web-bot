@@ -1,6 +1,4 @@
 // Назначение: тесты маршрутов архива задач
-import type { Express, NextFunction, Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -23,9 +21,8 @@ const serviceMock = {
   purge: jest.fn(),
 };
 
-const requireAccess = (mask: number) => (req: Request, res: Response, next: NextFunction) => {
-  const header = req.headers['x-access'];
-  const access = Number(Array.isArray(header) ? header[0] : header ?? 0);
+const requireAccess = (mask) => (req, res, next) => {
+  const access = Number(req.headers['x-access'] || 0);
   if (!hasAccess(access, mask)) {
     res.sendStatus(403);
     return;
@@ -33,7 +30,7 @@ const requireAccess = (mask: number) => (req: Request, res: Response, next: Next
   next();
 };
 
-let app: Express;
+let app;
 
 beforeAll(() => {
   app = express();
@@ -42,7 +39,7 @@ beforeAll(() => {
   app.get(
     '/api/v1/archives',
     requireAccess(ACCESS_ADMIN | ACCESS_MANAGER),
-    async (req: Request, res: Response) => {
+    async (req, res) => {
       const data = await serviceMock.list({
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
@@ -52,25 +49,19 @@ beforeAll(() => {
     },
   );
 
-  app.post(
-    '/api/v1/archives/purge',
-    requireAccess(ACCESS_TASK_DELETE),
-    async (req: Request, res: Response) => {
-      const ids = Array.isArray(req.body?.ids)
-        ? req.body.ids
-            .map((value: unknown) =>
-              (typeof value === 'string' ? value : String(value ?? '')).trim(),
-            )
-            .filter((value: string) => value.length > 0)
-        : [];
-      if (!ids.length || !ids.every((id: string) => Types.ObjectId.isValid(id))) {
-        res.status(400).json({ error: 'invalid_ids' });
-        return;
-      }
-      const removed = await serviceMock.purge(ids);
-      res.json({ removed });
-    },
-  );
+  app.post('/api/v1/archives/purge', requireAccess(ACCESS_TASK_DELETE), async (req, res) => {
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids
+          .map((value) => (typeof value === 'string' ? value : String(value ?? '')).trim())
+          .filter((value) => value.length > 0)
+      : [];
+    if (!ids.length || !ids.every((id) => Types.ObjectId.isValid(id))) {
+      res.status(400).json({ error: 'invalid_ids' });
+      return;
+    }
+    const removed = await serviceMock.purge(ids);
+    res.json({ removed });
+  });
 });
 
 beforeEach(() => {

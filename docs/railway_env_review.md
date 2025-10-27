@@ -10,13 +10,11 @@
 - `NODE_ENV=production` соответствует чек-листу деплоя на Railway.
 
 ## MongoDB
-- Новое значение `MONGO_DATABASE_URL` в Railway уже включает имя базы и `authSource` (`mongodb://mongo:***@erm-mongodb.railway.internal:27017/test?authSource=admin`), поэтому проверка конфигурации проходит без ошибок. Если сервис отдаёт только `MONGO_URL`/`MONGO_PUBLIC_URL`, конфиг сам добавит имя базы (`MONGO_DATABASE_NAME`, по умолчанию `ermdb`) и `authSource=admin`.
-- В окружении Codex всё ещё используется публичный прокси `shinkansen.proxy.rlwy.net`. Для стабильности и меньшей задержки приведите строку к приватному адресу `erm-mongodb.railway.internal` и при необходимости добавьте `directConnection=true`.
-- Если вы захотите сменить базу данных с `test` на `ermdb`, не забудьте скорректировать имя базы в URI и выполнить миграции, чтобы структура коллекций совпадала.
+- Текущее значение `MONGO_DATABASE_URL` (`mongodb://mongo:***@shinkansen.proxy.rlwy.net:43551`) не содержит имени базы и параметра `authSource`. Конфиг API теперь валидирует обе части и остановит запуск без них, поэтому используйте строку формата `mongodb://<user>:<pass>@<host>:<port>/<db>?authSource=<база_аутентификации>`, как в `.env.example`, чтобы исключить ошибки авторизации при рестарте Railway.
+- Если база размещена в проекте Railway, включите Private Networking и вместо публичного прокси укажите внутренний DNS `erm-mongodb.railway.internal`. В стандартной конфигурации образа Railway с переменными `MONGO_INITDB_ROOT_USERNAME=mongo` и `MONGO_INITDB_ROOT_PASSWORD=…` корневой пользователь создаётся в базе `admin`, поэтому рекомендуемая строка подключения выглядит так: `mongodb://mongo:<пароль>@erm-mongodb.railway.internal:27017/ermdb?authSource=admin&directConnection=true`. Меняйте `authSource` только если вы вручную создали пользователя в другой базе. Внутренний адрес резолвится в IPv6 и доступен только из сервисов того же проекта, что исключает внешние задержки и лимиты по трафику.
 
 ## URL-адреса
-- `APP_URL=https://agromarket.up.railway.app` соответствует требованиям API и мини-приложения.
-- Для prod-окружения достаточно `APP_URL`: значение `COOKIE_DOMAIN` в Railway можно удалить, тогда сервер возьмёт домен из `APP_URL`. Если понадобится явный домен, используйте формат hostname или поддомен (например, `.agromarket.up.railway.app`).
+- `APP_URL=https://agromarket.up.railway.app` и `COOKIE_DOMAIN=agromarket.up.railway.app` согласованы. Если потребуется доступ по поддоменам, задайте `COOKIE_DOMAIN=.agromarket.up.railway.app`.
 - `ROUTING_URL` и `VITE_ROUTING_URL` указывают на OSRM `/route`, что соответствует требованиям клиентского и серверного кода.
 - `BOT_API_URL` необязателен, но значение `https://api.telegram.org` корректно.
 
@@ -33,7 +31,6 @@
 - `LHCI_GITHUB_APP_TOKEN` и другие токены храните в секрете Railway, чтобы ими не пользовались посторонние.
 
 ## Итог
-1. Удалите переменные `PORT`, `HOST_PORT` и `COOKIE_DOMAIN` из Railway — они дублируют настройки платформы.
-2. В Codex замените публичный хост `shinkansen.proxy.rlwy.net` на внутренний `erm-mongodb.railway.internal` и при необходимости добавьте `directConnection=true`.
-3. При миграции на базу `ermdb` обновите имя базы в `MONGO_DATABASE_URL` во всех окружениях.
-4. Остальные значения соответствуют требованиям репозитория.
+1. Удалите переменные `PORT` и `HOST_PORT` из Railway.
+2. Приведите `MONGO_DATABASE_URL` к виду `mongodb://<user>:<pass>@<host>:<port>/<db>?authSource=admin`.
+3. Остальные значения соответствуют требованиям репозитория.

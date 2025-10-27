@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционный тест обновления статуса задачи через канбан
-import type { NextFunction, Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -20,9 +18,9 @@ jest.mock('../src/services/service', () => ({
 }));
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
-  asyncHandler: <T>(fn: T) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
+  verifyToken: (_req, _res, next) => next(),
+  asyncHandler: (fn) => fn,
+  errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -35,13 +33,13 @@ app.use(express.json());
 app.patch(
   '/api/v1/tasks/:id/status',
   [body('status').isIn(['Новая', 'В работе', 'Выполнена', 'Отменена'])],
-  (req: Request, res: Response, next: NextFunction) => {
+  (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
     return next();
   },
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     await updateTaskStatus(req.params.id, req.body.status, 0);
     await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
     res.json({ status: 'ok' });

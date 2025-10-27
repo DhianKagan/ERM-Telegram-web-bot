@@ -1,14 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Проверка списка полей формы задачи
 // Модули: jest
-export {};
-
-import { taskFields } from 'shared';
-import type { TaskField } from 'shared';
-
 process.env.NODE_ENV = 'test';
-
-const fields: TaskField[] = taskFields;
+const { taskFields: fields } = require('shared');
 
 test('содержит все обязательные поля', () => {
   const names = fields.map((f) => f.name);
@@ -36,6 +30,5 @@ test('содержит все обязательные поля', () => {
 
 test('поле title обязательно', () => {
   const title = fields.find((f) => f.name === 'title');
-  expect(title).toBeDefined();
-  expect(title?.required).toBe(true);
+  expect(title.required).toBe(true);
 });

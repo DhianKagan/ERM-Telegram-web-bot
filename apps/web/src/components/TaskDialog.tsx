@@ -2,10 +2,6 @@
 // Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, SingleSelect, логирование, coerceTaskId
 import React from "react";
 import { createPortal } from "react-dom";
-import * as maplibregl from "maplibre-gl";
-import MapLibreDraw from "maplibre-gl-draw";
-import "maplibre-gl/dist/maplibre-gl.css";
-import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,14 +10,11 @@ import MultiUserSelect from "./MultiUserSelect";
 import SingleSelect from "./SingleSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import AlertDialog from "./AlertDialog";
-import Modal from "./Modal";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
 import {
   PROJECT_TIMEZONE,
   PROJECT_TIMEZONE_LABEL,
-  buildAttachmentsFromCommentHtml,
-  extractFileIdFromUrl,
   taskFields as fields,
 } from "shared";
 import {
@@ -50,7 +43,6 @@ import { expandLink } from "../services/maps";
 import {
   list as listTaskTemplates,
   create as createTaskTemplate,
-  remove as deleteTaskTemplate,
   type TaskTemplate as TaskTemplateModel,
 } from "../services/taskTemplates";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -77,20 +69,6 @@ import {
 } from "../columns/taskBadgeClassNames";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
-import {
-  EMPTY_GEOZONE_COLLECTION,
-  areGeozoneCollectionsEqual,
-  cloneGeozoneCollection,
-  sanitizeGeozoneCollection,
-  type GeozoneFeatureCollection,
-} from "../utils/geozones";
-import {
-  LOGISTICS_GEOZONES_EVENT,
-  dispatchLogisticsGeozonesApply,
-  dispatchLogisticsGeozonesRequest,
-  type LogisticsGeozonesCustomEvent,
-} from "../utils/logisticsGeozonesEvents";
-import type { WindowEventHandler } from "../types/events";
 
 type TaskKind = "task" | "request";
 
@@ -321,291 +299,6 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
   return `${lat}, ${lng}`;
 };
 
-const MAP_CENTER: [number, number] = [48.3794, 31.1656];
-const MAP_ZOOM = 6;
-
-type MapPickerTarget = "start" | "finish";
-
-interface MapPickerDialogProps {
-  open: boolean;
-  target: MapPickerTarget | null;
-  initialValue: { lat: number; lng: number } | null;
-  onClose: () => void;
-  onConfirm: (coords: { lat: number; lng: number }) => Promise<void> | void;
-  title: string;
-  hint: string;
-  cancelLabel: string;
-  confirmLabel: string;
-  geozones?: GeozoneFeatureCollection | null;
-  onGeozonesChange?: (collection: GeozoneFeatureCollection) => void;
-}
-
-const MAP_PICKER_STYLE_URL = "https://demotiles.maplibre.org/style.json";
-const MAP_PICKER_BOUNDS: [[number, number], [number, number]] = [
-  [22, 44],
-  [40.5, 52.5],
-];
-
-function MapPickerDialog({
-  open,
-  target: _target,
-  initialValue,
-  onClose,
-  onConfirm,
-  title,
-  hint,
-  cancelLabel,
-  confirmLabel,
-  geozones,
-  onGeozonesChange,
-}: MapPickerDialogProps) {
-  void _target;
-  const { t } = useTranslation();
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const mapRef = React.useRef<maplibregl.Map | null>(null);
-  const markerRef = React.useRef<maplibregl.Marker | null>(null);
-  const drawRef = React.useRef<MapLibreDraw | null>(null);
-  const syncingRef = React.useRef(false);
-  const [selection, setSelection] = React.useState<{ lat: number; lng: number } | null>(null);
-  const [zoneDraft, setZoneDraft] = React.useState<GeozoneFeatureCollection>(() =>
-    cloneGeozoneCollection(geozones ?? EMPTY_GEOZONE_COLLECTION),
-  );
-  const zoneDraftRef = React.useRef(zoneDraft);
-
-  React.useEffect(() => {
-    zoneDraftRef.current = zoneDraft;
-  }, [zoneDraft]);
-
-  React.useEffect(() => {
-    if (open) {
-      setSelection(initialValue);
-    } else {
-      setSelection(null);
-    }
-  }, [open, initialValue]);
-
-  React.useEffect(() => {
-    const incoming = cloneGeozoneCollection(geozones ?? EMPTY_GEOZONE_COLLECTION);
-    if (!areGeozoneCollectionsEqual(incoming, zoneDraftRef.current)) {
-      setZoneDraft(incoming);
-    }
-  }, [geozones]);
-
-  React.useEffect(() => {
-    if (!open || typeof window === "undefined") {
-      return;
-    }
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const initialCenter: [number, number] = initialValue
-      ? [initialValue.lng, initialValue.lat]
-      : [MAP_CENTER[1], MAP_CENTER[0]];
-    const initialZoom = initialValue ? 13 : MAP_ZOOM;
-    const map = new maplibregl.Map({
-      container,
-      style: MAP_PICKER_STYLE_URL,
-      center: initialCenter,
-      zoom: initialZoom,
-      maxBounds: MAP_PICKER_BOUNDS,
-      attributionControl: false,
-    });
-    mapRef.current = map;
-    const navigation = new maplibregl.NavigationControl({ showCompass: false });
-    map.addControl(navigation, "top-right");
-    const draw = new MapLibreDraw({
-      displayControlsDefault: false,
-      controls: {
-        polygon: true,
-        trash: true,
-      },
-    });
-    drawRef.current = draw;
-    map.addControl(draw as unknown as maplibregl.IControl, "top-left");
-
-    const syncZones = () => {
-      if (syncingRef.current) {
-        return;
-      }
-      const current = cloneGeozoneCollection(
-        (draw.getAll() as GeozoneFeatureCollection) ?? EMPTY_GEOZONE_COLLECTION,
-      );
-      if (!areGeozoneCollectionsEqual(current, zoneDraftRef.current)) {
-        setZoneDraft(current);
-        onGeozonesChange?.(current);
-      }
-    };
-
-    const handleDrawCreate = () => syncZones();
-    const handleDrawUpdate = () => syncZones();
-    const handleDrawDelete = () => syncZones();
-
-    map.on("draw.create", handleDrawCreate);
-    map.on("draw.update", handleDrawUpdate);
-    map.on("draw.delete", handleDrawDelete);
-
-    const handleClick = (event: maplibregl.MapMouseEvent) => {
-      const { lat, lng } = event.lngLat;
-      setSelection({ lat, lng });
-    };
-    map.on("click", handleClick);
-
-    const applyInitial = () => {
-      const initialCollection = cloneGeozoneCollection(zoneDraftRef.current);
-      if (initialCollection.features.length) {
-        syncingRef.current = true;
-        draw.set(initialCollection);
-        syncingRef.current = false;
-      }
-      requestAnimationFrame(() => {
-        map.resize();
-      });
-    };
-
-    if (map.isStyleLoaded()) {
-      applyInitial();
-    } else {
-      map.once("load", applyInitial);
-    }
-
-    return () => {
-      map.off("click", handleClick);
-      map.off("draw.create", handleDrawCreate);
-      map.off("draw.update", handleDrawUpdate);
-      map.off("draw.delete", handleDrawDelete);
-      map.off("load", applyInitial);
-      drawRef.current = null;
-      markerRef.current?.remove();
-      markerRef.current = null;
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [open, initialValue, onGeozonesChange]);
-
-  React.useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const draw = drawRef.current;
-    if (!draw) {
-      return;
-    }
-    const current = cloneGeozoneCollection(
-      (draw.getAll() as GeozoneFeatureCollection) ?? EMPTY_GEOZONE_COLLECTION,
-    );
-    if (areGeozoneCollectionsEqual(current, zoneDraft)) {
-      return;
-    }
-    syncingRef.current = true;
-    draw.deleteAll();
-    if (zoneDraft.features.length) {
-      draw.set(cloneGeozoneCollection(zoneDraft));
-    }
-    syncingRef.current = false;
-  }, [zoneDraft, open]);
-
-  React.useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const map = mapRef.current;
-    if (!map) {
-      return;
-    }
-    if (!selection) {
-      if (markerRef.current) {
-        markerRef.current.remove();
-        markerRef.current = null;
-      }
-      return;
-    }
-    const lngLat: [number, number] = [selection.lng, selection.lat];
-    if (!markerRef.current) {
-      markerRef.current = new maplibregl.Marker({ color: "#2563eb" })
-        .setLngLat(lngLat)
-        .addTo(map);
-    } else {
-      markerRef.current.setLngLat(lngLat);
-    }
-    map.easeTo({ center: lngLat, duration: 300 });
-  }, [selection, open]);
-
-  const handleClearZones = React.useCallback(() => {
-    const empty = cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION);
-    const draw = drawRef.current;
-    if (draw) {
-      syncingRef.current = true;
-      draw.deleteAll();
-      syncingRef.current = false;
-    }
-    if (!areGeozoneCollectionsEqual(empty, zoneDraftRef.current)) {
-      setZoneDraft(empty);
-      onGeozonesChange?.(empty);
-    }
-  }, [onGeozonesChange]);
-
-  const geozoneCountLabel = React.useMemo(
-    () =>
-      t("logistics.mapPolygonCount", {
-        count: zoneDraft.features.length,
-        defaultValue: "Полигонов: {{count}}",
-      }),
-    [t, zoneDraft.features.length],
-  );
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <p className="mt-1 text-sm text-slate-600">{hint}</p>
-        </div>
-        <div
-          ref={containerRef}
-          className="h-[360px] w-full overflow-hidden rounded-xl border border-slate-200"
-        />
-        <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-600">
-          <span>{geozoneCountLabel}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={handleClearZones}
-            disabled={zoneDraft.features.length === 0}
-          >
-            {t("logistics.geozoneClear", { defaultValue: "Очистить" })}
-          </Button>
-        </div>
-        <div className="text-sm font-medium text-slate-700">
-          {selection ? formatCoords(selection) : "—"}
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {cancelLabel}
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            disabled={!selection}
-            onClick={async () => {
-              if (!selection) return;
-              await onConfirm(selection);
-            }}
-          >
-            {confirmLabel}
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-interface MapLinkOptions {
-  coords?: { lat: number; lng: number } | null;
-  label?: string;
-}
-
 const sanitizeLocationLink = (value: unknown): string => {
   if (typeof value !== "string") {
     return "";
@@ -825,54 +518,6 @@ const hasDimensionValues = (
   [length, width, height, volume, weight].some(
     (value) => typeof value === "string" && value.trim().length > 0,
   );
-
-const areAttachmentListsEqual = (
-  current: Attachment[],
-  next: Attachment[],
-): boolean => {
-  if (current === next) {
-    return true;
-  }
-  if (current.length !== next.length) {
-    return false;
-  }
-  for (let index = 0; index < current.length; index += 1) {
-    const left = current[index];
-    const right = next[index];
-    if (!left && !right) {
-      continue;
-    }
-    if (!left || !right) {
-      return false;
-    }
-    const leftUrl = typeof left.url === "string" ? left.url : "";
-    const rightUrl = typeof right.url === "string" ? right.url : "";
-    if (leftUrl !== rightUrl) {
-      return false;
-    }
-    const leftName = typeof left.name === "string" ? left.name : "";
-    const rightName = typeof right.name === "string" ? right.name : "";
-    if (leftName !== rightName) {
-      return false;
-    }
-    const leftThumb = typeof left.thumbnailUrl === "string" ? left.thumbnailUrl : "";
-    const rightThumb = typeof right.thumbnailUrl === "string" ? right.thumbnailUrl : "";
-    if (leftThumb !== rightThumb) {
-      return false;
-    }
-    const leftType = typeof left.type === "string" ? left.type : "";
-    const rightType = typeof right.type === "string" ? right.type : "";
-    if (leftType !== rightType) {
-      return false;
-    }
-    const leftSize = typeof left.size === "number" ? left.size : 0;
-    const rightSize = typeof right.size === "number" ? right.size : 0;
-    if (leftSize !== rightSize) {
-      return false;
-    }
-  }
-  return true;
-};
 
 const START_OFFSET_MS = 60 * 60 * 1000;
 const ACCESS_TASK_DELETE = 8;
@@ -1144,7 +789,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const startDateValue = watch("startDate");
   const dueDateValue = watch("dueDate");
   const assigneeValue = watch("assigneeId");
-  const descriptionValue = watch("description", "");
   const shouldAutoSyncDueDate = React.useMemo(() => {
     if (!startDateValue) return false;
     if (!isEdit) return true;
@@ -1193,7 +837,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [templatesError, setTemplatesError] = React.useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
   const [templateSaving, setTemplateSaving] = React.useState(false);
-  const [templateDeleting, setTemplateDeleting] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [paymentAmount, setPaymentAmount] = React.useState(() =>
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
@@ -1239,15 +882,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
-  const [logisticsError, setLogisticsError] = React.useState("");
-  const [logisticsGeozones, setLogisticsGeozones] =
-    React.useState<GeozoneFeatureCollection>(() =>
-      cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION),
-    );
-  const logisticsGeozonesRef = React.useRef(logisticsGeozones);
-  const [customData, setCustomData] = React.useState<Record<string, unknown>>({});
-  const customDataRef = React.useRef(customData);
-  const [mapTarget, setMapTarget] = React.useState<MapPickerTarget | null>(null);
   const canonicalStartLink = React.useMemo(
     () => sanitizeLocationLink(startLink),
     [startLink],
@@ -1264,57 +898,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const statuses = fields.find((f) => f.name === "status")?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
-  React.useEffect(() => {
-    const html = typeof descriptionValue === "string" ? descriptionValue : "";
-    setAttachments((prev) => {
-      const merged = buildAttachmentsFromCommentHtml<Attachment>(html, {
-        existing: prev,
-        createPlaceholder: (_fileId, url) => ({
-          url,
-          name: "",
-          type: "application/octet-stream",
-          size: 0,
-        }),
-      });
-      return areAttachmentListsEqual(prev, merged) ? prev : merged;
-    });
-  }, [descriptionValue]);
-  const attachmentsPayload = React.useMemo(() => {
-    if (attachments.length === 0) {
-      return [] as Attachment[];
-    }
-    const byFileId = new Map<string, Attachment>();
-    const byUrl = new Map<string, Attachment>();
-    attachments.forEach((item) => {
-      if (!item || typeof item.url !== "string") {
-        return;
-      }
-      const trimmedUrl = item.url.trim();
-      if (!trimmedUrl) {
-        return;
-      }
-      const fileId = extractFileIdFromUrl(trimmedUrl);
-      if (fileId) {
-        if (!byFileId.has(fileId)) {
-          byFileId.set(fileId, item);
-        }
-        return;
-      }
-      if (!byUrl.has(trimmedUrl)) {
-        byUrl.set(trimmedUrl, item);
-      }
-    });
-    return [...byFileId.values(), ...byUrl.values()];
-  }, [attachments]);
-  const handleAttachmentUploaded = React.useCallback((attachment: Attachment) => {
-    if (!attachment || typeof attachment.url !== "string") {
-      return;
-    }
-    setAttachments((prev) => {
-      const filtered = prev.filter((item) => item?.url !== attachment.url);
-      return [...filtered, attachment];
-    });
-  }, []);
   const [previewAttachment, setPreviewAttachment] = React.useState<
     { name: string; url: string } | null
   >(null);
@@ -1919,10 +1502,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const albumMessage = (taskData as Record<string, unknown>)
         .telegram_photos_message_id;
       setPhotosLink(buildTelegramMessageLink(albumChat, albumMessage));
-      const rawCustom = toRecord((taskData as Record<string, unknown>).custom);
-      const { logisticsGeozones: storedGeozones, ...restCustom } = rawCustom;
-      setCustomData(restCustom);
-      setLogisticsGeozones(sanitizeGeozoneCollection(storedGeozones));
       if (usersMap) {
         setUsers((prev) => {
           const list = [...prev];
@@ -2007,43 +1586,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   };
 
   React.useEffect(() => {
-    if (!showLogistics) {
-      setLogisticsError("");
-    }
-  }, [showLogistics]);
-
-  React.useEffect(() => {
-    logisticsGeozonesRef.current = logisticsGeozones;
-  }, [logisticsGeozones]);
-
-  React.useEffect(() => {
-    customDataRef.current = customData;
-  }, [customData]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const handleEvent: WindowEventHandler = (event) => {
-      const detail = (event as LogisticsGeozonesCustomEvent).detail;
-      if (!detail) {
-        return;
-      }
-      if (detail.type === "change") {
-        const next = cloneGeozoneCollection(detail.collection);
-        setLogisticsGeozones((current) =>
-          areGeozoneCollectionsEqual(current, next) ? current : next,
-        );
-      }
-    };
-    window.addEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
-    dispatchLogisticsGeozonesRequest();
-    return () => {
-      window.removeEventListener(LOGISTICS_GEOZONES_EVENT, handleEvent);
-    };
-  }, []);
-
-  React.useEffect(() => {
     if (!isEdit) {
       setEditing(true);
       return;
@@ -2110,7 +1652,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       payment_method: paymentMethod,
       status,
       logistics_enabled: showLogistics,
-      attachments: attachmentsPayload,
+      attachments,
     };
 
     if (resolvedAssignee !== undefined) {
@@ -2235,18 +1777,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       payload.draftMeta = draftMeta;
     }
 
-    const customSnapshot: Record<string, unknown> = {
-      ...customDataRef.current,
-    };
-    const zonesSnapshot = cloneGeozoneCollection(logisticsGeozonesRef.current);
-    customSnapshot.logisticsGeozones = zonesSnapshot;
-    payload.custom = customSnapshot;
-
     payload.kind = entityKind;
 
     return payload;
   }, [
-    attachmentsPayload,
+    attachments,
     cargoHeight,
     cargoLength,
     cargoVolume,
@@ -2347,8 +1882,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setCompletedAt("");
     setHistory([]);
     setResolvedTaskId(null);
-    setLogisticsGeozones(cloneGeozoneCollection(EMPTY_GEOZONE_COLLECTION));
-    setCustomData({});
     const summaryUrl =
       initialKind === "request"
         ? "/api/v1/tasks/report/summary?kind=request"
@@ -2585,7 +2118,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
 
   const handleSaveTemplate = React.useCallback(async () => {
-    if (!editing || templateSaving || templateDeleting) {
+    if (!editing || templateSaving) {
       return;
     }
     const name = window.prompt(t("taskTemplateNamePrompt"));
@@ -2638,41 +2171,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     entityKind,
     t,
     templateSaving,
-    templateDeleting,
   ]);
-
-  const handleDeleteTemplate = React.useCallback(async () => {
-    if (!editing || templateSaving || templateDeleting) {
-      return;
-    }
-    if (!selectedTemplateId) {
-      setAlertMsg(t("taskTemplateDeleteUnavailable"));
-      return;
-    }
-    const confirmed = window.confirm(t("taskTemplateDeleteConfirm"));
-    if (!confirmed) {
-      return;
-    }
-    setTemplateDeleting(true);
-    try {
-      await deleteTaskTemplate(selectedTemplateId);
-      setTemplates((prev) =>
-        prev.filter((item) => item._id !== selectedTemplateId),
-      );
-      setTemplatesError(null);
-      setSelectedTemplateId("");
-      setAlertMsg(t("taskTemplateDeleteSuccess"));
-    } catch (error) {
-      console.error("Не удалось удалить шаблон задачи", error);
-      const reason =
-        error instanceof Error && error.message
-          ? error.message
-          : t("taskTemplateDeleteError");
-      setAlertMsg(reason);
-    } finally {
-      setTemplateDeleting(false);
-    }
-  }, [editing, selectedTemplateId, t, templateDeleting, templateSaving]);
 
   React.useEffect(() => {
     if (isEdit) {
@@ -2773,161 +2272,85 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     hasAutofilledAssignee.current = true;
   }, [assigneeValue, isEdit, user, users, setValue]);
 
-  const handleStartLink = React.useCallback(
-    async (value: string, options?: MapLinkOptions) => {
-      autoRouteRef.current = true;
-      const sanitized = sanitizeLocationLink(value);
-      if (!sanitized) {
-        setStart("");
-        setStartCoordinates(null);
-        setStartLink("");
-        return;
-      }
-      const overrideCoords = options?.coords ?? null;
-      const overrideLabel = options?.label;
-      let link = sanitized;
-      let resolved = sanitized;
-      let coords: { lat: number; lng: number } | null =
-        overrideCoords ?? extractCoords(resolved);
-      if (
-        /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-        isManagedShortLink(sanitized)
-      ) {
-        const data = await expandLink(sanitized);
-        if (data?.url) {
-          const expanded = sanitizeLocationLink(data.url) || sanitized;
-          resolved = expanded;
-          if (!overrideCoords) {
-            const backendCoords = toCoordsValue(data.coords);
-            if (backendCoords) {
-              coords = backendCoords;
-            }
-          }
-          if (typeof data.short === "string") {
-            const shortCandidate = sanitizeLocationLink(data.short);
-            link = shortCandidate || sanitized;
-          } else {
-            link = expanded;
-          }
+  const handleStartLink = async (value: string) => {
+    autoRouteRef.current = true;
+    const sanitized = sanitizeLocationLink(value);
+    if (!sanitized) {
+      setStart("");
+      setStartCoordinates(null);
+      setStartLink("");
+      return;
+    }
+    let link = sanitized;
+    let resolved = sanitized;
+    let coords = extractCoords(resolved);
+    if (
+      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+      isManagedShortLink(sanitized)
+    ) {
+      const data = await expandLink(sanitized);
+      if (data?.url) {
+        const expanded = sanitizeLocationLink(data.url) || sanitized;
+        resolved = expanded;
+        const backendCoords = toCoordsValue(data.coords);
+        if (backendCoords) {
+          coords = backendCoords;
         }
-        if (!overrideCoords && !coords) {
-          coords = extractCoords(resolved);
+        if (typeof data.short === "string") {
+          const shortCandidate = sanitizeLocationLink(data.short);
+          link = shortCandidate || sanitized;
+        } else {
+          link = expanded;
         }
       }
       if (!coords) {
         coords = extractCoords(resolved);
       }
-      setStart(overrideLabel ?? parseGoogleAddress(resolved));
-      setStartCoordinates(coords ?? null);
-      setStartLink(link);
-    },
-    [],
-  );
+    }
+    setStart(parseGoogleAddress(resolved));
+    setStartCoordinates(coords ?? extractCoords(resolved));
+    setStartLink(link);
+  };
 
-  const handleEndLink = React.useCallback(
-    async (value: string, options?: MapLinkOptions) => {
-      autoRouteRef.current = true;
-      const sanitized = sanitizeLocationLink(value);
-      if (!sanitized) {
-        setEnd("");
-        setFinishCoordinates(null);
-        setEndLink("");
-        return;
-      }
-      const overrideCoords = options?.coords ?? null;
-      const overrideLabel = options?.label;
-      let link = sanitized;
-      let resolved = sanitized;
-      let coords: { lat: number; lng: number } | null =
-        overrideCoords ?? extractCoords(resolved);
-      if (
-        /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-        isManagedShortLink(sanitized)
-      ) {
-        const data = await expandLink(sanitized);
-        if (data?.url) {
-          const expanded = sanitizeLocationLink(data.url) || sanitized;
-          resolved = expanded;
-          if (!overrideCoords) {
-            const backendCoords = toCoordsValue(data.coords);
-            if (backendCoords) {
-              coords = backendCoords;
-            }
-          }
-          if (typeof data.short === "string") {
-            const shortCandidate = sanitizeLocationLink(data.short);
-            link = shortCandidate || sanitized;
-          } else {
-            link = expanded;
-          }
+  const handleEndLink = async (value: string) => {
+    autoRouteRef.current = true;
+    const sanitized = sanitizeLocationLink(value);
+    if (!sanitized) {
+      setEnd("");
+      setFinishCoordinates(null);
+      setEndLink("");
+      return;
+    }
+    let link = sanitized;
+    let resolved = sanitized;
+    let coords = extractCoords(resolved);
+    if (
+      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+      isManagedShortLink(sanitized)
+    ) {
+      const data = await expandLink(sanitized);
+      if (data?.url) {
+        const expanded = sanitizeLocationLink(data.url) || sanitized;
+        resolved = expanded;
+        const backendCoords = toCoordsValue(data.coords);
+        if (backendCoords) {
+          coords = backendCoords;
         }
-        if (!overrideCoords && !coords) {
-          coords = extractCoords(resolved);
+        if (typeof data.short === "string") {
+          const shortCandidate = sanitizeLocationLink(data.short);
+          link = shortCandidate || sanitized;
+        } else {
+          link = expanded;
         }
       }
       if (!coords) {
         coords = extractCoords(resolved);
       }
-      setEnd(overrideLabel ?? parseGoogleAddress(resolved));
-      setFinishCoordinates(coords ?? null);
-      setEndLink(link);
-    },
-    [],
-  );
-
-  const closeMapPicker = React.useCallback(() => {
-    setMapTarget(null);
-  }, []);
-
-  const openMapPicker = React.useCallback(
-    (target: MapPickerTarget) => {
-      if (!editing) return;
-      setMapTarget(target);
-    },
-    [editing],
-  );
-
-  const handleGeozonesChange = React.useCallback(
-    (collection: GeozoneFeatureCollection) => {
-      const next = cloneGeozoneCollection(collection);
-      if (areGeozoneCollectionsEqual(logisticsGeozonesRef.current, next)) {
-        return;
-      }
-      logisticsGeozonesRef.current = next;
-      setLogisticsGeozones(next);
-      dispatchLogisticsGeozonesApply(next);
-    },
-    [],
-  );
-
-  const confirmMapSelection = React.useCallback(
-    async (coords: { lat: number; lng: number }) => {
-      if (!mapTarget) return;
-      const formattedLabel = formatCoords(coords);
-      if (mapTarget === "start") {
-        await handleStartLink(createRouteLink(coords, coords), {
-          coords,
-          label: formattedLabel,
-        });
-      } else {
-        await handleEndLink(createRouteLink(coords, coords), {
-          coords,
-          label: formattedLabel,
-        });
-      }
-      setLogisticsError("");
-      setMapTarget(null);
-    },
-    [mapTarget, handleStartLink, handleEndLink, setLogisticsError],
-  );
-
-  const mapPickerInitialValue =
-    mapTarget === "start" ? startCoordinates : finishCoordinates;
-  const mapPickerTitle =
-    mapTarget === "finish" ? t("selectFinishPoint") : t("selectStartPoint");
-  const mapPickerHint = t("mapSelectionHint");
-  const mapPickerCancel = t("cancel");
-  const mapPickerConfirm = t("accept");
+    }
+    setEnd(parseGoogleAddress(resolved));
+    setFinishCoordinates(coords ?? extractCoords(resolved));
+    setEndLink(link);
+  };
 
   React.useEffect(() => {
     if (startCoordinates && finishCoordinates) {
@@ -2997,21 +2420,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const submit = handleSubmit(async (formData) => {
     try {
-      if (showLogistics) {
-        if (!startCoordinates) {
-          const message = t("startCoordinatesRequired");
-          setLogisticsError(message);
-          setAlertMsg(message);
-          return;
-        }
-        if (!finishCoordinates) {
-          const message = t("finishCoordinatesRequired");
-          setLogisticsError(message);
-          setAlertMsg(message);
-          return;
-        }
-        setLogisticsError("");
-      }
       const creationDate = parseIsoDate(created);
       if (formData.startDate && creationDate) {
         const parsedStart = parseIsoDate(formData.startDate);
@@ -3149,13 +2557,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         end_location_link: endLink,
         logistics_enabled: showLogistics,
       };
-      const customPayload: Record<string, unknown> = {
-        ...customDataRef.current,
-      };
-      customPayload.logisticsGeozones = cloneGeozoneCollection(
-        logisticsGeozonesRef.current,
-      );
-      payload.custom = customPayload;
       const driverCandidate = transportDriverId.trim();
       if (driverCandidate) {
         const driverNumeric = Number.parseInt(driverCandidate, 10);
@@ -3226,7 +2627,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
       if (distanceKm !== null) payload.route_distance_km = distanceKm;
       if (routeLink) payload.google_route_url = routeLink;
-      const sendPayload = { ...payload, attachments: attachmentsPayload };
+      const sendPayload = { ...payload, attachments };
       let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
       const currentTaskId = effectiveTaskId ?? "";
       let savedId = currentTaskId;
@@ -3238,7 +2639,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           | null;
         savedTask = updated;
         const updatedIdCandidate =
-          ((updated as Record<string, unknown>).taskId as string | undefined) ??
           ((updated as Record<string, unknown>)._id as string | undefined) ??
           ((updated as Record<string, unknown>).id as string | undefined) ??
           currentTaskId;
@@ -3250,7 +2650,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (!created) throw new Error("SAVE_FAILED");
         savedTask = created as Partial<Task> & Record<string, unknown>;
         const createdIdCandidate =
-          ((created as Record<string, unknown>).taskId as string | undefined) ??
           ((created as Record<string, unknown>)._id as string | undefined) ??
           ((created as Record<string, unknown>).id as string | undefined) ??
           savedId;
@@ -3669,8 +3068,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     disabled={
                       !editing ||
                       templatesLoading ||
-                      templateOptions.length === 0 ||
-                      templateDeleting
+                      templateOptions.length === 0
                     }
                   >
                     <option value="">
@@ -3694,33 +3092,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap justify-self-start gap-2 sm:justify-self-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSaveTemplate}
-                    disabled={!editing || templateSaving || templateDeleting}
-                  >
-                    {templateSaving
-                      ? t("taskTemplateSaving")
-                      : t("taskTemplateSaveAction")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={handleDeleteTemplate}
-                    disabled={
-                      !editing ||
-                      !selectedTemplateId ||
-                      templateSaving ||
-                      templateDeleting
-                    }
-                  >
-                    {templateDeleting
-                      ? t("taskTemplateDeleting")
-                      : t("taskTemplateDeleteAction")}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveTemplate}
+                  disabled={!editing || templateSaving}
+                  className="justify-self-start sm:justify-self-end"
+                >
+                  {templateSaving
+                    ? t("taskTemplateSaving")
+                    : t("taskTemplateSaveAction")}
+                </Button>
               </div>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">
@@ -3757,7 +3139,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           value={field.value || ""}
                           onChange={field.onChange}
                           readOnly={!editing}
-                          taskId={effectiveTaskId}
                         />
                       )}
                     />
@@ -3807,26 +3188,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Button
+                              {editing && (
+                                <button
                                   type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openMapPicker("start")}
-                                  disabled={!editing}
+                                  onClick={() => handleStartLink("")}
+                                  className="shrink-0 text-red-600"
                                 >
-                                  {t("selectOnMap")}
-                                </Button>
-                                {editing && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartLink("")}
-                                    className="shrink-0 text-red-600"
-                                  >
-                                    ✖
-                                  </button>
-                                )}
-                              </div>
+                                  ✖
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -3839,15 +3209,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openMapPicker("start")}
-                                disabled={!editing}
-                              >
-                                {t("selectOnMap")}
-                              </Button>
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3895,26 +3256,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Button
+                              {editing && (
+                                <button
                                   type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openMapPicker("finish")}
-                                  disabled={!editing}
+                                  onClick={() => handleEndLink("")}
+                                  className="shrink-0 text-red-600"
                                 >
-                                  {t("selectOnMap")}
-                                </Button>
-                                {editing && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEndLink("")}
-                                    className="shrink-0 text-red-600"
-                                  >
-                                    ✖
-                                  </button>
-                                )}
-                              </div>
+                                  ✖
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -3927,15 +3277,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openMapPicker("finish")}
-                                disabled={!editing}
-                              >
-                                {t("selectOnMap")}
-                              </Button>
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3953,11 +3294,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             </div>
                           )}
                         </div>
-                        {logisticsError && (
-                          <p className="sm:col-span-2 md:col-span-3 xl:col-span-4 text-sm text-red-600">
-                            {logisticsError}
-                          </p>
-                        )}
                         <div>
                           <label
                             className="block text-sm font-medium"
@@ -4148,7 +3484,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       value={comment}
                       onChange={setComment}
                       readOnly={!editing}
-                      taskId={effectiveTaskId}
                     />
                   </div>
                   {attachments.length > 0 && (
@@ -4236,7 +3571,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   ) : null}
                   <FileUploader
                     disabled={!canUploadAttachments}
-                    onUploaded={handleAttachmentUploaded}
+                    onUploaded={(a) => setAttachments((p) => [...p, a])}
                     onRemove={(a) => removeAttachment(a)}
                     taskId={effectiveTaskId}
                   />
@@ -4798,19 +4133,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           </div>
         </div>
       )}
-      <MapPickerDialog
-        open={mapTarget !== null}
-        target={mapTarget}
-        initialValue={mapPickerInitialValue}
-        onClose={closeMapPicker}
-        onConfirm={confirmMapSelection}
-        title={mapPickerTitle}
-        hint={mapPickerHint}
-        cancelLabel={mapPickerCancel}
-        confirmLabel={mapPickerConfirm}
-        geozones={logisticsGeozones}
-        onGeozonesChange={handleGeozonesChange}
-      />
       <AlertDialog
         open={alertMsg !== null}
         message={alertMsg || ""}

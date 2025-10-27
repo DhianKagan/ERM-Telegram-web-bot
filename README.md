@@ -1,6 +1,6 @@
 <!-- Назначение файла: краткое описание возможностей проекта. Основные модули: api, web. -->
 
-# ERM Web Enterprise Bot
+# Task Manager Bot + Web App
 
 «О проекте»:
 
@@ -39,12 +39,6 @@ pnpm install
 pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
-
-## CI/CD
-
-- GitHub Actions содержит обязательные workflow: CI, Pre PR Check, CodeQL, Deploy, Docker, Lighthouse и Release.
-- Для деплоя и релизов задайте секреты `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, `RAILWAY_SERVICE_ID`, `RAILWAY_SERVICE_NAME` и `RAILWAY_TOKEN`.
-- При локальной отладке обновляйте `railway.json` через GitHub Actions или вручную командой `railway link`.
 
 ## Прототип маршрутизации OR-Tools
 
@@ -90,8 +84,6 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 ```
 
 Команда `pnpm size` ищет файлы `index-*.js` в `apps/api/public/js`.
-
-Полный перечень обязательных шагов собран в [docs/pre_pr_checklist.md](docs/pre_pr_checklist.md).
 
 Статусы Lighthouse CI добавляет установленный GitHub App, его токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты публикуются во временном публичном хранилище.
 

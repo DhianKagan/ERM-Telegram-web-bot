@@ -1,15 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты маршрута /api/v1/users
-import type { NextFunction, Request, Response } from 'express';
-
-interface AuthedRequest extends Request {
-  user?: {
-    role?: string;
-    access: number;
-    telegram_id: number;
-  };
-}
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -42,30 +32,24 @@ jest.mock('../src/db/queries', () => ({
 }));
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req: AuthedRequest, _res: Response, next: NextFunction) => {
-    const roleHeader = req.headers['x-role'];
-    const accessHeader = req.headers['x-access'];
-    const role = Array.isArray(roleHeader) ? roleHeader[0] : roleHeader;
-    const access = Number(Array.isArray(accessHeader) ? accessHeader[0] : accessHeader) || 1;
+  verifyToken: (req, _res, next) => {
     req.user = {
-      role: role ? String(role) : undefined,
-      access,
+      role: req.headers['x-role'],
+      access: Number(req.headers['x-access']) || 1,
       telegram_id: 1,
     };
     next();
   },
-  checkRole: (expected: number | string) => (req: AuthedRequest, res: Response, next: NextFunction) => {
-    const user = req.user;
-    if (!user) {
-      return res.sendStatus(403);
-    }
+  checkRole: (expected) => (req, res, next) => {
     if (typeof expected === 'number') {
-      return (user.access & expected) === expected ? next() : res.sendStatus(403);
+      return (req.user.access & expected) === expected
+        ? next()
+        : res.sendStatus(403);
     }
-    return user.role === expected ? next() : res.sendStatus(403);
+    return req.user.role === expected ? next() : res.sendStatus(403);
   },
-  asyncHandler: <T>(fn: T) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
+  asyncHandler: (fn) => fn,
+  errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -92,7 +76,7 @@ app.get(
   usersRateLimiter,
   verifyToken,
   checkRole(ACCESS_ADMIN),
-  asyncHandler(async (_req: Request, res: Response) => {
+  asyncHandler(async (_req, res) => {
     res.json(await listUsers());
   }),
 );
@@ -100,7 +84,7 @@ app.get(
   '/api/v1/users/:id',
   usersRateLimiter,
   verifyToken,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     const user = await getUser(req.params.id);
     if (!user) {
       res.sendStatus(404);
@@ -117,7 +101,7 @@ app.post(
   verifyToken,
   checkRole(ACCESS_ADMIN),
   ...validateDto(CreateUserDto),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     const rawId = req.body.id;
     const rawUsername = req.body.username;
     const rawRoleId = req.body.roleId;
@@ -171,7 +155,7 @@ app.patch(
   verifyToken,
   checkRole(ACCESS_ADMIN),
   ...validateDto(UpdateUserDto),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     res.json(await updateUser(req.params.id, req.body));
   }),
 );

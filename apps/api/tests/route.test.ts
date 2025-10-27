@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты маршрута /api/route и сервиса
-import type { Express, NextFunction, Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -16,9 +14,9 @@ const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req: unknown, _res: unknown, next: NextFunction) => next(),
-  asyncHandler: <T>(fn: T) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
+  verifyToken: (_req, _res, next) => next(),
+  asyncHandler: (fn) => fn,
+  errorHandler: (err, _req, res, _next) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -40,7 +38,7 @@ const {
 
 const router = require('../src/routes/route').default;
 
-let app: Express;
+let app;
 beforeAll(() => {
   app = express();
   app.use(express.json());

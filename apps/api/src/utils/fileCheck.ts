@@ -11,7 +11,6 @@ const allowed: Record<string, string[]> = {
   'image/svg+xml': ['.svg'],
   'image/heic': ['.heic'],
   'image/heif': ['.heif'],
-  'image/avif': ['.avif'],
   'application/pdf': ['.pdf'],
   'application/msword': ['.doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [

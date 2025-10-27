@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest, express-rate-limit.
 // Тесты TMA-эндпоинтов задач
-import type { Request, Response } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -50,7 +48,7 @@ app.get(
   '/api/tma/tasks',
   tmaTasksRateLimiter,
   tmaAuthGuard,
-  asyncHandler(async (_req: Request, res: Response) => {
+  asyncHandler(async (_req, res) => {
     const user = res.locals.initData.user;
     const tasks = await listMentionedTasks(user.id);
     res.json(tasks);
@@ -61,7 +59,7 @@ app.patch(
   '/api/tma/tasks/:id/status',
   tmaTasksRateLimiter,
   tmaAuthGuard,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     const user = res.locals.initData.user;
     const task = await getTask(req.params.id);
     const ids = [

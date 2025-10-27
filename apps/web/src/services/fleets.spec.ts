@@ -25,24 +25,12 @@ describe("listFleetVehicles", () => {
       ok: true,
       json: async () => ({ items: [], total: 0, page: 1, limit: 10 }),
     });
-    await listFleetVehicles({
-      search: "Газель",
-      page: 2,
-      limit: 5,
-      transportType: ["Грузовой"],
-      status: ["busy", "free"],
-      sort: "payloadCapacityKg:desc",
-    });
-    expect(authFetch).toHaveBeenCalledWith(
-      "/api/v1/fleets?page=2&limit=5&search=%D0%93%D0%B0%D0%B7%D0%B5%D0%BB%D1%8C&transportType=%D0%93%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%BE%D0%B9&status=busy&status=free&sort=payloadCapacityKg%3Adesc",
-    );
+    await listFleetVehicles("Газель", 2, 5);
+    expect(authFetch).toHaveBeenCalledWith("/api/v1/fleets?page=2&limit=5&search=%D0%93%D0%B0%D0%B7%D0%B5%D0%BB%D1%8C");
   });
 
   it("бросает ошибку при сбое", async () => {
-    (authFetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      text: async () => "Ошибка",
-    });
+    (authFetch as jest.Mock).mockResolvedValue({ ok: false, text: async () => "Ошибка" });
     await expect(listFleetVehicles()).rejects.toThrow("Ошибка");
   });
 });
@@ -55,12 +43,7 @@ describe("fetchFleetVehicles", () => {
   it("возвращает список в прежнем формате", async () => {
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: async () => ({
-        items: [{ id: "1", name: "Газель" }],
-        total: 1,
-        page: 1,
-        limit: 10,
-      }),
+      json: async () => ({ items: [{ id: "1", name: "Газель" }], total: 1, page: 1, limit: 10 }),
     });
     const data = await fetchFleetVehicles("any");
     expect(data.vehicles).toHaveLength(1);
@@ -75,7 +58,6 @@ describe("mutations", () => {
     odometerInitial: 0,
     odometerCurrent: 10,
     mileageTotal: 10,
-    payloadCapacityKg: 500,
     transportType: "Легковой",
     fuelType: "Бензин",
     fuelRefilled: 5,
@@ -114,10 +96,7 @@ describe("mutations", () => {
   });
 
   it("удаляет транспорт", async () => {
-    (authFetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      text: async () => "",
-    });
+    (authFetch as jest.Mock).mockResolvedValue({ ok: true, text: async () => "" });
     await deleteFleetVehicle("1");
     expect(authFetch).toHaveBeenCalledWith(
       "/api/v1/fleets/1",
@@ -126,10 +105,7 @@ describe("mutations", () => {
   });
 
   it("обрабатывает ошибки", async () => {
-    (authFetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      text: async () => "Ошибка",
-    });
+    (authFetch as jest.Mock).mockResolvedValue({ ok: false, text: async () => "Ошибка" });
     await expect(createFleetVehicle(payload)).rejects.toThrow("Ошибка");
   });
 });

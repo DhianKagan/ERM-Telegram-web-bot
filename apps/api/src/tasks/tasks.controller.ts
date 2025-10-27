@@ -129,42 +129,6 @@ const detectTaskKind = (
 const resolveTaskLabel = (kind: 'task' | 'request') =>
   kind === 'request' ? 'Заявка' : 'Задача';
 
-const normalizeTaskId = (value: unknown): string => {
-  if (typeof value === 'string') {
-    return value.trim();
-  }
-  if (
-    value &&
-    typeof value === 'object' &&
-    'toString' in value &&
-    typeof (value as { toString(): unknown }).toString === 'function'
-  ) {
-    const converted = (value as { toString(): unknown }).toString();
-    return typeof converted === 'string'
-      ? converted.trim()
-      : String(converted ?? '').trim();
-  }
-  return '';
-};
-
-const serializeTaskResponse = (
-  task: TaskDocument,
-): Record<string, unknown> => {
-  const base =
-    typeof task.toJSON === 'function'
-      ? (task.toJSON() as Record<string, unknown>)
-      : typeof task.toObject === 'function'
-        ? (task.toObject() as Record<string, unknown>)
-        : ({ ...(task as unknown as Record<string, unknown>) });
-  const canonicalId =
-    normalizeTaskId((task as { _id?: unknown })._id) ||
-    normalizeTaskId((base as { _id?: unknown })._id);
-  return {
-    ...base,
-    taskId: canonicalId,
-  };
-};
-
 const hasAdminAccess = (role: unknown, access: unknown): boolean => {
   const roleName = typeof role === 'string' ? role : '';
   if (roleName === 'admin') return true;
@@ -2574,7 +2538,7 @@ export default class TasksController {
       await writeLog(
         `Создана ${label.toLowerCase()} ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
-      res.status(201).json(serializeTaskResponse(task));
+      res.status(201).json(task);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
         console.error('Не удалось отправить уведомление о создании задачи', error);
       });
@@ -2619,7 +2583,7 @@ export default class TasksController {
       await writeLog(
         `Создана заявка ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
-      res.status(201).json(serializeTaskResponse(task));
+      res.status(201).json(task);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
         console.error('Не удалось отправить уведомление о создании задачи', error);
       });

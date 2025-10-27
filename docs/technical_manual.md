@@ -394,20 +394,6 @@ router.get(
 | `cargo_volume_m3` | число (м³)                                                 | —               |
 | `cargo_weight_kg` | число (кг)                                                 | —               |
 
-### Автопарк
-
-- Модель `FleetVehicle` хранит показания одометра (`odometerCurrent`), общий пробег (`mileageTotal`) и суммарный расход топлива (`fuelSpentTotal`).
-- Сервис `apps/api/src/services/fleetUsage.ts` суммирует эти значения при завершении задачи со статусом «Выполнена», если в задаче указан `transport_vehicle_id` и рассчитано поле `route_distance_km`.
-- При расчёте используется средний расход `fuelAverageConsumption` в литрах на километр: дополнительные литры = `route_distance_km * fuelAverageConsumption`.
-- Обновления выполняются после успешного сохранения задачи, поэтому ручное изменение показателей остаётся доступным через эндпойнты автопарка.
-
-## Очистка файлового хранилища
-
-- Планировщик `apps/api/src/services/scheduler.ts` регистрирует две задачи: напоминания и очистку хранилища. Очистка запускается по расписанию из переменной `STORAGE_CLEANUP_CRON` (по умолчанию `30 2 * * *`).
-- Порог хранения задаётся переменной `STORAGE_ORPHAN_RETENTION_DAYS` (по умолчанию 30). Сервис `removeDetachedFilesOlderThan()` удаляет из MongoDB записи без `taskId` и `draftId`, старше указанного количества дней, одновременно очищая файлы и превью на диске.
-- Отчёт по хранилищу доступен через `GET /api/v1/storage/diagnostics`. Эндпоинт пытается восстановить привязки к задачам, возвращает срез `total/linked/detached` и список проблемных файлов.
-- Страница `/cp/storage` показывает баннер «Очистка хранилища» с кнопкой «Проверить сейчас». Кнопка вызывает диагностику, отображает результат и повторно запрашивает список файлов, чтобы подтвердить уменьшение счётчика несвязанных вложений после очистки.
-
 ## Карта запросов
 
 Ниже перечислены основные операции с MongoDB и соответствующие маршруты API.
@@ -572,7 +558,7 @@ pnpm --dir bot dev # запуск api и web
 Пошаговое развертывание на Railway:
 
 1. Создайте проект и подключите плагин **MongoDB**.
-2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Если в Railway доступны только `MONGO_URL` или `MONGO_PUBLIC_URL`, конфигурация соберёт строку самостоятельно, добавив имя базы (`MONGO_DATABASE_NAME`, по умолчанию `ermdb`) и `authSource=admin` для внутренних доменов Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
+2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 

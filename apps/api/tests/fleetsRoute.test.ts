@@ -1,7 +1,5 @@
 // Назначение: проверка CRUD-роутов автопарка
 // Основные модули: express, supertest, mongodb-memory-server
-import type { NextFunction } from 'express';
-
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -19,20 +17,11 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import fleetsRouter from '../src/routes/fleets';
 import { FleetVehicle } from '../src/db/models/fleet';
 
-jest.mock(
-  '../src/utils/rateLimiter',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
-jest.mock(
-  '../src/middleware/auth',
-  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
-jest.mock(
-  '../src/auth/roles.guard',
-  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
-);
+jest.mock('../src/utils/rateLimiter', () => () => (_req: any, _res: any, next: () => void) => next());
+jest.mock('../src/middleware/auth', () => () => (_req: any, _res: any, next: () => void) => next());
+jest.mock('../src/auth/roles.guard', () => (_req: any, _res: any, next: () => void) => next());
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+  Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 let mongod: MongoMemoryServer;
@@ -61,7 +50,6 @@ describe('fleets router', () => {
     odometerInitial: 1000,
     odometerCurrent: 1200,
     mileageTotal: 200,
-    payloadCapacityKg: 800,
     transportType: 'Легковой' as const,
     fuelType: 'Бензин' as const,
     fuelRefilled: 50,
@@ -76,7 +64,6 @@ describe('fleets router', () => {
     expect(res.body.name).toBe('Газель');
     expect(res.body.registrationNumber).toBe('AA 1234 BB');
     expect(res.body.transportType).toBe('Легковой');
-    expect(res.body.payloadCapacityKg).toBe(800);
     const stored = await FleetVehicle.findById(res.body.id).lean();
     expect(stored?.fuelType).toBe('Бензин');
     expect(stored?.transportType).toBe('Легковой');
@@ -86,17 +73,11 @@ describe('fleets router', () => {
     const created = await FleetVehicle.create(payload);
     const res = await request(app)
       .put(`/api/v1/fleets/${created._id}`)
-      .send({
-        odometerCurrent: 1300,
-        fuelType: 'Газ',
-        transportType: 'Грузовой',
-        payloadCapacityKg: 950,
-      });
+      .send({ odometerCurrent: 1300, fuelType: 'Газ', transportType: 'Грузовой' });
     expect(res.status).toBe(200);
     expect(res.body.odometerCurrent).toBe(1300);
     expect(res.body.fuelType).toBe('Газ');
     expect(res.body.transportType).toBe('Грузовой');
-    expect(res.body.payloadCapacityKg).toBe(950);
   });
 
   it('удаляет транспорт', async () => {

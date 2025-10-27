@@ -180,12 +180,6 @@ const buildSolverContext = async (
 
   const depotCoordinates = ensureDepotCoordinates(tasks);
   const timeWindows = normalizeTimeWindows(tasks, options);
-  const capacityLimit =
-    typeof options.vehicleCapacity === 'number' &&
-    Number.isFinite(options.vehicleCapacity) &&
-    options.vehicleCapacity > 0
-      ? Number(options.vehicleCapacity)
-      : 0;
 
   const solverTasks: SolverTaskDefinition[] = [];
   solverTasks.push({
@@ -197,18 +191,12 @@ const buildSolverContext = async (
     index: 0,
   });
 
-  const overweightTaskIds: string[] = [];
-
   tasks.forEach((task, taskIndex) => {
     const index = solverTasks.length;
-    const weight = getTaskWeight(task);
-    if (capacityLimit > 0 && weight > capacityLimit) {
-      overweightTaskIds.push(task.id);
-    }
     solverTasks.push({
       id: task.id,
       coordinates: task.coordinates,
-      weight,
+      weight: getTaskWeight(task),
       serviceMinutes: getServiceMinutes(task),
       timeWindow: timeWindows[taskIndex + 1] ?? DEFAULT_TIME_WINDOW,
       index,
@@ -240,16 +228,6 @@ const buildSolverContext = async (
     average_speed_kmph: averageSpeed,
   };
 
-  const formattedCapacity = Number.isInteger(capacityLimit)
-    ? capacityLimit
-    : Number(capacityLimit.toFixed(2));
-  const overweightWarnings = capacityLimit > 0
-    ? overweightTaskIds.map(
-        (taskId) =>
-          `Задача ${taskId} превышает грузоподъёмность ${formattedCapacity} кг.`,
-      )
-    : [];
-
   return {
     solverTasks,
     distanceMatrix: travelMatrix.distanceMatrix,
@@ -257,7 +235,7 @@ const buildSolverContext = async (
     request,
     averageSpeed,
     matrixProvider: travelMatrix.provider,
-    warnings: mergeWarnings(travelMatrix.warnings, overweightWarnings),
+    warnings: travelMatrix.warnings,
   };
 };
 

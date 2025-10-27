@@ -167,107 +167,6 @@ const readTaskIdFromRequest = (req: RequestWithUser): string | undefined => {
   return undefined;
 };
 
-const withAttachmentSync = (
-  handlers: RequestHandler[],
-): RequestHandler[] => {
-  if (!Array.isArray(handlers) || handlers.length === 0) {
-    return handlers;
-  }
-  const mainHandler = handlers[handlers.length - 1];
-  const prefix = handlers.slice(0, -1);
-  const wrapped: RequestHandler = async (req, res, next) => {
-    const rawAttachments = readAttachmentsField(
-      (req.body as BodyWithAttachments | undefined)?.attachments,
-    );
-    const bodyAttachments = rawAttachments.length
-      ? [...rawAttachments]
-      : [];
-    if (bodyAttachments.length === 0) {
-      try {
-        await Promise.resolve(mainHandler(req, res, next));
-      } catch (error) {
-        next(error);
-      }
-      return;
-    }
-    const originalJson = res.json.bind(res);
-    let capturedId: string | undefined;
-    let responded = false;
-    res.json = ((payload: unknown) => {
-      responded = true;
-      if (
-        payload &&
-        typeof payload === 'object' &&
-        payload !== null &&
-        '_id' in (payload as Record<string, unknown>)
-      ) {
-        const candidate = (payload as Record<string, unknown>)._id;
-        if (typeof candidate === 'string') {
-          capturedId = candidate.trim() || undefined;
-        } else if (
-          candidate &&
-          typeof candidate === 'object' &&
-          'toString' in candidate &&
-          typeof (candidate as { toString(): unknown }).toString === 'function'
-        ) {
-          const converted = String(candidate);
-          capturedId = converted.trim() || undefined;
-        }
-      }
-      if (
-        payload &&
-        typeof payload === 'object' &&
-        payload !== null &&
-        'taskId' in (payload as Record<string, unknown>)
-      ) {
-        const candidate = (payload as Record<string, unknown>).taskId;
-        if (typeof candidate === 'string') {
-          const normalized = candidate.trim();
-          if (normalized) {
-            capturedId = normalized;
-          }
-        }
-      }
-      return originalJson(payload);
-    }) as typeof res.json;
-    try {
-      await Promise.resolve(mainHandler(req, res, next));
-    } catch (error) {
-      res.json = originalJson;
-      next(error);
-      return;
-    }
-    res.json = originalJson;
-    if (
-      !responded ||
-      !capturedId ||
-      res.statusCode < 200 ||
-      res.statusCode >= 300
-    ) {
-      return;
-    }
-    const userId = resolveNumericUserId((req as RequestWithUser).user?.id);
-    try {
-      await syncTaskAttachments(
-        capturedId,
-        bodyAttachments as Parameters<typeof syncTaskAttachments>[1],
-        userId,
-      );
-    } catch (error) {
-      await writeLog(
-        'Не удалось синхронизировать вложения после создания задачи',
-        'warn',
-        {
-          taskId: capturedId,
-          userId,
-          error: (error as Error).message,
-        },
-      ).catch(() => undefined);
-    }
-  };
-  return [...prefix, wrapped];
-};
-
 const syncAttachmentsForRequest = async (
   req: RequestWithUser,
   attachments: AttachmentItem[],
@@ -828,7 +727,7 @@ router.post(
   normalizeArrays,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
-  ...withAttachmentSync(ctrl.createRequest as RequestHandler[]),
+  ...(ctrl.createRequest as RequestHandler[]),
 );
 
 router.post(
@@ -839,7 +738,7 @@ router.post(
   normalizeArrays,
   ...(taskFormValidators as unknown as RequestHandler[]),
   ...(validateDto(CreateTaskDto) as RequestHandler[]),
-  ...withAttachmentSync(ctrl.create as RequestHandler[]),
+  ...(ctrl.create as RequestHandler[]),
 );
 
 router.patch(

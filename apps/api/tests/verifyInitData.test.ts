@@ -1,7 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест проверки функции verifyInitData
-export {};
-
 process.env.BOT_TOKEN = 'x';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
@@ -10,17 +8,14 @@ process.env.APP_URL = 'https://localhost';
 const crypto = require('crypto');
 const verify = require('../src/utils/verifyInitData').default;
 
-type InitDataKeys = 'query_id' | 'user' | 'auth_date' | 'signature';
-
-function buildInitData(ts: number): string {
-  const data: Record<InitDataKeys, string> = {
+function buildInitData(ts) {
+  const data = {
     query_id: '1',
     user: JSON.stringify({ id: 1, first_name: 'a' }),
     auth_date: String(ts),
     signature: 'sig',
   };
-  const keys = Object.keys(data) as InitDataKeys[];
-  const str = keys
+  const str = Object.keys(data)
     .sort()
     .map((k) => `${k}=${data[k]}`)
     .join('\n');

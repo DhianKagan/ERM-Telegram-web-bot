@@ -1,6 +1,4 @@
 // Назначение: проверка повторных запусков бота при ошибках Telegram. Модули: jest, bot.
-export {};
-
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.NODE_ENV = 'test';

@@ -19,13 +19,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.taskFormSchema = exports.generateMultiRouteLink = exports.generateRouteLink = exports.extractCoords = exports.taskFields = exports.normalizeObjectIdCandidate = exports.extractIdsFromCommentHtml = exports.extractFileIdFromUrl = exports.buildAttachmentsFromCommentHtml = void 0;
+exports.taskFormSchema = exports.generateMultiRouteLink = exports.generateRouteLink = exports.extractCoords = exports.taskFields = void 0;
 __exportStar(require("./constants"), exports);
-var attachments_1 = require("./attachments");
-Object.defineProperty(exports, "buildAttachmentsFromCommentHtml", { enumerable: true, get: function () { return attachments_1.buildAttachmentsFromCommentHtml; } });
-Object.defineProperty(exports, "extractFileIdFromUrl", { enumerable: true, get: function () { return attachments_1.extractFileIdFromUrl; } });
-Object.defineProperty(exports, "extractIdsFromCommentHtml", { enumerable: true, get: function () { return attachments_1.extractIdsFromCommentHtml; } });
-Object.defineProperty(exports, "normalizeObjectIdCandidate", { enumerable: true, get: function () { return attachments_1.normalizeObjectIdCandidate; } });
 var taskFields_1 = require("./taskFields");
 Object.defineProperty(exports, "taskFields", { enumerable: true, get: function () { return taskFields_1.taskFields; } });
 var mapUtils_1 = require("./mapUtils");

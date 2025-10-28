@@ -96,6 +96,40 @@ if (!/^https:\/\//.test(routingUrlEnv)) {
   throw new Error('ROUTING_URL должен начинаться с https://');
 }
 
+const graphhopperMatrixUrlRaw = (process.env.GRAPHHOPPER_MATRIX_URL || '').trim();
+let graphhopperMatrixUrl: string | undefined;
+if (graphhopperMatrixUrlRaw) {
+  try {
+    const parsed = new URL(graphhopperMatrixUrlRaw);
+    if (parsed.protocol !== 'https:') {
+      throw new Error('GRAPHHOPPER_MATRIX_URL должен начинаться с https://');
+    }
+    graphhopperMatrixUrl = parsed.toString();
+  } catch (error) {
+    if (strictEnvs.has(nodeEnv)) {
+      throw new Error('GRAPHHOPPER_MATRIX_URL имеет неверный формат');
+    }
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(
+      'GRAPHHOPPER_MATRIX_URL имеет неверный формат, GraphHopper отключён:',
+      reason,
+    );
+    graphhopperMatrixUrl = undefined;
+  }
+}
+
+const graphhopperApiKeyRaw = (process.env.GRAPHHOPPER_API_KEY || '').trim();
+const graphhopperApiKey = graphhopperApiKeyRaw ? graphhopperApiKeyRaw : undefined;
+
+const graphhopperProfileRaw = (process.env.GRAPHHOPPER_PROFILE || '').trim();
+const graphhopperProfile = graphhopperProfileRaw || 'car';
+
+export const graphhopperConfig = {
+  matrixUrl: graphhopperMatrixUrl,
+  apiKey: graphhopperApiKey,
+  profile: graphhopperProfile,
+};
+
 const parseBooleanFlag = (
   source: string | undefined,
   defaultValue = false,
@@ -235,6 +269,8 @@ const config = {
   routingUrl,
   cookieDomain,
   vrpOrToolsEnabled,
+  graphhopperConfig,
+  graphhopper: graphhopperConfig,
 };
 
 export default config;

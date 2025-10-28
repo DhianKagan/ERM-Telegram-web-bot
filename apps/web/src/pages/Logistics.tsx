@@ -12,8 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
-import L, { type LatLngBoundsExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import type {
+  LatLngBoundsExpression,
+  LayerGroup as LeafletLayerGroup,
+  Map as LeafletMap,
+} from "leaflet";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
@@ -80,6 +83,8 @@ type LogisticsDetails = {
   start_location?: string | null;
   end_location?: string | null;
 };
+
+type LeafletModule = typeof import("leaflet");
 
 const MAP_CENTER: [number, number] = [48.3794, 31.1656];
 const MAP_ZOOM = 6;
@@ -152,9 +157,10 @@ export default function LogisticsPage() {
     "neutral" | "error" | "success"
   >("neutral");
   const [planLoading, setPlanLoading] = React.useState(false);
-  const mapRef = React.useRef<L.Map | null>(null);
-  const optLayerRef = React.useRef<L.LayerGroup | null>(null);
-  const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const leafletRef = React.useRef<LeafletModule | null>(null);
+  const mapRef = React.useRef<LeafletMap | null>(null);
+  const optLayerRef = React.useRef<LeafletLayerGroup | null>(null);
+  const tasksLayerRef = React.useRef<LeafletLayerGroup | null>(null);
   const autoJobRef = React.useRef({
     refreshTasks: false,
     refreshPlan: false,
@@ -171,6 +177,7 @@ export default function LogisticsPage() {
     DEFAULT_LAYER_VISIBILITY,
   );
   const [mapReady, setMapReady] = React.useState(false);
+  const [leafletReady, setLeafletReady] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
   const navigate = useNavigate();
@@ -542,6 +549,55 @@ export default function LogisticsPage() {
   }, [applyPlan]);
 
   React.useEffect(() => {
+    let cancelled = false;
+    if (leafletRef.current) {
+      setLeafletReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      try {
+        const leafletImport = await import('leaflet');
+        if (typeof document !== 'undefined') {
+          const styleId = 'leaflet-stylesheet';
+          if (!document.getElementById(styleId)) {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore Стили Leaflet подключаются динамически через Vite
+            const cssModule = await import('leaflet/dist/leaflet.css');
+            const href =
+              typeof cssModule === 'string'
+                ? cssModule
+                : typeof (cssModule as { default?: string }).default === 'string'
+                  ? (cssModule as { default: string }).default
+                  : null;
+            if (href) {
+              const link = document.createElement('link');
+              link.id = styleId;
+              link.rel = 'stylesheet';
+              link.href = href;
+              document.head.appendChild(link);
+            }
+          }
+        }
+        if (cancelled) {
+          return;
+        }
+        const resolvedModule =
+          (leafletImport as { default?: LeafletModule }).default ??
+          (leafletImport as LeafletModule);
+        leafletRef.current = resolvedModule;
+        setLeafletReady(true);
+      } catch (error) {
+        console.error('Не удалось загрузить библиотеку Leaflet', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
     void loadPlan();
   }, [loadPlan]);
 
@@ -879,10 +935,14 @@ export default function LogisticsPage() {
       if (!mapRef.current) {
         return;
       }
+      const leaflet = leafletRef.current;
+      if (!leaflet) {
+        return;
+      }
       if (optLayerRef.current) {
         optLayerRef.current.remove();
       }
-      const group = L.layerGroup();
+      const group = leaflet.layerGroup();
       if (layerVisibility.optimized) {
         group.addTo(mapRef.current);
       }
@@ -901,7 +961,7 @@ export default function LogisticsPage() {
         if (latlngs.length < 2) {
           return;
         }
-        L.polyline(latlngs, {
+        leaflet.polyline(latlngs, {
           color: colors[idx % colors.length],
           weight: 4,
         }).addTo(group);
@@ -1273,17 +1333,24 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = L.map("logistics-map", {
-      maxBounds: UKRAINE_BOUNDS,
-      maxBoundsViscosity: 1,
-      minZoom: 5,
-      maxZoom: 12,
-    }).setView(MAP_CENTER, MAP_ZOOM);
+    if (!leafletReady) return;
+    const leaflet = leafletRef.current;
+    if (!leaflet) return;
+    const map = leaflet
+      .map("logistics-map", {
+        maxBounds: UKRAINE_BOUNDS,
+        maxBoundsViscosity: 1,
+        minZoom: 5,
+        maxZoom: 12,
+      })
+      .setView(MAP_CENTER, MAP_ZOOM);
     mapRef.current = map;
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
-    tasksLayerRef.current = L.layerGroup().addTo(map);
+    leaflet
+      .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+      })
+      .addTo(map);
+    tasksLayerRef.current = leaflet.layerGroup().addTo(map);
     setMapReady(true);
     return () => {
       map.remove();
@@ -1292,7 +1359,7 @@ export default function LogisticsPage() {
       mapRef.current = null;
       setMapReady(false);
     };
-  }, [hasDialog]);
+  }, [hasDialog, leafletReady]);
 
   React.useEffect(() => {
     if (!mapRef.current || !optLayerRef.current) return;
@@ -1305,12 +1372,14 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     const group = tasksLayerRef.current;
-    if (!mapRef.current || !group || !mapReady) return;
+    if (!mapRef.current || !group || !mapReady || !leafletReady) return;
+    const leaflet = leafletRef.current;
+    if (!leaflet) return;
     group.clearLayers();
     if (!layerVisibility.tasks) return;
     if (!sorted.length) return;
     const createMarkerIcon = (kind: "start" | "finish", color: string) =>
-      L.divIcon({
+      leaflet.divIcon({
         className: `task-marker task-marker--${kind}`,
         html: `<span style="--marker-color:${color}"></span>`,
         iconSize: [20, 20],
@@ -1367,15 +1436,15 @@ export default function LogisticsPage() {
           );
         }
         const tooltipHtml = `<div class="space-y-1 text-xs">${tooltipParts.join('')}</div>`;
-        L.polyline(latlngs, {
+        leaflet.polyline(latlngs, {
           color: routeColor,
           weight: 4,
           opacity: 0.85,
         }).addTo(group);
-        const startMarker = L.marker(latlngs[0], {
+        const startMarker = leaflet.marker(latlngs[0], {
           icon: createMarkerIcon("start", markerColor),
         }).bindTooltip(tooltipHtml, { opacity: 0.95 });
-        const endMarker = L.marker(latlngs[latlngs.length - 1], {
+        const endMarker = leaflet.marker(latlngs[latlngs.length - 1], {
           icon: createMarkerIcon("finish", markerColor),
         }).bindTooltip(tooltipHtml, { opacity: 0.95 });
         startMarker.on("click", () => openTask(t._id));
@@ -1393,6 +1462,7 @@ export default function LogisticsPage() {
     formatEta,
     formatLoad,
     layerVisibility.tasks,
+    leafletReady,
     mapReady,
     openTask,
     sorted,

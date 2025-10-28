@@ -1,11 +1,15 @@
 #!/usr/bin/env ts-node
 /**
  * Назначение файла: проверка подключения к MongoDB.
- * Основные модули: dotenv, fs, path, mongoose.
+ * Основные модули: dotenv, fs, path, mongoose, вспомогательные функции mongoUrl.
  */
 
 import fs from 'fs';
 import path from 'path';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './db/mongoUrl';
 
 try {
   const dotenv = await import('dotenv');
@@ -36,12 +40,12 @@ try {
   mongoose = await import('../apps/api/node_modules/mongoose');
 }
 
-const url = (
-  process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+const mongoResolution = getMongoUrlFromEnv();
+const url = mongoResolution.url;
+const credentialsNote = formatCredentialSources(mongoResolution);
+if (credentialsNote) {
+  console.log(credentialsNote);
+}
 
 if (!url) {
   console.error('Не задан MONGO_DATABASE_URL');

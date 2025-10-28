@@ -1,7 +1,11 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
-// Модули: mongoose, dotenv, path
+// Модули: mongoose, dotenv, path, вспомогательные функции mongoUrl
 import * as path from 'path'; // модуль для работы с путями
 import type { ConnectOptions } from 'mongoose';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './mongoUrl';
 
 interface DotenvModule {
   config: (options?: { path?: string }) => void;
@@ -28,14 +32,12 @@ const mongoose: typeof import('mongoose') = (() => {
 // Загружаем переменные окружения, не обращаясь к config
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 
-const mongoUrl = (
-  process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.MONGO_URL ||
-  process.env.MONGODB_URL ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+const mongoResolution = getMongoUrlFromEnv();
+const mongoUrl = mongoResolution.url;
+const credentialsNote = formatCredentialSources(mongoResolution);
+if (credentialsNote) {
+  console.log(credentialsNote);
+}
 
 interface RoleRecord {
   name?: string;

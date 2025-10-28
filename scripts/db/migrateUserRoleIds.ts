@@ -1,22 +1,24 @@
 // Назначение: синхронизирует поле roleId пользователей с именем роли
-// Основные модули: mongoose, User модель, roleCache
+// Основные модули: mongoose, User модель, roleCache, вспомогательные функции mongoUrl
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { User } from '../../apps/api/src/db/model';
 import { resolveRoleId } from '../../apps/api/src/db/roleCache';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './mongoUrl';
 
 function resolveMongoUrl(): string {
-  const url =
-    process.env.MONGO_DATABASE_URL ||
-    process.env.MONGODB_URI ||
-    process.env.MONGO_URL ||
-    process.env.MONGODB_URL ||
-    process.env.DATABASE_URL ||
-    '';
-  if (!/^mongodb(\+srv)?:\/\//.test(url)) {
+  const resolution = getMongoUrlFromEnv();
+  if (!/^mongodb(\+srv)?:\/\//.test(resolution.url)) {
     throw new Error('Не задана строка подключения к MongoDB');
   }
-  return url;
+  const note = formatCredentialSources(resolution);
+  if (note) {
+    console.log(note);
+  }
+  return resolution.url;
 }
 
 async function migrate(): Promise<void> {

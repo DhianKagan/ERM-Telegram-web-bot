@@ -1,21 +1,23 @@
 // Назначение: добавление роли manager в существующую базу данных
-// Модули: mongoose, Role, dotenv
+// Модули: mongoose, Role, dotenv, вспомогательные функции mongoUrl
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { Role } from '../../apps/api/src/db/model';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './mongoUrl';
 
 function resolveMongoUrl(): string {
-  const url =
-    process.env.MONGO_DATABASE_URL ||
-    process.env.MONGODB_URI ||
-    process.env.MONGO_URL ||
-    process.env.MONGODB_URL ||
-    process.env.DATABASE_URL ||
-    '';
-  if (!/^mongodb(\+srv)?:\/\//.test(url)) {
+  const resolution = getMongoUrlFromEnv();
+  if (!/^mongodb(\+srv)?:\/\//.test(resolution.url)) {
     throw new Error('Не задана строка подключения к MongoDB');
   }
-  return url;
+  const note = formatCredentialSources(resolution);
+  if (note) {
+    console.log(note);
+  }
+  return resolution.url;
 }
 
 async function migrate(): Promise<void> {

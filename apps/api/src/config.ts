@@ -1,5 +1,5 @@
 // Назначение: централизованная загрузка переменных окружения.
-// Модули: path, dotenv, process
+// Модули: path, dotenv, process, URL
 import path from 'path';
 import dotenv from 'dotenv';
 import { PROJECT_TIMEZONE } from 'shared';
@@ -23,6 +23,58 @@ const strictEnvs = new Set(['production', 'production-build']);
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+
+type EnvPick = { key: string; value: string };
+
+const pickFirstFilled = (keys: readonly string[]): EnvPick | undefined => {
+  for (const key of keys) {
+    const raw = process.env[key];
+    if (!raw) {
+      continue;
+    }
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+    return { key, value: trimmed };
+  }
+  return undefined;
+};
+
+const mongoUsernameEnvKeys = [
+  'MONGO_USERNAME',
+  'MONGODB_USERNAME',
+  'MONGO_USER',
+  'MONGODB_USER',
+  'MONGO_INITDB_ROOT_USERNAME',
+] as const;
+
+const mongoPasswordEnvKeys = [
+  'MONGO_PASSWORD',
+  'MONGODB_PASSWORD',
+  'MONGO_PASS',
+  'MONGODB_PASS',
+  'MONGO_INITDB_ROOT_PASSWORD',
+] as const;
+
+const applyMongoCredentialFallback = (target: URL): string[] => {
+  const messages: string[] = [];
+  if (!target.username) {
+    const fallback = pickFirstFilled(mongoUsernameEnvKeys);
+    if (fallback) {
+      target.username = fallback.value;
+      messages.push(`логином из ${fallback.key}`);
+    }
+  }
+  if (!target.password) {
+    const fallback = pickFirstFilled(mongoPasswordEnvKeys);
+    if (fallback) {
+      target.password = fallback.value;
+      messages.push(`паролем из ${fallback.key}`);
+    }
+  }
+  return messages;
+};
 
 const required = ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'] as const;
 const fallback: Record<(typeof required)[number], string> = {
@@ -73,6 +125,11 @@ if (!dbName) {
   );
 }
 
+const credentialMessages = applyMongoCredentialFallback(parsedMongoUrl);
+if (credentialMessages.length) {
+  console.log(`MONGO_DATABASE_URL дополнен ${credentialMessages.join(' и ')}`);
+}
+
 const authSource = parsedMongoUrl.searchParams.get('authSource');
 const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
 const isRailwayInternal = /\.railway\.internal$/i.test(parsedMongoUrl.hostname);
@@ -81,6 +138,9 @@ if (!authSource && isRailwayInternal && mongoUsername === 'mongo') {
     'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
   );
 }
+
+const finalMongoUrl = parsedMongoUrl.toString();
+process.env.MONGO_DATABASE_URL = finalMongoUrl;
 
 const appUrlEnv = (process.env.APP_URL || '').trim();
 if (!/^https:\/\//.test(appUrlEnv)) {
@@ -202,7 +262,7 @@ export const getChatId = (): string | undefined => {
 };
 export const chatId = getChatId();
 export const jwtSecret = process.env.JWT_SECRET;
-export const mongoUrl = mongoUrlEnv;
+export const mongoUrl = finalMongoUrl;
 export const appUrl = appUrlEnv;
 export const vrpOrToolsEnabled = parseBooleanFlag(
   process.env.VRP_ORTOOLS_ENABLED,

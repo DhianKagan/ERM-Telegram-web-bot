@@ -49,6 +49,46 @@ export interface User {
     divisionId?: string;
     positionId?: string;
 }
+export type TrackingAlarmType = 'delay' | 'route-deviation';
+export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';
+export interface TrackingAlarmEvent {
+    type: 'alarm';
+    vehicleId: string;
+    alarmType: TrackingAlarmType;
+    message: string;
+    severity: TrackingAlarmSeverity;
+    occurredAt: string;
+    taskId?: string;
+    routeId?: string;
+}
+export interface TrackingPositionEvent {
+    type: 'position';
+    vehicleId: string;
+    position: {
+        lat: number;
+        lon: number;
+        speed?: number;
+        course?: number;
+        updatedAt?: string;
+    };
+    track?: {
+        lat: number;
+        lon: number;
+        speed?: number;
+        course?: number;
+        timestamp: string;
+    }[];
+}
+export interface TrackingHeartbeatEvent {
+    type: 'heartbeat';
+    timestamp: string;
+}
+export interface TrackingInitEvent {
+    type: 'init';
+    timestamp: string;
+    alarms?: TrackingAlarmEvent[];
+}
+export type TrackingEvent = TrackingAlarmEvent | TrackingPositionEvent | TrackingHeartbeatEvent | TrackingInitEvent;
 export interface FleetVehicleDto {
     id: string;
     name: string;
@@ -81,6 +121,11 @@ export interface RoutePlanStop {
     taskId: string;
     coordinates?: Coords;
     address?: string | null;
+    etaMinutes?: number | null;
+    delayMinutes?: number | null;
+    load?: number | null;
+    windowStartMinutes?: number | null;
+    windowEndMinutes?: number | null;
 }
 export interface RoutePlanTaskRef {
     taskId: string;
@@ -96,6 +141,8 @@ export interface RoutePlanRouteMetrics {
     distanceKm?: number | null;
     tasks?: number;
     stops?: number;
+    load?: number | null;
+    etaMinutes?: number | null;
 }
 export interface RoutePlanRoute {
     id: string;
@@ -115,6 +162,8 @@ export interface RoutePlanMetrics {
     totalRoutes: number;
     totalTasks: number;
     totalStops?: number;
+    totalEtaMinutes?: number | null;
+    totalLoad?: number | null;
 }
 export interface RoutePlan {
     id: string;
@@ -133,4 +182,61 @@ export interface RoutePlan {
     tasks: string[];
     createdAt?: string;
     updatedAt?: string;
+}
+export interface LogisticsInitEvent {
+    type: 'logistics.init';
+    timestamp: string;
+}
+export interface LogisticsHeartbeatEvent {
+    type: 'logistics.heartbeat';
+    timestamp: string;
+}
+export type LogisticsTaskChangeAction = 'created' | 'updated' | 'deleted';
+export interface LogisticsTasksChangedEvent {
+    type: 'tasks.changed';
+    timestamp: string;
+    action: LogisticsTaskChangeAction;
+    taskIds: string[];
+}
+export type LogisticsRoutePlanUpdateReason = 'created' | 'updated' | 'recalculated' | 'deleted';
+export interface LogisticsRoutePlanUpdatedEvent {
+    type: 'route-plan.updated';
+    timestamp: string;
+    reason: LogisticsRoutePlanUpdateReason;
+    plan: RoutePlan;
+}
+export interface LogisticsRoutePlanRemovedEvent {
+    type: 'route-plan.removed';
+    timestamp: string;
+    planId: string;
+}
+export type LogisticsEvent = LogisticsInitEvent | LogisticsHeartbeatEvent | LogisticsTasksChangedEvent | LogisticsRoutePlanUpdatedEvent | LogisticsRoutePlanRemovedEvent;
+export interface RoutePlanAnalyticsSummary {
+    period: {
+        from: string;
+        to: string;
+    };
+    mileage: {
+        total: number;
+        byPeriod: Array<{
+            date: string;
+            value: number;
+        }>;
+    };
+    load: {
+        average: number | null;
+        byPeriod: Array<{
+            date: string;
+            value: number | null;
+        }>;
+    };
+    sla: {
+        average: number | null;
+        byPeriod: Array<{
+            date: string;
+            onTime: number;
+            total: number;
+            rate: number | null;
+        }>;
+    };
 }

@@ -81,7 +81,7 @@ export async function buildApp(): Promise<express.Express> {
     // По умолчанию cookie передаются только по HTTPS;
     // переменная COOKIE_SECURE=false включает HTTP для локальной отладки.
     secure: secureCookie,
-    sameSite: 'none',
+    sameSite: secureCookie ? 'none' : 'lax',
     ...(domain ? { domain } : {}),
   };
   const sessionOpts: session.SessionOptions = {

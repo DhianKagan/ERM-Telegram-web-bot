@@ -94,6 +94,7 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 - Любой pull request (включая ветки, временно нацеленные не на `main`) автоматически запускает workflows `CI`, `Lighthouse`, `Docker` и CodeQL‑проверку.
 
 - Push в `main` дополнительно активирует workflow `Release`, который собирает проект и деплоит его на Railway через `pnpm dlx @railway/cli up`.
+- Перед сборкой Docker `Release` переиспользует кэш Playwright и запускает Chromium e2e‑тесты, чтобы подтвердить готовность интерфейса.
 - Для ручного релиза по тегу сохранена поддержка схемы `v*.*.*`; тег запускает тот же pipeline деплоя.
 
 ## Секреты CI/CD и переменные окружения Railway

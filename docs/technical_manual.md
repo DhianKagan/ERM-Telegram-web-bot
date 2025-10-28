@@ -18,6 +18,13 @@
 Разрешены сборки `esbuild`, `ffmpeg-static`, `mongodb-memory-server`, `sharp`.
 Скрипты `@scarf/scarf`, `@tailwindcss/oxide`, `chromedriver`, `core-js`, `unrs-resolver` блокируются.
 
+## CI/CD
+
+- Workflow `CI` запускается на каждом pull request и push в `main`: сначала `audit-ci`, затем линтеры, unit и API тесты, после чего Playwright прогоняет все браузерные проекты.
+- Workflow `Release` срабатывает на push в `main` и теги `v*.*.*`; перед сборкой Docker он кеширует браузеры Playwright, прогоняет Chromium e2e‑тесты и добавляет диагностику `playwright doctor` в GitHub Summary.
+- Workflow `Docker` валидирует `docker-compose.yml`, собирает образы и проверяет доступность MongoDB.
+- Lighthouse CI проверяет клиент на каждом pull request, Chrome ставится через `browser-actions/setup-chrome`.
+
 ## Runbook: восстановление Playwright в CI
 
 1. Запустите `./scripts/ensure_playwright_browsers.sh`, чтобы поставить Firefox и Chromium.

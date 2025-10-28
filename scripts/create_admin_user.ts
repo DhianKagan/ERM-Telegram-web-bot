@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Назначение файла: скрипт создания администратора по Telegram ID
-// Модули: mongoose, dotenv, модели проекта, roleCache
+// Модули: mongoose, dotenv, модели проекта, roleCache, вспомогательные функции mongoUrl
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -14,6 +14,10 @@ try {
 
 import { User } from '../apps/api/src/db/model';
 import { resolveRoleId } from '../apps/api/src/db/roleCache';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './db/mongoUrl';
 
 const [, , idArg, usernameArg] = process.argv;
 if (!idArg) {
@@ -25,23 +29,17 @@ if (!idArg) {
 const telegramId = Number(idArg);
 const username = usernameArg || `admin_${telegramId}`;
 
-function resolveMongoUrl(): string {
-  const url =
-    process.env.MONGO_DATABASE_URL ||
-    process.env.MONGODB_URI ||
-    process.env.MONGO_URL ||
-    process.env.MONGODB_URL ||
-    process.env.DATABASE_URL ||
-    '';
-  if (!/^mongodb(\+srv)?:\/\//.test(url)) {
+async function main(): Promise<void> {
+  const resolution = getMongoUrlFromEnv();
+  if (!/^mongodb(\+srv)?:\/\//.test(resolution.url)) {
     throw new Error('Не задана строка подключения к MongoDB');
   }
-  return url;
-}
-
-async function main(): Promise<void> {
+  const note = formatCredentialSources(resolution);
+  if (note) {
+    console.log(note);
+  }
   try {
-    await mongoose.connect(resolveMongoUrl());
+    await mongoose.connect(resolution.url);
   } catch (e: unknown) {
     const err = e as Error;
     console.error('Ошибка подключения к MongoDB:', err.message);

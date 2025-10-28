@@ -1,5 +1,5 @@
 // Назначение файла: восстановление целостности коллекций департаментов, отделов и должностей.
-// Основные модули: mongoose, dotenv, path.
+// Основные модули: mongoose, dotenv, path, вспомогательные функции mongoUrl.
 /// <reference path="../../apps/web/src/types/mongodb.d.ts" />
 import * as path from 'path';
 import type {
@@ -7,6 +7,10 @@ import type {
   Schema as MongooseSchema,
   Types as MongooseTypes,
 } from 'mongoose';
+import {
+  getMongoUrlFromEnv,
+  formatCredentialSources,
+} from './mongoUrl';
 
 interface DotenvModule {
   config: (options: { path: string }) => void;
@@ -61,14 +65,12 @@ interface LeanModel<T> {
 
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 
-const mongoUrl = (
-  process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.MONGO_URL ||
-  process.env.MONGODB_URL ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+const mongoResolution = getMongoUrlFromEnv();
+const mongoUrl = mongoResolution.url;
+const credentialsNote = formatCredentialSources(mongoResolution);
+if (credentialsNote) {
+  console.log(credentialsNote);
+}
 
 const TARGET_TYPES = new Set(['departments', 'divisions', 'positions']);
 const TYPE_LABELS: Record<string, string> = {

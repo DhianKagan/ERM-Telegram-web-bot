@@ -17,10 +17,28 @@ describe('MONGO_DATABASE_URL validation', () => {
     jest.resetModules();
     process.env.MONGO_DATABASE_URL =
       'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
+    delete process.env.MONGO_USERNAME;
+    delete process.env.MONGO_PASSWORD;
+    delete process.env.MONGO_USER;
+    delete process.env.MONGODB_USER;
+    delete process.env.MONGODB_USERNAME;
+    delete process.env.MONGO_PASS;
+    delete process.env.MONGODB_PASS;
+    delete process.env.MONGO_INITDB_ROOT_USERNAME;
+    delete process.env.MONGO_INITDB_ROOT_PASSWORD;
   });
 
   afterEach(() => {
     jest.resetModules();
+    delete process.env.MONGO_USERNAME;
+    delete process.env.MONGO_PASSWORD;
+    delete process.env.MONGO_USER;
+    delete process.env.MONGODB_USER;
+    delete process.env.MONGODB_USERNAME;
+    delete process.env.MONGO_PASS;
+    delete process.env.MONGODB_PASS;
+    delete process.env.MONGO_INITDB_ROOT_USERNAME;
+    delete process.env.MONGO_INITDB_ROOT_PASSWORD;
   });
 
   test('бросает ошибку, если не указана база данных', () => {
@@ -37,6 +55,20 @@ describe('MONGO_DATABASE_URL validation', () => {
     expect(() => require('../../apps/api/src/config')).toThrow(
       'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
     );
+  });
+
+  test('дополняет строку логином и паролем из отдельных переменных', () => {
+    process.env.MONGO_DATABASE_URL =
+      'mongodb://erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
+    process.env.MONGO_USERNAME = 'mongo';
+    process.env.MONGO_PASSWORD = 'pass!23';
+
+    const config = require('../../apps/api/src/config');
+    const parsed = new URL(config.mongoUrl);
+
+    expect(parsed.username).toBe('mongo');
+    expect(parsed.password).toBe('pass!23');
+    expect(process.env.MONGO_DATABASE_URL).toBe(config.mongoUrl);
   });
 });
 

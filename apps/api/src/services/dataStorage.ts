@@ -340,6 +340,42 @@ export async function deleteFilesForTask(
   await File.deleteMany({ _id: { $in: files.map((file) => file._id) } }).exec();
 }
 
+const detachedCleanupFilter: FilterQuery<FileDocument> = {
+  $and: [
+    { $or: [{ taskId: null }, { taskId: { $exists: false } }] },
+    { $or: [{ draftId: null }, { draftId: { $exists: false } }] },
+  ],
+};
+
+export async function removeDetachedFilesOlderThan(
+  cutoff: Date,
+): Promise<number> {
+  const cutoffTime = cutoff.getTime();
+  if (!Number.isFinite(cutoffTime)) {
+    return 0;
+  }
+  const filter: FilterQuery<FileDocument> = {
+    ...detachedCleanupFilter,
+    uploadedAt: { $lte: new Date(cutoffTime) },
+  };
+  const candidates = await File.find(filter)
+    .select(['_id', 'path', 'thumbnailPath'])
+    .lean();
+  if (candidates.length === 0) {
+    return 0;
+  }
+  await Promise.all(
+    candidates.map(async (file) => {
+      await unlinkWithinUploads(file.path);
+      await unlinkWithinUploads(file.thumbnailPath);
+    }),
+  );
+  await File.deleteMany({
+    _id: { $in: candidates.map((file) => file._id) },
+  }).exec();
+  return candidates.length;
+}
+
 export interface FileSyncSnapshot {
   totalFiles: number;
   linkedFiles: number;

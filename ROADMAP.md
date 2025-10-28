@@ -4,6 +4,7 @@
 
 - Railway использует `Dockerfile` для сборки сервиса; отдельная конфигурация Nixpacks больше не требуется.
 - `railway.json` фиксирует запуск через `pm2-runtime`, а Release workflow использует `railway up --yes` для безынтерактивного деплоя.
+- Workflow `Docker` поддерживает pull request из форков: шаг создания `.env` подставляет тестовые секреты и локальный `MONGO_DATABASE_URL`, чтобы сборка и тесты прошли до деплоя Railway.
 - Реализован архив задач: API `/api/v1/archives`, веб-раздел `/cp/archive`, очистка сообщений при удалении и полное удаление для маски 8.
 - Pretest e2e запускает установку Firefox и Chromium и диагностику `playwright doctor` с запасным `--list`,
   а CI публикует отчёт в сводке job.

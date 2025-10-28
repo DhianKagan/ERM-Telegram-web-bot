@@ -92,6 +92,7 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 - Основная ветка — `main`. История поддерживается линейной: приливочные ветки мержатся через rebase/squash без веток `staging` и `production`.
 
 - Любой pull request (включая ветки, временно нацеленные не на `main`) автоматически запускает workflows `CI`, `Lighthouse`, `Docker` и CodeQL‑проверку.
+- Если pull request приходит из форка и GitHub Actions не раскрывает секреты, workflow `Docker` подставляет тестовые значения (`BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `MONGO_DATABASE_URL`), чтобы линтеры, тесты и Docker build прошли перед деплоем на Railway.
 
 - Push в `main` дополнительно активирует workflow `Release`, который собирает проект и деплоит его на Railway через `pnpm dlx @railway/cli up`.
 - Перед сборкой Docker `Release` переиспользует кэш Playwright и запускает Chromium e2e‑тесты, чтобы подтвердить готовность интерфейса.

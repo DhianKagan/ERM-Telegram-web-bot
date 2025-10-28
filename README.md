@@ -100,7 +100,8 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 - В настройках GitHub Actions добавьте секреты `RAILWAY_TOKEN` (токен доступа Railway для `release.yml`) и `LHCI_GITHUB_APP_TOKEN` (токен установленного Lighthouse CI App).
 - На Railway задайте обязательные переменные `BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `SESSION_SECRET`, `APP_URL`, `MONGO_DATABASE_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`, `NODE_ENV=production`, а также дополнительные токены (например, `LHCI_GITHUB_APP_TOKEN`) при необходимости отчётности.
-- Файл `railway.json` фиксирует использование Nixpacks (`nixpacks.toml`) и запуск через `pm2`. При автосборке Railway выполнит `pnpm build`, после чего `Procfile` или CLI из `release.yml` развернёт свежую версию.
+- Файл `railway.json` указывает Railway собирать образ по `Dockerfile` и запускать приложение через `pm2`. Автосборка выполняет `docker build`, после чего `Procfile` или CLI из `release.yml` разворачивает свежую версию.
+- Стартовый скрипт контейнера вызывает `scripts/set_bot_commands.sh`, поэтому список команд Telegram обновляется при каждом деплое.
 
 ## Миграции
 
@@ -126,7 +127,7 @@ pnpm ts-node scripts/db/syncUserRoles.ts
 чтобы установка зависимостей не требовала токена.
 
 Dockerfile копирует каталог `patches` перед установкой зависимостей для применения патчей.
-Файл `nixpacks.toml` настраивает сборку на Railway через Nixpacks и выполняет установку зависимостей без режима offline.
+Railway повторно использует этот Dockerfile, поэтому отдельная конфигурация Nixpacks не требуется.
 
 ## Docker
 

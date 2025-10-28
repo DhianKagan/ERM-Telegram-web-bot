@@ -108,10 +108,9 @@ export async function fetchRoutePlanAnalytics(
         effectiveDate: 1,
         status: 1,
         metrics: 1,
-        routes: {
-          metrics: 1,
-          stops: { kind: 1, delayMinutes: 1 },
-        },
+        'routes.metrics.load': 1,
+        'routes.stops.kind': 1,
+        'routes.stops.delayMinutes': 1,
       },
     },
     { $sort: { effectiveDate: 1 } },

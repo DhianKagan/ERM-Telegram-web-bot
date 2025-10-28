@@ -135,7 +135,7 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
         {
           name: 'report.pdf',
           url: `/api/v1/files/${fileId.toHexString()}`,
-          thumbnailUrl: '/uploads/thumbs/report.jpg',
+          thumbnailUrl: `/api/v1/files/${fileId.toHexString()}?mode=inline&variant=thumbnail`,
           uploadedBy: 111,
           uploadedAt: new Date().toISOString(),
           type: 'application/pdf',
@@ -144,7 +144,7 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
         {
           name: 'invoice.pdf',
           url: `/api/v1/files/${foreignFileId.toHexString()}`,
-          thumbnailUrl: '/uploads/thumbs/invoice.jpg',
+          thumbnailUrl: `/api/v1/files/${foreignFileId.toHexString()}?mode=inline&variant=thumbnail`,
           uploadedBy: 222,
           uploadedAt: new Date().toISOString(),
           type: 'application/pdf',

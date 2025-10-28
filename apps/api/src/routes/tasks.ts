@@ -34,6 +34,11 @@ import { registerUploadedFile } from '../utils/requestUploads';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
+import {
+  buildFileUrl,
+  buildInlineFileUrl,
+  buildThumbnailUrl,
+} from '../utils/fileUrls';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -310,10 +315,11 @@ export const processUploads: RequestHandler = async (req, res, next) => {
           });
           registerUploadedFile(req, String(doc._id));
           await writeLog('Загружен файл', 'info', { userId, name: original });
+          const baseUrl = buildFileUrl(doc._id);
           return {
             name: original,
-            url: `/api/v1/files/${String(doc._id)}`,
-            thumbnailUrl: thumbRel ? `/uploads/${thumbRel}` : undefined,
+            url: baseUrl,
+            thumbnailUrl: thumbRel ? buildThumbnailUrl(doc._id) : undefined,
             uploadedBy: userId,
             uploadedAt: new Date(),
             type: f.mimetype,
@@ -438,8 +444,18 @@ const handleInlineUpload: RequestHandler = async (req, res) => {
       return;
     }
     await syncAttachmentsForRequest(req as RequestWithUser, [attachment]);
+    const inlineUrl = (() => {
+      const base = attachment.url;
+      if (typeof base !== 'string') {
+        return base;
+      }
+      const [pathPart] = base.split('?');
+      const segments = pathPart.split('/').filter(Boolean);
+      const identifier = segments[segments.length - 1];
+      return identifier ? buildInlineFileUrl(identifier) : base;
+    })();
     res.json({
-      url: `${attachment.url}?mode=inline`,
+      url: inlineUrl,
       thumbnailUrl: attachment.thumbnailUrl,
       originalUrl: attachment.url,
     });

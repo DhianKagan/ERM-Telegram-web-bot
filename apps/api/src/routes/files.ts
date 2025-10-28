@@ -66,8 +66,21 @@ router.get(
         }
       }
       const uploadsAbs = path.resolve(uploadsDir);
-      const target = path.resolve(uploadsAbs, file.path);
-      const relative = path.relative(uploadsAbs, target);
+      const variant =
+        typeof req.query.variant === 'string' ? req.query.variant : undefined;
+      const useThumbnail = variant === 'thumbnail';
+      if (useThumbnail && !file.thumbnailPath) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Файл не найден',
+          status: 404,
+          detail: 'Not Found',
+        });
+        return;
+      }
+      const relativePath = useThumbnail ? file.thumbnailPath ?? '' : file.path;
+      const uploadsTarget = path.resolve(uploadsAbs, relativePath);
+      const relative = path.relative(uploadsAbs, uploadsTarget);
       if (
         relative.startsWith('..') ||
         path.isAbsolute(relative) ||
@@ -86,15 +99,18 @@ router.get(
       const logMessage = inlineMode ? 'Просмотрен файл' : 'Скачан файл';
       void writeLog(logMessage, 'info', { userId: uid, name: file.name });
       if (inlineMode) {
-        res.type(file.type || 'application/octet-stream');
+        const mime = useThumbnail
+          ? 'image/jpeg'
+          : file.type || 'application/octet-stream';
+        res.type(mime);
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Disposition', 'inline');
-        res.sendFile(target, (error) => {
+        res.sendFile(uploadsTarget, (error) => {
           if (error) next(error);
         });
         return;
       }
-      res.download(target, safeName, (error) => {
+      res.download(uploadsTarget, safeName, (error) => {
         if (error) next(error);
       });
     } catch (err) {

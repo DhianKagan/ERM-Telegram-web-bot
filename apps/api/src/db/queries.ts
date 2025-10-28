@@ -35,6 +35,7 @@ import {
   extractAttachmentIds,
 } from '../utils/attachments';
 import { deleteFilesForTask } from '../services/dataStorage';
+import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -424,17 +425,19 @@ const mergeAttachmentSources = (
     ensureDate(sources.previous?.uploadedAt) ||
     ensureDate(sources.file?.uploadedAt) ||
     new Date();
-  const thumbnailFromFile =
-    sources.file?.thumbnailPath && sources.file.thumbnailPath.trim()
-      ? `/uploads/${sources.file.thumbnailPath}`
-      : undefined;
+  const thumbnailFromFile = (() => {
+    if (!sources.file?.thumbnailPath || !sources.file.thumbnailPath.trim()) {
+      return undefined;
+    }
+    return buildThumbnailUrl(sources.file._id);
+  })();
   return {
     ...sources.previous,
     ...current,
     name:
       pickString(current.name, sources.previous?.name, sources.file?.name) ??
       current.name,
-    url: sources.file ? `/api/v1/files/${String(sources.file._id)}` : current.url,
+    url: sources.file ? buildFileUrl(sources.file._id) : current.url,
     thumbnailUrl:
       pickString(current.thumbnailUrl, sources.previous?.thumbnailUrl) ??
       thumbnailFromFile,

@@ -67,6 +67,18 @@ import coerceTaskId from "../utils/coerceTaskId";
 
 type TaskKind = "task" | "request";
 
+const ensureInlineMode = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  if (value.startsWith("blob:") || value.startsWith("data:")) {
+    return value;
+  }
+  if (value.includes("mode=inline")) {
+    return value;
+  }
+  const separator = value.includes("?") ? "&" : "?";
+  return `${value}${separator}mode=inline`;
+};
+
 interface Props {
   onClose: () => void;
   onSave?: (data: Task | null) => void;
@@ -3190,6 +3202,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(
                             a.url,
                           );
+                          const thumbnail = ensureInlineMode(a.thumbnailUrl);
+                          const inlineUrl = ensureInlineMode(a.url) ?? a.url;
+                          const previewSrc = thumbnail ?? inlineUrl;
                           return (
                             <li
                               key={a.url}
@@ -3202,16 +3217,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     onClick={() =>
                                       setPreviewAttachment({
                                         name: a.name || "Изображение",
-                                        url: a.url,
+                                        url: inlineUrl,
                                       })
                                     }
                                     className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring focus:ring-indigo-200"
                                     title={a.name || "Изображение"}
                                   >
                                     <img
-                                      srcSet={`${a.thumbnailUrl || a.url} 1x, ${a.url} 2x`}
+                                      srcSet={`${previewSrc} 1x, ${inlineUrl} 2x`}
                                       sizes="80px"
-                                      src={a.thumbnailUrl || a.url}
+                                      src={previewSrc}
                                       alt={a.name || "Изображение"}
                                       className="h-full w-full object-cover transition group-hover:scale-105"
                                     />

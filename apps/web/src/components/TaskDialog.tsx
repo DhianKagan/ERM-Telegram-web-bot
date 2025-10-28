@@ -40,11 +40,6 @@ import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
 import { expandLink } from "../services/maps";
-import {
-  list as listTaskTemplates,
-  create as createTaskTemplate,
-  type TaskTemplate as TaskTemplateModel,
-} from "../services/taskTemplates";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import haversine from "../utils/haversine";
@@ -66,7 +61,7 @@ import {
   getPriorityBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
-} from "../columns/taskBadgeClassNames";
+} from "../columns/taskColumns";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
 
@@ -99,8 +94,6 @@ interface InitialValues {
   endLink: string;
   startDate: string;
   dueDate: string;
-  deliveryWindowStart: string;
-  deliveryWindowEnd: string;
   attachments: Attachment[];
   distanceKm: number | null;
   cargoLength: string;
@@ -614,8 +607,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     assigneeId: string;
     startDate?: string;
     dueDate?: string;
-    deliveryWindowStart?: string;
-    deliveryWindowEnd?: string;
   };
   const taskFormResolver = React.useCallback<Resolver<TaskFormValues>>(
     async (values) => {
@@ -629,22 +620,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         typeof values.startDate === "string" ? values.startDate.trim() : "";
       const normalizedDueRaw =
         typeof values.dueDate === "string" ? values.dueDate.trim() : "";
-      const normalizedWindowStartRaw =
-        typeof values.deliveryWindowStart === "string"
-          ? values.deliveryWindowStart.trim()
-          : "";
-      const normalizedWindowEndRaw =
-        typeof values.deliveryWindowEnd === "string"
-          ? values.deliveryWindowEnd.trim()
-          : "";
       const normalized: TaskFormValues = {
         title: normalizedTitle,
         description: normalizedDescription,
         assigneeId: normalizedAssignee,
         startDate: normalizedStartRaw || undefined,
         dueDate: normalizedDueRaw || undefined,
-        deliveryWindowStart: normalizedWindowStartRaw || undefined,
-        deliveryWindowEnd: normalizedWindowEndRaw || undefined,
       };
       const fieldErrors: FieldErrors<TaskFormValues> = {};
       if (!normalizedTitle) {
@@ -673,20 +654,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           };
         }
       }
-      if (normalized.deliveryWindowStart && normalized.deliveryWindowEnd) {
-        const windowStart = new Date(normalized.deliveryWindowStart).getTime();
-        const windowEnd = new Date(normalized.deliveryWindowEnd).getTime();
-        if (
-          Number.isFinite(windowStart) &&
-          Number.isFinite(windowEnd) &&
-          windowEnd < windowStart
-        ) {
-          fieldErrors.deliveryWindowEnd = {
-            type: "validate",
-            message: t("deliveryWindowInvalidRange"),
-          };
-        }
-      }
       return {
         values: Object.keys(fieldErrors).length ? {} : normalized,
         errors: fieldErrors,
@@ -712,8 +679,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       assigneeId: user ? String(user.telegram_id) : "",
       startDate: "",
       dueDate: "",
-      deliveryWindowStart: "",
-      deliveryWindowEnd: "",
     },
   });
   const resetRef = React.useRef(reset);
@@ -819,9 +784,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [transportVehicleName, setTransportVehicleName] = React.useState<string>("");
   const [transportVehicleRegistration, setTransportVehicleRegistration] =
     React.useState<string>("");
-  const autoDriverRef = React.useRef<string | null>(null);
-  const prevVehicleIdRef = React.useRef<string | null>(null);
-  const initialVehicleSyncRef = React.useRef(true);
   const [transportDriverOptions, setTransportDriverOptions] =
     React.useState<TransportDriverOption[]>([]);
   const [transportVehicleOptions, setTransportVehicleOptions] =
@@ -832,11 +794,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     React.useState<string | null>(null);
   const [transportOptionsLoaded, setTransportOptionsLoaded] =
     React.useState(false);
-  const [templates, setTemplates] = React.useState<TaskTemplateModel[]>([]);
-  const [templatesLoading, setTemplatesLoading] = React.useState(false);
-  const [templatesError, setTemplatesError] = React.useState<string | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
-  const [templateSaving, setTemplateSaving] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
   const [paymentAmount, setPaymentAmount] = React.useState(() =>
     formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
@@ -958,14 +915,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (transportVehicleRegistration) {
         setTransportVehicleRegistration("");
       }
-      if (
-        autoDriverRef.current &&
-        autoDriverRef.current === transportDriverId.trim()
-      ) {
-        autoDriverRef.current = null;
-      }
-      prevVehicleIdRef.current = null;
-      initialVehicleSyncRef.current = false;
       return;
     }
     const option = transportVehicleOptions.find(
@@ -979,46 +928,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setTransportVehicleRegistration(option.registrationNumber);
       }
     }
-    const currentDriverValue = transportDriverId.trim();
-    const previousVehicleId = prevVehicleIdRef.current;
-    const vehicleChanged =
-      previousVehicleId !== null && previousVehicleId !== transportVehicleId;
-    const driverWasAuto =
-      autoDriverRef.current !== null &&
-      autoDriverRef.current === currentDriverValue;
-    if (
-      option &&
-      typeof option.defaultDriverId === "number" &&
-      Number.isFinite(option.defaultDriverId) &&
-      option.defaultDriverId > 0
-    ) {
-      const driverValue = String(Math.trunc(option.defaultDriverId));
-      const shouldApplyDefault =
-        currentDriverValue.length === 0 ||
-        driverWasAuto ||
-        (vehicleChanged && !initialVehicleSyncRef.current);
-      if (shouldApplyDefault && currentDriverValue !== driverValue) {
-        setTransportDriverId(driverValue);
-      }
-      if (shouldApplyDefault) {
-        autoDriverRef.current = driverValue;
-      } else if (
-        autoDriverRef.current &&
-        autoDriverRef.current !== currentDriverValue
-      ) {
-        autoDriverRef.current = null;
-      }
-    } else if (driverWasAuto) {
-      autoDriverRef.current = null;
-    }
-    prevVehicleIdRef.current = transportVehicleId;
-    initialVehicleSyncRef.current = false;
   }, [
     transportVehicleId,
     transportVehicleOptions,
     transportVehicleName,
     transportVehicleRegistration,
-    transportDriverId,
   ]);
   const prevTransportRequiresRef = React.useRef(transportRequiresDetails);
   React.useEffect(() => {
@@ -1093,7 +1007,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         name: transportVehicleName || transportVehicleId,
         registrationNumber: transportVehicleRegistration || "",
         transportType: allowedType,
-        defaultDriverId: null,
       });
     }
     return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
@@ -1367,30 +1280,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
             )
           : "";
-      const windowStartCandidate = parseIsoDateMemo(
-        ((taskData as Record<string, unknown>).delivery_window_start as
-          | string
-          | undefined) ??
-          ((taskData as Record<string, unknown>).deliveryWindowStart as
-            | string
-            | undefined) ??
-          null,
-      );
-      const windowEndCandidate = parseIsoDateMemo(
-        ((taskData as Record<string, unknown>).delivery_window_end as
-          | string
-          | undefined) ??
-          ((taskData as Record<string, unknown>).deliveryWindowEnd as
-            | string
-            | undefined) ??
-          null,
-      );
-      const deliveryWindowStart = windowStartCandidate
-        ? formatInputDate(windowStartCandidate)
-        : startDate;
-      const deliveryWindowEnd = windowEndCandidate
-        ? formatInputDate(windowEndCandidate)
-        : dueDate;
       const diff =
         startDate && dueDate
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
@@ -1403,8 +1292,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         assigneeId,
         startDate,
         dueDate,
-        deliveryWindowStart: deliveryWindowStart || "",
-        deliveryWindowEnd: deliveryWindowEnd || "",
       });
       hasAutofilledAssignee.current = true;
       setTaskType(normalizedTaskType);
@@ -1534,8 +1421,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         endLink: endLocationLink,
         startDate,
         dueDate,
-        deliveryWindowStart: deliveryWindowStart || "",
-        deliveryWindowEnd: deliveryWindowEnd || "",
         attachments: ((taskData.attachments as Attachment[]) ||
           []) as Attachment[],
         distanceKm: typeof distanceValue === "number" ? distanceValue : null,
@@ -1673,14 +1558,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
     if (values.startDate) payload.start_date = values.startDate;
     if (values.dueDate) payload.due_date = values.dueDate;
-    if (Object.prototype.hasOwnProperty.call(values, "deliveryWindowStart")) {
-      const windowStartValue = values.deliveryWindowStart?.trim() || "";
-      payload.delivery_window_start = windowStartValue ? windowStartValue : null;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, "deliveryWindowEnd")) {
-      const windowEndValue = values.deliveryWindowEnd?.trim() || "";
-      payload.delivery_window_end = windowEndValue ? windowEndValue : null;
-    }
     if (start) payload.start_location = start;
     if (startLink) payload.start_location_link = startLink;
     if (end) payload.end_location = end;
@@ -1815,7 +1692,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     status,
     finishCoordinates,
     requestId,
-    DEFAULT_REQUEST_TYPE,
   ]);
 
   React.useEffect(() => {
@@ -1945,8 +1821,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       endLink: "",
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
-      deliveryWindowStart: defaultStartDate,
-      deliveryWindowEnd: defaultDueDate,
       attachments: [],
       distanceKm: null,
       cargoLength: "",
@@ -1972,8 +1846,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
-      deliveryWindowStart: defaultStartDate,
-      deliveryWindowEnd: defaultDueDate,
     });
     hasAutofilledAssignee.current = false;
     setCargoLength("");
@@ -2053,127 +1925,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [user, canEditAll, entityKind]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    setTemplatesLoading(true);
-    setTemplatesError(null);
-    listTaskTemplates()
-      .then((items) => {
-        if (cancelled) return;
-        setTemplates(items);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        console.warn("Не удалось загрузить шаблоны задач", error);
-        setTemplates([]);
-        const reason =
-          error instanceof Error && error.message
-            ? error.message
-            : t("taskTemplateLoadFailed");
-        setTemplatesError(reason);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setTemplatesLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
-
-  const collectDraftPayloadRef = React.useRef(collectDraftPayload);
-
-  React.useEffect(() => {
-    collectDraftPayloadRef.current = collectDraftPayload;
-  }, [collectDraftPayload]);
-
-  const templateOptions = React.useMemo(
-    () =>
-      templates.map((item) => ({
-        value: item._id,
-        label: item.name,
-      })),
-    [templates],
-  );
-
-  const handleTemplateChange = React.useCallback(
-    (templateId: string) => {
-      setSelectedTemplateId(templateId);
-      if (!templateId) {
-        return;
-      }
-      const template = templates.find((item) => item._id === templateId);
-      if (!template) {
-        return;
-      }
-      const payload =
-        template.data && typeof template.data === "object"
-          ? (template.data as Partial<Task> & Record<string, unknown>)
-          : {};
-      applyTaskDetails(payload);
-      setHasDraftChanges(true);
-      skipNextDraftSyncRef.current = false;
-    },
-    [templates, applyTaskDetails, setHasDraftChanges],
-  );
-
-  const handleSaveTemplate = React.useCallback(async () => {
-    if (!editing || templateSaving) {
-      return;
-    }
-    const name = window.prompt(t("taskTemplateNamePrompt"));
-    if (name === null) {
-      return;
-    }
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setAlertMsg(t("taskTemplateNameRequired"));
-      return;
-    }
-    let templatePayload: Record<string, unknown>;
-    try {
-      templatePayload = {
-        ...collectDraftPayloadRef.current(),
-        kind: entityKind,
-      };
-    } catch (error) {
-      console.error("Не удалось подготовить данные шаблона", error);
-      setAlertMsg(t("taskTemplateSaveError"));
-      return;
-    }
-    setTemplateSaving(true);
-    try {
-      const created = await createTaskTemplate({
-        name: trimmed,
-        data: templatePayload,
-      });
-      setTemplates((prev) => {
-        const next = prev.filter((item) => item._id !== created._id);
-        next.push(created);
-        return next;
-      });
-      setTemplatesError(null);
-      setSelectedTemplateId(created._id);
-      setAlertMsg(t("taskTemplateSaveSuccess"));
-    } catch (error) {
-      console.error("Не удалось сохранить шаблон задачи", error);
-      const reason =
-        error instanceof Error && error.message
-          ? error.message
-          : t("taskTemplateSaveError");
-      setAlertMsg(reason);
-    } finally {
-      setTemplateSaving(false);
-    }
-  }, [
-    collectDraftPayloadRef,
-    editing,
-    entityKind,
-    t,
-    templateSaving,
-  ]);
-
-  React.useEffect(() => {
     if (isEdit) {
       setDraft(null);
       return;
@@ -2207,8 +1958,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           window.setTimeout(() => {
             if (cancelled) return;
             try {
-              const snapshot = collectDraftPayloadRef.current();
-              draftSnapshotRef.current = JSON.stringify(snapshot);
+              draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
             } catch (error) {
               console.warn("Не удалось зафиксировать состояние черновика", error);
             }
@@ -2856,8 +2606,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     );
     setDistanceKm(d.distanceKm);
     setShowLogistics(Boolean(d.showLogistics));
-    setSelectedTemplateId("");
-    setTemplatesError(null);
     skipNextDraftSyncRef.current = true;
   };
 
@@ -3050,60 +2798,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               </button>
             </div>
             <>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div>
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="task-template-select"
-                  >
-                    {t("taskTemplateSelect")}
-                  </label>
-                  <select
-                    id="task-template-select"
-                    value={selectedTemplateId}
-                    onChange={(event) =>
-                      handleTemplateChange(event.target.value)
-                    }
-                    className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                    disabled={
-                      !editing ||
-                      templatesLoading ||
-                      templateOptions.length === 0
-                    }
-                  >
-                    <option value="">
-                      {t("taskTemplateSelectPlaceholder")}
-                    </option>
-                    {templateOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {templatesLoading ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      {t("loading")}
-                    </p>
-                  ) : templatesError ? (
-                    <p className="mt-1 text-xs text-red-600">{templatesError}</p>
-                  ) : templateOptions.length === 0 ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      {t("taskTemplateEmpty")}
-                    </p>
-                  ) : null}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSaveTemplate}
-                  disabled={!editing || templateSaving}
-                  className="justify-self-start sm:justify-self-end"
-                >
-                  {templateSaving
-                    ? t("taskTemplateSaving")
-                    : t("taskTemplateSaveAction")}
-                </Button>
-              </div>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">
                   <div>
@@ -3696,38 +3390,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-dialog-window-start"
-                      >
-                        {t("deliveryWindowStart")}
-                      </label>
-                      <input
-                        id="task-dialog-window-start"
-                        type="datetime-local"
-                        {...register("deliveryWindowStart")}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-dialog-window-end"
-                      >
-                        {t("deliveryWindowEnd")}
-                      </label>
-                      <input
-                        id="task-dialog-window-end"
-                        type="datetime-local"
-                        {...register("deliveryWindowEnd")}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
                       <label className="block text-sm font-medium">
                         {t("taskType")}
                       </label>
@@ -3838,7 +3500,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           onChange={(option) => {
                             const value = option?.value ?? "";
                             setTransportDriverId(value);
-                            autoDriverRef.current = null;
                             if (!value) {
                               setTransportDriverName("");
                               return;

@@ -2,15 +2,10 @@
 // Модули: child_process, path, services/optimizer, config
 import { spawn } from 'child_process';
 import path from 'path';
+import type { TaskLike } from '../optimizer';
 import { vrpOrToolsEnabled } from '../../config';
 
-type TaskIdentifier = string | { toString(): string };
-
-export interface SolverTask {
-  id?: string;
-  _id?: TaskIdentifier;
-  startCoordinates?: { lat: number; lng: number } | null;
-  coordinates?: { lat: number; lng: number } | null;
+export interface SolverTask extends TaskLike {
   demand?: number;
   serviceMinutes?: number;
   timeWindowMinutes?: [number, number];
@@ -24,13 +19,11 @@ export interface OrToolsSolveRequest {
     time_window?: [number, number];
   }>;
   distance_matrix: number[][];
-  time_matrix?: number[][];
   vehicle_capacity?: number;
   vehicle_count?: number;
   depot_index?: number;
   time_windows?: Array<[number, number]>;
   time_limit_seconds?: number;
-  average_speed_kmph?: number;
 }
 
 export interface OrToolsSolveResult {
@@ -42,39 +35,6 @@ export interface OrToolsSolveResult {
 }
 
 const pythonSolverPath = path.resolve(__dirname, 'or_tools_solver.py');
-
-const extractCoordinates = (
-  task: SolverTask,
-): { lat: number; lng: number } | null => {
-  const source = task.startCoordinates ?? task.coordinates ?? null;
-  if (!source) {
-    return null;
-  }
-  const { lat, lng } = source;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return null;
-  }
-  return { lat, lng };
-};
-
-const stringifyTaskId = (task: SolverTask, fallback: string): string => {
-  if (typeof task.id === 'string' && task.id.trim().length > 0) {
-    return task.id;
-  }
-  const raw = task._id;
-  if (!raw) {
-    return fallback;
-  }
-  if (typeof raw === 'string' && raw.trim().length > 0) {
-    return raw;
-  }
-  try {
-    const value = raw.toString();
-    return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
-  } catch {
-    return fallback;
-  }
-};
 
 const parseWarnings = (source: unknown): string[] => {
   if (!Array.isArray(source)) {
@@ -168,8 +128,8 @@ const buildDistanceMatrix = (tasks: SolverTask[]): number[][] => {
       if (fromTask === toTask) {
         return 0;
       }
-      const from = extractCoordinates(fromTask);
-      const to = extractCoordinates(toTask);
+      const from = fromTask.startCoordinates;
+      const to = toTask.startCoordinates;
       if (!from || !to) {
         return 0;
       }
@@ -182,38 +142,37 @@ const buildTimeWindows = (tasks: SolverTask[]): Array<[number, number]> =>
   tasks.map((task) => task.timeWindowMinutes ?? [0, 24 * 60]);
 
 const buildPythonTasks = (tasks: SolverTask[]): OrToolsSolveRequest['tasks'] =>
-  tasks.map((task, index) => ({
-    id: stringifyTaskId(task, `task-${index}`),
+  tasks.map((task) => ({
+    id: task._id.toString(),
     demand: task.demand,
     service_minutes: task.serviceMinutes,
-    time_window: task.timeWindowMinutes,
   }));
 
 export const createSampleProblem = (): OrToolsSolveRequest => {
   const sampleTasks: SolverTask[] = [
     {
-      id: 'depot',
+      _id: { toString: () => 'depot' },
       startCoordinates: { lat: 50.4501, lng: 30.5234 },
       demand: 0,
       serviceMinutes: 0,
       timeWindowMinutes: [8 * 60, 18 * 60],
     },
     {
-      id: 'task-1',
+      _id: { toString: () => 'task-1' },
       startCoordinates: { lat: 50.4547, lng: 30.5166 },
       demand: 1,
       serviceMinutes: 15,
       timeWindowMinutes: [9 * 60, 12 * 60],
     },
     {
-      id: 'task-2',
+      _id: { toString: () => 'task-2' },
       startCoordinates: { lat: 50.4591, lng: 30.5796 },
       demand: 1,
       serviceMinutes: 20,
       timeWindowMinutes: [10 * 60, 14 * 60],
     },
     {
-      id: 'task-3',
+      _id: { toString: () => 'task-3' },
       startCoordinates: { lat: 50.4312, lng: 30.5155 },
       demand: 2,
       serviceMinutes: 25,

@@ -25,7 +25,6 @@ jest.mock('../src/utils/formatTask', () => ({
     inlineImages: undefined,
     sections: [],
   })),
-  convertHtmlToMarkdown: jest.fn(() => 'Комментарий'),
 }));
 
 const mockUpdateOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue(undefined) }));

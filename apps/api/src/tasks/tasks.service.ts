@@ -1,5 +1,5 @@
 // Сервис задач через репозиторий.
-// Основные модули: db/queries, services/route, shared, logisticsEvents
+// Основные модули: db/queries, services/route, shared
 import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
@@ -9,9 +9,6 @@ import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
-import { notifyTasksChanged } from '../services/logisticsEvents';
-import { FleetVehicle } from '../db/models/fleet';
-import { Types } from 'mongoose';
 
 interface TasksRepository {
   createTask(
@@ -77,21 +74,6 @@ const setMetric = (
   target[key as string] = value;
 };
 
-const extractTaskId = (task: TaskDocument | null | undefined): string | null => {
-  if (!task) {
-    return null;
-  }
-  const rawId = (task as { _id?: unknown; id?: unknown })._id ?? (task as { id?: unknown }).id;
-  if (typeof rawId === 'string' && rawId.trim()) {
-    return rawId.trim();
-  }
-  if (rawId && typeof rawId === 'object' && 'toString' in rawId) {
-    const converted = (rawId as { toString(): string }).toString();
-    return converted.trim() ? converted.trim() : null;
-  }
-  return null;
-};
-
 class TasksService {
   repo: TasksRepository;
   constructor(repo: RepositoryWithModel) {
@@ -146,7 +128,6 @@ class TasksService {
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
-    await this.applyDefaultTransportDriver(payload);
     try {
       const task =
         userId === undefined
@@ -158,10 +139,6 @@ class TasksService {
         task,
         Array.isArray(task.attachments) && task.attachments.length > 0,
       );
-      const identifier = extractTaskId(task);
-      if (identifier) {
-        notifyTasksChanged('created', [identifier]);
-      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка создания задачи с вложениями', 'error', {
@@ -188,7 +165,6 @@ class TasksService {
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
-    await this.applyDefaultTransportDriver(payload);
     try {
       const task = await this.repo.updateTask(id, payload, userId);
       await clearRouteCache();
@@ -197,10 +173,6 @@ class TasksService {
         task,
         Object.prototype.hasOwnProperty.call(payload, 'attachments'),
       );
-      const identifier = extractTaskId(task);
-      if (identifier) {
-        notifyTasksChanged('updated', [identifier]);
-      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка обновления вложений задачи', 'error', {
@@ -292,90 +264,9 @@ class TasksService {
     }
   }
 
-  private normalizeVehicleId(value: unknown): string | null {
-    if (!value) {
-      return null;
-    }
-    if (value instanceof Types.ObjectId) {
-      return value.toHexString();
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      'toString' in value &&
-      typeof (value as { toString?: unknown }).toString === 'function'
-    ) {
-      const converted = (value as { toString(): string }).toString();
-      const trimmed = converted.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    }
-    return null;
-  }
-
-  private async applyDefaultTransportDriver(
-    data: Partial<TaskDocument> = {},
-  ): Promise<void> {
-    if (!data) return;
-    const hasVehicleField = Object.prototype.hasOwnProperty.call(
-      data,
-      'transport_vehicle_id',
-    );
-    if (!hasVehicleField) {
-      return;
-    }
-    const vehicleId = this.normalizeVehicleId(data.transport_vehicle_id);
-    if (!vehicleId) {
-      return;
-    }
-    const hasDriverField = Object.prototype.hasOwnProperty.call(
-      data,
-      'transport_driver_id',
-    );
-    if (hasDriverField) {
-      const rawDriver = (data as Record<string, unknown>).transport_driver_id;
-      if (
-        rawDriver !== undefined &&
-        rawDriver !== null &&
-        !(typeof rawDriver === 'string' && rawDriver.trim().length === 0)
-      ) {
-        return;
-      }
-    }
-    const vehicle = await FleetVehicle.findById(vehicleId)
-      .select({ defaultDriverId: 1 })
-      .lean<{ defaultDriverId?: number | null }>()
-      .exec();
-    if (
-      !vehicle ||
-      typeof vehicle.defaultDriverId !== 'number' ||
-      !Number.isFinite(vehicle.defaultDriverId) ||
-      vehicle.defaultDriverId <= 0
-    ) {
-      return;
-    }
-    (data as Record<string, unknown>).transport_driver_id = Math.trunc(
-      vehicle.defaultDriverId,
-    );
-    if (
-      Object.prototype.hasOwnProperty.call(data, 'transport_driver_name') &&
-      ((data as Record<string, unknown>).transport_driver_name === '' ||
-        (data as Record<string, unknown>).transport_driver_name === null)
-    ) {
-      delete (data as Record<string, unknown>).transport_driver_name;
-    }
-  }
-
   async addTime(id: string, minutes: number) {
     const task = await this.repo.addTime(id, minutes);
     await clearRouteCache();
-    const identifier = extractTaskId(task);
-    if (identifier) {
-      notifyTasksChanged('updated', [identifier]);
-    }
     return task;
   }
 
@@ -401,10 +292,6 @@ class TasksService {
     await this.applyTaskTypeTopic(payload);
     await this.repo.bulkUpdate(ids, payload);
     await clearRouteCache();
-    const normalizedIds = ids.map((value) => String(value)).filter((value) => value.trim());
-    if (normalizedIds.length) {
-      notifyTasksChanged('bulk', normalizedIds);
-    }
   }
 
   summary(filters: SummaryFilters) {
@@ -414,10 +301,6 @@ class TasksService {
   async remove(id: string, actorId?: number) {
     const task = await this.repo.deleteTask(id, actorId);
     await clearRouteCache();
-    const identifier = extractTaskId(task);
-    if (identifier) {
-      notifyTasksChanged('deleted', [identifier]);
-    }
     return task;
   }
 

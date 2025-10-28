@@ -25,12 +25,7 @@
       "shared/*": ["../../packages/shared/src/*"]
     },
     "composite": true,
-    "types": [
-      "vite/client",
-      "./src/types/telegram",
-      "./src/types/leaflet",
-      "./src/types/leaflet-css"
-    ],
+    "types": ["vite/client", "./src/types/telegram", "./src/types/leaflet"],
     "typeRoots": ["./src/types", "../../node_modules/@types"]
   },
   "include": ["src"],

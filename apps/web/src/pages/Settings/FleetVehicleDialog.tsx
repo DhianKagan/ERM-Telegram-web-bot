@@ -1,13 +1,11 @@
 // Назначение: модальное окно создания и редактирования транспорта
 // Основные модули: React, ConfirmDialog, services/fleets
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import type { FleetVehicleDto } from "shared";
 import type { FleetVehiclePayload } from "../../services/fleets";
-import { fetchUsers } from "../../services/users";
-import type { User } from "../../types/user";
 
 interface FleetVehicleDialogProps {
   open: boolean;
@@ -31,7 +29,6 @@ interface FormState {
   fuelAverageConsumption: string;
   fuelSpentTotal: string;
   currentTasks: string;
-  defaultDriverId: string;
 }
 
 const emptyForm: FormState = {
@@ -46,7 +43,6 @@ const emptyForm: FormState = {
   fuelAverageConsumption: "0",
   fuelSpentTotal: "0",
   currentTasks: "",
-  defaultDriverId: "",
 };
 
 const parseTasks = (value: string): string[] =>
@@ -68,28 +64,6 @@ export default function FleetVehicleDialog({
   const [error, setError] = useState<string | null>(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState<string | null>(null);
-  const usersLoadedRef = useRef(false);
-
-  const loadUsers = useCallback(async () => {
-    setUsersLoading(true);
-    setUsersError(null);
-    try {
-      const list = await fetchUsers();
-      setUsers(list);
-      usersLoadedRef.current = true;
-    } catch (loadError) {
-      const message =
-        loadError instanceof Error
-          ? loadError.message
-          : "Не удалось загрузить сотрудников";
-      setUsersError(message);
-    } finally {
-      setUsersLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (open && vehicle) {
@@ -108,10 +82,6 @@ export default function FleetVehicleDialog({
         fuelAverageConsumption: String(vehicle.fuelAverageConsumption),
         fuelSpentTotal: String(vehicle.fuelSpentTotal),
         currentTasks: currentTasks.join("\n"),
-        defaultDriverId:
-          typeof vehicle.defaultDriverId === "number"
-            ? String(vehicle.defaultDriverId)
-            : "",
       });
       setError(null);
       setConfirmSave(false);
@@ -132,20 +102,9 @@ export default function FleetVehicleDialog({
     }
   }, [open, mode, vehicle]);
 
-  useEffect(() => {
-    if (!open || usersLoadedRef.current || usersLoading) {
-      return;
-    }
-    void loadUsers();
-  }, [open, usersLoading, loadUsers]);
-
   const isUpdate = mode === "update" && vehicle;
 
   const payload = useMemo(() => {
-    const driverCandidate = form.defaultDriverId.trim();
-    const parsedDriver = Number.parseInt(driverCandidate, 10);
-    const defaultDriverId =
-      Number.isFinite(parsedDriver) && parsedDriver > 0 ? parsedDriver : null;
     const base: FleetVehiclePayload = {
       name: form.name.trim(),
       registrationNumber: form.registrationNumber.trim().toUpperCase(),
@@ -158,43 +117,9 @@ export default function FleetVehicleDialog({
       fuelAverageConsumption: Number(form.fuelAverageConsumption || "0"),
       fuelSpentTotal: Number(form.fuelSpentTotal || "0"),
       currentTasks: parseTasks(form.currentTasks),
-      defaultDriverId,
     };
     return base;
   }, [form]);
-
-  const driverOptions = useMemo(() => {
-    const options = users
-      .filter(
-        (user): user is User & { telegram_id: number } =>
-          typeof user.telegram_id === "number" && Number.isFinite(user.telegram_id),
-      )
-      .map((user) => {
-        const displayName =
-          typeof user.name === "string" && user.name.trim().length > 0
-            ? user.name.trim()
-            : typeof user.telegram_username === "string" && user.telegram_username.trim().length > 0
-              ? user.telegram_username.trim()
-              : typeof user.username === "string" && user.username.trim().length > 0
-                ? user.username.trim()
-                : `ID ${user.telegram_id}`;
-        return {
-          id: user.telegram_id,
-          label: displayName,
-        };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, "ru"));
-    const selectedValue = form.defaultDriverId.trim();
-    const parsedSelected = Number.parseInt(selectedValue, 10);
-    if (
-      Number.isFinite(parsedSelected) &&
-      parsedSelected > 0 &&
-      !options.some((option) => option.id === parsedSelected)
-    ) {
-      options.push({ id: parsedSelected, label: `ID ${parsedSelected}` });
-    }
-    return options;
-  }, [users, form.defaultDriverId]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -401,42 +326,6 @@ export default function FleetVehicleDialog({
             disabled={saving}
             required
           />
-        </label>
-        <label className="flex flex-col gap-1 md:col-span-2">
-          <span className="text-sm font-medium">Водитель по умолчанию</span>
-          <select
-            className="h-10 w-full rounded border px-3"
-            value={form.defaultDriverId}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, defaultDriverId: event.target.value }))
-            }
-            disabled={saving || usersLoading}
-          >
-            <option value="">Не выбран</option>
-            {driverOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {usersLoading ? (
-            <span className="text-xs text-slate-500">Загружаем список сотрудников…</span>
-          ) : null}
-          {usersError ? (
-            <span className="text-xs text-red-600">
-              {usersError}
-              <button
-                type="button"
-                className="ml-2 text-accentPrimary underline decoration-dotted"
-                onClick={() => {
-                  usersLoadedRef.current = false;
-                  void loadUsers();
-                }}
-              >
-                Повторить
-              </button>
-            </span>
-          ) : null}
         </label>
       </div>
       <label className="flex flex-col gap-1">

@@ -25,7 +25,6 @@ jest.mock('../src/db/queries', () => ({
     if (String(id) === '5') return { roleId: '686633fdf6896f1ad3fa063e' };
     return null;
   }),
-  getUsersMap: jest.fn(async () => ({})),
   createUser: jest.fn(async () => ({ username: 'u' })),
   updateUser: jest.fn(async () => ({
     roleId: '686591126cc86a6bd16c18af',

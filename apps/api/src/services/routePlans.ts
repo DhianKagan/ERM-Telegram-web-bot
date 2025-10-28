@@ -1,5 +1,5 @@
 // Назначение: сервис управления маршрутными планами и уведомлениями.
-// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries, logisticsEvents
+// Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries
 
 import { Types } from 'mongoose';
 import {
@@ -18,31 +18,13 @@ import {
 import { Task } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
-import {
-  notifyRoutePlanRemoved,
-  notifyRoutePlanUpdated,
-  notifyTasksChanged,
-} from './logisticsEvents';
 import { getUser } from '../db/queries';
-import haversine from '../utils/haversine';
 
 const TITLE_MAX_LENGTH = 120;
 const NOTES_MAX_LENGTH = 1024;
 const VEHICLE_NAME_MAX_LENGTH = 80;
 const DRIVER_NAME_MAX_LENGTH = 80;
 const ADDRESS_MAX_LENGTH = 200;
-const DEFAULT_SPEED_KMPH = 35;
-const PICKUP_SERVICE_MINUTES = 5;
-const DROPOFF_SERVICE_MINUTES = 6;
-
-type WindowMinutes = { start?: number | null; end?: number | null };
-
-const timePartFormatter = new Intl.DateTimeFormat('uk-UA', {
-  timeZone: PROJECT_TIMEZONE,
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
 
 interface TaskSource {
   _id: Types.ObjectId | string | { toString(): string };
@@ -52,9 +34,6 @@ interface TaskSource {
   start_location?: string | null;
   end_location?: string | null;
   route_distance_km?: number | null;
-  delivery_window_start?: Date | string | null;
-  delivery_window_end?: Date | string | null;
-  cargo_weight_kg?: number | null;
 }
 
 export interface RoutePlanRouteInput {
@@ -66,13 +45,6 @@ export interface RoutePlanRouteInput {
   driverName?: string | null;
   notes?: string | null;
   tasks: string[];
-  metrics?: {
-    distanceKm?: number | null;
-    etaMinutes?: number | null;
-    load?: number | null;
-    tasks?: number;
-    stops?: number;
-  } | null;
 }
 
 export interface RoutePlanUpdatePayload {
@@ -104,28 +76,8 @@ type BuildResult = {
     totalRoutes: number;
     totalTasks: number;
     totalStops: number;
-    totalEtaMinutes?: number | null;
-    totalLoad?: number | null;
   };
   taskIds: Types.ObjectId[];
-};
-
-type NormalizedRouteInput = {
-  id?: string;
-  order: number;
-  vehicleId?: Types.ObjectId | null;
-  vehicleName?: string | null;
-  driverId?: number | null;
-  driverName?: string | null;
-  notes?: string | null;
-  tasks: string[];
-  metrics?: {
-    distanceKm?: number | null;
-    etaMinutes?: number | null;
-    load?: number | null;
-    tasks?: number;
-    stops?: number;
-  };
 };
 
 const statusTransitions: Record<RoutePlanStatus, RoutePlanStatus[]> = {
@@ -139,22 +91,6 @@ const roundDistance = (value: number | null | undefined): number | null => {
     return null;
   }
   return Number(value.toFixed(1));
-};
-
-const roundMinutesValue = (value: unknown): number | null => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-  return Math.max(0, Math.round(numeric));
-};
-
-const normalizeLoadValue = (value: unknown): number | null => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-  return Number(Math.max(0, numeric).toFixed(2));
 };
 
 const normalizeString = (value: unknown, limit: number): string | null => {
@@ -186,26 +122,6 @@ const parseNumeric = (value: unknown): number | null => {
     }
   }
   return null;
-};
-
-const toOptionalNumber = (value: unknown): number | null | undefined => {
-  if (value === null) {
-    return null;
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return Number(value);
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-    const parsed = Number.parseFloat(trimmed);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return undefined;
 };
 
 const parseObjectId = (value: unknown): Types.ObjectId | null => {
@@ -240,203 +156,6 @@ const normalizeId = (value: unknown): string | null => {
     return normalizeId((value as { toString(): string }).toString());
   }
   return null;
-};
-
-const extractWindowMinutes = (
-  value: Date | string | null | undefined,
-): number | null => {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  try {
-    const parts = timePartFormatter.formatToParts(date);
-    const hourPart = parts.find((part) => part.type === 'hour')?.value;
-    const minutePart = parts.find((part) => part.type === 'minute')?.value;
-    if (!hourPart || !minutePart) {
-      return null;
-    }
-    const hours = Number.parseInt(hourPart, 10);
-    const minutes = Number.parseInt(minutePart, 10);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-      return null;
-    }
-    return hours * 60 + minutes;
-  } catch {
-    return null;
-  }
-};
-
-const buildWindowMinutes = (
-  start: Date | string | null | undefined,
-  end: Date | string | null | undefined,
-): WindowMinutes => {
-  const window: WindowMinutes = {};
-  const startMinutes = extractWindowMinutes(start);
-  const endMinutes = extractWindowMinutes(end);
-  if (startMinutes !== null) {
-    window.start = startMinutes;
-  }
-  if (endMinutes !== null) {
-    window.end = endMinutes;
-  }
-  return window;
-};
-
-const toIsoString = (
-  value: Date | string | null | undefined,
-): string | null => {
-  if (!value) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value.toISOString();
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const date = new Date(trimmed);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-  }
-  return null;
-};
-
-const computeTravelMinutes = (
-  from?: { lat?: number | null; lng?: number | null },
-  to?: { lat?: number | null; lng?: number | null },
-): number => {
-  if (!from || !to) {
-    return 0;
-  }
-  const fromLat = typeof from.lat === 'number' ? from.lat : Number(from.lat);
-  const fromLng = typeof from.lng === 'number' ? from.lng : Number(from.lng);
-  const toLat = typeof to.lat === 'number' ? to.lat : Number(to.lat);
-  const toLng = typeof to.lng === 'number' ? to.lng : Number(to.lng);
-  if (
-    !Number.isFinite(fromLat) ||
-    !Number.isFinite(fromLng) ||
-    !Number.isFinite(toLat) ||
-    !Number.isFinite(toLng)
-  ) {
-    return 0;
-  }
-  const distance = haversine(
-    { lat: fromLat, lng: fromLng },
-    { lat: toLat, lng: toLng },
-  );
-  if (!Number.isFinite(distance) || distance <= 0) {
-    return 0;
-  }
-  return (distance / DEFAULT_SPEED_KMPH) * 60;
-};
-
-const enrichStopsWithMetrics = (
-  stops: RoutePlanRouteEntry['stops'],
-  weightByTask: Map<string, number>,
-  windowsByTask: Map<string, WindowMinutes>,
-): { routeEta: number | null; maxLoad: number | null } => {
-  if (!stops.length) {
-    return { routeEta: null, maxLoad: null };
-  }
-  let currentEta = 0;
-  let lastService = 0;
-  let currentLoad = 0;
-  let maxLoad = 0;
-  let previousCoords: { lat: number; lng: number } | undefined;
-
-  for (const stop of stops) {
-    const coords = cloneCoords(stop.coordinates ?? null);
-    if (previousCoords && coords) {
-      currentEta += computeTravelMinutes(previousCoords, coords);
-    }
-
-    const taskKey =
-      stop.taskId instanceof Types.ObjectId
-        ? stop.taskId.toHexString()
-        : normalizeId(stop.taskId);
-    const weightCandidate = taskKey ? weightByTask.get(taskKey) : undefined;
-    const weight =
-      typeof weightCandidate === 'number' && Number.isFinite(weightCandidate)
-        ? Number(Math.max(0, weightCandidate).toFixed(2))
-        : 1;
-
-    const arrival = Math.max(0, Math.round(currentEta));
-    const window = taskKey ? windowsByTask.get(taskKey) : undefined;
-    let delay: number | null = null;
-    if (stop.kind === 'start' && typeof window?.start === 'number') {
-      const diff = arrival - window.start;
-      if (diff > 0) {
-        delay = Math.round(diff);
-      }
-    } else if (stop.kind === 'finish' && typeof window?.end === 'number') {
-      const diff = arrival - window.end;
-      if (diff > 0) {
-        delay = Math.round(diff);
-      }
-    }
-
-    stop.etaMinutes = arrival;
-    stop.delayMinutes = delay;
-    stop.windowStartMinutes =
-      typeof window?.start === 'number' ? Math.max(0, Math.round(window.start)) : null;
-    stop.windowEndMinutes =
-      typeof window?.end === 'number' ? Math.max(0, Math.round(window.end)) : null;
-
-    if (stop.kind === 'start') {
-      currentLoad = Number((currentLoad + weight).toFixed(2));
-    } else {
-      currentLoad = Number(Math.max(0, currentLoad - weight).toFixed(2));
-    }
-    stop.load = currentLoad;
-    if (currentLoad > maxLoad) {
-      maxLoad = currentLoad;
-    }
-
-    lastService = stop.kind === 'start' ? PICKUP_SERVICE_MINUTES : DROPOFF_SERVICE_MINUTES;
-    currentEta += lastService;
-
-    if (coords) {
-      previousCoords = coords;
-    }
-  }
-
-  const totalEta = Math.max(0, Math.round(currentEta - lastService));
-  return {
-    routeEta: totalEta,
-    maxLoad: maxLoad || null,
-  };
-};
-
-const normalizeRouteMetricsInput = (
-  input: RoutePlanRouteInput['metrics'],
-): NormalizedRouteInput['metrics'] | undefined => {
-  if (!input || typeof input !== 'object') {
-    return undefined;
-  }
-
-  const distance = toOptionalNumber(input.distanceKm);
-  const eta = toOptionalNumber(input.etaMinutes);
-  const load = toOptionalNumber(input.load);
-  const tasks = toOptionalNumber(input.tasks);
-  const stops = toOptionalNumber(input.stops);
-
-  const metrics: NormalizedRouteInput['metrics'] = {};
-  if (distance !== undefined) {
-    metrics.distanceKm = distance;
-  }
-  if (eta !== undefined) {
-    metrics.etaMinutes = eta;
-  }
-  if (load !== undefined) {
-    metrics.load = load;
-  }
-  if (typeof tasks === 'number' && Number.isFinite(tasks)) {
-    metrics.tasks = Math.max(0, Math.trunc(tasks));
-  }
-  if (typeof stops === 'number' && Number.isFinite(stops)) {
-    metrics.stops = Math.max(0, Math.trunc(stops));
-  }
-
-  return Object.keys(metrics).length ? metrics : undefined;
 };
 
 const cloneCoords = (
@@ -480,7 +199,7 @@ const ensureTaskMap = async (
   }
   const docs = await Task.find({ _id: { $in: Array.from(missing) } })
     .select(
-      'title startCoordinates finishCoordinates start_location end_location route_distance_km delivery_window_start delivery_window_end cargo_weight_kg',
+      'title startCoordinates finishCoordinates start_location end_location route_distance_km',
     )
     .lean<TaskSource[]>();
   for (const doc of docs) {
@@ -512,23 +231,20 @@ async function buildRoutesFromInput(
   routesInput: RoutePlanRouteInput[] = [],
   taskMap?: TaskMap,
 ): Promise<BuildResult> {
-  const normalizedInputs: NormalizedRouteInput[] = routesInput
+  const normalizedInputs = routesInput
     .map((route, idx) => {
       const tasks = Array.isArray(route.tasks)
         ? route.tasks.map((id) => normalizeId(id)).filter((id): id is string => Boolean(id))
         : [];
-      const driverId = parseNumeric(route.driverId);
-      const metrics = normalizeRouteMetricsInput(route.metrics);
       return {
         id: typeof route.id === 'string' && route.id.trim() ? route.id.trim() : undefined,
         order: Number.isFinite(route.order) ? Number(route.order) : idx,
         vehicleId: parseObjectId(route.vehicleId),
         vehicleName: normalizeString(route.vehicleName, VEHICLE_NAME_MAX_LENGTH),
-        driverId,
+        driverId: parseNumeric(route.driverId),
         driverName: normalizeString(route.driverName, DRIVER_NAME_MAX_LENGTH),
         notes: normalizeString(route.notes, NOTES_MAX_LENGTH),
         tasks,
-        metrics,
       };
     })
     .filter((route) => route.tasks.length);
@@ -539,17 +255,11 @@ async function buildRoutesFromInput(
   let totalDistance = 0;
   let totalStops = 0;
   let totalTasks = 0;
-  let totalEtaMinutes = 0;
-  let etaRoutesWithValue = 0;
-  let totalLoadValue = 0;
-  let loadRoutesWithValue = 0;
 
   for (const route of normalizedInputs) {
     const routeTasks: RoutePlanRouteEntry['tasks'] = [];
     const stops: RoutePlanRouteEntry['stops'] = [];
     const coordsForLink: { lat: number; lng: number }[] = [];
-    const routeWeights = new Map<string, number>();
-    const routeWindows = new Map<string, WindowMinutes>();
     let routeDistance = 0;
 
     for (const taskId of route.tasks) {
@@ -562,25 +272,6 @@ async function buildRoutesFromInput(
       const start = cloneCoords(task.startCoordinates ?? null);
       const finish = cloneCoords(task.finishCoordinates ?? null);
       const distanceKm = roundDistance(task.route_distance_km ?? undefined);
-      const taskKey = objectId.toHexString();
-      const windowStartIso = toIsoString(task.delivery_window_start ?? null);
-      const windowEndIso = toIsoString(task.delivery_window_end ?? null);
-      const cargoWeight =
-        typeof task.cargo_weight_kg === 'number' && Number.isFinite(task.cargo_weight_kg)
-          ? Number(Math.max(0, task.cargo_weight_kg).toFixed(2))
-          : null;
-      const loadWeight = typeof cargoWeight === 'number' ? cargoWeight : 1;
-      routeWeights.set(taskKey, loadWeight);
-      const windowMinutes = buildWindowMinutes(
-        task.delivery_window_start ?? null,
-        task.delivery_window_end ?? null,
-      );
-      if (
-        typeof windowMinutes.start === 'number' ||
-        typeof windowMinutes.end === 'number'
-      ) {
-        routeWindows.set(taskKey, windowMinutes);
-      }
 
       const taskEntry = {
         taskId: objectId,
@@ -591,9 +282,6 @@ async function buildRoutesFromInput(
         startAddress: sanitizeAddress(task.start_location),
         finishAddress: sanitizeAddress(task.end_location),
         distanceKm,
-        windowStart: windowStartIso,
-        windowEnd: windowEndIso,
-        cargoWeightKg: cargoWeight,
       };
       routeTasks.push(taskEntry);
 
@@ -626,6 +314,15 @@ async function buildRoutesFromInput(
       continue;
     }
 
+    const metrics = {
+      distanceKm: roundDistance(routeDistance),
+      tasks: routeTasks.length,
+      stops: stops.length,
+    };
+    totalDistance += metrics.distanceKm ?? 0;
+    totalStops += metrics.stops ?? 0;
+    totalTasks += metrics.tasks ?? 0;
+
     const sortedStops: RoutePlanRouteEntry['stops'] = stops
       .map((stop, index) => ({
         ...stop,
@@ -640,41 +337,6 @@ async function buildRoutesFromInput(
       }))
       .sort((a, b) => a.order - b.order)
       .map((task, index) => ({ ...task, order: index }));
-
-    const inputMetrics = route.metrics ?? undefined;
-    let distanceMetric = roundDistance(routeDistance);
-    if (distanceMetric === null && typeof inputMetrics?.distanceKm === 'number') {
-      distanceMetric = roundDistance(Number(inputMetrics.distanceKm));
-    }
-    const etaMetric = inputMetrics ? roundMinutesValue(inputMetrics.etaMinutes) : null;
-    const loadMetric = inputMetrics ? normalizeLoadValue(inputMetrics.load) : null;
-    const computedMetrics = enrichStopsWithMetrics(sortedStops, routeWeights, routeWindows);
-    const routeEta =
-      typeof etaMetric === 'number' ? etaMetric : computedMetrics.routeEta;
-    const routeLoad =
-      typeof loadMetric === 'number'
-        ? loadMetric
-        : typeof computedMetrics.maxLoad === 'number'
-          ? Number(Math.max(0, computedMetrics.maxLoad).toFixed(2))
-          : null;
-    const metrics = {
-      distanceKm: distanceMetric,
-      etaMinutes: typeof routeEta === 'number' ? routeEta : null,
-      load: routeLoad,
-      tasks: Number.isFinite(inputMetrics?.tasks) ? Number(inputMetrics?.tasks) : routeTasks.length,
-      stops: Number.isFinite(inputMetrics?.stops) ? Number(inputMetrics?.stops) : sortedStops.length,
-    };
-    totalDistance += metrics.distanceKm ?? 0;
-    totalStops += metrics.stops ?? 0;
-    totalTasks += metrics.tasks ?? 0;
-    if (typeof metrics.etaMinutes === 'number') {
-      totalEtaMinutes += metrics.etaMinutes;
-      etaRoutesWithValue += 1;
-    }
-    if (typeof metrics.load === 'number') {
-      totalLoadValue += metrics.load;
-      loadRoutesWithValue += 1;
-    }
 
     const link = coordsForLink.length >= 2 ? generateMultiRouteLink(coordsForLink) : '';
 
@@ -705,8 +367,6 @@ async function buildRoutesFromInput(
       totalRoutes: sortedRoutes.length,
       totalTasks,
       totalStops,
-      totalEtaMinutes: etaRoutesWithValue ? Math.max(0, Math.round(totalEtaMinutes)) : null,
-      totalLoad: loadRoutesWithValue ? Number(totalLoadValue.toFixed(2)) : null,
     },
     taskIds: Array.from(uniqueTaskIds.values()),
   };
@@ -724,16 +384,6 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       startAddress: sanitizeAddress(task.startAddress),
       finishAddress: sanitizeAddress(task.finishAddress),
       distanceKm: typeof task.distanceKm === 'number' ? Number(task.distanceKm) : null,
-      windowStart:
-        typeof task.windowStart === 'string' && task.windowStart
-          ? task.windowStart
-          : null,
-      windowEnd:
-        typeof task.windowEnd === 'string' && task.windowEnd ? task.windowEnd : null,
-      cargoWeightKg:
-        typeof task.cargoWeightKg === 'number'
-          ? Number(task.cargoWeightKg)
-          : null,
     }))
     .filter((task) => task.taskId)
     .sort((a, b) => a.order - b.order)
@@ -746,9 +396,6 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       startAddress: task.startAddress,
       finishAddress: task.finishAddress,
       distanceKm: task.distanceKm,
-      windowStart: task.windowStart,
-      windowEnd: task.windowEnd,
-      cargoWeightKg: task.cargoWeightKg,
     }));
 
   const stops: SharedRoutePlanRoute['stops'] = (route.stops || [])
@@ -758,26 +405,6 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       taskId: parseObjectId(stop.taskId) ?? undefined,
       coordinates: cloneCoords(stop.coordinates ?? null),
       address: sanitizeAddress(stop.address),
-      etaMinutes:
-        typeof stop.etaMinutes === 'number'
-          ? Math.max(0, Math.round(stop.etaMinutes))
-          : null,
-      load:
-        typeof stop.load === 'number'
-          ? Number(Math.max(0, stop.load).toFixed(2))
-          : null,
-      delayMinutes:
-        typeof stop.delayMinutes === 'number'
-          ? Math.max(0, Math.round(stop.delayMinutes))
-          : null,
-      windowStartMinutes:
-        typeof stop.windowStartMinutes === 'number'
-          ? Math.max(0, Math.round(stop.windowStartMinutes))
-          : null,
-      windowEndMinutes:
-        typeof stop.windowEndMinutes === 'number'
-          ? Math.max(0, Math.round(stop.windowEndMinutes))
-          : null,
     }))
     .filter((stop) => stop.taskId)
     .sort((a, b) => a.order - b.order)
@@ -787,25 +414,12 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       taskId: (stop.taskId as Types.ObjectId).toHexString(),
       coordinates: stop.coordinates,
       address: stop.address ?? null,
-      etaMinutes: stop.etaMinutes,
-      load: stop.load,
-      delayMinutes: stop.delayMinutes,
-      windowStartMinutes: stop.windowStartMinutes,
-      windowEndMinutes: stop.windowEndMinutes,
     }));
 
   const metrics = {
     distanceKm:
       route.metrics && typeof route.metrics.distanceKm === 'number'
         ? Number(route.metrics.distanceKm)
-        : null,
-    etaMinutes:
-      route.metrics && typeof route.metrics.etaMinutes === 'number'
-        ? Math.max(0, Math.round(route.metrics.etaMinutes))
-        : null,
-    load:
-      route.metrics && typeof route.metrics.load === 'number'
-        ? Number(Math.max(0, route.metrics.load).toFixed(2))
         : null,
     tasks: route.metrics?.tasks ?? tasks.length,
     stops: route.metrics?.stops ?? stops.length,
@@ -843,8 +457,6 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
       totalRoutes?: number;
       totalTasks?: number;
       totalStops?: number;
-      totalEtaMinutes?: number | null;
-      totalLoad?: number | null;
     };
     tasks?: Array<Types.ObjectId | string>;
     createdAt?: Date | string;
@@ -894,31 +506,6 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     typeof rawMetrics?.totalStops === 'number'
       ? Number(rawMetrics.totalStops)
       : sortedRoutes.reduce((sum, route) => sum + route.stops.length, 0);
-  const totalEtaMinutes =
-    typeof rawMetrics?.totalEtaMinutes === 'number'
-      ? Math.max(0, Math.round(rawMetrics.totalEtaMinutes))
-      : (() => {
-          const values = sortedRoutes
-            .map((route) => (Number.isFinite(route.metrics?.etaMinutes) ? Number(route.metrics?.etaMinutes) : null))
-            .filter((value): value is number => value !== null);
-          if (!values.length) {
-            return null;
-          }
-          return Math.max(0, Math.round(values.reduce((sum, value) => sum + value, 0)));
-        })();
-  const totalLoad =
-    typeof rawMetrics?.totalLoad === 'number'
-      ? Number(Math.max(0, rawMetrics.totalLoad).toFixed(2))
-      : (() => {
-          const values = sortedRoutes
-            .map((route) => (Number.isFinite(route.metrics?.load) ? Number(route.metrics?.load) : null))
-            .filter((value): value is number => value !== null);
-          if (!values.length) {
-            return null;
-          }
-          const sum = values.reduce((acc, value) => acc + value, 0);
-          return Number(Math.max(0, sum).toFixed(2));
-        })();
 
   const taskIds = Array.isArray(rawTasks)
     ? rawTasks
@@ -960,8 +547,6 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
       totalRoutes: sortedRoutes.length,
       totalTasks,
       totalStops,
-      totalEtaMinutes,
-      totalLoad,
     },
     routes: sortedRoutes,
     tasks: taskIds,
@@ -1003,9 +588,7 @@ export async function createDraftFromInputs(
     metrics,
     tasks: taskIds,
   });
-  const serialized = serializePlan(plan);
-  notifyRoutePlanUpdated(serialized, 'created');
-  return serialized;
+  return serializePlan(plan);
 }
 
 export async function listPlans(
@@ -1066,25 +649,16 @@ export async function updatePlan(
   }
 
   await plan.save();
-  const serialized = serializePlan(plan);
-  notifyRoutePlanUpdated(serialized, 'updated');
-  return serialized;
+  return serializePlan(plan);
 }
 
 const updateTasksForStatus = async (
   taskIds: Types.ObjectId[],
   status: RoutePlanStatus,
-): Promise<string[]> => {
-  if (!Array.isArray(taskIds) || !taskIds.length) return [];
+): Promise<void> => {
+  if (!Array.isArray(taskIds) || !taskIds.length) return;
   const ids = taskIds.filter((id): id is Types.ObjectId => id instanceof Types.ObjectId);
-  if (!ids.length) return [];
-  const normalizedIds = Array.from(
-    new Set(
-      ids
-        .map((id) => normalizeId(id))
-        .filter((value): value is string => typeof value === 'string' && value.length > 0),
-    ),
-  );
+  if (!ids.length) return;
   if (status === 'approved') {
     await Task.updateMany(
       { _id: { $in: ids } },
@@ -1106,7 +680,6 @@ const updateTasksForStatus = async (
       },
     );
   }
-  return normalizedIds;
 };
 
 const canTransition = (from: RoutePlanStatus, to: RoutePlanStatus): boolean => {
@@ -1211,14 +784,10 @@ export async function updatePlanStatus(
   }
 
   await plan.save();
-  const updatedTaskIds = await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
+  await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
   const serialized = serializePlan(plan);
   if (status === 'approved') {
     await notifyPlanApproved(serialized, actorId).catch(() => undefined);
-  }
-  notifyRoutePlanUpdated(serialized, 'status-changed');
-  if (updatedTaskIds.length > 0) {
-    notifyTasksChanged('updated', updatedTaskIds);
   }
   return serialized;
 }
@@ -1227,12 +796,7 @@ export async function removePlan(id: string): Promise<boolean> {
   const objectId = parseObjectId(id);
   if (!objectId) return false;
   const res = await RoutePlanModel.findByIdAndDelete(objectId);
-  if (!res) {
-    return false;
-  }
-  const removedId = normalizeId(res._id) ?? objectId.toHexString();
-  notifyRoutePlanRemoved(removedId);
-  return true;
+  return Boolean(res);
 }
 
 export type RoutePlanTaskHint = TaskSource;

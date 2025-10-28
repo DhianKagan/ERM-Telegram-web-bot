@@ -1,12 +1,12 @@
 // Карточка задачи в канбане
 import React from "react";
 import { type Task } from "shared";
-import { DeadlineCountdownBadge } from "../columns/taskColumns";
 import {
+  DeadlineCountdownBadge,
   fallbackBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
-} from "../columns/taskBadgeClassNames";
+} from "../columns/taskColumns";
 
 interface TaskCardProps {
   task: Task & {

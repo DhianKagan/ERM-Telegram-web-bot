@@ -29,24 +29,6 @@ const middlewares = [
 
 const parseNumber = (value: unknown): number => Number(value);
 
-const parseDefaultDriverId = (value: unknown): number | null => {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
-  }
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return Math.trunc(value);
-  }
-  return null;
-};
-
 type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
   id: string;
   createdAt?: string;
@@ -76,10 +58,6 @@ function mapVehicle(
     fuelAverageConsumption: doc.fuelAverageConsumption,
     fuelSpentTotal: doc.fuelSpentTotal,
     currentTasks: doc.currentTasks,
-    defaultDriverId:
-      typeof doc.defaultDriverId === 'number' && Number.isFinite(doc.defaultDriverId)
-        ? Math.trunc(doc.defaultDriverId)
-        : null,
     transportHistory: Array.isArray(doc.transportHistory)
       ? doc.transportHistory.map((entry) => ({
           taskId: entry.taskId,
@@ -159,7 +137,6 @@ router.post(
       currentTasks: Array.isArray(req.body.currentTasks)
         ? (req.body.currentTasks as string[]).map((task) => String(task))
         : [],
-      defaultDriverId: parseDefaultDriverId(req.body.defaultDriverId),
     };
     const created = await FleetVehicle.create(payload);
     res.status(201).json(mapVehicle(created.toObject()));
@@ -204,9 +181,6 @@ router.put(
     }
     if (Array.isArray(req.body.currentTasks)) {
       update.currentTasks = (req.body.currentTasks as string[]).map((task) => String(task));
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'defaultDriverId')) {
-      update.defaultDriverId = parseDefaultDriverId(req.body.defaultDriverId);
     }
     const updated = await FleetVehicle.findByIdAndUpdate(id, update, { new: true });
     if (!updated) {

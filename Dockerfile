@@ -27,9 +27,6 @@ RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfil
 FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash curl \
-  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app .
 EXPOSE 3000
-CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && ./scripts/set_bot_commands.sh && cd apps/api && npx pm2-runtime ecosystem.config.cjs"]
+CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && npx pm2-runtime ecosystem.config.cjs"]

@@ -2852,15 +2852,9 @@ export default class TasksController {
         .lean<{ telegram_id: number; name?: string; username?: string }[]>();
     }
     const vehicles = await FleetVehicle.find()
-      .select({ name: 1, registrationNumber: 1, transportType: 1, defaultDriverId: 1 })
+      .select({ name: 1, registrationNumber: 1, transportType: 1 })
       .sort({ name: 1 })
-      .lean<{
-        _id: unknown;
-        name: string;
-        registrationNumber: string;
-        transportType?: string;
-        defaultDriverId?: number | null;
-      }[]>();
+      .lean<{ _id: unknown; name: string; registrationNumber: string; transportType?: string }[]>();
     res.json({
       drivers: drivers.map((driver) => ({
         id: driver.telegram_id,
@@ -2878,12 +2872,6 @@ export default class TasksController {
           typeof vehicle.transportType === 'string' && vehicle.transportType.trim().length > 0
             ? vehicle.transportType
             : 'Легковой',
-        defaultDriverId:
-          typeof vehicle.defaultDriverId === 'number' &&
-          Number.isFinite(vehicle.defaultDriverId) &&
-          vehicle.defaultDriverId > 0
-            ? Math.trunc(vehicle.defaultDriverId)
-            : null,
       })),
     });
   };

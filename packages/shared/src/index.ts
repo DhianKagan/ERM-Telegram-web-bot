@@ -27,15 +27,5 @@ export type {
   RoutePlanStop,
   RoutePlanTaskRef,
   RoutePlanStatus,
-  RoutePlanAnalyticsSummary,
-  RoutePlanAnalyticsSeriesPoint,
-  RoutePlanAnalyticsSlaPoint,
-  LogisticsEvent,
-  LogisticsEventBase,
-  LogisticsTasksChangedEvent,
-  LogisticsRoutePlanUpdatedEvent,
-  LogisticsRoutePlanRemovedEvent,
-  LogisticsInitEvent,
-  LogisticsHeartbeatEvent,
 } from './types';
 export { default as taskFormSchema } from './taskForm.schema.json';

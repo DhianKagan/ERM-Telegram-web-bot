@@ -15,15 +15,6 @@ const normalizePriorityValue = (value?: string | null) => {
   return /^бессроч/i.test(trimmed) ? 'До выполнения' : trimmed;
 };
 
-const applyPriorityNormalization = (task: TaskDocument) => {
-  const normalizedPriority = normalizePriorityValue(task.priority);
-  if (typeof normalizedPriority === 'string') {
-    task.priority = normalizedPriority as TaskDocument['priority'];
-  } else if (normalizedPriority === undefined) {
-    task.set('priority', undefined);
-  }
-};
-
 if (process.env.NODE_ENV !== 'test') {
   connect().catch((e: unknown) => {
     const err = e as { message?: string };
@@ -198,8 +189,6 @@ export interface TaskAttrs {
   request_id?: string;
   task_number?: string;
   submission_date?: Date;
-  delivery_window_start?: Date | null;
-  delivery_window_end?: Date | null;
   applicant?: Applicant;
   logistics_details?: Logistics;
   procurement_details?: Procurement;
@@ -305,8 +294,6 @@ const taskSchema = new Schema<TaskDocument>(
     request_id: String,
     task_number: String,
     submission_date: Date,
-    delivery_window_start: Date,
-    delivery_window_end: Date,
     applicant: applicantSchema,
     logistics_details: logisticsSchema,
     procurement_details: procurementSchema,
@@ -345,6 +332,7 @@ const taskSchema = new Schema<TaskDocument>(
       type: String,
       enum: ['Срочно', 'В течение дня', 'До выполнения'],
       default: 'В течение дня',
+      set: normalizePriorityValue,
     },
     priority_id: Number,
     created_by: Number,
@@ -432,32 +420,16 @@ const taskSchema = new Schema<TaskDocument>(
   { timestamps: true },
 );
 
-taskSchema.pre<TaskDocument>('validate', function (this: TaskDocument) {
-  applyPriorityNormalization(this);
+taskSchema.pre('init', (doc: Record<string, unknown>) => {
+  if (doc && typeof doc.priority === 'string') {
+    const normalized = normalizePriorityValue(doc.priority);
+    if (normalized) {
+      doc.priority = normalized;
+    }
+  }
 });
 
 taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
-  applyPriorityNormalization(this);
-  const logisticsStart =
-    this.logistics_details && this.logistics_details.start_date instanceof Date
-      ? this.logistics_details.start_date
-      : undefined;
-  const logisticsEnd =
-    this.logistics_details && this.logistics_details.end_date instanceof Date
-      ? this.logistics_details.end_date
-      : undefined;
-  if (!this.delivery_window_start && logisticsStart) {
-    this.delivery_window_start = logisticsStart;
-  }
-  if (!this.delivery_window_end && logisticsEnd) {
-    this.delivery_window_end = logisticsEnd;
-  }
-  if (this.delivery_window_start) {
-    this.set('logistics_details.start_date', this.delivery_window_start);
-  }
-  if (this.delivery_window_end) {
-    this.set('logistics_details.end_date', this.delivery_window_end);
-  }
   const normalizedKind = this.kind === 'request' ? 'request' : 'task';
   this.kind = normalizedKind;
   const prefix = normalizedKind === 'request' ? 'REQ' : 'ERM';

@@ -46,14 +46,6 @@ export class CreateTaskDto {
       body('completed_at')
         .optional({ nullable: true })
         .isISO8601(),
-      body('delivery_window_start')
-        .customSanitizer(normalizeEmptyString)
-        .optional({ nullable: true })
-        .isISO8601(),
-      body('delivery_window_end')
-        .customSanitizer(normalizeEmptyString)
-        .optional({ nullable: true })
-        .isISO8601(),
       body('assigned_user_id')
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
@@ -106,14 +98,6 @@ export class UpdateTaskDto {
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
       body('completed_at')
-        .optional({ nullable: true })
-        .isISO8601(),
-      body('delivery_window_start')
-        .customSanitizer(normalizeEmptyString)
-        .optional({ nullable: true })
-        .isISO8601(),
-      body('delivery_window_end')
-        .customSanitizer(normalizeEmptyString)
         .optional({ nullable: true })
         .isISO8601(),
       body('assigned_user_id')

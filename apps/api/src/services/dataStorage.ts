@@ -13,6 +13,11 @@ import {
   type FileDocument,
 } from '../db/model';
 import { extractAttachmentIds } from '../utils/attachments';
+import {
+  buildFileUrl,
+  buildInlineFileUrl,
+  buildThumbnailUrl,
+} from '../utils/fileUrls';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 
@@ -208,13 +213,13 @@ export async function listFiles(
         name: f.name,
         path: f.path,
         thumbnailUrl: f.thumbnailPath
-          ? `/uploads/${f.thumbnailPath}`
+          ? buildThumbnailUrl(f._id)
           : undefined,
         type: f.type,
         size: f.size,
         uploadedAt: f.uploadedAt,
-        url: `/api/v1/files/${String(f._id)}`,
-        previewUrl: `/api/v1/files/${String(f._id)}?mode=inline`,
+        url: buildFileUrl(f._id),
+        previewUrl: buildInlineFileUrl(f._id),
       } satisfies StoredFile);
     }
     if (updates.length > 0) {
@@ -271,13 +276,13 @@ export async function getFile(id: string): Promise<StoredFile | null> {
     name: doc.name,
     path: doc.path,
     thumbnailUrl: doc.thumbnailPath
-      ? `/uploads/${doc.thumbnailPath}`
+      ? buildThumbnailUrl(doc._id)
       : undefined,
     type: doc.type,
     size: doc.size,
     uploadedAt: doc.uploadedAt,
-    url: `/api/v1/files/${String(doc._id)}`,
-    previewUrl: `/api/v1/files/${String(doc._id)}?mode=inline`,
+    url: buildFileUrl(doc._id),
+    previewUrl: buildInlineFileUrl(doc._id),
   } satisfies StoredFile;
 }
 

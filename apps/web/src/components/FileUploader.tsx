@@ -59,6 +59,18 @@ const cleanupUrl = (url: string) => {
   if (url.startsWith("blob:")) URL.revokeObjectURL(url);
 };
 
+const ensureInlineMode = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  if (value.startsWith("blob:") || value.startsWith("data:")) {
+    return value;
+  }
+  if (value.includes("mode=inline")) {
+    return value;
+  }
+  const separator = value.includes("?") ? "&" : "?";
+  return `${value}${separator}mode=inline`;
+};
+
 interface UploadItem {
   file: File;
   url: string;
@@ -115,11 +127,15 @@ export default function FileUploader({
             prev.map((f) => {
               if (f !== it) return f;
               previousUrl = f.url;
+              const previewUrl =
+                ensureInlineMode(att.thumbnailUrl) ||
+                ensureInlineMode(att.url) ||
+                f.url;
               return {
                 ...f,
                 attachment: att,
                 progress: 100,
-                url: att.thumbnailUrl || att.url || f.url,
+                url: previewUrl,
                 isImage: att.type.startsWith("image/"),
               };
             }),
@@ -286,9 +302,21 @@ export default function FileUploader({
             <li key={i} className="flex items-center gap-2">
               {it.isImage && (
                 <img
-                  srcSet={`${it.attachment?.thumbnailUrl || it.url} 1x, ${it.attachment?.url || it.url} 2x`}
+                  srcSet={`${
+                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
+                    ensureInlineMode(it.attachment?.url) ||
+                    it.url
+                  } 1x, ${
+                    ensureInlineMode(it.attachment?.url) ||
+                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
+                    it.url
+                  } 2x`}
                   sizes="48px"
-                  src={it.attachment?.thumbnailUrl || it.url}
+                  src={
+                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
+                    ensureInlineMode(it.attachment?.url) ||
+                    it.url
+                  }
                   alt={it.name}
                   className="h-12 w-12 rounded object-cover"
                 />

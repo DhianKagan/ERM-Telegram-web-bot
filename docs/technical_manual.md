@@ -23,6 +23,7 @@
 - Workflow `CI` запускается на каждом pull request и push в `main`: сначала `audit-ci`, затем линтеры, unit и API тесты, после чего Playwright прогоняет все браузерные проекты.
 - Workflow `Release` срабатывает на push в `main` и теги `v*.*.*`; перед сборкой Docker он кеширует браузеры Playwright, прогоняет Chromium e2e‑тесты и добавляет диагностику `playwright doctor` в GitHub Summary.
 - Workflow `Docker` валидирует `docker-compose.yml`, собирает образы и проверяет доступность MongoDB.
+- Если GitHub Actions запускает workflow без секретов (PR из форка), шаг «Создание .env» подставляет тестовые `BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET` и подключение `mongodb://admin:admin@127.0.0.1:27017/ermdb?authSource=admin`, чтобы проверки и Docker build прошли до деплоя Railway.
 - Lighthouse CI проверяет клиент на каждом pull request, Chrome ставится через `browser-actions/setup-chrome`.
 
 ## Runbook: восстановление Playwright в CI

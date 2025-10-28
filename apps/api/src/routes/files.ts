@@ -273,6 +273,19 @@ router.post(
 
       const fileId = String(file._id ?? req.params.id);
       const baseUrl = `/api/v1/files/${fileId}`;
+      const cleanupRegexSource = `/${fileId}(?:$|[/?#])`;
+      const cleanupPattern = new RegExp(cleanupRegexSource, 'i');
+      await Task.updateMany(
+        {
+          _id: { $ne: task._id },
+          attachments: { $elemMatch: { url: cleanupPattern } },
+        },
+        {
+          $pull: {
+            attachments: { url: cleanupPattern },
+          },
+        },
+      ).exec();
       const existingAttachments = Array.isArray(task.attachments)
         ? [...(task.attachments as Attachment[])]
         : [];

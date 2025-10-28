@@ -38,33 +38,10 @@ def solve(payload):
         return _fallback_solution(tasks)
 
     distance_matrix = payload["distance_matrix"]
-    time_matrix = payload.get("time_matrix")
     service_minutes = [task.get("service_minutes", 0) for task in tasks]
     time_windows = payload.get("time_windows")
     vehicle_count = payload.get("vehicle_count", 1)
     depot_index = payload.get("depot_index", 0)
-    average_speed_kmph = payload.get("average_speed_kmph", 30)
-    try:
-        average_speed_kmph = float(average_speed_kmph)
-    except (TypeError, ValueError):
-        average_speed_kmph = 30.0
-    if average_speed_kmph <= 0:
-        average_speed_kmph = 30.0
-
-    def distance_to_minutes(distance_meters: float) -> float:
-        minutes = (distance_meters * 60.0) / (1000.0 * average_speed_kmph)
-        return float(minutes)
-
-    def travel_minutes(from_node: int, to_node: int) -> float:
-        if isinstance(time_matrix, list):
-            try:
-                seconds = float(time_matrix[from_node][to_node])
-            except (TypeError, ValueError, IndexError):
-                seconds = 0.0
-            if seconds < 0:
-                seconds = 0.0
-            return seconds / 60.0
-        return distance_to_minutes(distance_matrix[from_node][to_node])
 
     manager = pywrapcp.RoutingIndexManager(len(distance_matrix), vehicle_count, depot_index)
     routing = pywrapcp.RoutingModel(manager)
@@ -92,13 +69,11 @@ def solve(payload):
             "Capacity",
         )
 
-    time_dimension = None
     if time_windows:
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
-            minutes = travel_minutes(from_node, to_node)
-            return int(round(minutes + service_minutes[from_node]))
+            return int(distance_matrix[from_node][to_node] + service_minutes[from_node])
         time_callback_index = routing.RegisterTransitCallback(time_callback)
         routing.AddDimension(
             time_callback_index,
@@ -132,22 +107,15 @@ def solve(payload):
     for vehicle_id in range(vehicle_count):
         index = routing.Start(vehicle_id)
         vehicle_route = []
-        route_duration = 0
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
             vehicle_route.append(tasks[node_index]["id"])
             next_index = solution.Value(routing.NextVar(index))
             total_distance += routing.GetArcCostForVehicle(index, next_index, vehicle_id)
-            if time_dimension is not None:
-                total_duration = max(total_duration, solution.Value(time_dimension.CumulVar(index)))
-            else:
-                route_duration += service_minutes[node_index]
-                next_node_index = manager.IndexToNode(next_index) if not routing.IsEnd(next_index) else depot_index
-                route_duration += travel_minutes(node_index, next_node_index)
+            time_dimension = routing.GetDimensionOrDie("Time")
+            total_duration = max(total_duration, solution.Value(time_dimension.CumulVar(index)))
             index = next_index
         routes.append(vehicle_route)
-        if time_dimension is None:
-            total_duration = max(total_duration, route_duration)
 
     return {
         "routes": routes,

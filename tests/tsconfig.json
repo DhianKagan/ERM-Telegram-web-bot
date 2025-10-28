@@ -26,7 +26,6 @@
       "multer",
       "../apps/web/src/types/telegram",
       "../apps/web/src/types/leaflet",
-      "../apps/web/src/types/leaflet-css",
       "mongodb-memory-server",
       "mongoose"
     ],

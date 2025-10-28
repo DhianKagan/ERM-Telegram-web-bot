@@ -14,7 +14,6 @@ import {
   UserCircleIcon,
   XMarkIcon,
   ArchiveBoxIcon,
-  PresentationChartLineIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
@@ -53,7 +52,6 @@ export default function Sidebar() {
       { to: "/cp/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
       { to: "/cp/reports", label: t("nav.reports"), icon: ChartPieIcon },
       { to: "/cp/logistics", label: t("nav.logistics"), icon: MapIcon },
-      { to: "/cp/analytics", label: t("nav.analytics"), icon: PresentationChartLineIcon },
       { to: "/cp/settings", label: t("nav.settings"), icon: Cog6ToothIcon },
       { to: "/cp/logs", label: t("nav.logs"), icon: Cog6ToothIcon },
       { to: "/cp/storage", label: t("nav.storage"), icon: RectangleStackIcon },
@@ -66,7 +64,6 @@ export default function Sidebar() {
       { to: "/mg/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
       { to: "/mg/reports", label: t("nav.reports"), icon: ChartPieIcon },
       { to: "/mg/logistics", label: t("nav.logistics"), icon: MapIcon },
-      { to: "/mg/analytics", label: t("nav.analytics"), icon: PresentationChartLineIcon },
     ],
     [t],
   );

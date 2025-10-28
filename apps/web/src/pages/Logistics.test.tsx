@@ -5,116 +5,84 @@
 import "@testing-library/jest-dom";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
 jest.mock("react-i18next", () => {
-  const templates: Record<string, string> = {
-    loading: "Загрузка...",
-    reset: "Сбросить",
-    refresh: "Обновить",
-    "logistics.title": "Логистика",
-    "logistics.transport": "Транспорт",
-    "logistics.unselectedVehicle": "Не выбран",
-    "logistics.refreshFleet": "Обновить автопарк",
-    "logistics.selectedVehicle": "Выбран транспорт: {{name}}",
-    "logistics.noVehicles": "Транспорт не найден",
-    "logistics.loadError": "Не удалось загрузить транспорт автопарка",
-    "logistics.adminOnly": "Автопарк доступен только администраторам",
-    "logistics.noAccess": "Нет доступа к автопарку",
-    "logistics.optimize": "Просчёт логистики",
-    "logistics.vehicleTasksCount": "Задач: {{count}}",
-    "logistics.vehicleMileage": "Пробег: {{value}} км",
-    "logistics.vehicleCountLabel": "Машины",
-    "logistics.vehicleCountAria": "Количество машин",
-    "logistics.optimizeMethodLabel": "Метод",
-    "logistics.optimizeMethodAria": "Метод оптимизации",
-    "logistics.linksLabel": "Маршрут {{index}}",
-    "logistics.tasksHeading": "Задачи",
-    "logistics.metaTitle": "Логистика — ERM",
-    "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
-    "logistics.planSectionTitle": "Маршрутный план",
-    "logistics.planSummary": "Итоги плана",
-    "logistics.planStatus": "Статус",
-    "logistics.planStatusValue.draft": "Черновик",
-    "logistics.planStatusValue.approved": "Утверждён",
-    "logistics.planStatusValue.completed": "Завершён",
-    "logistics.planReload": "Обновить план",
-    "logistics.planClear": "Сбросить план",
-    "logistics.planApprove": "Опубликовать",
-    "logistics.planComplete": "Завершить",
-    "logistics.planTitleLabel": "Название маршрутного плана",
-    "logistics.planNotesLabel": "Примечания",
-    "logistics.planTotalDistance": "Общее расстояние",
-    "logistics.planTotalRoutes": "Маршрутов",
-    "logistics.planTotalTasks": "Задач",
-    "logistics.planTotalStops": "Остановок",
-    "logistics.planTotalEta": "Время в пути",
-    "logistics.planTotalLoad": "Загрузка",
-    "logistics.planRouteTitle": "Маршрут {{index}}",
-    "logistics.planRouteSummary": "Задач: {{tasks}}, остановок: {{stops}}",
-    "logistics.planRouteDistance": "Расстояние: {{distance}}",
-    "logistics.planRouteEmpty": "Нет задач",
-    "logistics.planDriver": "Водитель",
-    "logistics.planVehicle": "Транспорт",
-    "logistics.planRouteNotes": "Заметки по маршруту",
-    "logistics.planTaskUp": "Вверх",
-    "logistics.planTaskDown": "Вниз",
-    "logistics.planSaved": "Сохранено",
-    "logistics.planSaveError": "Ошибка сохранения",
-    "logistics.planPublished": "Опубликовано",
-    "logistics.planCompleted": "Завершено",
-    "logistics.planStatusError": "Ошибка статуса",
-    "logistics.planLoadError": "Ошибка загрузки",
-    "logistics.planDraftCreated": "Черновик создан",
-    "logistics.planEmpty": "Нет плана",
-    "logistics.planNoDistance": "нет данных",
-    "logistics.planNoEta": "нет данных",
-    "logistics.planNoLoad": "нет данных",
-    "logistics.planOptimizeError": "Ошибка оптимизации",
-    "logistics.routeLoadChartTitle": "Нагрузка по маршрутам",
-    "logistics.routeEtaChartTitle": "ETA по маршрутам",
-    "logistics.loadBarTooltip": "Маршрут {{index}}: {{value}}",
-    "logistics.etaBarTooltip": "Маршрут {{index}}: {{value}}",
-    "logistics.planRouteShort": "М{{index}}",
-    "logistics.overloadedBadge": "Перегрузка",
-    "logistics.delayBadge": "Опоздание",
-    "logistics.routeLoadLabel": "Загрузка",
-    "logistics.routeEtaLabel": "ETA",
-    "logistics.loadLabel": "Загрузка",
-    "logistics.etaLabel": "ETA",
-    "logistics.loadValue": "{{value}} кг",
-    "logistics.etaHours": "{{count}} ч",
-    "logistics.etaMinutes": "{{count}} мин",
-    "logistics.onTime": "По графику",
-    "logistics.delayLabel": "Опоздание {{minutes}} мин",
-    "logistics.windowFrom": "с {{value}}",
-    "logistics.windowTo": "до {{value}}",
-    "logistics.windowUnknown": "Окно не задано",
-    "logistics.stopTableHeaderStop": "Точка",
-    "logistics.stopTableHeaderEta": "ETA",
-    "logistics.stopTableHeaderLoad": "Загрузка",
-    "logistics.stopTableHeaderWindow": "Окно",
-    "logistics.stopTableHeaderDelay": "Опоздание",
-    "logistics.stopPickup": "Погрузка №{{index}}",
-    "logistics.stopDropoff": "Выгрузка №{{index}}",
-    "logistics.stopPickupShort": "Погрузка",
-    "logistics.stopDropoffShort": "Выгрузка",
-  };
-  const applyTemplate = (
-    template: string,
-    params: Record<string, unknown> = {},
-  ) =>
-    template.replace(/{{(.*?)}}/g, (_, token: string) => {
-      const key = token.trim();
-      const value = params[key];
-      return value === undefined || value === null ? "" : String(value);
-    });
   const translate = (key: string, options?: Record<string, unknown>) => {
-    const template = templates[key];
-    if (template) {
-      return applyTemplate(template, options ?? {});
+    if (key === "logistics.selectedVehicle") {
+      return `Выбран транспорт: ${options?.name ?? ""}`.trim();
+    }
+    if (key === "logistics.linksLabel") {
+      return `Маршрут ${options?.index ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteTitle") {
+      return `Маршрут ${options?.index ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteSummary") {
+      return `Задач: ${options?.tasks ?? ""}, остановок: ${options?.stops ?? ""}`.trim();
+    }
+    if (key === "logistics.planRouteDistance") {
+      return `Расстояние: ${options?.distance ?? ""}`.trim();
+    }
+    const dictionary: Record<string, string> = {
+      loading: "Загрузка...",
+      reset: "Сбросить",
+      refresh: "Обновить",
+      "logistics.title": "Логистика",
+      "logistics.transport": "Транспорт",
+      "logistics.unselectedVehicle": "Не выбран",
+      "logistics.refreshFleet": "Обновить автопарк",
+      "logistics.noVehicles": "Транспорт не найден",
+      "logistics.loadError": "Не удалось загрузить транспорт автопарка",
+      "logistics.adminOnly": "Автопарк доступен только администраторам",
+      "logistics.noAccess": "Нет доступа к автопарку",
+      "logistics.optimize": "Просчёт логистики",
+      "logistics.planSectionTitle": "Маршрутный план",
+      "logistics.planSummary": "Итоги плана",
+      "logistics.planStatus": "Статус",
+      "logistics.planStatusValue.draft": "Черновик",
+      "logistics.planStatusValue.approved": "Утверждён",
+      "logistics.planStatusValue.completed": "Завершён",
+      "logistics.planReload": "Обновить план",
+      "logistics.planClear": "Сбросить план",
+      "logistics.planApprove": "Опубликовать",
+      "logistics.planComplete": "Завершить",
+      "logistics.planTitleLabel": "Название маршрутного плана",
+      "logistics.planNotesLabel": "Примечания",
+      "logistics.planTotalDistance": "Общее расстояние",
+      "logistics.planTotalRoutes": "Маршрутов",
+      "logistics.planTotalTasks": "Задач",
+      "logistics.planTotalStops": "Остановок",
+      "logistics.planRouteEmpty": "Нет задач",
+      "logistics.planDriver": "Водитель",
+      "logistics.planVehicle": "Транспорт",
+      "logistics.planRouteNotes": "Заметки по маршруту",
+      "logistics.planTaskUp": "Вверх",
+      "logistics.planTaskDown": "Вниз",
+      "logistics.planSaved": "Сохранено",
+      "logistics.planSaveError": "Ошибка сохранения",
+      "logistics.planPublished": "Опубликовано",
+      "logistics.planCompleted": "Завершено",
+      "logistics.planStatusError": "Ошибка статуса",
+      "logistics.planLoadError": "Ошибка загрузки",
+      "logistics.planDraftCreated": "Черновик создан",
+      "logistics.planEmpty": "Нет плана",
+      "logistics.planNoDistance": "нет данных",
+      "logistics.planOptimizeError": "Ошибка оптимизации",
+      "logistics.tasksHeading": "Задачи",
+      "logistics.metaTitle": "Логистика — ERM",
+      "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
+      "logistics.vehicleTasksCount": "Задач: {{count}}",
+      "logistics.vehicleMileage": "Пробег: {{value}} км",
+      "logistics.vehicleCountLabel": "Машины",
+      "logistics.vehicleCountAria": "Количество машин",
+      "logistics.optimizeMethodLabel": "Метод",
+      "logistics.optimizeMethodAria": "Метод оптимизации",
+    };
+    if (dictionary[key]) {
+      return dictionary[key];
     }
     if (options && typeof options.defaultValue === "string") {
       return options.defaultValue;
@@ -221,11 +189,7 @@ jest.mock("../components/TaskTable", () => {
   return { __esModule: true, default: MockTaskTable };
 });
 
-const fetchTasksMock = jest.fn().mockResolvedValue({
-  tasks: mockTasks,
-  users: [],
-  total: mockTasks.length,
-});
+const fetchTasksMock = jest.fn().mockResolvedValue(mockTasks);
 
 jest.mock("../services/tasks", () => ({
   fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
@@ -264,12 +228,7 @@ jest.mock("../services/osrm", () =>
   ]),
 );
 
-const optimizeRouteMock = jest.fn().mockResolvedValue(null);
-
-jest.mock("../services/optimizer", () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => optimizeRouteMock(...args),
-}));
+jest.mock("../services/optimizer", () => jest.fn().mockResolvedValue(null));
 
 const listRoutePlansMock = jest.fn();
 const updateRoutePlanMock = jest.fn();
@@ -294,8 +253,6 @@ const draftPlan: RoutePlan = {
     totalRoutes: 1,
     totalTasks: 1,
     totalStops: 2,
-    totalEtaMinutes: 600,
-    totalLoad: 12.3,
   },
   routes: [
     {
@@ -324,11 +281,6 @@ const draftPlan: RoutePlan = {
           taskId: "t1",
           coordinates: { lat: 50, lng: 30 },
           address: "Старт",
-          etaMinutes: 5,
-          load: 12.3,
-          delayMinutes: 0,
-          windowStartMinutes: 480,
-          windowEndMinutes: 540,
         },
         {
           order: 1,
@@ -336,14 +288,9 @@ const draftPlan: RoutePlan = {
           taskId: "t1",
           coordinates: { lat: 51, lng: 31 },
           address: "Финиш",
-          etaMinutes: 620,
-          load: 0,
-          delayMinutes: 80,
-          windowStartMinutes: 480,
-          windowEndMinutes: 540,
         },
       ],
-      metrics: { distanceKm: 12.3, etaMinutes: 600, load: 12.3, tasks: 1, stops: 2 },
+      metrics: { distanceKm: 12.3, tasks: 1, stops: 2 },
       routeLink: "https://example.com",
       notes: null,
     },
@@ -491,11 +438,7 @@ jest.mock("../context/useTasks", () => {
 describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchTasksMock.mockResolvedValue({
-      tasks: mockTasks,
-      users: [],
-      total: mockTasks.length,
-    });
+    fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
     listRoutePlansMock.mockReset();
     updateRoutePlanMock.mockReset();
@@ -555,46 +498,5 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
     );
-  });
-
-  it("показывает аналитику плана, прогресс-бары и таблицу остановок", async () => {
-    render(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() =>
-      expect(screen.getByDisplayValue("Черновик маршрута")).toBeInTheDocument(),
-    );
-
-    expect(screen.getAllByText("Итоги плана").length).toBeGreaterThan(0);
-    expect(screen.getByText("Время в пути")).toBeInTheDocument();
-    expect(screen.getAllByText("Загрузка").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("10 ч").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("12,3 кг").length).toBeGreaterThan(0);
-
-    const routeHeading = await screen.findByRole("heading", {
-      level: 4,
-      name: "Маршрут 1",
-    });
-    const routeCard = routeHeading.closest("div")?.parentElement?.parentElement;
-    expect(routeCard).not.toBeNull();
-    if (!routeCard) {
-      throw new Error("Маршрутный блок не найден");
-    }
-    const progressBars = within(routeCard).getAllByRole("progressbar");
-    expect(progressBars).toHaveLength(2);
-    expect(progressBars[0]).toHaveAttribute("aria-valuenow", "100");
-    expect(progressBars[1]).toHaveAttribute("aria-valuenow", "100");
-    expect(within(routeCard).getByText("Перегрузка")).toBeInTheDocument();
-    expect(within(routeCard).getAllByText("Опоздание").length).toBeGreaterThan(0);
-
-    const stopsTable = screen.getByRole("table");
-    expect(within(stopsTable).getByText("Погрузка №1")).toBeInTheDocument();
-    expect(within(stopsTable).getByText("Выгрузка №2")).toBeInTheDocument();
-    expect(within(stopsTable).getAllByText("08:00 – 09:00").length).toBeGreaterThan(0);
-    expect(within(stopsTable).getByText("Опоздание 80 мин")).toBeInTheDocument();
-    expect(within(stopsTable).getAllByText("12,3 кг").length).toBeGreaterThan(0);
   });
 });

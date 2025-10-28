@@ -18,8 +18,6 @@ export interface Task {
   task_number?: string;
   completed_at?: string | null;
   in_progress_at?: string | null;
-  delivery_window_start?: string | null;
-  delivery_window_end?: string | null;
   assignees?: number[];
   cargo_length_m?: number;
   cargo_width_m?: number;
@@ -126,7 +124,6 @@ export interface FleetVehicleDto {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
-  defaultDriverId?: number | null;
   transportHistory?: { taskId: string; taskTitle?: string; assignedAt: string; removedAt?: string }[];
   createdAt?: string;
   updatedAt?: string;
@@ -143,11 +140,6 @@ export interface RoutePlanStop {
   taskId: string;
   coordinates?: Coords;
   address?: string | null;
-  etaMinutes?: number | null;
-  load?: number | null;
-  delayMinutes?: number | null;
-  windowStartMinutes?: number | null;
-  windowEndMinutes?: number | null;
 }
 
 export interface RoutePlanTaskRef {
@@ -159,15 +151,10 @@ export interface RoutePlanTaskRef {
   startAddress?: string | null;
   finishAddress?: string | null;
   distanceKm?: number | null;
-  windowStart?: string | null;
-  windowEnd?: string | null;
-  cargoWeightKg?: number | null;
 }
 
 export interface RoutePlanRouteMetrics {
   distanceKm?: number | null;
-  etaMinutes?: number | null;
-  load?: number | null;
   tasks?: number;
   stops?: number;
 }
@@ -191,11 +178,9 @@ export interface RoutePlanMetrics {
   totalRoutes: number;
   totalTasks: number;
   totalStops?: number;
-  totalEtaMinutes?: number | null;
-  totalLoad?: number | null;
 }
 
-export interface RoutePlan { 
+export interface RoutePlan {
   id: string;
   title: string;
   status: RoutePlanStatus;
@@ -213,68 +198,3 @@ export interface RoutePlan {
   createdAt?: string;
   updatedAt?: string;
 }
-
-export interface RoutePlanAnalyticsSeriesPoint {
-  date: string;
-  value: number | null;
-}
-
-export interface RoutePlanAnalyticsSlaPoint {
-  date: string;
-  onTime: number;
-  total: number;
-  rate: number | null;
-}
-
-export interface RoutePlanAnalyticsSummary {
-  period: { from: string; to: string };
-  mileage: {
-    total: number;
-    byPeriod: RoutePlanAnalyticsSeriesPoint[];
-  };
-  load: {
-    average: number | null;
-    byPeriod: RoutePlanAnalyticsSeriesPoint[];
-  };
-  sla: {
-    average: number | null;
-    byPeriod: RoutePlanAnalyticsSlaPoint[];
-  };
-}
-
-export interface LogisticsEventBase {
-  type: string;
-  timestamp: string;
-}
-
-export interface LogisticsTasksChangedEvent extends LogisticsEventBase {
-  type: 'tasks.changed';
-  action: 'created' | 'updated' | 'deleted' | 'bulk';
-  taskIds: string[];
-}
-
-export interface LogisticsRoutePlanUpdatedEvent extends LogisticsEventBase {
-  type: 'route-plan.updated';
-  reason: 'created' | 'updated' | 'status-changed';
-  plan: RoutePlan;
-}
-
-export interface LogisticsRoutePlanRemovedEvent extends LogisticsEventBase {
-  type: 'route-plan.removed';
-  planId: string;
-}
-
-export interface LogisticsInitEvent extends LogisticsEventBase {
-  type: 'logistics.init';
-}
-
-export interface LogisticsHeartbeatEvent extends LogisticsEventBase {
-  type: 'logistics.heartbeat';
-}
-
-export type LogisticsEvent =
-  | LogisticsTasksChangedEvent
-  | LogisticsRoutePlanUpdatedEvent
-  | LogisticsRoutePlanRemovedEvent
-  | LogisticsInitEvent
-  | LogisticsHeartbeatEvent;

@@ -17,7 +17,6 @@ jest.mock('../src/services/otp', () => ({
 }));
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(() => null),
-  getUsersMap: jest.fn(async () => ({})),
   createUser: jest.fn(async () => ({ username: 'u' })),
   updateUser: jest.fn(),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),

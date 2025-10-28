@@ -25,13 +25,7 @@ export type RoutePlanRouteEntry = Omit<
   vehicleId?: Types.ObjectId | null;
   tasks: RoutePlanTaskEntry[];
   stops: RoutePlanStopEntry[];
-  metrics?: {
-    distanceKm?: number | null;
-    etaMinutes?: number | null;
-    load?: number | null;
-    tasks?: number;
-    stops?: number;
-  };
+  metrics?: { distanceKm?: number | null; tasks?: number; stops?: number };
 };
 
 export interface RoutePlanAttrs {
@@ -51,8 +45,6 @@ export interface RoutePlanAttrs {
     totalRoutes: number;
     totalTasks: number;
     totalStops?: number;
-    totalEtaMinutes?: number | null;
-    totalLoad?: number | null;
   };
   tasks: Types.ObjectId[];
 }
@@ -66,11 +58,6 @@ const pointSchema = new Schema<RoutePlanStopEntry>(
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true },
     coordinates: { lat: Number, lng: Number },
     address: String,
-    etaMinutes: Number,
-    load: Number,
-    delayMinutes: Number,
-    windowStartMinutes: Number,
-    windowEndMinutes: Number,
   },
   { _id: false },
 );
@@ -85,9 +72,6 @@ const taskSchema = new Schema<RoutePlanTaskEntry>(
     startAddress: String,
     finishAddress: String,
     distanceKm: Number,
-    windowStart: String,
-    windowEnd: String,
-    cargoWeightKg: Number,
   },
   { _id: false },
 );
@@ -95,8 +79,6 @@ const taskSchema = new Schema<RoutePlanTaskEntry>(
 const routeMetricsSchema = new Schema(
   {
     distanceKm: Number,
-    etaMinutes: Number,
-    load: Number,
     tasks: Number,
     stops: Number,
   },
@@ -126,8 +108,6 @@ const metricsSchema = new Schema(
     totalRoutes: { type: Number, default: 0 },
     totalTasks: { type: Number, default: 0 },
     totalStops: Number,
-    totalEtaMinutes: Number,
-    totalLoad: Number,
   },
   { _id: false },
 );

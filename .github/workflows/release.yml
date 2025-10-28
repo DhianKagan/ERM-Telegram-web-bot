@@ -1,66 +1,29 @@
 # Назначение файла: автоматический релиз при публикации тега
 name: Release
-
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
-
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
-      - name: Включение corepack
-        run: corepack enable
-      - name: Установка зависимостей
-        run: pnpm install --frozen-lockfile
-      - name: Сборка пакетов
-        run: pnpm -r build
-      - name: Линтер и тесты перед релизом
-        run: pnpm lint && pnpm test:unit && pnpm test:api
-      - name: Определение версии Playwright
-        id: playwright-version
-        run: |
-          VERSION=$(node -p "require('@playwright/test/package.json').version")
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Кеш браузеров Playwright
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Установка браузеров Playwright
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: sudo env "PATH=$PATH" npx playwright install --with-deps chromium
-      - name: Диагностика Playwright
-        if: ${{ always() }}
-        run: |
-          ./scripts/run_playwright_diagnostics.sh playwright-release.log
-          {
-            echo '### Playwright doctor (release)'
-            echo '```'
-            cat playwright-release.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: E2E тесты перед релизом
-        run: pnpm test:e2e --project=chromium
+      - run: ./scripts/install_bot_deps.sh
+      - run: npm --prefix bot test
+      - run: npm --prefix bot run build-client
       - uses: docker/setup-buildx-action@v3
       - name: Сборка Docker-образа
         run: docker build -t task-bot .
+      - name: Установка Railway CLI
+        run: npm install -g @railway/cli
       - name: Деплой на Railway
-        run: pnpm dlx @railway/cli@latest up --service bot --yes --detach
+        run: railway up --service bot --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Публикация релиза
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true

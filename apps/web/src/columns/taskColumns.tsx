@@ -7,19 +7,22 @@ import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import EmployeeLink from "../components/EmployeeLink";
 import { getDeadlineState, type DeadlineState } from "./taskDeadline";
 import type { User as AppUser } from "../types/user";
-import {
-  badgeTextClass,
-  buildBadgeClass,
-  creatorBadgeClass,
-  fallbackBadgeClass,
-  getPriorityBadgeClass,
-  getStatusBadgeClass,
-  getTypeBadgeClass,
-  pillBadgeBaseClass,
-} from "./taskBadgeClassNames";
+
+// Оформление бейджей статусов и приоритетов на дизайн-токенах
+const badgeBaseClass =
+  "inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs";
+const badgeTextClass = "text-black dark:text-white";
+
+const buildBadgeClass = (tones: string, extraClass = "") =>
+  [badgeBaseClass, "transition-colors", badgeTextClass, extraClass, tones]
+    .filter(Boolean)
+    .join(" ");
 
 const focusableBadgeClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+const pillBadgeBaseClass =
+  "inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]";
 
 const dateBadgeClass =
   `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
@@ -27,23 +30,104 @@ const dateBadgeClass =
 const dateBadgeTimeClass =
   "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
 
-const windowBadgeClass =
-  `${pillBadgeBaseClass} flex-col items-start gap-0.5 normal-case ${badgeTextClass} text-left ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/25 dark:ring-emerald-300/35`;
-
 const numberBadgeClass =
   `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
 const titleBadgeClass =
   `${pillBadgeBaseClass} justify-start normal-case ${badgeTextClass} ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:ring-indigo-300/45`;
 
+export const creatorBadgeClass =
+  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
+
 const assigneeBadgeClass =
   `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:ring-violet-300/45`;
+
+export const fallbackBadgeClass = buildBadgeClass(
+  "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
+);
 
 const locationBadgeClass =
   `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:ring-emerald-300/30`;
 
 const locationLinkBadgeClass =
   `${locationBadgeClass} ${focusableBadgeClass} no-underline underline-offset-4 hover:underline`;
+
+const statusBadgeClassMap: Record<Task["status"], string> = {
+  Новая: buildBadgeClass(
+    "bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45",
+  ),
+  "В работе": buildBadgeClass(
+    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  ),
+  Выполнена: buildBadgeClass(
+    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+  ),
+  Отменена: buildBadgeClass(
+    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+  ),
+};
+
+const urgentPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40",
+);
+
+const highPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40",
+);
+
+const normalPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
+);
+
+const lowPriorityBadgeClass = buildBadgeClass(
+  "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20",
+);
+
+const priorityBadgeClassMap: Record<string, string> = {
+  срочно: buildBadgeClass(
+    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+  ),
+  'в течение дня': buildBadgeClass(
+    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+  ),
+  'до выполнения': buildBadgeClass(
+    "bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45",
+    "normal-case",
+  ),
+};
+
+const hasOwn = <T extends Record<PropertyKey, unknown>>(obj: T, key: PropertyKey): key is keyof T =>
+  Object.prototype.hasOwnProperty.call(obj, key);
+
+export const getStatusBadgeClass = (value: string) => {
+  if (hasOwn(statusBadgeClassMap, value)) {
+    return statusBadgeClassMap[value];
+  }
+  return null;
+};
+
+export const getPriorityBadgeClass = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (hasOwn(priorityBadgeClassMap, normalized)) {
+    return priorityBadgeClassMap[normalized];
+  }
+  if (/сроч|urgent/.test(normalized)) {
+    return urgentPriorityBadgeClass;
+  }
+  if (/высок|повыш|high/.test(normalized)) {
+    return highPriorityBadgeClass;
+  }
+  if (/низк|бесср|без\s+срок|до\s+выполн|low|minor/.test(normalized)) {
+    return lowPriorityBadgeClass;
+  }
+  if (/обыч|дня|сутк|norm|stand/.test(normalized)) {
+    return normalPriorityBadgeClass;
+  }
+  return null;
+};
 
 const normalizePriorityLabel = (value: string) => {
   const trimmed = value.trim();
@@ -58,6 +142,50 @@ const normalizePriorityLabel = (value: string) => {
 
 const completionNoteTextClass =
   "text-[11px] font-medium text-slate-600 dark:text-slate-300";
+
+const typeBadgeClassMap: Record<string, string> = {
+  доставить: buildBadgeClass(
+    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+  ),
+  купить: buildBadgeClass(
+    "bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45",
+  ),
+  выполнить: buildBadgeClass(
+    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+  ),
+  построить: buildBadgeClass(
+    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  ),
+  починить: buildBadgeClass(
+    "bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45",
+  ),
+};
+
+export const getTypeBadgeClass = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (hasOwn(typeBadgeClassMap, normalized)) {
+    return typeBadgeClassMap[normalized];
+  }
+  if (/стро|монтаж/.test(normalized)) {
+    return typeBadgeClassMap['построить'];
+  }
+  if (/ремонт|чин/.test(normalized)) {
+    return typeBadgeClassMap['починить'];
+  }
+  if (/закуп|покуп|приобр/.test(normalized)) {
+    return typeBadgeClassMap['купить'];
+  }
+  if (/достав|курьер/.test(normalized)) {
+    return typeBadgeClassMap['доставить'];
+  }
+  if (/исполн|выполн/.test(normalized)) {
+    return typeBadgeClassMap['выполнить'];
+  }
+  return null;
+};
 
 const parseDistance = (value: unknown) => {
   if (typeof value === "number") {
@@ -187,43 +315,6 @@ const renderDateCell = (value?: string) => {
   );
 };
 
-const renderWindowRange = (
-  start?: string | null,
-  end?: string | null,
-): React.ReactNode => {
-  const startFormatted = start ? formatDate(start) : null;
-  const endFormatted = end ? formatDate(end) : null;
-  if (!startFormatted && !endFormatted) {
-    return null;
-  }
-  const parts: string[] = [];
-  if (startFormatted) {
-    const startLabel = startFormatted.time
-      ? `${startFormatted.date} ${startFormatted.time}`
-      : startFormatted.date;
-    parts.push(`с ${startLabel}`);
-  }
-  if (endFormatted) {
-    const endLabel = endFormatted.time
-      ? `${endFormatted.date} ${endFormatted.time}`
-      : endFormatted.date;
-    parts.push(`до ${endLabel}`);
-  }
-  const titleParts: string[] = [];
-  if (startFormatted) {
-    titleParts.push(`Начало окна: ${startFormatted.full}`);
-  }
-  if (endFormatted) {
-    titleParts.push(`Конец окна: ${endFormatted.full}`);
-  }
-  const title = titleParts.join('\n') || 'Окно доставки';
-  return (
-    <span className={windowBadgeClass} title={title}>
-      {parts.join(' ')}
-    </span>
-  );
-};
-
 // Делает текст компактнее, добавляя многоточие по необходимости
 const compactText = (value: string, maxLength: number) => {
   const trimmed = value.trim();
@@ -245,10 +336,6 @@ export interface TaskRow extends Task {
   assignees?: number[];
   start_date?: string | null;
   due_date?: string | null;
-  deliveryWindowStart?: string | null;
-  deliveryWindowEnd?: string | null;
-  delivery_window_start?: string | null;
-  delivery_window_end?: string | null;
   start_location?: string | null;
   start_location_link?: string | null;
   end_location?: string | null;
@@ -484,6 +571,8 @@ const buildCompletionNote = (
     : `Выполнена с опозданием на ${offset}`;
 };
 
+// Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
+// eslint-disable-next-line react-refresh/only-export-components
 export function DeadlineCountdownBadge({
   startValue,
   dueValue,
@@ -701,6 +790,7 @@ type ActualTimeCellProps = {
   entityKind: EntityKind;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 function ActualTimeCell({
   progressStartValue,
   plannedStartValue,
@@ -913,8 +1003,6 @@ function ActualTimeCell({
   );
 }
 
-// Fast Refresh воспринимает конфигурацию таблицы как некомпонентную логику
-// eslint-disable-next-line react-refresh/only-export-components
 export default function taskColumns(
   users: Record<number, AppUser>,
   defaultKind: EntityKind = "task",
@@ -1165,47 +1253,35 @@ export default function taskColumns(
       },
       cell: (p) => {
         const dueValue = p.getValue<string>();
-        const row = p.row.original as TaskRow;
-        const windowStart =
-          row.delivery_window_start ?? (row.start_date ?? undefined) ?? null;
-        const windowEnd =
-          row.delivery_window_end ?? (row.due_date ?? undefined) ?? null;
-        const fallbackDue = dueValue || row.delivery_window_end || undefined;
+        const row = p.row.original;
         const countdown = (
           <DeadlineCountdownBadge
-            startValue={windowStart ?? undefined}
-            dueValue={windowEnd ?? undefined}
-            rawDue={fallbackDue}
+            startValue={row.start_date ?? undefined}
+            dueValue={row.due_date ?? undefined}
+            rawDue={dueValue}
             status={row.status}
             completedAt={row.completed_at ?? undefined}
           />
         );
-        const primaryDate = dueValue || windowEnd || undefined;
-        const dateCell = primaryDate ? renderDateCell(primaryDate) : null;
-        const windowBadge = renderWindowRange(
-          row.delivery_window_start ?? null,
-          row.delivery_window_end ?? null,
-        );
-        const countdownEntry = { key: "due-countdown", node: countdown };
-        const parts: Array<{ key: string; node: React.ReactNode }> = [];
-        if (dateCell) {
-          parts.push({
-            key: "due-date",
-            node: typeof dateCell === "string" ? <span>{dateCell}</span> : dateCell,
-          });
+        if (!dueValue) {
+          return countdown;
         }
-        if (windowBadge) {
-          parts.push({ key: "due-window", node: windowBadge });
-        }
-        parts.push(countdownEntry);
-        if (parts.length === 1) {
-          return parts[0]?.node ?? countdownEntry.node;
+        const dateCell = renderDateCell(dueValue);
+        if (typeof dateCell === "string") {
+          if (!dateCell) {
+            return countdown;
+          }
+          return (
+            <div className="flex flex-col items-start gap-1">
+              {dateCell ? <span>{dateCell}</span> : null}
+              {countdown}
+            </div>
+          );
         }
         return (
           <div className="flex flex-col items-start gap-1">
-            {parts.map(({ key, node }) => (
-              <React.Fragment key={key}>{node}</React.Fragment>
-            ))}
+            {dateCell}
+            {countdown}
           </div>
         );
       },

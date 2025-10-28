@@ -47,8 +47,6 @@ import collectionsRouter from '../routes/collections';
 import archivesRouter from '../routes/archives';
 import systemRouter from '../routes/system';
 import routePlansRouter from '../routes/routePlans';
-import logisticsRouter from '../routes/logistics';
-import analyticsRouter from '../routes/analytics';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
 import {
@@ -111,7 +109,7 @@ export default async function registerRoutes(
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
     '/api/v1/csrf',
-    '/api/v1/route-optimize',
+    '/api/v1/optimizer',
     '/api/v1/maps/expand',
   ];
   const csrfExcludePrefix = ['/api/tma'];
@@ -242,10 +240,8 @@ export default async function registerRoutes(
   app.use(`${prefix}/auth`, authUserRouter);
   app.use(`${prefix}/maps`, mapsRouter);
   app.use(`${prefix}/route`, routeRouter);
-  app.use(`${prefix}/route-optimize`, optimizerRouter);
-  app.use(`${prefix}/logistics`, logisticsRouter);
+  app.use(`${prefix}/optimizer`, optimizerRouter);
   app.use(`${prefix}/route-plans`, routePlansRouter);
-  app.use(`${prefix}/analytics`, analyticsRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);
   app.use(`${prefix}/task-drafts`, taskDraftsRouter);

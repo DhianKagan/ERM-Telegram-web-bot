@@ -89,8 +89,6 @@ const collectTaskSearchValues = (
     task.location,
     (task as Record<string, unknown>).start_location,
     (task as Record<string, unknown>).end_location,
-    (task as Record<string, unknown>).delivery_window_start,
-    (task as Record<string, unknown>).delivery_window_end,
     task.project,
     task.comment,
     task.status,

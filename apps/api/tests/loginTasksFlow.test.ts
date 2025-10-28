@@ -21,7 +21,6 @@ jest.mock('../src/db/roleCache', () => ({
   clearRoleCache: jest.fn(),
 }));
 
-const { taskFormSchema } = require('shared');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -52,20 +51,10 @@ jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ roleId: mockManagerRoleId })),
-  getUsersMap: jest.fn(async () => ({})),
   createUser: jest.fn(async () => ({ username: 'u', role: 'manager', roleId: mockManagerRoleId })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
-
-require('reflect-metadata');
-const TasksController = require('../src/tasks/tasks.controller.ts').default;
-jest
-  .spyOn(TasksController.prototype as unknown as Record<string, unknown>, 'broadcastTaskSnapshot')
-  .mockImplementation(async () => undefined);
-jest
-  .spyOn(TasksController.prototype as unknown as Record<string, unknown>, 'notifyTaskCreated')
-  .mockImplementation(async () => undefined);
 
 const authRouter = require('../src/routes/authUser').default;
 const tasksRouter = require('../src/routes/tasks').default;
@@ -160,6 +149,6 @@ test('полный цикл логина и создания задачи', asyn
     .post('/api/v1/tasks')
     .set('X-Forwarded-Proto', 'https')
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
-    .send({ formVersion: taskFormSchema.formVersion, title: 'T' });
+    .send({ formVersion: 1, title: 'T' });
   expect(res.status).toBe(201);
 });

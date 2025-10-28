@@ -26,7 +26,6 @@
 - `/api/v1/collections` объединяет новые элементы `CollectionItem` и записи устаревших коллекций Department/Employee; такие элементы отображаются только для чтения.
 - Таблицы на React Table: скрытие и перестановка колонок, экспорт CSV/XLSX/PDF, серверная пагинация.
 - Поиск элементов коллекций с фильтрами и пагинацией.
-- Аналитическая панель по маршрутным планам (`/mg/analytics`, `/cp/analytics`) с фильтрами периода/статуса и графиками пробега, загрузки и SLA.
 - Безопасность: JWT хранится в cookie, контекст аутентификации содержит только профиль.
 - Неавторизованные пользователи автоматически перенаправляются на страницу входа.
 
@@ -87,24 +86,6 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 Статусы Lighthouse CI добавляет установленный GitHub App, его токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты публикуются во временном публичном хранилище.
 
-## Ветвление и CI
-
-- Основная ветка — `main`. История поддерживается линейной: приливочные ветки мержатся через rebase/squash без веток `staging` и `production`.
-
-- Любой pull request (включая ветки, временно нацеленные не на `main`) автоматически запускает workflows `CI`, `Lighthouse`, `Docker` и CodeQL‑проверку.
-- Если pull request приходит из форка и GitHub Actions не раскрывает секреты, workflow `Docker` подставляет тестовые значения (`BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `MONGO_DATABASE_URL`), чтобы линтеры, тесты и Docker build прошли перед деплоем на Railway.
-
-- Push в `main` дополнительно активирует workflow `Release`, который собирает проект и деплоит его на Railway через `pnpm dlx @railway/cli up`.
-- Перед сборкой Docker `Release` переиспользует кэш Playwright и запускает Chromium e2e‑тесты, чтобы подтвердить готовность интерфейса.
-- Для ручного релиза по тегу сохранена поддержка схемы `v*.*.*`; тег запускает тот же pipeline деплоя.
-
-## Секреты CI/CD и переменные окружения Railway
-
-- В настройках GitHub Actions добавьте секреты `RAILWAY_TOKEN` (токен доступа Railway для `release.yml`) и `LHCI_GITHUB_APP_TOKEN` (токен установленного Lighthouse CI App).
-- На Railway задайте обязательные переменные `BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `SESSION_SECRET`, `APP_URL`, `MONGO_DATABASE_URL`, `ROUTING_URL`, `VITE_ROUTING_URL`, `NODE_ENV=production`, а также дополнительные токены (например, `LHCI_GITHUB_APP_TOKEN`) при необходимости отчётности.
-- Файл `railway.json` указывает Railway собирать образ по `Dockerfile` и запускать приложение через `pm2`. Автосборка выполняет `docker build`, после чего `Procfile` или CLI из `release.yml` разворачивает свежую версию.
-- Стартовый скрипт контейнера вызывает `scripts/set_bot_commands.sh`, поэтому список команд Telegram обновляется при каждом деплое.
-
 ## Миграции
 
 Скрипты для обновления базы находятся в `scripts/db`. Для добавления роли
@@ -129,7 +110,7 @@ pnpm ts-node scripts/db/syncUserRoles.ts
 чтобы установка зависимостей не требовала токена.
 
 Dockerfile копирует каталог `patches` перед установкой зависимостей для применения патчей.
-Railway повторно использует этот Dockerfile, поэтому отдельная конфигурация Nixpacks не требуется.
+Файл `nixpacks.toml` настраивает сборку на Railway через Nixpacks и выполняет установку зависимостей без режима offline.
 
 ## Docker
 

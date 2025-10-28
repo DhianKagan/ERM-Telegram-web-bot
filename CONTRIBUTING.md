@@ -11,3 +11,19 @@
 6. Обновите `README.md`, `CHANGELOG.md` и раздел «В разработке» в `ROADMAP.md`.
 7. После коммита откройте pull request, кратко описав внесённые улучшения.
 
+## Требования к защите ветки `main`
+
+Перед слиянием убедитесь, что pull request удовлетворяет правилам защиты ветки `main`:
+
+- Слияние выполняется только через pull request; прямые коммиты запрещены, обход правил администратора выключен.
+- История должна оставаться линейной (`Require linear history`).
+- Все обязательные проверки завершены успешно:
+  - `CI / audit-deps`;
+  - `CI / lint-test-build`;
+  - `CI / e2e-tests (chromium)`;
+  - `CI / e2e-tests (firefox)`;
+  - `CI / e2e-tests (webkit)`;
+  - `Docker / build`;
+  - `Lighthouse / lhci`;
+  - Каждая проверка из набора `CodeQL Advanced / Analyze (…)`.
+

@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main, work, staging]
   pull_request:
-    branches: [main]
+    branches: [main, work]
 
 jobs:
   audit-deps:

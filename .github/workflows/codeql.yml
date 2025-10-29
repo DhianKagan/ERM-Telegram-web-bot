@@ -38,14 +38,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Включение corepack
-        run: corepack enable
+      - name: Настройка pnpm через corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.15.0 --activate
 
       - name: Установка зависимостей
         run: pnpm install --frozen-lockfile

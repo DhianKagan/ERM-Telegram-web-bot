@@ -541,14 +541,21 @@ const resetLongPollingSession = async (): Promise<void> => {
     );
   }
   try {
-    await bot.telegram.callApi('logOut');
-    console.warn(
-      'Текущая long polling сессия Telegram завершена методом logOut',
-    );
-  } catch (logoutError) {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.warn('Webhook удалён, обновления сброшены перед повторным запуском');
+  } catch (deleteError) {
     console.error(
-      'Не удалось завершить предыдущую long polling сессию Telegram',
-      logoutError,
+      'Не удалось удалить webhook перед повторным запуском long polling',
+      deleteError,
+    );
+  }
+  try {
+    await bot.telegram.callApi('close');
+    console.warn('Текущая long polling сессия Telegram завершена методом close');
+  } catch (closeError) {
+    console.error(
+      'Не удалось завершить предыдущую long polling сессию методом close',
+      closeError,
     );
   }
 };

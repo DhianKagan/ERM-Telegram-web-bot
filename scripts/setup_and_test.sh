@@ -23,6 +23,7 @@ pnpm --dir apps/api test tests/csrf.test.ts
 pnpm --dir apps/api run test:types
 pnpm --dir apps/api run lint
 pnpm --dir apps/web run lint
+./scripts/security_scan.sh
 
 # Проверяем конфигурацию docker compose при наличии команды docker
 if command -v docker >/dev/null; then

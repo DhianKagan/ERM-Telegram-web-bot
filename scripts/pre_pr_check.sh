@@ -51,6 +51,8 @@ cp .env apps/.env
 
 ./scripts/audit_deps.sh
 
+./scripts/security_scan.sh
+
 ./scripts/build_client.sh >/dev/null
 if [ ! -f apps/api/public/.vite/manifest.json ] || ! ls apps/api/public/js/index*.js >/dev/null 2>&1; then
   echo "Отсутствует собранный JS-бандл" >&2

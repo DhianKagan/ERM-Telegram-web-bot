@@ -84,6 +84,7 @@ pnpm build       # сборка проекта и компиляция ensureDef
 pnpm size        # контроль размера бандла
 pnpm a11y        # проверка контрастности
 pnpm approve-builds  # контроль скриптов зависимостей
+pnpm security:scan   # статический анализ кода на уязвимости
 ./scripts/pre_pr_check.sh  # проверка сборки и запуска перед PR
 ./scripts/install_bot_deps.sh  # установка зависимостей; при сбоях скачивает pnpm из GitHub
 pnpm pretest:e2e  # установка Firefox и Chromium, диагностика playwright doctor/--list и сборка перед e2e

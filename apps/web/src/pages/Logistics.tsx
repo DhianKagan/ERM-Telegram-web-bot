@@ -1,5 +1,5 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, Leaflet, i18next
+// Основные модули: React, MapLibre, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -8,8 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
-import L, { type LatLngBoundsExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import maplibregl, {
+  type GeoJSONSource,
+  type LngLatBoundsLike,
+  type Map as MapInstance,
+  type Marker,
+} from "maplibre-gl";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "maplibre-gl/dist/maplibre-gl.css";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
@@ -52,17 +59,121 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   optimized: true,
 };
 
+const MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+
+type GeoZoneFeature = GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>;
+
+type GeoZone = {
+  id: string;
+  drawId: string;
+  name: string;
+  feature: GeoZoneFeature;
+  createdAt: string;
+};
+
+const GEO_SOURCE_ID = "logistics-geozones";
+const GEO_FILL_LAYER_ID = "logistics-geozones-fill";
+const GEO_OUTLINE_LAYER_ID = "logistics-geozones-outline";
+const TASK_SOURCE_ID = "logistics-task-routes";
+const TASK_LAYER_ID = "logistics-task-routes-line";
+const OPT_SOURCE_ID = "logistics-optimized-routes";
+const OPT_LAYER_ID = "logistics-optimized-routes-line";
+
+const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>(): GeoJSON.FeatureCollection<T> => ({
+  type: "FeatureCollection",
+  features: [],
+});
+
+const isPolygonGeometry = (
+  geometry: GeoJSON.Geometry | undefined | null,
+): geometry is GeoJSON.Polygon | GeoJSON.MultiPolygon => {
+  if (!geometry) return false;
+  return geometry.type === "Polygon" || geometry.type === "MultiPolygon";
+};
+
+const toPosition = (coords?: Coords | null): [number, number] | null => {
+  if (!coords) return null;
+  const { lat, lng } = coords;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  return [lng, lat];
+};
+
+const pointInRing = (point: [number, number], ring: GeoJSON.Position[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const denominator = yj - yi;
+    if (denominator === 0) {
+      continue;
+    }
+    const intersect =
+      yi > point[1] !== yj > point[1] &&
+      point[0] < ((xj - xi) * (point[1] - yi)) / denominator + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+const pointInPolygon = (
+  point: [number, number],
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): boolean => {
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates.some((ring) => pointInRing(point, ring));
+  }
+  return geometry.coordinates.some((polygonRings) =>
+    polygonRings.some((ring) => pointInRing(point, ring)),
+  );
+};
+
 type LogisticsDetails = {
   transport_type?: string | null;
   start_location?: string | null;
   end_location?: string | null;
 };
 
+const filterTasksByGeoZones = (
+  tasks: RouteTask[],
+  zones: GeoZone[],
+  activeZoneIds: string[],
+): RouteTask[] => {
+  if (!zones.length || !activeZoneIds.length) {
+    return tasks;
+  }
+  const activeZones = zones.filter((zone) => activeZoneIds.includes(zone.id));
+  if (!activeZones.length) {
+    return tasks;
+  }
+  return tasks.filter((task) => {
+    const points: [number, number][] = [];
+    const start = toPosition(task.startCoordinates);
+    const finish = toPosition(task.finishCoordinates);
+    if (start) points.push(start);
+    if (finish) points.push(finish);
+    if (!points.length) {
+      return false;
+    }
+    return points.some((point) =>
+      activeZones.some((zone) =>
+        isPolygonGeometry(zone.feature.geometry)
+          ? pointInPolygon(point, zone.feature.geometry)
+          : false,
+      ),
+    );
+  });
+};
+
 const MAP_CENTER: [number, number] = [48.3794, 31.1656];
 const MAP_ZOOM = 6;
-const UKRAINE_BOUNDS: LatLngBoundsExpression = [
-  [44, 22],
-  [52.5, 40.5],
+const MAP_CENTER_LNG_LAT: [number, number] = [MAP_CENTER[1], MAP_CENTER[0]];
+const UKRAINE_BOUNDS: LngLatBoundsLike = [
+  [22, 44],
+  [40.5, 52.5],
 ];
 
 export default function LogisticsPage() {
@@ -74,6 +185,7 @@ export default function LogisticsPage() {
   const language = i18n.language;
   const tasks = useTaskIndex("logistics:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
+  const [allRouteTasks, setAllRouteTasks] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState("angle");
   const [links, setLinks] = React.useState<string[]>([]);
@@ -84,9 +196,9 @@ export default function LogisticsPage() {
     "neutral" | "error" | "success"
   >("neutral");
   const [planLoading, setPlanLoading] = React.useState(false);
-  const mapRef = React.useRef<L.Map | null>(null);
-  const optLayerRef = React.useRef<L.LayerGroup | null>(null);
-  const tasksLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const mapRef = React.useRef<MapInstance | null>(null);
+  const drawRef = React.useRef<MapboxDraw | null>(null);
+  const taskMarkersRef = React.useRef<Marker[]>([]);
   const [availableVehicles, setAvailableVehicles] = React.useState<
     FleetVehicleDto[]
   >([]);
@@ -97,6 +209,12 @@ export default function LogisticsPage() {
     DEFAULT_LAYER_VISIBILITY,
   );
   const [mapReady, setMapReady] = React.useState(false);
+  const [geoZones, setGeoZones] = React.useState<GeoZone[]>([]);
+  const [activeGeoZoneIds, setActiveGeoZoneIds] = React.useState<string[]>([]);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+  const [optimizedRoutesGeoJSON, setOptimizedRoutesGeoJSON] = React.useState<
+    GeoJSON.FeatureCollection<GeoJSON.LineString>
+  >(createEmptyCollection<GeoJSON.LineString>());
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
   const navigate = useNavigate();
@@ -116,6 +234,35 @@ export default function LogisticsPage() {
       })),
     [],
   );
+
+  const filteredTasksByZone = React.useMemo(
+    () => filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds),
+    [activeGeoZoneIds, allRouteTasks, geoZones],
+  );
+
+  const filteredSignature = React.useMemo(
+    () => JSON.stringify(filteredTasksByZone),
+    [filteredTasksByZone],
+  );
+
+  const lastSyncedSignatureRef = React.useRef<string>("");
+
+  React.useEffect(() => {
+    if (lastSyncedSignatureRef.current === filteredSignature) {
+      return;
+    }
+    lastSyncedSignatureRef.current = filteredSignature;
+    setSorted(filteredTasksByZone);
+    const userId = Number((user as any)?.telegram_id) || undefined;
+    controller.setIndex("logistics:all", filteredTasksByZone, {
+      kind: "task",
+      mine: false,
+      userId,
+      pageSize: filteredTasksByZone.length,
+      total: filteredTasksByZone.length,
+      sort: "desc",
+    });
+  }, [controller, filteredSignature, filteredTasksByZone, user]);
 
   const clonePlan = React.useCallback(
     (value: RoutePlan | null) =>
@@ -252,6 +399,49 @@ export default function LogisticsPage() {
     },
     [],
   );
+
+  const handleStartDrawing = React.useCallback(() => {
+    const draw = drawRef.current;
+    if (!draw) return;
+    draw.changeMode("draw_polygon");
+  }, []);
+
+  const handleToggleZone = React.useCallback((zoneId: string, checked: boolean) => {
+    setActiveGeoZoneIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(zoneId);
+      } else {
+        next.delete(zoneId);
+      }
+      return Array.from(next);
+    });
+  }, []);
+
+  const handleRemoveZone = React.useCallback((zone: GeoZone) => {
+    const removeFromState = () => {
+      setGeoZones((prev) => prev.filter((item) => item.id !== zone.id));
+      setActiveGeoZoneIds((prev) => prev.filter((id) => id !== zone.id));
+    };
+
+    const draw = drawRef.current;
+    if (!draw) {
+      removeFromState();
+      return;
+    }
+
+    const hadFeature = Boolean(draw.get(zone.drawId));
+    const deleted = draw.delete(zone.drawId);
+
+    if (!hadFeature) {
+      removeFromState();
+      return;
+    }
+
+    if (Array.isArray(deleted) ? deleted.length === 0 : !deleted) {
+      removeFromState();
+    }
+  }, []);
 
   const handleSavePlan = React.useCallback(async () => {
     if (!planDraft) return;
@@ -424,15 +614,7 @@ export default function LogisticsPage() {
         (task): task is RouteTask => Boolean(task),
       );
       const filtered = filterRouteTasks(list);
-      controller.setIndex("logistics:all", filtered, {
-        kind: "task",
-        mine: false,
-        userId,
-        pageSize: filtered.length,
-        total: filtered.length,
-        sort: "desc",
-      });
-      setSorted(filtered);
+      setAllRouteTasks(filtered);
     });
   }, [controller, filterRouteTasks, user]);
 
@@ -495,36 +677,6 @@ export default function LogisticsPage() {
       applyPlan(result);
       setPlanMessage(tRef.current('logistics.planDraftCreated'));
       setPlanMessageTone('success');
-      if (!mapRef.current) {
-        return;
-      }
-      if (optLayerRef.current) {
-        optLayerRef.current.remove();
-      }
-      const group = L.layerGroup();
-      if (layerVisibility.optimized) {
-        group.addTo(mapRef.current);
-      }
-      optLayerRef.current = group;
-      const colors = ['#ef4444', '#22c55e', '#f97316'];
-      result.routes.forEach((route, idx) => {
-        const latlngs: Array<[number, number]> = [];
-        route.tasks.forEach((task) => {
-          if (task.start) {
-            latlngs.push([task.start.lat, task.start.lng]);
-          }
-          if (task.finish) {
-            latlngs.push([task.finish.lat, task.finish.lng]);
-          }
-        });
-        if (latlngs.length < 2) {
-          return;
-        }
-        L.polyline(latlngs, {
-          color: colors[idx % colors.length],
-          weight: 4,
-        }).addTo(group);
-      });
     } catch (error) {
       const message =
         error instanceof Error
@@ -535,7 +687,7 @@ export default function LogisticsPage() {
     } finally {
       setPlanLoading(false);
     }
-  }, [applyPlan, layerVisibility.optimized, method, sorted, vehicles]);
+  }, [applyPlan, method, sorted, vehicles]);
 
   const formatDistance = React.useCallback(
     (value: number | null | undefined) => {
@@ -574,10 +726,7 @@ export default function LogisticsPage() {
   const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
 
   const reset = React.useCallback(() => {
-    if (optLayerRef.current) {
-      optLayerRef.current.remove();
-      optLayerRef.current = null;
-    }
+    setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
     setLinks([]);
   }, []);
 
@@ -619,99 +768,425 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = L.map("logistics-map", {
-      maxBounds: UKRAINE_BOUNDS,
-      maxBoundsViscosity: 1,
+    const map = new maplibregl.Map({
+      container: "logistics-map",
+      style: MAP_STYLE_URL,
+      center: MAP_CENTER_LNG_LAT,
+      zoom: MAP_ZOOM,
       minZoom: 5,
       maxZoom: 12,
-    }).setView(MAP_CENTER, MAP_ZOOM);
+      maxBounds: UKRAINE_BOUNDS,
+    });
     mapRef.current = map;
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
-    tasksLayerRef.current = L.layerGroup().addTo(map);
-    setMapReady(true);
+    if (typeof map.dragRotate?.disable === "function") {
+      map.dragRotate.disable();
+    }
+    if (typeof map.touchZoomRotate?.disableRotation === "function") {
+      map.touchZoomRotate.disableRotation();
+    }
+    const navigation = new maplibregl.NavigationControl({ showCompass: false });
+    map.addControl(navigation, "top-right");
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: { polygon: true, trash: true },
+      defaultMode: "simple_select",
+    });
+    drawRef.current = draw;
+    map.addControl(draw, "top-left");
+    map.on("load", () => {
+      map.addSource(GEO_SOURCE_ID, {
+        type: "geojson",
+        data: createEmptyCollection(),
+      });
+      map.addLayer({
+        id: GEO_FILL_LAYER_ID,
+        type: "fill",
+        source: GEO_SOURCE_ID,
+        paint: {
+          "fill-color": [
+            "case",
+            ["boolean", ["get", "active"], false],
+            "rgba(37, 99, 235, 0.35)",
+            "rgba(148, 163, 184, 0.2)",
+          ],
+          "fill-opacity": [
+            "case",
+            ["boolean", ["get", "active"], false],
+            0.4,
+            0.2,
+          ],
+        },
+      });
+      map.addLayer({
+        id: GEO_OUTLINE_LAYER_ID,
+        type: "line",
+        source: GEO_SOURCE_ID,
+        paint: {
+          "line-color": [
+            "case",
+            ["boolean", ["get", "active"], false],
+            "#2563eb",
+            "#94a3b8",
+          ],
+          "line-width": [
+            "case",
+            ["boolean", ["get", "active"], false],
+            2.5,
+            1.5,
+          ],
+        },
+      });
+      map.addSource(OPT_SOURCE_ID, {
+        type: "geojson",
+        data: createEmptyCollection(),
+      });
+      map.addLayer({
+        id: OPT_LAYER_ID,
+        type: "line",
+        source: OPT_SOURCE_ID,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 4,
+          "line-dasharray": [1.5, 1.5],
+          "line-opacity": 0.8,
+        },
+      });
+      map.addSource(TASK_SOURCE_ID, {
+        type: "geojson",
+        data: createEmptyCollection(),
+      });
+      map.addLayer({
+        id: TASK_LAYER_ID,
+        type: "line",
+        source: TASK_SOURCE_ID,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 3,
+          "line-opacity": 0.85,
+        },
+      });
+      setMapReady(true);
+    });
     return () => {
-      map.remove();
-      if (optLayerRef.current) optLayerRef.current.remove();
-      tasksLayerRef.current = null;
-      mapRef.current = null;
       setMapReady(false);
+      setIsDrawing(false);
+      taskMarkersRef.current.forEach((marker) => marker.remove());
+      taskMarkersRef.current = [];
+      drawRef.current = null;
+      map.remove();
+      mapRef.current = null;
     };
   }, [hasDialog]);
 
   React.useEffect(() => {
-    if (!mapRef.current || !optLayerRef.current) return;
-    if (layerVisibility.optimized) {
-      optLayerRef.current.addTo(mapRef.current);
-    } else {
-      optLayerRef.current.remove();
-    }
-  }, [layerVisibility.optimized]);
+    if (!mapReady) return;
+    const map = mapRef.current;
+    const draw = drawRef.current;
+    if (!map || !draw) return;
+    const createdZones: GeoZone[] = [];
+    const updatedZones = new Map<string, GeoZoneFeature>();
+
+    const handleCreate = (event: { features?: GeoJSON.Feature[] }) => {
+      createdZones.length = 0;
+      setGeoZones((prev) => {
+        const base = [...prev];
+        const baseLength = prev.length;
+        const now = new Date().toISOString();
+        for (const feature of event.features ?? []) {
+          if (!feature || !isPolygonGeometry(feature.geometry)) continue;
+          const drawId =
+            typeof feature.id === "string"
+              ? feature.id
+              : feature.id != null
+                ? String(feature.id)
+                : `draw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const zoneId =
+            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+              ? crypto.randomUUID()
+              : `zone-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const name = tRef.current("logistics.geozoneDefaultName", {
+            index: baseLength + createdZones.length + 1,
+          });
+          const zone: GeoZone = {
+            id: zoneId,
+            drawId,
+            name,
+            createdAt: now,
+            feature: {
+              type: "Feature",
+              geometry: feature.geometry,
+              properties: {
+                ...(feature.properties ?? {}),
+                zoneId,
+                active: true,
+              },
+            },
+          };
+          createdZones.push(zone);
+          base.push(zone);
+        }
+        return base;
+      });
+      if (createdZones.length) {
+        setActiveGeoZoneIds((prev) => {
+          const next = new Set(prev);
+          createdZones.forEach((zone) => next.add(zone.id));
+          return Array.from(next);
+        });
+      }
+    };
+
+    const handleDelete = (event: { features?: GeoJSON.Feature[] }) => {
+      const removedDrawIds = new Set<string>();
+      for (const feature of event.features ?? []) {
+        if (!feature) continue;
+        const drawId =
+          typeof feature.id === "string"
+            ? feature.id
+            : feature.id != null
+              ? String(feature.id)
+              : "";
+        if (drawId) {
+          removedDrawIds.add(drawId);
+        }
+      }
+      if (!removedDrawIds.size) {
+        return;
+      }
+      const removedZoneIds: string[] = [];
+      setGeoZones((prev) => {
+        const next = prev.filter((zone) => {
+          const shouldRemove = removedDrawIds.has(zone.drawId);
+          if (shouldRemove) {
+            removedZoneIds.push(zone.id);
+          }
+          return !shouldRemove;
+        });
+        return next;
+      });
+      if (removedZoneIds.length) {
+        setActiveGeoZoneIds((prev) => prev.filter((id) => !removedZoneIds.includes(id)));
+      }
+    };
+
+    const handleUpdate = (event: { features?: GeoJSON.Feature[] }) => {
+      updatedZones.clear();
+      for (const feature of event.features ?? []) {
+        if (!feature || !isPolygonGeometry(feature.geometry)) continue;
+        const drawId =
+          typeof feature.id === "string"
+            ? feature.id
+            : feature.id != null
+              ? String(feature.id)
+              : "";
+        if (!drawId) continue;
+        updatedZones.set(drawId, {
+          type: "Feature",
+          geometry: feature.geometry,
+          properties: { ...(feature.properties ?? {}) },
+        });
+      }
+      if (!updatedZones.size) return;
+      setGeoZones((prev) =>
+        prev.map((zone) => {
+          const updated = updatedZones.get(zone.drawId);
+          if (!updated) {
+            return zone;
+          }
+          return {
+            ...zone,
+            feature: {
+              type: "Feature",
+              geometry: updated.geometry,
+              properties: {
+                ...(updated.properties ?? {}),
+                zoneId: zone.id,
+                active: activeGeoZoneIds.includes(zone.id),
+              },
+            },
+          };
+        }),
+      );
+    };
+
+    const handleModeChange = (event: { mode: string }) => {
+      setIsDrawing(event.mode === "draw_polygon");
+    };
+
+    map.on("draw.create", handleCreate as any);
+    map.on("draw.delete", handleDelete as any);
+    map.on("draw.update", handleUpdate as any);
+    map.on("draw.modechange", handleModeChange as any);
+
+    return () => {
+      map.off("draw.create", handleCreate as any);
+      map.off("draw.delete", handleDelete as any);
+      map.off("draw.update", handleUpdate as any);
+      map.off("draw.modechange", handleModeChange as any);
+    };
+  }, [activeGeoZoneIds, mapReady]);
 
   React.useEffect(() => {
-    const group = tasksLayerRef.current;
-    if (!mapRef.current || !group || !mapReady) return;
-    group.clearLayers();
-    if (!layerVisibility.tasks) return;
-    if (!sorted.length) return;
-    const createMarkerIcon = (kind: "start" | "finish", color: string) =>
-      L.divIcon({
-        className: `task-marker task-marker--${kind}`,
-        html: `<span style="--marker-color:${color}"></span>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      });
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource(GEO_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source) return;
+    const features = geoZones.map((zone) => ({
+      ...zone.feature,
+      id: zone.drawId,
+      properties: {
+        ...(zone.feature.properties ?? {}),
+        zoneId: zone.id,
+        name: zone.name,
+        active: activeGeoZoneIds.includes(zone.id),
+      },
+    }));
+    source.setData({
+      type: "FeatureCollection",
+      features,
+    });
+  }, [activeGeoZoneIds, geoZones, mapReady]);
+
+  React.useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return;
+    const source = map.getSource(TASK_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source) return;
+    taskMarkersRef.current.forEach((marker) => marker.remove());
+    taskMarkersRef.current = [];
+    if (!layerVisibility.tasks || !sorted.length) {
+      source.setData(createEmptyCollection());
+      return;
+    }
     let cancelled = false;
+    const nextMarkers: Marker[] = [];
     (async () => {
-      for (const t of sorted) {
-        if (!t.startCoordinates || !t.finishCoordinates || cancelled) continue;
-        const coords = (await fetchRouteGeometry(
-          t.startCoordinates,
-          t.finishCoordinates,
-        )) as ([number, number][] | null);
-        if (!coords || cancelled) continue;
-        const latlngs = coords.map(([lng, lat]) =>
-          [lat, lng] as [number, number],
-        );
+      const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+      for (const task of sorted) {
+        if (cancelled) break;
+        const start = toPosition(task.startCoordinates);
+        const finish = toPosition(task.finishCoordinates);
+        if (!start || !finish) continue;
+        const geometry = await fetchRouteGeometry(task.startCoordinates, task.finishCoordinates);
+        if (!geometry || cancelled) continue;
         const statusKey =
-          typeof t.status === "string" ? t.status.trim() : "";
-        const routeColor =
-          TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
-        L.polyline(latlngs, {
-          color: routeColor,
-          weight: 4,
-          opacity: 0.85,
-        }).addTo(group);
-        const startMarker = L.marker(latlngs[0], {
-          icon: createMarkerIcon("start", routeColor),
-        }).bindTooltip(
-          `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
-        );
-        const endMarker = L.marker(latlngs[latlngs.length - 1], {
-          icon: createMarkerIcon("finish", routeColor),
-        }).bindTooltip(
-          `<a href="#" class="text-accentPrimary" data-id="${t._id}">${t.title}</a>`,
-        );
-        startMarker.on("click", () => openTask(t._id));
-        endMarker.on("click", () => openTask(t._id));
-        startMarker.addTo(group);
-        endMarker.addTo(group);
+          typeof task.status === "string" ? task.status.trim() : "";
+        const routeColor = TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
+        features.push({
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: geometry as GeoJSON.Position[],
+          },
+          properties: {
+            color: routeColor,
+            taskId: task._id,
+            title: task.title ?? task._id,
+          },
+        });
+        const startElement = document.createElement("span");
+        startElement.className = "task-marker task-marker--start";
+        startElement.style.setProperty("--marker-color", routeColor);
+        startElement.title = task.title ?? task._id;
+        startElement.tabIndex = 0;
+        startElement.addEventListener("click", () => openTask(task._id));
+        startElement.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openTask(task._id);
+          }
+        });
+        const startMarker = new maplibregl.Marker({ element: startElement })
+          .setLngLat(start)
+          .addTo(map);
+        nextMarkers.push(startMarker);
+        const finishElement = document.createElement("span");
+        finishElement.className = "task-marker task-marker--finish";
+        finishElement.style.setProperty("--marker-color", routeColor);
+        finishElement.title = task.title ?? task._id;
+        finishElement.tabIndex = 0;
+        finishElement.addEventListener("click", () => openTask(task._id));
+        finishElement.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openTask(task._id);
+          }
+        });
+        const finishMarker = new maplibregl.Marker({ element: finishElement })
+          .setLngLat(finish)
+          .addTo(map);
+        nextMarkers.push(finishMarker);
       }
+      if (cancelled) return;
+      source.setData({
+        type: "FeatureCollection",
+        features,
+      });
+      taskMarkersRef.current = nextMarkers;
     })();
     return () => {
       cancelled = true;
-      group.clearLayers();
+      nextMarkers.forEach((marker) => marker.remove());
     };
   }, [layerVisibility.tasks, mapReady, openTask, sorted]);
+
+  React.useEffect(() => {
+    if (!layerVisibility.optimized || !planDraft) {
+      setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
+      return;
+    }
+    const colors = ["#ef4444", "#22c55e", "#f97316"];
+    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    planDraft.routes.forEach((route, idx) => {
+      const coordinates: GeoJSON.Position[] = [];
+      route.tasks.forEach((task) => {
+        const start = toPosition(task.start);
+        const finish = toPosition(task.finish);
+        if (start) {
+          coordinates.push(start);
+        }
+        if (finish) {
+          coordinates.push(finish);
+        }
+      });
+      if (coordinates.length < 2) {
+        return;
+      }
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates,
+        },
+        properties: {
+          color: colors[idx % colors.length],
+          routeId: route.id,
+        },
+      });
+    });
+    setOptimizedRoutesGeoJSON({
+      type: "FeatureCollection",
+      features,
+    });
+  }, [layerVisibility.optimized, planDraft]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource(OPT_SOURCE_ID) as GeoJSONSource | undefined;
+    if (!source) return;
+    source.setData(optimizedRoutesGeoJSON);
+  }, [mapReady, optimizedRoutesGeoJSON]);
 
   React.useEffect(() => {
     if (hasDialog) return;
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    if (typeof map.invalidateSize === "function") {
-      map.invalidateSize();
+    if (typeof map.resize === "function") {
+      map.resize();
     }
   }, [hasDialog, mapReady]);
 
@@ -1140,6 +1615,76 @@ export default function LogisticsPage() {
           </div>
         </div>
         <div className="space-y-3">
+          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">
+                {t("logistics.geozonesTitle")}
+              </h3>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                onClick={handleStartDrawing}
+                disabled={!mapReady}
+              >
+                {isDrawing
+                  ? t("logistics.geozonesDrawing")
+                  : t("logistics.geozonesDraw")}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("logistics.geozonesHint")}
+            </p>
+            {geoZones.length ? (
+              <ul className="space-y-2 text-sm">
+                {geoZones.map((zone, index) => {
+                  const isActive = activeGeoZoneIds.includes(zone.id);
+                  return (
+                    <li
+                      key={zone.id}
+                      className="space-y-2 rounded border bg-white/70 p-3 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            checked={isActive}
+                            onChange={(event) =>
+                              handleToggleZone(zone.id, event.target.checked)
+                            }
+                          />
+                          <span className="font-medium">
+                            {zone.name ||
+                              t("logistics.geozoneDefaultName", {
+                                index: index + 1,
+                              })}
+                          </span>
+                        </label>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => handleRemoveZone(zone)}
+                        >
+                          {t("logistics.geozoneRemove")}
+                        </Button>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {isActive
+                          ? t("logistics.geozoneStatusActive")
+                          : t("logistics.geozoneStatusInactive")}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("logistics.geozonesEmpty")}
+              </p>
+            )}
+          </section>
           <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
             <h3 className="text-sm font-semibold">
               {t("logistics.layersTitle")}

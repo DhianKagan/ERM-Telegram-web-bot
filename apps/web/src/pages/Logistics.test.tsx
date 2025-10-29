@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Назначение: тесты страницы логистики с отображением техники и треков
-// Основные модули: React, @testing-library/react, Leaflet-моки
+// Основные модули: React, @testing-library/react, MapLibre-моки
 
 import "@testing-library/jest-dom";
 import React from "react";
@@ -74,6 +74,15 @@ jest.mock("react-i18next", () => {
       "logistics.tasksHeading": "Задачи",
       "logistics.metaTitle": "Логистика — ERM",
       "logistics.metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
+      "logistics.geozonesTitle": "Геозоны",
+      "logistics.geozonesDraw": "Нарисовать зону",
+      "logistics.geozonesDrawing": "Рисуем…",
+      "logistics.geozonesHint": "Выберите геозоны, чтобы ограничить задачи на карте.",
+      "logistics.geozonesEmpty": "Геозоны пока не созданы",
+      "logistics.geozoneDefaultName": "Зона {{index}}",
+      "logistics.geozoneRemove": "Удалить",
+      "logistics.geozoneStatusActive": "Активна",
+      "logistics.geozoneStatusInactive": "Неактивна",
       "logistics.vehicleTasksCount": "Задач: {{count}}",
       "logistics.vehicleMileage": "Пробег: {{value}} км",
       "logistics.vehicleCountLabel": "Машины",
@@ -94,7 +103,83 @@ jest.mock("react-i18next", () => {
     useTranslation: () => ({ t: translate, i18n }),
   };
 });
-jest.mock("leaflet/dist/leaflet.css", () => ({}));
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
+jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}), {
+  virtual: true,
+});
+
+const buildMapInstance = () => {
+  const sources = new Map<string, { setData: jest.Mock }>();
+  const handlers = new Map<string, Set<(...args: any[]) => void>>();
+  const getHandlers = (event: string) => {
+    let bucket = handlers.get(event);
+    if (!bucket) {
+      bucket = new Set();
+      handlers.set(event, bucket);
+    }
+    return bucket;
+  };
+  const instance = {
+    on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+      getHandlers(event).add(handler);
+      if (event === "load") {
+        handler({});
+      }
+      return instance;
+    }),
+    off: jest.fn((event: string, handler: (...args: any[]) => void) => {
+      getHandlers(event).delete(handler);
+      return instance;
+    }),
+    addControl: jest.fn(),
+    addSource: jest.fn((id: string) => {
+      const source = { setData: jest.fn() };
+      sources.set(id, source);
+      return source;
+    }),
+    addLayer: jest.fn(),
+    getSource: jest.fn((id: string) => sources.get(id)),
+    remove: jest.fn(),
+    dragRotate: { disable: jest.fn() },
+    touchZoomRotate: { disableRotation: jest.fn() },
+    resize: jest.fn(),
+  };
+  return instance;
+};
+
+jest.mock(
+  "maplibre-gl",
+  () => {
+    const Marker = jest.fn(() => ({
+      setLngLat: jest.fn().mockReturnThis(),
+      addTo: jest.fn().mockReturnThis(),
+      remove: jest.fn(),
+    }));
+    const NavigationControl = jest.fn();
+    const Map = jest.fn(() => buildMapInstance());
+    return {
+      __esModule: true,
+      default: { Map, Marker, NavigationControl },
+      Map,
+      Marker,
+      NavigationControl,
+    };
+  },
+  { virtual: true },
+);
+
+const drawChangeMode = jest.fn();
+const drawDelete = jest.fn();
+
+jest.mock(
+  "@mapbox/mapbox-gl-draw",
+  () =>
+    jest.fn().mockImplementation(() => ({
+      changeMode: drawChangeMode,
+      delete: drawDelete,
+    })),
+  { virtual: true },
+);
 
 const mockTasks = [
   {
@@ -128,52 +213,6 @@ const mockTasks = [
     },
   },
 ];
-
-const layerGroupFactory = () => {
-  const instance = {
-    addTo: jest.fn().mockReturnThis(),
-    clearLayers: jest.fn().mockReturnThis(),
-    remove: jest.fn(),
-  };
-  return instance;
-};
-
-const markerFactory = () => {
-  const instance = {
-    bindTooltip: jest.fn().mockReturnThis(),
-    addTo: jest.fn().mockReturnThis(),
-    on: jest.fn().mockReturnThis(),
-  };
-  return instance;
-};
-
-const polylineFactory = () => ({
-  addTo: jest.fn().mockReturnThis(),
-});
-
-const mapInstance = {
-  setView: jest.fn().mockReturnThis(),
-  remove: jest.fn(),
-  invalidateSize: jest.fn(),
-};
-
-const tileLayerFactory = () => ({
-  addTo: jest.fn(),
-});
-
-jest.mock("leaflet", () => {
-  const marker = jest.fn(() => markerFactory());
-  const polyline = jest.fn(() => polylineFactory());
-  const layerGroup = jest.fn(() => layerGroupFactory());
-  return {
-    map: jest.fn(() => mapInstance),
-    tileLayer: jest.fn(() => tileLayerFactory()),
-    layerGroup,
-    marker,
-    polyline,
-    divIcon: jest.fn(() => ({})),
-  };
-});
 
 jest.mock("../components/TaskTable", () => {
   function MockTaskTable({ tasks, onDataChange }: any) {

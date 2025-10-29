@@ -28,3 +28,5 @@
   - `Lighthouse / lhci`;
   - Каждая проверка из набора `CodeQL Advanced / Analyze (…)`.
 
+Внутренние ветки с доступом к секрету `LHCI_GITHUB_APP_TOKEN` публикуют статусы Lighthouse CI через GitHub App и выполняют `npx lhci autorun`. Pull request из форков запускают `npx lhci collect && npx lhci assert` с `LHCI_UPLOAD__TARGET=filesystem`, поэтому отчёт остаётся на раннере, но проверка отображается успешной.
+

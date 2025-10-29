@@ -18,7 +18,7 @@ jobs:
       - name: Включение corepack
         run: corepack enable
       - name: Установка зависимостей
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Сборка клиента
         run: pnpm --dir apps/web build
       - name: Проверка существования каталога сборки

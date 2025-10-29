@@ -185,6 +185,8 @@ export default defineConfig(() => {
         "@": resolve(__dirname, "src"),
         shared: resolve(__dirname, "../../packages/shared/src"),
         "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
+        // Принудительно используем MapLibre вместо Mapbox в рантайме
+        "mapbox-gl": "maplibre-gl",
       },
     },
     build: {

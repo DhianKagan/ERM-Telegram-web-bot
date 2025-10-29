@@ -531,6 +531,35 @@ bot.hears('Транспорт', sendFleetVehicles);
 
 const MAX_RETRIES = 5;
 
+const resetLongPollingSession = async (): Promise<void> => {
+  try {
+    bot.stop('telegram:retry');
+  } catch (stopError) {
+    console.warn(
+      'Не удалось локально остановить экземпляр бота перед повторным запуском',
+      stopError,
+    );
+  }
+  try {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.warn('Webhook удалён, обновления сброшены перед повторным запуском');
+  } catch (deleteError) {
+    console.error(
+      'Не удалось удалить webhook перед повторным запуском long polling',
+      deleteError,
+    );
+  }
+  try {
+    await bot.telegram.callApi('close');
+    console.warn('Текущая long polling сессия Telegram завершена методом close');
+  } catch (closeError) {
+    console.error(
+      'Не удалось завершить предыдущую long polling сессию методом close',
+      closeError,
+    );
+  }
+};
+
 const getCallbackData = (
   callback: Context['callbackQuery'],
 ): string | null => {
@@ -1983,13 +2012,19 @@ bot.action(/^cancel_request_abort:.+$/, async (ctx) => {
 
 export async function startBot(retry = 0): Promise<void> {
   try {
-    await bot.telegram.deleteWebhook();
+    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
     await bot.launch({ dropPendingUpdates: true });
     console.log('Бот запущен');
   } catch (err: unknown) {
     const e = err as { response?: { error_code?: number } };
     const code = e.response?.error_code;
     if ([409, 502, 504].includes(code ?? 0) && retry < MAX_RETRIES) {
+      if (code === 409) {
+        console.warn(
+          'Обнаружен активный запрос getUpdates, сбрасываем предыдущую сессию',
+        );
+        await resetLongPollingSession();
+      }
       console.error('Ошибка Telegram, повторная попытка запуска');
       const delay = 1000 * 2 ** retry;
       await new Promise((res) => setTimeout(res, delay));

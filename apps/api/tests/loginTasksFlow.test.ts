@@ -5,7 +5,6 @@ import type { Express, NextFunction, Request, Response } from 'express';
 import type { RequestWithCsrf } from './helpers/express';
 import type { Server } from 'https';
 import type { AddressInfo } from 'net';
-import { callNext } from './helpers/express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -54,7 +53,7 @@ jest.mock('../src/services/tasks', () => ({
 }));
 
 jest.mock('../src/middleware/taskAccess', () =>
-  (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
+  (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 
 jest.mock('../src/db/queries', () => ({

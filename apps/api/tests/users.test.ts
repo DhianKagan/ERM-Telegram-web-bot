@@ -1,7 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты маршрута /api/v1/users
 import type { NextFunction, Request, Response } from 'express';
-import { passThrough, respondWithError, RequestWithUser } from './helpers/express';
+import type { RequestWithUser } from './helpers/express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -34,33 +34,44 @@ jest.mock('../src/db/queries', () => ({
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 
-jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
-    const rawRole = req.headers['x-role'];
-    const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
-    const rawAccess = req.headers['x-access'];
-    const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
-    req.user = {
-      role: typeof role === 'string' ? role : undefined,
-      access: accessValue !== undefined ? Number(accessValue) : 1,
-      telegram_id: 1,
-    };
-    next();
-  },
-  checkRole:
-    (expected: number | string) =>
-    (req: RequestWithUser, res: Response, next: NextFunction) => {
-      const user = req.user ?? { access: 0 };
-      if (typeof expected === 'number') {
-        return user.access !== undefined && (user.access & expected) === expected
-          ? next()
-          : res.sendStatus(403);
-      }
-      return user.role === expected ? next() : res.sendStatus(403);
+jest.mock('../src/api/middleware', () => {
+  const asyncHandler = jest.fn(
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+  );
+  const errorHandler = jest.fn(
+    (err: unknown, _req: Request, res: Response) =>
+      res.status(500).json({
+        error: err instanceof Error ? err.message : String(err),
+      }),
+  );
+  return {
+    verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
+      const rawRole = req.headers['x-role'];
+      const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
+      const rawAccess = req.headers['x-access'];
+      const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
+      req.user = {
+        role: typeof role === 'string' ? role : undefined,
+        access: accessValue !== undefined ? Number(accessValue) : 1,
+        telegram_id: 1,
+      };
+      next();
     },
-  asyncHandler: passThrough,
-  errorHandler: respondWithError,
-}));
+    checkRole:
+      (expected: number | string) =>
+      (req: RequestWithUser, res: Response, next: NextFunction) => {
+        const user = req.user ?? { access: 0 };
+        if (typeof expected === 'number') {
+          return user.access !== undefined && (user.access & expected) === expected
+            ? next()
+            : res.sendStatus(403);
+        }
+        return user.role === expected ? next() : res.sendStatus(403);
+      },
+    asyncHandler,
+    errorHandler,
+  };
+});
 
 const {
   listUsers,

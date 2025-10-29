@@ -1,7 +1,6 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
 import type { Express, NextFunction, Request, Response } from 'express';
-import { callNext, passThrough, respondWithError } from './helpers/express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -113,23 +112,36 @@ jest
   .spyOn(queries, 'getUsersMap')
   .mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } });
 
-jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
-    const rawRole = req.headers['x-role'];
-    const role = Array.isArray(rawRole) ? rawRole[0] ?? 'admin' : rawRole ?? 'admin';
-    const rawAccess = req.headers['x-access'];
-    const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
-    const access = accessValue !== undefined ? Number(accessValue) : 6;
-    req.user = { role, id: 1, telegram_id: 1, access };
-    next();
-  },
-  asyncHandler: passThrough,
-  errorHandler: respondWithError,
-  checkRole: () => callNext,
-  checkTaskAccess: callNext,
-}));
+jest.mock('../src/api/middleware', () => {
+  const asyncHandler = jest.fn(
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+  );
+  const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
+    res.status(500).json({
+      error: err instanceof Error ? err.message : String(err),
+    }),
+  );
+  const passNext = (_req: unknown, _res: unknown, next: NextFunction) => next();
+  return {
+    verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
+      const rawRole = req.headers['x-role'];
+      const role = Array.isArray(rawRole) ? rawRole[0] ?? 'admin' : rawRole ?? 'admin';
+      const rawAccess = req.headers['x-access'];
+      const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
+      const access = accessValue !== undefined ? Number(accessValue) : 6;
+      req.user = { role, id: 1, telegram_id: 1, access };
+      next();
+    },
+    asyncHandler,
+    errorHandler,
+    checkRole: () => passNext,
+    checkTaskAccess: passNext,
+  };
+});
 
-jest.mock('../src/middleware/taskAccess', () => callNext);
+jest.mock('../src/middleware/taskAccess', () =>
+  (_req: unknown, _res: unknown, next: NextFunction) => next(),
+);
 
 const router = require('../src/routes/tasks').default;
 const { Task, Archive } = require('../src/db/model');

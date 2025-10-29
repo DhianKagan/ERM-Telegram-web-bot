@@ -1,6 +1,5 @@
 // Назначение: тесты роутов управления файлами. Модули: jest, supertest.
 import type { NextFunction, Request, Response } from 'express';
-import { callNext } from './helpers/express';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
@@ -71,14 +70,13 @@ const { stopQueue } = require('../src/services/messageQueue');
 const { stopScheduler } = require('../src/services/scheduler');
 
 jest.mock('../src/middleware/auth', () =>
-  () => (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 jest.mock('../src/auth/roles.guard', () =>
-  (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
+  (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (req: Request, res: Response, next: NextFunction) =>
-    callNext(req, res, next),
+  Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 
 describe('storage routes', () => {

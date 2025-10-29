@@ -4,9 +4,9 @@ name: "CodeQL"
 
 on:
   push:
-    branches: ["main", "work", "staging"]
+    branches: ["**"]
   pull_request:
-    branches: ["main", "work", "staging"]
+    types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
   schedule:
     - cron: '38 17 * * 4'

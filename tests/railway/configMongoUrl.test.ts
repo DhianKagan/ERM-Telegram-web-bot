@@ -57,6 +57,14 @@ describe('MONGO_DATABASE_URL validation', () => {
     );
   });
 
+  test('бросает ошибку для публичного прокси Railway без authSource', () => {
+    process.env.MONGO_DATABASE_URL =
+      'mongodb://mongo:pass@shinkansen.proxy.rlwy.net:43551/ermdb';
+    expect(() => require('../../apps/api/src/config')).toThrow(
+      'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
+    );
+  });
+
   test('дополняет строку логином и паролем из отдельных переменных', () => {
     process.env.MONGO_DATABASE_URL =
       'mongodb://erm-mongodb.railway.internal:27017/ermdb?authSource=admin';

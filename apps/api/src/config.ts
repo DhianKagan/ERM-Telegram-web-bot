@@ -133,7 +133,13 @@ if (credentialMessages.length) {
 const authSource = parsedMongoUrl.searchParams.get('authSource');
 const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
 const isRailwayInternal = /\.railway\.internal$/i.test(parsedMongoUrl.hostname);
-if (!authSource && isRailwayInternal && mongoUsername === 'mongo') {
+const isRailwayProxyHost = /\.proxy\.rlwy\.net$/i.test(parsedMongoUrl.hostname);
+const isRailwayAppHost = /\.railway\.app$/i.test(parsedMongoUrl.hostname);
+const requiresRailwayAuthSource =
+  !authSource &&
+  mongoUsername === 'mongo' &&
+  (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost);
+if (requiresRailwayAuthSource) {
   throw new Error(
     'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
   );

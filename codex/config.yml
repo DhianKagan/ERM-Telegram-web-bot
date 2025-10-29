@@ -1,0 +1,35 @@
+# Назначение файла: конфигурация Codex для автоматических проверок качества.
+# Основные модули: линтинг, форматирование, статический анализ, аудит зависимостей, отчётность.
+version: 1
+policy:
+  block_on_failure: true
+  severity_threshold: high
+ci:
+  github_actions:
+    workflow: .github/workflows/codex-quality.yml
+    on:
+      - pull_request
+      - push: main
+checks:
+  format:
+    description: Проверка форматирования Prettier.
+    command: pnpm format:check
+  lint:
+    description: Базовые линтеры TypeScript и монорепозитория.
+    command: pnpm lint
+  security:
+    description: Правила безопасности для JWT, CSRF и роли.
+    command: pnpm lint:security
+  types:
+    description: Строгая проверка типов TypeScript.
+    command: pnpm typecheck
+  dependencies:
+    description: Аудит pnpm зависимостей через audit-ci.
+    command: pnpm run audit
+  full:
+    description: Сборная команда для запуска всех проверок локально.
+    command: pnpm codex:check
+reports:
+  summary:
+    format: markdown
+    path: codex/reports/summary.md

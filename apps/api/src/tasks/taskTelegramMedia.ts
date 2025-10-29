@@ -74,7 +74,7 @@ const SUPPORTED_PHOTO_MIME_TYPES = new Set([
   'image/webp',
   'image/gif',
 ]);
-const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 const TELEGRAM_CAPTION_LIMIT = 1024;
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 

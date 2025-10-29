@@ -358,7 +358,7 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}_${original}`);
   },
 });
-const maxUploadSize = 10 * 1024 * 1024;
+const maxUploadSize = 5 * 1024 * 1024;
 
 const sharedFileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
   if (checkFile(file)) {

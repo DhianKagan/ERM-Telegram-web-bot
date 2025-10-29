@@ -337,7 +337,7 @@ let listFiles: typeof import('../apps/api/src/services/dataStorage').listFiles;
 let filesRouter: express.Router;
 let tempRoot: string;
 let app: Express;
-const maxUploadSize = 10 * 1024 * 1024;
+const maxUploadSize = 5 * 1024 * 1024;
 
 async function uploadViaChunks(
   fileId: string,
@@ -658,8 +658,8 @@ describe('Chunk upload', () => {
     expect(fs.existsSync(chunkDir)).toBe(false);
   });
 
-  test('отклоняет файл больше 10 МБ после сборки', async () => {
-    const largeChunk = Buffer.alloc(6 * 1024 * 1024, 1);
+  test('отклоняет файл больше 5 МБ после сборки', async () => {
+    const largeChunk = Buffer.alloc(3 * 1024 * 1024, 1);
     const first = await request(app)
       .post('/upload-chunk')
       .field('fileId', 'too-large')

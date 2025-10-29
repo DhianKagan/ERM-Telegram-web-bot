@@ -33,12 +33,22 @@ jobs:
       - name: Создание .env
         run: |
           cp .env.example .env
+          BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
+          CHAT_ID="${{ secrets.CHAT_ID }}"
+          JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          MONGO_DATABASE_URL="${{ secrets.MONGO_DATABASE_URL }}"
+
+          : "${BOT_TOKEN:=__DUMMY_BOT_TOKEN__}"
+          : "${CHAT_ID:=000000000}"
+          : "${JWT_SECRET:=__DUMMY_JWT_SECRET__}"
+          : "${MONGO_DATABASE_URL:=mongodb://admin:admin@localhost:27017/ermdb?authSource=admin}"
+
           cat <<EOF >> .env
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          CHAT_ID=${{ secrets.CHAT_ID }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          BOT_TOKEN=$BOT_TOKEN
+          CHAT_ID=$CHAT_ID
+          JWT_SECRET=$JWT_SECRET
           APP_URL=https://example.com
-          MONGO_DATABASE_URL=${{ secrets.MONGO_DATABASE_URL }}
+          MONGO_DATABASE_URL=$MONGO_DATABASE_URL
           EOF
 
       - name: Вывод MONGO_DATABASE_URL без пароля
@@ -47,6 +57,8 @@ jobs:
           if [[ $url =~ ^mongodb(\+srv)?:\/\/[^:]+:[^@]+@ ]]; then
             sanitized=$(echo "$url" | sed -E 's/^(mongodb(\+srv)?:\/\/[^:]+):[^@]*(@.*)/\1\3/')
             echo "Отфильтрованный URL: $sanitized"
+          elif [[ $url =~ ^mongodb(\+srv)?:\/\/[^@]+$ ]]; then
+            echo "URL не содержит пароль, пропускаем маскирование: $url"
           else
             echo "Неверный формат MONGO_DATABASE_URL" >&2
             exit 1

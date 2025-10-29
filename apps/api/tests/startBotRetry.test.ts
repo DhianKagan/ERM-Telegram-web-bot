@@ -67,6 +67,6 @@ test('startBot завершает предыдущую long polling сессию
   expect(__telegram.deleteWebhook).toHaveBeenCalledWith({
     drop_pending_updates: true,
   });
-  expect(__telegram.callApi).toHaveBeenCalledWith('close');
+  expect(__telegram.callApi).toHaveBeenCalledWith('close', {});
   jest.useRealTimers();
 });

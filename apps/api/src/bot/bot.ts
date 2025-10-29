@@ -550,7 +550,7 @@ const resetLongPollingSession = async (): Promise<void> => {
     );
   }
   try {
-    await bot.telegram.callApi('close');
+    await bot.telegram.callApi('close', {});
     console.warn('Текущая long polling сессия Telegram завершена методом close');
   } catch (closeError) {
     console.error(

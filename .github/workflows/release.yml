@@ -7,14 +7,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: ./scripts/install_bot_deps.sh
-      - run: npm --prefix bot test
-      - run: npm --prefix bot run build-client
+      - name: Включение corepack
+        run: corepack enable
+      - name: Установка зависимостей
+        run: pnpm install --frozen-lockfile
+      - name: Линтеры
+        run: pnpm lint
+      - name: Юнит и API тесты
+        run: pnpm test:unit && pnpm test:api
+      - name: Сборка пакетов
+        run: pnpm -r build
       - uses: docker/setup-buildx-action@v3
       - name: Сборка Docker-образа
         run: docker build -t task-bot .

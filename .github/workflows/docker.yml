@@ -3,9 +3,10 @@
 name: 'Docker'
 on:
   push:
-    branches: ['main', 'work']
+    branches: ['main', 'work', 'staging']
   pull_request:
-    branches: ['main', 'work']
+    branches: ['main', 'work', 'staging']
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,6 +25,10 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Создание .env
         run: |

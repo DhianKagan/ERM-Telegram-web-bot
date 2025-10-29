@@ -419,13 +419,28 @@ export default function LogisticsPage() {
   }, []);
 
   const handleRemoveZone = React.useCallback((zone: GeoZone) => {
+    const removeFromState = () => {
+      setGeoZones((prev) => prev.filter((item) => item.id !== zone.id));
+      setActiveGeoZoneIds((prev) => prev.filter((id) => id !== zone.id));
+    };
+
     const draw = drawRef.current;
-    if (draw) {
-      draw.delete(zone.drawId);
+    if (!draw) {
+      removeFromState();
       return;
     }
-    setGeoZones((prev) => prev.filter((item) => item.id !== zone.id));
-    setActiveGeoZoneIds((prev) => prev.filter((id) => id !== zone.id));
+
+    const hadFeature = Boolean(draw.get(zone.drawId));
+    const deleted = draw.delete(zone.drawId);
+
+    if (!hadFeature) {
+      removeFromState();
+      return;
+    }
+
+    if (Array.isArray(deleted) ? deleted.length === 0 : !deleted) {
+      removeFromState();
+    }
   }, []);
 
   const handleSavePlan = React.useCallback(async () => {

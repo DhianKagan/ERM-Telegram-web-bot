@@ -1,0 +1,73 @@
+# Назначение файла: workflow GitHub Actions для проверки правил Codex.
+# Основные модули: pnpm install, линтинг, форматирование, статический анализ, аудит зависимостей, отчётность GitHub Summary.
+name: Codex Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  codex-quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Получение кода
+        uses: actions/checkout@v4
+
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Включение corepack
+        run: corepack enable
+
+      - name: Установка зависимостей
+        run: pnpm install --frozen-lockfile
+
+      - name: Проверка форматирования
+        id: format
+        run: pnpm format:check
+
+      - name: Линтеры TypeScript
+        id: lint
+        run: pnpm lint
+
+      - name: Статический анализ безопасности
+        id: lint_security
+        run: pnpm lint:security
+
+      - name: Проверка типов TypeScript
+        id: types
+        run: pnpm typecheck
+
+      - name: Аудит зависимостей pnpm
+        id: audit
+        run: pnpm run audit
+
+      - name: Сводка Codex
+        if: ${{ always() }}
+        run: |
+          mkdir -p codex/reports
+          {
+            echo '# Сводка проверок Codex'
+            echo ''
+            echo "- Форматирование: ${{ steps.format.outcome }}"
+            echo "- Линтеры: ${{ steps.lint.outcome }}"
+            echo "- Безопасность: ${{ steps.lint_security.outcome }}"
+            echo "- Типы: ${{ steps.types.outcome }}"
+            echo "- Аудит зависимостей: ${{ steps.audit.outcome }}"
+          } > codex/reports/summary.md
+          cat codex/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Публикация отчёта Codex
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-quality-summary
+          path: codex/reports/summary.md

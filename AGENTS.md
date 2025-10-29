@@ -51,6 +51,9 @@
 - Скрипт `pretest:e2e` устанавливает Firefox и Chromium и запускает `playwright doctor`
   с запасным вызовом `playwright install --list`; не удаляйте диагностический шаг.
 - Перед пулл-реквестом выполняйте `./scripts/pre_pr_check.sh`, он создаёт `.env` из `.env.example`, проверяет сборку и запуск бота, автоматически исправляя ошибки и повторяя до успеха, запускает аудит зависимостей и записывает лог в `/tmp/apps/api_start.log`.
+- Для ускоренной проверки качества используйте `pnpm codex:check`, команда запускает `pnpm format:check`, `pnpm lint`, `pnpm lint:security`, `pnpm typecheck` и `pnpm audit`.
+- Workflow `Codex Quality Gate` в GitHub Actions и Codex блокируют слияние, если хотя бы одна из проверок завершилась ошибкой или обнаружена уязвимость уровня High и выше.
+- Конфигурация Codex находится в `codex/config.yml`, изменения команд дублируйте там и в GitHub Actions.
 - Lighthouse CI использует GitHub App, токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты размещаются во временном публичном хранилище.
 - Скрипт `pre_pr_check.sh` поднимает MongoDB в памяти; `scripts/check_mongo.mjs` пропускает проверку при `CI=true`.
 - `pnpm run dev` устанавливает `PNPM_SCRIPT_TIMEOUT=0`, чтобы серверы не завершались через 10 минут.

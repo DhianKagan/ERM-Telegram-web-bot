@@ -1,6 +1,6 @@
 <!-- Назначение файла: краткое описание возможностей проекта. Основные модули: api, web. -->
 
-# Task Manager Bot + Web App
+# Task Manager Bot + Web App ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
 
 «О проекте»:
 
@@ -8,7 +8,6 @@
 Клиент — это мини‑приложение на React в папке apps/web
 Архитектура разделена на модули: AuthModule выполняет авторизацию через Telegram и выдаёт JWT/CSRF‑токен, TasksModule реализует CRUD задач и вычисление маршрутов, UsersModule, RolesModule и LogsModule отвечают за управление пользователями, ролями и журналирование действий соответственно
 Проект переведен на TypeScript и использует DI‑контейнер tsyringe, DTO‑валидацию и декораторы RBAC; цель — перейти от монолитного JavaScript к модульной архитектуре
-
 
 ## Возможности
 
@@ -38,6 +37,12 @@ pnpm install
 pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
+
+## Проверки качества
+
+- Автоматическая конфигурация Codex хранится в `codex/config.yml` и запускается workflow `Codex Quality Gate` в GitHub Actions.
+- Локально используйте `pnpm codex:check`, команда включает `pnpm format:check`, `pnpm lint`, `pnpm lint:security`, `pnpm typecheck` и `pnpm audit`.
+- Любое нарушение форматирования, правил безопасности (JWT, CSRF, маски ролей) или уязвимость уровня High/ Critical в зависимостях приводит к падению проверки и блокирует слияние pull request.
 
 ## Прототип маршрутизации OR-Tools
 
@@ -74,7 +79,8 @@ pnpm run dev # запуск api и web без таймаута PNPM
 docker run --rm -p 3310:3310 clamav/clamav:latest
 ```
 
-  Затем настройте `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_TIMEOUT` и `CLAMAV_CHUNK_SIZE` при необходимости.
+- Затем настройте `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_TIMEOUT` и `CLAMAV_CHUNK_SIZE` при необходимости.
+
 - Все события о состоянии сканера фиксируются в `wgLogEngine`.
 
 ## Сборка и проверки

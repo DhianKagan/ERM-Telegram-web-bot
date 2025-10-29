@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import { Router, RequestHandler } from 'express';
+import { Types } from 'mongoose';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
 import container from '../di';
@@ -261,6 +262,50 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       const cutoff = shouldApplyGrace
         ? new Date(Date.now() - graceMinutes * 60 * 1000)
         : null;
+      if (shouldApplyGrace && cutoff) {
+        try {
+          const staleEntries = await File.find(
+            {
+              userId,
+              taskId: null,
+              draftId: null,
+              uploadedAt: { $lte: cutoff },
+            },
+            { path: 1, thumbnailPath: 1 },
+          ).lean<{
+            _id: Types.ObjectId;
+            path: string;
+            thumbnailPath?: string;
+          }>();
+          if (staleEntries.length > 0) {
+            const staleIds = staleEntries.map((entry) => entry._id);
+            await File.deleteMany({ _id: { $in: staleIds } });
+            for (const entry of staleEntries) {
+              const targets = [entry.path, entry.thumbnailPath].filter(
+                (v): v is string => Boolean(v && v.length > 0),
+              );
+              for (const relative of targets) {
+                const fullPath = path.join(uploadsDir, relative);
+                await fs.promises.unlink(fullPath).catch(async (err) => {
+                  await writeLog('Не удалось удалить файл', 'error', {
+                    path: fullPath,
+                    error: (err as Error).message,
+                  });
+                });
+              }
+            }
+            await writeLog('Удалены устаревшие вложения', 'info', {
+              userId,
+              count: staleEntries.length,
+            });
+          }
+        } catch (cleanupError) {
+          await writeLog('Не удалось очистить устаревшие вложения', 'error', {
+            userId,
+            error: (cleanupError as Error).message,
+          });
+        }
+      }
       const aggregation = await File.aggregate([
         { $match: { userId } },
         {
@@ -268,40 +313,6 @@ export const processUploads: RequestHandler = async (req, res, next) => {
             _id: null,
             count: { $sum: 1 },
             size: { $sum: '$size' },
-            staleCount: {
-              $sum: {
-                $cond: [
-                  shouldApplyGrace
-                    ? {
-                        $and: [
-                          { $eq: ['$taskId', null] },
-                          { $eq: ['$draftId', null] },
-                          { $lte: ['$uploadedAt', cutoff] },
-                        ],
-                      }
-                    : false,
-                  1,
-                  0,
-                ],
-              },
-            },
-            staleSize: {
-              $sum: {
-                $cond: [
-                  shouldApplyGrace
-                    ? {
-                        $and: [
-                          { $eq: ['$taskId', null] },
-                          { $eq: ['$draftId', null] },
-                          { $lte: ['$uploadedAt', cutoff] },
-                        ],
-                      }
-                    : false,
-                  '$size',
-                  0,
-                ],
-              },
-            },
           },
         },
       ]);
@@ -309,19 +320,11 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         (aggregation[0] as {
           count?: number;
           size?: number;
-          staleCount?: number;
-          staleSize?: number;
         } | undefined) || {};
-      let stats: { count: number; size: number } = {
+      const stats: { count: number; size: number } = {
         count: rawStats.count ?? 0,
         size: rawStats.size ?? 0,
       };
-      if (shouldApplyGrace) {
-        stats = {
-          count: Math.max(0, stats.count - (rawStats.staleCount ?? 0)),
-          size: Math.max(0, stats.size - (rawStats.staleSize ?? 0)),
-        };
-      }
       const incoming = files.reduce((s, f) => s + f.size, 0);
       if (
         stats.count + files.length > maxUserFiles ||

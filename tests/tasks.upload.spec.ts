@@ -202,29 +202,11 @@ jest.mock('../apps/api/src/db/model', () => {
       }
       if (!files.length) return [];
       const totalSize = files.reduce((total, f) => total + f.size, 0);
-      const graceRaw = Number(process.env.USER_FILES_STALE_GRACE_MINUTES ?? '0');
-      let staleCount = 0;
-      let staleSize = 0;
-      if (Number.isFinite(graceRaw) && graceRaw > 0) {
-        const cutoffTime = Date.now() - graceRaw * 60 * 1000;
-        files.forEach((file) => {
-          if (
-            (file.taskId === null || file.taskId === undefined) &&
-            (file.draftId === null || file.draftId === undefined) &&
-            file.uploadedAt.getTime() <= cutoffTime
-          ) {
-            staleCount += 1;
-            staleSize += file.size;
-          }
-        });
-      }
       return [
         {
           _id: null,
           count: files.length,
           size: totalSize,
-          staleCount,
-          staleSize,
         },
       ];
     }),
@@ -266,12 +248,56 @@ jest.mock('../apps/api/src/db/model', () => {
         if (query.userId !== undefined) {
           files = files.filter((f) => f.userId === query.userId);
         }
+        if (query.taskId !== undefined) {
+          if (query.taskId === null) {
+            files = files.filter((f) => f.taskId === null);
+          } else if (query.taskId?.$eq !== undefined) {
+            files = files.filter(
+              (f) => String(f.taskId) === String(query.taskId.$eq),
+            );
+          }
+        }
+        if (query.draftId !== undefined) {
+          if (query.draftId === null) {
+            files = files.filter((f) => f.draftId === null);
+          } else if (query.draftId?.$eq !== undefined) {
+            files = files.filter(
+              (f) => String(f.draftId) === String(query.draftId.$eq),
+            );
+          }
+        }
+        if (query.uploadedAt?.$lte instanceof Date) {
+          const cutoffTime = query.uploadedAt.$lte.getTime();
+          files = files.filter((f) => f.uploadedAt.getTime() <= cutoffTime);
+        }
         if (query.type?.$eq !== undefined) {
           files = files.filter((f) => f.type === query.type.$eq);
         }
         return files;
       },
     })),
+    deleteMany: jest.fn(async (filter: any = {}) => {
+      if (!filter || typeof filter !== 'object') {
+        return { acknowledged: true, deletedCount: 0 };
+      }
+      const ids: unknown[] = Array.isArray(filter._id?.$in)
+        ? filter._id.$in
+        : [];
+      if (!ids.length) {
+        return { acknowledged: true, deletedCount: 0 };
+      }
+      let deletedCount = 0;
+      ids.forEach((candidate) => {
+        const idx = storedFiles.findIndex(
+          (file) => String(file._id) === String(candidate),
+        );
+        if (idx !== -1) {
+          storedFiles.splice(idx, 1);
+          deletedCount += 1;
+        }
+      });
+      return { acknowledged: true, deletedCount };
+    }),
     updateMany: jest.fn(async (filter: any = {}, update: any = {}) => {
       const match = (file: any, criteria: any): boolean => {
         if (!criteria || typeof criteria !== 'object') {
@@ -779,8 +805,8 @@ describe('Chunk upload', () => {
       });
     expect(response.status).toBe(200);
     expect(response.body.name).toBe('fresh.png');
-    expect(storedFiles).toHaveLength(21);
-    const latest = storedFiles[storedFiles.length - 1];
+    expect(storedFiles).toHaveLength(1);
+    const latest = storedFiles[0];
     expect(latest.name).toBe('fresh.png');
     expect(latest.taskId).toBeNull();
   });

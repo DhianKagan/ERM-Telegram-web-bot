@@ -70,3 +70,52 @@ test('startBot завершает предыдущую long polling сессию
   expect(__telegram.callApi).toHaveBeenCalledWith('close', {});
   jest.useRealTimers();
 });
+
+test('startBot ожидает retry_after после ошибки 429 метода close', async () => {
+  jest.useFakeTimers();
+  const timeoutSpy = jest.spyOn(global, 'setTimeout');
+  const { startBot } = await import('../src/bot/bot');
+  const { __launch, __telegram } = require('telegraf');
+  const retryAfterSeconds = 3;
+
+  __launch.mockClear();
+  __telegram.callApi.mockClear();
+  __telegram.deleteWebhook.mockClear();
+
+  __launch.mockRejectedValueOnce({ response: { error_code: 409 } });
+  __launch.mockResolvedValue(undefined);
+  __telegram.callApi
+    .mockRejectedValueOnce({
+      error_code: 429,
+      response: {
+        error_code: 429,
+        parameters: { retry_after: retryAfterSeconds },
+      },
+      parameters: { retry_after: retryAfterSeconds },
+    })
+    .mockResolvedValue(undefined);
+
+  __telegram.deleteWebhook.mockResolvedValue(undefined);
+
+  timeoutSpy.mockClear();
+
+  const promise = startBot();
+
+  await jest.runAllTimersAsync();
+  await promise;
+
+  expect(__telegram.deleteWebhook).toHaveBeenCalledWith({
+    drop_pending_updates: true,
+  });
+  expect(__telegram.callApi).toHaveBeenCalledWith('close', {});
+
+  const delays = timeoutSpy.mock.calls.map((call) => call[1]);
+  expect(delays).toContain(retryAfterSeconds * 1000);
+  expect(delays.filter((value) => value === retryAfterSeconds * 1000).length).toBeGreaterThanOrEqual(1);
+  expect(delays).toContain(1000);
+
+  expect(__launch).toHaveBeenCalledTimes(2);
+
+  timeoutSpy.mockRestore();
+  jest.useRealTimers();
+});

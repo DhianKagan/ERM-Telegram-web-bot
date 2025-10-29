@@ -531,6 +531,68 @@ bot.hears('Транспорт', sendFleetVehicles);
 
 const MAX_RETRIES = 5;
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const extractTelegramErrorCode = (error: unknown): number | null => {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+  const record = error as {
+    error_code?: unknown;
+    response?: { error_code?: unknown };
+  };
+  const directCode =
+    typeof record.error_code === 'number' ? record.error_code : null;
+  if (directCode !== null) {
+    return directCode;
+  }
+  const responseCode =
+    typeof record.response?.error_code === 'number'
+      ? record.response.error_code
+      : null;
+  return responseCode;
+};
+
+const extractRetryAfterSeconds = (error: unknown): number | null => {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+  const record = error as {
+    parameters?: { retry_after?: unknown };
+    response?: { parameters?: { retry_after?: unknown } };
+  };
+  const candidates = [record.parameters, record.response?.parameters];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') {
+      continue;
+    }
+    const retryAfterRaw = (candidate as { retry_after?: unknown }).retry_after;
+    const retryAfter = Number(retryAfterRaw);
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      return Math.ceil(retryAfter);
+    }
+  }
+  return null;
+};
+
+const waitForRetryAfter = async (
+  error: unknown,
+  context: string,
+): Promise<void> => {
+  if (extractTelegramErrorCode(error) !== 429) {
+    return;
+  }
+  const retryAfterSeconds = extractRetryAfterSeconds(error);
+  if (!retryAfterSeconds) {
+    return;
+  }
+  console.warn(`${context}; повторная попытка через ${retryAfterSeconds} с`);
+  await sleep(retryAfterSeconds * 1000);
+};
+
 const resetLongPollingSession = async (): Promise<void> => {
   try {
     bot.stop('telegram:retry');
@@ -557,6 +619,7 @@ const resetLongPollingSession = async (): Promise<void> => {
       'Не удалось завершить предыдущую long polling сессию методом close',
       closeError,
     );
+    await waitForRetryAfter(closeError, 'Получена ошибка 429 от метода close');
   }
 };
 
@@ -2010,6 +2073,8 @@ bot.action(/^cancel_request_abort:.+$/, async (ctx) => {
   }
 });
 
+const retryableCodes = new Set([409, 429, 502, 504]);
+
 export async function startBot(retry = 0): Promise<void> {
   try {
     await bot.telegram.deleteWebhook({ drop_pending_updates: true });
@@ -2018,16 +2083,19 @@ export async function startBot(retry = 0): Promise<void> {
   } catch (err: unknown) {
     const e = err as { response?: { error_code?: number } };
     const code = e.response?.error_code;
-    if ([409, 502, 504].includes(code ?? 0) && retry < MAX_RETRIES) {
+    if (retryableCodes.has(code ?? 0) && retry < MAX_RETRIES) {
       if (code === 409) {
         console.warn(
           'Обнаружен активный запрос getUpdates, сбрасываем предыдущую сессию',
         );
         await resetLongPollingSession();
       }
+      if (code === 429) {
+        await waitForRetryAfter(err, 'Telegram вернул 429 при запуске бота');
+      }
       console.error('Ошибка Telegram, повторная попытка запуска');
       const delay = 1000 * 2 ** retry;
-      await new Promise((res) => setTimeout(res, delay));
+      await sleep(delay);
       return startBot(retry + 1);
     }
     console.error('Не удалось запустить бота:', err);

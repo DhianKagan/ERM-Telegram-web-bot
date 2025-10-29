@@ -5,7 +5,8 @@
 import express = require('express');
 import request = require('supertest');
 import { Types } from 'mongoose';
-import type { RequestHandler } from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type { RequestWithUser } from './helpers/express';
 
 const createdTaskId = new Types.ObjectId();
 const mockExistingTaskId = new Types.ObjectId();
@@ -30,7 +31,15 @@ const mockTaskFindById = jest.fn(async () => ({
     },
   ],
 }));
-const mockTaskFindOneAndUpdate = jest.fn(async () => ({
+type UpdateArgs = [
+  Record<string, unknown>,
+  { $set?: { attachments?: unknown[] }; [key: string]: unknown }?,
+];
+
+const mockTaskFindOneAndUpdate = jest.fn<
+  Promise<{ _id: typeof existingTaskId; attachments: unknown[] }>,
+  UpdateArgs
+>(async () => ({
   _id: existingTaskId,
   attachments: [],
 }));
@@ -93,8 +102,8 @@ const createTasksApp = (
 ) => {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
-    (req as any).user = user;
+  app.use((req: RequestWithUser, _res: Response, next: NextFunction) => {
+    req.user = user;
     next();
   });
   const router = express.Router();
@@ -194,7 +203,7 @@ describe('Привязка вложений к задачам', () => {
       1,
     );
 
-    const call = mockTaskFindOneAndUpdate.mock.calls[0];
+    const call = mockTaskFindOneAndUpdate.mock.calls[0]!;
     expect(call).toBeTruthy();
     expect(call[0]).toMatchObject({ status: 'Новая' });
     const setArg = call[1]?.$set as { attachments?: unknown[] };

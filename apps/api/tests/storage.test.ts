@@ -1,4 +1,7 @@
 // Назначение: тесты роутов управления файлами. Модули: jest, supertest.
+import type { NextFunction, Request, Response } from 'express';
+import { callNext } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
@@ -11,8 +14,8 @@ const fs = require('fs');
 const path = require('path');
 
 const mockDiagnosticsController = {
-  diagnose: jest.fn((_req: any, res: any) => res.json({ ok: true })),
-  remediate: jest.fn((_req: any, res: any) => res.json({ ok: true })),
+  diagnose: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  remediate: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
 };
 
 jest.mock('../src/di', () => {
@@ -30,18 +33,21 @@ const mockFileFindOneAndDelete = jest.fn(() => ({
   lean: jest.fn().mockResolvedValue(null),
 }));
 
-const mockTaskFind = jest.fn(() => ({
-  select: jest.fn().mockReturnThis(),
-  lean: jest.fn().mockResolvedValue([]),
-}));
-const mockTaskFindOne = jest.fn(() => ({
-  select: jest.fn().mockReturnThis(),
-  lean: jest.fn().mockResolvedValue(null),
-}));
-const mockTaskFindById = jest.fn(() => ({
-  select: jest.fn().mockReturnThis(),
-  lean: jest.fn().mockResolvedValue(null),
-}));
+type TaskQuery<T> = {
+  select: jest.Mock<TaskQuery<T>, []>;
+  lean: jest.Mock<Promise<T>, []>;
+};
+
+const createTaskQuery = <T>(result: T): TaskQuery<T> => {
+  const query: Partial<TaskQuery<T>> = {};
+  query.lean = jest.fn().mockResolvedValue(result);
+  query.select = jest.fn().mockReturnValue(query as TaskQuery<T>);
+  return query as TaskQuery<T>;
+};
+
+const mockTaskFind = jest.fn(() => createTaskQuery<unknown[]>([]));
+const mockTaskFindOne = jest.fn(() => createTaskQuery<unknown>(null));
+const mockTaskFindById = jest.fn(() => createTaskQuery<unknown>(null));
 
 jest.mock('../src/db/model', () => ({
   File: {
@@ -64,16 +70,15 @@ const { File } = require('../src/db/model');
 const { stopQueue } = require('../src/services/messageQueue');
 const { stopScheduler } = require('../src/services/scheduler');
 
-jest.mock(
-  '../src/middleware/auth',
-  () => () => (_req: any, _res: any, next: any) => next(),
+jest.mock('../src/middleware/auth', () =>
+  () => (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
 );
-jest.mock(
-  '../src/auth/roles.guard',
-  () => (_req: any, _res: any, next: any) => next(),
+jest.mock('../src/auth/roles.guard', () =>
+  (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
-  Roles: () => (_req: any, _res: any, next: any) => next(),
+  Roles: () => (req: Request, res: Response, next: NextFunction) =>
+    callNext(req, res, next),
 }));
 
 describe('storage routes', () => {
@@ -88,18 +93,9 @@ describe('storage routes', () => {
     mockTaskFind.mockReset();
     mockTaskFindOne.mockReset();
     mockTaskFindById.mockReset();
-    mockTaskFind.mockImplementation(() => ({
-      select: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockResolvedValue([]),
-    }));
-    mockTaskFindOne.mockImplementation(() => ({
-      select: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockResolvedValue(null),
-    }));
-    mockTaskFindById.mockImplementation(() => ({
-      select: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockResolvedValue(null),
-    }));
+    mockTaskFind.mockImplementation(() => createTaskQuery<unknown[]>([]));
+    mockTaskFindOne.mockImplementation(() => createTaskQuery<unknown>(null));
+    mockTaskFindById.mockImplementation(() => createTaskQuery<unknown>(null));
   });
 
   test('list files', async () => {
@@ -140,7 +136,9 @@ describe('storage routes', () => {
     mockTaskFindById.mockReturnValue({
       select: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
+        select: jest.fn().mockReturnThis(),
       }),
+      lean: jest.fn().mockResolvedValue(null),
     });
     const res = await request(app).get('/64d000000000000000000002');
     expect(res.status).toBe(200);

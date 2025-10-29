@@ -1,4 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
+import type { Express, NextFunction, Request, Response } from 'express';
+import type { RequestWithCsrf } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -45,7 +48,7 @@ const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());
@@ -62,7 +65,7 @@ beforeAll(() => {
     }),
   );
   const csrf = lusca.csrf({ angular: true });
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl.split('?')[0];
     if (
       [
@@ -76,12 +79,12 @@ beforeAll(() => {
     if (req.headers.authorization) return next();
     return csrf(req, res, next);
   });
-  app.get('/api/v1/csrf', csrf, (req, res) => {
+  app.get('/api/v1/csrf', csrf, (req: RequestWithCsrf, res: Response) => {
     res.json({ csrfToken: req.csrfToken() });
   });
   app.use('/api/v1/auth', authRouter);
   const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-  app.post('/api/protected', limiter, verifyToken, (_req, res) =>
+  app.post('/api/protected', limiter, verifyToken, (_req: Request, res: Response) =>
     res.json({ ok: true }),
   );
   app.use(errorMiddleware);

@@ -1,5 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты работы CSRF-токена и счётчика ошибок.
+import type { Express, NextFunction, Request, Response } from 'express';
+import type { RequestWithCsrf } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -17,7 +20,7 @@ const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 
 beforeEach(() => {
   client.register.resetMetrics();
@@ -49,7 +52,7 @@ beforeEach(() => {
   });
   const csrfExclude = ['/api/v1/csrf'];
   const csrfExcludePrefix = ['/api/tma'];
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl.split('?')[0];
     if (
       csrfExclude.includes(url) ||
@@ -59,11 +62,11 @@ beforeEach(() => {
       return next();
     return csrf(req, res, next);
   });
-  app.get('/api/v1/csrf', csrf, (req, res) => {
+  app.get('/api/v1/csrf', csrf, (req: RequestWithCsrf, res: Response) => {
     res.json({ csrfToken: req.csrfToken() });
   });
-  app.post('/api/protected', (_req, res) => res.json({ ok: true }));
-  app.post('/api/tma/protected', (_req, res) => res.json({ ok: true }));
+  app.post('/api/protected', (_req: Request, res: Response) => res.json({ ok: true }));
+  app.post('/api/tma/protected', (_req: Request, res: Response) => res.json({ ok: true }));
   app.use(errorMiddleware);
 });
 
@@ -83,8 +86,8 @@ test('GET /api/v1/csrf выдаёт токен и cookie', async () => {
 
 test('connect.sid создаётся вместе с токеном', async () => {
   const res = await request(app).get('/api/v1/csrf');
-  const cookies = res.headers['set-cookie'];
-  const hasSession = cookies.some((c) => /^connect\.sid=/.test(c));
+  const cookies = res.headers['set-cookie'] ?? [];
+  const hasSession = cookies.some((c: string) => /^connect\.sid=/.test(c));
   expect(hasSession).toBe(true);
 });
 
@@ -104,8 +107,8 @@ test('запрос с Authorization пропускает CSRF', async () => {
 
 test('запрос с корректным CSRF токеном проходит', async () => {
   const tokenRes = await request(app).get('/api/v1/csrf');
-  const cookies = tokenRes.headers['set-cookie']
-    .map((c) => c.split(';')[0])
+  const cookies = (tokenRes.headers['set-cookie'] ?? [])
+    .map((c: string) => c.split(';')[0])
     .join('; ');
   const token = tokenRes.body.csrfToken;
   const res = await request(app)

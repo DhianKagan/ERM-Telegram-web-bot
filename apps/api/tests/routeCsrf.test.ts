@@ -1,5 +1,10 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест эндпойнта /api/v1/route с проверкой CSRF
+import type { Express, NextFunction, Request, Response } from 'express';
+import type { AddressInfo } from 'net';
+import type { Server } from 'https';
+import type { RequestWithCsrf } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -23,9 +28,9 @@ const key = fs.readFileSync(__dirname + '/test-key.pem');
 const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req, _res, next) => next(),
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
+  verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
+  asyncHandler: (fn: (...args: unknown[]) => unknown) => fn,
+  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
     res.status(500).json({ error: err.message }),
 }));
 
@@ -35,12 +40,12 @@ jest.mock('../src/services/route', () => ({
 
 const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 
-let app;
-let server;
-let baseUrl;
+let app: Express;
+let server: Server;
+let baseUrl: string;
 beforeAll(
   () =>
-    new Promise((res) => {
+    new Promise<void>((resolve) => {
       app = express();
       app.use(express.json());
       app.use(cookieParser());
@@ -57,20 +62,24 @@ beforeAll(
         angular: true,
         cookie: { options: { sameSite: 'lax', domain: 'localhost' } },
       });
-      app.use((req, res, next) => {
+      app.use((req: Request, res: Response, next: NextFunction) => {
         const url = req.originalUrl.split('?')[0];
         if (['/api/v1/csrf'].includes(url)) return next();
         return csrf(req, res, next);
       });
-      app.get('/api/v1/csrf', csrf, (req, res) =>
+      app.get('/api/v1/csrf', csrf, (req: RequestWithCsrf, res: Response) =>
         res.json({ csrfToken: req.csrfToken() }),
       );
       app.use('/api/v1/route', routeRouter);
       app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
-        baseUrl = `https://localhost:${server.address().port}`;
-        res();
+        const address = server.address() as AddressInfo | string | null;
+        if (!address || typeof address === 'string') {
+          throw new Error('Не удалось получить порт сервера');
+        }
+        baseUrl = `https://localhost:${address.port}`;
+        resolve();
       });
     }),
 );

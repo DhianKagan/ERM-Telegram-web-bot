@@ -30,13 +30,23 @@ describe('индексы MongoDB', () => {
   const cleanDatabase = async () => {
     if (mongoose.connection.readyState !== 1) return;
     try {
-      await mongoose.connection.db.dropDatabase();
+      const db = mongoose.connection.db;
+      if (!db) return;
+      await db.dropDatabase();
     } catch (error) {
       const maybe = error as { codeName?: string; message?: string };
       if (maybe?.codeName !== 'NamespaceNotFound' && !maybe?.message?.includes('ns not found')) {
         throw error;
       }
     }
+  };
+
+  const getDb = () => {
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Подключение MongoDB недоступно');
+    }
+    return db;
   };
 
   beforeAll(async () => {
@@ -53,7 +63,7 @@ describe('индексы MongoDB', () => {
   describe('индексы задач', () => {
     beforeEach(async () => {
       await cleanDatabase();
-      await mongoose.connection.db.collection('tasks').insertOne({
+      await getDb().collection('tasks').insertOne({
         assigneeId: 1,
         status: 'Новая',
         dueAt: new Date(),
@@ -67,7 +77,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('запрос по исполнителю и статусу использует композитный индекс', async () => {
-      const cursor = mongoose.connection.db
+      const cursor = getDb()
         .collection('tasks')
         .find({ assigneeId: 1, status: 'Новая', dueAt: { $gte: new Date(0) } })
         .sort({ dueAt: 1 });
@@ -76,7 +86,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('сортировка по дате создания использует индекс', async () => {
-      const cursor = mongoose.connection.db
+      const cursor = getDb()
         .collection('tasks')
         .find()
         .sort({ createdAt: -1 });
@@ -92,7 +102,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются индексы ключа и владельца', async () => {
-      const indexes = await mongoose.connection.db
+      const indexes = await getDb()
         .collection('uploads')
         .indexes();
       expect(indexes.some((i) => i.name === 'key_unique')).toBe(true);
@@ -111,7 +121,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются уникальный и текстовый индексы', async () => {
-      const indexes = await mongoose.connection.db
+      const indexes = await getDb()
         .collection('collectionitems')
         .indexes();
       expect(indexes.some((i) => i.name === 'type_name_unique')).toBe(true);

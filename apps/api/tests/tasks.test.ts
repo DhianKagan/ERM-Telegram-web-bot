@@ -1,5 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
+import type { Express, NextFunction, Request, Response } from 'express';
+import { callNext, passThrough, respondWithError } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -11,6 +14,15 @@ const express = require('express');
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 const { generateRouteLink } = require('shared');
+
+type RequestWithUser = Request & {
+  user?: {
+    role: string;
+    id: number;
+    telegram_id: number;
+    access: number;
+  };
+};
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 1000 })),
@@ -102,26 +114,28 @@ jest
   .mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } });
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req, _res, next) => {
-    const role = String(req.headers['x-role'] || 'admin');
-    const access = Number(req.headers['x-access'] || 6);
+  verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
+    const rawRole = req.headers['x-role'];
+    const role = Array.isArray(rawRole) ? rawRole[0] ?? 'admin' : rawRole ?? 'admin';
+    const rawAccess = req.headers['x-access'];
+    const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
+    const access = accessValue !== undefined ? Number(accessValue) : 6;
     req.user = { role, id: 1, telegram_id: 1, access };
     next();
   },
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
-    res.status(500).json({ error: err.message }),
-  checkRole: () => (_req, _res, next) => next(),
-  checkTaskAccess: (_req, _res, next) => next(),
+  asyncHandler: passThrough,
+  errorHandler: respondWithError,
+  checkRole: () => callNext,
+  checkTaskAccess: callNext,
 }));
 
-jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
+jest.mock('../src/middleware/taskAccess', () => callNext);
 
 const router = require('../src/routes/tasks').default;
 const { Task, Archive } = require('../src/db/model');
 const { ACCESS_TASK_DELETE } = require('../src/utils/accessMask');
 
-let app;
+let app: Express;
 beforeEach(() => {
   mockDeleteMessage.mockClear();
   mockSendMessage.mockClear();
@@ -172,7 +186,7 @@ test('создание задачи без исполнителей возвра
     });
   expect(res.status).toBe(400);
   const messages = Array.isArray(res.body?.errors)
-    ? res.body.errors.map((err) => err.msg)
+    ? (res.body.errors as Array<{ msg?: string }>).map((error) => error.msg)
     : [];
   expect(messages).toContain('Укажите хотя бы одного исполнителя');
 });

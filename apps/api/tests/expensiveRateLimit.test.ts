@@ -1,6 +1,5 @@
 // Назначение: автотесты. Модули: jest, supertest.
 import type { Express, NextFunction, Request, Response } from 'express';
-import { callNext, passThrough } from './helpers/express';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -25,12 +24,18 @@ jest.mock('../src/auth/auth.controller.ts', () => ({
   refresh: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
 }));
 
-jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
-  asyncHandler: passThrough,
-  requestLogger: (req: Request, res: Response, next: NextFunction) =>
-    callNext(req, res, next),
-}));
+jest.mock('../src/api/middleware', () => {
+  const asyncHandler = jest.fn(
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+  );
+  const passNext = (_req: unknown, _res: unknown, next: NextFunction) => next();
+  return {
+    verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
+    asyncHandler,
+    requestLogger: (req: Request, res: Response, next: NextFunction) =>
+      passNext(req, res, next),
+  };
+});
 
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 1 })),

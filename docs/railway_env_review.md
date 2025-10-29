@@ -11,6 +11,7 @@
 
 ## MongoDB
 - Текущее значение `MONGO_DATABASE_URL` (`mongodb://mongo:***@shinkansen.proxy.rlwy.net:43551`) не содержит имени базы и параметра `authSource`. Конфиг API теперь валидирует обе части и остановит запуск без них, поэтому используйте строку формата `mongodb://<user>:<pass>@<host>:<port>/<db>?authSource=<база_аутентификации>`, как в `.env.example`, чтобы исключить ошибки авторизации при рестарте Railway.
+- Проверка конфигурации также распространяется на публичный прокси Railway (`*.proxy.rlwy.net`) и пользовательский домен `*.railway.app`: без `authSource=admin` приложение не запустится, чтобы предотвратить ошибку `Authentication failed`.
 - Если логин и пароль вынесены в отдельные секреты Railway, задайте `MONGO_USERNAME` и `MONGO_PASSWORD` — они будут автоматически подставлены в `MONGO_DATABASE_URL`.
 - Если база размещена в проекте Railway, включите Private Networking и вместо публичного прокси укажите внутренний DNS `erm-mongodb.railway.internal`. В стандартной конфигурации образа Railway с переменными `MONGO_INITDB_ROOT_USERNAME=mongo` и `MONGO_INITDB_ROOT_PASSWORD=…` корневой пользователь создаётся в базе `admin`, поэтому рекомендуемая строка подключения выглядит так: `mongodb://mongo:<пароль>@erm-mongodb.railway.internal:27017/ermdb?authSource=admin&directConnection=true`. Меняйте `authSource` только если вы вручную создали пользователя в другой базе. Внутренний адрес резолвится в IPv6 и доступен только из сервисов того же проекта, что исключает внешние задержки и лимиты по трафику.
 

@@ -93,6 +93,12 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 Статусы Lighthouse CI добавляет установленный GitHub App, его токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты публикуются во временном публичном хранилище.
 
+## GitHub Actions и секреты
+
+- Workflow `Docker` автоматически создаёт `.env` в CI и подставляет безопасные значения по умолчанию, если секреты не заданы в публичных ветках.
+- Подстановки используют маркеры `__DUMMY_BOT_TOKEN__`, `000000000`, `__DUMMY_JWT_SECRET__` и сервисный MongoDB `mongodb://admin:admin@mongo:27017/ermdb?authSource=admin`.
+- Для проверки приватных веток или staging окружений задайте реальные значения в `Repository secrets`.
+
 ## Миграции
 
 Скрипты для обновления базы находятся в `scripts/db`. Для добавления роли

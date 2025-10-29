@@ -20,7 +20,8 @@
     "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
     "prepare-client": "./scripts/build_client.sh",
     "size": "size-limit",
-    "repair:collections": "node dist/scripts/db/repairCollections.js"
+    "repair:collections": "node dist/scripts/db/repairCollections.js",
+    "security:scan": "./scripts/security_scan.sh"
   },
   "devDependencies": {
     "@axe-core/cli": "^4.10.2",
@@ -45,6 +46,7 @@
     "@typescript-eslint/parser": "^8.39.0",
     "audit-ci": "^7.1.0",
     "eslint": "^9.29.0",
+    "eslint-plugin-security": "^3.0.1",
     "express": "^4.19.2",
     "express-rate-limit": "^8.1.0",
     "globals": "^14.0.0",

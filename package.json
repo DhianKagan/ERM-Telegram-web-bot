@@ -24,7 +24,7 @@
     "repair:collections": "node dist/scripts/db/repairCollections.js",
     "security:scan": "./scripts/security_scan.sh",
     "lint:security": "./scripts/run_security_lint.sh",
-    "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit --pretty false",
+    "typecheck": "pnpm exec tsc --build --pretty false",
     "audit": "./scripts/audit_deps.sh",
     "codex:check": "pnpm format:check && pnpm lint && pnpm lint:security && pnpm typecheck && pnpm run audit"
   },

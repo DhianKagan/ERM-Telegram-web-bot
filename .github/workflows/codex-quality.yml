@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Получение кода
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Настройка Node.js
         uses: actions/setup-node@v4

@@ -138,3 +138,4 @@ docker run -e BOT_TOKEN=123 erm-bot
 Описание масок доступа и ролей: [docs/permissions.md](docs/permissions.md).
 FAQ для саппорта: [docs/support_faq.md](docs/support_faq.md).
 Архив устаревших материалов: [docs/archive](docs/archive).
+Восстановление проверок Codex: [docs/codex_integration.md](docs/codex_integration.md).

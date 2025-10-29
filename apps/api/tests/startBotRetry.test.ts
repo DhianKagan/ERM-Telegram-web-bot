@@ -6,7 +6,10 @@ process.env.SUPPRESS_JEST_WARNINGS = 'true';
 
 jest.mock('telegraf', () => {
   const launch = jest.fn();
-  const telegram = { deleteWebhook: jest.fn().mockResolvedValue(undefined) };
+  const telegram = {
+    deleteWebhook: jest.fn().mockResolvedValue(undefined),
+    callApi: jest.fn().mockResolvedValue(undefined),
+  };
   class TelegrafMock {
     telegram = telegram;
     launch = launch;
@@ -21,6 +24,7 @@ jest.mock('telegraf', () => {
     Markup: { keyboard: () => ({ resize: () => ({}) }) },
     Context: class {},
     __launch: launch,
+    __telegram: telegram,
   };
 });
 
@@ -45,4 +49,21 @@ test('startBot ограничивает число попыток и приме�
   expect(exitSpy).not.toHaveBeenCalled();
   exitSpy.mockRestore();
   timeout.mockRestore();
-}, 10000);
+  jest.useRealTimers();
+}, 20000);
+
+test('startBot завершает предыдущую long polling сессию при конфликте 409', async () => {
+  jest.useFakeTimers();
+  const { startBot } = await import('../src/bot/bot');
+  const { __launch, __telegram } = require('telegraf');
+  __launch.mockRejectedValueOnce({ response: { error_code: 409 } });
+  __launch.mockResolvedValue(undefined);
+
+  const promise = startBot();
+  await Promise.resolve();
+  await jest.runAllTimersAsync();
+  await promise;
+
+  expect(__telegram.callApi).toHaveBeenCalledWith('logOut');
+  jest.useRealTimers();
+});

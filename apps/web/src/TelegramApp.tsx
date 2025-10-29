@@ -1,7 +1,7 @@
 // Обёртка приложения с интеграцией Telegram Mini App
 import React from "react";
 import { AppRoot } from "@telegram-apps/telegram-ui";
-import { useLaunchParams } from "@telegram-apps/sdk-react";
+import { useLaunchParams } from "@tma.js/sdk-react";
 import App from "./App";
 
 export default function TelegramApp() {

@@ -1,6 +1,6 @@
 // Назначение файла: проверка подписи initData Telegram WebApp
-// Основные модули: @telegram-apps/init-data-node, config
-import { parse, validate } from '@telegram-apps/init-data-node';
+// Основные модули: @tma.js/init-data-node, config
+import { parse, validate } from '@tma.js/init-data-node';
 import config from '../config';
 
 const { botToken } = config;

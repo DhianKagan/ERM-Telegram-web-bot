@@ -41,7 +41,7 @@ jobs:
           : "${BOT_TOKEN:=__DUMMY_BOT_TOKEN__}"
           : "${CHAT_ID:=000000000}"
           : "${JWT_SECRET:=__DUMMY_JWT_SECRET__}"
-          : "${MONGO_DATABASE_URL:=mongodb://admin:admin@mongo:27017/ermdb?authSource=admin}"
+          : "${MONGO_DATABASE_URL:=mongodb://admin:admin@localhost:27017/ermdb?authSource=admin}"
 
           cat <<EOF >> .env
           BOT_TOKEN=$BOT_TOKEN

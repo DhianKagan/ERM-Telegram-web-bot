@@ -27,7 +27,11 @@ import { File } from '../db/model';
 import { findTaskIdByPublicIdentifier, syncTaskAttachments } from '../db/queries';
 import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
-import { maxUserFiles, maxUserStorage } from '../config/limits';
+import {
+  maxUserFiles,
+  maxUserStorage,
+  staleUserFilesGraceMinutes,
+} from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
 import { coerceAttachments } from '../utils/attachments';
 import { registerUploadedFile } from '../utils/requestUploads';
@@ -251,15 +255,77 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         res.status(403).json({ error: 'Не удалось определить пользователя' });
         return;
       }
-      const agg = await File.aggregate([
+      const graceMinutes = staleUserFilesGraceMinutes;
+      const shouldApplyGrace =
+        Number.isFinite(graceMinutes) && graceMinutes > 0;
+      const cutoff = shouldApplyGrace
+        ? new Date(Date.now() - graceMinutes * 60 * 1000)
+        : null;
+      const aggregation = await File.aggregate([
         { $match: { userId } },
-        { $group: { _id: null, count: { $sum: 1 }, size: { $sum: '$size' } } },
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            size: { $sum: '$size' },
+            staleCount: {
+              $sum: {
+                $cond: [
+                  shouldApplyGrace
+                    ? {
+                        $and: [
+                          { $eq: ['$taskId', null] },
+                          { $eq: ['$draftId', null] },
+                          { $lte: ['$uploadedAt', cutoff] },
+                        ],
+                      }
+                    : false,
+                  1,
+                  0,
+                ],
+              },
+            },
+            staleSize: {
+              $sum: {
+                $cond: [
+                  shouldApplyGrace
+                    ? {
+                        $and: [
+                          { $eq: ['$taskId', null] },
+                          { $eq: ['$draftId', null] },
+                          { $lte: ['$uploadedAt', cutoff] },
+                        ],
+                      }
+                    : false,
+                  '$size',
+                  0,
+                ],
+              },
+            },
+          },
+        },
       ]);
-      const cur = agg[0] || { count: 0, size: 0 };
+      const rawStats =
+        (aggregation[0] as {
+          count?: number;
+          size?: number;
+          staleCount?: number;
+          staleSize?: number;
+        } | undefined) || {};
+      let stats: { count: number; size: number } = {
+        count: rawStats.count ?? 0,
+        size: rawStats.size ?? 0,
+      };
+      if (shouldApplyGrace) {
+        stats = {
+          count: Math.max(0, stats.count - (rawStats.staleCount ?? 0)),
+          size: Math.max(0, stats.size - (rawStats.staleSize ?? 0)),
+        };
+      }
       const incoming = files.reduce((s, f) => s + f.size, 0);
       if (
-        cur.count + files.length > maxUserFiles ||
-        cur.size + incoming > maxUserStorage
+        stats.count + files.length > maxUserFiles ||
+        stats.size + incoming > maxUserStorage
       ) {
         for (const f of files) {
           const p = path.join(f.destination, f.filename);

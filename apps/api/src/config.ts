@@ -57,6 +57,18 @@ const mongoPasswordEnvKeys = [
   'MONGO_INITDB_ROOT_PASSWORD',
 ] as const;
 
+const mongoDbNameEnvKeys = [
+  'MONGO_DATABASE_NAME',
+  'MONGODB_DATABASE',
+  'MONGO_DB',
+  'MONGODB_DB',
+] as const;
+
+const mongoAuthSourceEnvKeys = [
+  'MONGO_AUTH_SOURCE',
+  'MONGODB_AUTH_SOURCE',
+] as const;
+
 const applyMongoCredentialFallback = (target: URL): string[] => {
   const messages: string[] = [];
   if (!target.username) {
@@ -74,6 +86,38 @@ const applyMongoCredentialFallback = (target: URL): string[] => {
     }
   }
   return messages;
+};
+
+const applyMongoDbNameFallback = (target: URL): string | undefined => {
+  const dbName = target.pathname.replace(/^\/+/, '');
+  if (dbName) {
+    return undefined;
+  }
+  const fallback = pickFirstFilled(mongoDbNameEnvKeys);
+  if (!fallback) {
+    return undefined;
+  }
+  target.pathname = `/${fallback.value}`;
+  return `именем базы из ${fallback.key}`;
+};
+
+const applyMongoAuthSourceFallback = (
+  target: URL,
+  options: { username: string; isRailwayHost: boolean },
+): string | undefined => {
+  if (target.searchParams.has('authSource')) {
+    return undefined;
+  }
+  const fallback = pickFirstFilled(mongoAuthSourceEnvKeys);
+  if (fallback) {
+    target.searchParams.set('authSource', fallback.value);
+    return `authSource из ${fallback.key}`;
+  }
+  if (options.username === 'mongo' && options.isRailwayHost) {
+    target.searchParams.set('authSource', 'admin');
+    return 'authSource=admin по умолчанию для Railway';
+  }
+  return undefined;
 };
 
 const required = ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'] as const;
@@ -118,6 +162,12 @@ try {
   throw new Error('MONGO_DATABASE_URL имеет неверный формат');
 }
 
+const fallbackMessages: string[] = [];
+const dbFallback = applyMongoDbNameFallback(parsedMongoUrl);
+if (dbFallback) {
+  fallbackMessages.push(dbFallback);
+}
+
 const dbName = parsedMongoUrl.pathname.replace(/^\/+/, '');
 if (!dbName) {
   throw new Error(
@@ -127,14 +177,22 @@ if (!dbName) {
 
 const credentialMessages = applyMongoCredentialFallback(parsedMongoUrl);
 if (credentialMessages.length) {
-  console.log(`MONGO_DATABASE_URL дополнен ${credentialMessages.join(' и ')}`);
+  fallbackMessages.push(...credentialMessages);
 }
 
-const authSource = parsedMongoUrl.searchParams.get('authSource');
-const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
 const isRailwayInternal = /\.railway\.internal$/i.test(parsedMongoUrl.hostname);
 const isRailwayProxyHost = /\.proxy\.rlwy\.net$/i.test(parsedMongoUrl.hostname);
 const isRailwayAppHost = /\.railway\.app$/i.test(parsedMongoUrl.hostname);
+const mongoUsername = decodeURIComponent(parsedMongoUrl.username);
+const authFallback = applyMongoAuthSourceFallback(parsedMongoUrl, {
+  username: mongoUsername,
+  isRailwayHost: isRailwayInternal || isRailwayProxyHost || isRailwayAppHost,
+});
+if (authFallback) {
+  fallbackMessages.push(authFallback);
+}
+
+const authSource = parsedMongoUrl.searchParams.get('authSource');
 const requiresRailwayAuthSource =
   !authSource &&
   mongoUsername === 'mongo' &&
@@ -143,6 +201,10 @@ if (requiresRailwayAuthSource) {
   throw new Error(
     'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
   );
+}
+
+if (fallbackMessages.length) {
+  console.log(`MONGO_DATABASE_URL дополнен ${fallbackMessages.join(' и ')}`);
 }
 
 const finalMongoUrl = parsedMongoUrl.toString();

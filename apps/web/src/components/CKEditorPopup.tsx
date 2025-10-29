@@ -13,6 +13,37 @@ import { showToast } from "../utils/toast";
 
 ensureWebpackNonce();
 
+const INLINE_MIME_EXTENSION_MAP: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+  "image/bmp": ".bmp",
+  "image/svg+xml": ".svg",
+  "image/heic": ".heic",
+  "image/heif": ".heif",
+};
+
+export function ensureInlineUploadFileName(file: File): string {
+  const rawName = typeof file.name === "string" ? file.name.trim() : "";
+  const lowerName = rawName.toLowerCase();
+  const hasExtension = /\.[0-9a-z_-]{1,16}$/.test(lowerName);
+  if (hasExtension) {
+    return rawName;
+  }
+  const normalizedType =
+    typeof file.type === "string" ? file.type.toLowerCase() : "";
+  const extension = INLINE_MIME_EXTENSION_MAP[normalizedType] ?? ".png";
+  const baseCandidate = rawName.replace(/\.[^./\\]+$/, "");
+  const sanitizedBase = baseCandidate
+    .replace(/[^0-9a-z_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  const base = sanitizedBase || "image";
+  return `${base}${extension}`;
+}
+
 class InlineUploadAdapter {
   private loader: unknown;
   private controller = new AbortController();
@@ -30,7 +61,7 @@ class InlineUploadAdapter {
         throw new Error("Файл не выбран");
       }
       const fd = new FormData();
-      fd.append("upload", file);
+      fd.append("upload", file, ensureInlineUploadFileName(file));
       const response = await authFetch("/api/v1/tasks/upload-inline", {
         method: "POST",
         body: fd,

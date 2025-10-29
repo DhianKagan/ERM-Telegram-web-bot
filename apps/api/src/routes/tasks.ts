@@ -264,6 +264,11 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         : null;
       if (shouldApplyGrace && cutoff) {
         try {
+          type StaleEntry = {
+            _id: Types.ObjectId;
+            path: string;
+            thumbnailPath?: string | null;
+          };
           const staleEntries = await File.find(
             {
               userId,
@@ -272,11 +277,9 @@ export const processUploads: RequestHandler = async (req, res, next) => {
               uploadedAt: { $lte: cutoff },
             },
             { path: 1, thumbnailPath: 1 },
-          ).lean<{
-            _id: Types.ObjectId;
-            path: string;
-            thumbnailPath?: string;
-          }>();
+          )
+            .lean<StaleEntry[]>()
+            .exec();
           if (staleEntries.length > 0) {
             const staleIds = staleEntries.map((entry) => entry._id);
             await File.deleteMany({ _id: { $in: staleIds } });

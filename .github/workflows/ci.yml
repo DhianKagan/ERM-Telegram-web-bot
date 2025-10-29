@@ -75,7 +75,7 @@ jobs:
             playwright-report
             test-results
       - name: Сборка
-        run: pnpm -r build
+        run: ./scripts/build_with_tmp.sh
       - name: Загрузка артефактов сборки
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

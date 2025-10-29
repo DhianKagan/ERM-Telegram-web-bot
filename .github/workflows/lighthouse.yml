@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       statuses: write
-    env:
-      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v4
@@ -27,5 +25,15 @@ jobs:
         run: test -d apps/api/public
       - name: Установка Chrome
         uses: browser-actions/setup-chrome@v1
-      - name: Lighthouse CI
+      - name: Lighthouse CI (GitHub App)
+        if: ${{ secrets.LHCI_GITHUB_APP_TOKEN != '' }}
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
         run: npx lhci autorun
+      - name: Lighthouse CI (без публикации статусов)
+        if: ${{ secrets.LHCI_GITHUB_APP_TOKEN == '' }}
+        env:
+          LHCI_UPLOAD__TARGET: filesystem
+        run: |
+          npx lhci collect
+          npx lhci assert

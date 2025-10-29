@@ -91,7 +91,7 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 Команда `pnpm size` ищет файлы `index-*.js` в `apps/api/public/js`.
 
-Статусы Lighthouse CI добавляет установленный GitHub App, его токен хранится в секрете `LHCI_GITHUB_APP_TOKEN`, отчёты публикуются во временном публичном хранилище.
+Внутренние проверки Lighthouse CI (секрет `LHCI_GITHUB_APP_TOKEN` доступен) запускают `npx lhci autorun` и публикуют статусы через GitHub App. Для внешних вкладов из форков, где секрет недоступен, workflow выполняет `npx lhci collect && npx lhci assert` с `LHCI_UPLOAD__TARGET=filesystem`, отчёт сохраняется локально на раннере и проверка завершается успешно без публикации статусов.
 
 ## GitHub Actions и секреты
 

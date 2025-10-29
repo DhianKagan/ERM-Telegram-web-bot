@@ -16,6 +16,7 @@ import * as os from 'os';
 process.env.MONGO_DATABASE_URL ||=
   'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
 process.env.APP_URL ||= 'https://example.com';
+process.env.USER_FILES_STALE_GRACE_MINUTES ||= '5';
 
 jest.mock('../apps/api/src/di', () => ({
   __esModule: true,
@@ -200,8 +201,14 @@ jest.mock('../apps/api/src/db/model', () => {
         files = files.filter((f) => f.userId === matchStage.$match.userId);
       }
       if (!files.length) return [];
-      const size = files.reduce((total, f) => total + f.size, 0);
-      return [{ _id: null, count: files.length, size }];
+      const totalSize = files.reduce((total, f) => total + f.size, 0);
+      return [
+        {
+          _id: null,
+          count: files.length,
+          size: totalSize,
+        },
+      ];
     }),
     create: jest.fn(async (data: any) => {
       const doc = {
@@ -220,7 +227,16 @@ jest.mock('../apps/api/src/db/model', () => {
     })),
     findOneAndDelete: jest.fn((query: any) => ({
       lean: async () => {
-        const idx = storedFiles.findIndex((f) => f.path === query.path);
+        let idx = -1;
+        if (query && typeof query === 'object') {
+          if (Object.prototype.hasOwnProperty.call(query, '_id')) {
+            idx = storedFiles.findIndex(
+              (f) => String(f._id) === String(query._id),
+            );
+          } else if (Object.prototype.hasOwnProperty.call(query, 'path')) {
+            idx = storedFiles.findIndex((f) => f.path === query.path);
+          }
+        }
         if (idx === -1) return null;
         const [doc] = storedFiles.splice(idx, 1);
         return doc;
@@ -232,12 +248,56 @@ jest.mock('../apps/api/src/db/model', () => {
         if (query.userId !== undefined) {
           files = files.filter((f) => f.userId === query.userId);
         }
+        if (query.taskId !== undefined) {
+          if (query.taskId === null) {
+            files = files.filter((f) => f.taskId === null);
+          } else if (query.taskId?.$eq !== undefined) {
+            files = files.filter(
+              (f) => String(f.taskId) === String(query.taskId.$eq),
+            );
+          }
+        }
+        if (query.draftId !== undefined) {
+          if (query.draftId === null) {
+            files = files.filter((f) => f.draftId === null);
+          } else if (query.draftId?.$eq !== undefined) {
+            files = files.filter(
+              (f) => String(f.draftId) === String(query.draftId.$eq),
+            );
+          }
+        }
+        if (query.uploadedAt?.$lte instanceof Date) {
+          const cutoffTime = query.uploadedAt.$lte.getTime();
+          files = files.filter((f) => f.uploadedAt.getTime() <= cutoffTime);
+        }
         if (query.type?.$eq !== undefined) {
           files = files.filter((f) => f.type === query.type.$eq);
         }
         return files;
       },
     })),
+    deleteMany: jest.fn(async (filter: any = {}) => {
+      if (!filter || typeof filter !== 'object') {
+        return { acknowledged: true, deletedCount: 0 };
+      }
+      const ids: unknown[] = Array.isArray(filter._id?.$in)
+        ? filter._id.$in
+        : [];
+      if (!ids.length) {
+        return { acknowledged: true, deletedCount: 0 };
+      }
+      let deletedCount = 0;
+      ids.forEach((candidate) => {
+        const idx = storedFiles.findIndex(
+          (file) => String(file._id) === String(candidate),
+        );
+        if (idx !== -1) {
+          storedFiles.splice(idx, 1);
+          deletedCount += 1;
+        }
+      });
+      return { acknowledged: true, deletedCount };
+    }),
     updateMany: jest.fn(async (filter: any = {}, update: any = {}) => {
       const match = (file: any, criteria: any): boolean => {
         if (!criteria || typeof criteria !== 'object') {
@@ -717,5 +777,37 @@ describe('Chunk upload', () => {
     if (fs.existsSync(userDir)) {
       expect(fs.readdirSync(userDir)).toHaveLength(0);
     }
+  });
+
+  test('очищает устаревшие несвязанные файлы перед проверкой лимитов', async () => {
+    const staleAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (let index = 0; index < 20; index += 1) {
+      storedFiles.push({
+        _id: new Types.ObjectId(),
+        userId: currentUserId,
+        name: `old-${index}.png`,
+        path: path.join(String(currentUserId), `old-${index}.png`),
+        type: 'image/png',
+        size: 1024,
+        uploadedAt: staleAt,
+        taskId: null,
+        draftId: null,
+      });
+    }
+    const response = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'stale-cleanup')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '1')
+      .attach('file', Buffer.from('fresh'), {
+        filename: 'fresh.png',
+        contentType: 'image/png',
+      });
+    expect(response.status).toBe(200);
+    expect(response.body.name).toBe('fresh.png');
+    expect(storedFiles).toHaveLength(1);
+    const latest = storedFiles[0];
+    expect(latest.name).toBe('fresh.png');
+    expect(latest.taskId).toBeNull();
   });
 });

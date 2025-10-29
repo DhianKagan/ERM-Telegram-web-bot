@@ -9,11 +9,20 @@ interface ValidateOptions {
   expiresIn?: number;
 }
 
-type InitDataRecord = Record<string, unknown> & {
-  user?: { id?: number; username?: string };
+type TelegramUser = {
+  id?: number;
+  username?: string;
+  [key: string]: unknown;
+} | null;
+
+interface InitDataRecord {
+  [key: string]: unknown;
+  user?: TelegramUser;
+  receiver?: Record<string, unknown> | null;
+  chat?: Record<string, unknown> | null;
   auth_date?: number;
   authDate?: number;
-};
+}
 
 function buildDataCheckString(params: URLSearchParams) {
   const pairs: string[] = [];

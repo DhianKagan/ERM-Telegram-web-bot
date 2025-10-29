@@ -1,6 +1,12 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест полного цикла логина и создания задачи
 // Модули: express, cookie-parser, express-session, lusca, supertest
+import type { Express, NextFunction, Request, Response } from 'express';
+import type { RequestWithCsrf } from './helpers/express';
+import type { Server } from 'https';
+import type { AddressInfo } from 'net';
+import { callNext } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -47,7 +53,9 @@ jest.mock('../src/services/tasks', () => ({
   mentioned: jest.fn(),
 }));
 
-jest.mock('../src/middleware/taskAccess', () => (_req, _res, next) => next());
+jest.mock('../src/middleware/taskAccess', () =>
+  (req: Request, res: Response, next: NextFunction) => callNext(req, res, next),
+);
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ roleId: mockManagerRoleId })),
@@ -58,7 +66,6 @@ jest.mock('../src/db/queries', () => ({
 
 const authRouter = require('../src/routes/authUser').default;
 const tasksRouter = require('../src/routes/tasks').default;
-const { verifyToken } = require('../src/api/middleware');
 const errorMiddleware = require('../src/middleware/errorMiddleware').default;
 const { codes } = require('../src/services/otp');
 const { stopScheduler } = require('../src/services/scheduler');
@@ -67,12 +74,12 @@ const { stopQueue } = require('../src/services/messageQueue');
 const key = fs.readFileSync(__dirname + '/test-key.pem');
 const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 
-let app;
-let server;
-let baseUrl;
+let app: Express;
+let server: Server;
+let baseUrl: string;
 beforeAll(
   () =>
-    new Promise((res) => {
+    new Promise<void>((resolve) => {
       app = express();
       app.use(express.json());
       app.use(cookieParser());
@@ -94,7 +101,7 @@ beforeAll(
         angular: true,
         cookie: { options: { sameSite: 'none', domain: 'localhost' } },
       });
-      app.use((req, res, next) => {
+      app.use((req: Request, res: Response, next: NextFunction) => {
         const url = req.originalUrl.split('?')[0];
         if (
           [
@@ -108,7 +115,7 @@ beforeAll(
         if (req.headers.authorization) return next();
         return csrf(req, res, next);
       });
-      app.get('/api/v1/csrf', csrf, (req, res) => {
+      app.get('/api/v1/csrf', csrf, (req: RequestWithCsrf, res: Response) => {
         res.json({ csrfToken: req.csrfToken() });
       });
       app.use('/api/v1/auth', authRouter);
@@ -116,8 +123,12 @@ beforeAll(
       app.use(errorMiddleware);
       server = https.createServer({ key, cert }, app);
       server.listen(0, 'localhost', () => {
-        baseUrl = `https://localhost:${server.address().port}`;
-        res();
+        const address = server.address() as AddressInfo | string | null;
+        if (!address || typeof address === 'string') {
+          throw new Error('Не удалось получить порт сервера');
+        }
+        baseUrl = `https://localhost:${address.port}`;
+        resolve();
       });
     }),
 );

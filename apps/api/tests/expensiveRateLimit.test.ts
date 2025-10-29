@@ -1,4 +1,7 @@
 // Назначение: автотесты. Модули: jest, supertest.
+import type { Express, NextFunction, Request, Response } from 'express';
+import { callNext, passThrough } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -13,19 +16,20 @@ const session = require('express-session');
 const lusca = require('lusca');
 
 jest.mock('../src/auth/auth.controller.ts', () => ({
-  sendCode: jest.fn((_req, res) => res.json({ ok: true })),
-  verifyCode: jest.fn((_req, res) => res.json({ token: 't' })),
-  verifyInitData: jest.fn((_req, res) => res.json({ ok: true })),
-  profile: jest.fn((_req, res) => res.json({ ok: true })),
-  updateProfile: jest.fn((_req, res) => res.json({ ok: true })),
-  logout: jest.fn((_req, res) => res.json({ status: 'ok' })),
-  refresh: jest.fn((_req, res) => res.json({ token: 't' })),
+  sendCode: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  verifyCode: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
+  verifyInitData: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  profile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  updateProfile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  logout: jest.fn((_req: Request, res: Response) => res.json({ status: 'ok' })),
+  refresh: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
 }));
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (_req, _res, next) => next(),
-  asyncHandler: (fn) => fn,
-  requestLogger: (_req, _res, next) => next(),
+  verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
+  asyncHandler: passThrough,
+  requestLogger: (req: Request, res: Response, next: NextFunction) =>
+    callNext(req, res, next),
 }));
 
 jest.mock('../src/services/route', () => ({
@@ -41,7 +45,7 @@ const routeRouter = require('../src/routes/route').default;
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-let app;
+let app: Express;
 beforeAll(() => {
   app = express();
   app.use(express.json());
@@ -54,7 +58,7 @@ beforeAll(() => {
     }),
   );
   const csrf = lusca.csrf({ angular: true });
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl.split('?')[0];
     if (['/api/v1/auth/send_code', '/api/v1/auth/verify_code'].includes(url)) {
       return next();

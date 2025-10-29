@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 // Назначение: проверка функции ensureInlineUploadFileName
 // Основные модули: CKEditorPopup, File
 import { ensureInlineUploadFileName } from "./CKEditorPopup";

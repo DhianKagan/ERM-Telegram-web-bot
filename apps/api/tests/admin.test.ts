@@ -1,5 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты админских маршрутов
+import type { NextFunction, Request, Response } from 'express';
+import { passThrough, respondWithError, RequestWithUser } from './helpers/express';
+
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
@@ -26,25 +29,31 @@ jest.mock('../src/services/service', () => {
 });
 
 jest.mock('../src/api/middleware', () => ({
-  verifyToken: (req, _res, next) => {
+  verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
+    const rawRole = req.headers['x-role'];
+    const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
+    const rawAccess = req.headers['x-access'];
+    const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
     req.user = {
-      role: req.headers['x-role'],
-      access: Number(req.headers['x-access']) || 1,
+      role: typeof role === 'string' ? role : undefined,
+      access: accessValue !== undefined ? Number(accessValue) : 1,
       telegram_id: 1,
     };
     next();
   },
-  checkRole: (expected) => (req, res, next) => {
-    if (typeof expected === 'number') {
-      return (req.user.access & expected) === expected
-        ? next()
-        : res.sendStatus(403);
-    }
-    return req.user.role === expected ? next() : res.sendStatus(403);
-  },
-  asyncHandler: (fn) => fn,
-  errorHandler: (err, _req, res, _next) =>
-    res.status(500).json({ error: err.message }),
+  checkRole:
+    (expected: number | string) =>
+    (req: RequestWithUser, res: Response, next: NextFunction) => {
+      const user = req.user ?? { access: 0 };
+      if (typeof expected === 'number') {
+        return user.access !== undefined && (user.access & expected) === expected
+          ? next()
+          : res.sendStatus(403);
+      }
+      return user.role === expected ? next() : res.sendStatus(403);
+    },
+  asyncHandler: passThrough,
+  errorHandler: respondWithError,
 }));
 
 const {
@@ -75,14 +84,14 @@ app.get(
   '/api/v1/logs',
   verifyToken,
   checkRole(ACCESS_ADMIN),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     res.json(await listLogs(req.query));
   }),
 );
 app.post(
   '/api/v1/logs',
   verifyToken,
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     if (typeof req.body.message === 'string') await writeLog(req.body.message);
     res.json({ status: 'ok' });
   }),
@@ -91,7 +100,7 @@ app.get(
   '/api/v1/roles',
   verifyToken,
   checkRole(ACCESS_ADMIN),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     res.json(await listRoles());
   }),
 );
@@ -99,7 +108,7 @@ app.patch(
   '/api/v1/roles/:id',
   verifyToken,
   checkRole(ACCESS_ADMIN),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     res.json(await updateRole(req.params.id, req.body.permissions));
   }),
 );

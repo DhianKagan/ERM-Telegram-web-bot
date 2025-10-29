@@ -58,7 +58,7 @@ async function verifyCode(
       throw new Error('not in group');
     }
   } catch (e) {
-    if (e.message === 'not in group') throw e;
+    if (e instanceof Error && e.message === 'not in group') throw e;
     throw new Error('member check failed');
   }
   let u = user;

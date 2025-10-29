@@ -13,7 +13,11 @@ jest.mock('../src/middleware/auth', () => () => (req: any, _res: any, next: () =
 
 jest.mock('../src/db/model', () => ({
   File: { findById: jest.fn() },
-  Task: { findById: jest.fn(), updateOne: jest.fn() },
+  Task: {
+    findById: jest.fn(),
+    updateOne: jest.fn(),
+    updateMany: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(undefined) })),
+  },
 }));
 
 jest.mock('../src/db/queries', () => ({

@@ -25,6 +25,16 @@ const PASSWORD_ENV_KEYS = [
   'MONGODB_PASS',
   'MONGO_INITDB_ROOT_PASSWORD',
 ];
+const DB_NAME_ENV_KEYS = [
+  'MONGO_DATABASE_NAME',
+  'MONGODB_DATABASE',
+  'MONGO_DB',
+  'MONGODB_DB',
+];
+const AUTH_SOURCE_ENV_KEYS = [
+  'MONGO_AUTH_SOURCE',
+  'MONGODB_AUTH_SOURCE',
+];
 
 function pickFirstFilled(keys) {
   for (const key of keys) {
@@ -45,12 +55,14 @@ function applyMongoCredentialFallback(rawUrl) {
     const parsed = new URL(rawUrl);
     let usernameSource;
     let passwordSource;
+    const messages = [];
 
     if (!parsed.username) {
       const fallback = pickFirstFilled(USERNAME_ENV_KEYS);
       if (fallback) {
         parsed.username = fallback.value;
         usernameSource = fallback.key;
+        messages.push(`логином из ${fallback.key}`);
       }
     }
 
@@ -59,6 +71,34 @@ function applyMongoCredentialFallback(rawUrl) {
       if (fallback) {
         parsed.password = fallback.value;
         passwordSource = fallback.key;
+        messages.push(`паролем из ${fallback.key}`);
+      }
+    }
+
+    const dbName = parsed.pathname.replace(/^\/+/, '');
+    if (!dbName) {
+      const fallback = pickFirstFilled(DB_NAME_ENV_KEYS);
+      if (fallback) {
+        parsed.pathname = `/${fallback.value}`;
+        messages.push(`именем базы из ${fallback.key}`);
+      }
+    }
+
+    if (!parsed.searchParams.has('authSource')) {
+      const authFallback = pickFirstFilled(AUTH_SOURCE_ENV_KEYS);
+      if (authFallback) {
+        parsed.searchParams.set('authSource', authFallback.value);
+        messages.push(`authSource из ${authFallback.key}`);
+      } else {
+        const username = decodeURIComponent(parsed.username);
+        const hostname = parsed.hostname;
+        const isRailwayInternal = /\.railway\.internal$/i.test(hostname);
+        const isRailwayProxyHost = /\.proxy\.rlwy\.net$/i.test(hostname);
+        const isRailwayAppHost = /\.railway\.app$/i.test(hostname);
+        if (username === 'mongo' && (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost)) {
+          parsed.searchParams.set('authSource', 'admin');
+          messages.push('authSource=admin по умолчанию для Railway');
+        }
       }
     }
 
@@ -66,19 +106,22 @@ function applyMongoCredentialFallback(rawUrl) {
       url: parsed.toString(),
       usernameSource,
       passwordSource,
+      messages: messages.length ? messages : undefined,
     };
   } catch {
     return { url: rawUrl };
   }
 }
 
-function formatCredentialSources({ usernameSource, passwordSource }) {
-  const parts = [];
-  if (usernameSource) {
-    parts.push(`логином из ${usernameSource}`);
-  }
-  if (passwordSource) {
-    parts.push(`паролем из ${passwordSource}`);
+function formatCredentialSources({ usernameSource, passwordSource, messages }) {
+  const parts = messages ? [...messages] : [];
+  if (!parts.length) {
+    if (usernameSource) {
+      parts.push(`логином из ${usernameSource}`);
+    }
+    if (passwordSource) {
+      parts.push(`паролем из ${passwordSource}`);
+    }
   }
   if (!parts.length) {
     return undefined;

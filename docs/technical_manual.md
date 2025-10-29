@@ -572,7 +572,7 @@ pnpm --dir bot dev # запуск api и web
 Пошаговое развертывание на Railway:
 
 1. Создайте проект и подключите плагин **MongoDB**.
-2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
+2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. При необходимости можно отдельно задать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит URL, что удобно для публичных ссылок Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 

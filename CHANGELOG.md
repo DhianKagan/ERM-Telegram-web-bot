@@ -4,6 +4,7 @@
 
 - Добавлен статический анализ `pnpm security:scan`, использующий `eslint-plugin-security`,
   скрипты `setup_and_test.sh` и `pre_pr_check.sh` выполняют проверку перед пулл-реквестом.
+- Конфигурация MongoDB автоматически дополняет имя базы и authSource по переменным `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE`, что упрощает подключение через публичный прокси Railway; обновлены `.env.example` и документация.
 - Конфигурация MongoDB и вспомогательные скрипты подставляют логин и пароль из `MONGO_USERNAME`/`MONGO_PASSWORD`, обновлены `.env.example` и документация Railway.
 - Проверка `MONGO_DATABASE_URL` блокирует подключения Railway без `authSource` для публичного прокси и домена `railway.app`, что предотвращает ошибку `Authentication failed` при запуске.
 

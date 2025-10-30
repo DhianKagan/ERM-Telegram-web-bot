@@ -5,12 +5,19 @@ process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
+process.env.NOMINATIM_MIN_INTERVAL_MS = '0';
+process.env.NOMINATIM_USER_AGENT = 'jest-agent (+https://example.com/contact)';
 
 jest.mock('dns/promises', () => ({
   lookup: jest.fn().mockResolvedValue([{ address: '1.1.1.1', family: 4 }]),
 }));
 
-const { expandMapsUrl, extractCoords } = require('../src/services/maps');
+const {
+  expandMapsUrl,
+  extractCoords,
+  searchAddress,
+  reverseGeocode,
+} = require('../src/services/maps');
 
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
@@ -64,6 +71,46 @@ test('expandMapsUrl строит ссылку по координатам из �
 test('extractCoords извлекает широту и долготу', () => {
   const coords = extractCoords('https://maps.google.com/@10.1,20.2,15z');
   expect(coords).toEqual({ lat: 10.1, lng: 20.2 });
+});
+
+test('searchAddress нормализует подсказки', async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => [
+      {
+        place_id: 123,
+        display_name: 'вулиця Шевченка, Львів, Україна',
+        lat: '49.8397',
+        lon: '24.0297',
+      },
+    ],
+  });
+  const results = await searchAddress('шевченка', { limit: 7, language: 'uk-UA,uk' });
+  expect(global.fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/search?'),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        'User-Agent': expect.stringContaining('jest-agent'),
+        'Accept-Language': 'uk-UA,uk',
+      }),
+    }),
+  );
+  expect(results).toEqual([
+    expect.objectContaining({
+      id: '123',
+      label: 'вулиця Шевченка',
+      description: 'Львів, Україна',
+      lat: 49.8397,
+      lng: 24.0297,
+      source: 'nominatim',
+    }),
+  ]);
+});
+
+test('reverseGeocode возвращает null при ошибке', async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
+  const place = await reverseGeocode({ lat: 50, lng: 30 });
+  expect(place).toBeNull();
 });
 
 afterAll(() => {

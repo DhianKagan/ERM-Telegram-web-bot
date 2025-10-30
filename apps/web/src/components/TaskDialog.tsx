@@ -39,7 +39,12 @@ import authFetch from "../utils/authFetch";
 import parseGoogleAddress from "../utils/parseGoogleAddress";
 import { validateURL } from "../utils/validation";
 import extractCoords from "../utils/extractCoords";
-import { expandLink } from "../services/maps";
+import {
+  expandLink,
+  searchAddress as searchMapAddress,
+  reverseGeocode as reverseMapGeocode,
+  type AddressSuggestion,
+} from "../services/maps";
 import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import fetchRoute from "../services/route";
 import haversine from "../utils/haversine";
@@ -323,6 +328,8 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
 
 const buildMapsLink = (coords: { lat: number; lng: number }): string =>
   `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+
+const MIN_ADDRESS_QUERY_LENGTH = 3;
 
 type MapPickerDialogProps = {
   open: boolean;
@@ -738,7 +745,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     Number.isFinite(normalizedAccess) &&
     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
   const canEditAll = isAdmin || user?.role === "manager";
-  const { t: rawT } = useTranslation();
+  const { t: rawT, i18n } = useTranslation();
   const initialKind = React.useMemo(() => kind ?? "task", [kind]);
   const [entityKind, setEntityKind] = React.useState<"task" | "request">(
     initialKind,
@@ -770,6 +777,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       adaptTaskText(String(rawT(...args))),
     [rawT, adaptTaskText],
   );
+  const currentLanguage = i18n.language;
   React.useEffect(() => {
     if (kind && kind !== entityKind) {
       setEntityKind(kind);
@@ -1021,12 +1029,62 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
+  const [startSuggestions, setStartSuggestions] = React.useState<
+    AddressSuggestion[]
+  >([]);
+  const [startSuggestionsOpen, setStartSuggestionsOpen] = React.useState(false);
+  const [startSearchLoading, setStartSearchLoading] = React.useState(false);
+  const [startSearchError, setStartSearchError] = React.useState<string | null>(
+    null,
+  );
+  const startSearchAbortRef = React.useRef<AbortController | null>(null);
+  const startSearchTimeoutRef = React.useRef<number | null>(null);
+  const startSearchRequestRef = React.useRef(0);
+  const startInputRef = React.useRef<HTMLInputElement | null>(null);
   const [end, setEnd] = React.useState("");
   const [endLink, setEndLink] = React.useState("");
   const [finishCoordinates, setFinishCoordinates] = React.useState<{
     lat: number;
     lng: number;
   } | null>(null);
+  const [finishSuggestions, setFinishSuggestions] = React.useState<
+    AddressSuggestion[]
+  >([]);
+  const [finishSuggestionsOpen, setFinishSuggestionsOpen] = React.useState(false);
+  const [finishSearchLoading, setFinishSearchLoading] = React.useState(false);
+  const [finishSearchError, setFinishSearchError] = React.useState<string | null>(
+    null,
+  );
+  const finishSearchAbortRef = React.useRef<AbortController | null>(null);
+  const finishSearchTimeoutRef = React.useRef<number | null>(null);
+  const finishSearchRequestRef = React.useRef(0);
+  const finishInputRef = React.useRef<HTMLInputElement | null>(null);
+  const cancelStartSearch = React.useCallback(() => {
+    startSearchAbortRef.current?.abort();
+    startSearchAbortRef.current = null;
+    if (startSearchTimeoutRef.current) {
+      window.clearTimeout(startSearchTimeoutRef.current);
+      startSearchTimeoutRef.current = null;
+    }
+  }, []);
+  const cancelFinishSearch = React.useCallback(() => {
+    finishSearchAbortRef.current?.abort();
+    finishSearchAbortRef.current = null;
+    if (finishSearchTimeoutRef.current) {
+      window.clearTimeout(finishSearchTimeoutRef.current);
+      finishSearchTimeoutRef.current = null;
+    }
+  }, []);
+  const clearStartSuggestions = React.useCallback(() => {
+    setStartSuggestions([]);
+    setStartSearchError(null);
+    setStartSearchLoading(false);
+  }, []);
+  const clearFinishSuggestions = React.useCallback(() => {
+    setFinishSuggestions([]);
+    setFinishSearchError(null);
+    setFinishSearchLoading(false);
+  }, []);
   const canonicalStartLink = React.useMemo(
     () => sanitizeLocationLink(startLink),
     [startLink],
@@ -1092,6 +1150,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (!transportRequiresDetails) return;
     void loadTransportOptions();
   }, [transportRequiresDetails, loadTransportOptions]);
+  React.useEffect(
+    () => () => {
+      cancelStartSearch();
+      cancelFinishSearch();
+    },
+    [cancelStartSearch, cancelFinishSearch],
+  );
   React.useEffect(() => {
     if (!transportDriverId) {
       if (transportDriverName) setTransportDriverName("");
@@ -1556,12 +1621,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         startCoordsFromTask ??
           (startLocationLink ? extractCoords(startLocationLink) : null),
       );
+      clearStartSuggestions();
+      setStartSuggestionsOpen(false);
       setEnd(endLocationValue);
       setEndLink(endLocationLink);
       setFinishCoordinates(
         endCoordsFromTask ??
           (endLocationLink ? extractCoords(endLocationLink) : null),
       );
+      clearFinishSuggestions();
+      setFinishSuggestionsOpen(false);
       if (storedRouteLinkRaw) {
         autoRouteRef.current = false;
         setRouteLink(storedRouteLinkRaw);
@@ -1656,6 +1725,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const handleLogisticsToggle = (checked: boolean) => {
     setShowLogistics(checked);
+    if (!checked) {
+      setStartSuggestionsOpen(false);
+      setFinishSuggestionsOpen(false);
+      cancelStartSearch();
+      cancelFinishSearch();
+      clearStartSuggestions();
+      clearFinishSuggestions();
+    }
   };
 
   React.useEffect(() => {
@@ -2210,6 +2287,190 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     hasAutofilledAssignee.current = true;
   }, [assigneeValue, isEdit, user, users, setValue]);
 
+  const runStartSearch = React.useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
+        clearStartSuggestions();
+        return;
+      }
+      cancelStartSearch();
+      const requestId = startSearchRequestRef.current + 1;
+      startSearchRequestRef.current = requestId;
+      const controller = new AbortController();
+      startSearchAbortRef.current = controller;
+      setStartSearchLoading(true);
+      setStartSearchError(null);
+      void searchMapAddress(trimmed, {
+        signal: controller.signal,
+        limit: 7,
+        language: currentLanguage,
+      })
+        .then((items) => {
+          if (startSearchRequestRef.current !== requestId) {
+            return;
+          }
+          setStartSuggestions(items);
+        })
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          if (startSearchRequestRef.current !== requestId) {
+            return;
+          }
+          setStartSuggestions([]);
+          setStartSearchError(t("addressSearchFailed"));
+        })
+        .finally(() => {
+          if (startSearchRequestRef.current === requestId) {
+            setStartSearchLoading(false);
+          }
+        });
+    },
+    [cancelStartSearch, clearStartSuggestions, currentLanguage, t],
+  );
+
+  const runFinishSearch = React.useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
+        clearFinishSuggestions();
+        return;
+      }
+      cancelFinishSearch();
+      const requestId = finishSearchRequestRef.current + 1;
+      finishSearchRequestRef.current = requestId;
+      const controller = new AbortController();
+      finishSearchAbortRef.current = controller;
+      setFinishSearchLoading(true);
+      setFinishSearchError(null);
+      void searchMapAddress(trimmed, {
+        signal: controller.signal,
+        limit: 7,
+        language: currentLanguage,
+      })
+        .then((items) => {
+          if (finishSearchRequestRef.current !== requestId) {
+            return;
+          }
+          setFinishSuggestions(items);
+        })
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          if (finishSearchRequestRef.current !== requestId) {
+            return;
+          }
+          setFinishSuggestions([]);
+          setFinishSearchError(t("addressSearchFailed"));
+        })
+        .finally(() => {
+          if (finishSearchRequestRef.current === requestId) {
+            setFinishSearchLoading(false);
+          }
+        });
+    },
+    [cancelFinishSearch, clearFinishSuggestions, currentLanguage, t],
+  );
+
+  const scheduleStartSearch = React.useCallback(
+    (value: string) => {
+      cancelStartSearch();
+      if (!value.trim()) {
+        clearStartSuggestions();
+        return;
+      }
+      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
+        clearStartSuggestions();
+        return;
+      }
+      startSearchTimeoutRef.current = window.setTimeout(() => {
+        startSearchTimeoutRef.current = null;
+        runStartSearch(value);
+      }, 350);
+    },
+    [cancelStartSearch, clearStartSuggestions, runStartSearch],
+  );
+
+  const scheduleFinishSearch = React.useCallback(
+    (value: string) => {
+      cancelFinishSearch();
+      if (!value.trim()) {
+        clearFinishSuggestions();
+        return;
+      }
+      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
+        clearFinishSuggestions();
+        return;
+      }
+      finishSearchTimeoutRef.current = window.setTimeout(() => {
+        finishSearchTimeoutRef.current = null;
+        runFinishSearch(value);
+      }, 350);
+    },
+    [cancelFinishSearch, clearFinishSuggestions, runFinishSearch],
+  );
+
+  const handleStartSuggestionSelect = React.useCallback(
+    (suggestion: AddressSuggestion) => {
+      autoRouteRef.current = true;
+      cancelStartSearch();
+      setStartSuggestionsOpen(false);
+      setStartSearchError(null);
+      clearStartSuggestions();
+      startInputRef.current?.focus();
+      setStart(suggestion.label);
+      const coords = { lat: suggestion.lat, lng: suggestion.lng };
+      setStartCoordinates(coords);
+      setStartLink(buildMapsLink(coords));
+    },
+    [cancelStartSearch, clearStartSuggestions],
+  );
+
+  const handleFinishSuggestionSelect = React.useCallback(
+    (suggestion: AddressSuggestion) => {
+      autoRouteRef.current = true;
+      cancelFinishSearch();
+      setFinishSuggestionsOpen(false);
+      setFinishSearchError(null);
+      clearFinishSuggestions();
+      finishInputRef.current?.focus();
+      setEnd(suggestion.label);
+      const coords = { lat: suggestion.lat, lng: suggestion.lng };
+      setFinishCoordinates(coords);
+      setEndLink(buildMapsLink(coords));
+    },
+    [cancelFinishSearch, clearFinishSuggestions],
+  );
+
+  const handleStartInputChange = React.useCallback(
+    (value: string) => {
+      autoRouteRef.current = true;
+      setStart(value);
+      setStartLink("");
+      setStartCoordinates(null);
+      setStartSearchError(null);
+      setStartSuggestionsOpen(true);
+      scheduleStartSearch(value);
+    },
+    [scheduleStartSearch],
+  );
+
+  const handleFinishInputChange = React.useCallback(
+    (value: string) => {
+      autoRouteRef.current = true;
+      setEnd(value);
+      setEndLink("");
+      setFinishCoordinates(null);
+      setFinishSearchError(null);
+      setFinishSuggestionsOpen(true);
+      scheduleFinishSearch(value);
+    },
+    [scheduleFinishSearch],
+  );
+
   const handleStartLink = async (value: string) => {
     autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
@@ -2217,6 +2478,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setStart("");
       setStartCoordinates(null);
       setStartLink("");
+      setStartSuggestionsOpen(false);
+      cancelStartSearch();
+      clearStartSuggestions();
       return;
     }
     let link = sanitized;
@@ -2248,6 +2512,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStart(parseGoogleAddress(resolved));
     setStartCoordinates(coords ?? extractCoords(resolved));
     setStartLink(link);
+    setStartSuggestionsOpen(false);
+    cancelStartSearch();
+    clearStartSuggestions();
   };
 
   const handleEndLink = async (value: string) => {
@@ -2257,6 +2524,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setEnd("");
       setFinishCoordinates(null);
       setEndLink("");
+      setFinishSuggestionsOpen(false);
+      cancelFinishSearch();
+      clearFinishSuggestions();
       return;
     }
     let link = sanitized;
@@ -2288,25 +2558,58 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setEnd(parseGoogleAddress(resolved));
     setFinishCoordinates(coords ?? extractCoords(resolved));
     setEndLink(link);
+    setFinishSuggestionsOpen(false);
+    cancelFinishSearch();
+    clearFinishSuggestions();
   };
 
   const handleMapConfirm = React.useCallback(
-    (target: "start" | "finish", coords: { lat: number; lng: number }) => {
+    async (target: "start" | "finish", coords: { lat: number; lng: number }) => {
       autoRouteRef.current = true;
+      setMapPicker(null);
       const link = buildMapsLink(coords);
-      const label = formatCoords(coords);
+      let label = formatCoords(coords);
+      try {
+        const place = await reverseMapGeocode(coords, {
+          language: currentLanguage,
+        });
+        if (place) {
+          label = place.description
+            ? `${place.label}, ${place.description}`
+            : place.label;
+        } else {
+          setAlertMsg((prev) => prev ?? t("addressReverseNotFound"));
+        }
+      } catch (error) {
+        console.warn("Не удалось получить адрес по координатам", error);
+        setAlertMsg((prev) => prev ?? t("addressReverseFailed"));
+      }
       if (target === "start") {
+        cancelStartSearch();
+        clearStartSuggestions();
+        setStartSuggestionsOpen(false);
+        setStartSearchError(null);
         setStart(label);
         setStartCoordinates(coords);
         setStartLink(link);
       } else {
+        cancelFinishSearch();
+        clearFinishSuggestions();
+        setFinishSuggestionsOpen(false);
+        setFinishSearchError(null);
         setEnd(label);
         setFinishCoordinates(coords);
         setEndLink(link);
       }
-      setMapPicker(null);
     },
-    [],
+    [
+      cancelFinishSearch,
+      cancelStartSearch,
+      clearFinishSuggestions,
+      clearStartSuggestions,
+      currentLanguage,
+      t,
+    ],
   );
 
   const openMapPicker = React.useCallback(
@@ -2940,6 +3243,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [onClose],
   );
 
+  const startQueryLength = start.trim().length;
+  const finishQueryLength = end.trim().length;
+
   if (typeof document === "undefined") {
     return null;
   }
@@ -3073,42 +3379,169 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
                             className="block text-sm font-medium"
-                            htmlFor="task-start-link"
+                            htmlFor="task-start-address"
                           >
                             {t("startPoint")}
                           </label>
-                          {canonicalStartLink ? (
-                            <div className="flex flex-wrap items-start gap-2">
-                              <div className="flex min-w-0 flex-col gap-1">
-                                <a
-                                  href={canonicalStartLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-accentPrimary underline break-words"
-                                >
-                                  {start || t("link")}
-                                </a>
-                                {startCoordinates && (
-                                  <input
-                                    id="task-start-coordinates"
-                                    name="startCoordinatesDisplay"
-                                    value={formatCoords(startCoordinates)}
-                                    readOnly
-                                    className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                    onFocus={(e) => e.currentTarget.select()}
-                                    aria-label={t("coordinates")}
-                                  />
-                                )}
-                              </div>
-                              {editing ? (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartLink("")}
-                                    className="shrink-0 text-red-600"
+                          <div className="mt-1 space-y-2">
+                            <div className="relative">
+                              <input
+                                id="task-start-address"
+                                ref={startInputRef}
+                                value={start}
+                                onChange={(event) =>
+                                  handleStartInputChange(event.target.value)
+                                }
+                                onFocus={() => {
+                                  if (!editing) return;
+                                  setStartSuggestionsOpen(true);
+                                }}
+                                onBlur={() => {
+                                  window.setTimeout(() => {
+                                    setStartSuggestionsOpen(false);
+                                  }, 120);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" && editing) {
+                                    if (startSuggestions.length > 0) {
+                                      event.preventDefault();
+                                      handleStartSuggestionSelect(
+                                        startSuggestions[0],
+                                      );
+                                    }
+                                  }
+                                  if (event.key === "Escape") {
+                                    setStartSuggestionsOpen(false);
+                                  }
+                                }}
+                                placeholder={t("addressPlaceholder", {
+                                  count: MIN_ADDRESS_QUERY_LENGTH,
+                                })}
+                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
+                                disabled={!editing}
+                              />
+                              {editing && startSuggestionsOpen ? (
+                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
+                                  {startSearchLoading ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchLoading")}
+                                    </div>
+                                  ) : startSearchError ? (
+                                    <div className="px-3 py-2 text-sm text-red-600">
+                                      {startSearchError}
+                                    </div>
+                                  ) : startQueryLength === 0 ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchHint", {
+                                        count: MIN_ADDRESS_QUERY_LENGTH,
+                                      })}
+                                    </div>
+                                  ) : startQueryLength < MIN_ADDRESS_QUERY_LENGTH ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchHint", {
+                                        count: MIN_ADDRESS_QUERY_LENGTH,
+                                      })}
+                                    </div>
+                                  ) : startSuggestions.length ? (
+                                    <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+                                      {startSuggestions.map((suggestion) => (
+                                        <li
+                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
+                                          role="option"
+                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
+                                          onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            handleStartSuggestionSelect(suggestion);
+                                          }}
+                                        >
+                                          <div className="font-medium text-slate-800">
+                                            {suggestion.label}
+                                          </div>
+                                          {suggestion.description ? (
+                                            <div className="text-xs text-slate-500">
+                                              {suggestion.description}
+                                            </div>
+                                          ) : null}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchNoResults")}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                            {canonicalStartLink ? (
+                              <div className="flex flex-wrap items-start gap-2">
+                                <div className="flex min-w-0 flex-col gap-1">
+                                  <a
+                                    href={canonicalStartLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accentPrimary underline break-words"
                                   >
-                                    ✖
-                                  </button>
+                                    {start || t("link")}
+                                  </a>
+                                  {startCoordinates && (
+                                    <input
+                                      id="task-start-coordinates"
+                                      name="startCoordinatesDisplay"
+                                      value={formatCoords(startCoordinates)}
+                                      readOnly
+                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                      onFocus={(e) => e.currentTarget.select()}
+                                      aria-label={t("coordinates")}
+                                    />
+                                  )}
+                                </div>
+                                {editing ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartLink("")}
+                                      className="shrink-0 text-red-600"
+                                    >
+                                      ✖
+                                    </button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openMapPicker("start")}
+                                    >
+                                      {t("selectOnMap")}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                  id="task-start-link"
+                                  name="startLink"
+                                  value={startLink}
+                                  onChange={(e) => handleStartLink(e.target.value)}
+                                  placeholder={t("googleMapsLink")}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing}
+                                />
+                                <a
+                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                  target="_blank"
+                                  rel="noopener"
+                                  className={cn(
+                                    buttonVariants({
+                                      variant: "default",
+                                      size: "sm",
+                                    }),
+                                    "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
+                                  )}
+                                >
+                                  {t("map")}
+                                </a>
+                                {editing ? (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -3117,86 +3550,177 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   >
                                     {t("selectOnMap")}
                                   </Button>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <input
-                                id="task-start-link"
-                                name="startLink"
-                                value={startLink}
-                                onChange={(e) => handleStartLink(e.target.value)}
-                                placeholder={t("googleMapsLink")}
-                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                disabled={!editing}
-                              />
-                              <a
-                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                target="_blank"
-                                rel="noopener"
-                                className={cn(
-                                  buttonVariants({
-                                    variant: "default",
-                                    size: "sm",
-                                  }),
-                                  "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
-                                )}
-                              >
-                                {t("map")}
-                              </a>
-                              {editing ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openMapPicker("start")}
-                                >
-                                  {t("selectOnMap")}
-                                </Button>
-                              ) : null}
-                            </div>
-                          )}
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
                             className="block text-sm font-medium"
-                            htmlFor="task-end-link"
+                            htmlFor="task-finish-address"
                           >
                             {t("endPoint")}
                           </label>
-                          {canonicalEndLink ? (
-                            <div className="flex flex-wrap items-start gap-2">
-                              <div className="flex min-w-0 flex-col gap-1">
-                                <a
-                                  href={canonicalEndLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-accentPrimary underline break-words"
-                                >
-                                  {end || t("link")}
-                                </a>
-                                {finishCoordinates && (
-                                  <input
-                                    id="task-finish-coordinates"
-                                    name="finishCoordinatesDisplay"
-                                    value={formatCoords(finishCoordinates)}
-                                    readOnly
-                                    className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                    onFocus={(e) => e.currentTarget.select()}
-                                    aria-label={t("coordinates")}
-                                  />
-                                )}
-                              </div>
-                              {editing ? (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEndLink("")}
-                                    className="shrink-0 text-red-600"
+                          <div className="mt-1 space-y-2">
+                            <div className="relative">
+                              <input
+                                id="task-finish-address"
+                                ref={finishInputRef}
+                                value={end}
+                                onChange={(event) =>
+                                  handleFinishInputChange(event.target.value)
+                                }
+                                onFocus={() => {
+                                  if (!editing) return;
+                                  setFinishSuggestionsOpen(true);
+                                }}
+                                onBlur={() => {
+                                  window.setTimeout(() => {
+                                    setFinishSuggestionsOpen(false);
+                                  }, 120);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" && editing) {
+                                    if (finishSuggestions.length > 0) {
+                                      event.preventDefault();
+                                      handleFinishSuggestionSelect(
+                                        finishSuggestions[0],
+                                      );
+                                    }
+                                  }
+                                  if (event.key === "Escape") {
+                                    setFinishSuggestionsOpen(false);
+                                  }
+                                }}
+                                placeholder={t("addressPlaceholder", {
+                                  count: MIN_ADDRESS_QUERY_LENGTH,
+                                })}
+                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
+                                disabled={!editing}
+                              />
+                              {editing && finishSuggestionsOpen ? (
+                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
+                                  {finishSearchLoading ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchLoading")}
+                                    </div>
+                                  ) : finishSearchError ? (
+                                    <div className="px-3 py-2 text-sm text-red-600">
+                                      {finishSearchError}
+                                    </div>
+                                  ) : finishQueryLength === 0 ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchHint", {
+                                        count: MIN_ADDRESS_QUERY_LENGTH,
+                                      })}
+                                    </div>
+                                  ) : finishQueryLength < MIN_ADDRESS_QUERY_LENGTH ? (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchHint", {
+                                        count: MIN_ADDRESS_QUERY_LENGTH,
+                                      })}
+                                    </div>
+                                  ) : finishSuggestions.length ? (
+                                    <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+                                      {finishSuggestions.map((suggestion) => (
+                                        <li
+                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
+                                          role="option"
+                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
+                                          onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            handleFinishSuggestionSelect(suggestion);
+                                          }}
+                                        >
+                                          <div className="font-medium text-slate-800">
+                                            {suggestion.label}
+                                          </div>
+                                          {suggestion.description ? (
+                                            <div className="text-xs text-slate-500">
+                                              {suggestion.description}
+                                            </div>
+                                          ) : null}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                                      {t("addressSearchNoResults")}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                            {canonicalEndLink ? (
+                              <div className="flex flex-wrap items-start gap-2">
+                                <div className="flex min-w-0 flex-col gap-1">
+                                  <a
+                                    href={canonicalEndLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accentPrimary underline break-words"
                                   >
-                                    ✖
-                                  </button>
+                                    {end || t("link")}
+                                  </a>
+                                  {finishCoordinates && (
+                                    <input
+                                      id="task-finish-coordinates"
+                                      name="finishCoordinatesDisplay"
+                                      value={formatCoords(finishCoordinates)}
+                                      readOnly
+                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                      onFocus={(e) => e.currentTarget.select()}
+                                      aria-label={t("coordinates")}
+                                    />
+                                  )}
+                                </div>
+                                {editing ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEndLink("")}
+                                      className="shrink-0 text-red-600"
+                                    >
+                                      ✖
+                                    </button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openMapPicker("finish")}
+                                    >
+                                      {t("selectOnMap")}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                  id="task-end-link"
+                                  name="endLink"
+                                  value={endLink}
+                                  onChange={(e) => handleEndLink(e.target.value)}
+                                  placeholder={t("googleMapsLink")}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing}
+                                />
+                                <a
+                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                  target="_blank"
+                                  rel="noopener"
+                                  className={cn(
+                                    buttonVariants({
+                                      variant: "default",
+                                      size: "sm",
+                                    }),
+                                    "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
+                                  )}
+                                >
+                                  {t("map")}
+                                </a>
+                                {editing ? (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -3205,46 +3729,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   >
                                     {t("selectOnMap")}
                                   </Button>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <input
-                                id="task-end-link"
-                                name="endLink"
-                                value={endLink}
-                                onChange={(e) => handleEndLink(e.target.value)}
-                                placeholder={t("googleMapsLink")}
-                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                disabled={!editing}
-                              />
-                              <a
-                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                target="_blank"
-                                rel="noopener"
-                                className={cn(
-                                  buttonVariants({
-                                    variant: "default",
-                                    size: "sm",
-                                  }),
-                                  "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
-                                )}
-                              >
-                                {t("map")}
-                              </a>
-                              {editing ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openMapPicker("finish")}
-                                >
-                                  {t("selectOnMap")}
-                                </Button>
-                              ) : null}
-                            </div>
-                          )}
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label

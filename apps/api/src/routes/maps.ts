@@ -40,10 +40,9 @@ router.get(
       .isFloat({ min: -180, max: 180 })
       .bail(),
     query('lat').custom((_, { req }) => {
-      if (
-        typeof req.query.lng !== 'string' &&
-        typeof req.query.lon !== 'string'
-      ) {
+      const hasLng = typeof req?.query?.lng === 'string';
+      const hasLon = typeof req?.query?.lon === 'string';
+      if (!hasLng && !hasLon) {
         throw new Error('lng or lon is required');
       }
       return true;

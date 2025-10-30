@@ -23,12 +23,18 @@ checks:
   types:
     description: Строгая проверка типов TypeScript.
     command: pnpm typecheck
+  tests:
+    description: Модульные проверки Vitest с лаконичным выводом.
+    command: pnpm test
+  semgrep:
+    description: Статический анализ кода по правилам OWASP Top Ten и локальной базе.
+    command: pnpm semgrep
   dependencies:
     description: Аудит pnpm зависимостей через audit-ci.
     command: pnpm run audit
-  full:
-    description: Сборная команда для запуска всех проверок локально.
-    command: pnpm codex:check
+  precheck:
+    description: Комбинированная проверка lint + typecheck + test + semgrep перед публикацией.
+    command: pnpm codex:precheck
 reports:
   summary:
     format: markdown

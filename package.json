@@ -18,7 +18,7 @@
     "test:unit": "jest",
     "format": "prettier --write .",
     "format:check": "./scripts/run_prettier_check.sh",
-    "test": "pnpm test:unit && pnpm test:api && pnpm test:e2e",
+    "test": "vitest run --reporter=dot",
     "prepare-client": "./scripts/build_client.sh",
     "size": "size-limit",
     "repair:collections": "node dist/scripts/db/repairCollections.js",
@@ -26,7 +26,9 @@
     "lint:security": "./scripts/run_security_lint.sh",
     "typecheck": "pnpm exec tsc --build --pretty false",
     "audit": "./scripts/audit_deps.sh",
-    "codex:check": "pnpm format:check && pnpm lint && pnpm lint:security && pnpm typecheck && pnpm run audit",
+    "semgrep": "semgrep ci --metrics=off --config p/owasp-top-ten --config semgrep/",
+    "codex:precheck": "pnpm lint && pnpm typecheck && pnpm test && pnpm semgrep",
+    "codex:check": "pnpm format:check && pnpm lint:security && pnpm codex:precheck && pnpm audit",
     "cleanup:files": "ts-node scripts/cleanup/cleanupDetachedFiles.ts"
   },
   "devDependencies": {
@@ -75,7 +77,8 @@
     "ts-jest": "^29.2.2",
     "ts-node": "^10.9.2",
     "ttf2woff2": "^8.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-draw": "^1.5.0",

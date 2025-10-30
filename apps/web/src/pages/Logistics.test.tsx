@@ -93,10 +93,14 @@ jest.mock("react-i18next", () => {
       "logistics.geozoneArea": "Площадь: {{value}}",
       "logistics.geozonePerimeter": "Периметр: {{value}}",
       "logistics.geozoneBuffer": "Буфер: {{value}}",
+      "logistics.viewModeLabel": "Режим карты",
+      "logistics.viewModePlanar": "2D",
+      "logistics.viewModeTilted": "Перспектива",
       "logistics.legendTitle": "Легенда",
       "logistics.legendCount": "({{count}})",
       "logistics.legendStart": "Старт задачи",
       "logistics.legendFinish": "Финиш задачи",
+      "logistics.legendMovement": "Движение по маршруту",
       "logistics.vehicleTasksCount": "Задач: {{count}}",
       "logistics.vehicleMileage": "Пробег: {{value}} км",
       "logistics.vehicleCountLabel": "Машины",
@@ -136,43 +140,87 @@ jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}), {
 
 const buildMapInstance = () => {
   const sources = new Map<string, { setData: jest.Mock }>();
+  const layers = new Map<string, any>();
   const handlers = new Map<string, Set<(...args: any[]) => void>>();
-  const getHandlers = (event: string) => {
-    let bucket = handlers.get(event);
+  const getKey = (event: string, layerId?: string) =>
+    layerId ? `${event}:${layerId}` : event;
+  const getHandlers = (event: string, layerId?: string) => {
+    const key = getKey(event, layerId);
+    let bucket = handlers.get(key);
     if (!bucket) {
       bucket = new Set();
-      handlers.set(event, bucket);
+      handlers.set(key, bucket);
     }
     return bucket;
   };
   const instance: any = {
-    on: jest.fn((event: string, handler: (...args: any[]) => void) => {
-      getHandlers(event).add(handler);
-      if (event === "load") {
-        handler({});
-      }
-      return instance;
-    }),
-    off: jest.fn((event: string, handler: (...args: any[]) => void) => {
-      getHandlers(event).delete(handler);
-      return instance;
-    }),
+    on: jest.fn(
+      (
+        event: string,
+        layerOrHandler: string | ((...args: any[]) => void),
+        maybeHandler?: (...args: any[]) => void,
+      ) => {
+        let layerId: string | undefined;
+        let handler: (...args: any[]) => void;
+        if (typeof layerOrHandler === "string") {
+          layerId = layerOrHandler;
+          handler = maybeHandler as (...args: any[]) => void;
+        } else {
+          handler = layerOrHandler;
+        }
+        getHandlers(event, layerId).add(handler);
+        if (event === "load") {
+          handler({});
+        }
+        return instance;
+      },
+    ),
+    off: jest.fn(
+      (
+        event: string,
+        layerOrHandler: string | ((...args: any[]) => void),
+        maybeHandler?: (...args: any[]) => void,
+      ) => {
+        let layerId: string | undefined;
+        let handler: (...args: any[]) => void;
+        if (typeof layerOrHandler === "string") {
+          layerId = layerOrHandler;
+          handler = maybeHandler as (...args: any[]) => void;
+        } else {
+          handler = layerOrHandler;
+        }
+        getHandlers(event, layerId).delete(handler);
+        return instance;
+      },
+    ),
     addControl: jest.fn(),
     addSource: jest.fn((id: string) => {
       const source = { setData: jest.fn() };
       sources.set(id, source);
       return source;
     }),
-    addLayer: jest.fn(),
+    addLayer: jest.fn((layer: { id: string }) => {
+      layers.set(layer.id, layer);
+    }),
     getSource: jest.fn((id: string) => sources.get(id)),
+    getLayer: jest.fn((id: string) => layers.get(id)),
+    setLayoutProperty: jest.fn(),
     remove: jest.fn(),
-    dragRotate: { disable: jest.fn() },
-    touchZoomRotate: { disableRotation: jest.fn() },
     resize: jest.fn(),
+    easeTo: jest.fn(),
+    setPitch: jest.fn(),
+    setBearing: jest.fn(),
+    getZoom: jest.fn(() => 6),
+    getCanvas: jest.fn(() => ({ style: { cursor: "" } })),
+    dragRotate: { enable: jest.fn(), disable: jest.fn() },
+    touchZoomRotate: {
+      enableRotation: jest.fn(),
+      disableRotation: jest.fn(),
+    },
   };
   instance.__handlers = handlers;
-  instance.__emit = (event: string, payload: any) => {
-    for (const handler of getHandlers(event)) {
+  instance.__emit = (event: string, payload: any, layerId?: string) => {
+    for (const handler of getHandlers(event, layerId)) {
       handler(payload);
     }
   };

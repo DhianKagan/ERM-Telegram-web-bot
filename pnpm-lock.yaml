@@ -82,12 +82,12 @@ importers:
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
-      '@types/leaflet':
-        specifier: ^1.9.20
-        version: 1.9.20
       '@types/mapbox__mapbox-gl-draw':
         specifier: ^1.4.9
         version: 1.4.9
+      '@types/maplibre-gl':
+        specifier: ^1.14.0
+        version: 1.14.0
       '@types/multer':
         specifier: ^1.4.7
         version: 1.4.13
@@ -494,9 +494,6 @@ importers:
       jspdf-autotable:
         specifier: ^3.8.2
         version: 3.8.4(jspdf@3.0.2)
-      leaflet:
-        specifier: ^1.9.4
-        version: 1.9.4
       lucide-react:
         specifier: ^0.539.0
         version: 0.539.0(react@18.2.0)
@@ -573,6 +570,9 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.16(tailwindcss@4.1.12)
+      '@types/maplibre-gl':
+        specifier: ^1.14.0
+        version: 1.14.0
       '@types/react':
         specifier: ^18.2.14
         version: 18.3.24
@@ -4420,9 +4420,6 @@ packages:
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
 
-  '@types/leaflet@1.9.20':
-    resolution: {integrity: sha512-rooalPMlk61LCaLOvBF2VIf9M47HgMQqi5xQ9QRi7c8PkdIe0WrIi5IxXUXQjAdL0c+vcQ01mYWbthzmp9GHWw==}
-
   '@types/lusca@1.7.5':
     resolution: {integrity: sha512-l49gAf8pu2iMzbKejLcz6Pqj+51H2na6BgORv1ElnE8ByPFcBdh/eZ0WNR1Va/6ZuNSZa01Hoy1DTZ3IZ+y+kA==}
 
@@ -4431,6 +4428,10 @@ packages:
 
   '@types/mapbox__point-geometry@0.1.4':
     resolution: {integrity: sha512-mUWlSxAmYLfwnRBmgYV86tgYmMIICX4kza8YnE/eIlywGe2XoOxlpVnXWwir92xRLjwyarqwpu2EJKD2pk0IUA==}
+
+  '@types/maplibre-gl@1.14.0':
+    resolution: {integrity: sha512-I6ibscT7UdL1oOqqCz9s1gjcolLaUPkHIIfMLusczTvlsMhjORyS6sE1g4V/NESAOL5KhNQX3/31LJH+OCGjkg==}
+    deprecated: This is a stub types definition. maplibre-gl provides its own type definitions, so you do not need this installed.
 
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
@@ -7549,9 +7550,6 @@ packages:
   language-tags@1.0.9:
     resolution: {integrity: sha512-MbjN408fEndfiQXbFQ1vnd+1NoLDsnQW41410oQBXiyXDMYH5z505juWa4KUE1LqxRC7DgOgZDbKLxHIwm27hA==}
     engines: {node: '>=0.10'}
-
-  leaflet@1.9.4:
-    resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
 
   legacy-javascript@0.0.1:
     resolution: {integrity: sha512-lPyntS4/aS7jpuvOlitZDFifBCb4W8L/3QU0PLbUTUj+zYah8rfVjYic88yG7ZKTxhS5h9iz7duT8oUXKszLhg==}
@@ -11159,7 +11157,7 @@ snapshots:
       '@babel/types': 7.28.4
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@5.5.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -13112,6 +13110,8 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-utils': 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-engine@46.0.3':
     dependencies:
@@ -17741,10 +17741,6 @@ snapshots:
       '@types/ms': 2.1.0
       '@types/node': 20.19.11
 
-  '@types/leaflet@1.9.20':
-    dependencies:
-      '@types/geojson': 7946.0.16
-
   '@types/lusca@1.7.5':
     dependencies:
       '@types/express': 4.17.23
@@ -17755,6 +17751,10 @@ snapshots:
       mapbox-gl: 3.16.0
 
   '@types/mapbox__point-geometry@0.1.4': {}
+
+  '@types/maplibre-gl@1.14.0':
+    dependencies:
+      maplibre-gl: 5.10.0
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -21870,8 +21870,6 @@ snapshots:
   language-tags@1.0.9:
     dependencies:
       language-subtag-registry: 0.3.23
-
-  leaflet@1.9.4: {}
 
   legacy-javascript@0.0.1: {}
 

@@ -21,7 +21,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "mapbox-gl": ["../../node_modules/maplibre-gl/dist/maplibre-gl.d.ts"],
       "shared": ["../../packages/shared/src"],
       "shared/*": ["../../packages/shared/src/*"]
     },
@@ -29,7 +28,6 @@
     "types": [
       "vite/client",
       "./src/types/telegram",
-      "./src/types/leaflet",
       "mapbox__mapbox-gl-draw"
     ],
     "typeRoots": ["./src/types", "../../node_modules/@types"]

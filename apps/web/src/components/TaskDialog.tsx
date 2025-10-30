@@ -64,8 +64,25 @@ import {
 } from "../columns/taskColumns";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
+import maplibregl, {
+  type Map as MapInstance,
+  type MapMouseEvent,
+  type Marker as MapMarker,
+} from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  MAP_DEFAULT_CENTER,
+  MAP_DEFAULT_ZOOM,
+  MAP_MAX_BOUNDS,
+  MAP_STYLE_URL,
+} from "../config/map";
 
 type TaskKind = "task" | "request";
+
+type MapPickerState = {
+  target: "start" | "finish";
+  initialCoords: { lat: number; lng: number } | null;
+};
 
 const ensureInlineMode = (value?: string | null): string | undefined => {
   if (!value) return undefined;
@@ -302,6 +319,152 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
     ? coords.lng.toFixed(6)
     : String(coords.lng);
   return `${lat}, ${lng}`;
+};
+
+const buildMapsLink = (coords: { lat: number; lng: number }): string =>
+  `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+
+type MapPickerDialogProps = {
+  open: boolean;
+  title: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  hint: string;
+  initialValue: { lat: number; lng: number } | null;
+  onConfirm: (coords: { lat: number; lng: number }) => void;
+  onCancel: () => void;
+};
+
+const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
+  open,
+  title,
+  confirmLabel,
+  cancelLabel,
+  hint,
+  initialValue,
+  onConfirm,
+  onCancel,
+}) => {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const mapRef = React.useRef<MapInstance | null>(null);
+  const markerRef = React.useRef<MapMarker | null>(null);
+  const [coords, setCoords] = React.useState<{ lat: number; lng: number } | null>(
+    initialValue,
+  );
+
+  React.useEffect(() => {
+    if (open) {
+      setCoords(initialValue ?? null);
+    }
+  }, [initialValue, open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const center: [number, number] = initialValue
+      ? [initialValue.lng, initialValue.lat]
+      : [MAP_DEFAULT_CENTER[1], MAP_DEFAULT_CENTER[0]];
+    const map = new maplibregl.Map({
+      container,
+      style: MAP_STYLE_URL,
+      center,
+      zoom: initialValue ? Math.max(MAP_DEFAULT_ZOOM, 12) : MAP_DEFAULT_ZOOM,
+      maxBounds: MAP_MAX_BOUNDS,
+      minZoom: 3,
+    });
+    mapRef.current = map;
+    const navigation = new maplibregl.NavigationControl({ showCompass: false });
+    map.addControl(navigation, "top-right");
+
+    const applyMarker = (lng: number, lat: number) => {
+      const currentMarker = markerRef.current;
+      if (!currentMarker) {
+        const marker = new maplibregl.Marker({ draggable: true })
+          .setLngLat([lng, lat])
+          .addTo(map);
+        marker.on("dragend", () => {
+          const lngLat = marker.getLngLat();
+          setCoords({ lat: lngLat.lat, lng: lngLat.lng });
+        });
+        markerRef.current = marker;
+      } else {
+        currentMarker.setLngLat([lng, lat]);
+      }
+      setCoords({ lat, lng });
+      const targetZoom = Math.max(map.getZoom ? map.getZoom() : MAP_DEFAULT_ZOOM, 12);
+      if (typeof map.easeTo === "function") {
+        map.easeTo({ center: [lng, lat], zoom: targetZoom, duration: 400 });
+      }
+    };
+
+    if (initialValue) {
+      applyMarker(initialValue.lng, initialValue.lat);
+    }
+
+    const handleClick = (event: MapMouseEvent) => {
+      const { lng, lat } = event.lngLat;
+      applyMarker(lng, lat);
+    };
+    map.on("click", handleClick);
+
+    return () => {
+      map.off("click", handleClick);
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [initialValue, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="map-picker-dialog" role="dialog" aria-modal="true" onClick={onCancel}>
+      <div
+        className="map-picker-dialog__panel"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between gap-3">
+          <h4 className="text-lg font-semibold">{title}</h4>
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:text-foreground"
+            onClick={onCancel}
+          >
+            ×
+          </button>
+        </header>
+        <div ref={containerRef} className="map-picker-dialog__map" />
+        <p className="map-picker-dialog__hint">{hint}</p>
+        {coords ? (
+          <div className="text-sm font-mono text-slate-600">
+            {formatCoords(coords)}
+          </div>
+        ) : null}
+        <div className="map-picker-dialog__actions">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              if (!coords) return;
+              onConfirm(coords);
+            }}
+            disabled={!coords}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
 };
 
 const sanitizeLocationLink = (value: unknown): string => {
@@ -819,6 +982,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [cargoVolume, setCargoVolume] = React.useState("");
   const [cargoWeight, setCargoWeight] = React.useState("");
   const [showLogistics, setShowLogistics] = React.useState(false);
+  const [mapPicker, setMapPicker] = React.useState<MapPickerState | null>(null);
   const [creator, setCreator] = React.useState("");
   const currentUserId =
     typeof user?.telegram_id === "number" ? user.telegram_id : null;
@@ -2114,6 +2278,36 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setEndLink(link);
   };
 
+  const handleMapConfirm = React.useCallback(
+    (target: "start" | "finish", coords: { lat: number; lng: number }) => {
+      autoRouteRef.current = true;
+      const link = buildMapsLink(coords);
+      const label = formatCoords(coords);
+      if (target === "start") {
+        setStart(label);
+        setStartCoordinates(coords);
+        setStartLink(link);
+      } else {
+        setEnd(label);
+        setFinishCoordinates(coords);
+        setEndLink(link);
+      }
+      setMapPicker(null);
+    },
+    [],
+  );
+
+  const openMapPicker = React.useCallback(
+    (target: "start" | "finish") => {
+      setMapPicker({
+        target,
+        initialCoords:
+          target === "start" ? startCoordinates ?? null : finishCoordinates ?? null,
+      });
+    },
+    [finishCoordinates, startCoordinates],
+  );
+
   React.useEffect(() => {
     if (startCoordinates && finishCoordinates) {
       if (autoRouteRef.current) {
@@ -2894,15 +3088,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              {editing && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartLink("")}
-                                  className="shrink-0 text-red-600"
-                                >
-                                  ✖
-                                </button>
-                              )}
+                              {editing ? (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartLink("")}
+                                    className="shrink-0 text-red-600"
+                                  >
+                                    ✖
+                                  </button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openMapPicker("start")}
+                                  >
+                                    {t("selectOnMap")}
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -2929,6 +3133,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                               >
                                 {t("map")}
                               </a>
+                              {editing ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openMapPicker("start")}
+                                >
+                                  {t("selectOnMap")}
+                                </Button>
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -2962,15 +3176,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   />
                                 )}
                               </div>
-                              {editing && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleEndLink("")}
-                                  className="shrink-0 text-red-600"
-                                >
-                                  ✖
-                                </button>
-                              )}
+                              {editing ? (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEndLink("")}
+                                    className="shrink-0 text-red-600"
+                                  >
+                                    ✖
+                                  </button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openMapPicker("finish")}
+                                  >
+                                    {t("selectOnMap")}
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -2997,6 +3221,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                               >
                                 {t("map")}
                               </a>
+                              {editing ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openMapPicker("finish")}
+                                >
+                                  {t("selectOnMap")}
+                                </Button>
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -3704,6 +3938,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           </div>
         </div>
       )}
+      {mapPicker ? (
+        <MapPickerDialog
+          open
+          title={
+            mapPicker.target === "start"
+              ? t("selectStartPoint")
+              : t("selectFinishPoint")
+          }
+          confirmLabel={t("mapSelectionConfirm", { defaultValue: t("save") })}
+          cancelLabel={t("cancel")}
+          hint={t("mapSelectionHint")}
+          initialValue={mapPicker.initialCoords}
+          onConfirm={(coords) => handleMapConfirm(mapPicker.target, coords)}
+          onCancel={() => setMapPicker(null)}
+        />
+      ) : null}
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">

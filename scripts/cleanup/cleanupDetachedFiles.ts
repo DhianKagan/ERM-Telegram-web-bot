@@ -1,5 +1,6 @@
 // Очистка устаревших записей файлов без задач.
-// Основные модули: dotenv, mongoose, scripts/db/mongoUrl, services/dataStorage, process.
+// Основные модули: fs, dotenv, mongoose, scripts/db/mongoUrl, services/dataStorage, process.
+import * as fs from 'fs';
 import * as path from 'path';
 import type { ConnectOptions } from 'mongoose';
 
@@ -28,9 +29,18 @@ const {
   formatCredentialSources,
 }: typeof import('../db/mongoUrl') = require('../db/mongoUrl');
 
-const { removeDetachedFilesOlderThan } = require(
-  path.resolve(process.cwd(), 'apps/api/src/services/dataStorage'),
-) as typeof import('../../apps/api/src/services/dataStorage');
+const compiledDataStoragePath = path.resolve(
+  process.cwd(),
+  'apps/api/dist/services/dataStorage.js',
+);
+
+const dataStorageModule: typeof import('../../apps/api/src/services/dataStorage') = fs.existsSync(
+  compiledDataStoragePath,
+)
+  ? require(compiledDataStoragePath)
+  : require(path.resolve(process.cwd(), 'apps/api/src/services/dataStorage'));
+
+const { removeDetachedFilesOlderThan } = dataStorageModule;
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 

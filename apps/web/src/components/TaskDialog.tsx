@@ -348,6 +348,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<MapInstance | null>(null);
   const markerRef = React.useRef<MapMarker | null>(null);
+  const titleId = React.useId();
   const [coords, setCoords] = React.useState<{ lat: number; lng: number } | null>(
     initialValue,
   );
@@ -424,13 +425,24 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
   }
 
   return createPortal(
-    <div className="map-picker-dialog" role="dialog" aria-modal="true" onClick={onCancel}>
+    <div className="map-picker-dialog" role="presentation">
+      <button
+        type="button"
+        className="map-picker-dialog__backdrop"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={onCancel}
+      />
       <div
         className="map-picker-dialog__panel"
-        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <header className="flex items-center justify-between gap-3">
-          <h4 className="text-lg font-semibold">{title}</h4>
+          <h4 id={titleId} className="text-lg font-semibold">
+            {title}
+          </h4>
           <button
             type="button"
             className="text-sm text-muted-foreground hover:text-foreground"

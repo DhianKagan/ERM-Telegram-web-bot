@@ -43,6 +43,7 @@ pnpm run dev # запуск api и web без таймаута PNPM
 - Автоматическая конфигурация Codex хранится в `codex/config.yml` и запускается workflow `Codex Quality Gate` в GitHub Actions.
 - Локально используйте `pnpm codex:check`, команда включает `pnpm format:check`, `pnpm lint`, `pnpm lint:security`, `pnpm typecheck` и `pnpm audit`.
 - Любое нарушение форматирования, правил безопасности (JWT, CSRF, маски ролей) или уязвимость уровня High/ Critical в зависимостях приводит к падению проверки и блокирует слияние pull request.
+- Для код-ревью используйте памятку [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md), чтобы не пропустить требования и инварианты.
 
 ## Прототип маршрутизации OR-Tools
 

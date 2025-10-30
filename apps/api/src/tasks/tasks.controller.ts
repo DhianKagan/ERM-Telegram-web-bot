@@ -50,6 +50,10 @@ import { ACCESS_ADMIN } from '../utils/accessMask';
 import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
 import { normalizeTaskFilters } from './filterUtils';
+import {
+  finalizePendingUploads as finalizeTaskUploads,
+  purgeTemporaryUploads as dropPendingUploads,
+} from './uploadFinalizer';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -106,6 +110,11 @@ const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
 const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const REQUEST_TYPE_NAME = 'Заявка';
+
+const cleanupRequestUploads = async (req: Request): Promise<void> => {
+  await cleanupUploadedFiles(req).catch(() => undefined);
+  await dropPendingUploads(req).catch(() => undefined);
+};
 
 const detectTaskKind = (
   task:
@@ -2499,7 +2508,7 @@ export default class TasksController {
         }
         const allowed = await this.resolveAdminExecutors(source);
         if (!allowed.length) {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Исполнители недоступны',
@@ -2521,7 +2530,7 @@ export default class TasksController {
       try {
         task = (await this.service.create(payload, actorId)) as TaskDocument;
       } catch (error) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         const err = error as { code?: string; message?: string };
         if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
           sendProblem(req, res, {
@@ -2532,6 +2541,22 @@ export default class TasksController {
           });
           return;
         }
+        throw error;
+      }
+      try {
+        const finalizeResult = await finalizeTaskUploads({
+          req,
+          taskId: String(task._id),
+          attachments: Array.isArray(payload.attachments)
+            ? (payload.attachments as Attachment[])
+            : undefined,
+        });
+        (payload as Record<string, unknown>).attachments =
+          finalizeResult.attachments as Attachment[];
+        (task as unknown as Record<string, unknown>).attachments =
+          finalizeResult.attachments as Attachment[];
+      } catch (error) {
+        await cleanupRequestUploads(req);
         throw error;
       }
       const label = resolveTaskLabel(detectTaskKind(task));
@@ -2558,7 +2583,7 @@ export default class TasksController {
       }
       const allowed = await this.resolveAdminExecutors(source);
       if (!allowed.length) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Исполнители недоступны',
@@ -2577,7 +2602,23 @@ export default class TasksController {
       try {
         task = (await this.service.create(payload, actorId)) as TaskDocument;
       } catch (error) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
+        throw error;
+      }
+      try {
+        const finalizeResult = await finalizeTaskUploads({
+          req,
+          taskId: String(task._id),
+          attachments: Array.isArray(payload.attachments)
+            ? (payload.attachments as Attachment[])
+            : undefined,
+        });
+        (payload as Record<string, unknown>).attachments =
+          finalizeResult.attachments as Attachment[];
+        (task as unknown as Record<string, unknown>).attachments =
+          finalizeResult.attachments as Attachment[];
+      } catch (error) {
+        await cleanupRequestUploads(req);
         throw error;
       }
       await writeLog(
@@ -2600,7 +2641,7 @@ export default class TasksController {
             : (previousRaw as unknown)) as TaskWithMeta & Record<string, unknown>)
         : null;
       if (!previousTask) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Задача не найдена',
@@ -2617,7 +2658,7 @@ export default class TasksController {
             ? Number(actorIdRaw.trim())
             : Number.NaN;
       if (!Number.isFinite(actorId)) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Ошибка авторизации',
@@ -2633,7 +2674,7 @@ export default class TasksController {
           typeof nextPayload.kind === 'string' &&
           nextPayload.kind.trim() !== 'request'
         ) {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Изменение типа запрещено',
@@ -2647,7 +2688,7 @@ export default class TasksController {
           typeof nextPayload.task_type === 'string' &&
           nextPayload.task_type.trim() !== REQUEST_TYPE_NAME
         ) {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Изменение типа запрещено',
@@ -2668,7 +2709,7 @@ export default class TasksController {
           }
           const allowed = await this.resolveAdminExecutors(source);
           if (!allowed.length) {
-            await cleanupUploadedFiles(req).catch(() => undefined);
+            await cleanupRequestUploads(req);
             sendProblem(req, res, {
               type: 'about:blank',
               title: 'Исполнители недоступны',
@@ -2694,7 +2735,7 @@ export default class TasksController {
         Number.isFinite(Number(req.user?.id)) &&
         Number(previousTask.created_by) === Number(req.user?.id);
       if (currentStatus && currentStatus !== 'Новая' && !isCreator) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Редактирование запрещено',
@@ -2711,7 +2752,7 @@ export default class TasksController {
           actorId,
         );
       } catch (error) {
-        await cleanupUploadedFiles(req).catch(() => undefined);
+        await cleanupRequestUploads(req);
         const err = error as { code?: string; message?: string };
         if (err.code === 'TRANSPORT_FIELDS_REQUIRED') {
           sendProblem(req, res, {
@@ -2727,7 +2768,7 @@ export default class TasksController {
           err.code === 'TASK_REQUEST_CANCEL_FORBIDDEN' ||
           err.code === 'TASK_CANCEL_SOURCE_FORBIDDEN'
         ) {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Доступ запрещён',
@@ -2746,7 +2787,7 @@ export default class TasksController {
           current.status !== 'Новая' &&
           !isCreator
         ) {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Редактирование запрещено',
@@ -2754,7 +2795,7 @@ export default class TasksController {
             detail: 'Редактирование доступно только для задач в статусе «Новая»',
           });
         } else {
-          await cleanupUploadedFiles(req).catch(() => undefined);
+          await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Задача не найдена',
@@ -2763,6 +2804,24 @@ export default class TasksController {
           });
         }
         return;
+      }
+      try {
+        const finalizeResult = await finalizeTaskUploads({
+          req,
+          taskId: String(task._id),
+          attachments: Array.isArray(nextPayload.attachments)
+            ? (nextPayload.attachments as Attachment[])
+            : undefined,
+        });
+        if (Object.prototype.hasOwnProperty.call(nextPayload, 'attachments')) {
+          (nextPayload as Record<string, unknown>).attachments =
+            finalizeResult.attachments as Attachment[];
+        }
+        (task as unknown as Record<string, unknown>).attachments =
+          finalizeResult.attachments as Attachment[];
+      } catch (error) {
+        await cleanupRequestUploads(req);
+        throw error;
       }
       const changedFields = Object.entries(nextPayload)
         .filter(([, value]) => value !== undefined)

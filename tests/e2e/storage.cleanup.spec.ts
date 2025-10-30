@@ -43,6 +43,7 @@ const initialFiles: FileInfo[] = [
 ];
 
 const files: FileInfo[] = [];
+const tempUploads: { id: string; name: string }[] = [];
 const diagnosticsTexts = ru.storage.diagnostics;
 
 const app = express();
@@ -50,6 +51,31 @@ app.use(express.json());
 
 app.get('/api/v1/storage', (_req, res) => {
   res.json(files);
+});
+
+app.get('/api/v1/storage/temp', (_req, res) => {
+  res.json(tempUploads);
+});
+
+app.post('/api/v1/storage/upload', (req, res) => {
+  const { id, name } = req.body as { id?: string; name?: string };
+  if (!id || !name) {
+    res.status(400).json({ error: 'invalid' });
+    return;
+  }
+  tempUploads.push({ id, name });
+  res.status(201).json({ id, name });
+});
+
+app.post('/api/v1/storage/cancel', (_req, res) => {
+  tempUploads.splice(0, tempUploads.length);
+  res.sendStatus(204);
+});
+
+app.post('/__storage/reset', (_req, res) => {
+  files.splice(0, files.length);
+  tempUploads.splice(0, tempUploads.length);
+  res.sendStatus(204);
 });
 
 app.get('/api/v1/storage/diagnostics', (_req, res) => {
@@ -143,6 +169,7 @@ test.afterAll(() => {
 
 test.beforeEach(() => {
   files.splice(0, files.length, ...initialFiles.map((file) => ({ ...file })));
+  tempUploads.splice(0, tempUploads.length);
 });
 
 test('[cleanup] обновляет счётчик после имитации крон-очистки', async ({ page }) => {
@@ -164,4 +191,21 @@ test('[cleanup] обновляет счётчик после имитации к
     .replace('{{linked}}', '1')
     .replace('{{detached}}', '0');
   await expect(page.locator('#report')).toContainText(snapshotText);
+});
+
+test('[cleanup] удаляет временные загрузки после отмены', async ({ page }) => {
+  await page.request.post(`${baseUrl}/__storage/reset`);
+  const uploadId = `tmp_${Date.now()}`;
+  await page.request.post(`${baseUrl}/api/v1/storage/upload`, {
+    data: { id: uploadId, name: 'draft.pdf' },
+  });
+  const beforeCancel = await page.request.get(`${baseUrl}/api/v1/storage/temp`);
+  const beforePayload = await beforeCancel.json();
+  expect(Array.isArray(beforePayload)).toBe(true);
+  expect(beforePayload).toContainEqual({ id: uploadId, name: 'draft.pdf' });
+  await page.request.post(`${baseUrl}/api/v1/storage/cancel`);
+  const afterCancel = await page.request.get(`${baseUrl}/api/v1/storage/temp`);
+  expect(await afterCancel.json()).toEqual([]);
+  const storageResponse = await page.request.get(`${baseUrl}/api/v1/storage`);
+  expect(await storageResponse.json()).toEqual([]);
 });

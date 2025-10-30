@@ -18,6 +18,8 @@ jest.mock('../src/services/wgLogEngine', () => ({
 const route = require('../src/services/route');
 const { generateRouteLink } = require('shared');
 const TasksService = require('../src/tasks/tasks.service.ts').default;
+const { writeLog } = require('../src/services/wgLogEngine');
+const mockedWriteLog = writeLog as jest.Mock;
 
 function createRepo() {
   return {
@@ -76,8 +78,37 @@ test('create не падает без данных', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
   const task = await service.create(undefined as any);
-  expect(repo.createTask).toHaveBeenCalledWith({});
+  expect(repo.createTask).toHaveBeenCalledWith({}, undefined);
   expect(task).toEqual({ id: '1' });
+});
+
+test('create передаёт идентификатор пользователя в репозиторий', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  await service.create({}, 42);
+  expect(repo.createTask).toHaveBeenCalledWith({}, 42);
+});
+
+test('create логирует fallback для вложений без userId', async () => {
+  mockedWriteLog.mockClear();
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  await service.create({
+    attachments: [
+      {
+        name: 'fallback.txt',
+        url: '/api/v1/files/507f1f77bcf86cd799439011',
+        uploadedAt: new Date(),
+        type: 'text/plain',
+        size: 1,
+      },
+    ],
+  } as any);
+  expect(mockedWriteLog).toHaveBeenCalledWith(
+    'Создание задачи с вложениями без идентификатора пользователя, активирован fallback',
+    'warn',
+    expect.objectContaining({ fallback: true, attachments: 1 }),
+  );
 });
 
 test('bulk выставляет completed_at для финальных статусов', async () => {

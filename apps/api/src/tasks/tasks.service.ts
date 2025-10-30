@@ -128,11 +128,29 @@ class TasksService {
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
+    const normalizedUserId =
+      typeof userId === 'number' && Number.isFinite(userId) ? userId : undefined;
+    const attachmentsList = Array.isArray(payload.attachments)
+      ? payload.attachments
+      : [];
+    if (normalizedUserId === undefined && attachmentsList.length > 0) {
+      const fileIds = extractAttachmentIds(payload.attachments || []);
+      try {
+        await writeAttachmentLog(
+          'Создание задачи с вложениями без идентификатора пользователя, активирован fallback',
+          'warn',
+          {
+            attachments: attachmentsList.length,
+            fileIds: fileIds.map((id) => id.toHexString()),
+            fallback: true,
+          },
+        );
+      } catch {
+        /* игнорируем сбой логирования fallback */
+      }
+    }
     try {
-      const task =
-        userId === undefined
-          ? await this.repo.createTask(payload)
-          : await this.repo.createTask(payload, userId);
+      const task = await this.repo.createTask(payload, normalizedUserId);
       await clearRouteCache();
       await this.logAttachmentSync(
         'create',

@@ -149,6 +149,27 @@ describe('Привязка вложений к задачам', () => {
     );
   });
 
+  test('разрешает первичную привязку вложений без идентификатора пользователя', async () => {
+    const attachments = [
+      {
+        name: 'unsigned.txt',
+        url: `/api/v1/files/${fileId}`,
+        uploadedAt: new Date(),
+        type: 'text/plain',
+        size: 5,
+      },
+    ];
+    await createTask({ attachments });
+    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        _id: { $in: [fileId] },
+        $or: [{ taskId: createdTaskId }, { taskId: null }],
+      },
+      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
+    );
+  });
+
   test('распознаёт идентификатор файла с фрагментом URL', async () => {
     const attachments = [
       {

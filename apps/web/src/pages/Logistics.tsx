@@ -14,6 +14,7 @@ import maplibregl, {
   type Map as MapInstance,
   type MapLayerMouseEvent,
 } from "maplibre-gl";
+import type * as GeoJSON from "geojson";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
@@ -72,6 +73,80 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   optimized: true,
 };
 
+type TaskRouteStatusKey = RoutePlanStatus | "unassigned";
+type RouteStatusFilterKey = TaskRouteStatusKey | "vehicle";
+
+const ROUTE_STATUS_ORDER: RouteStatusFilterKey[] = [
+  "draft",
+  "approved",
+  "completed",
+  "unassigned",
+  "vehicle",
+];
+
+const ROUTE_STATUS_COLORS: Record<RouteStatusFilterKey, string> = {
+  draft: "#6366f1",
+  approved: "#22c55e",
+  completed: "#0f172a",
+  unassigned: "#f97316",
+  vehicle: "#0891b2",
+};
+
+const ROUTE_STATUS_LABELS: Record<RouteStatusFilterKey, string> = {
+  draft: "Черновик",
+  approved: "Утверждён",
+  completed: "Завершён",
+  unassigned: "Без маршрута",
+  vehicle: "Транспорт",
+};
+
+const getRouteStatusColor = (status: RouteStatusFilterKey): string =>
+  ROUTE_STATUS_COLORS[status] ?? "#0f172a";
+
+const buildClusterStatusExpression = (status: TaskRouteStatusKey) => [
+  "+",
+  [
+    "case",
+    [
+      "all",
+      ["==", ["get", "entity"], "task"],
+      ["==", ["get", "routeStatus"], status],
+    ],
+    1,
+    0,
+  ],
+  0,
+];
+
+const CLUSTER_STATUS_PROPERTIES: Record<TaskRouteStatusKey, any> = {
+  draft: buildClusterStatusExpression("draft"),
+  approved: buildClusterStatusExpression("approved"),
+  completed: buildClusterStatusExpression("completed"),
+  unassigned: buildClusterStatusExpression("unassigned"),
+};
+
+const TRANSPORT_TYPE_COLORS: Record<string, string> = {
+  Легковой: "#0ea5e9",
+  Грузовой: "#f97316",
+  Спецтехника: "#7c3aed",
+  Пеший: "#22c55e",
+  default: "#475569",
+};
+
+const TASK_TYPE_COLOR_PALETTE = [
+  "#7c3aed",
+  "#f97316",
+  "#06b6d4",
+  "#16a34a",
+  "#ec4899",
+  "#facc15",
+  "#9333ea",
+  "#0ea5e9",
+];
+
+const VEHICLE_TASK_TYPE_KEY = "vehicle";
+const VEHICLE_TASK_TYPE_LABEL = "Транспорт";
+
 type GeoZoneMetricsState = {
   areaKm2: number | null;
   perimeterKm: number | null;
@@ -93,8 +168,10 @@ const GEO_FILL_LAYER_ID = "logistics-geozones-fill";
 const GEO_OUTLINE_LAYER_ID = "logistics-geozones-outline";
 const TASK_SOURCE_ID = "logistics-task-routes";
 const TASK_LAYER_ID = "logistics-task-routes-line";
-const TASK_MARKERS_SOURCE_ID = "logistics-task-markers";
-const TASK_MARKERS_LAYER_ID = "logistics-task-markers-symbol";
+const TASK_CLUSTER_SOURCE_ID = "logistics-task-markers";
+const TASK_CLUSTER_LAYER_ID = "logistics-task-clusters";
+const TASK_CLUSTER_COUNT_LAYER_ID = "logistics-task-cluster-count";
+const TASK_POINTS_LAYER_ID = "logistics-task-points";
 const TASK_ANIMATION_SOURCE_ID = "logistics-task-animation";
 const TASK_ANIMATION_LAYER_ID = "logistics-task-animation-symbol";
 const OPT_SOURCE_ID = "logistics-optimized-routes";
@@ -103,6 +180,7 @@ const OPT_LAYER_ID = "logistics-optimized-routes-line";
 type AnyLayerSpecification = Parameters<MapInstance["addLayer"]>[0];
 type LineLayerSpecification = Extract<AnyLayerSpecification, { type: "line" }>;
 type SymbolLayerSpecification = Extract<AnyLayerSpecification, { type: "symbol" }>;
+type CircleLayerSpecification = Extract<AnyLayerSpecification, { type: "circle" }>;
 
 const TASK_START_SYMBOL = "⬤";
 const TASK_FINISH_SYMBOL = "⦿";
@@ -114,6 +192,145 @@ const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>():
   type: "FeatureCollection",
   features: [],
 });
+
+const toKey = (value: string): string => value.trim().toLowerCase();
+
+const normalizeTransportType = (raw: string): string => {
+  const value = raw.trim();
+  if (!value) return "Без транспорта";
+  const lowered = value.toLowerCase();
+  if (lowered.startsWith("лег")) return "Легковой";
+  if (lowered.startsWith("груз")) return "Грузовой";
+  if (lowered.includes("спец")) return "Спецтехника";
+  if (lowered.includes("пеш")) return "Пеший";
+  return value;
+};
+
+const normalizeTaskType = (raw: string): string => {
+  const value = raw.trim();
+  if (!value) return "Задача";
+  if (value.length === 1) {
+    return value.toUpperCase();
+  }
+  const lower = value.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
+
+const getTransportColor = (transportType: string): string => {
+  const normalized = normalizeTransportType(transportType);
+  return (
+    TRANSPORT_TYPE_COLORS[
+      normalized as keyof typeof TRANSPORT_TYPE_COLORS
+    ] ?? TRANSPORT_TYPE_COLORS.default
+  );
+};
+
+const hexToRgb = (value: string): { r: number; g: number; b: number } | null => {
+  const normalized = value.startsWith("#") ? value.slice(1) : value;
+  if (normalized.length === 3) {
+    const [r, g, b] = normalized.split("");
+    return {
+      r: parseInt(r + r, 16),
+      g: parseInt(g + g, 16),
+      b: parseInt(b + b, 16),
+    };
+  }
+  if (normalized.length === 6) {
+    return {
+      r: parseInt(normalized.slice(0, 2), 16),
+      g: parseInt(normalized.slice(2, 4), 16),
+      b: parseInt(normalized.slice(4, 6), 16),
+    };
+  }
+  return null;
+};
+
+const getContrastTextColor = (background: string): string => {
+  const rgb = hexToRgb(background);
+  if (!rgb) return "#ffffff";
+  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  return luminance > 186 ? "#0f172a" : "#ffffff";
+};
+
+const createMarkerImage = (
+  fill: string,
+  stroke: string,
+  text: string,
+  textColor: string,
+  accent?: string,
+): ImageData | null => {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const size = 96;
+  const devicePixelRatio =
+    typeof window !== "undefined" && window.devicePixelRatio
+      ? window.devicePixelRatio
+      : 1;
+  const scale = devicePixelRatio > 1 ? 2 : 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = size * scale;
+  canvas.height = size * scale;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.scale(scale, scale);
+  const center = size / 2;
+  const radius = center - 4;
+  context.clearRect(0, 0, size, size);
+  context.beginPath();
+  context.arc(center, center, radius, 0, Math.PI * 2);
+  context.fillStyle = fill;
+  context.fill();
+  context.lineWidth = 6;
+  context.strokeStyle = stroke;
+  context.stroke();
+  if (accent) {
+    context.beginPath();
+    context.arc(center, center, radius * 0.55, 0, Math.PI * 2);
+    context.lineWidth = 4;
+    context.strokeStyle = accent;
+    context.stroke();
+  }
+  if (text) {
+    context.fillStyle = textColor;
+    context.font = "bold 32px 'Open Sans', 'Arial Unicode MS', sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(text.slice(0, 2), center, center);
+  }
+  return context.getImageData(0, 0, size * scale, size * scale);
+};
+
+const buildMarkerIconId = (
+  taskTypeKey: string,
+  routeStatusKey: string,
+  transportKey: string,
+  role: string,
+): string =>
+  ["marker", taskTypeKey, routeStatusKey, transportKey, role]
+    .map((part) => part.replace(/\s+/g, "-").toLowerCase())
+    .join("-");
+
+const ensureMarkerIcon = (
+  map: MapInstance,
+  cache: Set<string>,
+  iconId: string,
+  fill: string,
+  stroke: string,
+  text: string,
+  textColor: string,
+  accent?: string,
+) => {
+  if (!iconId || cache.has(iconId) || map.hasImage(iconId)) {
+    cache.add(iconId);
+    return;
+  }
+  const image = createMarkerImage(fill, stroke, text, textColor, accent);
+  if (image) {
+    map.addImage(iconId, image, { pixelRatio: 2 });
+    cache.add(iconId);
+  }
+};
 
 const toPosition = (coords?: Coords | null): [number, number] | null => {
   if (!coords) return null;
@@ -138,6 +355,72 @@ type LogisticsDetails = {
   transport_type?: string | null;
   start_location?: string | null;
   end_location?: string | null;
+};
+
+const getTaskTransportType = (task: RouteTask): string => {
+  const details =
+    (task as Record<string, unknown>).logistics_details as
+      | LogisticsDetails
+      | undefined;
+  const detailValue =
+    typeof details?.transport_type === "string"
+      ? details.transport_type.trim()
+      : "";
+  const inlineValue =
+    typeof (task as Record<string, unknown>).transport_type === "string"
+      ? ((task as Record<string, unknown>).transport_type as string).trim()
+      : "";
+  const value = detailValue || inlineValue;
+  return normalizeTransportType(value);
+};
+
+const getTaskTypeLabel = (task: RouteTask): string => {
+  const raw =
+    typeof (task as Record<string, unknown>).task_type === "string"
+      ? ((task as Record<string, unknown>).task_type as string)
+      : typeof (task as Record<string, unknown>).type === "string"
+        ? ((task as Record<string, unknown>).type as string)
+        : "";
+  return normalizeTaskType(raw);
+};
+
+const getTaskTypeInitial = (label: string): string => {
+  if (!label) return "З";
+  const trimmed = label.trim();
+  if (!trimmed) return "З";
+  return trimmed.charAt(0).toUpperCase();
+};
+
+const getVehicleCoordinates = (vehicle: FleetVehicleDto): [number, number] | null => {
+  const position = (vehicle as Record<string, unknown>).position as
+    | { lat?: number; lon?: number; lng?: number; long?: number }
+    | undefined;
+  if (!position) return null;
+  const latCandidate =
+    typeof position.lat === "number"
+      ? position.lat
+      : typeof (position as Record<string, unknown>).latitude === "number"
+        ? ((position as Record<string, unknown>).latitude as number)
+        : null;
+  const lonCandidate =
+    typeof position.lon === "number"
+      ? position.lon
+      : typeof position.lng === "number"
+        ? position.lng
+        : typeof position.long === "number"
+          ? position.long
+          : typeof (position as Record<string, unknown>).longitude === "number"
+            ? ((position as Record<string, unknown>).longitude as number)
+            : null;
+  if (
+    latCandidate === null ||
+    lonCandidate === null ||
+    !Number.isFinite(latCandidate) ||
+    !Number.isFinite(lonCandidate)
+  ) {
+    return null;
+  }
+  return [lonCandidate, latCandidate];
 };
 
 const filterTasksByGeoZones = (
@@ -362,6 +645,15 @@ export default function LogisticsPage() {
     DEFAULT_LAYER_VISIBILITY,
   );
   const [mapReady, setMapReady] = React.useState(false);
+  const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
+  const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
+    RouteStatusFilterKey[]
+  >([]);
+  const [hiddenTransportTypes, setHiddenTransportTypes] = React.useState<string[]>([]);
+  const [clusterSelection, setClusterSelection] = React.useState<{
+    ids: string[];
+    center: GeoJSON.Position | null;
+  } | null>(null);
   const [geoZones, setGeoZones] = React.useState<GeoZone[]>([]);
   const [activeGeoZoneIds, setActiveGeoZoneIds] = React.useState<string[]>([]);
   const [isDrawing, setIsDrawing] = React.useState(false);
@@ -370,6 +662,7 @@ export default function LogisticsPage() {
   >(createEmptyCollection<GeoJSON.LineString>());
   const [page, setPage] = React.useState(0);
   const hasLoadedFleetRef = React.useRef(false);
+  const markerIconCacheRef = React.useRef<Set<string>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -377,15 +670,63 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+  const vehiclesWithCoordinates = React.useMemo(
+    () =>
+      availableVehicles.filter(
+        (vehicle) => getVehicleCoordinates(vehicle) !== null,
+      ),
+    [availableVehicles],
+  );
+  const hiddenTaskTypesSet = React.useMemo(
+    () => new Set(hiddenTaskTypes),
+    [hiddenTaskTypes],
+  );
+  const hiddenRouteStatusesSet = React.useMemo(
+    () => new Set(hiddenRouteStatuses),
+    [hiddenRouteStatuses],
+  );
+  const hiddenTransportTypesSet = React.useMemo(
+    () => new Set(hiddenTransportTypes),
+    [hiddenTransportTypes],
+  );
+  const selectedTaskIdsSet = React.useMemo(
+    () => new Set(clusterSelection?.ids ?? []),
+    [clusterSelection],
+  );
 
   const filteredTasksByZone = React.useMemo(
     () => filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds),
     [activeGeoZoneIds, allRouteTasks, geoZones],
   );
 
+  const taskRouteStatusMap = React.useMemo(() => {
+    const map = new Map<string, TaskRouteStatusKey>();
+    const registerPlan = (source: RoutePlan | null) => {
+      if (!source) return;
+      const status: RoutePlanStatus = source.status ?? "draft";
+      source.routes.forEach((route) => {
+        route.tasks.forEach((taskRef) => {
+          const idCandidate =
+            typeof taskRef.taskId === "string"
+              ? taskRef.taskId
+              : typeof (taskRef as Record<string, unknown>).task_id === "string"
+                ? ((taskRef as Record<string, unknown>).task_id as string)
+                : null;
+          if (!idCandidate) return;
+          map.set(idCandidate, status);
+        });
+      });
+    };
+    registerPlan(planDraft ?? null);
+    if (plan) {
+      registerPlan(plan);
+    }
+    return map;
+  }, [plan, planDraft]);
+
   const taskStatus = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredTasksByZone.forEach((task) => {
+    categoryFilteredTasks.forEach((task) => {
       const rawStatus =
         typeof task.status === "string" && task.status.trim()
           ? task.status.trim()
@@ -393,7 +734,291 @@ export default function LogisticsPage() {
       counts[rawStatus] = (counts[rawStatus] ?? 0) + 1;
     });
     return counts;
-  }, [filteredTasksByZone]);
+  }, [categoryFilteredTasks]);
+
+  const routeStatusMetadata = React.useMemo(() => {
+    const entries = new Map<RouteStatusFilterKey, { count: number; color: string }>();
+    ROUTE_STATUS_ORDER.forEach((key) => {
+      entries.set(key, { count: 0, color: getRouteStatusColor(key) });
+    });
+    filteredTasksByZone.forEach((task) => {
+      const statusKey = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
+      const entry = entries.get(statusKey);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        entries.set(statusKey, {
+          count: 1,
+          color: getRouteStatusColor(statusKey),
+        });
+      }
+    });
+    if (vehiclesWithCoordinates.length) {
+      const entry = entries.get("vehicle");
+      if (entry) {
+        entry.count += vehiclesWithCoordinates.length;
+      } else {
+        entries.set("vehicle", {
+          count: vehiclesWithCoordinates.length,
+          color: getRouteStatusColor("vehicle"),
+        });
+      }
+    }
+    return entries;
+  }, [filteredTasksByZone, taskRouteStatusMap, vehiclesWithCoordinates]);
+
+  const transportMetadata = React.useMemo(() => {
+    const entries = new Map<string, { label: string; count: number; color: string }>();
+    filteredTasksByZone.forEach((task) => {
+      const label = getTaskTransportType(task);
+      const normalized = normalizeTransportType(label);
+      const key = toKey(normalized);
+      const color = getTransportColor(normalized);
+      const entry = entries.get(key);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        entries.set(key, { label: normalized, count: 1, color });
+      }
+    });
+    vehiclesWithCoordinates.forEach((vehicle) => {
+      const label = normalizeTransportType(vehicle.transportType ?? "");
+      const key = toKey(label);
+      const color = getTransportColor(label);
+      const entry = entries.get(key);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        entries.set(key, { label, count: 1, color });
+      }
+    });
+    return entries;
+  }, [filteredTasksByZone, vehiclesWithCoordinates]);
+
+  const taskTypeMetadata = React.useMemo(() => {
+    const counts = new Map<string, { label: string; count: number }>();
+    filteredTasksByZone.forEach((task) => {
+      const label = getTaskTypeLabel(task);
+      const key = toKey(label);
+      const entry = counts.get(key);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        counts.set(key, { label, count: 1 });
+      }
+    });
+    if (vehiclesWithCoordinates.length) {
+      counts.set(VEHICLE_TASK_TYPE_KEY, {
+        label: VEHICLE_TASK_TYPE_LABEL,
+        count: vehiclesWithCoordinates.length,
+      });
+    }
+    const sortedKeys = Array.from(counts.keys()).sort();
+    const entries = new Map<string, { label: string; count: number; color: string }>();
+    sortedKeys.forEach((key, index) => {
+      const meta = counts.get(key);
+      if (!meta) return;
+      const color = TASK_TYPE_COLOR_PALETTE[index % TASK_TYPE_COLOR_PALETTE.length];
+      entries.set(key, { label: meta.label, count: meta.count, color });
+    });
+    return entries;
+  }, [filteredTasksByZone, vehiclesWithCoordinates]);
+
+  const routeStatusEntries = React.useMemo(
+    () =>
+      ROUTE_STATUS_ORDER.map((key) => ({
+        key,
+        count: routeStatusMetadata.get(key)?.count ?? 0,
+        color: getRouteStatusColor(key),
+      })),
+    [routeStatusMetadata],
+  );
+
+  const transportEntries = React.useMemo(
+    () =>
+      Array.from(transportMetadata.entries())
+        .sort((a, b) => a[1].label.localeCompare(b[1].label))
+        .map(([key, value]) => ({ key, ...value })),
+    [transportMetadata],
+  );
+
+  const taskTypeEntries = React.useMemo(
+    () => Array.from(taskTypeMetadata.entries()).map(([key, value]) => ({ key, ...value })),
+    [taskTypeMetadata],
+  );
+
+  const taskPointsGeoJSON = React.useMemo(() => {
+    const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+    const appendFeature = (
+      coordinates: [number, number],
+      properties: GeoJSON.GeoJsonProperties,
+    ) => {
+      features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates },
+        properties,
+      });
+    };
+    categoryFilteredTasks.forEach((task) => {
+      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as TaskRouteStatusKey;
+      const routeStatusKey: RouteStatusFilterKey = routeStatus;
+      const routeColor = getRouteStatusColor(routeStatusKey);
+      const transportLabel = getTaskTransportType(task);
+      const transportKey = toKey(transportLabel);
+      const transportColor = getTransportColor(transportLabel);
+      const typeLabel = getTaskTypeLabel(task);
+      const typeKey = toKey(typeLabel);
+      const typeColor = taskTypeMetadata.get(typeKey)?.color ?? "#334155";
+      const iconText = getTaskTypeInitial(typeLabel);
+      const textColor = getContrastTextColor(transportColor);
+      const title = task.title ?? task._id;
+      const label = title.length > 28 ? `${title.slice(0, 25)}…` : title;
+      const isSelected = selectedTaskIdsSet.has(task._id);
+      const start = toPosition(task.startCoordinates);
+      const finish = toPosition(task.finishCoordinates);
+      if (start) {
+        const iconId = buildMarkerIconId(typeKey, routeStatusKey, transportKey, "start");
+        appendFeature(start, {
+          entity: "task",
+          taskId: task._id,
+          title,
+          label,
+          routeStatus: routeStatusKey,
+          transportType: transportLabel,
+          taskType: typeLabel,
+          pointRole: "start",
+          iconId,
+          iconFill: transportColor,
+          iconStroke: routeColor,
+          iconText,
+          iconTextColor: textColor,
+          iconAccent: typeColor,
+          selected: isSelected,
+        });
+      }
+      if (finish) {
+        const iconId = buildMarkerIconId(typeKey, routeStatusKey, transportKey, "finish");
+        appendFeature(finish, {
+          entity: "task",
+          taskId: task._id,
+          title,
+          label,
+          routeStatus: routeStatusKey,
+          transportType: transportLabel,
+          taskType: typeLabel,
+          pointRole: "finish",
+          iconId,
+          iconFill: transportColor,
+          iconStroke: routeColor,
+          iconText,
+          iconTextColor: textColor,
+          iconAccent: typeColor,
+          selected: isSelected,
+        });
+      }
+    });
+    vehiclesWithCoordinates.forEach((vehicle) => {
+      const coordinates = getVehicleCoordinates(vehicle);
+      if (!coordinates) return;
+      const transportLabel = normalizeTransportType(vehicle.transportType ?? "");
+      const transportKey = toKey(transportLabel);
+      const routeStatusKey: RouteStatusFilterKey = "vehicle";
+      if (hiddenRouteStatusesSet.has(routeStatusKey)) return;
+      if (hiddenTransportTypesSet.has(transportKey)) return;
+      if (hiddenTaskTypesSet.has(VEHICLE_TASK_TYPE_KEY)) return;
+      const transportColor = getTransportColor(transportLabel);
+      const iconText = getTaskTypeInitial(VEHICLE_TASK_TYPE_LABEL);
+      const textColor = getContrastTextColor(transportColor);
+      const typeColor =
+        taskTypeMetadata.get(VEHICLE_TASK_TYPE_KEY)?.color ?? "#0f172a";
+      const iconId = buildMarkerIconId(
+        VEHICLE_TASK_TYPE_KEY,
+        routeStatusKey,
+        transportKey,
+        "vehicle",
+      );
+      const title = vehicle.name;
+      const label = title.length > 28 ? `${title.slice(0, 25)}…` : title;
+      appendFeature(coordinates, {
+        entity: "vehicle",
+        vehicleId: vehicle.id,
+        title,
+        label,
+        routeStatus: routeStatusKey,
+        transportType: transportLabel,
+        taskType: VEHICLE_TASK_TYPE_LABEL,
+        pointRole: "vehicle",
+        iconId,
+        iconFill: transportColor,
+        iconStroke: getRouteStatusColor(routeStatusKey),
+        iconText,
+        iconTextColor: textColor,
+        iconAccent: typeColor,
+        selected: false,
+      });
+    });
+    return {
+      type: "FeatureCollection" as const,
+      features,
+    } satisfies GeoJSON.FeatureCollection<GeoJSON.Point>;
+  }, [
+    categoryFilteredTasks,
+    hiddenRouteStatusesSet,
+    hiddenTaskTypesSet,
+    hiddenTransportTypesSet,
+    selectedTaskIdsSet,
+    taskRouteStatusMap,
+    taskTypeMetadata,
+    vehiclesWithCoordinates,
+  ]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource(TASK_CLUSTER_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    if (!source) return;
+    taskPointsGeoJSON.features.forEach((feature) => {
+      const iconId = feature.properties?.iconId;
+      if (typeof iconId !== "string" || !iconId) return;
+      const fill =
+        typeof feature.properties?.iconFill === "string"
+          ? (feature.properties.iconFill as string)
+          : "#2563eb";
+      const stroke =
+        typeof feature.properties?.iconStroke === "string"
+          ? (feature.properties.iconStroke as string)
+          : "#0f172a";
+      const text =
+        typeof feature.properties?.iconText === "string"
+          ? (feature.properties.iconText as string)
+          : "";
+      const textColor =
+        typeof feature.properties?.iconTextColor === "string"
+          ? (feature.properties.iconTextColor as string)
+          : getContrastTextColor(fill);
+      const accent =
+        typeof feature.properties?.iconAccent === "string"
+          ? (feature.properties.iconAccent as string)
+          : undefined;
+      ensureMarkerIcon(
+        map,
+        markerIconCacheRef.current,
+        iconId,
+        fill,
+        stroke,
+        text,
+        textColor,
+        accent,
+      );
+    });
+    const data = layerVisibility.tasks
+      ? taskPointsGeoJSON
+      : createEmptyCollection();
+    source.setData(data);
+  }, [layerVisibility.tasks, mapReady, taskPointsGeoJSON]);
 
   const legendItems = React.useMemo(() => {
     const base = TASK_STATUSES.map((status) => ({
@@ -418,12 +1043,57 @@ export default function LogisticsPage() {
     return base;
   }, [taskStatus]);
 
-  const filteredSignature = React.useMemo(
-    () => JSON.stringify(filteredTasksByZone),
-    [filteredTasksByZone],
+  const categoryFilteredTasks = React.useMemo(() => {
+    return filteredTasksByZone.filter((task) => {
+      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
+      if (hiddenRouteStatusesSet.has(routeStatus)) {
+        return false;
+      }
+      const transportLabel = getTaskTransportType(task);
+      const transportKey = toKey(transportLabel);
+      if (hiddenTransportTypesSet.has(transportKey)) {
+        return false;
+      }
+      const typeLabel = getTaskTypeLabel(task);
+      const typeKey = toKey(typeLabel);
+      if (hiddenTaskTypesSet.has(typeKey)) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    filteredTasksByZone,
+    hiddenRouteStatusesSet,
+    hiddenTaskTypesSet,
+    hiddenTransportTypesSet,
+    taskRouteStatusMap,
+  ]);
+
+  const displayedTasks = React.useMemo(() => {
+    if (!selectedTaskIdsSet.size) {
+      return categoryFilteredTasks;
+    }
+    return categoryFilteredTasks.filter((task) => selectedTaskIdsSet.has(task._id));
+  }, [categoryFilteredTasks, selectedTaskIdsSet]);
+
+  const displayedSignature = React.useMemo(
+    () =>
+      JSON.stringify(
+        displayedTasks.map((task) => [task._id, task.status, task.updatedAt ?? null]),
+      ),
+    [displayedTasks],
   );
 
   const lastSyncedSignatureRef = React.useRef<string>("");
+
+  React.useEffect(() => {
+    if (!clusterSelection) return;
+    const ids = new Set(clusterSelection.ids);
+    const stillPresent = categoryFilteredTasks.some((task) => ids.has(task._id));
+    if (!stillPresent) {
+      setClusterSelection(null);
+    }
+  }, [categoryFilteredTasks, clusterSelection]);
 
   const stopRouteAnimation = React.useCallback(() => {
     const controller = routeAnimationRef.current;
@@ -518,21 +1188,21 @@ export default function LogisticsPage() {
   }, [mapReady, stopRouteAnimation]);
 
   React.useEffect(() => {
-    if (lastSyncedSignatureRef.current === filteredSignature) {
+    if (lastSyncedSignatureRef.current === displayedSignature) {
       return;
     }
-    lastSyncedSignatureRef.current = filteredSignature;
-    setSorted(filteredTasksByZone);
+    lastSyncedSignatureRef.current = displayedSignature;
+    setSorted(displayedTasks);
     const userId = Number((user as any)?.telegram_id) || undefined;
-    controller.setIndex("logistics:all", filteredTasksByZone, {
+    controller.setIndex("logistics:all", displayedTasks, {
       kind: "task",
       mine: false,
       userId,
-      pageSize: filteredTasksByZone.length,
-      total: filteredTasksByZone.length,
+      pageSize: displayedTasks.length,
+      total: displayedTasks.length,
       sort: "desc",
     });
-  }, [controller, filteredSignature, filteredTasksByZone, user]);
+  }, [controller, displayedSignature, displayedTasks, user]);
 
   const clonePlan = React.useCallback(
     (value: RoutePlan | null) =>
@@ -686,6 +1356,55 @@ export default function LogisticsPage() {
       }
       return Array.from(next);
     });
+  }, []);
+
+  const handleRouteStatusVisibilityChange = React.useCallback(
+    (status: RouteStatusFilterKey, visible: boolean) => {
+      setHiddenRouteStatuses((prev) => {
+        const next = new Set(prev);
+        if (visible) {
+          next.delete(status);
+        } else {
+          next.add(status);
+        }
+        return Array.from(next);
+      });
+    },
+    [],
+  );
+
+  const handleTransportVisibilityChange = React.useCallback(
+    (key: string, visible: boolean) => {
+      setHiddenTransportTypes((prev) => {
+        const next = new Set(prev);
+        if (visible) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return Array.from(next);
+      });
+    },
+    [],
+  );
+
+  const handleTaskTypeVisibilityChange = React.useCallback(
+    (key: string, visible: boolean) => {
+      setHiddenTaskTypes((prev) => {
+        const next = new Set(prev);
+        if (visible) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return Array.from(next);
+      });
+    },
+    [],
+  );
+
+  const handleClearClusterSelection = React.useCallback(() => {
+    setClusterSelection(null);
   }, []);
 
   const handleRemoveZone = React.useCallback((zone: GeoZone) => {
@@ -1060,7 +1779,7 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     setPage(0);
-  }, [filteredSignature]);
+  }, [displayedSignature]);
 
   React.useEffect(() => {
     const translate = tRef.current;
@@ -1199,28 +1918,108 @@ export default function LogisticsPage() {
         },
       };
       map.addLayer(taskLineLayer);
-      map.addSource(TASK_MARKERS_SOURCE_ID, {
+      map.addSource(TASK_CLUSTER_SOURCE_ID, {
         type: "geojson",
         data: createEmptyCollection(),
-      });
-      const markerLayer: SymbolLayerSpecification = {
-        id: TASK_MARKERS_LAYER_ID,
-        type: "symbol",
-        source: TASK_MARKERS_SOURCE_ID,
-        layout: {
-          "text-field": ["get", "icon"],
-          "text-size": 18,
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
+        cluster: true,
+        clusterRadius: 60,
+        clusterMaxZoom: 14,
+        clusterProperties: {
+          draft: CLUSTER_STATUS_PROPERTIES.draft,
+          approved: CLUSTER_STATUS_PROPERTIES.approved,
+          completed: CLUSTER_STATUS_PROPERTIES.completed,
+          unassigned: CLUSTER_STATUS_PROPERTIES.unassigned,
         },
+      });
+      const clusterLayer: CircleLayerSpecification = {
+        id: TASK_CLUSTER_LAYER_ID,
+        type: "circle",
+        source: TASK_CLUSTER_SOURCE_ID,
+        filter: ["has", "point_count"],
         paint: {
-          "text-color": ["get", "color"],
-          "text-halo-color": "rgba(17, 24, 39, 0.55)",
-          "text-halo-width": 1.5,
+          "circle-color": [
+            "case",
+            [
+              "all",
+              [">=", ["get", "completed"], ["get", "approved"]],
+              [">=", ["get", "completed"], ["get", "draft"]],
+              [">=", ["get", "completed"], ["get", "unassigned"]],
+            ],
+            ROUTE_STATUS_COLORS.completed,
+            [
+              "all",
+              [">=", ["get", "approved"], ["get", "draft"]],
+              [">=", ["get", "approved"], ["get", "unassigned"]],
+            ],
+            ROUTE_STATUS_COLORS.approved,
+            [">=", ["get", "draft"], ["get", "unassigned"]],
+            ROUTE_STATUS_COLORS.draft,
+            ROUTE_STATUS_COLORS.unassigned,
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            16,
+            12,
+            22,
+            14,
+            30,
+          ],
+          "circle-opacity": 0.82,
+          "circle-stroke-width": 1.6,
+          "circle-stroke-color": "#f8fafc",
         },
       };
-      map.addLayer(markerLayer);
+      map.addLayer(clusterLayer);
+      const clusterCountLayer: SymbolLayerSpecification = {
+        id: TASK_CLUSTER_COUNT_LAYER_ID,
+        type: "symbol",
+        source: TASK_CLUSTER_SOURCE_ID,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "#0f172a",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.2,
+        },
+      };
+      map.addLayer(clusterCountLayer);
+      const pointsLayer: SymbolLayerSpecification = {
+        id: TASK_POINTS_LAYER_ID,
+        type: "symbol",
+        source: TASK_CLUSTER_SOURCE_ID,
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "icon-image": ["get", "iconId"],
+          "icon-size": [
+            "case",
+            ["boolean", ["get", "selected"], false],
+            0.8,
+            0.65,
+          ],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "text-field": ["coalesce", ["get", "label"], ""],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 10,
+          "text-offset": [0, 1.4],
+          "text-anchor": "top",
+          "text-optional": true,
+        },
+        paint: {
+          "icon-opacity": 0.95,
+          "text-color": "#0f172a",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 0.9,
+        },
+      };
+      map.addLayer(pointsLayer);
       map.addSource(TASK_ANIMATION_SOURCE_ID, {
         type: "geojson",
         data: createEmptyCollection(),
@@ -1467,18 +2266,14 @@ export default function LogisticsPage() {
     const routesSource = map.getSource(TASK_SOURCE_ID) as
       | GeoJSONSource
       | undefined;
-    const markersSource = map.getSource(TASK_MARKERS_SOURCE_ID) as
-      | GeoJSONSource
-      | undefined;
     const animationSource = map.getSource(TASK_ANIMATION_SOURCE_ID) as
       | GeoJSONSource
       | undefined;
-    if (!routesSource || !markersSource || !animationSource) {
+    if (!routesSource || !animationSource) {
       return;
     }
     if (!layerVisibility.tasks || !sorted.length) {
       routesSource.setData(createEmptyCollection());
-      markersSource.setData(createEmptyCollection());
       animationSource.setData(createEmptyCollection());
       routeAnimationRef.current.routes = [];
       stopRouteAnimation();
@@ -1487,7 +2282,6 @@ export default function LogisticsPage() {
     let cancelled = false;
     (async () => {
       const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-      const markerFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
       const animationRoutes: AnimatedRoute[] = [];
       for (const task of sorted) {
         if (cancelled) break;
@@ -1515,30 +2309,6 @@ export default function LogisticsPage() {
             title: task.title ?? task._id,
           },
         });
-        markerFeatures.push(
-          {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: start },
-            properties: {
-              color: routeColor,
-              taskId: task._id,
-              title: task.title ?? task._id,
-              icon: TASK_START_SYMBOL,
-              kind: "start",
-            },
-          },
-          {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: finish },
-            properties: {
-              color: routeColor,
-              taskId: task._id,
-              title: task.title ?? task._id,
-              icon: TASK_FINISH_SYMBOL,
-              kind: "finish",
-            },
-          },
-        );
         const animatedRoute = createAnimatedRoute(
           coordinates,
           routeColor,
@@ -1553,10 +2323,6 @@ export default function LogisticsPage() {
       routesSource.setData({
         type: "FeatureCollection",
         features: lineFeatures,
-      });
-      markersSource.setData({
-        type: "FeatureCollection",
-        features: markerFeatures,
       });
       routeAnimationRef.current.routes = animationRoutes;
       routeAnimationRef.current.lastTimestamp = null;
@@ -1637,7 +2403,9 @@ export default function LogisticsPage() {
       map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
     };
     setVisibility(TASK_LAYER_ID, layerVisibility.tasks);
-    setVisibility(TASK_MARKERS_LAYER_ID, layerVisibility.tasks);
+    setVisibility(TASK_CLUSTER_LAYER_ID, layerVisibility.tasks);
+    setVisibility(TASK_CLUSTER_COUNT_LAYER_ID, layerVisibility.tasks);
+    setVisibility(TASK_POINTS_LAYER_ID, layerVisibility.tasks);
     setVisibility(TASK_ANIMATION_LAYER_ID, layerVisibility.tasks);
     setVisibility(OPT_LAYER_ID, layerVisibility.optimized);
   }, [layerVisibility.optimized, layerVisibility.tasks, mapReady]);
@@ -1646,11 +2414,81 @@ export default function LogisticsPage() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    const handleClick = (event: MapLayerMouseEvent) => {
-      const taskId = event.features?.[0]?.properties?.taskId;
+    const source = map.getSource(TASK_CLUSTER_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    if (!source) return;
+    const handlePointClick = (event: MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      const entity = feature.properties?.entity;
+      if (entity === "vehicle") {
+        return;
+      }
+      const taskId = feature.properties?.taskId;
       if (typeof taskId === "string" && taskId) {
         openTask(taskId);
       }
+    };
+    const handleClusterClick = (event: MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      const clusterId = feature.properties?.cluster_id;
+      if (typeof clusterId !== "number") {
+        return;
+      }
+      const coordinates =
+        feature.geometry && feature.geometry.type === "Point"
+          ? (feature.geometry.coordinates as GeoJSON.Position)
+          : null;
+      (source as any).getClusterExpansionZoom(
+        clusterId,
+        (error: Error | null, zoom: number) => {
+          if (!error && typeof zoom === "number" && coordinates) {
+            map.easeTo({ center: coordinates, zoom, duration: 600 });
+          }
+        },
+      );
+      const total =
+        typeof feature.properties?.point_count === "number"
+          ? (feature.properties.point_count as number)
+          : 0;
+      const limit = Math.min(Math.max(total, 1), 50);
+      const collected = new Set<string>();
+      const gatherLeaves = (offset: number) => {
+        (source as any).getClusterLeaves(
+          clusterId,
+          limit,
+          offset,
+          (
+            err: Error | null,
+            features: GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>[],
+          ) => {
+            if (err || !features) {
+              return;
+            }
+            features.forEach((item) => {
+              if (item.properties?.entity === "task") {
+                const taskId = item.properties?.taskId;
+                if (typeof taskId === "string" && taskId) {
+                  collected.add(taskId);
+                }
+              }
+            });
+            if (features.length === limit && offset + features.length < total) {
+              gatherLeaves(offset + features.length);
+            } else {
+              const ids = Array.from(collected);
+              setClusterSelection(
+                ids.length
+                  ? { ids, center: coordinates ?? null }
+                  : null,
+              );
+            }
+          },
+        );
+      };
+      gatherLeaves(0);
     };
     const setCursor = (cursor: string) => {
       const canvas = map.getCanvas();
@@ -1658,13 +2496,19 @@ export default function LogisticsPage() {
     };
     const handleEnter = () => setCursor("pointer");
     const handleLeave = () => setCursor("");
-    map.on("click", TASK_MARKERS_LAYER_ID, handleClick as any);
-    map.on("mouseenter", TASK_MARKERS_LAYER_ID, handleEnter as any);
-    map.on("mouseleave", TASK_MARKERS_LAYER_ID, handleLeave as any);
+    map.on("click", TASK_POINTS_LAYER_ID, handlePointClick as any);
+    map.on("mouseenter", TASK_POINTS_LAYER_ID, handleEnter as any);
+    map.on("mouseleave", TASK_POINTS_LAYER_ID, handleLeave as any);
+    map.on("click", TASK_CLUSTER_LAYER_ID, handleClusterClick as any);
+    map.on("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter as any);
+    map.on("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave as any);
     return () => {
-      map.off("click", TASK_MARKERS_LAYER_ID, handleClick as any);
-      map.off("mouseenter", TASK_MARKERS_LAYER_ID, handleEnter as any);
-      map.off("mouseleave", TASK_MARKERS_LAYER_ID, handleLeave as any);
+      map.off("click", TASK_POINTS_LAYER_ID, handlePointClick as any);
+      map.off("mouseenter", TASK_POINTS_LAYER_ID, handleEnter as any);
+      map.off("mouseleave", TASK_POINTS_LAYER_ID, handleLeave as any);
+      map.off("click", TASK_CLUSTER_LAYER_ID, handleClusterClick as any);
+      map.off("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter as any);
+      map.off("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave as any);
     };
   }, [mapReady, openTask]);
 
@@ -2101,6 +2945,24 @@ export default function LogisticsPage() {
               </Button>
             </div>
           </div>
+          {clusterSelection?.ids.length ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
+              <span>
+                {t("logistics.clusterSelectionSummary", {
+                  count: clusterSelection.ids.length,
+                  defaultValue: `В кластере задач: ${clusterSelection.ids.length}`,
+                })}
+              </span>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                onClick={handleClearClusterSelection}
+              >
+                {t("clear")}
+              </Button>
+            </div>
+          ) : null}
         </div>
         <div className="space-y-3">
           <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
@@ -2190,7 +3052,7 @@ export default function LogisticsPage() {
               </p>
             )}
           </section>
-          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+          <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
             <h3 className="text-sm font-semibold">
               {t("logistics.layersTitle")}
             </h3>
@@ -2223,6 +3085,131 @@ export default function LogisticsPage() {
                 />
                 <span>{t("logistics.layerOptimization")}</span>
               </label>
+            </div>
+            <div className="space-y-3 border-t border-dashed border-slate-200 pt-3 text-sm">
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t("logistics.layerRouteStatuses", {
+                    defaultValue: "Статусы маршрутов",
+                  })}
+                </legend>
+                <ul className="space-y-1">
+                  {routeStatusEntries.map(({ key, count, color }) => {
+                    const visible = !hiddenRouteStatusesSet.has(key);
+                    const label = t(`logistics.routeStatus.${key}`, {
+                      defaultValue: ROUTE_STATUS_LABELS[key],
+                    });
+                    return (
+                      <li key={key} className="flex items-center justify-between gap-2">
+                        <label className="flex flex-1 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            checked={visible}
+                            onChange={(event) =>
+                              handleRouteStatusVisibilityChange(key, event.target.checked)
+                            }
+                          />
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="inline-block size-3 rounded-full"
+                              style={{ backgroundColor: color }}
+                              aria-hidden="true"
+                            />
+                            <span>{label}</span>
+                          </span>
+                        </label>
+                        <span className="text-xs text-muted-foreground">
+                          {t("logistics.legendCount", {
+                            count,
+                            defaultValue: `(${count})`,
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t("logistics.layerTransports", {
+                    defaultValue: "Типы транспорта",
+                  })}
+                </legend>
+                <ul className="space-y-1">
+                  {transportEntries.map(({ key, label, count, color }) => {
+                    const visible = !hiddenTransportTypesSet.has(key);
+                    return (
+                      <li key={key} className="flex items-center justify-between gap-2">
+                        <label className="flex flex-1 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            checked={visible}
+                            onChange={(event) =>
+                              handleTransportVisibilityChange(key, event.target.checked)
+                            }
+                          />
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="inline-block size-3 rounded-full"
+                              style={{ backgroundColor: color }}
+                              aria-hidden="true"
+                            />
+                            <span>{label}</span>
+                          </span>
+                        </label>
+                        <span className="text-xs text-muted-foreground">
+                          {t("logistics.legendCount", {
+                            count,
+                            defaultValue: `(${count})`,
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t("logistics.layerTaskTypes", {
+                    defaultValue: "Типы задач",
+                  })}
+                </legend>
+                <ul className="space-y-1">
+                  {taskTypeEntries.map(({ key, label, count, color }) => {
+                    const visible = !hiddenTaskTypesSet.has(key);
+                    return (
+                      <li key={key} className="flex items-center justify-between gap-2">
+                        <label className="flex flex-1 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            checked={visible}
+                            onChange={(event) =>
+                              handleTaskTypeVisibilityChange(key, event.target.checked)
+                            }
+                          />
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="inline-block size-3 rounded-full"
+                              style={{ backgroundColor: color }}
+                              aria-hidden="true"
+                            />
+                            <span>{label}</span>
+                          </span>
+                        </label>
+                        <span className="text-xs text-muted-foreground">
+                          {t("logistics.legendCount", {
+                            count,
+                            defaultValue: `(${count})`,
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
             </div>
             <div className="space-y-1 border-t border-dashed border-slate-200 pt-2">
               <span className="text-xs font-medium uppercase text-muted-foreground">
@@ -2265,48 +3252,65 @@ export default function LogisticsPage() {
               </div>
             )}
           </section>
-          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+          <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
             <h3 className="text-sm font-semibold">
               {t("logistics.legendTitle")}
             </h3>
-            <ul className="space-y-2 text-sm">
-              {legendItems.map((item) => (
-                <li key={item.key} className="flex items-center gap-2">
-                  <span
-                    className="legend-color"
-                    style={{ backgroundColor: item.color }}
-                    aria-hidden="true"
-                  />
-                  <span>{item.label}</span>
-                  {item.count ? (
-                    <span className="text-xs text-muted-foreground">
-                      {t("logistics.legendCount", {
-                        count: item.count,
-                        defaultValue: `(${item.count})`,
-                      })}
-                    </span>
-                  ) : null}
+            <div className="space-y-3 text-sm">
+              <p className="text-xs text-muted-foreground">
+                {t("logistics.legendDescription", {
+                  defaultValue:
+                    "Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.",
+                })}
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="legend-symbol legend-symbol--start" aria-hidden="true">
+                    {TASK_START_SYMBOL}
+                  </span>
+                  <span>{t("logistics.legendStart")}</span>
                 </li>
-              ))}
-              <li className="flex items-center gap-2">
-                <span className="legend-symbol legend-symbol--start" aria-hidden="true">
-                  {TASK_START_SYMBOL}
-                </span>
-                <span>{t("logistics.legendStart")}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="legend-symbol legend-symbol--finish" aria-hidden="true">
-                  {TASK_FINISH_SYMBOL}
-                </span>
-                <span>{t("logistics.legendFinish")}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="legend-symbol legend-symbol--movement" aria-hidden="true">
-                  {ANIMATION_SYMBOL}
-                </span>
-                <span>{t("logistics.legendMovement")}</span>
-              </li>
-            </ul>
+                <li className="flex items-center gap-2">
+                  <span className="legend-symbol legend-symbol--finish" aria-hidden="true">
+                    {TASK_FINISH_SYMBOL}
+                  </span>
+                  <span>{t("logistics.legendFinish")}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="legend-symbol legend-symbol--movement" aria-hidden="true">
+                    {ANIMATION_SYMBOL}
+                  </span>
+                  <span>{t("logistics.legendMovement")}</span>
+                </li>
+              </ul>
+              <div className="space-y-1">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t("logistics.legendStatusesHeading", {
+                    defaultValue: "Статусы задач",
+                  })}
+                </div>
+                <ul className="space-y-2">
+                  {legendItems.map((item) => (
+                    <li key={item.key} className="flex items-center gap-2">
+                      <span
+                        className="legend-color"
+                        style={{ backgroundColor: item.color }}
+                        aria-hidden="true"
+                      />
+                      <span>{item.label}</span>
+                      {item.count ? (
+                        <span className="text-xs text-muted-foreground">
+                          {t("logistics.legendCount", {
+                            count: item.count,
+                            defaultValue: `(${item.count})`,
+                          })}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </section>
         </div>
       </section>
@@ -2315,11 +3319,11 @@ export default function LogisticsPage() {
           {t("logistics.tasksHeading")}
         </h3>
         <TaskTable
-          tasks={filteredTasksByZone}
+          tasks={displayedTasks}
           onDataChange={(rows) => setSorted(rows as RouteTask[])}
           onRowClick={openTask}
           page={page}
-          pageCount={Math.max(1, Math.ceil(filteredTasksByZone.length / 25))}
+          pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
           onPageChange={setPage}
         />
       </section>

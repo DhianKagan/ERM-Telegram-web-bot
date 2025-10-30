@@ -1,0 +1,17 @@
+# Назначение файла: локальные правила Semgrep для проверки типичных уязвимостей в коде проекта.
+# Основные модули: правила для JavaScript/TypeScript, проверяющие использование eval и Function конструктора.
+rules:
+  - id: erm-no-eval
+    message: "Не используйте eval — он делает код уязвимым."
+    severity: ERROR
+    languages:
+      - javascript
+      - typescript
+    pattern: eval(...)
+  - id: erm-no-new-function
+    message: "Конструктор Function эквивалентен eval и запрещён."
+    severity: ERROR
+    languages:
+      - javascript
+      - typescript
+    pattern: new Function(...)

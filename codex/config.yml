@@ -24,10 +24,10 @@ checks:
     description: Строгая проверка типов TypeScript.
     command: pnpm typecheck
   tests:
-    description: Модульные проверки Vitest с лаконичным выводом.
+    description: Полный набор Jest, Mocha, Playwright и Vitest тестов.
     command: pnpm test
   semgrep:
-    description: Статический анализ кода по правилам OWASP Top Ten и локальной базе.
+    description: Статический анализ кода по правилам OWASP Top Ten и локальным правилам semgrep/ci.yml.
     command: pnpm semgrep
   dependencies:
     description: Аудит pnpm зависимостей через audit-ci.

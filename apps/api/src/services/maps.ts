@@ -454,6 +454,4 @@ export {
   extractCoords,
   generateRouteLink,
   generateMultiRouteLink,
-  searchAddress,
-  reverseGeocode,
 };

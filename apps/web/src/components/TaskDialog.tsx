@@ -2969,6 +2969,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   },
   (formErrors: FieldErrors<TaskFormValues>) => {
     if (formErrors.assigneeId) {
+      setIsSubmitting(false);
       setAlertMsg(t("assigneeRequiredError"));
     }
   },

@@ -777,31 +777,6 @@ span.flatpickr-weekday,
   @apply opacity-100;
 }
 
-.task-marker {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.task-marker span {
-  display: block;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--marker-color, #2563eb);
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
-}
-
-.task-marker--finish span::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-}
-
 .vehicle-marker span {
   display: block;
   width: 14px;
@@ -827,6 +802,77 @@ span.flatpickr-weekday,
   height: 8px;
   border-radius: 9999px;
   background: #2563eb;
+}
+
+.legend-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.legend-symbol--finish {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+.legend-symbol--movement {
+  background: rgba(34, 197, 94, 0.16);
+  color: #15803d;
+}
+
+.map-picker-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background-color: rgba(15, 23, 42, 0.55);
+}
+
+.map-picker-dialog__panel {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow:
+    0 20px 45px rgba(15, 23, 42, 0.25),
+    0 10px 20px rgba(15, 23, 42, 0.15);
+}
+
+.map-picker-dialog__map {
+  width: 100%;
+  height: 360px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.map-picker-dialog__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #475467;
+}
+
+.map-picker-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .status-dot {

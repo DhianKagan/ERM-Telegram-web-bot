@@ -12,7 +12,7 @@ import maplibregl, {
   type GeoJSONSource,
   type LngLatBoundsLike,
   type Map as MapInstance,
-  type Marker,
+  type MapLayerMouseEvent,
 } from "maplibre-gl";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -21,6 +21,13 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
 import { listFleetVehicles } from "../services/fleets";
+import {
+  MAP_ANIMATION_SPEED_KMH,
+  MAP_DEFAULT_CENTER,
+  MAP_DEFAULT_ZOOM,
+  MAP_MAX_BOUNDS,
+  MAP_STYLE_URL,
+} from "../config/map";
 import {
   TASK_STATUSES,
   type Coords,
@@ -41,6 +48,7 @@ import {
   pointWithinGeometry,
   type GeoZoneFeature,
 } from "../utils/geozones";
+import haversine from "../utils/haversine";
 
 type RouteTask = TaskRow & {
   startCoordinates?: Coords;
@@ -64,8 +72,6 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   optimized: true,
 };
 
-const MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json";
-
 type GeoZoneMetricsState = {
   areaKm2: number | null;
   perimeterKm: number | null;
@@ -87,8 +93,22 @@ const GEO_FILL_LAYER_ID = "logistics-geozones-fill";
 const GEO_OUTLINE_LAYER_ID = "logistics-geozones-outline";
 const TASK_SOURCE_ID = "logistics-task-routes";
 const TASK_LAYER_ID = "logistics-task-routes-line";
+const TASK_MARKERS_SOURCE_ID = "logistics-task-markers";
+const TASK_MARKERS_LAYER_ID = "logistics-task-markers-symbol";
+const TASK_ANIMATION_SOURCE_ID = "logistics-task-animation";
+const TASK_ANIMATION_LAYER_ID = "logistics-task-animation-symbol";
 const OPT_SOURCE_ID = "logistics-optimized-routes";
 const OPT_LAYER_ID = "logistics-optimized-routes-line";
+
+type AnyLayerSpecification = Parameters<MapInstance["addLayer"]>[0];
+type LineLayerSpecification = Extract<AnyLayerSpecification, { type: "line" }>;
+type SymbolLayerSpecification = Extract<AnyLayerSpecification, { type: "symbol" }>;
+
+const TASK_START_SYMBOL = "⬤";
+const TASK_FINISH_SYMBOL = "⦿";
+const ANIMATION_SYMBOL = "▶";
+const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
+const MIN_ROUTE_DISTANCE_KM = 0.01;
 
 const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>(): GeoJSON.FeatureCollection<T> => ({
   type: "FeatureCollection",
@@ -102,6 +122,16 @@ const toPosition = (coords?: Coords | null): [number, number] | null => {
     return null;
   }
   return [lng, lat];
+};
+
+type AnimatedRoute = {
+  taskId: string;
+  title: string;
+  color: string;
+  coordinates: GeoJSON.Position[];
+  cumulative: number[];
+  total: number;
+  progress: number;
 };
 
 type LogisticsDetails = {
@@ -145,6 +175,83 @@ const filterTasksByGeoZones = (
       }),
     );
   });
+};
+
+const toLatLng = (position: GeoJSON.Position): { lat: number; lng: number } => ({
+  lng: position[0],
+  lat: position[1],
+});
+
+const computeBearing = (from: GeoJSON.Position, to: GeoJSON.Position): number => {
+  const fromLat = (from[1] * Math.PI) / 180;
+  const toLat = (to[1] * Math.PI) / 180;
+  const deltaLng = ((to[0] - from[0]) * Math.PI) / 180;
+  const y = Math.sin(deltaLng) * Math.cos(toLat);
+  const x =
+    Math.cos(fromLat) * Math.sin(toLat) -
+    Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
+  const radians = Math.atan2(y, x);
+  const degrees = (radians * 180) / Math.PI;
+  return (degrees + 360) % 360;
+};
+
+const createAnimatedRoute = (
+  coordinates: GeoJSON.Position[],
+  color: string,
+  taskId: string,
+  title: string,
+): AnimatedRoute | null => {
+  if (coordinates.length < 2) {
+    return null;
+  }
+  const cumulative: number[] = [0];
+  let total = 0;
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const prev = coordinates[index - 1];
+    const next = coordinates[index];
+    const distance = haversine(toLatLng(prev), toLatLng(next));
+    total += distance;
+    cumulative.push(total);
+  }
+  if (total < MIN_ROUTE_DISTANCE_KM) {
+    return null;
+  }
+  return {
+    taskId,
+    title,
+    color,
+    coordinates,
+    cumulative,
+    total,
+    progress: 0,
+  };
+};
+
+const getAnimationPoint = (
+  route: AnimatedRoute,
+  distance: number,
+): { position: GeoJSON.Position; bearing: number } => {
+  const capped = Math.max(0, Math.min(distance, route.total));
+  const { cumulative, coordinates } = route;
+  let segmentIndex = 0;
+  for (let index = 0; index < cumulative.length - 1; index += 1) {
+    if (capped >= cumulative[index] && capped <= cumulative[index + 1]) {
+      segmentIndex = index;
+      break;
+    }
+  }
+  const start = coordinates[segmentIndex];
+  const end = coordinates[segmentIndex + 1] ?? coordinates[segmentIndex];
+  const segmentStart = cumulative[segmentIndex];
+  const segmentEnd = cumulative[segmentIndex + 1] ?? route.total;
+  const segmentDistance = segmentEnd - segmentStart;
+  const t = segmentDistance > 0 ? (capped - segmentStart) / segmentDistance : 0;
+  const lng = start[0] + (end[0] - start[0]) * t;
+  const lat = start[1] + (end[1] - start[1]) * t;
+  return {
+    position: [lng, lat],
+    bearing: computeBearing(start, end),
+  };
 };
 
 type BuildGeoZoneOptions = {
@@ -210,13 +317,11 @@ const buildGeoZone = ({
   };
 };
 
-const MAP_CENTER: [number, number] = [48.3794, 31.1656];
-const MAP_ZOOM = 6;
-const MAP_CENTER_LNG_LAT: [number, number] = [MAP_CENTER[1], MAP_CENTER[0]];
-const UKRAINE_BOUNDS: LngLatBoundsLike = [
-  [22, 44],
-  [40.5, 52.5],
+const MAP_CENTER_LNG_LAT: [number, number] = [
+  MAP_DEFAULT_CENTER[1],
+  MAP_DEFAULT_CENTER[0],
 ];
+const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
@@ -239,7 +344,14 @@ export default function LogisticsPage() {
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
   const drawRef = React.useRef<MapboxDraw | null>(null);
-  const taskMarkersRef = React.useRef<Marker[]>([]);
+  const [mapViewMode, setMapViewMode] = React.useState<
+    "planar" | "perspective"
+  >("planar");
+  const routeAnimationRef = React.useRef<{
+    frameId: number | null;
+    lastTimestamp: number | null;
+    routes: AnimatedRoute[];
+  }>({ frameId: null, lastTimestamp: null, routes: [] });
   const [availableVehicles, setAvailableVehicles] = React.useState<
     FleetVehicleDto[]
   >([]);
@@ -312,6 +424,98 @@ export default function LogisticsPage() {
   );
 
   const lastSyncedSignatureRef = React.useRef<string>("");
+
+  const stopRouteAnimation = React.useCallback(() => {
+    const controller = routeAnimationRef.current;
+    if (controller.frameId !== null) {
+      cancelAnimationFrame(controller.frameId);
+      controller.frameId = null;
+    }
+    controller.lastTimestamp = null;
+  }, []);
+
+  const runRouteAnimation = React.useCallback(() => {
+    stopRouteAnimation();
+    if (!mapReady) {
+      return;
+    }
+    const controller = routeAnimationRef.current;
+    if (!controller.routes.length) {
+      return;
+    }
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    const source = map.getSource(TASK_ANIMATION_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    if (!source) {
+      return;
+    }
+    const initialFeatures = controller.routes.map((route) => {
+      const { position, bearing } = getAnimationPoint(route, route.progress);
+      return {
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: position },
+        properties: {
+          color: route.color,
+          taskId: route.taskId,
+          title: route.title,
+          bearing,
+          icon: ANIMATION_SYMBOL,
+        },
+      } satisfies GeoJSON.Feature<GeoJSON.Point>;
+    });
+    source.setData({
+      type: "FeatureCollection",
+      features: initialFeatures,
+    });
+    const step = (timestamp: number) => {
+      const controllerState = routeAnimationRef.current;
+      const mapInstance = mapRef.current;
+      if (!mapInstance) {
+        stopRouteAnimation();
+        return;
+      }
+      const animationSource = mapInstance.getSource(
+        TASK_ANIMATION_SOURCE_ID,
+      ) as GeoJSONSource | undefined;
+      if (!animationSource) {
+        stopRouteAnimation();
+        return;
+      }
+      const lastTimestamp = controllerState.lastTimestamp;
+      controllerState.lastTimestamp = timestamp;
+      const delta = lastTimestamp != null ? (timestamp - lastTimestamp) / 1000 : 0;
+      const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+      controllerState.routes.forEach((route) => {
+        if (route.total <= 0) {
+          return;
+        }
+        route.progress =
+          (route.progress + delta * ROUTE_SPEED_KM_PER_SEC) % route.total;
+        const { position, bearing } = getAnimationPoint(route, route.progress);
+        features.push({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: position },
+          properties: {
+            color: route.color,
+            taskId: route.taskId,
+            title: route.title,
+            bearing,
+            icon: ANIMATION_SYMBOL,
+          },
+        });
+      });
+      animationSource.setData({
+        type: "FeatureCollection",
+        features,
+      });
+      controllerState.frameId = requestAnimationFrame(step);
+    };
+    controller.frameId = requestAnimationFrame(step);
+  }, [mapReady, stopRouteAnimation]);
 
   React.useEffect(() => {
     if (lastSyncedSignatureRef.current === filteredSignature) {
@@ -892,7 +1096,7 @@ export default function LogisticsPage() {
       container: "logistics-map",
       style: MAP_STYLE_URL,
       center: MAP_CENTER_LNG_LAT,
-      zoom: MAP_ZOOM,
+      zoom: MAP_DEFAULT_ZOOM,
       minZoom: 5,
       maxZoom: 12,
       maxBounds: UKRAINE_BOUNDS,
@@ -960,43 +1164,136 @@ export default function LogisticsPage() {
         type: "geojson",
         data: createEmptyCollection(),
       });
-      map.addLayer({
+      const optimizedLayer: LineLayerSpecification = {
         id: OPT_LAYER_ID,
         type: "line",
         source: OPT_SOURCE_ID,
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+        },
         paint: {
           "line-color": ["get", "color"],
           "line-width": 4,
           "line-dasharray": [1.5, 1.5],
           "line-opacity": 0.8,
         },
-      });
+      };
+      map.addLayer(optimizedLayer);
       map.addSource(TASK_SOURCE_ID, {
         type: "geojson",
         data: createEmptyCollection(),
       });
-      map.addLayer({
+      const taskLineLayer: LineLayerSpecification = {
         id: TASK_LAYER_ID,
         type: "line",
         source: TASK_SOURCE_ID,
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+        },
         paint: {
           "line-color": ["get", "color"],
           "line-width": 3,
           "line-opacity": 0.85,
         },
+      };
+      map.addLayer(taskLineLayer);
+      map.addSource(TASK_MARKERS_SOURCE_ID, {
+        type: "geojson",
+        data: createEmptyCollection(),
       });
+      const markerLayer: SymbolLayerSpecification = {
+        id: TASK_MARKERS_LAYER_ID,
+        type: "symbol",
+        source: TASK_MARKERS_SOURCE_ID,
+        layout: {
+          "text-field": ["get", "icon"],
+          "text-size": 18,
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+        },
+        paint: {
+          "text-color": ["get", "color"],
+          "text-halo-color": "rgba(17, 24, 39, 0.55)",
+          "text-halo-width": 1.5,
+        },
+      };
+      map.addLayer(markerLayer);
+      map.addSource(TASK_ANIMATION_SOURCE_ID, {
+        type: "geojson",
+        data: createEmptyCollection(),
+      });
+      const animationLayer: SymbolLayerSpecification = {
+        id: TASK_ANIMATION_LAYER_ID,
+        type: "symbol",
+        source: TASK_ANIMATION_SOURCE_ID,
+        layout: {
+          "text-field": ["get", "icon"],
+          "text-size": 20,
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+          "text-rotate": ["get", "bearing"],
+        },
+        paint: {
+          "text-color": ["get", "color"],
+          "text-halo-color": "rgba(17, 24, 39, 0.55)",
+          "text-halo-width": 1.2,
+        },
+      };
+      map.addLayer(animationLayer);
       setMapReady(true);
     });
     return () => {
       setMapReady(false);
       setIsDrawing(false);
-      taskMarkersRef.current.forEach((marker) => marker.remove());
-      taskMarkersRef.current = [];
       drawRef.current = null;
+      stopRouteAnimation();
       map.remove();
       mapRef.current = null;
     };
-  }, [hasDialog]);
+  }, [hasDialog, stopRouteAnimation]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const enableRotation = () => {
+      if (typeof map.dragRotate?.enable === "function") {
+        map.dragRotate.enable();
+      }
+      if (typeof map.touchZoomRotate?.enableRotation === "function") {
+        map.touchZoomRotate.enableRotation();
+      }
+    };
+    const disableRotation = () => {
+      if (typeof map.dragRotate?.disable === "function") {
+        map.dragRotate.disable();
+      }
+      if (typeof map.touchZoomRotate?.disableRotation === "function") {
+        map.touchZoomRotate.disableRotation();
+      }
+    };
+    if (mapViewMode === "perspective") {
+      enableRotation();
+      if (typeof map.easeTo === "function") {
+        map.easeTo({ pitch: 55, bearing: 28, duration: 600 });
+      } else {
+        map.setPitch(55);
+        map.setBearing(28);
+      }
+    } else {
+      if (typeof map.easeTo === "function") {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
+      } else {
+        map.setPitch(0);
+        map.setBearing(0);
+      }
+      disableRotation();
+    }
+  }, [mapReady, mapViewMode]);
 
   React.useEffect(() => {
     if (!mapReady) return;
@@ -1164,35 +1461,53 @@ export default function LogisticsPage() {
   }, [activeGeoZoneIds, geoZones, mapReady]);
 
   React.useEffect(() => {
+    if (!mapReady) return;
     const map = mapRef.current;
-    if (!mapReady || !map) return;
-    const source = map.getSource(TASK_SOURCE_ID) as GeoJSONSource | undefined;
-    if (!source) return;
-    taskMarkersRef.current.forEach((marker) => marker.remove());
-    taskMarkersRef.current = [];
+    if (!map) return;
+    const routesSource = map.getSource(TASK_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    const markersSource = map.getSource(TASK_MARKERS_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    const animationSource = map.getSource(TASK_ANIMATION_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+    if (!routesSource || !markersSource || !animationSource) {
+      return;
+    }
     if (!layerVisibility.tasks || !sorted.length) {
-      source.setData(createEmptyCollection());
+      routesSource.setData(createEmptyCollection());
+      markersSource.setData(createEmptyCollection());
+      animationSource.setData(createEmptyCollection());
+      routeAnimationRef.current.routes = [];
+      stopRouteAnimation();
       return;
     }
     let cancelled = false;
-    const nextMarkers: Marker[] = [];
     (async () => {
-      const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+      const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+      const markerFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
+      const animationRoutes: AnimatedRoute[] = [];
       for (const task of sorted) {
         if (cancelled) break;
         const start = toPosition(task.startCoordinates);
         const finish = toPosition(task.finishCoordinates);
         if (!start || !finish) continue;
-        const geometry = await fetchRouteGeometry(task.startCoordinates, task.finishCoordinates);
+        const geometry = await fetchRouteGeometry(
+          task.startCoordinates,
+          task.finishCoordinates,
+        );
         if (!geometry || cancelled) continue;
         const statusKey =
           typeof task.status === "string" ? task.status.trim() : "";
         const routeColor = TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
-        features.push({
+        const coordinates = geometry as GeoJSON.Position[];
+        lineFeatures.push({
           type: "Feature",
           geometry: {
             type: "LineString",
-            coordinates: geometry as GeoJSON.Position[],
+            coordinates,
           },
           properties: {
             color: routeColor,
@@ -1200,51 +1515,69 @@ export default function LogisticsPage() {
             title: task.title ?? task._id,
           },
         });
-        const startElement = document.createElement("span");
-        startElement.className = "task-marker task-marker--start";
-        startElement.style.setProperty("--marker-color", routeColor);
-        startElement.title = task.title ?? task._id;
-        startElement.tabIndex = 0;
-        startElement.addEventListener("click", () => openTask(task._id));
-        startElement.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openTask(task._id);
-          }
-        });
-        const startMarker = new maplibregl.Marker({ element: startElement })
-          .setLngLat(start)
-          .addTo(map);
-        nextMarkers.push(startMarker);
-        const finishElement = document.createElement("span");
-        finishElement.className = "task-marker task-marker--finish";
-        finishElement.style.setProperty("--marker-color", routeColor);
-        finishElement.title = task.title ?? task._id;
-        finishElement.tabIndex = 0;
-        finishElement.addEventListener("click", () => openTask(task._id));
-        finishElement.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openTask(task._id);
-          }
-        });
-        const finishMarker = new maplibregl.Marker({ element: finishElement })
-          .setLngLat(finish)
-          .addTo(map);
-        nextMarkers.push(finishMarker);
+        markerFeatures.push(
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: start },
+            properties: {
+              color: routeColor,
+              taskId: task._id,
+              title: task.title ?? task._id,
+              icon: TASK_START_SYMBOL,
+              kind: "start",
+            },
+          },
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: finish },
+            properties: {
+              color: routeColor,
+              taskId: task._id,
+              title: task.title ?? task._id,
+              icon: TASK_FINISH_SYMBOL,
+              kind: "finish",
+            },
+          },
+        );
+        const animatedRoute = createAnimatedRoute(
+          coordinates,
+          routeColor,
+          task._id,
+          task.title ?? task._id,
+        );
+        if (animatedRoute) {
+          animationRoutes.push(animatedRoute);
+        }
       }
       if (cancelled) return;
-      source.setData({
+      routesSource.setData({
         type: "FeatureCollection",
-        features,
+        features: lineFeatures,
       });
-      taskMarkersRef.current = nextMarkers;
+      markersSource.setData({
+        type: "FeatureCollection",
+        features: markerFeatures,
+      });
+      routeAnimationRef.current.routes = animationRoutes;
+      routeAnimationRef.current.lastTimestamp = null;
+      if (!animationRoutes.length) {
+        animationSource.setData(createEmptyCollection());
+        stopRouteAnimation();
+      } else {
+        runRouteAnimation();
+      }
     })();
     return () => {
       cancelled = true;
-      nextMarkers.forEach((marker) => marker.remove());
+      stopRouteAnimation();
     };
-  }, [layerVisibility.tasks, mapReady, openTask, sorted]);
+  }, [
+    layerVisibility.tasks,
+    mapReady,
+    runRouteAnimation,
+    sorted,
+    stopRouteAnimation,
+  ]);
 
   React.useEffect(() => {
     if (!layerVisibility.optimized || !planDraft) {
@@ -1294,6 +1627,46 @@ export default function LogisticsPage() {
     if (!source) return;
     source.setData(optimizedRoutesGeoJSON);
   }, [mapReady, optimizedRoutesGeoJSON]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const setVisibility = (layerId: string, visible: boolean) => {
+      if (!map.getLayer(layerId)) return;
+      map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+    };
+    setVisibility(TASK_LAYER_ID, layerVisibility.tasks);
+    setVisibility(TASK_MARKERS_LAYER_ID, layerVisibility.tasks);
+    setVisibility(TASK_ANIMATION_LAYER_ID, layerVisibility.tasks);
+    setVisibility(OPT_LAYER_ID, layerVisibility.optimized);
+  }, [layerVisibility.optimized, layerVisibility.tasks, mapReady]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const handleClick = (event: MapLayerMouseEvent) => {
+      const taskId = event.features?.[0]?.properties?.taskId;
+      if (typeof taskId === "string" && taskId) {
+        openTask(taskId);
+      }
+    };
+    const setCursor = (cursor: string) => {
+      const canvas = map.getCanvas();
+      canvas.style.cursor = cursor;
+    };
+    const handleEnter = () => setCursor("pointer");
+    const handleLeave = () => setCursor("");
+    map.on("click", TASK_MARKERS_LAYER_ID, handleClick as any);
+    map.on("mouseenter", TASK_MARKERS_LAYER_ID, handleEnter as any);
+    map.on("mouseleave", TASK_MARKERS_LAYER_ID, handleLeave as any);
+    return () => {
+      map.off("click", TASK_MARKERS_LAYER_ID, handleClick as any);
+      map.off("mouseenter", TASK_MARKERS_LAYER_ID, handleEnter as any);
+      map.off("mouseleave", TASK_MARKERS_LAYER_ID, handleLeave as any);
+    };
+  }, [mapReady, openTask]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -1851,6 +2224,31 @@ export default function LogisticsPage() {
                 <span>{t("logistics.layerOptimization")}</span>
               </label>
             </div>
+            <div className="space-y-1 border-t border-dashed border-slate-200 pt-2">
+              <span className="text-xs font-medium uppercase text-muted-foreground">
+                {t("logistics.viewModeLabel")}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={mapViewMode === "planar" ? "default" : "outline"}
+                  onClick={() => setMapViewMode("planar")}
+                  aria-pressed={mapViewMode === "planar"}
+                >
+                  {t("logistics.viewModePlanar")}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={mapViewMode === "perspective" ? "default" : "outline"}
+                  onClick={() => setMapViewMode("perspective")}
+                  aria-pressed={mapViewMode === "perspective"}
+                >
+                  {t("logistics.viewModeTilted")}
+                </Button>
+              </div>
+            </div>
             {!!links.length && (
               <div className="space-y-1 text-sm">
                 {links.map((url, index) => (
@@ -1891,16 +2289,22 @@ export default function LogisticsPage() {
                 </li>
               ))}
               <li className="flex items-center gap-2">
-                <span className="task-marker task-marker--start" aria-hidden="true">
-                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                <span className="legend-symbol legend-symbol--start" aria-hidden="true">
+                  {TASK_START_SYMBOL}
                 </span>
                 <span>{t("logistics.legendStart")}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="task-marker task-marker--finish" aria-hidden="true">
-                  <span style={{ "--marker-color": "#2563eb" } as React.CSSProperties} />
+                <span className="legend-symbol legend-symbol--finish" aria-hidden="true">
+                  {TASK_FINISH_SYMBOL}
                 </span>
                 <span>{t("logistics.legendFinish")}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="legend-symbol legend-symbol--movement" aria-hidden="true">
+                  {ANIMATION_SYMBOL}
+                </span>
+                <span>{t("logistics.legendMovement")}</span>
               </li>
             </ul>
           </section>

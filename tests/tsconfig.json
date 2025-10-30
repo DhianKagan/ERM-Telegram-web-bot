@@ -25,7 +25,6 @@
       "express",
       "multer",
       "../apps/web/src/types/telegram",
-      "../apps/web/src/types/leaflet",
       "mongodb-memory-server",
       "mongoose"
     ],

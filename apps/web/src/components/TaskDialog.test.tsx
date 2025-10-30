@@ -9,6 +9,7 @@ import TaskDialog from "./TaskDialog";
 const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
 const translate = (value: string) => value;
 const mockI18n = { language: "ru", changeLanguage: jest.fn() };
+const alertMock = jest.fn();
 
 jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: mockUser }),
@@ -25,7 +26,13 @@ jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
   }, [open, onConfirm]);
   return null;
 });
-jest.mock("./AlertDialog", () => () => null);
+jest.mock("./AlertDialog", () => ({
+  __esModule: true,
+  default: ({ open, message }: any) => {
+    alertMock({ open, message });
+    return open ? <div data-testid="alert-dialog">{message}</div> : null;
+  },
+}));
 
 jest.mock("./MultiUserSelect", () => ({
   users,
@@ -178,6 +185,7 @@ describe("TaskDialog", () => {
       json: async () => ({ ...taskData, _id: "1" }),
     });
     mockI18n.language = "ru";
+    alertMock.mockReset();
   });
 
   it("сохраняет задачу и повторно открывает форму", async () => {
@@ -405,17 +413,19 @@ describe("TaskDialog", () => {
 
     const assigneeSelect = await screen.findByTestId("assignee");
     await screen.findByText("Alice");
-    await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: "1" } });
-    });
-    await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: "" } });
-    });
+    expect(assigneeSelect).toBeTruthy();
 
     await clickSubmitButton();
 
     const errorMessage = await screen.findByText("assigneeRequiredError");
     expect(errorMessage.textContent ?? "").toContain("assigneeRequiredError");
+    await waitFor(() =>
+      expect(
+        alertMock.mock.calls.some(
+          ([props]) => props.open && props.message === "assigneeRequiredError",
+        ),
+      ).toBe(true),
+    );
     await waitFor(() => expect(createTaskMock).not.toHaveBeenCalled());
   });
 

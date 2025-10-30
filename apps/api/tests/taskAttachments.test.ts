@@ -164,7 +164,10 @@ describe('Привязка вложений к задачам', () => {
       1,
       {
         _id: { $in: [fileId] },
-        $or: [{ taskId: createdTaskId }, { taskId: null }],
+        $or: [
+          { taskId: createdTaskId },
+          { taskId: null, $or: [{ userId: null }, { userId: { $exists: false } }] },
+        ],
       },
       { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
     );

@@ -699,7 +699,10 @@ export async function syncTaskAttachments(
       } else {
         updateFilter.$or = [
           { taskId: normalizedTaskId },
-          { taskId: null },
+          {
+            taskId: null,
+            $or: [{ userId: null }, { userId: { $exists: false } }],
+          },
         ];
       }
     }

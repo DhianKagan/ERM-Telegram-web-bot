@@ -724,6 +724,32 @@ export default function LogisticsPage() {
     return map;
   }, [plan, planDraft]);
 
+  const categoryFilteredTasks = React.useMemo(() => {
+    return filteredTasksByZone.filter((task) => {
+      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
+      if (hiddenRouteStatusesSet.has(routeStatus)) {
+        return false;
+      }
+      const transportLabel = getTaskTransportType(task);
+      const transportKey = toKey(transportLabel);
+      if (hiddenTransportTypesSet.has(transportKey)) {
+        return false;
+      }
+      const typeLabel = getTaskTypeLabel(task);
+      const typeKey = toKey(typeLabel);
+      if (hiddenTaskTypesSet.has(typeKey)) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    filteredTasksByZone,
+    hiddenRouteStatusesSet,
+    hiddenTaskTypesSet,
+    hiddenTransportTypesSet,
+    taskRouteStatusMap,
+  ]);
+
   const taskStatus = React.useMemo(() => {
     const counts: Record<string, number> = {};
     categoryFilteredTasks.forEach((task) => {
@@ -1042,32 +1068,6 @@ export default function LogisticsPage() {
     }
     return base;
   }, [taskStatus]);
-
-  const categoryFilteredTasks = React.useMemo(() => {
-    return filteredTasksByZone.filter((task) => {
-      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
-      if (hiddenRouteStatusesSet.has(routeStatus)) {
-        return false;
-      }
-      const transportLabel = getTaskTransportType(task);
-      const transportKey = toKey(transportLabel);
-      if (hiddenTransportTypesSet.has(transportKey)) {
-        return false;
-      }
-      const typeLabel = getTaskTypeLabel(task);
-      const typeKey = toKey(typeLabel);
-      if (hiddenTaskTypesSet.has(typeKey)) {
-        return false;
-      }
-      return true;
-    });
-  }, [
-    filteredTasksByZone,
-    hiddenRouteStatusesSet,
-    hiddenTaskTypesSet,
-    hiddenTransportTypesSet,
-    taskRouteStatusMap,
-  ]);
 
   const displayedTasks = React.useMemo(() => {
     if (!selectedTaskIdsSet.size) {

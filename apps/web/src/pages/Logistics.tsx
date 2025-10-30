@@ -20,7 +20,6 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
-import { useTaskIndex } from "../controllers/taskStateController";
 import { listFleetVehicles } from "../services/fleets";
 import {
   TASK_STATUSES,
@@ -36,6 +35,12 @@ import {
   type RoutePlanUpdatePayload,
 } from "../services/routePlans";
 import type { TaskRow } from "../columns/taskColumns";
+import {
+  computeGeoZoneMetrics,
+  isPolygonGeometry,
+  pointWithinGeometry,
+  type GeoZoneFeature,
+} from "../utils/geozones";
 
 type RouteTask = TaskRow & {
   startCoordinates?: Coords;
@@ -61,13 +66,19 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
 
 const MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json";
 
-type GeoZoneFeature = GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>;
+type GeoZoneMetricsState = {
+  areaKm2: number | null;
+  perimeterKm: number | null;
+  bufferMeters: number;
+};
 
 type GeoZone = {
   id: string;
   drawId: string;
   name: string;
   feature: GeoZoneFeature;
+  bufferedFeature: GeoZoneFeature;
+  metrics: GeoZoneMetricsState;
   createdAt: string;
 };
 
@@ -84,13 +95,6 @@ const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>():
   features: [],
 });
 
-const isPolygonGeometry = (
-  geometry: GeoJSON.Geometry | undefined | null,
-): geometry is GeoJSON.Polygon | GeoJSON.MultiPolygon => {
-  if (!geometry) return false;
-  return geometry.type === "Polygon" || geometry.type === "MultiPolygon";
-};
-
 const toPosition = (coords?: Coords | null): [number, number] | null => {
   if (!coords) return null;
   const { lat, lng } = coords;
@@ -98,37 +102,6 @@ const toPosition = (coords?: Coords | null): [number, number] | null => {
     return null;
   }
   return [lng, lat];
-};
-
-const pointInRing = (point: [number, number], ring: GeoJSON.Position[]): boolean => {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    const denominator = yj - yi;
-    if (denominator === 0) {
-      continue;
-    }
-    const intersect =
-      yi > point[1] !== yj > point[1] &&
-      point[0] < ((xj - xi) * (point[1] - yi)) / denominator + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-};
-
-const pointInPolygon = (
-  point: [number, number],
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
-): boolean => {
-  if (geometry.type === "Polygon") {
-    return geometry.coordinates.some((ring) => pointInRing(point, ring));
-  }
-  return geometry.coordinates.some((polygonRings) =>
-    polygonRings.some((ring) => pointInRing(point, ring)),
-  );
 };
 
 type LogisticsDetails = {
@@ -159,13 +132,82 @@ const filterTasksByGeoZones = (
       return false;
     }
     return points.some((point) =>
-      activeZones.some((zone) =>
-        isPolygonGeometry(zone.feature.geometry)
-          ? pointInPolygon(point, zone.feature.geometry)
-          : false,
-      ),
+      activeZones.some((zone) => {
+        const geometry = isPolygonGeometry(zone.bufferedFeature.geometry)
+          ? zone.bufferedFeature.geometry
+          : isPolygonGeometry(zone.feature.geometry)
+            ? zone.feature.geometry
+            : null;
+        if (!geometry) {
+          return false;
+        }
+        return pointWithinGeometry(point, geometry);
+      }),
     );
   });
+};
+
+type BuildGeoZoneOptions = {
+  id: string;
+  drawId: string;
+  name: string;
+  createdAt: string;
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+  properties?: GeoJSON.GeoJsonProperties;
+  active: boolean;
+  bufferMeters?: number;
+};
+
+const buildGeoZone = ({
+  id,
+  drawId,
+  name,
+  createdAt,
+  geometry,
+  properties = {},
+  active,
+  bufferMeters,
+}: BuildGeoZoneOptions): GeoZone => {
+  const baseProperties: GeoJSON.GeoJsonProperties = {
+    ...properties,
+    zoneId: id,
+    active,
+  };
+  const baseFeature: GeoZoneFeature = {
+    type: "Feature",
+    geometry,
+    properties: baseProperties,
+  };
+  const metricsResult = computeGeoZoneMetrics(baseFeature, bufferMeters);
+  const metricsProperties: GeoJSON.GeoJsonProperties = {
+    ...baseProperties,
+    areaKm2: metricsResult.areaKm2 ?? undefined,
+    perimeterKm: metricsResult.perimeterKm ?? undefined,
+    bufferMeters: metricsResult.bufferMeters,
+  };
+  const feature: GeoZoneFeature = {
+    type: "Feature",
+    geometry,
+    properties: metricsProperties,
+  };
+  const bufferedFeature: GeoZoneFeature = {
+    type: "Feature",
+    geometry: metricsResult.bufferedGeometry,
+    properties: metricsProperties,
+  };
+  return {
+    id,
+    drawId,
+    name,
+    createdAt,
+    feature,
+    bufferedFeature,
+    metrics: {
+      areaKm2: metricsResult.areaKm2,
+      perimeterKm: metricsResult.perimeterKm,
+      bufferMeters: metricsResult.bufferMeters,
+    },
+  };
 };
 
 const MAP_CENTER: [number, number] = [48.3794, 31.1656];
@@ -183,7 +225,6 @@ export default function LogisticsPage() {
     tRef.current = t;
   }, [t]);
   const language = i18n.language;
-  const tasks = useTaskIndex("logistics:all") as RouteTask[];
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [allRouteTasks, setAllRouteTasks] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
@@ -225,20 +266,45 @@ export default function LogisticsPage() {
   const { controller } = useTasks();
   const role = user?.role ?? null;
 
-  const legendItems = React.useMemo(
-    () =>
-      TASK_STATUSES.map((status) => ({
-        key: status,
-        label: status,
-        color: TASK_STATUS_COLORS[status] ?? "#2563eb",
-      })),
-    [],
-  );
-
   const filteredTasksByZone = React.useMemo(
     () => filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds),
     [activeGeoZoneIds, allRouteTasks, geoZones],
   );
+
+  const taskStatus = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredTasksByZone.forEach((task) => {
+      const rawStatus =
+        typeof task.status === "string" && task.status.trim()
+          ? task.status.trim()
+          : "Новая";
+      counts[rawStatus] = (counts[rawStatus] ?? 0) + 1;
+    });
+    return counts;
+  }, [filteredTasksByZone]);
+
+  const legendItems = React.useMemo(() => {
+    const base = TASK_STATUSES.map((status) => ({
+      key: status,
+      label: status,
+      color: TASK_STATUS_COLORS[status] ?? "#2563eb",
+      count: taskStatus[status] ?? 0,
+    }));
+    const extraStatuses = Object.keys(taskStatus).filter(
+      (status) => !TASK_STATUSES.includes(status),
+    );
+    if (extraStatuses.length) {
+      extraStatuses.forEach((status) => {
+        base.push({
+          key: status,
+          label: status,
+          color: TASK_STATUS_COLORS[status] ?? "#2563eb",
+          count: taskStatus[status] ?? 0,
+        });
+      });
+    }
+    return base;
+  }, [taskStatus]);
 
   const filteredSignature = React.useMemo(
     () => JSON.stringify(filteredTasksByZone),
@@ -699,6 +765,60 @@ export default function LogisticsPage() {
     [],
   );
 
+  const formatAreaMetric = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return '—';
+      }
+      if (value >= 1) {
+        return `${new Intl.NumberFormat(language, {
+          maximumFractionDigits: 2,
+        }).format(value)} км²`;
+      }
+      const hectares = value * 100;
+      if (hectares >= 1) {
+        return `${new Intl.NumberFormat(language, {
+          maximumFractionDigits: 1,
+        }).format(hectares)} га`;
+      }
+      const squareMeters = value * 1_000_000;
+      return `${new Intl.NumberFormat(language, {
+        maximumFractionDigits: 0,
+      }).format(squareMeters)} м²`;
+    },
+    [language],
+  );
+
+  const formatPerimeterMetric = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return '—';
+      }
+      if (value >= 1) {
+        return `${new Intl.NumberFormat(language, {
+          maximumFractionDigits: 2,
+        }).format(value)} км`;
+      }
+      const meters = value * 1000;
+      return `${new Intl.NumberFormat(language, {
+        maximumFractionDigits: 0,
+      }).format(meters)} м`;
+    },
+    [language],
+  );
+
+  const formatBufferMetric = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return '—';
+      }
+      return `${new Intl.NumberFormat(language, {
+        maximumFractionDigits: 0,
+      }).format(value)} м`;
+    },
+    [language],
+  );
+
   const planMessageClass = React.useMemo(() => {
     if (planMessageTone === 'error') {
       return 'text-sm text-red-600';
@@ -736,7 +856,7 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     setPage(0);
-  }, [tasks]);
+  }, [filteredSignature]);
 
   React.useEffect(() => {
     const translate = tRef.current;
@@ -907,21 +1027,15 @@ export default function LogisticsPage() {
           const name = tRef.current("logistics.geozoneDefaultName", {
             index: baseLength + createdZones.length + 1,
           });
-          const zone: GeoZone = {
+          const zone = buildGeoZone({
             id: zoneId,
             drawId,
             name,
             createdAt: now,
-            feature: {
-              type: "Feature",
-              geometry: feature.geometry,
-              properties: {
-                ...(feature.properties ?? {}),
-                zoneId,
-                active: true,
-              },
-            },
-          };
+            geometry: feature.geometry,
+            properties: feature.properties ?? {},
+            active: true,
+          });
           createdZones.push(zone);
           base.push(zone);
         }
@@ -993,18 +1107,19 @@ export default function LogisticsPage() {
           if (!updated) {
             return zone;
           }
-          return {
-            ...zone,
-            feature: {
-              type: "Feature",
-              geometry: updated.geometry,
-              properties: {
-                ...(updated.properties ?? {}),
-                zoneId: zone.id,
-                active: activeGeoZoneIds.includes(zone.id),
-              },
-            },
-          };
+          if (!isPolygonGeometry(updated.geometry)) {
+            return zone;
+          }
+          return buildGeoZone({
+            id: zone.id,
+            drawId: zone.drawId,
+            name: zone.name,
+            createdAt: zone.createdAt,
+            geometry: updated.geometry,
+            properties: updated.properties ?? zone.feature.properties ?? {},
+            active: activeGeoZoneIds.includes(zone.id),
+            bufferMeters: zone.metrics.bufferMeters,
+          });
         }),
       );
     };
@@ -1675,6 +1790,23 @@ export default function LogisticsPage() {
                           ? t("logistics.geozoneStatusActive")
                           : t("logistics.geozoneStatusInactive")}
                       </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div>
+                          {t("logistics.geozoneArea", {
+                            value: formatAreaMetric(zone.metrics?.areaKm2),
+                          })}
+                        </div>
+                        <div>
+                          {t("logistics.geozonePerimeter", {
+                            value: formatPerimeterMetric(zone.metrics?.perimeterKm),
+                          })}
+                        </div>
+                        <div>
+                          {t("logistics.geozoneBuffer", {
+                            value: formatBufferMetric(zone.metrics?.bufferMeters),
+                          })}
+                        </div>
+                      </div>
                     </li>
                   );
                 })}
@@ -1748,6 +1880,14 @@ export default function LogisticsPage() {
                     aria-hidden="true"
                   />
                   <span>{item.label}</span>
+                  {item.count ? (
+                    <span className="text-xs text-muted-foreground">
+                      {t("logistics.legendCount", {
+                        count: item.count,
+                        defaultValue: `(${item.count})`,
+                      })}
+                    </span>
+                  ) : null}
                 </li>
               ))}
               <li className="flex items-center gap-2">
@@ -1771,11 +1911,11 @@ export default function LogisticsPage() {
           {t("logistics.tasksHeading")}
         </h3>
         <TaskTable
-          tasks={tasks}
+          tasks={filteredTasksByZone}
           onDataChange={(rows) => setSorted(rows as RouteTask[])}
           onRowClick={openTask}
           page={page}
-          pageCount={Math.max(1, Math.ceil(tasks.length / 25))}
+          pageCount={Math.max(1, Math.ceil(filteredTasksByZone.length / 25))}
           onPageChange={setPage}
         />
       </section>

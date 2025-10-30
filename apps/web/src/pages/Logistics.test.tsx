@@ -5,7 +5,14 @@
 import "@testing-library/jest-dom";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { RoutePlan } from "shared";
@@ -83,6 +90,13 @@ jest.mock("react-i18next", () => {
       "logistics.geozoneRemove": "Удалить",
       "logistics.geozoneStatusActive": "Активна",
       "logistics.geozoneStatusInactive": "Неактивна",
+      "logistics.geozoneArea": "Площадь: {{value}}",
+      "logistics.geozonePerimeter": "Периметр: {{value}}",
+      "logistics.geozoneBuffer": "Буфер: {{value}}",
+      "logistics.legendTitle": "Легенда",
+      "logistics.legendCount": "({{count}})",
+      "logistics.legendStart": "Старт задачи",
+      "logistics.legendFinish": "Финиш задачи",
       "logistics.vehicleTasksCount": "Задач: {{count}}",
       "logistics.vehicleMileage": "Пробег: {{value}} км",
       "logistics.vehicleCountLabel": "Машины",
@@ -91,7 +105,19 @@ jest.mock("react-i18next", () => {
       "logistics.optimizeMethodAria": "Метод оптимизации",
     };
     if (dictionary[key]) {
-      return dictionary[key];
+      let template = dictionary[key];
+      if (options) {
+        template = template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, token) => {
+          if (Object.prototype.hasOwnProperty.call(options, token)) {
+            const value = options[token];
+            return value === undefined || value === null
+              ? ""
+              : String(value);
+          }
+          return `{{${token}}}`;
+        });
+      }
+      return template;
     }
     if (options && typeof options.defaultValue === "string") {
       return options.defaultValue;
@@ -119,7 +145,7 @@ const buildMapInstance = () => {
     }
     return bucket;
   };
-  const instance = {
+  const instance: any = {
     on: jest.fn((event: string, handler: (...args: any[]) => void) => {
       getHandlers(event).add(handler);
       if (event === "load") {
@@ -143,6 +169,12 @@ const buildMapInstance = () => {
     dragRotate: { disable: jest.fn() },
     touchZoomRotate: { disableRotation: jest.fn() },
     resize: jest.fn(),
+  };
+  instance.__handlers = handlers;
+  instance.__emit = (event: string, payload: any) => {
+    for (const handler of getHandlers(event)) {
+      handler(payload);
+    }
   };
   return instance;
 };
@@ -170,6 +202,7 @@ jest.mock(
 
 const drawChangeMode = jest.fn();
 const drawDelete = jest.fn();
+const optimizeRouteMock = jest.fn().mockResolvedValue(null);
 
 jest.mock(
   "@mapbox/mapbox-gl-draw",
@@ -177,6 +210,7 @@ jest.mock(
     jest.fn().mockImplementation(() => ({
       changeMode: drawChangeMode,
       delete: drawDelete,
+      get: jest.fn(() => null),
     })),
   { virtual: true },
 );
@@ -186,6 +220,7 @@ const mockTasks = [
     _id: "t1",
     id: "t1",
     title: "Задача 1",
+    status: "Новая",
     startCoordinates: { lat: 50, lng: 30 },
     finishCoordinates: { lat: 51, lng: 31 },
     logistics_details: {
@@ -198,16 +233,20 @@ const mockTasks = [
     _id: "t2",
     id: "t2",
     title: "Задача 2",
+    status: "В работе",
+    startCoordinates: { lat: 55, lng: 35 },
+    finishCoordinates: { lat: 55.5, lng: 35.5 },
     logistics_details: {
-      transport_type: "Без транспорта",
-      start_location: "",
-      end_location: "",
+      transport_type: "Грузовой",
+      start_location: "Дніпро",
+      end_location: "Харків",
     },
   },
   {
     _id: "t3",
     id: "t3",
     title: "Задача 3",
+    status: "Отменена",
     logistics_details: {
       transport_type: "Легковой",
     },
@@ -267,7 +306,10 @@ jest.mock("../services/osrm", () =>
   ]),
 );
 
-jest.mock("../services/optimizer", () => jest.fn().mockResolvedValue(null));
+jest.mock("../services/optimizer", () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => optimizeRouteMock(...args),
+}));
 
 const listRoutePlansMock = jest.fn();
 const updateRoutePlanMock = jest.fn();
@@ -474,6 +516,17 @@ jest.mock("../context/useTasks", () => {
   };
 });
 
+beforeAll(() => {
+  if (!globalThis.crypto) {
+    Object.defineProperty(globalThis, "crypto", {
+      value: { randomUUID: () => "test-uuid" },
+      configurable: true,
+    });
+  } else if (typeof globalThis.crypto.randomUUID !== "function") {
+    (globalThis.crypto as Crypto).randomUUID = () => "test-uuid";
+  }
+});
+
 describe("LogisticsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -482,6 +535,8 @@ describe("LogisticsPage", () => {
     listRoutePlansMock.mockReset();
     updateRoutePlanMock.mockReset();
     changeRoutePlanStatusMock.mockReset();
+    optimizeRouteMock.mockReset();
+    optimizeRouteMock.mockResolvedValue(null);
     listRoutePlansMock
       .mockResolvedValueOnce({ items: [draftPlan], total: 1 })
       .mockResolvedValue({ items: [], total: 0 });
@@ -525,7 +580,7 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot("logistics:all"),
-      ).toHaveLength(1),
+      ).toHaveLength(2),
     );
 
     const refreshButton = screen.getByRole("button", {
@@ -536,6 +591,96 @@ describe("LogisticsPage", () => {
 
     await waitFor(() =>
       expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("фильтрует задачи по геозоне и учитывает статусы", async () => {
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(
+        taskStateController.getIndexSnapshot("logistics:all"),
+      ).toHaveLength(2),
+    );
+
+    const mapModule = jest.requireMock("maplibre-gl");
+    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
+    expect(mapInstance).toBeTruthy();
+
+    await waitFor(() => {
+      const handlers: Set<(...args: unknown[]) => void> | undefined =
+        mapInstance.__handlers?.get("draw.create");
+      expect(handlers && handlers.size > 0).toBe(true);
+    });
+
+    const polygon = {
+      type: "Feature" as const,
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [
+          [
+            [29.5, 49.5],
+            [29.5, 51.5],
+            [31.5, 51.5],
+            [31.5, 49.5],
+            [29.5, 49.5],
+          ],
+        ],
+      },
+      properties: {},
+    };
+
+    act(() => {
+      mapInstance.__emit("draw.create", { features: [polygon] });
+    });
+
+    const zoneCheckbox = await screen.findByRole("checkbox", {
+      name: "Зона 1",
+    });
+    expect(zoneCheckbox).not.toBeChecked();
+    expect(await screen.findByText("Неактивна")).toBeInTheDocument();
+    fireEvent.click(zoneCheckbox);
+    expect(zoneCheckbox).toBeChecked();
+    expect(await screen.findByText("Активна")).toBeInTheDocument();
+
+    const areaElement = await screen.findByText(/Площадь:/);
+    expect(areaElement).not.toHaveTextContent("—");
+    expect(screen.getByText(/Периметр:/)).not.toHaveTextContent("—");
+    expect(screen.getByText(/Буфер:/)).not.toHaveTextContent("—");
+
+    const legendHeading = screen.getByRole("heading", { name: "Легенда" });
+    const legendSection = legendHeading.closest("section");
+    expect(legendSection).toBeTruthy();
+    const legendList = within(legendSection as HTMLElement).getByRole("list");
+    await waitFor(() =>
+      expect(
+        taskStateController.getIndexSnapshot("logistics:all"),
+      ).toEqual([expect.objectContaining({ _id: "t1" })]),
+    );
+    await waitFor(() =>
+      expect(within(legendList).queryAllByText("(1)")).toHaveLength(1),
+    );
+    const novaLegendItem = within(legendList)
+      .getAllByRole("listitem")
+      .find((item) => item.textContent?.includes("Новая"));
+    expect(novaLegendItem).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        within(novaLegendItem as HTMLElement).getByText("(1)"),
+      ).toBeInTheDocument(),
+    );
+
+    const optimizeButton = screen.getByRole("button", {
+      name: "Просчёт логистики",
+    });
+    fireEvent.click(optimizeButton);
+
+    await waitFor(() =>
+      expect(optimizeRouteMock).toHaveBeenCalledWith(["t1"], 1, "angle"),
     );
   });
 });

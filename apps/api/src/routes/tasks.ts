@@ -2,6 +2,7 @@
 // Модули: express, express-validator, controllers/tasks, middleware/auth, multer, sharp, fluent-ffmpeg, clamdjs, wgLogEngine
 import fs from 'fs';
 import path from 'path';
+import { randomBytes } from 'crypto';
 import multer from 'multer';
 import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
@@ -35,7 +36,17 @@ import {
 } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
 import { coerceAttachments } from '../utils/attachments';
-import { registerUploadedFile } from '../utils/requestUploads';
+import {
+  appendPendingUpload,
+} from '../utils/requestUploads';
+import {
+  ensureUploadContext,
+  clearUploadContext,
+} from '../tasks/uploadContext';
+import {
+  finalizePendingUploads,
+  purgeTemporaryUploads,
+} from '../tasks/uploadFinalizer';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
@@ -105,7 +116,7 @@ async function createThumbnail(
   try {
     if (file.mimetype.startsWith('image/')) {
       await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
-      return relativeToUploads(thumbPath);
+      return thumbPath;
     }
     if (file.mimetype.startsWith('video/')) {
       await new Promise<void>((resolve, reject) => {
@@ -119,7 +130,7 @@ async function createThumbnail(
             size: '320x?',
           });
       });
-      return relativeToUploads(thumbPath);
+      return thumbPath;
     }
   } catch (error) {
     await fs.promises.unlink(thumbPath).catch(() => undefined);
@@ -366,39 +377,38 @@ export const processUploads: RequestHandler = async (req, res, next) => {
           return;
         }
       }
-      const attachments = await Promise.all(
-        files.map(async (f) => {
-          const original = path.basename(f.originalname);
-          const storedPath = path.join(f.destination, f.filename);
-          const relative = relativeToUploads(storedPath);
-          if (!relative) {
-            await fs.promises.unlink(storedPath).catch(() => undefined);
-            const err = new Error('INVALID_PATH');
-            throw err;
-          }
-          const thumbRel = await createThumbnail(f);
-          const doc = await File.create({
-            userId,
-            name: original,
-            path: relative,
-            thumbnailPath: thumbRel,
-            type: f.mimetype,
-            size: f.size,
-          });
-          registerUploadedFile(req, String(doc._id));
-          await writeLog('Загружен файл', 'info', { userId, name: original });
-          const baseUrl = buildFileUrl(doc._id);
-          return {
-            name: original,
-            url: baseUrl,
-            thumbnailUrl: thumbRel ? buildThumbnailUrl(doc._id) : undefined,
-            uploadedBy: userId,
-            uploadedAt: new Date(),
-            type: f.mimetype,
-            size: f.size,
-          };
-        }),
-      );
+      const context = ensureUploadContext(req as RequestWithUser, userId);
+      const attachments: AttachmentItem[] = [];
+      for (const f of files) {
+        const original = path.basename(f.originalname);
+        const storedPath = path.resolve(f.destination, f.filename);
+        if (!storedPath.startsWith(context.dir + path.sep)) {
+          await fs.promises.unlink(storedPath).catch(() => undefined);
+          const err = new Error('INVALID_PATH');
+          throw err;
+        }
+        const thumbAbs = await createThumbnail(f);
+        const placeholder = `temp://${randomBytes(12).toString('hex')}`;
+        appendPendingUpload(req, {
+          placeholder,
+          tempPath: storedPath,
+          tempThumbnailPath: thumbAbs,
+          tempDir: context.dir,
+          originalName: original,
+          mimeType: f.mimetype,
+          size: f.size,
+          userId,
+        });
+        attachments.push({
+          name: original,
+          url: placeholder,
+          thumbnailUrl: undefined,
+          uploadedBy: userId,
+          uploadedAt: new Date(),
+          type: f.mimetype,
+          size: f.size,
+        });
+      }
       createdAttachments = attachments;
     }
     (req.body as BodyWithAttachments).attachments = mergeAttachments(
@@ -407,6 +417,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
     );
     next();
   } catch (error) {
+    await purgeTemporaryUploads(req).catch(() => undefined);
     if (res.headersSent) return;
     if ((error as Error).message === 'INVALID_PATH') {
       res.status(400).json({ error: 'Недопустимый путь файла' });
@@ -420,10 +431,20 @@ const router: Router = Router();
 const ctrl = container.resolve(TasksController);
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
-    const userId = (req as RequestWithUser).user?.id;
-    const dest = path.join(uploadsDir, String(userId));
-    fs.mkdirSync(dest, { recursive: true });
-    cb(null, dest);
+    const userId = resolveNumericUserId((req as RequestWithUser).user?.id);
+    if (userId === undefined) {
+      cb(new Error('UPLOAD_USER_RESOLVE_FAILED'), '');
+      return;
+    }
+    let contextDir = '';
+    try {
+      const context = ensureUploadContext(req as RequestWithUser, userId);
+      contextDir = context.dir;
+      fs.mkdirSync(contextDir, { recursive: true });
+      cb(null, contextDir);
+    } catch (error) {
+      cb(error as Error, contextDir);
+    }
   },
   filename: (_req, file, cb) => {
     const original = path.basename(file.originalname);
@@ -509,8 +530,19 @@ const handleInlineUpload: RequestHandler = async (req, res) => {
         else resolve();
       });
     });
+    if (res.headersSent) {
+      await purgeTemporaryUploads(req).catch(() => undefined);
+      return;
+    }
+    const bodyWithAttachments = req.body as BodyWithAttachments;
+    const finalizeResult = await finalizePendingUploads({
+      req: req as RequestWithUser,
+      attachments: bodyWithAttachments.attachments ?? [],
+    });
+    bodyWithAttachments.attachments =
+      finalizeResult.attachments as AttachmentItem[];
     if (res.headersSent) return;
-    const attachment = (req.body as BodyWithAttachments).attachments?.[0];
+    const attachment = bodyWithAttachments.attachments?.[0];
     if (!attachment?.url) {
       res.status(500).json({ error: 'Не удалось сохранить файл' });
       return;
@@ -575,7 +607,8 @@ export const handleChunks: RequestHandler = async (req, res) => {
       res.status(403).json({ error: 'Не удалось определить пользователя' });
       return;
     }
-    const baseDir = path.resolve(uploadsDirAbs, String(userId));
+    const context = ensureUploadContext(req as RequestWithUser, userId);
+    const baseDir = context.dir;
     const dir = path.resolve(baseDir, fileId);
     // Не допускаем выход за пределы каталога пользователя
     if (!dir.startsWith(baseDir + path.sep)) {
@@ -625,10 +658,10 @@ export const handleChunks: RequestHandler = async (req, res) => {
         res.status(400).json({ error: 'Файл превышает допустимый размер' });
         return;
       }
-      const userDir = path.resolve(uploadsDirAbs, String(userId));
-      fs.mkdirSync(userDir, { recursive: true });
-      const target = path.resolve(userDir, storedName);
-      if (!target.startsWith(userDir + path.sep)) {
+      const targetDir = context.dir;
+      fs.mkdirSync(targetDir, { recursive: true });
+      const target = path.resolve(targetDir, storedName);
+      if (!target.startsWith(targetDir + path.sep)) {
         fs.rmSync(final, { force: true });
         cleanupTemp();
         res.status(400).json({ error: 'Недопустимое имя файла' });
@@ -637,7 +670,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
       fs.renameSync(final, target);
       const diskFile: Express.Multer.File = {
         ...file,
-        destination: userDir,
+        destination: targetDir,
         filename: storedName,
         path: target,
         size: assembledSize,
@@ -651,8 +684,19 @@ export const handleChunks: RequestHandler = async (req, res) => {
       } finally {
         cleanupTemp();
       }
+      if (res.headersSent) {
+        await purgeTemporaryUploads(req).catch(() => undefined);
+        return;
+      }
+      const bodyWithAttachments = req.body as BodyWithAttachments;
+      const finalizeResult = await finalizePendingUploads({
+        req: req as RequestWithUser,
+        attachments: bodyWithAttachments.attachments ?? [],
+      });
+      bodyWithAttachments.attachments =
+        finalizeResult.attachments as AttachmentItem[];
       if (res.headersSent) return;
-      const attachment = (req.body as BodyWithAttachments).attachments?.[0];
+      const attachment = bodyWithAttachments.attachments?.[0];
       if (!attachment) {
         res.sendStatus(500);
         return;

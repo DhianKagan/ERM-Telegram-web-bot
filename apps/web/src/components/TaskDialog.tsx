@@ -871,7 +871,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     defaultValues: {
       title: "",
       description: "",
-      assigneeId: user ? String(user.telegram_id) : "",
+      assigneeId: "",
       startDate: "",
       dueDate: "",
     },
@@ -948,7 +948,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const watchedDraftValues = watch();
   const startDateValue = watch("startDate");
   const dueDateValue = watch("dueDate");
-  const assigneeValue = watch("assigneeId");
   const shouldAutoSyncDueDate = React.useMemo(() => {
     if (!startDateValue) return false;
     if (!isEdit) return true;
@@ -2056,12 +2055,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStartDateNotice(
       startInstant ? formatHistoryInstant(startInstant) : null,
     );
-    const defaultAssigneeIds =
-      initialKind === "request"
-        ? []
-        : typeof user?.telegram_id === "number"
-          ? [user.telegram_id]
-          : [];
+    const defaultAssigneeIds: number[] = [];
     setTaskAssigneeIds(defaultAssigneeIds);
     setInitialStatus(DEFAULT_STATUS);
     initialRef.current = {
@@ -2077,8 +2071,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       status: DEFAULT_STATUS,
       completedAt: "",
       creator: user ? String(user.telegram_id) : "",
-      assigneeId:
-        initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
+      assigneeId: "",
       assigneeIds: defaultAssigneeIds,
       start: "",
       startLink: "",
@@ -2107,8 +2100,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     stableReset({
       title: "",
       description: "",
-      assigneeId:
-        initialKind === "request" ? "" : user ? String(user.telegram_id) : "",
+      assigneeId: "",
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
     });
@@ -2255,37 +2247,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setTransportVehicleRegistration,
     t,
   ]);
-
-  React.useEffect(() => {
-    if (isEdit) return;
-    const current =
-      typeof assigneeValue === "string" ? assigneeValue.trim() : "";
-    const hasCurrentOption =
-      current.length > 0 &&
-      users.some((candidate) => String(candidate.telegram_id) === current);
-    if (current && hasCurrentOption) {
-      hasAutofilledAssignee.current = true;
-      return;
-    }
-    if (hasAutofilledAssignee.current) return;
-    const preferred =
-      (user &&
-        users.find(
-          (candidate) => candidate.telegram_id === user.telegram_id,
-        )) ||
-      users[0];
-    if (!preferred) return;
-    const candidateId = String(preferred.telegram_id);
-    if (!candidateId) return;
-    setValue("assigneeId", candidateId, {
-      shouldDirty: false,
-      shouldTouch: false,
-    });
-    if (initialRef.current) {
-      initialRef.current.assigneeId = candidateId;
-    }
-    hasAutofilledAssignee.current = true;
-  }, [assigneeValue, isEdit, user, users, setValue]);
 
   const runStartSearch = React.useCallback(
     (value: string) => {
@@ -3005,7 +2966,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     } finally {
       setIsSubmitting(false);
     }
-  });
+  },
+  (formErrors: FieldErrors<TaskFormValues>) => {
+    if (formErrors.assigneeId) {
+      setIsSubmitting(false);
+      setAlertMsg(t("assigneeRequiredError"));
+    }
+  },
+);
 
   const [alertMsg, setAlertMsg] = React.useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = React.useState(false);
@@ -3324,6 +3292,35 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             <>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-5">
+                  <div>
+                    <Controller
+                      name="assigneeId"
+                      control={control}
+                      render={({ field }) => (
+                        <MultiUserSelect
+                          label={t("assignees")}
+                          users={users}
+                          value={
+                            typeof field.value === "string" &&
+                            field.value.trim().length > 0
+                              ? field.value.trim()
+                              : null
+                          }
+                          onChange={(val) => field.onChange(val ?? "")}
+                          onBlur={field.onBlur}
+                          disabled={!editing}
+                          required
+                          placeholder={t("assigneeSelectPlaceholder")}
+                          hint={
+                            !errors.assigneeId
+                              ? t("assigneeSelectHint")
+                              : undefined
+                          }
+                          error={errors.assigneeId?.message ?? null}
+                        />
+                      )}
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium">
                       {t("taskTitle")}
@@ -4209,35 +4206,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <Controller
-                      name="assigneeId"
-                      control={control}
-                      render={({ field }) => (
-                        <MultiUserSelect
-                          label={t("assignees")}
-                          users={users}
-                          value={
-                            typeof field.value === "string" &&
-                            field.value.trim().length > 0
-                              ? field.value.trim()
-                              : null
-                          }
-                          onChange={(val) => field.onChange(val ?? "")}
-                          onBlur={field.onBlur}
-                          disabled={!editing}
-                          required
-                          placeholder={t("assigneeSelectPlaceholder")}
-                          hint={
-                            !errors.assigneeId
-                              ? t("assigneeSelectHint")
-                              : undefined
-                          }
-                          error={errors.assigneeId?.message ?? null}
-                        />
-                      )}
-                    />
                   </div>
                   {showTransportFields && (
                     <div className="space-y-4">

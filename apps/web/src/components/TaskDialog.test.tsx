@@ -8,13 +8,14 @@ import TaskDialog from "./TaskDialog";
 
 const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
 const translate = (value: string) => value;
+const mockI18n = { language: "ru", changeLanguage: jest.fn() };
 
 jest.mock("../context/useAuth", () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
 jest.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: translate }),
+  useTranslation: () => ({ t: translate, i18n: mockI18n }),
 }));
 
 jest.mock("./CKEditorPopup", () => () => <div />);
@@ -76,7 +77,7 @@ const taskData = {
   history: [],
 };
 
-const defaultAuthFetch = (url: string) => {
+const defaultAuthFetch = (url: string, _options?: any) => {
   if (url === "/api/v1/collections/departments") {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
@@ -92,6 +93,12 @@ const defaultAuthFetch = (url: string) => {
   if (url === "/api/v1/tasks/report/summary") {
     return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
   }
+  if (url.startsWith("/api/v1/maps/search")) {
+    return Promise.resolve({ ok: true, json: async () => ({ items: [] }) });
+  }
+  if (url.startsWith("/api/v1/maps/reverse")) {
+    return Promise.resolve({ ok: true, json: async () => ({ place: null }) });
+  }
   if (url.startsWith("/api/v1/task-drafts/")) {
     return Promise.resolve({
       ok: false,
@@ -106,8 +113,28 @@ const authFetchMock = jest.fn(defaultAuthFetch);
 
 jest.mock("../utils/authFetch", () => ({
   __esModule: true,
-  default: (url: string) => authFetchMock(url),
+  default: (url: string, options?: any) => authFetchMock(url, options),
 }));
+
+jest.mock("maplibre-gl", () => ({
+  Map: jest.fn(() => ({
+    on: jest.fn(),
+    off: jest.fn(),
+    remove: jest.fn(),
+    addControl: jest.fn(),
+    easeTo: jest.fn(),
+    getZoom: jest.fn().mockReturnValue(10),
+  })),
+  NavigationControl: jest.fn(),
+  Marker: jest.fn(() => ({
+    setLngLat: jest.fn().mockReturnThis(),
+    addTo: jest.fn().mockReturnThis(),
+    on: jest.fn(),
+    remove: jest.fn(),
+  })),
+}));
+
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
 
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({
@@ -150,6 +177,7 @@ describe("TaskDialog", () => {
       ok: true,
       json: async () => ({ ...taskData, _id: "1" }),
     });
+    mockI18n.language = "ru";
   });
 
   it("сохраняет задачу и повторно открывает форму", async () => {
@@ -419,5 +447,37 @@ describe("TaskDialog", () => {
         }),
       ),
     );
+  });
+
+  it("запрашивает подсказки адреса с текущим языком", async () => {
+    jest.useFakeTimers();
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+    const logisticsToggle = await screen.findByRole("checkbox", {
+      name: "logisticsToggle",
+    });
+    act(() => {
+      fireEvent.click(logisticsToggle);
+    });
+    const input = await screen.findByLabelText("startPoint");
+    act(() => {
+      fireEvent.change(input, { target: { value: "Киев" } });
+      jest.advanceTimersByTime(400);
+    });
+    await waitFor(() => {
+      const searchCall = authFetchMock.mock.calls.find(([url]) =>
+        typeof url === "string" && url.startsWith("/api/v1/maps/search"),
+      );
+      expect(searchCall).toBeTruthy();
+      expect(searchCall?.[1]).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({ "Accept-Language": "ru" }),
+        }),
+      );
+    });
+    jest.useRealTimers();
   });
 });

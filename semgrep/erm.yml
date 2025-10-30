@@ -1,0 +1,68 @@
+# Назначение файла: расширенные правила Semgrep для обнаружения пропусков защитных проверок и секретов.
+# Основные модули: проверки токенов, CSRF-защиты, валидации входных данных и работы с localStorage.
+rules:
+  - id: erm-potential-secret-in-code
+    message: "Обнаружена строка, похожая на секрет или токен. Используйте переменные окружения и хранилища секретов."
+    severity: ERROR
+    languages:
+      - javascript
+      - typescript
+      - yaml
+      - json
+    pattern-regex: "(?i)(['\"])((?:sk|ghp|xox[abpst]|ya29|eyJ)[0-9a-zA-Z_-]{16,})(['\"])"
+
+  - id: erm-express-missing-csrf
+    message: "Добавьте CSRF-мидлвару перед обработчиком запроса."
+    severity: INFO
+    languages:
+      - javascript
+      - typescript
+    patterns:
+      - pattern: $APP.$METHOD($PATH, ..., $HANDLER)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: "(post|put|patch|delete)"
+      - pattern-not: $APP.$METHOD($PATH, ..., $CSRF_MW, ...)
+      - metavariable-regex:
+          metavariable: $CSRF_MW
+          regex: ".*csrf.*"
+
+  - id: erm-express-raw-body-without-validation
+    message: "Перед использованием req.body выполните валидацию через zod/yup."
+    severity: WARNING
+    languages:
+      - javascript
+      - typescript
+    patterns:
+      - pattern: |
+          function $FUNC($REQ, $RES, ...$REST) {
+            ...
+            $DATA = $REQ.body;
+            ...
+          }
+      - pattern-not: |
+          function $FUNC($REQ, $RES, ...$REST) {
+            ...
+            $SCHEMA.parse($REQ.body)
+            ...
+          }
+      - pattern-not: |
+          function $FUNC($REQ, $RES, ...$REST) {
+            ...
+            $SCHEMA.safeParse($REQ.body)
+            ...
+          }
+      - pattern-not: |
+          function $FUNC($REQ, $RES, ...$REST) {
+            ...
+            yup.$METHOD($REQ.body)
+            ...
+          }
+
+  - id: erm-direct-localstorage-access
+    message: "Работа с localStorage должна быть инкапсулирована в безопасных утилитах."
+    severity: WARNING
+    languages:
+      - javascript
+      - typescript
+    pattern: localStorage.$PROPERTY(...)

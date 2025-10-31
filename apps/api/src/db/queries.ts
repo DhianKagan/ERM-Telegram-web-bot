@@ -1798,6 +1798,7 @@ export default {
   bulkUpdate,
   deleteTask,
   summary,
+  chart: tasksChart,
   tasksChart,
   createUser,
   generateUserCredentials,

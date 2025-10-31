@@ -1,7 +1,11 @@
 // Назначение файла: интерфейсы сервисов для DI
 // Основные модули: db/queries, services, models
 import type { TaskDocument } from '../db/model';
-import type { TaskFilters, SummaryFilters } from '../db/queries';
+import type {
+  TaskFilters,
+  SummaryFilters,
+  TasksChartResult,
+} from '../db/queries';
 
 export interface ITasksService {
   get(
@@ -16,6 +20,7 @@ export interface ITasksService {
   bulk(ids: string[], data: Partial<TaskDocument>): Promise<void>;
   mentioned(userId: string): Promise<TaskDocument[]>;
   summary(filters: SummaryFilters): Promise<{ count: number; time: number }>;
+  chart(filters: SummaryFilters): Promise<TasksChartResult>;
   remove(id: string): Promise<TaskDocument | null>;
 }
 

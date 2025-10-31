@@ -29,6 +29,7 @@ jest.mock('../apps/api/src/di', () => ({
         (_req: unknown, _res: unknown, next?: () => void) => next?.(),
       ),
       summary: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      chart: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
       detail: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
       createRequest: [
         jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),

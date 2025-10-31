@@ -30,6 +30,7 @@ function createRepo() {
     addTime: jest.fn(),
     bulkUpdate: jest.fn(),
     summary: jest.fn(),
+    chart: jest.fn(),
     deleteTask: jest.fn(),
     listMentionedTasks: jest.fn(),
   };

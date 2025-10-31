@@ -4,7 +4,11 @@ import { getRouteDistance, clearRouteCache } from '../services/route';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
-import type { TaskFilters, SummaryFilters } from '../db/queries';
+import type {
+  TaskFilters,
+  SummaryFilters,
+  TasksChartResult,
+} from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
@@ -29,6 +33,7 @@ interface TasksRepository {
   addTime(id: string, minutes: number): Promise<TaskDocument | null>;
   bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
   summary(filters: SummaryFilters): Promise<{ count: number; time: number }>;
+  chart(filters: SummaryFilters): Promise<TasksChartResult>;
   deleteTask(id: string, actorId?: number): Promise<TaskDocument | null>;
   listMentionedTasks(userId: string | number): Promise<TaskDocument[]>;
 }
@@ -314,6 +319,10 @@ class TasksService {
 
   summary(filters: SummaryFilters) {
     return this.repo.summary(filters);
+  }
+
+  chart(filters: SummaryFilters): Promise<TasksChartResult> {
+    return this.repo.chart(filters);
   }
 
   async remove(id: string, actorId?: number) {

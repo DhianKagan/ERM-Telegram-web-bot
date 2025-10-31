@@ -845,6 +845,16 @@ router.get(
 );
 
 router.get(
+  '/report/chart',
+  [
+    query('from').optional().isISO8601(),
+    query('to').optional().isISO8601(),
+    query('kind').optional().isIn(['task', 'request']),
+  ],
+  ctrl.chart as RequestHandler,
+);
+
+router.get(
   '/:id',
   // Приводим лимитер к типу Express 5
   detailLimiter as unknown as RequestHandler,

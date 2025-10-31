@@ -74,6 +74,7 @@ type RepositoryMocks = {
   getTasks: jest.Mock;
   getTask: jest.Mock;
   summary: jest.Mock;
+  chart: jest.Mock;
   deleteTask: jest.Mock;
   listMentionedTasks: jest.Mock;
 };
@@ -92,6 +93,7 @@ const createRepo = (): RepositoryMocks => ({
   getTasks: jest.fn(),
   getTask: jest.fn(),
   summary: jest.fn(),
+  chart: jest.fn(),
   deleteTask: jest.fn(),
   listMentionedTasks: jest.fn(),
 });

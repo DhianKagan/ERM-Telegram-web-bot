@@ -76,7 +76,7 @@
 - Если доступна команда `docker` и есть `docker-compose.yml`, выполняйте `docker compose config`.
 - Настроен Prettier, используйте `pnpm format` перед коммитами.
 - Линтер запускайте `pnpm lint`.
-  - Сборка клиента проверяется `pnpm size`; файлы `index-*.js` в `apps/api/public/js` меньше 900 KB.
+- Сборка клиента проверяется `pnpm size`; перед запуском соберите фронтенд `pnpm --filter web run build:dist`, лимит для `apps/web/dist/*.js` — 200 KB.
 - Скрипты зависимостей проверяются `pnpm approve-builds`, CI падает при появлении новых скриптов.
 - Статическую страницу `apps/web/index.html` проверяйте на контраст командой `pnpm a11y` через `@axe-core/cli` и `vite preview`.
 - Сценарии Playwright и Supertest находятся в каталоге `tests` и запускаются командами `pnpm test:e2e` и `pnpm test:api`.

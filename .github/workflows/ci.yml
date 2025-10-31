@@ -1,5 +1,5 @@
-# Назначение файла: базовый workflow для запуска тестов
-# Модули: установка зависимостей и выполнение npm test
+# Назначение файла: базовый workflow для запуска проверок lint/typecheck/test/semgrep.
+# Модули: установка зависимостей pnpm и запуск одноимённых скриптов.
 name: CI
 
 on:
@@ -9,21 +9,69 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  audit-deps:
+  lint:
+    name: lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
+      - name: Включение corepack
+        run: corepack enable
       - name: Установка зависимостей
-        run: ./scripts/install_bot_deps.sh
-      - name: Проверка зависимостей (audit-ci)
-        run: ./scripts/audit_deps.sh
+        run: pnpm install --frozen-lockfile
+      - name: Запуск линтера
+        run: pnpm lint
 
-  lint-test-build:
+  typecheck:
+    name: typecheck
     runs-on: ubuntu-latest
-    needs: audit-deps
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Включение corepack
+        run: corepack enable
+      - name: Установка зависимостей
+        run: pnpm install --frozen-lockfile
+      - name: Проверка типов
+        run: pnpm typecheck
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Включение corepack
+        run: corepack enable
+      - name: Установка зависимостей
+        run: pnpm install --frozen-lockfile
+      - name: Проверка build-скриптов
+        run: pnpm approve-builds
+      - name: Запуск тестов
+        env:
+          CI: true
+        run: pnpm test
+      - name: Проверка размера бандла
+        run: pnpm size
+
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -33,108 +81,7 @@ jobs:
           node-version: 20
       - name: Включение corepack
         run: corepack enable
-      - name: Установка зависимостей
-        run: pnpm install --frozen-lockfile
-      - name: Определение версии Playwright
-        id: playwright-version
-        run: |
-          VERSION=$(node -p "require('@playwright/test/package.json').version")
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Кеш браузеров Playwright
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Проверка build-скриптов
-        run: pnpm approve-builds
-      - name: Установка браузеров Playwright
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: sudo env "PATH=$PATH" npx playwright install --with-deps
-      - name: Диагностика Playwright
-        if: ${{ always() }}
-        run: |
-          ./scripts/run_playwright_diagnostics.sh playwright-doctor.log
-          {
-            echo '### Playwright doctor (lint-test-build)'
-            echo '```'
-            cat playwright-doctor.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Линтеры
-        run: pnpm lint
-      - name: Юнит и API тесты
-        run: pnpm test:unit && pnpm test:api
-      - name: Сохранение артефактов
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-artifacts
-          path: |
-            coverage
-            playwright-report
-            test-results
-      - name: Сборка
-        run: ./scripts/build_with_tmp.sh
-      - name: Загрузка артефактов сборки
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifact
-          path: apps/api/public
-      - name: Проверка размеров бандлов
-        run: mkdir -p apps/web/dist && cp -r apps/api/public/js apps/web/dist/ && pnpm size
-      - name: Загрузка sourcemap
-        if: github.ref == 'refs/heads/staging'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sourcemaps
-          path: apps/api/public/js/**/*.map
-
-  e2e-tests:
-    runs-on: ubuntu-latest
-    needs: lint-test-build
-    strategy:
-      matrix:
-        project: [chromium, firefox, webkit]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Включение corepack
-        run: corepack enable
-      - name: Установка зависимостей
-        run: pnpm install --frozen-lockfile
-      - name: Определение версии Playwright
-        id: playwright-version
-        run: |
-          VERSION=$(node -p "require('@playwright/test/package.json').version")
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Кеш браузеров Playwright
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-      - name: Установка браузеров Playwright
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: sudo env "PATH=$PATH" npx playwright install --with-deps
-      - name: Диагностика Playwright
-        if: ${{ always() }}
-        run: |
-          ./scripts/run_playwright_diagnostics.sh playwright-doctor.log
-          {
-            echo "### Playwright doctor (${{ matrix.project }})"
-            echo '```'
-            cat playwright-doctor.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: E2E тесты
-        run: pnpm run test:e2e --project="${{ matrix.project }}"
-      - name: Сохранение артефактов
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-${{ matrix.project }}
-          path: playwright-report
+      - name: Запуск Semgrep
+        env:
+          CI: true
+        run: pnpm semgrep

@@ -1370,6 +1370,114 @@ export interface SummaryFilters {
   kind?: TaskKind;
 }
 
+export interface TasksChartResult {
+  labels: string[];
+  data: number[];
+}
+
+const getCurrentTimeZone = (): string => {
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return resolved || 'UTC';
+  } catch (error) {
+    return 'UTC';
+  }
+};
+
+const toDateSafe = (value: unknown): Date | undefined => {
+  if (!value) return undefined;
+  const candidate = new Date(value as string | number | Date);
+  return Number.isFinite(candidate.getTime()) ? candidate : undefined;
+};
+
+const startOfDay = (value: Date): Date => {
+  const result = new Date(value);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const endOfDay = (value: Date): Date => {
+  const result = new Date(value);
+  result.setHours(23, 59, 59, 999);
+  return result;
+};
+
+export async function tasksChart(
+  filters: SummaryFilters = {},
+): Promise<TasksChartResult> {
+  const now = new Date();
+  const toCandidate = toDateSafe(filters.to) ?? now;
+  const fromCandidate = toDateSafe(filters.from);
+  const rangeEnd = endOfDay(toCandidate);
+  const rangeStart = startOfDay(
+    fromCandidate && fromCandidate.getTime() <= rangeEnd.getTime()
+      ? fromCandidate
+      : new Date(toCandidate.getTime() - 6 * 24 * 60 * 60 * 1000),
+  );
+  const match: Record<string, unknown> = {
+    createdAt: {
+      $gte: rangeStart,
+      $lte: rangeEnd,
+    },
+  };
+  if (filters.kind === 'task' || filters.kind === 'request') {
+    match.kind = filters.kind;
+  }
+  if (filters.status) {
+    match.status = filters.status;
+  }
+  if (filters.assignees && filters.assignees.length > 0) {
+    match.assignees = { $in: filters.assignees };
+  }
+  const timeZone = getCurrentTimeZone();
+  const dayFormatter = new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+  });
+  const isoDayFormatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  });
+  const pipeline: PipelineStage[] = [
+    { $match: match },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: '$createdAt',
+            timezone: timeZone,
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ];
+  const aggregated = await Task.aggregate(pipeline);
+  const counts = new Map<string, number>();
+  aggregated.forEach((entry) => {
+    if (entry && typeof entry === 'object') {
+      const key = typeof entry._id === 'string' ? entry._id : undefined;
+      const value = Number((entry as { count?: number }).count ?? 0);
+      if (key) counts.set(key, Number.isFinite(value) ? value : 0);
+    }
+  });
+  const labels: string[] = [];
+  const data: number[] = [];
+  const endDay = startOfDay(rangeEnd);
+  for (let cursor = startOfDay(rangeStart); cursor <= endDay; ) {
+    const isoKey = isoDayFormatter.format(cursor);
+    labels.push(dayFormatter.format(cursor));
+    data.push(counts.get(isoKey) ?? 0);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return { labels, data };
+}
+
 export async function summary(
   filters: SummaryFilters = {},
 ): Promise<{ count: number; time: number }> {
@@ -1695,6 +1803,7 @@ export default {
   bulkUpdate,
   deleteTask,
   summary,
+  tasksChart,
   createUser,
   generateUserCredentials,
   getUser,

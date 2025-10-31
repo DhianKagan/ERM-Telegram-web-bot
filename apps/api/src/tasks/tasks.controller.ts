@@ -2964,8 +2964,8 @@ export default class TasksController {
     res.json([]);
   };
 
-  summary = async (req: Request, res: Response) => {
-    const filters: Record<string, unknown> = { ...req.query };
+  private normalizeReportFilters(source: Request['query']) {
+    const filters: Record<string, unknown> = { ...source };
     if (typeof filters.kind === 'string') {
       const trimmed = filters.kind.trim();
       if (trimmed === 'task' || trimmed === 'request') {
@@ -2974,7 +2974,33 @@ export default class TasksController {
         delete filters.kind;
       }
     }
+    if (typeof filters.from === 'string') {
+      const trimmed = filters.from.trim();
+      if (trimmed) {
+        filters.from = trimmed;
+      } else {
+        delete filters.from;
+      }
+    }
+    if (typeof filters.to === 'string') {
+      const trimmed = filters.to.trim();
+      if (trimmed) {
+        filters.to = trimmed;
+      } else {
+        delete filters.to;
+      }
+    }
+    return filters;
+  }
+
+  summary = async (req: Request, res: Response) => {
+    const filters = this.normalizeReportFilters(req.query);
     res.json(await this.service.summary(filters));
+  };
+
+  chart = async (req: Request, res: Response) => {
+    const filters = this.normalizeReportFilters(req.query);
+    res.json(await this.service.chart(filters));
   };
 
   remove = async (req: RequestWithUser, res: Response) => {

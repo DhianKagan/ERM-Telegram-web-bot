@@ -10,20 +10,53 @@ interface ChartState {
   categories: string[];
 }
 
-export default function TasksChart() {
+interface TasksChartProps {
+  filters?: {
+    from?: string;
+    to?: string;
+  };
+}
+
+const buildQuery = (filters?: TasksChartProps['filters']) => {
+  const params = new URLSearchParams();
+  if (filters?.from) params.set('from', filters.from);
+  if (filters?.to) params.set('to', filters.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
+
+export default function TasksChart({ filters }: TasksChartProps) {
   const [series, setSeries] = useState<ChartState["series"]>([{ data: [] }]);
   const [categories, setCategories] = useState<ChartState["categories"]>([]);
   const { theme } = useTheme();
 
   useEffect(() => {
-    authFetch("/api/v1/tasks/report/chart")
+    let cancelled = false;
+    authFetch(`/api/v1/tasks/report/chart${buildQuery(filters)}`)
       .then((r) => (r.ok ? r.json() : { data: [], labels: [] }))
       .then(({ data, labels }) => {
-        setSeries([{ data }]);
-        setCategories(labels);
+        if (cancelled) return;
+        const normalizedData = Array.isArray(data)
+          ? data.map((value) => {
+              const numeric = Number(value);
+              return Number.isFinite(numeric) ? numeric : 0;
+            })
+          : [];
+        const normalizedLabels = Array.isArray(labels)
+          ? labels.map((label) => String(label))
+          : [];
+        setSeries([{ data: normalizedData }]);
+        setCategories(normalizedLabels);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (cancelled) return;
+        setSeries([{ data: [] }]);
+        setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filters?.from, filters?.to]);
 
   const options = {
     chart: {

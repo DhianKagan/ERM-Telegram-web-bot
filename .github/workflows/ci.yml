@@ -66,6 +66,8 @@ jobs:
         env:
           CI: true
         run: pnpm test
+      - name: Сборка фронтенда для size-limit
+        run: pnpm --filter web run build:dist
       - name: Проверка размера бандла
         run: pnpm size
 

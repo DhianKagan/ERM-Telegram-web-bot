@@ -9,6 +9,7 @@
     "prebuild": "node ../../scripts/ensure-fonts.mjs",
     "dev": "vite",
     "build": "vite build",
+    "build:dist": "pnpm run prebuild && vite build --outDir dist && node ../../scripts/prepare_size_artifacts.mjs",
     "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js .",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",

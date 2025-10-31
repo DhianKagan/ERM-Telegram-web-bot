@@ -1375,10 +1375,14 @@ export interface TasksChartResult {
   data: number[];
 }
 
-const DAY_FORMATTER = new Intl.DateTimeFormat('ru-RU', {
-  day: '2-digit',
-  month: '2-digit',
-});
+const getCurrentTimeZone = (): string => {
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return resolved || 'UTC';
+  } catch (error) {
+    return 'UTC';
+  }
+};
 
 const toDateSafe = (value: unknown): Date | undefined => {
   if (!value) return undefined;
@@ -1425,12 +1429,28 @@ export async function tasksChart(
   if (filters.assignees && filters.assignees.length > 0) {
     match.assignees = { $in: filters.assignees };
   }
+  const timeZone = getCurrentTimeZone();
+  const dayFormatter = new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+  });
+  const isoDayFormatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  });
   const pipeline: PipelineStage[] = [
     { $match: match },
     {
       $group: {
         _id: {
-          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: '$createdAt',
+            timezone: timeZone,
+          },
         },
         count: { $sum: 1 },
       },
@@ -1450,8 +1470,8 @@ export async function tasksChart(
   const data: number[] = [];
   const endDay = startOfDay(rangeEnd);
   for (let cursor = startOfDay(rangeStart); cursor <= endDay; ) {
-    const isoKey = cursor.toISOString().slice(0, 10);
-    labels.push(DAY_FORMATTER.format(cursor));
+    const isoKey = isoDayFormatter.format(cursor);
+    labels.push(dayFormatter.format(cursor));
     data.push(counts.get(isoKey) ?? 0);
     cursor.setDate(cursor.getDate() + 1);
   }

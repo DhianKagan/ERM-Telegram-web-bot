@@ -36,6 +36,7 @@ import {
 } from '../utils/attachments';
 import { deleteFilesForTask } from '../services/dataStorage';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
+import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
 
 function escapeRegex(text: string): string {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -968,17 +969,11 @@ export async function updateTaskStatus(
     typeof existing.status === 'string'
       ? (existing.status as TaskDocument['status'])
       : undefined;
-  const assignedUserId =
-    typeof existing.assigned_user_id === 'number'
-      ? existing.assigned_user_id
-      : undefined;
-  const assignees = Array.isArray(existing.assignees)
-    ? existing.assignees.map((value: unknown) => Number(value))
-    : [];
-  const hasAssignments =
-    typeof assignedUserId === 'number' || assignees.length > 0;
+  const assignedUserId = normalizeUserId(existing.assigned_user_id);
+  const assignees = collectAssigneeIds(existing.assignees);
+  const hasAssignments = assignedUserId !== null || assignees.length > 0;
   const isExecutor =
-    (typeof assignedUserId === 'number' && assignedUserId === userId) ||
+    (assignedUserId !== null && assignedUserId === userId) ||
     assignees.includes(userId);
   const creatorId = Number(existing.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;

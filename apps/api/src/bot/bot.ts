@@ -37,6 +37,7 @@ import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
 import { buildCommentHtml } from '../tasks/taskComments';
 import { buildAttachmentsFromCommentHtml } from '../utils/attachments';
 import { ACCESS_ADMIN } from '../utils/accessMask';
+import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -690,7 +691,7 @@ const collectTaskUserIds = (
   ];
   singleKeys.forEach((key) => {
     const value = task[key as keyof typeof task];
-    const id = toNumericId(value);
+    const id = normalizeUserId(value);
     if (id !== null) {
       ids.add(id);
     }
@@ -698,13 +699,7 @@ const collectTaskUserIds = (
   const arrayKeys: (keyof typeof task)[] = ['assignees', 'controllers'];
   arrayKeys.forEach((key) => {
     const raw = task[key as keyof typeof task];
-    if (!Array.isArray(raw)) return;
-    raw.forEach((item) => {
-      const id = toNumericId(item);
-      if (id !== null) {
-        ids.add(id);
-      }
-    });
+    collectAssigneeIds(raw).forEach((id) => ids.add(id));
   });
   return Array.from(ids);
 };
@@ -780,15 +775,12 @@ const isTaskExecutor = (task: TaskLike, userId: number): boolean => {
     return false;
   }
   const source = task as Record<string, unknown>;
-  const assignedNumeric = Number(source.assigned_user_id);
-  if (Number.isFinite(assignedNumeric) && assignedNumeric === userId) {
+  const assignedNumeric = normalizeUserId(source.assigned_user_id);
+  if (assignedNumeric !== null && assignedNumeric === userId) {
     return true;
   }
-  const assigneesRaw = Array.isArray(source.assignees) ? source.assignees : [];
-  return assigneesRaw
-    .map((candidate) => Number(candidate))
-    .filter((candidate) => Number.isFinite(candidate))
-    .includes(userId);
+  const assignees = collectAssigneeIds(source.assignees);
+  return assignees.includes(userId);
 };
 
 const isTaskCreator = (task: TaskLike, userId: number): boolean => {
@@ -1069,17 +1061,16 @@ async function ensureUserCanUpdateTask(
       await ctx.answerCbQuery(messages.taskNotFound, { show_alert: true });
       return false;
     }
-    const assignedUserId =
-      typeof task.assigned_user_id === 'number'
-        ? task.assigned_user_id
-        : undefined;
-    const assignees = Array.isArray(task.assignees)
-      ? task.assignees.map((value) => Number(value))
-      : [];
+    const assignedUserId = normalizeUserId(
+      (task as { assigned_user_id?: unknown }).assigned_user_id,
+    );
+    const assignees = collectAssigneeIds(
+      (task as { assignees?: unknown }).assignees,
+    );
     const hasAssignments =
-      typeof assignedUserId === 'number' || assignees.length > 0;
+      assignedUserId !== null || assignees.length > 0;
     const isAllowed =
-      (typeof assignedUserId === 'number' && assignedUserId === userId) ||
+      (assignedUserId !== null && assignedUserId === userId) ||
       assignees.includes(userId);
     const kind = detectTaskKind(task);
     const creatorId = Number(task.created_by);

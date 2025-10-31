@@ -191,6 +191,26 @@ describe('updateTaskStatus', function () {
     );
   });
 
+  it('позволяет обновить статус при исполнителях в виде объектов', async () => {
+    const task = await Task.create({
+      title: 'object assignee',
+      created_by: 303,
+      request_id: 'ERM_OBJECT',
+      task_number: 'ERM_OBJECT',
+    });
+    await Task.collection.updateOne(
+      { _id: task._id },
+      {
+        $set: {
+          assignees: [{ telegram_id: 404 }, { user_id: 404 }],
+        },
+      },
+    );
+    const id = (task._id as Types.ObjectId).toHexString();
+    const updated = await updateTaskStatus(id, 'В работе', 404);
+    assert.equal(updated?.status, 'В работе');
+  });
+
   it('позволяет автору заявки отменить её без назначения', async () => {
     const request = await Task.create({
       title: 'request cancel',

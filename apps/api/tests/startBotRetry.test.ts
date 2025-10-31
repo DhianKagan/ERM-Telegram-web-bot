@@ -34,7 +34,8 @@ test('startBot ограничивает число попыток и приме�
     .spyOn(process, 'exit')
     .mockImplementation((() => undefined) as any);
   const timeout = jest.spyOn(global, 'setTimeout');
-  const { startBot } = await import('../src/bot/bot');
+  const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
+  __resetCloseThrottleForTests();
   const { __launch } = require('telegraf');
   __launch.mockRejectedValue({ response: { error_code: 502 } });
 
@@ -54,7 +55,8 @@ test('startBot ограничивает число попыток и приме�
 
 test('startBot завершает предыдущую long polling сессию при конфликте 409', async () => {
   jest.useFakeTimers();
-  const { startBot } = await import('../src/bot/bot');
+  const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
+  __resetCloseThrottleForTests();
   const { __launch, __telegram } = require('telegraf');
   __launch.mockRejectedValueOnce({ response: { error_code: 409 } });
   __launch.mockResolvedValue(undefined);
@@ -74,7 +76,8 @@ test('startBot завершает предыдущую long polling сессию
 test('startBot ожидает retry_after после ошибки 429 метода close', async () => {
   jest.useFakeTimers();
   const timeoutSpy = jest.spyOn(global, 'setTimeout');
-  const { startBot } = await import('../src/bot/bot');
+  const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
+  __resetCloseThrottleForTests();
   const { __launch, __telegram } = require('telegraf');
   const retryAfterSeconds = 3;
 
@@ -117,5 +120,41 @@ test('startBot ожидает retry_after после ошибки 429 метод
   expect(__launch).toHaveBeenCalledTimes(2);
 
   timeoutSpy.mockRestore();
+  jest.useRealTimers();
+});
+
+test('startBot не вызывает close повторно, пока действует throttling', async () => {
+  jest.useFakeTimers();
+  const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
+  __resetCloseThrottleForTests();
+  const { __launch, __telegram } = require('telegraf');
+  const retryAfterSeconds = 5;
+
+  __launch.mockClear();
+  __telegram.callApi.mockClear();
+  __telegram.deleteWebhook.mockClear();
+
+  __launch
+    .mockRejectedValueOnce({ response: { error_code: 409 } })
+    .mockRejectedValueOnce({ response: { error_code: 409 } })
+    .mockResolvedValue(undefined);
+
+  __telegram.callApi
+    .mockRejectedValueOnce({
+      error_code: 429,
+      response: {
+        error_code: 429,
+        parameters: { retry_after: retryAfterSeconds },
+      },
+      parameters: { retry_after: retryAfterSeconds },
+    })
+    .mockResolvedValue(undefined);
+
+  const promise = startBot();
+
+  await jest.runAllTimersAsync();
+  await promise;
+
+  expect(__telegram.callApi).toHaveBeenCalledTimes(1);
   jest.useRealTimers();
 });

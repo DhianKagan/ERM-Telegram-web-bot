@@ -582,17 +582,22 @@ const extractRetryAfterSeconds = (error: unknown): number | null => {
 const waitForRetryAfter = async (
   error: unknown,
   context: string,
-): Promise<void> => {
+): Promise<number | null> => {
   if (extractTelegramErrorCode(error) !== 429) {
-    return;
+    return null;
   }
   const retryAfterSeconds = extractRetryAfterSeconds(error);
   if (!retryAfterSeconds) {
-    return;
+    return null;
   }
   console.warn(`${context}; повторная попытка через ${retryAfterSeconds} с`);
   await sleep(retryAfterSeconds * 1000);
+  return retryAfterSeconds;
 };
+
+const CLOSE_RETRY_GRACE_MS = 2000;
+
+let closeThrottleUntil = 0;
 
 const resetLongPollingSession = async (): Promise<void> => {
   try {
@@ -612,10 +617,26 @@ const resetLongPollingSession = async (): Promise<void> => {
       deleteError,
     );
   }
+  const now = Date.now();
+  if (now < closeThrottleUntil) {
+    const remainingSeconds = Math.ceil(
+      (closeThrottleUntil - now) / 1000,
+    );
+    console.warn(
+      `Пропускаем завершение long polling методом close, осталось ожидать ${remainingSeconds} с`,
+    );
+    return;
+  }
   try {
     await bot.telegram.callApi('close', {});
+    closeThrottleUntil = 0;
     console.warn('Текущая long polling сессия Telegram завершена методом close');
   } catch (closeError) {
+    const retryAfterSeconds = extractRetryAfterSeconds(closeError);
+    if (retryAfterSeconds) {
+      closeThrottleUntil =
+        Date.now() + retryAfterSeconds * 1000 + CLOSE_RETRY_GRACE_MS;
+    }
     console.error(
       'Не удалось завершить предыдущую long polling сессию методом close',
       closeError,
@@ -2099,5 +2120,11 @@ export async function startBot(retry = 0): Promise<void> {
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+export const __resetCloseThrottleForTests = (): void => {
+  if (process.env.NODE_ENV === 'test') {
+    closeThrottleUntil = 0;
+  }
+};
 
 export { processStatusAction };

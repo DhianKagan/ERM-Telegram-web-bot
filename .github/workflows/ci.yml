@@ -66,6 +66,8 @@ jobs:
         env:
           CI: true
         run: pnpm test
+      - name: Проверка размера бандла
+        run: pnpm size
 
   semgrep:
     name: semgrep

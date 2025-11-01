@@ -1,5 +1,5 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, Mapbox GL, i18next
+// Основные модули: React, Mapbox GL/MapLibre GL, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -8,15 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
-import mapboxgl, {
+import mapLibrary, {
   type GeoJSONSource,
   type LngLatBoundsLike,
-  type Map as MapInstance,
+  type MapInstance,
   type MapLayerMouseEvent,
-} from "mapbox-gl";
+} from "../utils/mapLibrary";
 import type * as GeoJSON from "geojson";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
@@ -29,12 +28,9 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
   MAP_STYLE_URL,
-  MAPBOX_ACCESS_TOKEN,
   MAP_STYLE_FALLBACK_USED,
 } from "../config/map";
 import { insert3dBuildingsLayer } from "../utils/insert3dBuildingsLayer";
-
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 import {
   TASK_STATUSES,
   type Coords,
@@ -703,7 +699,7 @@ export default function LogisticsPage() {
       return;
     }
     console.warn(
-      "VITE_MAPBOX_ACCESS_TOKEN не задан, используется резервный стиль без авторизации Mapbox."
+      "VITE_MAPBOX_ACCESS_TOKEN не задан, используется резервный стиль MapLibre без авторизации Mapbox."
     );
   }, [MAP_STYLE_FALLBACK_USED]);
   const [mapViewMode, setMapViewMode] = React.useState<
@@ -2052,7 +2048,7 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = new mapboxgl.Map({
+    const map = new mapLibrary.Map({
       container: "logistics-map",
       style: MAP_STYLE_URL,
       center: MAP_CENTER_LNG_LAT,
@@ -2068,7 +2064,7 @@ export default function LogisticsPage() {
     if (typeof map.touchZoomRotate?.disableRotation === "function") {
       map.touchZoomRotate.disableRotation();
     }
-    const navigation = new mapboxgl.NavigationControl({ showCompass: false });
+    const navigation = new mapLibrary.NavigationControl({ showCompass: false });
     map.addControl(navigation, "top-right");
     const draw = new MapboxDraw({
       displayControlsDefault: false,

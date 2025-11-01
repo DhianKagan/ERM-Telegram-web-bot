@@ -162,6 +162,8 @@ jest.mock("mapbox-gl", () => ({
 }));
 
 jest.mock("mapbox-gl/dist/mapbox-gl.css", () => "");
+jest.mock("maplibre-gl", () => jest.requireMock("mapbox-gl"));
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
 
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({

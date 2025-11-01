@@ -380,10 +380,25 @@ export const processUploads: RequestHandler = async (req, res, next) => {
       }
       const context = ensureUploadContext(req as RequestWithUser, userId);
       const attachments: AttachmentItem[] = [];
+      const isInsideDir = (baseDir: string, targetPath: string): boolean => {
+        const base = path.resolve(baseDir);
+        const target = path.resolve(targetPath);
+        if (base === target) {
+          return false;
+        }
+        const relative = path.relative(base, target);
+        return (
+          relative.length > 0 &&
+          !relative.startsWith('..') &&
+          !path.isAbsolute(relative)
+        );
+      };
       for (const f of files) {
         const original = path.basename(f.originalname);
         const storedPath = path.resolve(f.destination, f.filename);
-        if (!storedPath.startsWith(context.dir + path.sep)) {
+        const withinContext = isInsideDir(context.dir, storedPath);
+        const withinUploads = isInsideDir(uploadsDirAbs, storedPath);
+        if (!withinContext && !withinUploads) {
           await fs.promises.unlink(storedPath).catch(() => undefined);
           const err = new Error('INVALID_PATH');
           throw err;

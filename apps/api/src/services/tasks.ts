@@ -69,7 +69,11 @@ async function applyRouteInfo(data: TaskData = {}): Promise<void> {
         data.startCoordinates,
         data.finishCoordinates,
       );
-      data.route_distance_km = Number((r.distance! / 1000).toFixed(1));
+      if (typeof r.distance === 'number') {
+        data.route_distance_km = Number((r.distance / 1000).toFixed(1));
+      } else {
+        delete (data as Record<string, unknown>).route_distance_km;
+      }
     } catch {
       /* игнорируем ошибки маршрута */
     }

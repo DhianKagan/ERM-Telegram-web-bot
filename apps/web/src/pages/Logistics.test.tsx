@@ -16,6 +16,13 @@ import {
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { LogisticsEvent, RoutePlan } from "shared";
+jest.mock("../config/map", () => {
+  const actual = jest.requireActual("../config/map");
+  return {
+    ...actual,
+    MAP_STYLE_FALLBACK_USED: false,
+  };
+});
 jest.mock("react-i18next", () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === "logistics.selectedVehicle") {
@@ -154,6 +161,10 @@ const buildMapInstance = () => {
   const sources = new Map<string, { setData: jest.Mock }>();
   const layers = new Map<string, any>();
   const handlers = new Map<string, Set<(...args: any[]) => void>>();
+  const styleLayers: Array<{ id: string }> = [
+    { id: "road-label" },
+    { id: "settlement-major-label" },
+  ];
   const getKey = (event: string, layerId?: string) =>
     layerId ? `${event}:${layerId}` : event;
   const getHandlers = (event: string, layerId?: string) => {
@@ -211,14 +222,47 @@ const buildMapInstance = () => {
       sources.set(id, source);
       return source;
     }),
-    addLayer: jest.fn((layer: { id: string }) => {
+    addLayer: jest.fn((layer: { id: string }, beforeId?: string) => {
       layers.set(layer.id, layer);
+      const existingIndex = styleLayers.findIndex((entry) => entry.id === layer.id);
+      if (existingIndex !== -1) {
+        styleLayers.splice(existingIndex, 1);
+      }
+      const beforeIndex = beforeId
+        ? styleLayers.findIndex((entry) => entry.id === beforeId)
+        : -1;
+      const layerEntry = { id: layer.id };
+      if (beforeIndex >= 0) {
+        styleLayers.splice(beforeIndex, 0, layerEntry);
+      } else {
+        styleLayers.push(layerEntry);
+      }
     }),
     addImage: jest.fn(),
     getSource: jest.fn((id: string) => sources.get(id)),
     getLayer: jest.fn((id: string) => layers.get(id)),
     hasImage: jest.fn(() => false),
     setLayoutProperty: jest.fn(),
+    getStyle: jest.fn(() => ({
+      layers: styleLayers.map((entry) => ({ id: entry.id })),
+    })),
+    moveLayer: jest.fn((layerId: string, beforeId?: string) => {
+      const currentIndex = styleLayers.findIndex((entry) => entry.id === layerId);
+      if (currentIndex === -1) {
+        return;
+      }
+      const [entry] = styleLayers.splice(currentIndex, 1);
+      if (!beforeId) {
+        styleLayers.push(entry);
+        return;
+      }
+      const targetIndex = styleLayers.findIndex((item) => item.id === beforeId);
+      if (targetIndex === -1) {
+        styleLayers.push(entry);
+        return;
+      }
+      styleLayers.splice(targetIndex, 0, entry);
+    }),
     remove: jest.fn(),
     resize: jest.fn(),
     easeTo: jest.fn(),
@@ -843,6 +887,58 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(optimizeRouteMock).toHaveBeenCalledWith(["t1"], 1, "angle"),
     );
+  });
+
+  it("подключает слой адресов поверх дорожных подписей и под крупными метками", async () => {
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    const mapModule = jest.requireMock("mapbox-gl");
+    const mapCreation = mapModule.Map.mock.results.at(-1);
+    const mapInstance = (mapCreation?.value ?? null) as any;
+    expect(mapInstance).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mapInstance.addSource).toHaveBeenCalledWith(
+        "logistics-addresses",
+        expect.objectContaining({ type: "vector", url: "mapbox://<account>.<tileset>" }),
+      );
+    });
+
+    const addressLayerCall = mapInstance.addLayer.mock.calls.find(
+      (call: any[]) => call[0]?.id === "logistics-addresses-labels",
+    );
+    expect(addressLayerCall).toBeTruthy();
+    const [layerSpec, beforeId] = addressLayerCall!;
+    expect(beforeId).toBe("settlement-major-label");
+    expect(layerSpec).toMatchObject({
+      type: "symbol",
+      minzoom: 17,
+      layout: {
+        "text-field": ["get", "housenumber"],
+        "text-size": 13,
+        "text-ignore-placement": false,
+      },
+      paint: {
+        "text-halo-width": 1.2,
+        "text-halo-blur": 0.6,
+      },
+    });
+
+    const finalOrder = mapInstance
+      .getStyle()
+      .layers.map((layer: { id: string }) => layer.id);
+    const roadIndex = finalOrder.indexOf("road-label");
+    const addressIndex = finalOrder.indexOf("logistics-addresses-labels");
+    const majorIndex = finalOrder.indexOf("settlement-major-label");
+
+    expect(roadIndex).toBeGreaterThanOrEqual(0);
+    expect(majorIndex).toBeGreaterThanOrEqual(0);
+    expect(roadIndex).toBeLessThan(addressIndex);
+    expect(addressIndex).toBeLessThan(majorIndex);
   });
 
   it("перезагружает данные при событии logistics.init", async () => {

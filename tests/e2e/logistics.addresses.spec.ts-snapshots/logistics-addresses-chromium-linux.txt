@@ -1,0 +1,99 @@
+{
+  "map": {
+    "background": "linear-gradient(135deg, rgb(30, 58, 138) 0%, rgb(15, 23, 42) 45%, rgb(30, 41, 59) 100%)",
+    "size": "960px×540px"
+  },
+  "items": [
+    {
+      "tag": "div",
+      "className": "road horizontal",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "road vertical",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "block",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "block small",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "block",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "block small",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "block",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "label district",
+      "zIndex": "auto"
+    },
+    {
+      "tag": "div",
+      "className": "label avenue",
+      "zIndex": "auto"
+    }
+  ],
+  "blocks": [
+    {
+      "text": "12",
+      "fontSize": "48px",
+      "color": "rgb(248, 250, 252)",
+      "textShadow": "rgba(15, 23, 42, 0.85) 0px 0px 14px"
+    },
+    {
+      "text": "14",
+      "fontSize": "36px",
+      "color": "rgb(248, 250, 252)",
+      "textShadow": "rgba(15, 23, 42, 0.85) 0px 0px 14px"
+    },
+    {
+      "text": "16",
+      "fontSize": "48px",
+      "color": "rgb(248, 250, 252)",
+      "textShadow": "rgba(15, 23, 42, 0.85) 0px 0px 14px"
+    },
+    {
+      "text": "18",
+      "fontSize": "36px",
+      "color": "rgb(248, 250, 252)",
+      "textShadow": "rgba(15, 23, 42, 0.85) 0px 0px 14px"
+    },
+    {
+      "text": "20",
+      "fontSize": "48px",
+      "color": "rgb(248, 250, 252)",
+      "textShadow": "rgba(15, 23, 42, 0.85) 0px 0px 14px"
+    }
+  ],
+  "labels": [
+    {
+      "text": "ПОДОЛЬСКИЙ РАЙОН",
+      "fontSize": "20px",
+      "color": "rgba(226, 232, 240, 0.85)",
+      "zIndex": "auto"
+    },
+    {
+      "text": "ПРОСП. СВОБОДЫ",
+      "fontSize": "20px",
+      "color": "rgba(226, 232, 240, 0.85)",
+      "zIndex": "auto"
+    }
+  ]
+}

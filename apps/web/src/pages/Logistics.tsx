@@ -188,6 +188,24 @@ const TASK_ANIMATION_SOURCE_ID = "logistics-task-animation";
 const TASK_ANIMATION_LAYER_ID = "logistics-task-animation-symbol";
 const OPT_SOURCE_ID = "logistics-optimized-routes";
 const OPT_LAYER_ID = "logistics-optimized-routes-line";
+const ADDRESS_SOURCE_ID = "logistics-addresses";
+const ADDRESS_LAYER_ID = "logistics-addresses-labels";
+const ADDRESS_VECTOR_SOURCE_URL = "mapbox://<account>.<tileset>";
+const ADDRESS_VECTOR_SOURCE_LAYER = "addresses";
+const MAJOR_LABEL_LAYER_CANDIDATES = [
+  "settlement-subdivision-label",
+  "settlement-major-label",
+  "settlement-neighbourhood-label",
+  "airport-label",
+  "poi-label",
+  "transit-label",
+];
+const ROAD_LABEL_LAYER_CANDIDATES = [
+  "road-label",
+  "road-number-shield",
+  "bridge-street-minor-label",
+  "street-label",
+];
 
 type AnyLayerSpecification = Parameters<MapInstance["addLayer"]>[0];
 type LineLayerSpecification = Extract<AnyLayerSpecification, { type: "line" }>;
@@ -198,6 +216,47 @@ const TASK_START_SYMBOL = "⬤";
 const TASK_FINISH_SYMBOL = "⦿";
 const ANIMATION_SYMBOL = "▶";
 const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
+
+const findExistingLayerId = (
+  map: MapInstance,
+  candidates: readonly string[],
+): string | undefined => {
+  const style = typeof map.getStyle === "function" ? map.getStyle() : undefined;
+  const layers = style?.layers ?? [];
+  return candidates.find((candidate) => layers.some((layer) => layer.id === candidate));
+};
+
+const ensureAddressesLayerOrder = (map: MapInstance) => {
+  if (typeof map.getStyle !== "function") {
+    return;
+  }
+  const style = map.getStyle();
+  const layers = style?.layers ?? [];
+  const addressLayerIndex = layers.findIndex((layer) => layer.id === ADDRESS_LAYER_ID);
+  if (addressLayerIndex === -1) {
+    return;
+  }
+  const roadLayerId = findExistingLayerId(map, ROAD_LABEL_LAYER_CANDIDATES);
+  if (roadLayerId && typeof map.moveLayer === "function") {
+    const refreshedStyle = map.getStyle();
+    const refreshedLayers = refreshedStyle?.layers ?? [];
+    const roadIndex = refreshedLayers.findIndex((layer) => layer.id === roadLayerId);
+    if (roadIndex !== -1) {
+      const nextLayer = refreshedLayers
+        .slice(roadIndex + 1)
+        .find((layer) => layer.id !== ADDRESS_LAYER_ID);
+      if (nextLayer?.id) {
+        map.moveLayer(ADDRESS_LAYER_ID, nextLayer.id);
+      } else {
+        map.moveLayer(ADDRESS_LAYER_ID);
+      }
+    }
+  }
+  const majorLabelId = findExistingLayerId(map, MAJOR_LABEL_LAYER_CANDIDATES);
+  if (majorLabelId && typeof map.moveLayer === "function") {
+    map.moveLayer(ADDRESS_LAYER_ID, majorLabelId);
+  }
+};
 const MIN_ROUTE_DISTANCE_KM = 0.01;
 
 const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>(): GeoJSON.FeatureCollection<T> => ({
@@ -2026,6 +2085,37 @@ export default function LogisticsPage() {
     };
     const handleLoad = () => {
       ensureBuildingsLayer();
+      if (!MAP_STYLE_FALLBACK_USED && !map.getSource(ADDRESS_SOURCE_ID)) {
+        map.addSource(ADDRESS_SOURCE_ID, {
+          type: "vector",
+          url: ADDRESS_VECTOR_SOURCE_URL,
+        });
+        const addressLayer: SymbolLayerSpecification = {
+          id: ADDRESS_LAYER_ID,
+          type: "symbol",
+          source: ADDRESS_SOURCE_ID,
+          "source-layer": ADDRESS_VECTOR_SOURCE_LAYER,
+          minzoom: 17,
+          layout: {
+            "text-field": ["get", "housenumber"],
+            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+            "text-size": 13,
+            "text-letter-spacing": 0.02,
+            "text-allow-overlap": false,
+            "text-ignore-placement": false,
+            "text-padding": 2,
+          },
+          paint: {
+            "text-color": "#0f172a",
+            "text-halo-color": "#f8fafc",
+            "text-halo-width": 1.2,
+            "text-halo-blur": 0.6,
+          },
+        };
+        const beforeLayerId = findExistingLayerId(map, MAJOR_LABEL_LAYER_CANDIDATES);
+        map.addLayer(addressLayer, beforeLayerId);
+        ensureAddressesLayerOrder(map);
+      }
       map.addSource(GEO_SOURCE_ID, {
         type: "geojson",
         data: createEmptyCollection(),

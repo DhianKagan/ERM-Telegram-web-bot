@@ -2852,42 +2852,96 @@ export default function LogisticsPage() {
             <div className="text-sm text-muted-foreground">{vehiclesHint}</div>
           ) : null}
           {availableVehicles.length ? (
-            <ul className="space-y-2 text-sm">
-              {availableVehicles.map((vehicle) => (
-                <li
-                  key={vehicle.id}
-                  className="space-y-1 rounded border bg-white/70 p-3 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{vehicle.name}</span>
-                    {vehicle.registrationNumber ? (
-                      <span className="text-xs text-muted-foreground">
-                        {vehicle.registrationNumber}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    {vehicle.transportType ? <span>{vehicle.transportType}</span> : null}
-                    {Array.isArray(vehicle.currentTasks) ? (
-                      <span>
-                        {t("logistics.vehicleTasksCount", {
-                          count: vehicle.currentTasks.length,
-                          defaultValue: `Задач: ${vehicle.currentTasks.length}`,
-                        })}
-                      </span>
-                    ) : null}
-                    {typeof vehicle.odometerCurrent === "number" ? (
-                      <span>
-                        {t("logistics.vehicleMileage", {
-                          value: vehicle.odometerCurrent,
-                          defaultValue: `Пробег: ${vehicle.odometerCurrent} км`,
-                        })}
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] table-fixed border-separate border-spacing-y-1 text-xs sm:text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th className="rounded-l-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                      {t("logistics.vehicleColumnName", {
+                        defaultValue: "Транспорт",
+                      })}
+                    </th>
+                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                      {t("logistics.vehicleColumnPlate", {
+                        defaultValue: "Госномер",
+                      })}
+                    </th>
+                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                      {t("logistics.vehicleColumnType", {
+                        defaultValue: "Тип",
+                      })}
+                    </th>
+                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                      {t("logistics.vehicleColumnTasks", {
+                        defaultValue: "Задачи",
+                      })}
+                    </th>
+                    <th className="rounded-r-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                      {t("logistics.vehicleColumnMileage", {
+                        defaultValue: "Пробег",
+                      })}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {availableVehicles.map((vehicle) => {
+                    const tasksCount = Array.isArray(vehicle.currentTasks)
+                      ? vehicle.currentTasks.length
+                      : null;
+                    const mileageValue =
+                      typeof vehicle.odometerCurrent === "number" &&
+                      Number.isFinite(vehicle.odometerCurrent)
+                        ? vehicle.odometerCurrent
+                        : null;
+                    return (
+                      <tr
+                        key={vehicle.id}
+                        className="bg-white/80 text-sm shadow-sm dark:bg-slate-900/60"
+                      >
+                        <td className="rounded-l-md px-3 py-2 font-medium">
+                          {vehicle.name ||
+                            t("logistics.unselectedVehicle", {
+                              defaultValue: "Не выбран",
+                            })}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {vehicle.registrationNumber ||
+                            t("logistics.assignDialogUnknown", {
+                              defaultValue: "нет данных",
+                            })}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {vehicle.transportType ||
+                            t("logistics.assignDialogUnknown", {
+                              defaultValue: "нет данных",
+                            })}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {typeof tasksCount === "number"
+                            ? t("logistics.vehicleTasksShort", {
+                                count: tasksCount,
+                                defaultValue: `${tasksCount}`,
+                              })
+                            : t("logistics.assignDialogUnknown", {
+                                defaultValue: "нет данных",
+                              })}
+                        </td>
+                        <td className="rounded-r-md px-3 py-2 text-xs text-muted-foreground">
+                          {mileageValue !== null
+                            ? t("logistics.vehicleMileageShort", {
+                                value: mileageValue,
+                                defaultValue: `${mileageValue} км`,
+                              })
+                            : t("logistics.assignDialogUnknown", {
+                                defaultValue: "нет данных",
+                              })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : null}
         </section>
       ) : fleetError ? (

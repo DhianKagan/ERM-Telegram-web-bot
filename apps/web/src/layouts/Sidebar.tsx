@@ -7,14 +7,11 @@ import { useAuth } from "../context/useAuth";
 import {
   ClipboardDocumentListIcon,
   InboxArrowDownIcon,
-  RectangleStackIcon,
   ChartPieIcon,
   MapIcon,
   Cog6ToothIcon,
   UserCircleIcon,
   XMarkIcon,
-  ArchiveBoxIcon,
-  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
@@ -51,11 +48,8 @@ export default function Sidebar() {
   const adminItems = React.useMemo<SidebarItem[]>(
     () => [
       { to: "/cp/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
-      { to: "/cp/settings?module=reports", label: t("nav.reports"), icon: ChartPieIcon },
       { to: "/cp/logistics", label: t("nav.logistics"), icon: MapIcon },
       { to: "/cp/settings", label: t("nav.settings"), icon: Cog6ToothIcon },
-      { to: "/cp/settings?module=logs", label: t("nav.logs"), icon: DocumentTextIcon },
-      { to: "/cp/settings?module=storage", label: t("nav.storage"), icon: RectangleStackIcon },
     ],
     [t],
   );
@@ -69,11 +63,6 @@ export default function Sidebar() {
     [t],
   );
 
-  const archiveItem = React.useMemo<SidebarItem>(
-    () => ({ to: "/cp/settings?module=archive", label: t("nav.archive"), icon: ArchiveBoxIcon }),
-    [t],
-  );
-
   const currentSearchParams = React.useMemo(
     () => new URLSearchParams(search),
     [search],
@@ -81,18 +70,15 @@ export default function Sidebar() {
 
   const items = React.useMemo(() => {
     if (role === "admin") {
-      const list = allowArchive
-        ? [
-            ...adminItems.slice(0, 4),
-            archiveItem,
-            ...adminItems.slice(4),
-          ]
-        : adminItems;
-      return [...baseItems, ...list];
+      const [kanbanItem, logisticsItem, settingsItem] = adminItems;
+      const settingsLink = allowArchive
+        ? { ...settingsItem, to: "/cp/settings?module=archive" }
+        : settingsItem;
+      return [...baseItems, kanbanItem, logisticsItem, settingsLink];
     }
     if (role === "manager") return [...baseItems, ...managerItems];
     return baseItems;
-  }, [role, allowArchive, archiveItem, adminItems, baseItems, managerItems]);
+  }, [role, allowArchive, adminItems, baseItems, managerItems]);
 
   return (
     <aside

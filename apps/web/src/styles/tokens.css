@@ -1,0 +1,191 @@
+/* Назначение файла: дизайн-токены и базовые стили для системных компонентов интерфейса.
+   Основные модули: CSS custom properties, Tailwind layer components. */
+
+@layer base {
+  :root {
+    --ui-radius-xs: 0.5rem;
+    --ui-radius-sm: 0.75rem;
+    --ui-radius-md: 1rem;
+    --ui-radius-lg: 1.5rem;
+    --ui-radius-pill: 9999px;
+
+    --ui-gap-2: 0.5rem;
+    --ui-gap-3: 0.75rem;
+    --ui-gap-4: 1rem;
+
+    --ui-pad-1: 0.25rem;
+    --ui-pad-2: 0.5rem;
+    --ui-pad-3: 0.75rem;
+    --ui-pad-4: 1rem;
+    --ui-pad-5: 1.25rem;
+
+    --ui-font-xs: var(--text-theme-xs, 12px);
+    --ui-font-xs-line: var(--text-theme-xs--line-height, 18px);
+    --ui-font-sm: var(--text-theme-sm, 14px);
+    --ui-font-sm-line: var(--text-theme-sm--line-height, 20px);
+
+    --ui-surface-base: var(--color-gray-25);
+    --ui-surface-subtle: var(--color-gray-50);
+    --ui-surface-elevated: var(--color-white);
+    --ui-border-default: var(--color-gray-200);
+    --ui-border-strong: var(--color-gray-300);
+    --ui-text-primary: var(--color-gray-900);
+    --ui-text-secondary: var(--color-gray-600);
+    --ui-text-contrast: var(--color-white);
+
+    --ui-focus-ring: 0 0 0 4px rgba(70, 95, 255, 0.2);
+    --ui-shadow-surface: var(--shadow-theme-sm);
+    --ui-shadow-floating: var(--shadow-theme-md);
+    --ui-transition-base: 180ms ease-in-out;
+
+    --ui-chip-height: 1.75rem;
+    --ui-chip-padding-x: var(--ui-pad-2);
+    --ui-chip-gap: var(--ui-pad-1);
+    --ui-chip-bg: var(--ui-surface-subtle);
+    --ui-chip-border: var(--ui-border-default);
+    --ui-chip-color: var(--ui-text-secondary);
+    --ui-chip-color-active: var(--color-brand-600);
+
+    --ui-btn-height: 2.5rem;
+    --ui-btn-padding-x: var(--ui-pad-4);
+    --ui-btn-radius: var(--ui-radius-sm);
+    --ui-btn-gap: var(--ui-pad-1);
+    --ui-btn-font: var(--ui-font-sm);
+    --ui-btn-line: var(--ui-font-sm-line);
+    --ui-btn-bg: var(--color-brand-500);
+    --ui-btn-bg-hover: var(--color-brand-600);
+    --ui-btn-bg-active: var(--color-brand-700);
+    --ui-btn-border: transparent;
+    --ui-btn-color: var(--ui-text-contrast);
+
+    --ui-actionbar-radius: var(--ui-radius-lg);
+    --ui-actionbar-padding-x: var(--ui-pad-5);
+    --ui-actionbar-padding-y: var(--ui-pad-4);
+    --ui-actionbar-gap: var(--ui-gap-3);
+    --ui-actionbar-bg: var(--ui-surface-elevated);
+    --ui-actionbar-border: var(--ui-border-default);
+
+    --ui-table-sticky-bg: var(--ui-surface-elevated);
+    --ui-table-sticky-border: var(--ui-border-default);
+    --ui-table-sticky-shadow: inset 0 -1px 0 var(--ui-border-default);
+    --ui-table-sticky-z: 5;
+  }
+
+  .dark {
+    --ui-surface-base: var(--color-gray-dark);
+    --ui-surface-subtle: var(--color-gray-800);
+    --ui-surface-elevated: #1f2637;
+    --ui-border-default: var(--color-gray-700);
+    --ui-border-strong: var(--color-gray-600);
+    --ui-text-primary: var(--color-gray-25);
+    --ui-text-secondary: var(--color-gray-300);
+    --ui-chip-bg: rgba(148, 163, 184, 0.16);
+    --ui-chip-border: var(--ui-border-default);
+    --ui-chip-color: var(--ui-text-secondary);
+    --ui-btn-shadow: none;
+    --ui-actionbar-bg: #20293b;
+    --ui-actionbar-border: var(--ui-border-default);
+    --ui-table-sticky-bg: #20293b;
+    --ui-table-sticky-border: var(--ui-border-strong);
+    --ui-table-sticky-shadow: inset 0 -1px 0 var(--ui-border-strong);
+  }
+}
+
+@layer components {
+  .ui-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-chip-gap);
+    min-height: var(--ui-chip-height);
+    padding-inline: var(--ui-chip-padding-x);
+    border-radius: var(--ui-radius-pill);
+    border: 1px solid var(--ui-chip-border);
+    background-color: var(--ui-chip-bg);
+    color: var(--ui-chip-color);
+    font-size: var(--ui-font-xs);
+    line-height: var(--ui-font-xs-line);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition:
+      background-color var(--ui-transition-base),
+      color var(--ui-transition-base),
+      border-color var(--ui-transition-base),
+      box-shadow var(--ui-transition-base);
+  }
+
+  .ui-chip[data-state="active"],
+  .ui-chip[data-selected="true"],
+  .ui-chip.is-active {
+    border-color: var(--color-brand-500);
+    color: var(--ui-chip-color-active);
+    background-color: rgba(70, 95, 255, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(70, 95, 255, 0.18);
+  }
+
+  .ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-btn-gap);
+    min-height: var(--ui-btn-height);
+    padding-inline: var(--ui-btn-padding-x);
+    border-radius: var(--ui-btn-radius);
+    border: 1px solid var(--ui-btn-border);
+    background-color: var(--ui-btn-bg);
+    color: var(--ui-btn-color);
+    font-size: var(--ui-btn-font);
+    line-height: var(--ui-btn-line);
+    font-weight: 600;
+    box-shadow: var(--ui-shadow-surface);
+    transition:
+      background-color var(--ui-transition-base),
+      box-shadow var(--ui-transition-base),
+      transform var(--ui-transition-base);
+  }
+
+  .ui-btn:hover:not(:disabled) {
+    background-color: var(--ui-btn-bg-hover);
+    box-shadow: var(--ui-shadow-floating);
+  }
+
+  .ui-btn:active:not(:disabled) {
+    background-color: var(--ui-btn-bg-active);
+    transform: translateY(1px);
+  }
+
+  .ui-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-shadow-floating), var(--ui-focus-ring);
+  }
+
+  .ui-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .ui-action-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-actionbar-gap);
+    padding-block: var(--ui-actionbar-padding-y);
+    padding-inline: var(--ui-actionbar-padding-x);
+    border-radius: var(--ui-actionbar-radius);
+    border: 1px solid var(--ui-actionbar-border);
+    background-color: var(--ui-actionbar-bg);
+    color: var(--ui-text-primary);
+    box-shadow: var(--ui-shadow-surface);
+  }
+
+  .table-sticky thead th,
+  table[data-ui="sticky"] thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--ui-table-sticky-z);
+    background-color: var(--ui-table-sticky-bg);
+    color: var(--ui-text-secondary);
+    border-bottom: 1px solid var(--ui-table-sticky-border);
+    box-shadow: var(--ui-table-sticky-shadow);
+  }
+}

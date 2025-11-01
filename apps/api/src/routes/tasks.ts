@@ -55,6 +55,7 @@ import {
   buildInlineFileUrl,
   buildThumbnailUrl,
 } from '../utils/fileUrls';
+import { handleValidation } from '../utils/validate';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -833,6 +834,40 @@ router.get(
 router.get('/mentioned', ctrl.mentioned);
 
 router.get('/transport-options', ctrl.transportOptions as RequestHandler);
+
+router.get(
+  '/report.pdf',
+  [
+    query('status').optional().isString(),
+    query('assignees')
+      .optional()
+      .custom((value) => Array.isArray(value) || typeof value === 'string'),
+    query('assignee').optional().isString(),
+    query('from').optional().isISO8601(),
+    query('to').optional().isISO8601(),
+    query('kind').optional().isIn(['task', 'request']),
+    query('taskType').optional().isString(),
+  ] as RequestHandler[],
+  handleValidation as unknown as RequestHandler,
+  ctrl.downloadPdf as RequestHandler,
+);
+
+router.get(
+  '/report.xlsx',
+  [
+    query('status').optional().isString(),
+    query('assignees')
+      .optional()
+      .custom((value) => Array.isArray(value) || typeof value === 'string'),
+    query('assignee').optional().isString(),
+    query('from').optional().isISO8601(),
+    query('to').optional().isISO8601(),
+    query('kind').optional().isIn(['task', 'request']),
+    query('taskType').optional().isString(),
+  ] as RequestHandler[],
+  handleValidation as unknown as RequestHandler,
+  ctrl.downloadExcel as RequestHandler,
+);
 
 router.get(
   '/report/summary',

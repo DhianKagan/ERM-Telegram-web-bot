@@ -26,6 +26,7 @@ import StorageDiagnosticsService from '../services/storageDiagnostics.service';
 import StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
 import TaskDraftsService from '../taskDrafts/taskDrafts.service';
 import TaskDraftsController from '../taskDrafts/taskDrafts.controller';
+import ReportGeneratorService from '../services/reportGenerator';
 
 container.register(TOKENS.TasksRepository, { useValue: queries });
 container.register(TOKENS.TasksService, {
@@ -76,6 +77,10 @@ container.registerSingleton(
   StorageDiagnosticsController,
 );
 container.registerSingleton(TOKENS.TaskDraftsController, TaskDraftsController);
+container.register(TOKENS.ReportGeneratorService, {
+  useFactory: (c) =>
+    new ReportGeneratorService(c.resolve(TOKENS.TasksService)),
+});
 
 export { container };
 export default container;

@@ -250,4 +250,70 @@ describe('helpers из bot.ts', () => {
     launchMock.mockRejectedValueOnce(failure);
     await expect(startBot()).rejects.toBe(failure);
   });
+
+  test('startBot продолжает перезапуск при множественных конфликтах getUpdates', async () => {
+    jest.useFakeTimers();
+    try {
+      const { startBot } = loadBotModule();
+      const conflictError = () =>
+        Object.assign(new Error('conflict'), { response: { error_code: 409 } });
+
+      launchMock
+        .mockRejectedValueOnce(conflictError())
+        .mockRejectedValueOnce(conflictError())
+        .mockRejectedValueOnce(conflictError())
+        .mockRejectedValueOnce(conflictError())
+        .mockRejectedValueOnce(conflictError())
+        .mockRejectedValueOnce(conflictError())
+        .mockResolvedValueOnce(undefined);
+
+      const startPromise = startBot();
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await jest.advanceTimersByTimeAsync(1000);
+        await Promise.resolve();
+      }
+
+      await startPromise;
+
+      expect(launchMock).toHaveBeenCalledTimes(7);
+      expect(deleteWebhookMock.mock.calls.length).toBeGreaterThanOrEqual(7);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('startBot уважает retry_after от Telegram при ошибке 429', async () => {
+    jest.useFakeTimers();
+    try {
+      const { startBot } = loadBotModule();
+      const rateLimitError = () =>
+        Object.assign(new Error('too many requests'), {
+          response: { error_code: 429, parameters: { retry_after: 2 } },
+          parameters: { retry_after: 2 },
+        });
+
+      launchMock
+        .mockRejectedValueOnce(rateLimitError())
+        .mockRejectedValueOnce(rateLimitError())
+        .mockRejectedValueOnce(rateLimitError())
+        .mockResolvedValueOnce(undefined);
+
+      const startPromise = startBot();
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await jest.advanceTimersByTimeAsync(2000);
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1000);
+        await Promise.resolve();
+      }
+
+      await startPromise;
+
+      expect(launchMock).toHaveBeenCalledTimes(4);
+      expect(deleteWebhookMock.mock.calls.length).toBeGreaterThanOrEqual(4);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

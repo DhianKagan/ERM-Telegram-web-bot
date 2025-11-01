@@ -32,6 +32,7 @@ import {
   MAPBOX_ACCESS_TOKEN,
   MAP_STYLE_FALLBACK_USED,
 } from "../config/map";
+import { insert3dBuildingsLayer } from "../utils/insert3dBuildingsLayer";
 
 mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 import {
@@ -2017,7 +2018,14 @@ export default function LogisticsPage() {
     });
     drawRef.current = draw;
     map.addControl(draw, "top-left");
-    map.on("load", () => {
+    const ensureBuildingsLayer = () => {
+      if (typeof map.isStyleLoaded === "function" && !map.isStyleLoaded()) {
+        return;
+      }
+      insert3dBuildingsLayer(map);
+    };
+    const handleLoad = () => {
+      ensureBuildingsLayer();
       map.addSource(GEO_SOURCE_ID, {
         type: "geojson",
         data: createEmptyCollection(),
@@ -2225,8 +2233,14 @@ export default function LogisticsPage() {
       };
       map.addLayer(animationLayer);
       setMapReady(true);
-    });
+    };
+    map.on("styledata", ensureBuildingsLayer);
+    map.on("load", handleLoad);
     return () => {
+      if (typeof map.off === "function") {
+        map.off("styledata", ensureBuildingsLayer);
+        map.off("load", handleLoad);
+      }
       setMapReady(false);
       setIsDrawing(false);
       drawRef.current = null;

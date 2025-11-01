@@ -107,6 +107,18 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 - Подстановки используют маркеры `__DUMMY_BOT_TOKEN__`, `000000000`, `__DUMMY_JWT_SECRET__` и сервисный MongoDB `mongodb://admin:admin@mongo:27017/ermdb?authSource=admin`.
 - Для проверки приватных веток или staging окружений задайте реальные значения в `Repository secrets`.
 
+## Обновление адресных тайлов
+
+- Плановый workflow `Refresh address tiles` запускается каждую неделю по понедельникам в 01:30 UTC (04:30 по Киеву, UTC+3) и собирает слой адресов из OSM и OpenAddresses перед загрузкой в Mapbox Tilesets.
+- Для ручного обновления подготовьте переменные и выполните скрипт:
+  ```bash
+  export OSM_PBF_URL="https://download.geofabrik.de/europe/ukraine-latest.osm.pbf"
+  export OPENADDR_URL="https://results.openaddresses.io/latest/run/europe/ua/countrywide.zip"
+  export OUTPUT_MBTILES="dist/addresses.mbtiles"
+  ./scripts/refresh_addresses.sh
+  ```
+- Готовый файл загрузите в Mapbox командой `mapbox upload <пользователь>.<tileset> dist/addresses.mbtiles`, установив `MAPBOX_ACCESS_TOKEN` в окружении и выполнив `python3 -m pip install --user mapboxcli` при первом запуске.
+
 ## Миграции
 
 Скрипты для обновления базы находятся в `scripts/db`. Для добавления роли

@@ -54,6 +54,7 @@ import {
   finalizePendingUploads as finalizeTaskUploads,
   purgeTemporaryUploads as dropPendingUploads,
 } from './uploadFinalizer';
+import ReportGeneratorService from '../services/reportGenerator';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -294,6 +295,8 @@ const splitMessageForTelegramLimit = (
 export default class TasksController {
   constructor(
     @inject(TOKENS.TasksService) private service: TasksService,
+    @inject(TOKENS.ReportGeneratorService)
+    private reportGenerator: ReportGeneratorService,
   ) {}
 
   private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {
@@ -2388,6 +2391,53 @@ export default class TasksController {
   private async notifyTaskCreated(task: TaskDocument, creatorId: number) {
     await this.broadcastTaskSnapshot(task, creatorId, { action: 'создана' });
   }
+
+  downloadPdf = async (req: RequestWithUser, res: Response) => {
+    try {
+      const filters = { ...(req.query as Record<string, unknown>) };
+      const result = await this.reportGenerator.generatePdf(filters, req.user);
+      res.setHeader('Content-Type', result.contentType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.fileName}"`,
+      );
+      res.setHeader('Content-Length', String(result.data.length));
+      res.send(result.data);
+    } catch (error) {
+      console.error('Не удалось сформировать PDF отчёт задач', error);
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Ошибка генерации отчёта',
+        status: 500,
+        detail: 'Не удалось сформировать PDF отчёт',
+      });
+    }
+  };
+
+  downloadExcel = async (req: RequestWithUser, res: Response) => {
+    try {
+      const filters = { ...(req.query as Record<string, unknown>) };
+      const result = await this.reportGenerator.generateExcel(
+        filters,
+        req.user,
+      );
+      res.setHeader('Content-Type', result.contentType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.fileName}"`,
+      );
+      res.setHeader('Content-Length', String(result.data.length));
+      res.send(result.data);
+    } catch (error) {
+      console.error('Не удалось сформировать Excel отчёт задач', error);
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Ошибка генерации отчёта',
+        status: 500,
+        detail: 'Не удалось сформировать Excel отчёт',
+      });
+    }
+  };
 
   list = async (req: RequestWithUser, res: Response) => {
     const { page, limit, ...filters } = req.query;

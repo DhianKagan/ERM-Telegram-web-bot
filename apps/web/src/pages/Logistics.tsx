@@ -1,5 +1,5 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, MapLibre, i18next
+// Основные модули: React, Mapbox GL, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
-import maplibregl, {
+import mapboxgl, {
   type GeoJSONSource,
   type LngLatBoundsLike,
   type Map as MapInstance,
   type MapLayerMouseEvent,
-} from "maplibre-gl";
+} from "mapbox-gl";
 import type * as GeoJSON from "geojson";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
@@ -29,7 +29,11 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
   MAP_STYLE_URL,
+  MAPBOX_ACCESS_TOKEN,
+  MAP_STYLE_FALLBACK_USED,
 } from "../config/map";
+
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 import {
   TASK_STATUSES,
   type Coords,
@@ -634,6 +638,14 @@ export default function LogisticsPage() {
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
   const drawRef = React.useRef<MapboxDraw | null>(null);
+  React.useEffect(() => {
+    if (!MAP_STYLE_FALLBACK_USED) {
+      return;
+    }
+    console.warn(
+      "VITE_MAPBOX_ACCESS_TOKEN не задан, используется резервный стиль без авторизации Mapbox."
+    );
+  }, [MAP_STYLE_FALLBACK_USED]);
   const [mapViewMode, setMapViewMode] = React.useState<
     "planar" | "perspective"
   >("planar");
@@ -1980,13 +1992,13 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (hasDialog) return;
     if (mapRef.current) return;
-    const map = new maplibregl.Map({
+    const map = new mapboxgl.Map({
       container: "logistics-map",
       style: MAP_STYLE_URL,
       center: MAP_CENTER_LNG_LAT,
       zoom: MAP_DEFAULT_ZOOM,
       minZoom: 5,
-      maxZoom: 12,
+      maxZoom: 22,
       maxBounds: UKRAINE_BOUNDS,
     });
     mapRef.current = map;
@@ -1996,7 +2008,7 @@ export default function LogisticsPage() {
     if (typeof map.touchZoomRotate?.disableRotation === "function") {
       map.touchZoomRotate.disableRotation();
     }
-    const navigation = new maplibregl.NavigationControl({ showCompass: false });
+    const navigation = new mapboxgl.NavigationControl({ showCompass: false });
     map.addControl(navigation, "top-right");
     const draw = new MapboxDraw({
       displayControlsDefault: false,

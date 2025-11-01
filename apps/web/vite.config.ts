@@ -5,7 +5,7 @@
  * Назначение файла: конфигурация Vite для мини-приложения.
  * Основные модули: vite, @vitejs/plugin-react, @vitejs/plugin-legacy.
  */
-import { defineConfig, type IndexHtmlTransformContext } from "vite";
+import { defineConfig, loadEnv, type IndexHtmlTransformContext } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { resolve } from "path";
@@ -138,7 +138,7 @@ const vendorChunkGroups: Record<string, string[]> = {
   "vendor-dnd": ["@hello-pangea/dnd"],
   "vendor-filemanager": ["chonky", "react-jss"],
   "vendor-richtext": ["react-quill", "quill", "dompurify"],
-  "vendor-maps": ["maplibre-gl", "@mapbox/mapbox-gl-draw"],
+  "vendor-maps": ["mapbox-gl", "@mapbox/mapbox-gl-draw"],
 };
 
 const vendorChunkLookup = new Map<string, string>();
@@ -159,7 +159,11 @@ function resolvePackageName(id: string) {
 }
 
 // https://vite.dev/config/
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const mapboxAccessToken = env.VITE_MAPBOX_ACCESS_TOKEN || "";
+  const mapStyleUrl = env.VITE_MAPBOX_STYLE_URL || "mapbox://styles/mapbox/streets-v12";
+
   return {
     plugins: [
       react(),
@@ -185,9 +189,11 @@ export default defineConfig(() => {
         "@": resolve(__dirname, "src"),
         shared: resolve(__dirname, "../../packages/shared/src"),
         "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
-        // Принудительно используем MapLibre вместо Mapbox в рантайме
-        "mapbox-gl": "maplibre-gl",
       },
+    },
+    define: {
+      __ERM_MAPBOX_ACCESS_TOKEN__: JSON.stringify(mapboxAccessToken),
+      __ERM_MAP_STYLE_URL__: JSON.stringify(mapStyleUrl),
     },
     build: {
       emptyOutDir: true,

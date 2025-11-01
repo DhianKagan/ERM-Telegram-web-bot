@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Назначение: тесты страницы логистики с отображением техники и треков
-// Основные модули: React, @testing-library/react, MapLibre-моки
+// Основные модули: React, @testing-library/react, Mapbox GL-моки
 
 import "@testing-library/jest-dom";
 import React from "react";
@@ -145,7 +145,7 @@ jest.mock("react-i18next", () => {
     useTranslation: () => ({ t: translate, i18n }),
   };
 });
-jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
+jest.mock("mapbox-gl/dist/mapbox-gl.css", () => ({}), { virtual: true });
 jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}), {
   virtual: true,
 });
@@ -242,7 +242,7 @@ const buildMapInstance = () => {
 };
 
 jest.mock(
-  "maplibre-gl",
+  "mapbox-gl",
   () => {
     const Marker = jest.fn(() => ({
       setLngLat: jest.fn().mockReturnThis(),
@@ -251,13 +251,20 @@ jest.mock(
     }));
     const NavigationControl = jest.fn();
     const Map = jest.fn(() => buildMapInstance());
-    return {
+    const module = {
       __esModule: true,
-      default: { Map, Marker, NavigationControl },
+      default: {
+        accessToken: "",
+        Map,
+        Marker,
+        NavigationControl,
+      },
       Map,
       Marker,
       NavigationControl,
+      accessToken: "",
     };
+    return module;
   },
   { virtual: true },
 );
@@ -749,7 +756,7 @@ describe("LogisticsPage", () => {
       ).toHaveLength(3),
     );
 
-    const mapModule = jest.requireMock("maplibre-gl");
+    const mapModule = jest.requireMock("mapbox-gl");
     const mapInstance = mapModule.Map.mock.results[0]?.value as any;
     expect(mapInstance).toBeTruthy();
 

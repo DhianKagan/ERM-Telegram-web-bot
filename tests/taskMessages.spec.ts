@@ -9,8 +9,8 @@ import {
 
 jest.mock('../apps/api/src/db/queries', () => ({
   getUsersMap: jest.fn(async () => ({
-    '101': { name: 'Семенович В.И.', username: 'semenovich' },
-    '102': { name: 'Диденко Денис', username: 'didenko' },
+    '101': { name: 'Семенович В.И.', username: 'semenovich', is_bot: false },
+    '102': { name: 'Диденко Денис', username: 'didenko', is_bot: false },
   })),
 }));
 

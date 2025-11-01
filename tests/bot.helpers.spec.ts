@@ -195,8 +195,8 @@ describe('helpers из bot.ts', () => {
       } as Record<string, unknown> & { status: 'В работе' },
       'https://t.me/msg',
       {
-        1: { name: 'Иван', username: 'ivan' },
-        2: { name: '', username: 'maria' },
+        1: { name: 'Иван', username: 'ivan', isBot: false },
+        2: { name: '', username: 'maria', isBot: false },
       },
       'https://app.local/tasks/1',
       { note: ' Срочно ' },

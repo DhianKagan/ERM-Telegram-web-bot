@@ -48,6 +48,7 @@ export interface User {
     departmentId?: string;
     divisionId?: string;
     positionId?: string;
+    is_bot?: boolean;
 }
 export type TrackingAlarmType = 'delay' | 'route-deviation';
 export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';

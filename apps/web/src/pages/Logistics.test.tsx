@@ -153,6 +153,7 @@ jest.mock("react-i18next", () => {
   };
 });
 jest.mock("mapbox-gl/dist/mapbox-gl.css", () => ({}), { virtual: true });
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
 jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}), {
   virtual: true,
 });
@@ -310,6 +311,11 @@ jest.mock(
     };
     return module;
   },
+  { virtual: true },
+);
+jest.mock(
+  "maplibre-gl",
+  () => jest.requireMock("mapbox-gl"),
   { virtual: true },
 );
 

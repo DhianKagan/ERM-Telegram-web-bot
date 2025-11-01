@@ -138,7 +138,7 @@ const vendorChunkGroups: Record<string, string[]> = {
   "vendor-dnd": ["@hello-pangea/dnd"],
   "vendor-filemanager": ["chonky", "react-jss"],
   "vendor-richtext": ["react-quill", "quill", "dompurify"],
-  "vendor-maps": ["mapbox-gl", "@mapbox/mapbox-gl-draw"],
+  "vendor-maps": ["mapbox-gl", "maplibre-gl", "@mapbox/mapbox-gl-draw"],
 };
 
 const vendorChunkLookup = new Map<string, string>();

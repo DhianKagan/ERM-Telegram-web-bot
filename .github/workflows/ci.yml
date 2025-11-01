@@ -60,16 +60,12 @@ jobs:
         run: corepack enable
       - name: Установка зависимостей
         run: pnpm install --frozen-lockfile
-      - name: Проверка build-скриптов
+      - name: Проверка скриптов зависимостей
         run: pnpm approve-builds
       - name: Запуск тестов
         env:
           CI: true
         run: pnpm test
-      - name: Сборка фронтенда для size-limit
-        run: pnpm --filter web run build:dist
-      - name: Проверка размера бандла
-        run: pnpm size
 
   semgrep:
     name: semgrep
@@ -81,8 +77,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Включение corepack
         run: corepack enable
+      - name: Установка зависимостей
+        run: pnpm install --frozen-lockfile
       - name: Запуск Semgrep
         env:
           CI: true

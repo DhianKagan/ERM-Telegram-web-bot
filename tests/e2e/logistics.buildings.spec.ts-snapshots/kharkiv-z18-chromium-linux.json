@@ -1,0 +1,123 @@
+{
+  "state": {
+    "center": [
+      36.2292,
+      49.9935
+    ],
+    "zoom": 18,
+    "pitch": 58,
+    "bearing": -25
+  },
+  "layers": [
+    {
+      "id": "logistics-3d-buildings",
+      "type": "fill-extrusion",
+      "zIndex": 1,
+      "features": [
+        {
+          "className": "fake-building",
+          "featureKey": "Київ · Контрактова площа",
+          "textContent": null,
+          "styles": {
+            "left": -544114,
+            "top": -67002.8,
+            "width": 137.15,
+            "height": 112,
+            "transform": null
+          }
+        },
+        {
+          "className": "fake-building",
+          "featureKey": "Львів · Площа Ринок",
+          "textContent": null,
+          "styles": {
+            "left": -1163560,
+            "top": 22644.4,
+            "width": 128.57,
+            "height": 84,
+            "transform": null
+          }
+        },
+        {
+          "className": "fake-building",
+          "featureKey": "Одеса · Дерибасівська",
+          "textContent": null,
+          "styles": {
+            "left": -525031,
+            "top": 517765,
+            "width": 120,
+            "height": 102.67,
+            "transform": null
+          }
+        },
+        {
+          "className": "fake-building",
+          "featureKey": "Харків · Свободи",
+          "textContent": null,
+          "styles": {
+            "left": 344.28,
+            "top": 288.06,
+            "width": 111.43,
+            "height": 98,
+            "transform": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "demo-labels",
+      "type": "symbol",
+      "zIndex": 2,
+      "features": [
+        {
+          "className": "fake-label",
+          "featureKey": null,
+          "textContent": "Київ · Контрактова площа",
+          "styles": {
+            "left": -544046,
+            "top": -67018.8,
+            "width": null,
+            "height": null,
+            "transform": "translate(-50%, -100%)"
+          }
+        },
+        {
+          "className": "fake-label",
+          "featureKey": null,
+          "textContent": "Львів · Площа Ринок",
+          "styles": {
+            "left": -1163490,
+            "top": 22628.4,
+            "width": null,
+            "height": null,
+            "transform": "translate(-50%, -100%)"
+          }
+        },
+        {
+          "className": "fake-label",
+          "featureKey": null,
+          "textContent": "Одеса · Дерибасівська",
+          "styles": {
+            "left": -524971,
+            "top": 517749,
+            "width": null,
+            "height": null,
+            "transform": "translate(-50%, -100%)"
+          }
+        },
+        {
+          "className": "fake-label",
+          "featureKey": null,
+          "textContent": "Харків · Свободи",
+          "styles": {
+            "left": 400,
+            "top": 272.06,
+            "width": null,
+            "height": null,
+            "transform": "translate(-50%, -100%)"
+          }
+        }
+      ]
+    }
+  ]
+}

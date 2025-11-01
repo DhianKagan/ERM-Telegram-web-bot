@@ -12,6 +12,8 @@ import {
 } from "@testing-library/react";
 import CollectionsPage from "./CollectionsPage";
 import { MemoryRouter } from "react-router-dom";
+import { I18nextProvider } from "react-i18next";
+import i18n from "../../i18n";
 import type { CollectionItem } from "../../services/collections";
 import {
   fetchCollectionItems,
@@ -363,9 +365,11 @@ describe("CollectionsPage", () => {
 
   const renderCollectionsPage = () =>
     render(
-      <MemoryRouter initialEntries={["/cp/settings"]}>
-        <CollectionsPage />
-      </MemoryRouter>,
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/cp/settings"]}>
+          <CollectionsPage />
+        </MemoryRouter>
+      </I18nextProvider>,
     );
 
   it("возвращает список при смене вкладки, не перенося предыдущий фильтр", async () => {
@@ -373,9 +377,11 @@ describe("CollectionsPage", () => {
 
     await screen.findByText("Главный департамент");
 
-    const searchInput = screen.getByPlaceholderText("Название или значение");
+    const searchInput = screen.getByPlaceholderText(
+      "Поиск по названию или значению",
+    );
     fireEvent.change(searchInput, { target: { value: "финансы" } });
-    fireEvent.click(screen.getByText("Искать"));
+    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
 
     await waitFor(() =>
       expect(mockedFetch).toHaveBeenCalledWith("departments", "финансы", 1, 10),
@@ -391,10 +397,66 @@ describe("CollectionsPage", () => {
     await screen.findByText("Отдел снабжения");
 
     const divisionsPanel = screen.getByTestId("tab-content-divisions");
-    const activeSearch = within(divisionsPanel).getByPlaceholderText(
-      "Название или значение",
+    const activeSearch = screen.getByPlaceholderText(
+      "Поиск по названию или значению",
     ) as HTMLInputElement;
     expect(activeSearch.value).toBe("");
+  });
+
+  it("отображает пустое состояние для справочника без элементов", async () => {
+    mockedFetch.mockImplementation(async () => ({ items: [], total: 0 }));
+    mockedFetchAll.mockImplementation(async () => []);
+
+    renderCollectionsPage();
+
+    const emptyTitle = await screen.findByText("Здесь пока пусто");
+    expect(emptyTitle).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Создайте первый элемент, чтобы начать работать со справочником.",
+      ),
+    ).toBeInTheDocument();
+    const addButtons = screen.getAllByRole("button", { name: "Добавить элемент" });
+    expect(addButtons.length).toBeGreaterThan(0);
+  });
+
+  it("копирует идентификатор коллекции при клике по значку", async () => {
+    const originalClipboard = (navigator as any).clipboard;
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    try {
+      renderCollectionsPage();
+
+      await screen.findByText("Главный департамент");
+
+      const copyButtons = await screen.findAllByTitle("Скопировать ID");
+      const idButton = copyButtons.find((element) =>
+        element.textContent?.includes("dep-1"),
+      );
+      expect(idButton).toBeDefined();
+      fireEvent.click(idButton as HTMLElement);
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith("dep-1"));
+      await waitFor(() =>
+        expect(idButton).toHaveAttribute("title", "ID скопирован"),
+      );
+    } finally {
+      if (originalClipboard !== undefined) {
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: originalClipboard,
+        });
+      } else {
+        Reflect.deleteProperty(
+          navigator as unknown as Record<string, unknown>,
+          "clipboard",
+        );
+      }
+    }
   });
 
   it("сохраняет все отделы департамента после переключения вкладок", async () => {
@@ -578,6 +640,14 @@ describe("CollectionsPage", () => {
   });
 
   it("отображает колонки пользователей во вкладке 'Пользователь'", async () => {
+    mockedFetchUsers.mockResolvedValue([
+      {
+        telegram_id: 101,
+        username: "operator",
+        role: "user",
+      } as User,
+    ]);
+
     renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
@@ -602,6 +672,15 @@ describe("CollectionsPage", () => {
   });
 
   it("отображает колонки сотрудников во вкладке 'Сотрудник'", async () => {
+    mockedFetchUsers.mockResolvedValue([
+      {
+        telegram_id: 101,
+        username: "operator",
+        role: "user",
+        name: "Оператор",
+      } as User,
+    ]);
+
     renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
@@ -757,10 +836,10 @@ describe("CollectionsPage", () => {
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
 
-    const searchInput = within(usersPanel).getByPlaceholderText("Имя или логин");
+    const searchInput = screen.getByPlaceholderText("Имя, логин или ID");
     fireEvent.change(searchInput, { target: { value: "202" } });
 
-    fireEvent.click(within(usersPanel).getByRole("button", { name: "Искать" }));
+    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
     expect(within(usersPanel).getByText("operator")).toBeInTheDocument();
@@ -807,10 +886,12 @@ describe("CollectionsPage", () => {
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
 
-    const searchInput = within(employeesPanel).getByPlaceholderText("Имя или логин");
+    const searchInput = screen.getByPlaceholderText(
+      "Имя, логин или должность",
+    );
     fireEvent.change(searchInput, { target: { value: "Петров" } });
 
-    fireEvent.click(within(employeesPanel).getByRole("button", { name: "Искать" }));
+    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
     expect(within(employeesPanel).getByText("Петров Иван")).toBeInTheDocument();
@@ -833,7 +914,7 @@ describe("CollectionsPage", () => {
 
     await screen.findByText("Главный департамент");
 
-    const addButtons = screen.getAllByRole("button", { name: "Добавить" });
+    const addButtons = screen.getAllByRole("button", { name: "Добавить элемент" });
     fireEvent.click(addButtons[0]);
 
     const form = await screen.findByTestId("collection-form");

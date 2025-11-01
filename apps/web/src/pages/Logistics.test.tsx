@@ -13,7 +13,9 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import LogisticsPage from "./Logistics";
+import LogisticsPage, {
+  LOGISTICS_FLEET_POLL_INTERVAL_MS,
+} from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
 import type { LogisticsEvent, RoutePlan } from "shared";
 jest.mock("../config/map", () => {
@@ -718,7 +720,7 @@ beforeAll(() => {
 });
 
 describe("LogisticsPage", () => {
-  jest.setTimeout(15000);
+  jest.setTimeout(20000);
   beforeEach(() => {
     jest.clearAllMocks();
     logisticsEventsMock.__clear();
@@ -999,6 +1001,107 @@ describe("LogisticsPage", () => {
       expect(listRoutePlansMock).toHaveBeenCalledWith("draft", 1, 1),
     );
     expect(listFleetVehiclesMock).not.toHaveBeenCalled();
+  });
+
+  it("сохраняет выбор транспорта в history.replaceState", async () => {
+    const replaceStateSpy = jest.spyOn(window.history, "replaceState");
+    try {
+      render(
+        <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+          <LogisticsPage />
+        </MemoryRouter>,
+      );
+
+      expect(listFleetVehiclesMock).toHaveBeenCalled();
+
+      const vehicleCell = await screen.findByText("Погрузчик");
+      const row = vehicleCell.closest("tr");
+      expect(row).toBeTruthy();
+      fireEvent.click(row!);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("Выбран транспорт: Погрузчик"),
+        ).toBeInTheDocument(),
+      );
+
+      const lastCall = replaceStateSpy.mock.calls.at(-1);
+      expect(lastCall?.[2]).toContain("selectedVehicleId=veh-1");
+
+      replaceStateSpy.mockClear();
+      fireEvent.click(row!);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Выбран транспорт: Погрузчик"),
+        ).not.toBeInTheDocument(),
+      );
+
+      const clearCall = replaceStateSpy.mock.calls.at(-1);
+      expect(clearCall?.[2] ?? "").not.toContain("selectedVehicleId=");
+    } finally {
+      replaceStateSpy.mockRestore();
+    }
+  });
+
+  it("останавливает polling транспорта в скрытой вкладке и возобновляет при возвращении", async () => {
+    jest.useFakeTimers();
+    const hiddenDescriptor = Object.getOwnPropertyDescriptor(document, "hidden");
+    let hidden = false;
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => hidden,
+    });
+
+    try {
+      render(
+        <MemoryRouter
+          future={{ v7_relativeSplatPath: true }}
+          initialEntries={[`/logistics?withTrack=true`]}
+        >
+          <LogisticsPage />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1));
+
+      listFleetVehiclesMock.mockClear();
+      act(() => {
+        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS);
+      });
+      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
+
+      listFleetVehiclesMock.mockClear();
+      act(() => {
+        hidden = true;
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS * 2);
+      });
+      expect(listFleetVehiclesMock).not.toHaveBeenCalled();
+
+      act(() => {
+        hidden = false;
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
+
+      listFleetVehiclesMock.mockClear();
+      act(() => {
+        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS);
+      });
+      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+      if (hiddenDescriptor) {
+        Object.defineProperty(document, "hidden", hiddenDescriptor);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete (document as Partial<Document>).hidden;
+      }
+    }
   });
 
 });

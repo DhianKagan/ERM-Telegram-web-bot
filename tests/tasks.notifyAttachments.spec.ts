@@ -104,7 +104,9 @@ jest.mock('../apps/api/src/utils/messageLink', () =>
 );
 
 jest.mock('../apps/api/src/db/queries', () => ({
-  getUsersMap: jest.fn(async () => ({ '55': { name: 'Иван', username: 'ivan' } })),
+  getUsersMap: jest.fn(async () => ({
+    '55': { name: 'Иван', username: 'ivan', is_bot: false },
+  })),
 }));
 
 const { getUsersMap: getUsersMapMock } = jest.requireMock(
@@ -120,6 +122,9 @@ jest.mock('../apps/api/src/db/model', () => {
   const updateOneMock = jest.fn(() => ({
     exec: jest.fn().mockResolvedValue({ matchedCount: 1 }),
   }));
+  const userUpdateOneMock = jest.fn(() => ({
+    exec: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+  }));
   return {
     Task: {
       findOneAndUpdate: updateTaskMock,
@@ -130,10 +135,14 @@ jest.mock('../apps/api/src/db/model', () => {
     File: {
       findById: fileFindByIdMock,
     },
+    User: {
+      updateOne: userUpdateOneMock,
+    },
     __updateTaskMock: updateTaskMock,
     __taskFindByIdMock: taskFindByIdMock,
     __fileFindByIdMock: fileFindByIdMock,
     __updateOneMock: updateOneMock,
+    __userUpdateOneMock: userUpdateOneMock,
   };
 });
 
@@ -142,11 +151,13 @@ const {
   __taskFindByIdMock: taskFindByIdMock,
   __fileFindByIdMock: fileFindByIdMock,
   __updateOneMock: updateOneMock,
+  __userUpdateOneMock: userUpdateOneMock,
 } = jest.requireMock('../apps/api/src/db/model') as {
   __updateTaskMock: jest.Mock;
   __taskFindByIdMock: jest.Mock;
   __fileFindByIdMock: jest.Mock;
   __updateOneMock: jest.Mock;
+  __userUpdateOneMock: jest.Mock;
 };
 
 const buildChatMessageLinkMock = jest.requireMock(
@@ -193,6 +204,7 @@ describe('notifyTaskCreated вложения', () => {
     taskFindByIdMock.mockClear();
     fileFindByIdMock.mockClear();
     updateOneMock.mockClear();
+    userUpdateOneMock.mockClear();
     getUsersMapMock.mockClear();
     buildChatMessageLinkMock.mockClear();
     process.env.APP_URL = 'https://example.com';
@@ -512,5 +524,88 @@ describe('notifyTaskCreated вложения', () => {
       text: 'Фотоальбом',
       url: 'https://t.me/c/100/200',
     });
+  });
+
+  it('не отправляет личное уведомление ботам из справочника пользователей', async () => {
+    const previousChatId = process.env.CHAT_ID;
+    process.env.CHAT_ID = '';
+    getUsersMapMock.mockResolvedValueOnce({
+      '55': { name: 'ERM BOT', username: 'erm_bot', is_bot: true },
+    });
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Тестовая задача',
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const controller = new TasksController({} as any);
+    try {
+      await (
+        controller as unknown as {
+          notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+        }
+      ).notifyTaskCreated(plainTask as TaskDocument, 99);
+    } finally {
+      process.env.CHAT_ID = previousChatId;
+    }
+
+    const dmCall = sendMessageMock.mock.calls.find((call) => call?.[0] === 55);
+    expect(dmCall).toBeUndefined();
+    expect(userUpdateOneMock).not.toHaveBeenCalled();
+  });
+
+  it('помечает пользователя как бота при ошибке Telegram 403', async () => {
+    const previousChatId = process.env.CHAT_ID;
+    process.env.CHAT_ID = '';
+    getUsersMapMock.mockResolvedValueOnce({
+      '55': { name: 'Иван', username: 'ivan', is_bot: false },
+    });
+    const telegramError = Object.assign(new Error('Forbidden'), {
+      response: {
+        error_code: 403,
+        description: "Forbidden: bots can't send messages to bots",
+      },
+    });
+    sendMessageMock.mockRejectedValueOnce(telegramError);
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439011',
+      task_number: 'A-12',
+      title: 'Тестовая задача',
+      assignees: [55],
+      assigned_user_id: 55,
+      created_by: 55,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const controller = new TasksController({} as any);
+    try {
+      await (
+        controller as unknown as {
+          notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+        }
+      ).notifyTaskCreated(plainTask as TaskDocument, 99);
+    } finally {
+      process.env.CHAT_ID = previousChatId;
+    }
+
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(userUpdateOneMock).toHaveBeenCalledWith(
+      { telegram_id: { $eq: 55 } },
+      { $set: { is_bot: true } },
+    );
   });
 });

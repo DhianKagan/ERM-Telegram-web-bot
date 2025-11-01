@@ -782,9 +782,15 @@ const hasAdminPrivileges = (user: UserDocument | null): boolean => {
   return (mask & ACCESS_ADMIN) === ACCESS_ADMIN;
 };
 
+export type TaskUserProfile = {
+  name: string;
+  username: string;
+  isBot: boolean;
+};
+
 const buildUsersIndex = async (
   ids: number[],
-): Promise<Record<number, { name: string; username: string }>> => {
+): Promise<Record<number, TaskUserProfile>> => {
   if (!ids.length) {
     return {};
   }
@@ -804,16 +810,13 @@ const buildUsersIndex = async (
           typeof value?.username === 'string' && value.username.trim()
             ? value.username.trim()
             : '';
-        return [numericId, { name, username }] as const;
+        const isBot = value?.is_bot === true;
+        return [numericId, { name, username, isBot }] as const;
       })
       .filter(
-        (entry): entry is readonly [number, { name: string; username: string }] =>
-          entry !== null,
+        (entry): entry is readonly [number, TaskUserProfile] => entry !== null,
       );
-    return Object.fromEntries(entries) as Record<
-      number,
-      { name: string; username: string }
-    >;
+    return Object.fromEntries(entries) as Record<number, TaskUserProfile>;
   } catch (error) {
     console.error('Не удалось получить данные пользователей задачи', error);
     return {};
@@ -880,7 +883,7 @@ const formatCoordinates = (value: unknown): string | null => {
 export const buildDirectTaskMessage = (
   task: Record<string, unknown> & { status?: SharedTask['status'] },
   link: string | null,
-  users: Record<number, { name: string; username: string }>,
+  users: Record<number, TaskUserProfile>,
   appLink: string | null = null,
   options?: { note?: string | null },
 ): string => {
@@ -1005,7 +1008,7 @@ const loadTaskContext = async (
   override?: TaskPresentation,
 ): Promise<{
   plain: TaskPresentation | null;
-  users: Record<number, { name: string; username: string }>;
+  users: Record<number, TaskUserProfile>;
 }> => {
   if (override) {
     const ids = collectTaskUserIds(override);
@@ -1036,7 +1039,7 @@ const syncTaskPresentation = async (
   override?: TaskPresentation,
 ): Promise<{
   plain: TaskPresentation | null;
-  users: Record<number, { name: string; username: string }>;
+  users: Record<number, TaskUserProfile>;
 }> => {
   const context = await loadTaskContext(taskId, override);
   const { plain, users } = context;
@@ -1160,7 +1163,7 @@ async function ensureUserCanUpdateTask(
 
 type TaskSnapshot = {
   plain: TaskPresentation | null;
-  users: Record<number, { name: string; username: string }>;
+  users: Record<number, TaskUserProfile>;
 };
 
 async function refreshTaskKeyboard(

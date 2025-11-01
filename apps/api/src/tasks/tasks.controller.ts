@@ -26,7 +26,12 @@ import { CollectionItem } from '../db/models/CollectionItem';
 import { sendProblem } from '../utils/problem';
 import { sendCached } from '../utils/sendCached';
 import { type Task as SharedTask } from 'shared';
-import { bot, buildDirectTaskKeyboard, buildDirectTaskMessage } from '../bot/bot';
+import {
+  bot,
+  buildDirectTaskKeyboard,
+  buildDirectTaskMessage,
+  type TaskUserProfile,
+} from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
 import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
 import taskStatusKeyboard, {
@@ -323,6 +328,13 @@ export default class TasksController {
       }
       if (typeof value === 'object') {
         const record = value as Record<string, unknown>;
+        const isBotFlag =
+          record.is_bot === true ||
+          (typeof record.is_bot === 'string' &&
+            record.is_bot.trim().toLowerCase() === 'true');
+        if (isBotFlag) {
+          return;
+        }
         if ('telegram_id' in record) {
           add(record.telegram_id);
         }
@@ -353,6 +365,38 @@ export default class TasksController {
     }
     if (Array.isArray(task.assignees)) task.assignees.forEach(add);
     return recipients;
+  }
+
+  private isBotRecipientError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+    const response = (error as {
+      response?: { error_code?: number; description?: unknown };
+    }).response;
+    if (!response || response.error_code !== 403) {
+      return false;
+    }
+    const description =
+      typeof response.description === 'string' ? response.description : '';
+    return description.toLowerCase().includes("bots can't send messages to bots");
+  }
+
+  private async markUserAsBot(userId: number): Promise<void> {
+    if (!Number.isFinite(userId)) {
+      return;
+    }
+    try {
+      await User.updateOne(
+        { telegram_id: { $eq: userId } },
+        { $set: { is_bot: true } },
+      ).exec();
+    } catch (error) {
+      console.error(
+        `Не удалось отметить пользователя ${userId} как бота`,
+        error,
+      );
+    }
   }
 
   private async resolveAdminExecutors(values: unknown[]): Promise<number[]> {
@@ -1901,14 +1945,15 @@ export default class TasksController {
     );
 
     const recipients = this.collectNotificationTargets(plain, actorId);
-    let users: Record<number, { name: string; username: string }> = {};
+    let users: Record<number, TaskUserProfile> = {};
     try {
       const usersRaw = await getUsersMap(Array.from(recipients));
       users = Object.fromEntries(
         Object.entries(usersRaw).map(([key, value]) => {
           const name = value.name ?? value.username ?? '';
           const username = value.username ?? '';
-          return [Number(key), { name, username }];
+          const isBot = value?.is_bot === true;
+          return [Number(key), { name, username, isBot } as TaskUserProfile];
         }),
       );
     } catch (error) {
@@ -2311,12 +2356,30 @@ export default class TasksController {
         dmNote ? { note: dmNote } : undefined,
       );
       for (const userId of assignees) {
+        const profile = users[userId];
+        if (profile?.isBot) {
+          console.info(
+            `Получатель ${userId} отмечен как бот, личное уведомление пропущено`,
+          );
+          continue;
+        }
         try {
           const sent = await bot.telegram.sendMessage(userId, dmText, dmOptions);
           if (sent?.message_id) {
             directMessages.push({ user_id: userId, message_id: sent.message_id });
           }
         } catch (error) {
+          if (this.isBotRecipientError(error)) {
+            console.warn(
+              `Получатель ${userId} является ботом, личное уведомление не отправлено`,
+              error,
+            );
+            if (profile) {
+              profile.isBot = true;
+            }
+            await this.markUserAsBot(userId);
+            continue;
+          }
           console.error(
             `Не удалось отправить уведомление пользователю ${userId}`,
             error,

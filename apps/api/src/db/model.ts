@@ -488,6 +488,7 @@ export interface UserAttrs {
   departmentId?: Types.ObjectId;
   divisionId?: Types.ObjectId;
   positionId?: Types.ObjectId;
+  is_bot?: boolean;
 }
 
 export interface UserDocument extends UserAttrs, Document {}
@@ -516,6 +517,8 @@ const userSchema = new Schema<UserDocument>({
   receive_reminders: { type: Boolean, default: true },
   // Дата прохождения верификации через Bot API
   verified_at: Date,
+  // Флаг Telegram-аккаунта бота для отключения личных уведомлений
+  is_bot: { type: Boolean, default: false },
 });
 
 export interface LogAttrs {

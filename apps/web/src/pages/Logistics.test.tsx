@@ -327,12 +327,44 @@ const optimizeRouteMock = jest.fn().mockResolvedValue(null);
 
 jest.mock(
   "@mapbox/mapbox-gl-draw",
-  () =>
-    jest.fn().mockImplementation(() => ({
-      changeMode: drawChangeMode,
-      delete: drawDelete,
-      get: jest.fn(() => null),
-    })),
+  () => {
+    const constructor = jest.fn(
+      (options?: {
+        styles?: Array<{ paint?: Record<string, unknown> }>;
+      }) => {
+        if (!options?.styles) {
+          console.error(
+            "line-dasharray выражение должно использовать literal для совместимости с MapLibre.",
+          );
+        } else {
+          for (const style of options.styles) {
+            const paint = style?.paint as Record<string, unknown> | undefined;
+            const dashArray = paint?.["line-dasharray"];
+            if (
+              Array.isArray(dashArray) &&
+              dashArray.some(
+                (entry) =>
+                  Array.isArray(entry) &&
+                  entry.length > 0 &&
+                  typeof entry[0] === "number",
+              )
+            ) {
+              console.error(
+                "line-dasharray выражение должно использовать literal для совместимости с MapLibre.",
+              );
+              break;
+            }
+          }
+        }
+        return {
+          changeMode: drawChangeMode,
+          delete: drawDelete,
+          get: jest.fn(() => null),
+        };
+      },
+    );
+    return constructor;
+  },
   { virtual: true },
 );
 

@@ -38,6 +38,9 @@ import { buildCommentHtml } from '../tasks/taskComments';
 import { buildAttachmentsFromCommentHtml } from '../utils/attachments';
 import { ACCESS_ADMIN } from '../utils/accessMask';
 import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
+import ReportGeneratorService from '../services/reportGenerator';
+import TasksService from '../tasks/tasks.service';
+import queries from '../db/queries';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -46,6 +49,7 @@ if (process.env.NODE_ENV !== 'production') {
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
 const taskSyncController = new TaskSyncController(bot);
+const reportGenerator = new ReportGeneratorService(new TasksService(queries));
 const REQUEST_TYPE_NAME = 'Заявка';
 
 const resolveChatId = (): string | undefined =>
@@ -527,8 +531,50 @@ async function sendFleetVehicles(ctx: Context): Promise<void> {
   }
 }
 
+async function handleReportCommand(ctx: Context): Promise<void> {
+  const fromId = ctx.from?.id;
+  if (!Number.isFinite(fromId)) {
+    await ctx.reply(messages.reportGenerationError);
+    return;
+  }
+  const user = await getUser(fromId);
+  if (!hasAdminPrivileges(user)) {
+    await ctx.reply(messages.reportAdminsOnly);
+    return;
+  }
+  const reportUser = user
+    ? {
+        id:
+          typeof user.telegram_id === 'number'
+            ? user.telegram_id
+            : user.id ?? undefined,
+        role: user.role,
+        access: user.access,
+      }
+    : undefined;
+  try {
+    const [pdfReport, excelReport] = await Promise.all([
+      reportGenerator.generatePdf({}, reportUser),
+      reportGenerator.generateExcel({}, reportUser),
+    ]);
+    await ctx.replyWithDocument({
+      source: pdfReport.data,
+      filename: pdfReport.fileName,
+    });
+    await ctx.replyWithDocument({
+      source: excelReport.data,
+      filename: excelReport.fileName,
+    });
+    await ctx.reply(messages.reportGenerationSuccess);
+  } catch (error) {
+    console.error('Не удалось сформировать отчёты задач', error);
+    await ctx.reply(messages.reportGenerationError);
+  }
+}
+
 bot.command('vehicles', sendFleetVehicles);
 bot.hears('Транспорт', sendFleetVehicles);
+bot.command('report', handleReportCommand);
 
 const MAX_RETRIES = 5;
 
@@ -2133,3 +2179,4 @@ export const __resetCloseThrottleForTests = (): void => {
 };
 
 export { processStatusAction };
+export { handleReportCommand };

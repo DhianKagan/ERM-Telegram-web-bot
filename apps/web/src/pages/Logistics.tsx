@@ -33,6 +33,7 @@ import {
   MAP_STYLE_FALLBACK_USED,
 } from "../config/map";
 import { insert3dBuildingsLayer } from "../utils/insert3dBuildingsLayer";
+import { customTheme } from "../utils/drawTheme";
 import {
   TASK_STATUSES,
   type Coords,
@@ -2181,6 +2182,7 @@ export default function LogisticsPage() {
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
       defaultMode: "simple_select",
+      styles: customTheme,
     });
     drawRef.current = draw;
     map.addControl(draw, "top-left");

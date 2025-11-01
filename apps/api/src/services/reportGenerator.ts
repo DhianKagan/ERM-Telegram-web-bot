@@ -32,9 +32,32 @@ type FetchResult = {
   filters: FilterNormalizationResult;
 };
 
-const fontStore =
-  (pdfFonts as { pdfMake?: { vfs: Record<string, string> } }).pdfMake?.vfs ??
-  (pdfFonts as Record<string, string>);
+type PdfMakeModule = {
+  pdfMake?: {
+    vfs?: unknown;
+  };
+};
+
+const isFontRecord = (value: unknown): value is Record<string, string> =>
+  typeof value === 'object' &&
+  value !== null &&
+  Object.values(value).every((item) => typeof item === 'string');
+
+const resolveFontStore = (fonts: unknown): Record<string, string> => {
+  if (typeof fonts === 'object' && fonts !== null) {
+    const module = fonts as PdfMakeModule;
+    const vfs = module.pdfMake?.vfs;
+    if (isFontRecord(vfs)) {
+      return vfs;
+    }
+  }
+  if (isFontRecord(fonts)) {
+    return fonts;
+  }
+  throw new Error('pdfmake fonts не содержат корректное vfs');
+};
+
+const fontStore = resolveFontStore(pdfFonts);
 
 const loadFont = (name: string): Buffer => {
   const content = fontStore[name];

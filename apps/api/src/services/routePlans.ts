@@ -19,6 +19,10 @@ import { Task } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
 import { getUser } from '../db/queries';
+import {
+  notifyRoutePlanRemoved,
+  notifyRoutePlanUpdated,
+} from './logisticsEvents';
 
 const TITLE_MAX_LENGTH = 120;
 const NOTES_MAX_LENGTH = 1024;
@@ -649,7 +653,9 @@ export async function updatePlan(
   }
 
   await plan.save();
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  notifyRoutePlanUpdated(serialized, 'updated');
+  return serialized;
 }
 
 const updateTasksForStatus = async (
@@ -789,6 +795,7 @@ export async function updatePlanStatus(
   if (status === 'approved') {
     await notifyPlanApproved(serialized, actorId).catch(() => undefined);
   }
+  notifyRoutePlanUpdated(serialized, 'updated');
   return serialized;
 }
 
@@ -796,7 +803,14 @@ export async function removePlan(id: string): Promise<boolean> {
   const objectId = parseObjectId(id);
   if (!objectId) return false;
   const res = await RoutePlanModel.findByIdAndDelete(objectId);
-  return Boolean(res);
+  if (!res) {
+    return false;
+  }
+  const planId = normalizeId(res._id) ?? normalizeId(id);
+  if (planId) {
+    notifyRoutePlanRemoved(planId);
+  }
+  return true;
 }
 
 export type RoutePlanTaskHint = TaskSource;

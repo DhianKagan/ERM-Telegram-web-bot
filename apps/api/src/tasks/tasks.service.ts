@@ -1,6 +1,7 @@
 // Сервис задач через репозиторий.
 // Основные модули: db/queries, services/route, shared
 import { getRouteDistance, clearRouteCache } from '../services/route';
+import { notifyTasksChanged } from '../services/logisticsEvents';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
@@ -77,6 +78,22 @@ const setMetric = (
     return;
   }
   target[key as string] = value;
+};
+
+const normalizeTaskId = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(Math.trunc(value)) : null;
+  }
+  if (typeof value === 'object' && 'toString' in (value as { toString(): unknown })) {
+    const str = (value as { toString(): unknown }).toString();
+    return typeof str === 'string' && str ? str : null;
+  }
+  return null;
 };
 
 class TasksService {
@@ -162,6 +179,10 @@ class TasksService {
         task,
         Array.isArray(task.attachments) && task.attachments.length > 0,
       );
+      const taskId = normalizeTaskId(task?._id);
+      if (taskId) {
+        notifyTasksChanged('created', [taskId]);
+      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка создания задачи с вложениями', 'error', {
@@ -196,6 +217,10 @@ class TasksService {
         task,
         Object.prototype.hasOwnProperty.call(payload, 'attachments'),
       );
+      const taskId = normalizeTaskId(task?._id) ?? normalizeTaskId(id);
+      if (taskId) {
+        notifyTasksChanged('updated', [taskId]);
+      }
       return task;
     } catch (error) {
       await writeAttachmentLog('Ошибка обновления вложений задачи', 'error', {
@@ -328,6 +353,10 @@ class TasksService {
   async remove(id: string, actorId?: number) {
     const task = await this.repo.deleteTask(id, actorId);
     await clearRouteCache();
+    const taskId = normalizeTaskId(task?._id) ?? normalizeTaskId(id);
+    if (task && taskId) {
+      notifyTasksChanged('deleted', [taskId]);
+    }
     return task;
   }
 

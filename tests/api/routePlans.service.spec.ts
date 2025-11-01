@@ -6,6 +6,11 @@
 import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
+import type {
+  LogisticsEvent,
+  LogisticsRoutePlanRemovedEvent,
+  LogisticsRoutePlanUpdatedEvent,
+} from '../../packages/shared/src/types';
 
 declare const describe: (
   name: string,
@@ -39,13 +44,18 @@ describe('routePlans service analytics', function () {
   let createDraftFromInputs: typeof import('../../apps/api/src/services/routePlans').createDraftFromInputs;
   let getPlan: typeof import('../../apps/api/src/services/routePlans').getPlan;
   let listPlans: typeof import('../../apps/api/src/services/routePlans').listPlans;
+  let updatePlan: typeof import('../../apps/api/src/services/routePlans').updatePlan;
+  let updatePlanStatus: typeof import('../../apps/api/src/services/routePlans').updatePlanStatus;
+  let removePlan: typeof import('../../apps/api/src/services/routePlans').removePlan;
+  let subscribeLogisticsEvents: typeof import('../../apps/api/src/services/logisticsEvents').subscribeLogisticsEvents;
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
-    process.env.MONGO_DATABASE_URL = uri;
+    const normalizedUri = uri.endsWith('/') ? uri : `${uri}/`;
+    process.env.MONGO_DATABASE_URL = `${normalizedUri}ermdb`;
     await mongoose.connect(uri);
 
     const models = await import('../../apps/api/src/db/model');
@@ -55,6 +65,10 @@ describe('routePlans service analytics', function () {
     createDraftFromInputs = services.createDraftFromInputs;
     getPlan = services.getPlan;
     listPlans = services.listPlans;
+    updatePlan = services.updatePlan;
+    updatePlanStatus = services.updatePlanStatus;
+    removePlan = services.removePlan;
+    ({ subscribeLogisticsEvents } = await import('../../apps/api/src/services/logisticsEvents'));
   });
 
   after(async () => {
@@ -124,5 +138,89 @@ describe('routePlans service analytics', function () {
     assert.equal(listed.total, 1);
     assert.equal(listed.items[0]?.metrics.totalLoad, 12.3);
     assert.equal(listed.items[0]?.routes[0]?.stops[1]?.delayMinutes, dropoff.delayMinutes);
+  });
+
+  it('публикует событие при обновлении маршрутного плана', async () => {
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [],
+      },
+    ]);
+
+    const events: LogisticsEvent[] = [];
+    const unsubscribe = subscribeLogisticsEvents((event) => {
+      events.push(event);
+    });
+
+    try {
+      const updated = await updatePlan(plan.id, { title: 'Обновлённый план' });
+      assert.ok(updated);
+      assert.equal(updated.title, 'Обновлённый план');
+    } finally {
+      unsubscribe();
+    }
+
+    const message = events.find(
+      (event): event is LogisticsRoutePlanUpdatedEvent => event.type === 'route-plan.updated',
+    );
+    assert.ok(message, 'ожидалось событие обновления плана');
+    assert.equal(message.reason, 'updated');
+    assert.equal(message.plan.id, plan.id);
+    assert.equal(message.plan.title, 'Обновлённый план');
+  });
+
+  it('публикует событие при смене статуса маршрутного плана', async () => {
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [],
+      },
+    ]);
+
+    const events: LogisticsEvent[] = [];
+    const unsubscribe = subscribeLogisticsEvents((event) => {
+      events.push(event);
+    });
+
+    try {
+      const updated = await updatePlanStatus(plan.id, 'approved', 401);
+      assert.ok(updated);
+      assert.equal(updated.status, 'approved');
+    } finally {
+      unsubscribe();
+    }
+
+    const message = events.find(
+      (event): event is LogisticsRoutePlanUpdatedEvent => event.type === 'route-plan.updated',
+    );
+    assert.ok(message, 'ожидалось событие обновления плана при смене статуса');
+    assert.equal(message.reason, 'updated');
+    assert.equal(message.plan.id, plan.id);
+    assert.equal(message.plan.status, 'approved');
+  });
+
+  it('публикует событие при удалении маршрутного плана', async () => {
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [],
+      },
+    ]);
+
+    const events: LogisticsEvent[] = [];
+    const unsubscribe = subscribeLogisticsEvents((event) => {
+      events.push(event);
+    });
+
+    try {
+      const removed = await removePlan(plan.id);
+      assert.equal(removed, true);
+    } finally {
+      unsubscribe();
+    }
+
+    const message = events.find(
+      (event): event is LogisticsRoutePlanRemovedEvent => event.type === 'route-plan.removed',
+    );
+    assert.ok(message, 'ожидалось событие удаления плана');
+    assert.equal(message.planId, plan.id);
   });
 });

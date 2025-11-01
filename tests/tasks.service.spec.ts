@@ -55,9 +55,14 @@ jest.mock('../apps/api/src/services/taskTypeSettings', () => ({
   resolveTaskTypeTopicId: jest.fn(),
 }));
 
+jest.mock('../apps/api/src/services/logisticsEvents', () => ({
+  notifyTasksChanged: jest.fn(),
+}));
+
 const { resolveTaskTypeTopicId } =
   jest.requireMock('../apps/api/src/services/taskTypeSettings');
 const { getRouteDistance } = jest.requireMock('../apps/api/src/services/route');
+const { notifyTasksChanged } = jest.requireMock('../apps/api/src/services/logisticsEvents');
 
 type TasksServiceCtor = typeof import('../apps/api/src/tasks/tasks.service').default;
 let TasksService: TasksServiceCtor;
@@ -116,6 +121,7 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(repo.createTask).toHaveBeenCalledTimes(1);
     const payload = repo.createTask.mock.calls[0][0] as Partial<TaskDocument>;
     expect(payload.telegram_topic_id).toBe(627);
+    expect(notifyTasksChanged).toHaveBeenCalledWith('created', ['task-id']);
   });
 
   it('обновляет тему Telegram при смене типа задачи', async () => {
@@ -129,6 +135,7 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(repo.updateTask).toHaveBeenCalledTimes(1);
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.telegram_topic_id).toBe(512);
+    expect(notifyTasksChanged).toHaveBeenCalledWith('updated', ['task']);
   });
 
   it('не устанавливает тему, если тип не задан', async () => {
@@ -142,6 +149,7 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(repo.updateTask).toHaveBeenCalledTimes(1);
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.telegram_topic_id).toBeUndefined();
+    expect(notifyTasksChanged).toHaveBeenCalledWith('updated', ['task']);
   });
 
   it('добавляет дистанцию и ссылку маршрута при наличии координат', async () => {
@@ -161,5 +169,18 @@ describe('TasksService — привязка тем Telegram', () => {
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
     expect(payload.route_distance_km).toBe(12.3);
+  });
+
+  it('отправляет событие об удалении задачи', async () => {
+    const repo = createRepo();
+    repo.deleteTask.mockResolvedValue({
+      _id: 'task-42',
+    } as unknown as TaskDocument);
+    const service = new TasksService(repo as unknown as any);
+
+    await service.remove('task-42', 10);
+
+    expect(repo.deleteTask).toHaveBeenCalledWith('task-42', 10);
+    expect(notifyTasksChanged).toHaveBeenCalledWith('deleted', ['task-42']);
   });
 });

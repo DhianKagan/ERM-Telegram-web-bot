@@ -533,7 +533,7 @@ async function sendFleetVehicles(ctx: Context): Promise<void> {
 
 async function handleReportCommand(ctx: Context): Promise<void> {
   const fromId = ctx.from?.id;
-  if (!Number.isFinite(fromId)) {
+  if (typeof fromId !== 'number' || !Number.isFinite(fromId)) {
     await ctx.reply(messages.reportGenerationError);
     return;
   }

@@ -186,7 +186,17 @@ describe('TasksService — привязка тем Telegram', () => {
 
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
-    expect(payload).not.toHaveProperty('route_distance_km');
+    expect(payload.route_distance_km).toBeNull();
+  });
+
+  it('не трогает дистанцию маршрута, если координаты не изменялись', async () => {
+    const repo = createRepo();
+    const service = new TasksService(repo as unknown as any);
+
+    await service.update('task', { comment: 'Без координат' }, 42);
+
+    const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
+    expect(payload.route_distance_km).toBeUndefined();
   });
 
   it('отправляет событие об удалении задачи', async () => {

@@ -272,6 +272,18 @@ class TasksService {
 
   async applyRouteInfo(data: Partial<TaskDocument> = {}) {
     const target = data as Record<string, unknown>;
+    const hasStartUpdate = Object.prototype.hasOwnProperty.call(
+      target,
+      'startCoordinates',
+    );
+    const hasFinishUpdate = Object.prototype.hasOwnProperty.call(
+      target,
+      'finishCoordinates',
+    );
+    const clearRouteDistance = () => {
+      target.route_distance_km = null;
+    };
+
     if (data.startCoordinates && data.finishCoordinates) {
       data.google_route_url = generateRouteLink(
         data.startCoordinates,
@@ -285,14 +297,16 @@ class TasksService {
         if (typeof r.distance === 'number') {
           data.route_distance_km = Number((r.distance / 1000).toFixed(1));
         } else {
-          delete target.route_distance_km;
+          clearRouteDistance();
         }
       } catch {
         /* пропускаем ошибку расчёта */
       }
       return;
     }
-    delete target.route_distance_km;
+    if (hasStartUpdate || hasFinishUpdate) {
+      clearRouteDistance();
+    }
   }
 
   private async applyTaskTypeTopic(data: Partial<TaskDocument> = {}) {

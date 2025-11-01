@@ -1,6 +1,7 @@
 // Назначение: страница управления коллекциями настроек
 // Основные модули: React, match-sorter, Tabs, services/collections
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { matchSorter, rankings } from "match-sorter";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,10 @@ import EmployeeCardForm from "../../components/EmployeeCardForm";
 import Modal from "../../components/Modal";
 import FleetVehiclesTab from "./FleetVehiclesTab";
 import TaskSettingsTab from "./TaskSettingsTab";
+import AnalyticsDashboard from "../AnalyticsDashboard";
+import ArchivePage from "../Archive";
+import LogsPage from "../Logs";
+import StoragePage from "../Storage";
 import {
   collectionColumns,
   type CollectionTableRow,
@@ -62,7 +67,52 @@ import {
   TruckIcon,
   KeyIcon,
   ClipboardDocumentListIcon,
+  AdjustmentsHorizontalIcon,
+  ChartPieIcon,
+  ArchiveBoxIcon,
+  DocumentTextIcon,
+  RectangleStackIcon,
 } from "@heroicons/react/24/outline";
+
+const moduleTabs = [
+  {
+    key: "directories",
+    label: "Справочники",
+    description: "Структура компании и доступы",
+    icon: AdjustmentsHorizontalIcon,
+  },
+  {
+    key: "reports",
+    label: "Отчёты",
+    description: "Аналитика процессов и KPI",
+    icon: ChartPieIcon,
+  },
+  {
+    key: "archive",
+    label: "Архив",
+    description: "История задач и записей",
+    icon: ArchiveBoxIcon,
+  },
+  {
+    key: "logs",
+    label: "Логи",
+    description: "Журнал действий и событий",
+    icon: DocumentTextIcon,
+  },
+  {
+    key: "storage",
+    label: "Файлы",
+    description: "Управление вложениями",
+    icon: RectangleStackIcon,
+  },
+] as const;
+
+type SettingsModuleKey = (typeof moduleTabs)[number]["key"];
+
+const isValidModuleKey = (
+  value: string | null,
+): value is SettingsModuleKey =>
+  moduleTabs.some((module) => module.key === value);
 
 const types = [
   {
@@ -820,6 +870,11 @@ const hasAccessorKey = (
   typeof (column as { accessorKey?: unknown }).accessorKey === "string";
 
 export default function CollectionsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeModule, setActiveModule] = useState<SettingsModuleKey>(() => {
+    const param = searchParams.get("module");
+    return isValidModuleKey(param) ? param : "directories";
+  });
   const [active, setActive] = useState<CollectionKey>("departments");
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -863,6 +918,28 @@ export default function CollectionsPage() {
   const canManageUsers = hasAccess(currentUser?.access, ACCESS_ADMIN);
   const actionButtonClass =
     "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
+
+  useEffect(() => {
+    const param = searchParams.get("module");
+    const next = isValidModuleKey(param) ? param : "directories";
+    if (next !== activeModule) {
+      setActiveModule(next);
+    }
+  }, [searchParams, activeModule]);
+
+  const handleModuleChange = useCallback(
+    (value: SettingsModuleKey) => {
+      setActiveModule(value);
+      const next = new URLSearchParams(searchParams.toString());
+      if (value === "directories") {
+        next.delete("module");
+      } else {
+        next.set("module", value);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
   const selectedCollectionInfo = useMemo(() => {
     if (!selectedCollection?.meta || typeof selectedCollection.meta !== "object") {
       return { readonly: false, notice: undefined as string | undefined };
@@ -1851,75 +1928,132 @@ export default function CollectionsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
           Управление предприятием
         </h1>
-        {hint && <div className="text-sm text-red-600">{hint}</div>}
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Собрали ключевые инструменты администратора в одном окне. Выберите модуль для работы или откройте справочники.
+        </p>
       </header>
       <Tabs
-        value={active}
-        onValueChange={(v) => {
-          setActive(v as CollectionKey);
-          setPage(1);
-        }}
-        className="space-y-5"
+        value={activeModule}
+        onValueChange={(value) => handleModuleChange(value as SettingsModuleKey)}
+        className="space-y-6"
       >
-        <div className="sm:hidden">
-          <label htmlFor="settings-section-select" className="sr-only">
-            Выбор раздела настроек
-          </label>
-          <select
-            id="settings-section-select"
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-transparent transition focus:border-blue-400 focus:outline-none focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            value={active}
-            onChange={(event) => {
-              const next = event.target.value as CollectionKey;
-              setActive(next);
-              setPage(1);
-            }}
-          >
-            {types.map((t) => (
-              <option key={t.key} value={t.key}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <TabsList
-          className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]"
-        >
-          {types.map((t) => {
-            const Icon = tabIcons[t.key as CollectionKey];
-            const labelId = `${t.key}-tab-label`;
-            return (
-              <TabsTrigger
-                key={t.key}
-                value={t.key}
-                aria-label={t.label}
-                aria-labelledby={labelId}
-                className="group flex h-full min-h-[3.1rem] w-full items-center justify-center gap-2 rounded-xl border border-transparent px-2.5 py-2 text-center text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:flex-col sm:gap-1.5 sm:px-3 sm:py-2.5"
-              >
-                {Icon ? (
+        <div className="flex flex-col gap-3">
+          <div className="sm:hidden">
+            <label htmlFor="settings-module-select" className="sr-only">
+              Выбор модуля настроек
+            </label>
+            <select
+              id="settings-module-select"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-transparent transition focus:border-blue-400 focus:outline-none focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              value={activeModule}
+              onChange={(event) => handleModuleChange(event.target.value as SettingsModuleKey)}
+            >
+              {moduleTabs.map((tab) => (
+                <option key={tab.key} value={tab.key}>
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <TabsList className="hidden h-auto gap-2 bg-transparent p-0 sm:grid sm:gap-2 sm:p-1 sm:[grid-template-columns:repeat(5,minmax(11rem,1fr))]">
+            {moduleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const labelId = `${tab.key}-module-tab-label`;
+              return (
+                <TabsTrigger
+                  key={tab.key}
+                  value={tab.key}
+                  aria-labelledby={labelId}
+                  className="group flex h-full min-h-[3.4rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-700 transition-colors duration-200 ease-out hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-blue-300"
+                >
                   <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-6" />
-                ) : null}
-                <span className="flex min-w-0 flex-col items-center">
                   <span
                     id={labelId}
-                    className="truncate text-sm font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300 sm:text-base"
+                    className="truncate text-sm font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300"
                   >
-                    {t.label}
+                    {tab.label}
                   </span>
-                  {t.description ? (
-                    <span
-                      aria-hidden="true"
-                      className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block"
-                    >
-                      {t.description}
+                  {tab.description ? (
+                    <span className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block">
+                      {tab.description}
                     </span>
                   ) : null}
-                </span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-        <div className="flex-1 space-y-6">
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+        <TabsContent value="directories" className="mt-0 space-y-6">
+          {hint ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200">
+              {hint}
+            </div>
+          ) : null}
+          <Tabs
+            value={active}
+            onValueChange={(v) => {
+              setActive(v as CollectionKey);
+              setPage(1);
+            }}
+            className="space-y-5"
+          >
+            <div className="sm:hidden">
+              <label htmlFor="settings-section-select" className="sr-only">
+                Выбор раздела справочников
+              </label>
+              <select
+                id="settings-section-select"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-transparent transition focus:border-blue-400 focus:outline-none focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                value={active}
+                onChange={(event) => {
+                  const next = event.target.value as CollectionKey;
+                  setActive(next);
+                  setPage(1);
+                }}
+              >
+                {types.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <TabsList className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]">
+              {types.map((t) => {
+                const Icon = tabIcons[t.key as CollectionKey];
+                const labelId = `${t.key}-tab-label`;
+                return (
+                  <TabsTrigger
+                    key={t.key}
+                    value={t.key}
+                    aria-label={t.label}
+                    aria-labelledby={labelId}
+                    className="group flex h-full min-h-[3.1rem] w-full items-center justify-center gap-2 rounded-xl border border-transparent px-2.5 py-2 text-center text-sm font-semibold transition-colors duration-200 ease-out hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800 data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:border-slate-700 dark:data-[state=active]:bg-slate-900/70 dark:data-[state=active]:text-slate-100 sm:flex-col sm:gap-1.5 sm:px-3 sm:py-2.5"
+                  >
+                    {Icon ? (
+                      <Icon className="size-5 flex-shrink-0 text-slate-500 transition-colors group-data-[state=active]:text-blue-600 dark:text-slate-400 dark:group-data-[state=active]:text-blue-300 sm:size-6" />
+                    ) : null}
+                    <span className="flex min-w-0 flex-col items-center">
+                      <span
+                        id={labelId}
+                        className="truncate text-sm font-semibold leading-5 text-slate-800 transition-colors group-data-[state=active]:text-blue-700 dark:text-slate-100 dark:group-data-[state=active]:text-blue-300 sm:text-base"
+                      >
+                        {t.label}
+                      </span>
+                      {t.description ? (
+                        <span
+                          aria-hidden="true"
+                          className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block"
+                        >
+                          {t.description}
+                        </span>
+                      ) : null}
+                    </span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <div className="flex-1 space-y-6">
           {types.map((t) => {
             const rows: CollectionTableRow[] = items.map((item) => ({
               ...item,
@@ -2467,6 +2601,28 @@ export default function CollectionsPage() {
         onCancel={() => setConfirmEmployeeDelete(false)}
         confirmText="Удалить"
       />
+        </TabsContent>
+        <TabsContent value="reports" className="mt-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <AnalyticsDashboard />
+          </div>
+        </TabsContent>
+        <TabsContent value="archive" className="mt-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <ArchivePage />
+          </div>
+        </TabsContent>
+        <TabsContent value="logs" className="mt-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <LogsPage />
+          </div>
+        </TabsContent>
+        <TabsContent value="storage" className="mt-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <StoragePage />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   UserCircleIcon,
   XMarkIcon,
   ArchiveBoxIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { ARCHIVE_ACCESS, hasAccess } from "../utils/access";
@@ -26,7 +27,7 @@ type SidebarItem = {
 
 export default function Sidebar() {
   const { open, toggle } = useSidebar();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
   const role = user?.role || "user";
@@ -50,11 +51,11 @@ export default function Sidebar() {
   const adminItems = React.useMemo<SidebarItem[]>(
     () => [
       { to: "/cp/kanban", label: t("nav.kanban"), icon: ClipboardDocumentListIcon },
-      { to: "/cp/reports", label: t("nav.reports"), icon: ChartPieIcon },
+      { to: "/cp/settings?module=reports", label: t("nav.reports"), icon: ChartPieIcon },
       { to: "/cp/logistics", label: t("nav.logistics"), icon: MapIcon },
       { to: "/cp/settings", label: t("nav.settings"), icon: Cog6ToothIcon },
-      { to: "/cp/logs", label: t("nav.logs"), icon: Cog6ToothIcon },
-      { to: "/cp/storage", label: t("nav.storage"), icon: RectangleStackIcon },
+      { to: "/cp/settings?module=logs", label: t("nav.logs"), icon: DocumentTextIcon },
+      { to: "/cp/settings?module=storage", label: t("nav.storage"), icon: RectangleStackIcon },
     ],
     [t],
   );
@@ -69,8 +70,13 @@ export default function Sidebar() {
   );
 
   const archiveItem = React.useMemo<SidebarItem>(
-    () => ({ to: "/cp/archive", label: t("nav.archive"), icon: ArchiveBoxIcon }),
+    () => ({ to: "/cp/settings?module=archive", label: t("nav.archive"), icon: ArchiveBoxIcon }),
     [t],
+  );
+
+  const currentSearchParams = React.useMemo(
+    () => new URLSearchParams(search),
+    [search],
   );
 
   const items = React.useMemo(() => {
@@ -108,20 +114,32 @@ export default function Sidebar() {
         </button>
       </div>
       <nav className="mt-4 space-y-1">
-        {items.map((i) => (
-          <Link
-            key={i.to}
-            to={i.to}
-            aria-label={i.label}
-            className={cn(
-              "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
-              pathname === i.to && "bg-slate-100 font-semibold dark:bg-slate-800",
-            )}
-          >
-            <i.icon className="h-5 w-5" />
-            <span className="truncate">{i.label}</span>
-          </Link>
-        ))}
+        {items.map((i) => {
+          const [itemPath, itemQuery] = i.to.split("?");
+          const matchesPath = pathname === itemPath;
+          const isActive = (() => {
+            if (!itemQuery) return matchesPath;
+            if (!matchesPath) return false;
+            const required = new URLSearchParams(itemQuery);
+            return Array.from(required.entries()).every(
+              ([key, value]) => currentSearchParams.get(key) === value,
+            );
+          })();
+          return (
+            <Link
+              key={i.to}
+              to={i.to}
+              aria-label={i.label}
+              className={cn(
+                "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
+                isActive && "bg-slate-100 font-semibold dark:bg-slate-800",
+              )}
+            >
+              <i.icon className="h-5 w-5" />
+              <span className="truncate">{i.label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );

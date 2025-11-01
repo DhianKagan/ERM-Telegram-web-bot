@@ -171,6 +171,34 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(payload.route_distance_km).toBe(12.3);
   });
 
+  it('очищает дистанцию маршрута, если сервис её не вернул', async () => {
+    getRouteDistance.mockResolvedValue({ distance: undefined, waypoints: [] });
+    const repo = createRepo();
+    const service = new TasksService(repo as unknown as any);
+    const start = { lat: 50.45, lng: 30.523 };
+    const finish = { lat: 49.84, lng: 24.03 };
+
+    await service.update(
+      'task',
+      { startCoordinates: start, finishCoordinates: finish },
+      101,
+    );
+
+    const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
+    expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
+    expect(payload.route_distance_km).toBeNull();
+  });
+
+  it('не трогает дистанцию маршрута, если координаты не изменялись', async () => {
+    const repo = createRepo();
+    const service = new TasksService(repo as unknown as any);
+
+    await service.update('task', { comment: 'Без координат' }, 42);
+
+    const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
+    expect(payload.route_distance_km).toBeUndefined();
+  });
+
   it('отправляет событие об удалении задачи', async () => {
     const repo = createRepo();
     repo.deleteTask.mockResolvedValue({

@@ -199,9 +199,6 @@ importers:
       '@tma.js/init-data-node':
         specifier: ^2.0.3
         version: 2.0.3(typescript@5.9.2)
-      '@wgtechlabs/log-engine':
-        specifier: ^2.2.0
-        version: 2.2.0
       clamdjs:
         specifier: ^1.0.2
         version: 1.0.2
@@ -5040,10 +5037,6 @@ packages:
 
   '@vitest/utils@2.1.9':
     resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
-
-  '@wgtechlabs/log-engine@2.2.0':
-    resolution: {integrity: sha512-TIvzfDPiWUWW7EX+kZ3q7id12inpe6t9n/OIX9ewIHaBeA7q8YY631f2RjHdkB33Wew9A0H1HGzTx98nKan+MQ==}
-    engines: {node: '>=16.0.0', npm: '>=7.0.0'}
 
   '@xelene/vaul-with-scroll-fix@0.1.4':
     resolution: {integrity: sha512-R9J7y92rzZKIQLtFHKtzRsb4x8G26cvwGIDSf7OQZCdROFt7xic4Yz1BlFYjm8oiQsYV4SFSQfOzatZjvxz5XQ==}
@@ -13441,6 +13434,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-bookmark@46.0.3':
     dependencies:
@@ -13569,8 +13564,6 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-code-block@46.0.2':
     dependencies:
@@ -13609,6 +13602,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       '@ckeditor/ckeditor5-watchdog': 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-core@46.0.3':
     dependencies:
@@ -13686,8 +13681,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-decoupled@46.0.2':
     dependencies:
@@ -13856,8 +13849,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.3':
     dependencies:
@@ -13990,8 +13981,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-html-support@46.0.3':
     dependencies:
@@ -14070,8 +14059,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-indent@46.0.3':
     dependencies:
@@ -14123,6 +14110,8 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-link@46.0.3':
     dependencies:
@@ -14158,8 +14147,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@46.0.3':
     dependencies:
@@ -14384,8 +14371,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-restricted-editing@46.0.2':
     dependencies:
@@ -14486,8 +14471,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-style@46.0.3':
     dependencies:
@@ -14587,6 +14570,8 @@ snapshots:
       color-parse: 2.0.2
       es-toolkit: 1.39.5
       vanilla-colorful: 0.7.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-ui@46.0.3':
     dependencies:
@@ -14637,6 +14622,8 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-ui': 46.0.2
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-utils@46.0.3':
     dependencies:
@@ -19051,8 +19038,6 @@ snapshots:
       '@vitest/pretty-format': 2.1.9
       loupe: 3.2.1
       tinyrainbow: 1.2.0
-
-  '@wgtechlabs/log-engine@2.2.0': {}
 
   '@xelene/vaul-with-scroll-fix@0.1.4(@types/react-dom@18.3.7(@types/react@18.3.24))(@types/react@18.3.24)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:

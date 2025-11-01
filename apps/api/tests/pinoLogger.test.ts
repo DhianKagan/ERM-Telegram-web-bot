@@ -4,18 +4,29 @@ const express = require('express');
 const request = require('supertest');
 
 const info = jest.fn();
-const mockLogger = { info, error: jest.fn(), child: () => mockLogger };
-jest.mock('pino', () => () => mockLogger);
-jest.mock('pino-http', () => (o) => (req, _res, next) => {
-  const id = o.genReqId(req);
-  const props = o.customProps(req);
-  mockLogger.info({ req: { id }, ...props });
+const mockChild = { info, warn: jest.fn(), error: jest.fn(), child: () => mockChild };
+const mockLogger = { child: jest.fn(() => mockChild) };
+
+jest.mock('../src/services/wgLogEngine', () => ({
+  logger: mockLogger,
+}));
+
+jest.mock('pino-http', () => (options) => (req, _res, next) => {
+  const id = options.genReqId(req);
+  const props = options.customProps(req);
+  options.logger.info({ req: { id }, ...props });
   next();
 });
 
-const pinoLogger = require('../src/middleware/pinoLogger').default;
+beforeEach(() => {
+  jest.resetModules();
+  info.mockClear();
+  mockLogger.child.mockClear();
+});
 
 test('pinoLogger пишет ip, ua и reqId из traceparent', async () => {
+  process.env.SUPPRESS_LOGS = '0';
+  const pinoLogger = require('../src/middleware/pinoLogger').default;
   const app = express();
   app.use(pinoLogger);
   app.get('/', (_req, res) => res.send('ok'));
@@ -27,8 +38,11 @@ test('pinoLogger пишет ip, ua и reqId из traceparent', async () => {
     )
     .set('User-Agent', 'jest')
     .expect(200);
+  expect(mockLogger.child).toHaveBeenCalledWith({ component: 'http' });
   const log = info.mock.calls[0][0];
   expect(log.ip).toBe('::ffff:127.0.0.1');
   expect(log.ua).toBe('jest');
+  expect(log.method).toBe('GET');
+  expect(log.path).toBe('/');
   expect(log.req.id).toBe('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb');
 });

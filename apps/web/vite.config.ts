@@ -5,16 +5,12 @@
  * Назначение файла: конфигурация Vite для мини-приложения.
  * Основные модули: vite, @vitejs/plugin-react, @vitejs/plugin-legacy.
  */
-import {
-  defineConfig,
-  loadEnv,
-  splitVendorChunkPlugin,
-  type IndexHtmlTransformContext,
-} from "vite";
+import { defineConfig, loadEnv, type IndexHtmlTransformContext } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { resolve } from "path";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import sri from "./plugins/sri";
 import inlineNonce from "./plugins/inlineNonce";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -66,6 +62,21 @@ function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const requireModule = createRequire(import.meta.url);
+
+function moduleExists(specifier: string): boolean {
+  try {
+    requireModule.resolve(specifier);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function filterExistingModules(modules: readonly string[]): string[] {
+  return modules.filter((moduleId) => moduleExists(moduleId));
+}
+
 const modulePreloadChunks = [
   "ckeditor",
   "jspdf",
@@ -108,15 +119,15 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const mapboxAccessToken = env.VITE_MAPBOX_ACCESS_TOKEN || "";
   const mapStyleUrl = env.VITE_MAPBOX_STYLE_URL || "mapbox://styles/mapbox/streets-v12";
+  const shouldOptimizeImages = process.env.SKIP_IMAGE_OPTIMIZER !== "1";
 
   return {
     plugins: [
       react(),
       legacy(),
-      splitVendorChunkPlugin(),
       inlineNonce(),
       sri(),
-      ViteImageOptimizer(),
+      shouldOptimizeImages ? ViteImageOptimizer() : undefined,
       process.env.ANALYZE
         ? visualizer({
             filename: "bundle-report.html",
@@ -164,7 +175,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            vendor: [
+            vendor: filterExistingModules([
               "react",
               "react-dom",
               "react-router-dom",
@@ -176,8 +187,12 @@ export default defineConfig(({ mode }) => {
               "validator",
               "clsx",
               "class-variance-authority",
-            ],
-            map: ["mapbox-gl", "maplibre-gl", "@mapbox/mapbox-gl-draw"],
+            ]),
+            map: filterExistingModules([
+              "mapbox-gl",
+              "maplibre-gl",
+              "@mapbox/mapbox-gl-draw",
+            ]),
           },
         },
       },

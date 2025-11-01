@@ -11,6 +11,46 @@
   "cancel": "Cancel",
   "close": "Close",
   "collections": {
+    "page": {
+      "title": "Directories",
+      "description": "Manage directories, users, and access."
+    },
+    "moduleSelectLabel": "Select settings module",
+    "directorySelectLabel": "Select directory",
+    "search": {
+      "placeholder": "Search by name or value",
+      "hint": "Press Enter to search, Esc to clear."
+    },
+    "actions": {
+      "search": "Search",
+      "reset": "Reset",
+      "add": "Add item",
+      "copyId": "Copy ID",
+      "copiedId": "ID copied"
+    },
+    "table": {
+      "columns": {
+        "name": "Name",
+        "value": "Value",
+        "relations": "Related data",
+        "type": "Type",
+        "id": "ID",
+        "meta": "Additional info"
+      },
+      "empty": {
+        "title": "Nothing here yet",
+        "description": "Create the first item to populate this directory.",
+        "action": "Add item"
+      }
+    },
+    "users": {
+      "searchPlaceholder": "Name, username or ID",
+      "add": "Add user"
+    },
+    "employees": {
+      "searchPlaceholder": "Name, username or position",
+      "add": "Add employee"
+    },
     "errors": {
       "departmentsMustHaveDivisions": "Add at least one division to the department",
       "generalValidation": "Please fix the errors and try again",
@@ -452,7 +492,6 @@
       "lastRun": "Latest report: {{date}}.",
       "snapshot": "Total: {{total}}, linked: {{linked}}, detached: {{detached}}.",
       "placeholder": "Run the first check to see the report here."
-
     }
   }
 }

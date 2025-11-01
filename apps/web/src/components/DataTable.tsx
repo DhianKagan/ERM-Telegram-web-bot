@@ -1,5 +1,5 @@
-// Назначение файла: универсальная таблица на React Table с серверной пагинацией
-// Модули: React, @tanstack/react-table, ui/table, TableToolbar
+// Назначение файла: универсальная таблица на React Table с виртуализацией строк
+// Основные модули: React, @tanstack/react-table, TableToolbar
 /* eslint-disable react-refresh/only-export-components */
 import React from "react";
 import {
@@ -9,14 +9,7 @@ import {
   useReactTable,
   Table as TableType,
 } from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "./ui/table";
+
 import TableToolbar from "./TableToolbar";
 
 interface DataTableProps<T> {
@@ -35,6 +28,11 @@ interface DataTableProps<T> {
   badgeClassName?: string;
   badgeWrapperClassName?: string;
   badgeEmptyPlaceholder?: string;
+  enableVirtualization?: boolean;
+  virtualizationOverscan?: number;
+  virtualizationThreshold?: number;
+  rowHeight?: number;
+  maxBodyHeight?: number;
 }
 
 interface ColumnMeta {
@@ -176,6 +174,40 @@ const renderBadgeContent = (
   );
 };
 
+const containerClasses = [
+  "relative w-full overflow-auto rounded-xl border border-border/70",
+  "bg-background shadow-sm dark:border-border/60",
+].join(" ");
+
+const tableClasses = [
+  "min-w-full table-auto caption-bottom font-ui text-[12px] leading-tight",
+  "text-foreground dark:text-foreground sm:text-[13px]",
+].join(" ");
+
+const headerCellClasses = [
+  "border-b border-border/70 px-1.5 py-1.5 text-left align-middle font-semibold",
+  "text-[11px] leading-snug text-foreground sm:px-2 sm:text-[13px]",
+  "whitespace-normal",
+].join(" ");
+
+const bodyCellClasses = [
+  "relative z-[1] px-1.5 py-1.5 align-top text-[12px] leading-snug",
+  "text-foreground sm:px-2 sm:text-sm",
+  "whitespace-normal",
+].join(" ");
+
+const bodyRowClasses = [
+  "group relative isolate min-h-[2.5rem] cursor-pointer select-none",
+  "odd:bg-sky-50/70 even:bg-emerald-50/70 odd:text-slate-900 even:text-slate-900",
+  "hover:odd:bg-sky-100/80 hover:even:bg-emerald-100/80",
+  "dark:odd:bg-slate-800/70 dark:even:bg-slate-700/70 dark:text-slate-100",
+  "dark:hover:odd:bg-slate-700 dark:hover:even:bg-slate-600",
+].join(" ");
+
+const headerRowClasses = [
+  "bg-muted/20 text-foreground",
+].join(" ");
+
 export default function DataTable<T>({
   columns,
   data,
@@ -192,6 +224,11 @@ export default function DataTable<T>({
   badgeClassName = defaultBadgeClassName,
   badgeWrapperClassName = defaultBadgeWrapperClassName,
   badgeEmptyPlaceholder = "—",
+  enableVirtualization = true,
+  virtualizationOverscan = 6,
+  virtualizationThreshold = 40,
+  rowHeight = 52,
+  maxBodyHeight = 520,
 }: DataTableProps<T>) {
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
@@ -211,8 +248,71 @@ export default function DataTable<T>({
     pageCount,
   });
 
+  const rows = table.getRowModel().rows;
+  const virtualizationContainerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [viewportHeight, setViewportHeight] = React.useState(maxBodyHeight);
+
+  const virtualizationActive =
+    enableVirtualization && rows.length > virtualizationThreshold;
+
+  React.useLayoutEffect(() => {
+    if (!virtualizationActive) return;
+    const element = virtualizationContainerRef.current;
+    if (!element) return;
+    const updateHeight = () => {
+      setViewportHeight(element.clientHeight || maxBodyHeight);
+    };
+    updateHeight();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateHeight);
+      observer.observe(element);
+      return () => observer.disconnect();
+    }
+    return undefined;
+  }, [virtualizationActive, maxBodyHeight]);
+
+  React.useEffect(() => {
+    if (!virtualizationContainerRef.current) return;
+    virtualizationContainerRef.current.scrollTop = 0;
+    setScrollTop(0);
+  }, [rows.length, virtualizationActive]);
+
+  const handleScroll = React.useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!virtualizationActive) return;
+      setScrollTop(event.currentTarget.scrollTop);
+    },
+    [virtualizationActive],
+  );
+
+  const totalHeight = rows.length * rowHeight;
+  const effectiveViewport = virtualizationActive
+    ? viewportHeight
+    : rows.length * rowHeight;
+  const startIndex = virtualizationActive
+    ? Math.max(0, Math.floor(scrollTop / rowHeight) - virtualizationOverscan)
+    : 0;
+  const endIndex = virtualizationActive
+    ? Math.min(
+        rows.length,
+        Math.ceil((scrollTop + effectiveViewport) / rowHeight) +
+          virtualizationOverscan,
+      )
+    : rows.length;
+
+  const visibleRows = virtualizationActive
+    ? rows.slice(startIndex, endIndex)
+    : rows;
+  const paddingTop = virtualizationActive ? startIndex * rowHeight : 0;
+  const paddingBottom = virtualizationActive
+    ? Math.max(totalHeight - endIndex * rowHeight, 0)
+    : 0;
+
+  const columnCount = Math.max(table.getVisibleLeafColumns().length, 1);
+
   return (
-    <div className="w-full space-y-1.5 px-0 font-ui text-[13px] sm:px-1.5 sm:text-sm">
+    <div className="w-full space-y-3 px-0 font-ui text-[13px] sm:px-1.5 sm:text-sm">
       <TableToolbar
         table={table as TableType<T>}
         showGlobalSearch={showGlobalSearch}
@@ -220,115 +320,136 @@ export default function DataTable<T>({
       >
         {toolbarChildren}
       </TableToolbar>
-      <Table className="text-left">
-        <TableHeader>
-          {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id} variant="header">
-              {hg.headers.map((header) => {
-                const meta =
-                  (header.column.columnDef.meta as ColumnMeta | undefined) ||
-                  {};
-                const baseSize = header.getSize();
-                const computedWidth =
-                  typeof meta.width === "string"
-                    ? meta.width
-                    : Number.isFinite(baseSize)
-                    ? `${baseSize}px`
-                    : undefined;
-                const headerClassName = [
-                  "break-words whitespace-normal",
-                  meta.headerClassName,
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-                return (
-                  <TableHead
-                    key={header.id}
-                    style={{
-                      width: computedWidth,
-                      minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "16rem",
-                    }}
-                    className={headerClassName}
-                    // фиксируем ширину ячейки заголовка
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              onClick={() => onRowClick?.(row.original)}
-              className="cursor-pointer"
-            >
-              {row.getVisibleCells().map((cell) => {
-                const meta =
-                  (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
-                const baseSize = cell.column.getSize();
-                const computedWidth =
-                  typeof meta.width === "string"
-                    ? meta.width
-                    : Number.isFinite(baseSize)
-                    ? `${baseSize}px`
-                    : undefined;
-                const cellClassName = [
-                  "break-words whitespace-normal align-top",
-                  meta.cellClassName,
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-                const cellContent = flexRender(
-                  cell.column.columnDef.cell,
-                  cell.getContext(),
-                );
-                const shouldWrapWithBadges =
-                  wrapCellsAsBadges && meta.renderAsBadges !== false;
-                return (
-                  <TableCell
-                    key={cell.id}
-                    style={{
-                      width: computedWidth,
-                      minWidth: meta.minWidth ?? "4rem",
-                      maxWidth: meta.maxWidth ?? "16rem",
-                    }}
-                    className={cellClassName}
-                    // фиксируем ширину ячейки данных
-                  >
-                    {shouldWrapWithBadges
-                      ? renderBadgeContent(
-                          cellContent,
-                          badgeClassName,
-                          badgeWrapperClassName,
-                          badgeEmptyPlaceholder,
-                        )
-                      : cellContent}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className="flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
+      <div
+        ref={virtualizationContainerRef}
+        className={containerClasses}
+        style={{ maxHeight: virtualizationActive ? maxBodyHeight : undefined }}
+        onScroll={handleScroll}
+      >
+        <table className={tableClasses}>
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className={headerRowClasses}>
+                {hg.headers.map((header) => {
+                  const meta =
+                    (header.column.columnDef.meta as ColumnMeta | undefined) || {};
+                  const baseSize = header.getSize();
+                  const computedWidth =
+                    typeof meta.width === "string"
+                      ? meta.width
+                      : Number.isFinite(baseSize)
+                        ? `${baseSize}px`
+                        : undefined;
+                  const headerClassName = [
+                    headerCellClasses,
+                    meta.headerClassName,
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <th
+                      key={header.id}
+                      style={{
+                        width: computedWidth,
+                        minWidth: meta.minWidth ?? "4rem",
+                        maxWidth: meta.maxWidth ?? "24rem",
+                      }}
+                      className={headerClassName}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {paddingTop > 0 ? (
+              <tr aria-hidden style={{ height: paddingTop }}>
+                <td colSpan={columnCount} />
+              </tr>
+            ) : null}
+            {visibleRows.map((row) => (
+              <tr
+                key={row.id}
+                onClick={() => onRowClick?.(row.original)}
+                className={onRowClick ? bodyRowClasses : bodyRowClasses.replace("cursor-pointer", "cursor-default")}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const meta =
+                    (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
+                  const baseSize = cell.column.getSize();
+                  const computedWidth =
+                    typeof meta.width === "string"
+                      ? meta.width
+                      : Number.isFinite(baseSize)
+                        ? `${baseSize}px`
+                        : undefined;
+                  const cellClassName = [
+                    bodyCellClasses,
+                    meta.cellClassName,
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  const cellContent = flexRender(
+                    cell.column.columnDef.cell,
+                    cell.getContext(),
+                  );
+                  const shouldWrapWithBadges =
+                    wrapCellsAsBadges && meta.renderAsBadges !== false;
+                  return (
+                    <td
+                      key={cell.id}
+                      style={{
+                        width: computedWidth,
+                        minWidth: meta.minWidth ?? "4rem",
+                        maxWidth: meta.maxWidth ?? "24rem",
+                      }}
+                      className={cellClassName}
+                    >
+                      {shouldWrapWithBadges
+                        ? renderBadgeContent(
+                            cellContent,
+                            badgeClassName,
+                            badgeWrapperClassName,
+                            badgeEmptyPlaceholder,
+                          )
+                        : cellContent}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            {paddingBottom > 0 ? (
+              <tr aria-hidden style={{ height: paddingBottom }}>
+                <td colSpan={columnCount} />
+              </tr>
+            ) : null}
+            {!rows.length ? (
+              <tr>
+                <td colSpan={columnCount} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  Нет данных для отображения
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:text-sm">
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
             disabled={pageIndex === 0}
-            className="rounded border px-1.5 py-1 font-medium disabled:opacity-50"
+            className="rounded border border-[color:var(--color-gray-300)] px-2 py-1 font-medium text-[color:var(--color-gray-700)] transition hover:bg-[color:var(--color-gray-50)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[color:var(--color-gray-700)] dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)]"
           >
             Назад
           </button>
-          <span className="px-1">
+          <span className="px-1 text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
             Стр. {pageIndex + 1}
             {pageCount ? ` / ${pageCount}` : ""}
           </span>
@@ -341,24 +462,24 @@ export default function DataTable<T>({
               )
             }
             disabled={pageCount ? pageIndex + 1 >= pageCount : false}
-            className="rounded border px-1.5 py-1 font-medium disabled:opacity-50"
+            className="rounded border border-[color:var(--color-gray-300)] px-2 py-1 font-medium text-[color:var(--color-gray-700)] transition hover:bg-[color:var(--color-gray-50)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[color:var(--color-gray-700)] dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)]"
           >
             Вперёд
           </button>
         </div>
-        {onPageSizeChange && (
+        {onPageSizeChange ? (
           <select
             value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="h-8 min-w-[4rem] rounded border px-1.5 text-xs sm:text-sm"
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="h-8 min-w-[4rem] rounded border border-[color:var(--color-gray-300)] bg-white px-1.5 text-xs text-[color:var(--color-gray-700)] shadow-sm transition focus:border-[color:var(--color-brand-400)] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-[color:var(--color-gray-100)]"
           >
-            {[10, 25, 50].map((s) => (
-              <option key={s} value={s}>
-                {s}
+            {[10, 25, 50].map((size) => (
+              <option key={size} value={size}>
+                {size}
               </option>
             ))}
           </select>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -20,12 +20,16 @@ declare const it: (
 declare const before: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
+declare const after: (
+  handler: (this: unknown) => unknown | Promise<unknown>,
+) => void;
 
 describe('API маршруты аналитики', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
 
   let app: express.Express;
+  const mockedModuleIds = new Set<string>();
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
@@ -39,9 +43,15 @@ describe('API маршруты аналитики', function () {
       };
     }).jest;
 
+    const registerMock = (modulePath: string, factory: () => unknown): void => {
+      jestApi.mock(modulePath, factory);
+      const resolvedPath = require.resolve(modulePath);
+      mockedModuleIds.add(resolvedPath);
+    };
+
     const mockRouterModule = (relativePath: string): void => {
       const modulePath = path.resolve(__dirname, relativePath);
-      jestApi.mock(modulePath, () => ({
+      registerMock(modulePath, () => ({
         __esModule: true,
         default: express.Router(),
       }));
@@ -75,7 +85,7 @@ describe('API маршруты аналитики', function () {
       mockRouterModule(relativePath);
     });
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/utils/rateLimiter'),
       () => ({
         __esModule: true,
@@ -84,7 +94,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/middleware/globalLimiter'),
       () => ({
         __esModule: true,
@@ -93,7 +103,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/api/middleware'),
       () => {
         const asyncHandler = <T extends RequestHandler>(handler: T): RequestHandler => {
@@ -111,7 +121,7 @@ describe('API маршруты аналитики', function () {
       },
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/middleware/auth'),
       () => ({
         __esModule: true,
@@ -119,7 +129,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/services/routePlanAnalytics'),
       () => ({
         __esModule: true,
@@ -127,7 +137,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/metrics'),
       () => ({
         __esModule: true,
@@ -138,7 +148,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/di'),
       () => ({
         __esModule: true,
@@ -148,7 +158,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/di/tokens'),
       () => ({
         __esModule: true,
@@ -156,7 +166,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/auth/auth.service'),
       () => ({
         __esModule: true,
@@ -164,7 +174,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/services/service'),
       () => ({
         __esModule: true,
@@ -179,7 +189,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/services/shortLinks'),
       () => ({
         __esModule: true,
@@ -188,7 +198,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/middleware/taskAccess'),
       () => ({
         __esModule: true,
@@ -196,7 +206,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/api/healthcheck'),
       () => ({
         __esModule: true,
@@ -206,7 +216,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/api/swagger'),
       () => ({
         __esModule: true,
@@ -218,7 +228,7 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    jestApi.mock(
+    registerMock(
       path.resolve(__dirname, '../../apps/api/src/middleware/errorMiddleware'),
       () => ({
         __esModule: true,
@@ -232,6 +242,10 @@ describe('API маршруты аналитики', function () {
 
     const registerRoutesModule = await import('../../apps/api/src/api/routes');
     const registerRoutes = registerRoutesModule.default;
+
+    mockedModuleIds.add(
+      require.resolve(path.resolve(__dirname, '../../apps/api/src/api/routes')),
+    );
 
     app = express();
     app.use(express.json());
@@ -250,5 +264,12 @@ describe('API маршруты аналитики', function () {
     assert.ok(contentType && contentType.includes('application/json'));
     assert.equal(response.body.totalPlans, 1);
     assert.equal(response.text.includes('<!DOCTYPE html>'), false);
+  });
+
+  after(() => {
+    mockedModuleIds.forEach((moduleId) => {
+      delete require.cache[moduleId];
+    });
+    mockedModuleIds.clear();
   });
 });

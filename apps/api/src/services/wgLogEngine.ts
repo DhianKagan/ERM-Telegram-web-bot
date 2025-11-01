@@ -83,10 +83,10 @@ class LogRingBuffer {
         return false;
       }
       const time = Date.parse(entry.createdAt);
-      if (Number.isFinite(fromTime) && time < fromTime) {
+      if (typeof fromTime === 'number' && time < fromTime) {
         return false;
       }
-      if (Number.isFinite(toTime) && time > toTime) {
+      if (typeof toTime === 'number' && time > toTime) {
         return false;
       }
       return true;

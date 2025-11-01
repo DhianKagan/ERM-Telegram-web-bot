@@ -3,6 +3,16 @@
 import authFetch from "../utils/authFetch";
 import type { FleetVehicleDto } from "shared";
 
+type PendingRequest = {
+  controller: AbortController;
+  promise: Promise<FleetVehicleResponse>;
+};
+
+const pendingRequests = new Map<string, PendingRequest>();
+
+const buildKey = (search: string, page: number, limit: number): string =>
+  `${search}::${page}::${limit}`;
+
 export interface FleetVehiclePayload {
   name: string;
   registrationNumber: string;
@@ -36,12 +46,38 @@ export async function listFleetVehicles(
   page = 1,
   limit = 10,
 ): Promise<FleetVehicleResponse> {
+  const key = buildKey(search, page, limit);
+  const existing = pendingRequests.get(key);
+  if (existing) {
+    return existing.promise;
+  }
+
+  if (pendingRequests.size > 0) {
+    pendingRequests.forEach((entry, pendingKey) => {
+      if (pendingKey !== key) {
+        entry.controller.abort();
+        pendingRequests.delete(pendingKey);
+      }
+    });
+  }
+
+  const controller = new AbortController();
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
   if (search) params.set("search", search);
-  const res = await authFetch(`/api/v1/fleets?${params.toString()}`);
-  return parseResponse(res, "Не удалось загрузить транспорт");
+  const request = authFetch(`/api/v1/fleets?${params.toString()}`, {
+    signal: controller.signal,
+  })
+    .then((res) => parseResponse(res, "Не удалось загрузить транспорт"))
+    .finally(() => {
+      const entry = pendingRequests.get(key);
+      if (entry?.controller === controller) {
+        pendingRequests.delete(key);
+      }
+    });
+  pendingRequests.set(key, { controller, promise: request });
+  return request;
 }
 
 export interface LegacyFleetVehiclesResponse {

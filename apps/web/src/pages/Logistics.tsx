@@ -20,6 +20,8 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
+import useIntervalEffect from "../hooks/useIntervalEffect";
+import useI18nRef from "../hooks/useI18nRef";
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import {
@@ -79,6 +81,8 @@ const LOGISTICS_EVENT_DEBOUNCE_MS =
   typeof process !== "undefined" && process.env.NODE_ENV === "test"
     ? 0
     : 400;
+
+export const LOGISTICS_FLEET_POLL_INTERVAL_MS = 15_000;
 
 type TaskRouteStatusKey = RoutePlanStatus | "unassigned";
 type RouteStatusFilterKey = TaskRouteStatusKey | "vehicle";
@@ -675,10 +679,7 @@ const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
-  const tRef = React.useRef(t);
-  React.useEffect(() => {
-    tRef.current = t;
-  }, [t]);
+  const tRef = useI18nRef(t);
   const language = i18n.language;
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [allRouteTasks, setAllRouteTasks] = React.useState<RouteTask[]>([]);
@@ -716,6 +717,20 @@ export default function LogisticsPage() {
   const [fleetError, setFleetError] = React.useState("");
   const [vehiclesHint, setVehiclesHint] = React.useState("");
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
+  const [selectedVehicleId, setSelectedVehicleIdState] = React.useState<
+    string | null
+  >(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const initial = params.get("selectedVehicleId");
+      return initial && initial.trim() ? initial.trim() : null;
+    } catch {
+      return null;
+    }
+  });
   const [layerVisibility, setLayerVisibility] = React.useState<LayerVisibilityState>(
     DEFAULT_LAYER_VISIBILITY,
   );
@@ -742,10 +757,76 @@ export default function LogisticsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
+  const withTrack = React.useMemo(() => {
+    try {
+      const searchParams = new URLSearchParams(location.search);
+      const raw = searchParams.get("withTrack");
+      return raw === "true" || raw === "1";
+    } catch {
+      return false;
+    }
+  }, [location.search]);
   const hasDialog = params.has("task") || params.has("newTask");
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+  React.useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(location.search);
+      const raw = searchParams.get("selectedVehicleId");
+      const normalized = raw && raw.trim() ? raw.trim() : null;
+      setSelectedVehicleIdState((current) =>
+        current === normalized ? current : normalized,
+      );
+    } catch {
+      setSelectedVehicleIdState((current) => current);
+    }
+  }, [location.search]);
+  const syncSelectedVehicleId = React.useCallback(
+    (updater: (current: string | null) => string | null) => {
+      setSelectedVehicleIdState((current) => {
+        const nextRaw = updater(current);
+        const next = nextRaw && nextRaw.trim() ? nextRaw.trim() : null;
+        if (current === next) {
+          return current;
+        }
+        if (
+          typeof window !== "undefined" &&
+          typeof window.history?.replaceState === "function"
+        ) {
+          try {
+            const url = new URL(window.location.href);
+            if (next) {
+              url.searchParams.set("selectedVehicleId", next);
+            } else {
+              url.searchParams.delete("selectedVehicleId");
+            }
+            window.history.replaceState(
+              window.history.state,
+              "",
+              `${url.pathname}${url.search}${url.hash}`,
+            );
+          } catch {
+            /* игнорируем ошибки построения URL */
+          }
+        }
+        return next;
+      });
+    },
+    [],
+  );
+  const setSelectedVehicleId = React.useCallback(
+    (value: string | null) => {
+      syncSelectedVehicleId(() => value);
+    },
+    [syncSelectedVehicleId],
+  );
+  const toggleSelectedVehicleId = React.useCallback(
+    (value: string) => {
+      syncSelectedVehicleId((current) => (current === value ? null : value));
+    },
+    [syncSelectedVehicleId],
+  );
   const vehiclesWithCoordinates = React.useMemo(
     () =>
       availableVehicles.filter(
@@ -753,6 +834,21 @@ export default function LogisticsPage() {
       ),
     [availableVehicles],
   );
+  const selectedVehicle = React.useMemo(
+    () =>
+      availableVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ??
+      null,
+    [availableVehicles, selectedVehicleId],
+  );
+  React.useEffect(() => {
+    if (!selectedVehicleId) {
+      return;
+    }
+    if (availableVehicles.some((vehicle) => vehicle.id === selectedVehicleId)) {
+      return;
+    }
+    setSelectedVehicleId(null);
+  }, [availableVehicles, selectedVehicleId, setSelectedVehicleId]);
   const hiddenTaskTypesSet = React.useMemo(
     () => new Set(hiddenTaskTypes),
     [hiddenTaskTypes],
@@ -1059,7 +1155,7 @@ export default function LogisticsPage() {
         iconText,
         iconTextColor: textColor,
         iconAccent: typeColor,
-        selected: false,
+        selected: selectedVehicleId === vehicle.id,
       });
     });
     return {
@@ -1075,6 +1171,7 @@ export default function LogisticsPage() {
     taskRouteStatusMap,
     taskTypeMetadata,
     vehiclesWithCoordinates,
+    selectedVehicleId,
   ]);
 
   React.useEffect(() => {
@@ -1773,6 +1870,19 @@ export default function LogisticsPage() {
     }
   }, [loadFleetVehicles, role]);
 
+  useIntervalEffect(
+    () => {
+      if (role === "admin") {
+        void loadFleetVehicles();
+      }
+    },
+    LOGISTICS_FLEET_POLL_INTERVAL_MS,
+    {
+      enabled: role === "admin" && withTrack,
+      deps: [loadFleetVehicles, role, withTrack],
+    },
+  );
+
   React.useEffect(() => {
     const pending = {
       tasks: false,
@@ -2025,6 +2135,7 @@ export default function LogisticsPage() {
       setAvailableVehicles([]);
       setFleetError(role === "manager" ? translate("logistics.adminOnly") : "");
       setVehiclesHint(role ? translate("logistics.noAccess") : "");
+      setSelectedVehicleId(null);
       return;
     }
     setVehiclesHint("");
@@ -2715,6 +2826,10 @@ export default function LogisticsPage() {
       if (!feature) return;
       const entity = feature.properties?.entity;
       if (entity === "vehicle") {
+        const vehicleId = feature.properties?.vehicleId;
+        if (typeof vehicleId === "string" && vehicleId) {
+          toggleSelectedVehicleId(vehicleId);
+        }
         return;
       }
       const taskId = feature.properties?.taskId;
@@ -2802,7 +2917,7 @@ export default function LogisticsPage() {
       map.off("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter as any);
       map.off("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave as any);
     };
-  }, [mapReady, openTask]);
+  }, [mapReady, openTask, toggleSelectedVehicleId]);
 
   React.useEffect(() => {
     if (hasDialog) return;
@@ -3324,6 +3439,7 @@ export default function LogisticsPage() {
                     </thead>
                     <tbody>
                       {availableVehicles.map((vehicle) => {
+                        const isSelected = selectedVehicleId === vehicle.id;
                         const tasksCount = Array.isArray(vehicle.currentTasks)
                           ? vehicle.currentTasks.length
                           : null;
@@ -3335,7 +3451,14 @@ export default function LogisticsPage() {
                         return (
                           <tr
                             key={vehicle.id}
-                            className="bg-white/80 text-sm shadow-sm dark:bg-slate-900/60"
+                            onClick={() => toggleSelectedVehicleId(vehicle.id)}
+                            className={`bg-white/80 text-sm shadow-sm transition dark:bg-slate-900/60 ${
+                              isSelected
+                                ? "cursor-pointer ring-2 ring-sky-500"
+                                : "cursor-pointer hover:bg-slate-100/80"
+                            }`}
+                            data-state={isSelected ? "selected" : undefined}
+                            aria-selected={isSelected}
                           >
                             <td className="rounded-l-md px-3 py-2 font-medium">
                               {vehicle.name ||
@@ -3380,6 +3503,15 @@ export default function LogisticsPage() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              ) : null}
+              {selectedVehicle ? (
+                <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                  {t("logistics.selectedVehicle", {
+                    name:
+                      selectedVehicle.name ||
+                      t("logistics.unselectedVehicle", { defaultValue: "Не выбран" }),
+                  })}
                 </div>
               ) : null}
             </section>

@@ -105,15 +105,20 @@ mkdir -p "$OPENADDR_DIR"
 unzip -qq "$OPENADDR_ARCHIVE" -d "$OPENADDR_DIR"
 
 echo "Конвертирую OpenAddresses в GeoJSON Sequence"
-python3 <<'PY'
+OPENADDR_DIR="$OPENADDR_DIR" OPENADDR_GEOJSON="$OPENADDR_GEOJSON" python3 <<'PY'
 import csv
 import json
 import math
 import pathlib
 import sys
+import os
 
-openaddr_dir = pathlib.Path("$OPENADDR_DIR")
-output_path = pathlib.Path("$OPENADDR_GEOJSON")
+try:
+    openaddr_dir = pathlib.Path(os.environ["OPENADDR_DIR"])
+    output_path = pathlib.Path(os.environ["OPENADDR_GEOJSON"])
+except KeyError as error:
+    sys.stderr.write(f"Не найдена переменная окружения {error!s}.\n")
+    sys.exit(1)
 
 lon_keys = ("LON", "LONGITUDE", "X", "lon", "longitude")
 lat_keys = ("LAT", "LATITUDE", "Y", "lat", "latitude")

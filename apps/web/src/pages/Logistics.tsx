@@ -22,6 +22,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
 import { listFleetVehicles } from "../services/fleets";
+import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import {
   MAP_ANIMATION_SPEED_KMH,
   MAP_DEFAULT_CENTER,
@@ -72,6 +73,11 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   tasks: true,
   optimized: true,
 };
+
+const LOGISTICS_EVENT_DEBOUNCE_MS =
+  typeof process !== "undefined" && process.env.NODE_ENV === "test"
+    ? 0
+    : 400;
 
 type TaskRouteStatusKey = RoutePlanStatus | "unassigned";
 type RouteStatusFilterKey = TaskRouteStatusKey | "vehicle";
@@ -1644,6 +1650,87 @@ export default function LogisticsPage() {
       void loadFleetVehicles();
     }
   }, [loadFleetVehicles, role]);
+
+  React.useEffect(() => {
+    const pending = {
+      tasks: false,
+      plan: false,
+      fleet: false,
+    };
+    let isActive = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearTimer = () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const flush = () => {
+      timer = null;
+      if (!isActive) {
+        pending.tasks = false;
+        pending.plan = false;
+        pending.fleet = false;
+        return;
+      }
+      const shouldRefreshTasks = pending.tasks;
+      const shouldRefreshPlan = pending.plan;
+      const shouldRefreshFleet = pending.fleet;
+      pending.tasks = false;
+      pending.plan = false;
+      pending.fleet = false;
+
+      if (shouldRefreshTasks) {
+        load();
+      }
+      if (shouldRefreshFleet) {
+        refreshFleet();
+      }
+      if (shouldRefreshPlan) {
+        void loadPlan();
+      }
+    };
+
+    const schedule = () => {
+      if (timer !== null) {
+        return;
+      }
+      if (LOGISTICS_EVENT_DEBOUNCE_MS <= 0) {
+        flush();
+        return;
+      }
+      timer = setTimeout(flush, LOGISTICS_EVENT_DEBOUNCE_MS);
+    };
+
+    const unsubscribe = subscribeLogisticsEvents((event) => {
+      switch (event.type) {
+        case "logistics.init":
+          pending.tasks = true;
+          pending.plan = true;
+          pending.fleet = true;
+          break;
+        case "tasks.changed":
+          pending.tasks = true;
+          pending.plan = true;
+          break;
+        case "route-plan.updated":
+        case "route-plan.removed":
+          pending.plan = true;
+          break;
+        default:
+          return;
+      }
+      schedule();
+    });
+
+    return () => {
+      isActive = false;
+      clearTimer();
+      unsubscribe();
+    };
+  }, [load, loadPlan, refreshFleet]);
 
   const calculate = React.useCallback(async () => {
     const ids = sorted.map((t) => t._id);

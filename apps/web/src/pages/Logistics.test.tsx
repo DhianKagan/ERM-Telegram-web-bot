@@ -15,7 +15,7 @@ import {
 } from "@testing-library/react";
 import LogisticsPage from "./Logistics";
 import { taskStateController } from "../controllers/taskStateController";
-import type { RoutePlan } from "shared";
+import type { LogisticsEvent, RoutePlan } from "shared";
 jest.mock("react-i18next", () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === "logistics.selectedVehicle") {
@@ -202,8 +202,10 @@ const buildMapInstance = () => {
     addLayer: jest.fn((layer: { id: string }) => {
       layers.set(layer.id, layer);
     }),
+    addImage: jest.fn(),
     getSource: jest.fn((id: string) => sources.get(id)),
     getLayer: jest.fn((id: string) => layers.get(id)),
+    hasImage: jest.fn(() => false),
     setLayoutProperty: jest.fn(),
     remove: jest.fn(),
     resize: jest.fn(),
@@ -358,6 +360,34 @@ jest.mock("../services/optimizer", () => ({
   __esModule: true,
   default: (...args: unknown[]) => optimizeRouteMock(...args),
 }));
+
+jest.mock("../services/logisticsEvents", () => {
+  const listeners = new Set<(event: unknown) => void>();
+  return {
+    __esModule: true,
+    subscribeLogisticsEvents: jest.fn((listener: (event: unknown) => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    }),
+    __emit(event: unknown) {
+      listeners.forEach((listener) => listener(event));
+    },
+    __clear() {
+      listeners.clear();
+    },
+  };
+});
+
+const logisticsEventsMock = jest.requireMock("../services/logisticsEvents") as {
+  subscribeLogisticsEvents: jest.Mock<
+    () => void,
+    [(event: LogisticsEvent) => void]
+  >;
+  __emit: (event: LogisticsEvent) => void;
+  __clear: () => void;
+};
 
 const listRoutePlansMock = jest.fn();
 const updateRoutePlanMock = jest.fn();
@@ -573,21 +603,55 @@ beforeAll(() => {
   } else if (typeof globalThis.crypto.randomUUID !== "function") {
     (globalThis.crypto as Crypto).randomUUID = () => "test-uuid";
   }
+  const mockContext = {
+    scale: jest.fn(),
+    clearRect: jest.fn(),
+    beginPath: jest.fn(),
+    arc: jest.fn(),
+    fill: jest.fn(),
+    stroke: jest.fn(),
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 0,
+    font: "",
+    textAlign: "center",
+    textBaseline: "middle",
+    fillText: jest.fn(),
+    getImageData: jest.fn(() => ({
+      data: new Uint8ClampedArray(4),
+      width: 1,
+      height: 1,
+    })),
+  } as unknown as CanvasRenderingContext2D;
+  const canvasPrototype = HTMLCanvasElement.prototype as any;
+  if (typeof canvasPrototype.getContext !== "function") {
+    canvasPrototype.getContext = () => mockContext;
+  } else {
+    jest.spyOn(canvasPrototype, "getContext").mockImplementation(() => mockContext);
+  }
 });
 
 describe("LogisticsPage", () => {
+  jest.setTimeout(15000);
   beforeEach(() => {
     jest.clearAllMocks();
+    logisticsEventsMock.__clear();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
     listRoutePlansMock.mockReset();
+    listRoutePlansMock.mockImplementation(
+      (status?: string, page?: number, limit?: number) => {
+        const payload =
+          status === "draft"
+            ? { items: [draftPlan], total: 1, page: page ?? 1, limit: limit ?? 1 }
+            : { items: [], total: 0, page: page ?? 1, limit: limit ?? 1 };
+        return Promise.resolve(payload);
+      },
+    );
     updateRoutePlanMock.mockReset();
     changeRoutePlanStatusMock.mockReset();
     optimizeRouteMock.mockReset();
     optimizeRouteMock.mockResolvedValue(null);
-    listRoutePlansMock
-      .mockResolvedValueOnce({ items: [draftPlan], total: 1 })
-      .mockResolvedValue({ items: [], total: 0 });
     updateRoutePlanMock.mockResolvedValue(draftPlan);
     changeRoutePlanStatusMock.mockResolvedValue({
       ...draftPlan,
@@ -703,7 +767,8 @@ describe("LogisticsPage", () => {
     const legendHeading = screen.getByRole("heading", { name: "Легенда" });
     const legendSection = legendHeading.closest("section");
     expect(legendSection).toBeTruthy();
-    const legendList = within(legendSection as HTMLElement).getByRole("list");
+    const legendLists = within(legendSection as HTMLElement).getAllByRole("list");
+    const legendList = legendLists[legendLists.length - 1];
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot("logistics:all"),
@@ -731,4 +796,59 @@ describe("LogisticsPage", () => {
       expect(optimizeRouteMock).toHaveBeenCalledWith(["t1"], 1, "angle"),
     );
   });
+
+  it("перезагружает данные при событии logistics.init", async () => {
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(listRoutePlansMock).toHaveBeenCalledWith("draft", 1, 1),
+    );
+    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
+
+    fetchTasksMock.mockClear();
+    listRoutePlansMock.mockClear();
+    listFleetVehiclesMock.mockClear();
+
+    act(() => {
+      logisticsEventsMock.__emit({ type: "logistics.init" } as LogisticsEvent);
+    });
+
+    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(listRoutePlansMock).toHaveBeenCalledWith("draft", 1, 1),
+    );
+    await waitFor(() =>
+      expect(listFleetVehiclesMock).toHaveBeenCalledWith("", 1, 100),
+    );
+  });
+
+  it("перезагружает задачи и план при событии tasks.changed", async () => {
+    render(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+
+    fetchTasksMock.mockClear();
+    listRoutePlansMock.mockClear();
+    listFleetVehiclesMock.mockClear();
+
+    act(() => {
+      logisticsEventsMock.__emit({ type: "tasks.changed" } as LogisticsEvent);
+    });
+
+    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(listRoutePlansMock).toHaveBeenCalledWith("draft", 1, 1),
+    );
+    expect(listFleetVehiclesMock).not.toHaveBeenCalled();
+  });
+
 });

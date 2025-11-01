@@ -25,6 +25,7 @@ test('listLogs фильтрует по уровню и сообщению', asyn
   expect(errors).toHaveLength(1);
   expect(errors[0].message).toBe('Ошибка загрузки');
   expect(errors[0].metadata).toEqual({ scope: 'storage' });
+  expect(errors[0].createdAt).toBe(errors[0].time);
 
   const search = await listLogs({ message: 'второй' });
   expect(search).toHaveLength(1);
@@ -50,4 +51,5 @@ test('listLogs учитывает traceId и диапазон дат', async () 
   const result = await listLogs({ from });
   expect(result).toHaveLength(1);
   expect(result[0].message).toBe('Новое сообщение');
+  expect(new Date(result[0].createdAt).getTime()).toBeGreaterThanOrEqual(new Date(from).getTime());
 });

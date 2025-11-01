@@ -18,6 +18,7 @@ export interface ListLogParams {
 
 export interface BufferedLogEntry {
   id: string;
+  createdAt: string;
   time: string;
   level: LogLevel;
   message: string;
@@ -81,7 +82,7 @@ class LogRingBuffer {
       if (messageQuery && !entry.searchText.includes(messageQuery)) {
         return false;
       }
-      const time = Date.parse(entry.time);
+      const time = Date.parse(entry.createdAt);
       if (Number.isFinite(fromTime) && time < fromTime) {
         return false;
       }
@@ -130,13 +131,13 @@ function sortEntries(entries: InternalLogEntry[], sort?: string): InternalLogEnt
   const list = [...entries];
   switch (sort) {
     case 'date_asc':
-      return list.sort((a, b) => a.time.localeCompare(b.time));
+      return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     case 'level':
       return list.sort((a, b) => a.level.localeCompare(b.level));
     case 'level_desc':
       return list.sort((a, b) => b.level.localeCompare(a.level));
     default:
-      return list.sort((a, b) => b.time.localeCompare(a.time));
+      return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 }
 
@@ -300,9 +301,11 @@ function buildLogger(): Logger {
         const payload = extractPayload(args);
         const trace = getTrace();
         const finalLevel = payload.levelOverride ?? normalized;
+        const createdAt = timestamp.toISOString();
         buffer.add({
           id: `${timestamp.getTime()}-${Math.random().toString(16).slice(2, 8)}`,
-          time: timestamp.toISOString(),
+          time: createdAt,
+          createdAt,
           level: finalLevel,
           message: payload.message,
           metadata: payload.metadata,

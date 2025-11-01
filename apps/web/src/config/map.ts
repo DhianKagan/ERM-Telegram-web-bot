@@ -18,10 +18,26 @@ const tokenFromDefine =
 const styleFromDefine =
   typeof __ERM_MAP_STYLE_URL__ !== "undefined" ? __ERM_MAP_STYLE_URL__ : undefined;
 
-export const MAPBOX_ACCESS_TOKEN = tokenFromProcess ?? tokenFromDefine ?? "";
+const resolvedToken = tokenFromProcess ?? tokenFromDefine ?? "";
 
-export const MAP_STYLE_URL =
-  styleFromProcess ?? styleFromDefine ?? "mapbox://styles/mapbox/streets-v12";
+const DEFAULT_STYLE_URL = "mapbox://styles/mapbox/streets-v12";
+const FALLBACK_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+
+const requestedStyle = styleFromProcess ?? styleFromDefine ?? DEFAULT_STYLE_URL;
+
+const isMapboxHostedStyle = requestedStyle.startsWith("mapbox://") ||
+  requestedStyle.includes("api.mapbox.com");
+
+const shouldFallbackToTokenlessStyle = isMapboxHostedStyle && resolvedToken === "";
+
+export const MAPBOX_ACCESS_TOKEN = resolvedToken;
+
+export const MAP_STYLE_URL = shouldFallbackToTokenlessStyle
+  ? FALLBACK_STYLE_URL
+  : requestedStyle;
+
+export const MAP_STYLE_REQUIRES_TOKEN = isMapboxHostedStyle;
+export const MAP_STYLE_FALLBACK_USED = shouldFallbackToTokenlessStyle;
 
 export const MAP_DEFAULT_CENTER: [number, number] = [48.3794, 31.1656];
 export const MAP_DEFAULT_ZOOM = 6;

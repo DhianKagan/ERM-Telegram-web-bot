@@ -30,6 +30,7 @@ import {
   MAP_MAX_BOUNDS,
   MAP_STYLE_URL,
   MAPBOX_ACCESS_TOKEN,
+  MAP_STYLE_FALLBACK_USED,
 } from "../config/map";
 
 mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
@@ -637,6 +638,14 @@ export default function LogisticsPage() {
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
   const drawRef = React.useRef<MapboxDraw | null>(null);
+  React.useEffect(() => {
+    if (!MAP_STYLE_FALLBACK_USED) {
+      return;
+    }
+    console.warn(
+      "VITE_MAPBOX_ACCESS_TOKEN не задан, используется резервный стиль без авторизации Mapbox."
+    );
+  }, [MAP_STYLE_FALLBACK_USED]);
   const [mapViewMode, setMapViewMode] = React.useState<
     "planar" | "perspective"
   >("planar");

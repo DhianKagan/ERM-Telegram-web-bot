@@ -60,6 +60,8 @@ jobs:
         run: corepack enable
       - name: Установка зависимостей
         run: pnpm install --frozen-lockfile
+      - name: Проверка скриптов зависимостей
+        run: pnpm approve-builds
       - name: Запуск тестов
         env:
           CI: true

@@ -123,7 +123,26 @@ jest.mock("../utils/authFetch", () => ({
   default: (url: string, options?: any) => authFetchMock(url, options),
 }));
 
-jest.mock("maplibre-gl", () => ({
+jest.mock("mapbox-gl", () => ({
+  __esModule: true,
+  default: {
+    accessToken: "",
+    Map: jest.fn(() => ({
+      on: jest.fn(),
+      off: jest.fn(),
+      remove: jest.fn(),
+      addControl: jest.fn(),
+      easeTo: jest.fn(),
+      getZoom: jest.fn().mockReturnValue(10),
+    })),
+    NavigationControl: jest.fn(),
+    Marker: jest.fn(() => ({
+      setLngLat: jest.fn().mockReturnThis(),
+      addTo: jest.fn().mockReturnThis(),
+      on: jest.fn(),
+      remove: jest.fn(),
+    })),
+  },
   Map: jest.fn(() => ({
     on: jest.fn(),
     off: jest.fn(),
@@ -139,9 +158,10 @@ jest.mock("maplibre-gl", () => ({
     on: jest.fn(),
     remove: jest.fn(),
   })),
+  accessToken: "",
 }));
 
-jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
+jest.mock("mapbox-gl/dist/mapbox-gl.css", () => "");
 
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({

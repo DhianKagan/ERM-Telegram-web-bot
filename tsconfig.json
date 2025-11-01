@@ -4,9 +4,7 @@
   "files": [],
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
-      "mapbox-gl": ["./node_modules/maplibre-gl/dist/maplibre-gl.d.ts"]
-    }
+    "paths": {}
   },
   "references": [
     { "path": "./packages/shared" },

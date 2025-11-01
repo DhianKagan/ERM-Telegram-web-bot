@@ -69,18 +69,21 @@ import {
 } from "../columns/taskColumns";
 import useDueDateOffset from "../hooks/useDueDateOffset";
 import coerceTaskId from "../utils/coerceTaskId";
-import maplibregl, {
+import mapboxgl, {
   type Map as MapInstance,
   type MapMouseEvent,
   type Marker as MapMarker,
-} from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+} from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import {
+  MAPBOX_ACCESS_TOKEN,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
   MAP_STYLE_URL,
 } from "../config/map";
+
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
 type TaskKind = "task" | "request";
 
@@ -373,7 +376,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
     const center: [number, number] = initialValue
       ? [initialValue.lng, initialValue.lat]
       : [MAP_DEFAULT_CENTER[1], MAP_DEFAULT_CENTER[0]];
-    const map = new maplibregl.Map({
+    const map = new mapboxgl.Map({
       container,
       style: MAP_STYLE_URL,
       center,
@@ -382,13 +385,13 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       minZoom: 3,
     });
     mapRef.current = map;
-    const navigation = new maplibregl.NavigationControl({ showCompass: false });
+    const navigation = new mapboxgl.NavigationControl({ showCompass: false });
     map.addControl(navigation, "top-right");
 
     const applyMarker = (lng: number, lat: number) => {
       const currentMarker = markerRef.current;
       if (!currentMarker) {
-        const marker = new maplibregl.Marker({ draggable: true })
+        const marker = new mapboxgl.Marker({ draggable: true })
           .setLngLat([lng, lat])
           .addTo(map);
         marker.on("dragend", () => {

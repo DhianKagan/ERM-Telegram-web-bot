@@ -663,6 +663,7 @@ export default function LogisticsPage() {
   } | null>(null);
   const [geoZones, setGeoZones] = React.useState<GeoZone[]>([]);
   const [activeGeoZoneIds, setActiveGeoZoneIds] = React.useState<string[]>([]);
+  const [geoZonesEnabled, setGeoZonesEnabled] = React.useState(true);
   const [isDrawing, setIsDrawing] = React.useState(false);
   const [optimizedRoutesGeoJSON, setOptimizedRoutesGeoJSON] = React.useState<
     GeoJSON.FeatureCollection<GeoJSON.LineString>
@@ -702,8 +703,11 @@ export default function LogisticsPage() {
   );
 
   const filteredTasksByZone = React.useMemo(
-    () => filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds),
-    [activeGeoZoneIds, allRouteTasks, geoZones],
+    () =>
+      geoZonesEnabled
+        ? filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds)
+        : allRouteTasks,
+    [activeGeoZoneIds, allRouteTasks, geoZones, geoZonesEnabled],
   );
 
   const taskRouteStatusMap = React.useMemo(() => {
@@ -1348,10 +1352,13 @@ export default function LogisticsPage() {
   );
 
   const handleStartDrawing = React.useCallback(() => {
+    if (!geoZonesEnabled) {
+      return;
+    }
     const draw = drawRef.current;
     if (!draw) return;
     draw.changeMode("draw_polygon");
-  }, []);
+  }, [geoZonesEnabled]);
 
   const handleToggleZone = React.useCallback((zoneId: string, checked: boolean) => {
     setActiveGeoZoneIds((prev) => {
@@ -1818,6 +1825,34 @@ export default function LogisticsPage() {
         return `${value.toFixed(1)} ${tRef.current('km')}`;
       }
       return tRef.current('logistics.planNoDistance');
+    },
+    [],
+  );
+
+  const formatDuration = React.useCallback(
+    (value: number | null | undefined) => {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        const totalMinutes = Math.round(value);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const parts: string[] = [];
+        if (hours > 0) {
+          parts.push(
+            tRef.current('logistics.etaHours', {
+              count: hours,
+            }),
+          );
+        }
+        if (minutes > 0 || hours === 0) {
+          parts.push(
+            tRef.current('logistics.etaMinutes', {
+              count: minutes,
+            }),
+          );
+        }
+        return parts.join(' ');
+      }
+      return tRef.current('logistics.planNoEta');
     },
     [],
   );
@@ -2373,25 +2408,36 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     if (!mapReady) return;
+    const draw = drawRef.current;
+    if (!draw) return;
+    if (!geoZonesEnabled) {
+      draw.changeMode("simple_select");
+    }
+  }, [geoZonesEnabled, mapReady]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
     const source = map.getSource(GEO_SOURCE_ID) as GeoJSONSource | undefined;
     if (!source) return;
-    const features = geoZones.map((zone) => ({
-      ...zone.feature,
-      id: zone.drawId,
-      properties: {
-        ...(zone.feature.properties ?? {}),
-        zoneId: zone.id,
-        name: zone.name,
-        active: activeGeoZoneIds.includes(zone.id),
-      },
-    }));
+    const features = geoZonesEnabled
+      ? geoZones.map((zone) => ({
+          ...zone.feature,
+          id: zone.drawId,
+          properties: {
+            ...(zone.feature.properties ?? {}),
+            zoneId: zone.id,
+            name: zone.name,
+            active: activeGeoZoneIds.includes(zone.id),
+          },
+        }))
+      : [];
     source.setData({
       type: "FeatureCollection",
       features,
     });
-  }, [activeGeoZoneIds, geoZones, mapReady]);
+  }, [activeGeoZoneIds, geoZones, geoZonesEnabled, mapReady]);
 
   React.useEffect(() => {
     if (!mapReady) return;
@@ -2657,622 +2703,717 @@ export default function LogisticsPage() {
   }, [hasDialog, mapReady]);
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <h2 className="text-xl font-semibold">{t("logistics.title")}</h2>
-      <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold">
-              {t("logistics.planSectionTitle")}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t("logistics.planSummary")}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">
-              {t("logistics.planStatus")}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
-              {planStatusLabel}
-            </span>
-            {planLoading ? (
-              <span className="text-xs text-muted-foreground">
-                {t("loading")}
-              </span>
-            ) : null}
-          </div>
+    <div className="space-y-4 lg:space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold">{t("logistics.title")}</h2>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            {t("logistics.pageLead", {
+              defaultValue:
+                "Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.",
+            })}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={refreshAll}>
+            {t("refresh")}
+          </Button>
           <Button
             type="button"
+            size="sm"
             variant="outline"
             onClick={handleReloadPlan}
             disabled={planLoading}
           >
-            {planLoading
-              ? t("loading")
-              : t("logistics.planReload")}
+            {planLoading ? t("loading") : t("logistics.planReload")}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClearPlan}
-            disabled={planLoading}
-          >
-            {t("logistics.planClear")}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSavePlan}
-            disabled={!planDraft || !isPlanEditable || planLoading}
-          >
-            {t("save")}
-          </Button>
-          {planDraft?.status === "draft" ? (
-            <Button
-              type="button"
-              variant="success"
-              onClick={handleApprovePlan}
-              disabled={planLoading}
-            >
-              {t("logistics.planApprove")}
-            </Button>
-          ) : null}
-          {planDraft?.status === "approved" ? (
-            <Button
-              type="button"
-              variant="success"
-              onClick={handleCompletePlan}
-              disabled={planLoading}
-            >
-              {t("logistics.planComplete")}
-            </Button>
-          ) : null}
         </div>
-        {planDraft ? (
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium">
-                  {t("logistics.planTitleLabel")}
+      </header>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <section className="space-y-4 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">
+                  {t("logistics.planSectionTitle")}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t("logistics.planSummary")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">
+                  {t("logistics.planStatus")}
                 </span>
-                <Input
-                  value={planDraft.title}
-                  onChange={(event) =>
-                    handlePlanTitleChange(event.target.value)
-                  }
-                  disabled={!isPlanEditable || planLoading}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium">
-                  {t("logistics.planNotesLabel")}
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  {planStatusLabel}
                 </span>
-                <textarea
-                  value={planDraft.notes ?? ""}
-                  onChange={(event) =>
-                    handlePlanNotesChange(event.target.value)
-                  }
-                  className="min-h-[96px] rounded border px-3 py-2 text-sm"
-                  disabled={!isPlanEditable || planLoading}
-                />
-              </label>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold uppercase text-muted-foreground">
-                {t("logistics.planSummary")}
-              </h4>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
-                    {t("logistics.planTotalDistance")}
-                  </div>
-                  <div className="font-semibold">
-                    {formatDistance(planDraft.metrics?.totalDistanceKm ?? null)}
-                  </div>
-                </div>
-                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
-                    {t("logistics.planTotalRoutes")}
-                  </div>
-                  <div className="font-semibold">{planTotalRoutes}</div>
-                </div>
-                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
-                    {t("logistics.planTotalTasks")}
-                  </div>
-                  <div className="font-semibold">{planTotalTasks}</div>
-                </div>
-                <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
-                  <div className="text-xs uppercase text-muted-foreground">
-                    {t("logistics.planTotalStops")}
-                  </div>
-                  <div className="font-semibold">{totalStops}</div>
-                </div>
+                {planLoading ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t("loading")}
+                  </span>
+                ) : null}
               </div>
             </div>
-            <div className="space-y-3">
-              {planRoutes.map((route, routeIndex) => {
-                const displayIndex =
-                  typeof route.order === "number" && Number.isFinite(route.order)
-                    ? route.order + 1
-                    : routeIndex + 1;
-                const routeStops = route.metrics?.stops ?? route.stops.length;
-                return (
-                  <div
-                    key={route.id || `${routeIndex}`}
-                    className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h4 className="text-base font-semibold">
-                          {t("logistics.planRouteTitle", { index: displayIndex })}
-                        </h4>
-                        <div className="text-xs text-muted-foreground">
-                          {t("logistics.planRouteSummary", {
-                            tasks: route.tasks.length,
-                            stops: routeStops,
-                          })}
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {t("logistics.planRouteDistance", {
-                          distance: formatDistance(route.metrics?.distanceKm ?? null),
-                        })}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planDriver")}
-                        </span>
-                        <Input
-                          value={route.driverName ?? ""}
-                          onChange={(event) =>
-                            handleDriverNameChange(routeIndex, event.target.value)
-                          }
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planVehicle")}
-                        </span>
-                        <Input
-                          value={route.vehicleName ?? ""}
-                          onChange={(event) =>
-                            handleVehicleNameChange(routeIndex, event.target.value)
-                          }
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <label className="md:col-span-2 flex flex-col gap-1 text-sm">
-                        <span className="font-medium">
-                          {t("logistics.planRouteNotes")}
-                        </span>
-                        <textarea
-                          value={route.notes ?? ""}
-                          onChange={(event) =>
-                            handleRouteNotesChange(routeIndex, event.target.value)
-                          }
-                          className="min-h-[80px] rounded border px-3 py-2 text-sm"
-                          disabled={!isPlanEditable || planLoading}
-                        />
-                      </label>
-                      <div className="md:col-span-2 space-y-2">
-                        <ul className="space-y-2">
-                          {route.tasks.length ? (
-                            route.tasks.map((task, taskIndex) => (
-                              <li
-                                key={task.taskId || `${routeIndex}-${taskIndex}`}
-                                className="space-y-2 rounded border bg-white px-3 py-2 text-sm shadow-sm"
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div>
-                                    <div className="font-medium">
-                                      {task.title ?? task.taskId}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {t("task")}: {task.taskId}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() =>
-                                        handleMoveTask(routeIndex, taskIndex, -1)
-                                      }
-                                      disabled={
-                                        !isPlanEditable ||
-                                        planLoading ||
-                                        taskIndex === 0
-                                      }
-                                    >
-                                      {t("logistics.planTaskUp")}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() =>
-                                        handleMoveTask(routeIndex, taskIndex, 1)
-                                      }
-                                      disabled={
-                                        !isPlanEditable ||
-                                        planLoading ||
-                                        taskIndex === route.tasks.length - 1
-                                      }
-                                    >
-                                      {t("logistics.planTaskDown")}
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                  {task.startAddress ? (
-                                    <div>
-                                      <span className="font-medium">
-                                        {t("startPoint")}:
-                                      </span>{" "}
-                                      {task.startAddress}
-                                    </div>
-                                  ) : null}
-                                  {task.finishAddress ? (
-                                    <div>
-                                      <span className="font-medium">
-                                        {t("endPoint")}:
-                                      </span>{" "}
-                                      {task.finishAddress}
-                                    </div>
-                                  ) : null}
-                                  {typeof task.distanceKm === "number" &&
-                                  Number.isFinite(task.distanceKm) ? (
-                                    <div>
-                                      {t("logistics.planRouteDistance", {
-                                        distance: formatDistance(task.distanceKm ?? null),
-                                      })}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
-                              {t("logistics.planRouteEmpty")}
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {planMessage ? (
-              <div className={planMessageClass}>{planMessage}</div>
-            ) : null}
-          </div>
-        ) : (
-          <div className={planMessageClass}>
-            {planLoading
-              ? t("loading")
-              : planMessage || t("logistics.planEmpty")}
-          </div>
-        )}
-      </section>
-      {role === "admin" ? (
-        <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm sm:p-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <h3 className="font-semibold">{t("logistics.transport")}</h3>
-            <Button
-              type="button"
-              size="sm"
-              onClick={refreshFleet}
-              disabled={vehiclesLoading}
-            >
-              {vehiclesLoading
-                ? t("loading")
-                : t("logistics.refreshFleet", {
-                    defaultValue: "Обновить автопарк",
-                  })}
-            </Button>
-          </div>
-          {fleetError ? (
-            <div className="text-sm text-red-600">{fleetError}</div>
-          ) : null}
-          {vehiclesHint && !availableVehicles.length ? (
-            <div className="text-sm text-muted-foreground">{vehiclesHint}</div>
-          ) : null}
-          {availableVehicles.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[480px] table-fixed border-separate border-spacing-y-1 text-xs sm:text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th className="rounded-l-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                      {t("logistics.vehicleColumnName", {
-                        defaultValue: "Транспорт",
-                      })}
-                    </th>
-                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                      {t("logistics.vehicleColumnPlate", {
-                        defaultValue: "Госномер",
-                      })}
-                    </th>
-                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                      {t("logistics.vehicleColumnType", {
-                        defaultValue: "Тип",
-                      })}
-                    </th>
-                    <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                      {t("logistics.vehicleColumnTasks", {
-                        defaultValue: "Задачи",
-                      })}
-                    </th>
-                    <th className="rounded-r-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                      {t("logistics.vehicleColumnMileage", {
-                        defaultValue: "Пробег",
-                      })}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {availableVehicles.map((vehicle) => {
-                    const tasksCount = Array.isArray(vehicle.currentTasks)
-                      ? vehicle.currentTasks.length
-                      : null;
-                    const mileageValue =
-                      typeof vehicle.odometerCurrent === "number" &&
-                      Number.isFinite(vehicle.odometerCurrent)
-                        ? vehicle.odometerCurrent
-                        : null;
-                    return (
-                      <tr
-                        key={vehicle.id}
-                        className="bg-white/80 text-sm shadow-sm dark:bg-slate-900/60"
-                      >
-                        <td className="rounded-l-md px-3 py-2 font-medium">
-                          {vehicle.name ||
-                            t("logistics.unselectedVehicle", {
-                              defaultValue: "Не выбран",
-                            })}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {vehicle.registrationNumber ||
-                            t("logistics.assignDialogUnknown", {
-                              defaultValue: "нет данных",
-                            })}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {vehicle.transportType ||
-                            t("logistics.assignDialogUnknown", {
-                              defaultValue: "нет данных",
-                            })}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {typeof tasksCount === "number"
-                            ? t("logistics.vehicleTasksShort", {
-                                count: tasksCount,
-                                defaultValue: `${tasksCount}`,
-                              })
-                            : t("logistics.assignDialogUnknown", {
-                                defaultValue: "нет данных",
-                              })}
-                        </td>
-                        <td className="rounded-r-md px-3 py-2 text-xs text-muted-foreground">
-                          {mileageValue !== null
-                            ? t("logistics.vehicleMileageShort", {
-                                value: mileageValue,
-                                defaultValue: `${mileageValue} км`,
-                              })
-                            : t("logistics.assignDialogUnknown", {
-                                defaultValue: "нет данных",
-                              })}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </section>
-      ) : fleetError ? (
-        <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
-          {fleetError}
-        </p>
-      ) : null}
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
-          <div
-            id="logistics-map"
-            className={`h-[280px] w-full rounded border ${hasDialog ? "hidden" : ""}`}
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-medium uppercase text-muted-foreground">
-                  {t("logistics.vehicleCountLabel")}
-                </span>
-                <select
-                  value={vehicles}
-                  onChange={(event) => setVehicles(Number(event.target.value))}
-                  className="h-8 rounded border px-2 text-sm"
-                  aria-label={t("logistics.vehicleCountAria")}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-medium uppercase text-muted-foreground">
-                  {t("logistics.optimizeMethodLabel")}
-                </span>
-                <select
-                  value={method}
-                  onChange={(event) => setMethod(event.target.value)}
-                  className="h-8 rounded border px-2 text-sm"
-                  aria-label={t("logistics.optimizeMethodAria")}
-                >
-                  <option value="angle">angle</option>
-                  <option value="trip">trip</option>
-                </select>
-              </label>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={calculate}>
-                {t("logistics.optimize")}
-              </Button>
-              <Button type="button" size="sm" onClick={reset}>
-                {t("reset")}
-              </Button>
-              <Button type="button" size="sm" onClick={refreshAll}>
-                {t("refresh")}
-              </Button>
-            </div>
-          </div>
-          {clusterSelection?.ids.length ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
-              <span>
-                {t("logistics.clusterSelectionSummary", {
-                  count: clusterSelection.ids.length,
-                  defaultValue: `В кластере задач: ${clusterSelection.ids.length}`,
-                })}
-              </span>
               <Button
                 type="button"
-                size="xs"
+                size="sm"
                 variant="outline"
-                onClick={handleClearClusterSelection}
+                onClick={handleReloadPlan}
+                disabled={planLoading}
               >
-                {t("clear")}
+                {planLoading ? t("loading") : t("logistics.planReload")}
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleClearPlan}
+                disabled={planLoading}
+              >
+                {t("logistics.planClear")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSavePlan}
+                disabled={!planDraft || !isPlanEditable || planLoading}
+              >
+                {t("save")}
+              </Button>
+              {planDraft?.status === "draft" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="success"
+                  onClick={handleApprovePlan}
+                  disabled={planLoading}
+                >
+                  {t("logistics.planApprove")}
+                </Button>
+              ) : null}
+              {planDraft?.status === "approved" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="success"
+                  onClick={handleCompletePlan}
+                  disabled={planLoading}
+                >
+                  {t("logistics.planComplete")}
+                </Button>
+              ) : null}
             </div>
-          ) : null}
+            {planDraft ? (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="font-medium">
+                      {t("logistics.planTitleLabel")}
+                    </span>
+                    <Input
+                      value={planDraft.title}
+                      onChange={(event) =>
+                        handlePlanTitleChange(event.target.value)
+                      }
+                      disabled={!isPlanEditable || planLoading}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="font-medium">
+                      {t("logistics.planNotesLabel")}
+                    </span>
+                    <textarea
+                      value={planDraft.notes ?? ""}
+                      onChange={(event) =>
+                        handlePlanNotesChange(event.target.value)
+                      }
+                      className="min-h-[96px] rounded border px-3 py-2 text-sm"
+                      disabled={!isPlanEditable || planLoading}
+                    />
+                  </label>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold uppercase text-muted-foreground">
+                    {t("logistics.planSummary")}
+                  </h4>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                      <div className="text-xs uppercase text-muted-foreground">
+                        {t("logistics.planTotalDistance")}
+                      </div>
+                      <div className="font-semibold">
+                        {formatDistance(planDraft.metrics?.totalDistanceKm ?? null)}
+                      </div>
+                    </div>
+                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                      <div className="text-xs uppercase text-muted-foreground">
+                        {t("logistics.planTotalRoutes")}
+                      </div>
+                      <div className="font-semibold">{planTotalRoutes}</div>
+                    </div>
+                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                      <div className="text-xs uppercase text-muted-foreground">
+                        {t("logistics.planTotalTasks")}
+                      </div>
+                      <div className="font-semibold">{planTotalTasks}</div>
+                    </div>
+                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+                      <div className="text-xs uppercase text-muted-foreground">
+                        {t("logistics.planTotalStops")}
+                      </div>
+                      <div className="font-semibold">{totalStops}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {planRoutes.map((route, routeIndex) => {
+                    const displayIndex =
+                      typeof route.order === "number" && Number.isFinite(route.order)
+                        ? route.order + 1
+                        : routeIndex + 1;
+                    const routeStops = route.metrics?.stops ?? route.stops.length;
+                    return (
+                      <div
+                        key={route.id || `${routeIndex}`}
+                        className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-base font-semibold">
+                              {t("logistics.planRouteTitle", { index: displayIndex })}
+                            </h4>
+                            <div className="text-xs text-muted-foreground">
+                              {t("logistics.planRouteSummary", {
+                                tasks: route.tasks.length,
+                                stops: routeStops,
+                              })}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t("logistics.planRouteDistance", {
+                              distance: formatDistance(route.metrics?.distanceKm ?? null),
+                            })}
+                          </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="flex flex-col gap-1 text-sm">
+                            <span className="font-medium">
+                              {t("logistics.planDriver")}
+                            </span>
+                            <Input
+                              value={route.driverName ?? ""}
+                              onChange={(event) =>
+                                handleDriverNameChange(routeIndex, event.target.value)
+                              }
+                              disabled={!isPlanEditable || planLoading}
+                            />
+                          </label>
+                          <label className="flex flex-col gap-1 text-sm">
+                            <span className="font-medium">
+                              {t("logistics.planVehicle")}
+                            </span>
+                            <Input
+                              value={route.vehicleName ?? ""}
+                              onChange={(event) =>
+                                handleVehicleNameChange(routeIndex, event.target.value)
+                              }
+                              disabled={!isPlanEditable || planLoading}
+                            />
+                          </label>
+                          <label className="md:col-span-2 flex flex-col gap-1 text-sm">
+                            <span className="font-medium">
+                              {t("logistics.planRouteNotes")}
+                            </span>
+                            <textarea
+                              value={route.notes ?? ""}
+                              onChange={(event) =>
+                                handleRouteNotesChange(routeIndex, event.target.value)
+                              }
+                              className="min-h-[80px] rounded border px-3 py-2 text-sm"
+                              disabled={!isPlanEditable || planLoading}
+                            />
+                          </label>
+                        </div>
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-semibold uppercase text-muted-foreground">
+                            {t("logistics.planTasksTitle")}
+                          </h5>
+                          <ul className="space-y-2">
+                            {route.tasks.length ? (
+                              route.tasks.map((taskRef, taskIndex) => {
+                                const task = displayedTasks.find(
+                                  (item) => item._id === taskRef.taskId,
+                                );
+                                if (!task) {
+                                  return null;
+                                }
+                                return (
+                                  <li
+                                    key={`${route.id}-${taskRef.taskId}-${taskIndex}`}
+                                    className="rounded border bg-white/60 px-3 py-2 text-sm shadow-sm"
+                                  >
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div>
+                                        <button
+                                          type="button"
+                                          className="text-left font-medium text-accentPrimary hover:underline"
+                                          onClick={() => openTask(task)}
+                                        >
+                                          {task.title || task._id}
+                                        </button>
+                                        <div className="text-xs text-muted-foreground">
+                                          {task.address || t("logistics.planRouteNoAddress")}
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-1">
+                                        <Button
+                                          type="button"
+                                          size="xs"
+                                          variant="outline"
+                                          onClick={() => handleMoveTask(routeIndex, taskIndex, -1)}
+                                          disabled={taskIndex === 0}
+                                        >
+                                          {t("logistics.planTaskUp")}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="xs"
+                                          variant="outline"
+                                          onClick={() => handleMoveTask(routeIndex, taskIndex, 1)}
+                                          disabled={taskIndex === route.tasks.length - 1}
+                                        >
+                                          {t("logistics.planTaskDown")}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                      <span>
+                                        {t("logistics.planRouteDistance", {
+                                          distance: formatDistance(taskRef.distanceKm ?? null),
+                                        })}
+                                      </span>
+                                      <span>
+                                        {t("logistics.planRouteDuration", {
+                                          duration: formatDuration(taskRef.durationMinutes ?? null),
+                                        })}
+                                      </span>
+                                    </div>
+                                  </li>
+                                );
+                              })
+                            ) : (
+                              <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
+                                {t("logistics.planRouteEmpty")}
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {planMessage ? (
+                  <div className={planMessageClass}>{planMessage}</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className={planMessageClass}>
+                {planLoading
+                  ? t("loading")
+                  : planMessage || t("logistics.planEmpty")}
+              </div>
+            )}
+          </section>
+          <section className="space-y-4 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">
+                  {t("logistics.mapPanelTitle", {
+                    defaultValue: "Карта маршрутов",
+                  })}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t("logistics.mapPanelSummary", {
+                    defaultValue:
+                      "Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.",
+                  })}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={layerVisibility.tasks}
+                    onChange={(event) =>
+                      setLayerVisibility((prev) => ({
+                        ...prev,
+                        tasks: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>{t("logistics.layerTasks")}</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={layerVisibility.optimized}
+                    onChange={(event) =>
+                      setLayerVisibility((prev) => ({
+                        ...prev,
+                        optimized: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>{t("logistics.layerOptimization")}</span>
+                </label>
+              </div>
+            </div>
+            <div
+              id="logistics-map"
+              className={`h-[320px] w-full rounded border ${hasDialog ? "hidden" : ""}`}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    {t("logistics.vehicleCountLabel")}
+                  </span>
+                  <select
+                    value={vehicles}
+                    onChange={(event) => setVehicles(Number(event.target.value))}
+                    className="h-8 rounded border px-2 text-sm"
+                    aria-label={t("logistics.vehicleCountAria")}
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    {t("logistics.optimizeMethodLabel")}
+                  </span>
+                  <select
+                    value={method}
+                    onChange={(event) => setMethod(event.target.value)}
+                    className="h-8 rounded border px-2 text-sm"
+                    aria-label={t("logistics.optimizeMethodAria")}
+                  >
+                    <option value="angle">angle</option>
+                    <option value="trip">trip</option>
+                  </select>
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" onClick={calculate}>
+                  {t("logistics.optimize")}
+                </Button>
+                <Button type="button" size="sm" onClick={reset}>
+                  {t("reset")}
+                </Button>
+                <Button type="button" size="sm" onClick={refreshAll}>
+                  {t("refresh")}
+                </Button>
+              </div>
+            </div>
+            {clusterSelection?.ids.length ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
+                <span>
+                  {t("logistics.clusterSelectionSummary", {
+                    count: clusterSelection.ids.length,
+                    defaultValue: `В кластере задач: ${clusterSelection.ids.length}`,
+                  })}
+                </span>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={handleClearClusterSelection}
+                >
+                  {t("clear")}
+                </Button>
+              </div>
+            ) : null}
+          </section>
+          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <h3 className="text-lg font-semibold">
+              {t("logistics.tasksHeading")}
+            </h3>
+            <TaskTable
+              tasks={displayedTasks}
+              onDataChange={(rows) => setSorted(rows as RouteTask[])}
+              onRowClick={openTask}
+              page={page}
+              pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
+              onPageChange={setPage}
+            />
+          </section>
         </div>
-        <div className="space-y-3">
-          <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
+        <aside className="space-y-4">
+          {role === "admin" ? (
+            <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <h3 className="font-semibold">{t("logistics.transport")}</h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={refreshFleet}
+                  disabled={vehiclesLoading}
+                >
+                  {vehiclesLoading
+                    ? t("loading")
+                    : t("logistics.refreshFleet", {
+                        defaultValue: "Обновить автопарк",
+                      })}
+                </Button>
+              </div>
+              {fleetError ? (
+                <div className="text-sm text-red-600">{fleetError}</div>
+              ) : null}
+              {vehiclesHint && !availableVehicles.length ? (
+                <div className="text-sm text-muted-foreground">{vehiclesHint}</div>
+              ) : null}
+              {availableVehicles.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[480px] table-fixed border-separate border-spacing-y-1 text-xs sm:text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="rounded-l-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                          {t("logistics.vehicleColumnName", {
+                            defaultValue: "Транспорт",
+                          })}
+                        </th>
+                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                          {t("logistics.vehicleColumnPlate", {
+                            defaultValue: "Госномер",
+                          })}
+                        </th>
+                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                          {t("logistics.vehicleColumnType", {
+                            defaultValue: "Тип",
+                          })}
+                        </th>
+                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                          {t("logistics.vehicleColumnTasks", {
+                            defaultValue: "Задачи",
+                          })}
+                        </th>
+                        <th className="rounded-r-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
+                          {t("logistics.vehicleColumnMileage", {
+                            defaultValue: "Пробег",
+                          })}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableVehicles.map((vehicle) => {
+                        const tasksCount = Array.isArray(vehicle.currentTasks)
+                          ? vehicle.currentTasks.length
+                          : null;
+                        const mileageValue =
+                          typeof vehicle.odometerCurrent === "number" &&
+                          Number.isFinite(vehicle.odometerCurrent)
+                            ? vehicle.odometerCurrent
+                            : null;
+                        return (
+                          <tr
+                            key={vehicle.id}
+                            className="bg-white/80 text-sm shadow-sm dark:bg-slate-900/60"
+                          >
+                            <td className="rounded-l-md px-3 py-2 font-medium">
+                              {vehicle.name ||
+                                t("logistics.unselectedVehicle", {
+                                  defaultValue: "Не выбран",
+                                })}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">
+                              {vehicle.registrationNumber ||
+                                t("logistics.assignDialogUnknown", {
+                                  defaultValue: "нет данных",
+                                })}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">
+                              {vehicle.transportType ||
+                                t("logistics.assignDialogUnknown", {
+                                  defaultValue: "нет данных",
+                                })}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">
+                              {typeof tasksCount === "number"
+                                ? t("logistics.vehicleTasksShort", {
+                                    count: tasksCount,
+                                    defaultValue: `${tasksCount}`,
+                                  })
+                                : t("logistics.assignDialogUnknown", {
+                                    defaultValue: "нет данных",
+                                  })}
+                            </td>
+                            <td className="rounded-r-md px-3 py-2 text-xs text-muted-foreground">
+                              {mileageValue !== null
+                                ? t("logistics.vehicleMileageShort", {
+                                    value: mileageValue,
+                                    defaultValue: `${mileageValue} км`,
+                                  })
+                                : t("logistics.assignDialogUnknown", {
+                                    defaultValue: "нет данных",
+                                  })}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </section>
+          ) : fleetError ? (
+            <p className="rounded-lg border border-dashed bg-white/40 p-3 text-xs text-muted-foreground">
+              {fleetError}
+            </p>
+          ) : null}
+          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  {t("logistics.geozonesTitle")}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("logistics.geozonesDescription", {
+                    defaultValue:
+                      "Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.",
+                  })}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={geoZonesEnabled}
+                  onChange={(event) => setGeoZonesEnabled(event.target.checked)}
+                />
+                <span>
+                  {t("logistics.geozonesToggleLabel", {
+                    defaultValue: "Геозоны",
+                  })}
+                </span>
+              </label>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">
-                {t("logistics.geozonesTitle")}
-              </h3>
               <Button
                 type="button"
                 size="xs"
                 variant="outline"
                 onClick={handleStartDrawing}
-                disabled={!mapReady}
+                disabled={!mapReady || !geoZonesEnabled}
               >
                 {isDrawing
                   ? t("logistics.geozonesDrawing")
                   : t("logistics.geozonesDraw")}
               </Button>
+              {!geoZonesEnabled ? (
+                <span className="text-xs text-muted-foreground">
+                  {t("logistics.geozonesDisabled", {
+                    defaultValue: "Фильтрация по зонам выключена.",
+                  })}
+                </span>
+              ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("logistics.geozonesHint")}
-            </p>
-            {geoZones.length ? (
-              <ul className="space-y-2 text-sm">
-                {geoZones.map((zone, index) => {
-                  const isActive = activeGeoZoneIds.includes(zone.id);
-                  return (
-                    <li
-                      key={zone.id}
-                      className="space-y-2 rounded border bg-white/70 p-3 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="size-4"
-                            checked={isActive}
-                            onChange={(event) =>
-                              handleToggleZone(zone.id, event.target.checked)
-                            }
-                          />
-                          <span className="font-medium">
-                            {zone.name ||
-                              t("logistics.geozoneDefaultName", {
-                                index: index + 1,
-                              })}
-                          </span>
-                        </label>
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => handleRemoveZone(zone)}
+            {geoZonesEnabled ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t("logistics.geozonesHint")}
+                </p>
+                {geoZones.length ? (
+                  <ul className="space-y-2 text-sm">
+                    {geoZones.map((zone, index) => {
+                      const isActive = activeGeoZoneIds.includes(zone.id);
+                      return (
+                        <li
+                          key={zone.id}
+                          className="space-y-2 rounded border bg-white/70 p-3 shadow-sm"
                         >
-                          {t("logistics.geozoneRemove")}
-                        </Button>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {isActive
-                          ? t("logistics.geozoneStatusActive")
-                          : t("logistics.geozoneStatusInactive")}
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div>
-                          {t("logistics.geozoneArea", {
-                            value: formatAreaMetric(zone.metrics?.areaKm2),
-                          })}
-                        </div>
-                        <div>
-                          {t("logistics.geozonePerimeter", {
-                            value: formatPerimeterMetric(zone.metrics?.perimeterKm),
-                          })}
-                        </div>
-                        <div>
-                          {t("logistics.geozoneBuffer", {
-                            value: formatBufferMetric(zone.metrics?.bufferMeters),
-                          })}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={isActive}
+                                disabled={!geoZonesEnabled}
+                                onChange={(event) =>
+                                  handleToggleZone(zone.id, event.target.checked)
+                                }
+                              />
+                              <span className="font-medium">
+                                {zone.name ||
+                                  t("logistics.geozoneDefaultName", {
+                                    index: index + 1,
+                                  })}
+                              </span>
+                            </label>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => handleRemoveZone(zone)}
+                            >
+                              {t("logistics.geozoneRemove")}
+                            </Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {isActive
+                              ? t("logistics.geozoneStatusActive")
+                              : t("logistics.geozoneStatusInactive")}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[0.7rem] text-muted-foreground">
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
+                              {t("logistics.geozoneArea", {
+                                value: formatAreaMetric(zone.metrics?.areaKm2),
+                              })}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
+                              {t("logistics.geozonePerimeter", {
+                                value: formatPerimeterMetric(zone.metrics?.perimeterKm),
+                              })}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
+                              {t("logistics.geozoneBuffer", {
+                                value: formatBufferMetric(zone.metrics?.bufferMeters),
+                              })}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t("logistics.geozonesEmpty")}
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("logistics.geozonesEmpty")}
+              <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                {t("logistics.geozonesDisabledHint", {
+                  defaultValue: "Включите переключатель выше, чтобы снова показывать зоны.",
+                })}
               </p>
             )}
           </section>
-          <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
-            <h3 className="text-sm font-semibold">
-              {t("logistics.layersTitle")}
-            </h3>
-            <div className="flex flex-col gap-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  checked={layerVisibility.tasks}
-                  onChange={(event) =>
-                    setLayerVisibility((prev) => ({
-                      ...prev,
-                      tasks: event.target.checked,
-                    }))
-                  }
-                />
-                <span>{t("logistics.layerTasks")}</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  checked={layerVisibility.optimized}
-                  onChange={(event) =>
-                    setLayerVisibility((prev) => ({
-                      ...prev,
-                      optimized: event.target.checked,
-                    }))
-                  }
-                />
-                <span>{t("logistics.layerOptimization")}</span>
-              </label>
+          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                {t("logistics.layersTitle")}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {t("logistics.layersSummary", {
+                  defaultValue: "Настройте легенду карты по статусам, транспорту и типам задач.",
+                })}
+              </p>
             </div>
             <div className="space-y-3 border-t border-dashed border-slate-200 pt-3 text-sm">
               <fieldset className="space-y-2">
@@ -3440,8 +3581,8 @@ export default function LogisticsPage() {
               </div>
             )}
           </section>
-          <section className="space-y-3 rounded border bg-white/80 p-3 shadow-sm">
-            <h3 className="text-sm font-semibold">
+          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold uppercase text-muted-foreground">
               {t("logistics.legendTitle")}
             </h3>
             <div className="space-y-3 text-sm">
@@ -3451,7 +3592,7 @@ export default function LogisticsPage() {
                     "Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.",
                 })}
               </p>
-              <ul className="space-y-2">
+              <ul className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
                 <li className="flex items-center gap-2">
                   <span className="legend-symbol legend-symbol--start" aria-hidden="true">
                     {TASK_START_SYMBOL}
@@ -3479,13 +3620,15 @@ export default function LogisticsPage() {
                 </div>
                 <ul className="space-y-2">
                   {legendItems.map((item) => (
-                    <li key={item.key} className="flex items-center gap-2">
-                      <span
-                        className="legend-color"
-                        style={{ backgroundColor: item.color }}
-                        aria-hidden="true"
-                      />
-                      <span>{item.label}</span>
+                    <li key={item.key} className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="legend-color"
+                          style={{ backgroundColor: item.color }}
+                          aria-hidden="true"
+                        />
+                        <span>{item.label}</span>
+                      </span>
                       {item.count ? (
                         <span className="text-xs text-muted-foreground">
                           {t("logistics.legendCount", {
@@ -3500,21 +3643,8 @@ export default function LogisticsPage() {
               </div>
             </div>
           </section>
-        </div>
-      </section>
-      <section className="space-y-2 rounded border bg-white/80 p-3 shadow-sm">
-        <h3 className="text-lg font-semibold">
-          {t("logistics.tasksHeading")}
-        </h3>
-        <TaskTable
-          tasks={displayedTasks}
-          onDataChange={(rows) => setSorted(rows as RouteTask[])}
-          onRowClick={openTask}
-          page={page}
-          pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
-          onPageChange={setPage}
-        />
-      </section>
+        </aside>
+      </div>
     </div>
   );
 }

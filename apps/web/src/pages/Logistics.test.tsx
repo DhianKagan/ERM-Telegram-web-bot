@@ -33,11 +33,15 @@ jest.mock("react-i18next", () => {
     if (key === "logistics.planRouteDistance") {
       return `Расстояние: ${options?.distance ?? ""}`.trim();
     }
+    if (key === "logistics.planRouteDuration") {
+      return `Время: ${options?.duration ?? ""}`.trim();
+    }
     const dictionary: Record<string, string> = {
       loading: "Загрузка...",
       reset: "Сбросить",
       refresh: "Обновить",
       "logistics.title": "Логистика",
+      "logistics.pageLead": "Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.",
       "logistics.transport": "Транспорт",
       "logistics.unselectedVehicle": "Не выбран",
       "logistics.refreshFleet": "Обновить автопарк",
@@ -46,6 +50,8 @@ jest.mock("react-i18next", () => {
       "logistics.adminOnly": "Автопарк доступен только администраторам",
       "logistics.noAccess": "Нет доступа к автопарку",
       "logistics.optimize": "Просчёт логистики",
+      "logistics.mapPanelTitle": "Карта маршрутов",
+      "logistics.mapPanelSummary": "Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.",
       "logistics.planSectionTitle": "Маршрутный план",
       "logistics.planSummary": "Итоги плана",
       "logistics.planStatus": "Статус",
@@ -85,6 +91,10 @@ jest.mock("react-i18next", () => {
       "logistics.geozonesDraw": "Нарисовать зону",
       "logistics.geozonesDrawing": "Рисуем…",
       "logistics.geozonesHint": "Выберите геозоны, чтобы ограничить задачи на карте.",
+      "logistics.geozonesDescription": "Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.",
+      "logistics.geozonesToggleLabel": "Геозоны",
+      "logistics.geozonesDisabled": "Фильтрация по зонам выключена.",
+      "logistics.geozonesDisabledHint": "Включите переключатель выше, чтобы снова показывать зоны.",
       "logistics.geozonesEmpty": "Геозоны пока не созданы",
       "logistics.geozoneDefaultName": "Зона {{index}}",
       "logistics.geozoneRemove": "Удалить",
@@ -94,6 +104,8 @@ jest.mock("react-i18next", () => {
       "logistics.geozonePerimeter": "Периметр: {{value}}",
       "logistics.geozoneBuffer": "Буфер: {{value}}",
       "logistics.viewModeLabel": "Режим карты",
+      "logistics.layersTitle": "Слои карты",
+      "logistics.layersSummary": "Настройте легенду карты по статусам, транспорту и типам задач.",
       "logistics.viewModePlanar": "2D",
       "logistics.viewModeTilted": "Перспектива",
       "logistics.legendTitle": "Легенда",

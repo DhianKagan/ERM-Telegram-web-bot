@@ -136,6 +136,7 @@ const TRANSPORT_TYPE_COLORS: Record<string, string> = {
   Грузовой: "#f97316",
   Спецтехника: "#7c3aed",
   Пеший: "#22c55e",
+  "Без транспорта": "#9ca3af",
   default: "#475569",
 };
 
@@ -1561,30 +1562,76 @@ export default function LogisticsPage() {
       typeof coords?.lng === "number" &&
       Number.isFinite(coords.lng);
 
-    return input.filter((task) => {
+    const result: RouteTask[] = [];
+    input.forEach((task) => {
+      const transportType = getTaskTransportType(task);
+
       const details = (task as Record<string, unknown>)
         .logistics_details as LogisticsDetails | undefined;
-      const transportTypeRaw =
-        typeof details?.transport_type === "string"
-          ? details.transport_type.trim()
-          : "";
-      const normalizedTransportType = transportTypeRaw.toLowerCase();
-      const hasTransportType =
-        Boolean(transportTypeRaw) && normalizedTransportType !== "без транспорта";
 
-      if (!hasTransportType) {
-        return false;
-      }
+      const resolveLocation = (primary: unknown, fallback: unknown): string => {
+        if (typeof primary === "string") {
+          const value = primary.trim();
+          if (value) {
+            return value;
+          }
+        }
+        if (typeof fallback === "string") {
+          const value = fallback.trim();
+          if (value) {
+            return value;
+          }
+        }
+        return "";
+      };
+
+      const startLocation = resolveLocation(
+        details?.start_location,
+        (task as Record<string, unknown>).start_location,
+      );
+      const endLocation = resolveLocation(
+        details?.end_location,
+        (task as Record<string, unknown>).end_location,
+      );
 
       const hasCoordinates = hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
-      const hasAddresses =
-        (typeof details?.start_location === "string" &&
-          details.start_location.trim().length > 0) ||
-        (typeof details?.end_location === "string" &&
-          details.end_location.trim().length > 0);
+      const hasAddresses = Boolean(startLocation) || Boolean(endLocation);
 
-      return hasCoordinates || hasAddresses;
+      if (!hasCoordinates && !hasAddresses) {
+        return;
+      }
+
+      const enrichedDetails: LogisticsDetails = {
+        ...(details ?? {}),
+      };
+      if (!enrichedDetails.transport_type) {
+        enrichedDetails.transport_type = transportType;
+      }
+      if (!enrichedDetails.start_location && startLocation) {
+        enrichedDetails.start_location = startLocation;
+      }
+      if (!enrichedDetails.end_location && endLocation) {
+        enrichedDetails.end_location = endLocation;
+      }
+
+      const enrichedTask: RouteTask = {
+        ...task,
+        logistics_details: enrichedDetails,
+      };
+      const taskRecord = enrichedTask as Record<string, unknown>;
+      if (!taskRecord.transport_type) {
+        taskRecord.transport_type = transportType;
+      }
+      if (startLocation && !taskRecord.start_location) {
+        taskRecord.start_location = startLocation;
+      }
+      if (endLocation && !taskRecord.end_location) {
+        taskRecord.end_location = endLocation;
+      }
+
+      result.push(enrichedTask);
     });
+    return result;
   }, []);
 
   const load = React.useCallback(() => {

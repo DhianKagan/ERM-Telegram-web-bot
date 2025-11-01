@@ -265,6 +265,8 @@ jest.mock(
   { virtual: true },
 );
 
+const taskTableBatches: any[][] = [];
+
 const mockTasks = [
   {
     _id: "t1",
@@ -287,9 +289,23 @@ const mockTasks = [
     startCoordinates: { lat: 55, lng: 35 },
     finishCoordinates: { lat: 55.5, lng: 35.5 },
     logistics_details: {
-      transport_type: "Грузовой",
-      start_location: "Дніпро",
-      end_location: "Харків",
+      transport_type: "",
+    },
+    transport_type: "Грузовой",
+    start_location: "Дніпро",
+    end_location: "Харків",
+  },
+  {
+    _id: "t4",
+    id: "t4",
+    title: "Задача 4",
+    status: "Новая",
+    startCoordinates: { lat: 49.5, lng: 25.6 },
+    finishCoordinates: { lat: 49.9, lng: 26.1 },
+    logistics_details: {
+      transport_type: "Без транспорта",
+      start_location: "Тернопіль",
+      end_location: "Хмельницький",
     },
   },
   {
@@ -310,6 +326,7 @@ jest.mock("../components/TaskTable", () => {
       const signature = JSON.stringify(tasks);
       if (signatureRef.current === signature) return;
       signatureRef.current = signature;
+      taskTableBatches.push(tasks);
       onDataChange(tasks);
     }, [tasks, onDataChange]);
     return React.createElement("div", { "data-testid": "task-table" });
@@ -638,6 +655,7 @@ describe("LogisticsPage", () => {
     logisticsEventsMock.__clear();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
+    taskTableBatches.length = 0;
     listRoutePlansMock.mockReset();
     listRoutePlansMock.mockImplementation(
       (status?: string, page?: number, limit?: number) => {
@@ -692,7 +710,7 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot("logistics:all"),
-      ).toHaveLength(2),
+      ).toHaveLength(3),
     );
 
     const refreshButton = screen.getByRole("button", {
@@ -716,7 +734,7 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot("logistics:all"),
-      ).toHaveLength(2),
+      ).toHaveLength(3),
     );
 
     const mapModule = jest.requireMock("maplibre-gl");
@@ -772,10 +790,7 @@ describe("LogisticsPage", () => {
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot("logistics:all"),
-      ).toEqual([expect.objectContaining({ _id: "t1" })]),
-    );
-    await waitFor(() =>
-      expect(within(legendList).queryAllByText("(1)")).toHaveLength(1),
+      ).toEqual(expect.arrayContaining([expect.objectContaining({ _id: "t1" })])),
     );
     const novaLegendItem = within(legendList)
       .getAllByRole("listitem")
@@ -785,6 +800,20 @@ describe("LogisticsPage", () => {
       expect(
         within(novaLegendItem as HTMLElement).getByText("(1)"),
       ).toBeInTheDocument(),
+    );
+    await waitFor(() => {
+      expect(
+        taskTableBatches.some((batch) =>
+          batch.some((task) => task._id === "t2"),
+        ),
+      ).toBe(true);
+    });
+    await waitFor(() =>
+      expect(
+        taskTableBatches.some((batch) =>
+          batch.some((task) => task._id === "t4"),
+        ),
+      ).toBe(true),
     );
 
     const optimizeButton = screen.getByRole("button", {

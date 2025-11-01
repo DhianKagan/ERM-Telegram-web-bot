@@ -11,6 +11,7 @@ import {
   within,
 } from "@testing-library/react";
 import CollectionsPage from "./CollectionsPage";
+import { MemoryRouter } from "react-router-dom";
 import type { CollectionItem } from "../../services/collections";
 import {
   fetchCollectionItems,
@@ -360,8 +361,15 @@ describe("CollectionsPage", () => {
     jest.clearAllMocks();
   });
 
+  const renderCollectionsPage = () =>
+    render(
+      <MemoryRouter initialEntries={["/cp/settings"]}>
+        <CollectionsPage />
+      </MemoryRouter>,
+    );
+
   it("возвращает список при смене вкладки, не перенося предыдущий фильтр", async () => {
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -425,7 +433,7 @@ describe("CollectionsPage", () => {
       return { items: [], total: 0 };
     });
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     const departmentsPanel = await screen.findByTestId(
       "tab-content-departments",
@@ -519,7 +527,7 @@ describe("CollectionsPage", () => {
       return { items: [], total: 0 };
     });
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     const departmentsPanel = await screen.findByTestId(
       "tab-content-departments",
@@ -559,7 +567,7 @@ describe("CollectionsPage", () => {
       return byType[key] ?? byType[""] ?? { items: [], total: 0 };
     });
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -570,7 +578,7 @@ describe("CollectionsPage", () => {
   });
 
   it("отображает колонки пользователей во вкладке 'Пользователь'", async () => {
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -594,7 +602,7 @@ describe("CollectionsPage", () => {
   });
 
   it("отображает колонки сотрудников во вкладке 'Сотрудник'", async () => {
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -622,7 +630,7 @@ describe("CollectionsPage", () => {
       { telegram_id: 101, username: "101" } as User,
     ]);
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -683,7 +691,7 @@ describe("CollectionsPage", () => {
       return (defaultEntry.items ?? []) as CollectionItem[];
     });
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -713,7 +721,7 @@ describe("CollectionsPage", () => {
     };
     mockedFetchUsers.mockResolvedValueOnce([user]);
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -738,7 +746,7 @@ describe("CollectionsPage", () => {
     };
     mockedFetchUsers.mockResolvedValueOnce([user]);
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -788,7 +796,7 @@ describe("CollectionsPage", () => {
       { telegram_id: 404, username: "404", role: "user" } as User,
     ]);
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 
@@ -821,7 +829,7 @@ describe("CollectionsPage", () => {
       throw new Error(message);
     });
 
-    render(<CollectionsPage />);
+    renderCollectionsPage();
 
     await screen.findByText("Главный департамент");
 

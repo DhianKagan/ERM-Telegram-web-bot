@@ -1,0 +1,83 @@
+# Назначение файла: автоматическое обновление адресных тайлов и публикация в Mapbox Tilesets.
+name: Refresh address tiles
+
+on:
+  schedule:
+    - cron: '30 1 * * 1' # Понедельник 01:30 UTC
+  workflow_dispatch:
+    inputs:
+      osm_pbf_url:
+        description: 'Переопределить источник OSM (.osm.pbf)'
+        required: false
+        type: string
+      openaddr_url:
+        description: 'Переопределить архив OpenAddresses (.zip)'
+        required: false
+        type: string
+      min_zoom:
+        description: 'Минимальный масштаб тайлов'
+        required: false
+        type: string
+      max_zoom:
+        description: 'Максимальный масштаб тайлов'
+        required: false
+        type: string
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      DEFAULT_OSM_PBF_URL: https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+      DEFAULT_OPENADDR_URL: https://results.openaddresses.io/latest/run/europe/ua/countrywide.zip
+      OUTPUT_MBTILES: dist/addresses.mbtiles
+      TILESET_LAYER: addresses
+      TILESET_NAME: 'ERM address registry'
+      MAPBOX_USERNAME: ${{ vars.MAPBOX_USERNAME }}
+      MAPBOX_TILESET_ID: ${{ vars.MAPBOX_TILESET_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Установка зависимостей CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y osmium-tool tippecanoe unzip python3-pip
+          python3 -m pip install --user --upgrade pip
+          python3 -m pip install --user mapboxcli
+
+      - name: Сборка MBTiles
+        env:
+          OSM_PBF_URL: ${{ inputs.osm_pbf_url || env.DEFAULT_OSM_PBF_URL }}
+          OPENADDR_URL: ${{ inputs.openaddr_url || env.DEFAULT_OPENADDR_URL }}
+          MIN_ZOOM: ${{ inputs.min_zoom || '6' }}
+          MAX_ZOOM: ${{ inputs.max_zoom || '16' }}
+          OUTPUT_MBTILES: ${{ env.OUTPUT_MBTILES }}
+          TILESET_LAYER: ${{ env.TILESET_LAYER }}
+          TILESET_NAME: ${{ env.TILESET_NAME }}
+        run: |
+          mkdir -p "$(dirname "$OUTPUT_MBTILES")"
+          ./scripts/refresh_addresses.sh
+
+      - name: Публикация в Mapbox Tilesets
+        env:
+          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          MAPBOX_USERNAME: ${{ env.MAPBOX_USERNAME }}
+          MAPBOX_TILESET_ID: ${{ env.MAPBOX_TILESET_ID }}
+          OUTPUT_MBTILES: ${{ env.OUTPUT_MBTILES }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if [ -z "$MAPBOX_ACCESS_TOKEN" ]; then
+            echo 'Секрет MAPBOX_ACCESS_TOKEN не задан' >&2
+            exit 1
+          fi
+          if [ -z "$MAPBOX_USERNAME" ] || [ -z "$MAPBOX_TILESET_ID" ]; then
+            echo 'Repository variables MAPBOX_USERNAME и MAPBOX_TILESET_ID должны быть заданы' >&2
+            exit 1
+          fi
+          mapbox upload "$MAPBOX_USERNAME.$MAPBOX_TILESET_ID" "$OUTPUT_MBTILES"
+
+      - name: Публикация артефакта MBTiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: addresses-mbtiles
+          path: ${{ env.OUTPUT_MBTILES }}
+          if-no-files-found: error

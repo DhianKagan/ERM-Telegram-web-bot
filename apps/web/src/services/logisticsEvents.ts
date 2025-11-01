@@ -103,6 +103,7 @@ export function subscribeLogisticsEvents(
       if (onError) {
         onError(buildSyntheticEvent("logistics:eventstream-error"));
       }
+      attachSource();
     } finally {
       if (timeout !== null) {
         clearTimeout(timeout);

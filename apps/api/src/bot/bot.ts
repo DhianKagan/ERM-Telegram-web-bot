@@ -2095,20 +2095,25 @@ export async function startBot(retry = 0): Promise<void> {
   } catch (err: unknown) {
     const e = err as { response?: { error_code?: number } };
     const code = e.response?.error_code;
-    if (retryableCodes.has(code ?? 0) && retry < MAX_RETRIES) {
-      if (code === 409) {
+    const isConflict = code === 409;
+    const isRateLimited = code === 429;
+    const canRetry =
+      retry < MAX_RETRIES || isConflict || isRateLimited;
+    if (retryableCodes.has(code ?? 0) && canRetry) {
+      if (isConflict) {
         console.warn(
           'Обнаружен активный запрос getUpdates, сбрасываем предыдущую сессию',
         );
         await resetLongPollingSession();
       }
-      if (code === 429) {
+      if (isRateLimited) {
         await waitForRetryAfter(err, 'Telegram вернул 429 при запуске бота');
       }
       console.error('Ошибка Telegram, повторная попытка запуска');
       const delay = 1000 * 2 ** retry;
       await sleep(delay);
-      return startBot(retry + 1);
+      const nextRetry = isConflict || isRateLimited ? retry : retry + 1;
+      return startBot(nextRetry);
     }
     console.error('Не удалось запустить бота:', err);
     throw err;

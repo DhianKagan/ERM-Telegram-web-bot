@@ -2958,6 +2958,14 @@ export default function LogisticsPage() {
           </Button>
         </div>
       </header>
+      {MAP_STYLE_FALLBACK_USED ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {t("logistics.mapFallbackWarning", {
+            defaultValue:
+              "Используется резервный стиль карты с ограниченной детализацией. Укажите VITE_MAPBOX_ACCESS_TOKEN, чтобы вернуть полные тайлы.",
+          })}
+        </div>
+      ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <section className="space-y-4 rounded-lg border bg-white/85 p-4 shadow-sm">

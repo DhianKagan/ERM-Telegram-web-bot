@@ -54,11 +54,24 @@ const toNumeric = (value: unknown): number | undefined => {
     return Number.isFinite(value) ? value : undefined;
   }
   if (typeof value === 'string') {
-    const normalized = value
-      .trim()
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const compact = trimmed
       .replace(/\s+/g, '')
-      .replace(/,/g, '.');
-    if (!normalized) return undefined;
+      .replace(/[\u2018\u2019']/g, '');
+    if (!compact) {
+      return undefined;
+    }
+    const hasComma = compact.includes(',');
+    const hasDot = compact.includes('.');
+    let normalized = compact;
+    if (hasComma && hasDot) {
+      normalized = compact.replace(/\./g, '').replace(/,/g, '.');
+    } else if (hasComma) {
+      normalized = compact.replace(/,/g, '.');
+    }
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
   }

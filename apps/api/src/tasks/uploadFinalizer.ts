@@ -131,10 +131,17 @@ export const finalizePendingUploads = async (
           userDir,
           path.join(userDir, path.basename(entry.tempThumbnailPath)),
         );
-        await fs.rename(entry.tempThumbnailPath, thumbTarget);
-        thumbnailFinalPath = thumbTarget;
-        movedThumbnails.push(thumbTarget);
-        thumbnailRelative = relativeToUploads(thumbTarget);
+        try {
+          await fs.rename(entry.tempThumbnailPath, thumbTarget);
+          thumbnailFinalPath = thumbTarget;
+          movedThumbnails.push(thumbTarget);
+          thumbnailRelative = relativeToUploads(thumbTarget);
+        } catch (error) {
+          const err = error as NodeJS.ErrnoException;
+          if (err.code !== 'ENOENT') {
+            throw error;
+          }
+        }
       }
       const relative = relativeToUploads(finalPath);
       if (!relative) {

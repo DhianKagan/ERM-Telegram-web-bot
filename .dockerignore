@@ -7,3 +7,46 @@ docker-compose.yml
 .env
 .env.*
 *.md
+
+# Тесты и вспомогательные инструменты
+codex
+semgrep
+loadtest
+profiling
+prometheus
+Railway
+tests
+coverage
+reports
+playwright-report
+
+# Временные файлы сборки
+*.tsbuildinfo
+dist
+apps/api/dist
+apps/api/tsconfig.tsbuildinfo
+apps/web/dist
+apps/web/tsconfig.tsbuildinfo
+
+# Кэшированные шрифты и изображения (пересоздаются скриптами)
+apps/api/public/fonts/*.ttf
+apps/api/public/fonts/*.woff2
+apps/api/public/fonts/fonts.*.css
+apps/api/public/hero/*
+!apps/api/public/hero/.gitkeep
+apps/web/public/fonts/*.ttf
+apps/web/public/fonts/*.woff2
+apps/web/public/fonts/fonts.*.css
+apps/web/public/hero/*
+!apps/web/public/hero/.gitkeep
+
+# Собранные статические ассеты фронтенда
+apps/api/public/*.png
+apps/api/public/*.svg
+apps/api/public/*.ico
+apps/api/public/*.txt
+
+# Локальные файлы окружения IDE
+.DS_Store
+.idea
+.vscode

@@ -215,7 +215,7 @@ export interface TaskAttrs {
   end_location_link?: string;
   finishCoordinates?: Coordinates;
   google_route_url?: string;
-  route_distance_km?: number;
+  route_distance_km?: number | null;
   route_nodes?: number[];
   assigned_user_id?: number;
   controller_user_id?: number;

@@ -12,7 +12,7 @@ export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   startCoordinates?: Point;
   finishCoordinates?: Point;
   google_route_url?: string;
-  route_distance_km?: number;
+  route_distance_km?: number | null;
   due_date?: Date;
   remind_at?: Date;
   [key: string]: unknown;
@@ -72,7 +72,7 @@ async function applyRouteInfo(data: TaskData = {}): Promise<void> {
       if (typeof r.distance === 'number') {
         data.route_distance_km = Number((r.distance / 1000).toFixed(1));
       } else {
-        delete (data as Record<string, unknown>).route_distance_km;
+        data.route_distance_km = null;
       }
     } catch {
       /* игнорируем ошибки маршрута */

@@ -86,6 +86,21 @@ describe("customTheme", () => {
     const Draw = require("@mapbox/mapbox-gl-draw") as jest.Mock;
     new Draw({ styles: customTheme });
 
+    const lineLayers = customTheme.filter(
+      (style): style is { id: string; type: "line"; paint?: Record<string, unknown> } =>
+        style.type === "line",
+    );
+
+    expect(lineLayers.map((layer) => layer.id)).toEqual(
+      expect.arrayContaining(["gl-draw-lines-inactive", "gl-draw-lines-active"]),
+    );
+    expect(lineLayers).toHaveLength(2);
+    for (const layer of lineLayers) {
+      const dashArray = layer.paint?.["line-dasharray"];
+      expect(Array.isArray(dashArray)).toBe(true);
+      expect((dashArray as unknown[]).every((value) => typeof value === "number")).toBe(true);
+    }
+
     expect(Draw).toHaveBeenCalledWith(
       expect.objectContaining({ styles: expect.any(Array) }),
     );

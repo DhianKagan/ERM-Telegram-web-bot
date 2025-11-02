@@ -183,6 +183,7 @@
     "metaDescription": "Plan routes, manage fleet logistics, and review delivery progress from consolidated updates.",
     "planSectionTitle": "Route plan",
     "planSummary": "Plan summary",
+    "mapFallbackWarning": "Mapbox token is missing, a simplified fallback map style is used. Set VITE_MAPBOX_ACCESS_TOKEN to restore detailed tiles.",
     "planStatus": "Status",
     "planStatusValue": {
       "draft": "Draft",

@@ -21,7 +21,7 @@ const styleFromDefine =
 const resolvedToken = tokenFromProcess ?? tokenFromDefine ?? "";
 
 const DEFAULT_STYLE_URL = "mapbox://styles/mapbox/streets-v12";
-const FALLBACK_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+const FALLBACK_STYLE_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
 const requestedStyle = styleFromProcess ?? styleFromDefine ?? DEFAULT_STYLE_URL;
 

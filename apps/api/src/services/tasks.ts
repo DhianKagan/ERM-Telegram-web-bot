@@ -12,7 +12,7 @@ export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   startCoordinates?: Point;
   finishCoordinates?: Point;
   google_route_url?: string;
-  route_distance_km?: number;
+  route_distance_km?: number | null;
   due_date?: Date;
   remind_at?: Date;
   [key: string]: unknown;

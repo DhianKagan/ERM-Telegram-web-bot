@@ -338,7 +338,7 @@ type TaskData = Task & {
   payment_method?: Task['payment_method'];
   priority?: string;
   status?: string;
-  route_distance_km?: number;
+  route_distance_km?: number | null;
   controllers?: number[];
   created_by?: number;
   comments?: { author_id?: number; text?: string }[];

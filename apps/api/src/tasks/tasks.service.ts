@@ -73,11 +73,30 @@ const setMetric = (
   key: keyof TaskDocument,
   value: number | undefined,
 ) => {
+  const keyName = key as string;
+  const hasOriginalValue = Object.prototype.hasOwnProperty.call(
+    target,
+    keyName,
+  );
+  const rawValue = hasOriginalValue ? target[keyName] : undefined;
+
   if (value === undefined || Number.isNaN(value)) {
-    delete target[key as string];
+    if (hasOriginalValue) {
+      if (rawValue === null) {
+        target[keyName] = null;
+        return;
+      }
+      if (typeof rawValue === 'string' && rawValue.trim() === '') {
+        target[keyName] = null;
+        return;
+      }
+      delete target[keyName];
+      return;
+    }
+    delete target[keyName];
     return;
   }
-  target[key as string] = value;
+  target[keyName] = value;
 };
 
 const normalizeTaskId = (value: unknown): string | null => {

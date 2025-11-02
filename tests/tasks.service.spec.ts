@@ -199,6 +199,30 @@ describe('TasksService — привязка тем Telegram', () => {
     expect(payload.route_distance_km).toBeUndefined();
   });
 
+  it('очищает числовые поля груза при передаче пустых значений', async () => {
+    const repo = createRepo();
+    const service = new TasksService(repo as unknown as any);
+
+    await service.update(
+      'task',
+      {
+        cargo_length_m: null,
+        cargo_width_m: '',
+        cargo_height_m: '  ',
+        cargo_weight_kg: undefined,
+        cargo_volume_m3: null,
+      } as unknown as Partial<TaskDocument>,
+      11,
+    );
+
+    const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
+    expect(payload.cargo_length_m).toBeNull();
+    expect(payload.cargo_width_m).toBeNull();
+    expect(payload.cargo_height_m).toBeNull();
+    expect(payload.cargo_weight_kg).toBeUndefined();
+    expect(payload.cargo_volume_m3).toBeNull();
+  });
+
   it('отправляет событие об удалении задачи', async () => {
     const repo = createRepo();
     repo.deleteTask.mockResolvedValue({

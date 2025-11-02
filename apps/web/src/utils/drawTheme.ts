@@ -9,6 +9,17 @@ const white = "#fff";
 
 type DrawStyles = NonNullable<MapboxDraw.MapboxDrawOptions["styles"]>;
 
+const lineGeometryFilter = [
+  "any",
+  ["==", "$type", "LineString"],
+  ["==", "$type", "Polygon"],
+] as const;
+
+const lineLayout = {
+  "line-cap": "round",
+  "line-join": "round",
+} as const;
+
 export const customTheme: DrawStyles = [
   {
     id: "gl-draw-polygon-fill",
@@ -25,30 +36,24 @@ export const customTheme: DrawStyles = [
     },
   },
   {
-    id: "gl-draw-lines",
+    id: "gl-draw-lines-inactive",
     type: "line",
-    filter: [
-      "any",
-      ["==", "$type", "LineString"],
-      ["==", "$type", "Polygon"],
-    ],
-    layout: {
-      "line-cap": "round",
-      "line-join": "round",
-    },
+    filter: ["all", ["!=", "active", "true"], lineGeometryFilter],
+    layout: lineLayout,
     paint: {
-      "line-color": [
-        "case",
-        ["==", ["get", "active"], "true"],
-        orange,
-        blue,
-      ],
-      "line-dasharray": [
-        "case",
-        ["==", ["get", "active"], "true"],
-        ["literal", [0.2, 2]],
-        ["literal", [2, 0]],
-      ],
+      "line-color": blue,
+      "line-dasharray": [2, 0],
+      "line-width": 2,
+    },
+  },
+  {
+    id: "gl-draw-lines-active",
+    type: "line",
+    filter: ["all", ["==", "active", "true"], lineGeometryFilter],
+    layout: lineLayout,
+    paint: {
+      "line-color": orange,
+      "line-dasharray": [0.2, 2],
       "line-width": 2,
     },
   },

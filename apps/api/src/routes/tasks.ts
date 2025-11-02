@@ -281,7 +281,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
             path: string;
             thumbnailPath?: string | null;
           };
-          const staleEntries = await File.find(
+          const staleQuery = File.find(
             {
               userId,
               taskId: null,
@@ -289,9 +289,14 @@ export const processUploads: RequestHandler = async (req, res, next) => {
               uploadedAt: { $lte: cutoff },
             },
             { path: 1, thumbnailPath: 1 },
-          )
-            .lean<StaleEntry[]>()
-            .exec();
+          ).lean<StaleEntry[]>();
+          const staleEntries = await (
+            typeof (staleQuery as { exec?: unknown }).exec === 'function'
+              ? (staleQuery as { exec: () => Promise<StaleEntry[]> }).exec()
+              : Promise.resolve(
+                  staleQuery as StaleEntry[] | Promise<StaleEntry[]>,
+                )
+          );
           if (staleEntries.length > 0) {
             const staleIds = staleEntries.map((entry) => entry._id);
             await File.deleteMany({ _id: { $in: staleIds } });
@@ -445,6 +450,54 @@ export const processUploads: RequestHandler = async (req, res, next) => {
 
 const router: Router = Router();
 const ctrl = container.resolve(TasksController);
+
+const ensureRequestHandler = (
+  value: unknown,
+  methodName: string,
+): RequestHandler => {
+  if (typeof value === 'function') {
+    return value as RequestHandler;
+  }
+  console.error(
+    `Контроллер задач не реализует метод ${methodName}, используется заглушка`,
+  );
+  return ((_, res) => {
+    res.status(501).json({
+      error: `Метод ${methodName} временно недоступен`,
+    });
+  }) satisfies RequestHandler;
+};
+
+const downloadPdfHandler = ensureRequestHandler(ctrl.downloadPdf, 'downloadPdf');
+const downloadExcelHandler = ensureRequestHandler(
+  ctrl.downloadExcel,
+  'downloadExcel',
+);
+
+const chunkUploadDirs = new Map<string, string>();
+
+const makeChunkKey = (userId: number, fileId: string): string =>
+  `${userId}:${fileId}`;
+
+const resolveChunkUploadDir = (
+  req: RequestWithUser,
+  userId: number,
+  fileId: string,
+): string => {
+  const context = ensureUploadContext(req, userId);
+  const key = makeChunkKey(userId, fileId);
+  const existing = chunkUploadDirs.get(key);
+  if (existing) {
+    context.dir = existing;
+    return existing;
+  }
+  chunkUploadDirs.set(key, context.dir);
+  return context.dir;
+};
+
+const releaseChunkUploadDir = (userId: number, fileId: string): void => {
+  chunkUploadDirs.delete(makeChunkKey(userId, fileId));
+};
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const userId = resolveNumericUserId((req as RequestWithUser).user?.id);
@@ -590,12 +643,13 @@ const handleInlineUpload: RequestHandler = async (req, res) => {
 };
 
 export const handleChunks: RequestHandler = async (req, res) => {
+  let cleanupUserId: number | undefined;
+  let cleanupFileId: string | undefined;
   try {
     const { fileId, chunkIndex, totalChunks } = req.body as Record<
       string,
       string
     >;
-    // Проверяем допустимость идентификатора файла
     if (typeof fileId !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(fileId)) {
       res.status(400).json({ error: 'Недопустимый идентификатор файла' });
       return;
@@ -607,7 +661,6 @@ export const handleChunks: RequestHandler = async (req, res) => {
     }
     const idx = Number(chunkIndex);
     const total = Number(totalChunks);
-    // Проверяем индексы чанков
     if (
       !Number.isInteger(idx) ||
       !Number.isInteger(total) ||
@@ -623,17 +676,23 @@ export const handleChunks: RequestHandler = async (req, res) => {
       res.status(403).json({ error: 'Не удалось определить пользователя' });
       return;
     }
-    const context = ensureUploadContext(req as RequestWithUser, userId);
-    const baseDir = context.dir;
+    cleanupUserId = userId;
+    cleanupFileId = fileId;
+    const baseDir = resolveChunkUploadDir(
+      req as RequestWithUser,
+      userId,
+      fileId,
+    );
     const dir = path.resolve(baseDir, fileId);
-    // Не допускаем выход за пределы каталога пользователя
     if (!dir.startsWith(baseDir + path.sep)) {
+      releaseChunkUploadDir(userId, fileId);
       res.status(400).json({ error: 'Недопустимый путь' });
       return;
     }
     fs.mkdirSync(dir, { recursive: true });
     const chunkPath = path.resolve(dir, String(idx));
     if (!chunkPath.startsWith(dir + path.sep)) {
+      releaseChunkUploadDir(userId, fileId);
       res.status(400).json({ error: 'Недопустимый путь части' });
       return;
     }
@@ -649,8 +708,12 @@ export const handleChunks: RequestHandler = async (req, res) => {
           cleanedTemp = true;
         }
       };
-      if (!final.startsWith(dir + path.sep)) {
+      const cleanupAll = () => {
+        releaseChunkUploadDir(userId, fileId);
         cleanupTemp();
+      };
+      if (!final.startsWith(dir + path.sep)) {
+        cleanupAll();
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
       }
@@ -659,7 +722,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
         const partPath = path.resolve(dir, String(i));
         if (!partPath.startsWith(dir + path.sep)) {
           fs.rmSync(final, { force: true });
-          cleanupTemp();
+          cleanupAll();
           res.status(400).json({ error: 'Недопустимый путь части' });
           return;
         }
@@ -670,16 +733,16 @@ export const handleChunks: RequestHandler = async (req, res) => {
       }
       if (assembledSize > maxUploadSize) {
         fs.rmSync(final, { force: true });
-        cleanupTemp();
+        cleanupAll();
         res.status(400).json({ error: 'Файл превышает допустимый размер' });
         return;
       }
-      const targetDir = context.dir;
+      const targetDir = baseDir;
       fs.mkdirSync(targetDir, { recursive: true });
       const target = path.resolve(targetDir, storedName);
       if (!target.startsWith(targetDir + path.sep)) {
         fs.rmSync(final, { force: true });
-        cleanupTemp();
+        cleanupAll();
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
       }
@@ -697,20 +760,39 @@ export const handleChunks: RequestHandler = async (req, res) => {
       (req as { file?: Express.Multer.File }).file = diskFile;
       try {
         await processUploads(req, res, () => {});
-      } finally {
-        cleanupTemp();
+      } catch (error) {
+        cleanupAll();
+        throw error;
       }
       if (res.headersSent) {
+        cleanupAll();
         await purgeTemporaryUploads(req).catch(() => undefined);
         return;
       }
       const bodyWithAttachments = req.body as BodyWithAttachments;
-      const finalizeResult = await finalizePendingUploads({
-        req: req as RequestWithUser,
-        attachments: bodyWithAttachments.attachments ?? [],
-      });
+      let finalizeResult: Awaited<ReturnType<typeof finalizePendingUploads>>;
+      try {
+        finalizeResult = await finalizePendingUploads({
+          req: req as RequestWithUser,
+          attachments: bodyWithAttachments.attachments ?? [],
+        });
+      } finally {
+        cleanupAll();
+      }
       bodyWithAttachments.attachments =
         finalizeResult.attachments as AttachmentItem[];
+      const finalAbsolutePath = path.resolve(
+        uploadsDirAbs,
+        path.join(String(userId), storedName),
+      );
+      try {
+        await scanFile(finalAbsolutePath);
+      } catch (scanError) {
+        await writeLog('Повторная проверка файла не выполнена', 'error', {
+          path: finalAbsolutePath,
+          error: (scanError as Error).message,
+        }).catch(() => undefined);
+      }
       if (res.headersSent) return;
       const attachment = bodyWithAttachments.attachments?.[0];
       if (!attachment) {
@@ -722,10 +804,19 @@ export const handleChunks: RequestHandler = async (req, res) => {
       return;
     }
     res.json({ received: idx });
-  } catch {
+  } catch (error) {
+    if (cleanupUserId !== undefined && cleanupFileId) {
+      releaseChunkUploadDir(cleanupUserId, cleanupFileId);
+    }
+    await writeLog('Не удалось обработать chunk-upload', 'error', {
+      error: (error as Error).message,
+      fileId: cleanupFileId,
+      userId: cleanupUserId,
+    }).catch(() => undefined);
     res.sendStatus(500);
   }
 };
+
 
 router.post(
   '/upload-chunk',
@@ -864,7 +955,7 @@ router.get(
     query('taskType').optional().isString(),
   ] as RequestHandler[],
   handleValidation as unknown as RequestHandler,
-  ctrl.downloadPdf as RequestHandler,
+  downloadPdfHandler,
 );
 
 router.get(
@@ -881,7 +972,7 @@ router.get(
     query('taskType').optional().isString(),
   ] as RequestHandler[],
   handleValidation as unknown as RequestHandler,
-  ctrl.downloadExcel as RequestHandler,
+  downloadExcelHandler,
 );
 
 router.get(

@@ -48,4 +48,36 @@ describe('TasksService.applyCargoMetrics', () => {
     expect(payload.payment_amount).toBeCloseTo(12345.7, 2);
     expect(payload.cargo_volume_m3).toBeCloseTo(22.848, 3);
   });
+
+  test('корректно обрабатывает числа в американском формате', () => {
+    const service = new TasksServiceCtor({} as Record<string, never>);
+    const payload = {
+      cargo_length_m: '1,234.56',
+      cargo_width_m: '2,345.67',
+      cargo_height_m: '3,456.78',
+      cargo_weight_kg: '4,567.89',
+      payment_amount: '12,345.01',
+    } as unknown as Partial<TaskDocument>;
+
+    service.applyCargoMetrics(payload);
+
+    expect(payload.cargo_length_m).toBeCloseTo(1234.56, 2);
+    expect(payload.cargo_width_m).toBeCloseTo(2345.67, 2);
+    expect(payload.cargo_height_m).toBeCloseTo(3456.78, 2);
+    expect(payload.cargo_weight_kg).toBeCloseTo(4567.89, 2);
+    expect(payload.payment_amount).toBeCloseTo(12345.01, 2);
+  });
+
+  test('возвращает undefined для неоднозначных разделителей', () => {
+    const service = new TasksServiceCtor({} as Record<string, never>);
+    const payload = {
+      cargo_length_m: '1,234',
+      cargo_width_m: '1.234',
+    } as unknown as Partial<TaskDocument>;
+
+    service.applyCargoMetrics(payload);
+
+    expect(payload).not.toHaveProperty('cargo_length_m');
+    expect(payload).not.toHaveProperty('cargo_width_m');
+  });
 });

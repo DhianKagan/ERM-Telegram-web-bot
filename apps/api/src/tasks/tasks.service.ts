@@ -66,11 +66,53 @@ const toNumeric = (value: unknown): number | undefined => {
     }
     const hasComma = compact.includes(',');
     const hasDot = compact.includes('.');
+    const countOccurrences = (source: string, char: string) =>
+      (source.match(new RegExp(`\\${char}`, 'g')) || []).length;
+    const isPlainNumber = (value: string) => /^[-+]?\d+(\.\d+)?$/.test(value);
     let normalized = compact;
     if (hasComma && hasDot) {
-      normalized = compact.replace(/\./g, '').replace(/,/g, '.');
+      const lastComma = compact.lastIndexOf(',');
+      const lastDot = compact.lastIndexOf('.');
+      const decimalSeparator = lastComma > lastDot ? ',' : '.';
+      const thousandSeparator = decimalSeparator === ',' ? '.' : ',';
+      if (countOccurrences(compact, decimalSeparator) !== 1) {
+        return undefined;
+      }
+      normalized = compact
+        .replace(new RegExp(`\\${thousandSeparator}`, 'g'), '')
+        .replace(decimalSeparator, '.');
+      if (!isPlainNumber(normalized)) {
+        return undefined;
+      }
     } else if (hasComma) {
-      normalized = compact.replace(/,/g, '.');
+      const decimalLike = /^[-+]?\d+,\d+$/.test(compact);
+      const thousandLike = /^[-+]?\d{1,3}(,\d{3})+$/.test(compact);
+      if (decimalLike && thousandLike) {
+        return undefined;
+      }
+      if (thousandLike && !decimalLike) {
+        normalized = compact.replace(/,/g, '');
+      } else if (decimalLike) {
+        normalized = compact.replace(/,/g, '.');
+      } else {
+        return undefined;
+      }
+    } else if (hasDot) {
+      const decimalLike = /^[-+]?\d+\.\d+$/.test(compact);
+      const thousandLike = /^[-+]?\d{1,3}(\.\d{3})+$/.test(compact);
+      if (decimalLike && thousandLike) {
+        return undefined;
+      }
+      if (thousandLike && !decimalLike) {
+        normalized = compact.replace(/\./g, '');
+      } else if (decimalLike) {
+        normalized = compact;
+      } else {
+        return undefined;
+      }
+    }
+    if (!isPlainNumber(normalized)) {
+      return undefined;
     }
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;

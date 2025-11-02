@@ -33,7 +33,8 @@
     "codex:check": "pnpm format:check && pnpm lint:security && pnpm codex:precheck && pnpm audit",
     "danger:ci": "danger ci",
     "danger:local": "danger local --fail-on-errors",
-    "cleanup:files": "ts-node scripts/cleanup/cleanupDetachedFiles.ts"
+    "cleanup:files": "ts-node scripts/cleanup/cleanupDetachedFiles.ts",
+    "railway:analyze-build-log": "ts-node scripts/railway/analyzeBuildLog.ts"
   },
   "devDependencies": {
     "@axe-core/cli": "^4.10.2",

@@ -128,21 +128,25 @@ jest.mock("pmtiles", () => ({
   Protocol: jest.fn(() => ({ tile: jest.fn() })),
 }));
 
-const mapInstanceMock = () => ({
-  on: jest.fn(),
-  off: jest.fn(),
-  remove: jest.fn(),
-  addControl: jest.fn(),
-  easeTo: jest.fn(),
-  getZoom: jest.fn().mockReturnValue(10),
-});
+function mapInstanceMock() {
+  return {
+    on: jest.fn(),
+    off: jest.fn(),
+    remove: jest.fn(),
+    addControl: jest.fn(),
+    easeTo: jest.fn(),
+    getZoom: jest.fn().mockReturnValue(10),
+  };
+}
 
-const markerMockFactory = () => ({
-  setLngLat: jest.fn().mockReturnThis(),
-  addTo: jest.fn().mockReturnThis(),
-  on: jest.fn(),
-  remove: jest.fn(),
-});
+function markerMockFactory() {
+  return {
+    setLngLat: jest.fn().mockReturnThis(),
+    addTo: jest.fn().mockReturnThis(),
+    on: jest.fn(),
+    remove: jest.fn(),
+  };
+}
 
 jest.mock("maplibre-gl", () => {
   const mapMock = mapInstanceMock();

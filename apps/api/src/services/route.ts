@@ -126,7 +126,7 @@ export async function getRouteDistance(
   if (cached) return cached;
   const routeBase = buildEndpointUrl('route');
   const routeUrl = new URL(routeBase.toString());
-  const normalizedPath = routeUrl.pathname.replace(/\/+$, '');
+  const normalizedPath = routeUrl.pathname.replace(/\/+$/, '');
   routeUrl.pathname = `${normalizedPath}/${coords}`;
   routeUrl.searchParams.set('overview', 'false');
   routeUrl.searchParams.set('annotations', 'distance');

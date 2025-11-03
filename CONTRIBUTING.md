@@ -34,3 +34,10 @@
   - `Codex Quality Gate / codex-quality`.
 
 Внутренние ветки с доступом к секрету `LHCI_GITHUB_APP_TOKEN` публикуют статусы Lighthouse CI через GitHub App и выполняют `npx lhci autorun`. Pull request из форков запускают `npx lhci collect && npx lhci assert` с `LHCI_UPLOAD__TARGET=filesystem`, поэтому отчёт остаётся на раннере, но проверка отображается успешной.
+
+## Workflow при лимите Codex 5h/сутки
+
+1) В чате готовим: цель → diff → тест-план → команды.
+2) Запускаем `pnpm run ci:fast` (≤ 40 минут).
+3) Если зелено — при необходимости `pnpm run ci:full`.
+4) Любые секреты — только в переменных окружения / Secret Store.

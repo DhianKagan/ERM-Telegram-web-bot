@@ -2,15 +2,15 @@
 // Модули: db/queries, services/route, shared
 import * as q from '../db/queries';
 import type { TaskDocument } from '../db/model';
-import { getRouteDistance, Point } from './route';
 import { generateRouteLink, type Task } from 'shared';
+import { getOsrmDistance, type OsrmPoint } from '../geo/osrm';
 import { resolveTaskTypeTopicId } from './taskTypeSettings';
 import { ensureTaskLinksShort } from './taskLinks';
 
 export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   completed_at?: string | Date | null;
-  startCoordinates?: Point;
-  finishCoordinates?: Point;
+  startCoordinates?: OsrmPoint;
+  finishCoordinates?: OsrmPoint;
   google_route_url?: string;
   route_distance_km?: number | null;
   due_date?: Date;
@@ -65,17 +65,13 @@ async function applyRouteInfo(data: TaskData = {}): Promise<void> {
       data.finishCoordinates,
     );
     try {
-      const r = await getRouteDistance(
-        data.startCoordinates,
-        data.finishCoordinates,
-      );
-      if (typeof r.distance === 'number') {
-        data.route_distance_km = Number((r.distance / 1000).toFixed(1));
-      } else {
-        data.route_distance_km = null;
-      }
+      const distanceKm = await getOsrmDistance({
+        start: data.startCoordinates,
+        finish: data.finishCoordinates,
+      });
+      data.route_distance_km = distanceKm;
     } catch {
-      /* игнорируем ошибки маршрута */
+      data.route_distance_km = null;
     }
   }
 }

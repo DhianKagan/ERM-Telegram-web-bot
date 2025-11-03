@@ -1,13 +1,13 @@
-// Назначение: кастомная тема Mapbox Draw с безопасными для MapLibre dash-узорами
-// Основные модули: @mapbox/mapbox-gl-draw, Mapbox Style Specification
+// Назначение: кастомная тема MapLibre Draw с безопасными dash-узорами
+// Основные модули: maplibre-gl-draw, MapLibre Style Specification
 
-import type MapboxDraw from "@mapbox/mapbox-gl-draw";
+import type MapLibreDraw from "maplibre-gl-draw";
 
 const blue = "#3bb2d0";
 const orange = "#fbb03b";
 const white = "#fff";
 
-type DrawStyles = NonNullable<MapboxDraw.MapboxDrawOptions["styles"]>;
+type DrawStyles = NonNullable<MapLibreDraw.MapLibreDrawOptions["styles"]>;
 
 const lineGeometryFilter = [
   "any",

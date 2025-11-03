@@ -124,7 +124,13 @@ export async function getRouteDistance(
   const key = buildCacheKey('route', coords, {});
   const cached = await cacheGet<RouteDistance>(key);
   if (cached) return cached;
-  const url = `${routingUrl}?start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`;
+  const routeBase = buildEndpointUrl('route');
+  const routeUrl = new URL(routeBase.toString());
+  const normalizedPath = routeUrl.pathname.replace(/\/+$, '');
+  routeUrl.pathname = `${normalizedPath}/${coords}`;
+  routeUrl.searchParams.set('overview', 'false');
+  routeUrl.searchParams.set('annotations', 'distance');
+  routeUrl.searchParams.set('steps', 'false');
   const trace = getTrace();
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
@@ -132,7 +138,7 @@ export async function getRouteDistance(
   const timeout = setTimeout(() => controller.abort(), 10000);
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });
   try {
-    const res = await fetch(url, { headers, signal: controller.signal });
+    const res = await fetch(routeUrl, { headers, signal: controller.signal });
     const data = await res.json();
     if (!res.ok || data.code !== 'Ok') {
       osrmErrorsTotal.inc({ endpoint: 'route', reason: String(res.status) });

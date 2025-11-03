@@ -38,11 +38,14 @@ jest.mock('../src/api/middleware', () => {
 });
 
 jest.mock('../src/services/route', () => ({
-  getRouteDistance: jest.fn(async () => ({ distance: 1 })),
   table: jest.fn(async () => ({ durations: [] })),
   nearest: jest.fn(async () => ({})),
   match: jest.fn(async () => ({})),
   trip: jest.fn(async () => ({})),
+}));
+
+jest.mock('../src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(async () => 0.1),
 }));
 
 const authRouter = require('../src/routes/authUser').default;

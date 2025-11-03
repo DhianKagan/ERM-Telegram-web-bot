@@ -35,7 +35,11 @@ jest.mock('../src/api/middleware', () => ({
 }));
 
 jest.mock('../src/services/route', () => ({
-  getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
+  clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(async () => 0.1),
 }));
 
 const errorMiddleware = require('../src/middleware/errorMiddleware').default;

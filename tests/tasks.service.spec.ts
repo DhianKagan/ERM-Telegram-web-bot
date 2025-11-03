@@ -35,8 +35,11 @@ jest.mock('../apps/api/src/config', () => ({
 }));
 
 jest.mock('../apps/api/src/services/route', () => ({
-  getRouteDistance: jest.fn(),
   clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../apps/api/src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(),
 }));
 
 jest.mock('../apps/api/src/intake/rules', () => ({
@@ -61,7 +64,7 @@ jest.mock('../apps/api/src/services/logisticsEvents', () => ({
 
 const { resolveTaskTypeTopicId } =
   jest.requireMock('../apps/api/src/services/taskTypeSettings');
-const { getRouteDistance } = jest.requireMock('../apps/api/src/services/route');
+const { getOsrmDistance } = jest.requireMock('../apps/api/src/geo/osrm');
 const { notifyTasksChanged } = jest.requireMock('../apps/api/src/services/logisticsEvents');
 
 type TasksServiceCtor = typeof import('../apps/api/src/tasks/tasks.service').default;
@@ -153,7 +156,7 @@ describe('TasksService — привязка тем Telegram', () => {
   });
 
   it('добавляет дистанцию и ссылку маршрута при наличии координат', async () => {
-    getRouteDistance.mockResolvedValue({ distance: 12345, waypoints: [] });
+    getOsrmDistance.mockResolvedValue(12.3);
     const repo = createRepo();
     const service = new TasksService(repo as unknown as any);
     const start = { lat: 50.45, lng: 30.523 };
@@ -165,14 +168,14 @@ describe('TasksService — привязка тем Telegram', () => {
       77,
     );
 
-    expect(getRouteDistance).toHaveBeenCalledWith(start, finish);
+    expect(getOsrmDistance).toHaveBeenCalledWith({ start, finish });
     const payload = repo.updateTask.mock.calls[0][1] as Partial<TaskDocument>;
     expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
     expect(payload.route_distance_km).toBe(12.3);
   });
 
   it('очищает дистанцию маршрута, если сервис её не вернул', async () => {
-    getRouteDistance.mockResolvedValue({ distance: undefined, waypoints: [] });
+    getOsrmDistance.mockResolvedValue(null);
     const repo = createRepo();
     const service = new TasksService(repo as unknown as any);
     const start = { lat: 50.45, lng: 30.523 };

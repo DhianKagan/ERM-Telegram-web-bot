@@ -31,15 +31,15 @@ jest.mock('../apps/api/src/services/taskTypeSettings', () => ({
   resolveTaskTypeTopicId: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../apps/api/src/services/route', () => ({
-  getRouteDistance: jest.fn(),
+jest.mock('../apps/api/src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(),
 }));
 
 import { generateRouteLink } from 'shared';
 import { create } from '../apps/api/src/services/tasks';
 
 const { createTask } = jest.requireMock('../apps/api/src/db/queries');
-const { getRouteDistance } = jest.requireMock('../apps/api/src/services/route');
+const { getOsrmDistance } = jest.requireMock('../apps/api/src/geo/osrm');
 
 describe('legacy tasks service — расчёт маршрута', () => {
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe('legacy tasks service — расчёт маршрута', () => {
   it('не устанавливает расстояние маршрута, если сервис его не вернул', async () => {
     const start = { lat: 50.45, lng: 30.523 } as const;
     const finish = { lat: 49.84, lng: 24.03 } as const;
-    getRouteDistance.mockResolvedValue({ distance: undefined, waypoints: [] });
+    getOsrmDistance.mockResolvedValue(null);
 
     await create({ startCoordinates: start, finishCoordinates: finish });
 

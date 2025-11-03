@@ -75,10 +75,11 @@ import mapLibrary, {
   type MapMarker,
 } from "../utils/mapLibrary";
 import {
+  MAP_ATTRIBUTION,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
-  MAP_STYLE_URL,
+  MAP_STYLE,
 } from "../config/map";
 
 type TaskKind = "task" | "request";
@@ -374,7 +375,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       : [MAP_DEFAULT_CENTER[1], MAP_DEFAULT_CENTER[0]];
     const map = new mapLibrary.Map({
       container,
-      style: MAP_STYLE_URL,
+      style: MAP_STYLE,
       center,
       zoom: initialValue ? Math.max(MAP_DEFAULT_ZOOM, 12) : MAP_DEFAULT_ZOOM,
       maxBounds: MAP_MAX_BOUNDS,
@@ -383,6 +384,11 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
     mapRef.current = map;
     const navigation = new mapLibrary.NavigationControl({ showCompass: false });
     map.addControl(navigation, "top-right");
+    const attribution = new mapLibrary.AttributionControl({
+      compact: true,
+      customAttribution: MAP_ATTRIBUTION,
+    });
+    map.addControl(attribution, "bottom-right");
 
     const applyMarker = (lng: number, lat: number) => {
       const currentMarker = markerRef.current;

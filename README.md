@@ -109,15 +109,16 @@ pnpm pretest:e2e  # установка Firefox и Chromium, диагностик
 
 ## Обновление адресных тайлов
 
-- Плановый workflow `Refresh address tiles` запускается каждую неделю по понедельникам в 01:30 UTC (04:30 по Киеву, UTC+3) и собирает слой адресов из OSM и OpenAddresses перед загрузкой в Mapbox Tilesets.
+- Плановый workflow `Refresh address tiles` запускается каждую неделю по понедельникам в 01:30 UTC (04:30 по Киеву, UTC+3) и формирует `apps/web/public/tiles/addresses.pmtiles` из OSM и OpenAddresses.
 - Для ручного обновления подготовьте переменные и выполните скрипт:
   ```bash
   export OSM_PBF_URL="https://download.geofabrik.de/europe/ukraine-latest.osm.pbf"
   export OPENADDR_URL="https://results.openaddresses.io/latest/run/europe/ua/countrywide.zip"
   export OUTPUT_MBTILES="dist/addresses.mbtiles"
   ./scripts/refresh_addresses.sh
+  pmtiles convert dist/addresses.mbtiles apps/web/public/tiles/addresses.pmtiles
   ```
-- Готовый файл загрузите в Mapbox командой `mapbox upload <пользователь>.<tileset> dist/addresses.mbtiles`, установив `MAPBOX_ACCESS_TOKEN` в окружении и выполнив `python3 -m pip install --user mapboxcli` при первом запуске.
+- Сборку базовой карты `basemap.pmtiles` выполняйте через Planetiler или OpenMapTiles (см. `apps/web/public/tiles/README.md`) и копируйте файл в `apps/web/public/tiles` рядом с адресным слоем.
 
 ## Миграции
 

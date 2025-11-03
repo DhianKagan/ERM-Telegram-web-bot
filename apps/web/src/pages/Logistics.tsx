@@ -1,5 +1,5 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
-// Основные модули: React, Mapbox GL/MapLibre GL, i18next
+// Основные модули: React, MapLibre GL, i18next
 import React from "react";
 import fetchRouteGeometry from "../services/osrm";
 import { fetchTasks } from "../services/tasks";
@@ -15,8 +15,8 @@ import mapLibrary, {
   type MapLayerMouseEvent,
 } from "../utils/mapLibrary";
 import type * as GeoJSON from "geojson";
-import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import MapLibreDraw from "maplibre-gl-draw";
+import "maplibre-gl-draw/dist/maplibre-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";
@@ -25,12 +25,14 @@ import useI18nRef from "../hooks/useI18nRef";
 import { listFleetVehicles } from "../services/fleets";
 import { subscribeLogisticsEvents } from "../services/logisticsEvents";
 import {
+  MAP_ATTRIBUTION,
   MAP_ANIMATION_SPEED_KMH,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
-  MAP_STYLE_URL,
-  MAP_STYLE_FALLBACK_USED,
+  MAP_STYLE,
+  MAP_STYLE_MODE,
+  MAP_ADDRESSES_PMTILES_URL,
 } from "../config/map";
 import { insert3dBuildingsLayer } from "../utils/insert3dBuildingsLayer";
 import { customTheme } from "../utils/drawTheme";
@@ -191,7 +193,7 @@ const OPT_SOURCE_ID = "logistics-optimized-routes";
 const OPT_LAYER_ID = "logistics-optimized-routes-line";
 const ADDRESS_SOURCE_ID = "logistics-addresses";
 const ADDRESS_LAYER_ID = "logistics-addresses-labels";
-const ADDRESS_VECTOR_SOURCE_URL = "mapbox://<account>.<tileset>";
+const ADDRESS_VECTOR_SOURCE_URL = MAP_ADDRESSES_PMTILES_URL;
 const ADDRESS_VECTOR_SOURCE_LAYER = "addresses";
 const MAJOR_LABEL_LAYER_CANDIDATES = [
   "settlement-subdivision-label",
@@ -677,6 +679,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
   MAP_DEFAULT_CENTER[0],
 ];
 const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
+const isRasterFallback = MAP_STYLE_MODE !== "pmtiles";
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
@@ -695,15 +698,15 @@ export default function LogisticsPage() {
   >("neutral");
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
-  const drawRef = React.useRef<MapboxDraw | null>(null);
+  const drawRef = React.useRef<MapLibreDraw | null>(null);
   React.useEffect(() => {
-    if (!MAP_STYLE_FALLBACK_USED) {
+    if (!isRasterFallback) {
       return;
     }
     console.warn(
-      "VITE_MAPBOX_ACCESS_TOKEN не задан, используется резервный стиль MapLibre без авторизации Mapbox."
+      "Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль."
     );
-  }, [MAP_STYLE_FALLBACK_USED]);
+  }, []);
   const [mapViewMode, setMapViewMode] = React.useState<
     "planar" | "perspective"
   >("planar");
@@ -2162,7 +2165,7 @@ export default function LogisticsPage() {
     if (mapRef.current) return;
     const map = new mapLibrary.Map({
       container: "logistics-map",
-      style: MAP_STYLE_URL,
+      style: MAP_STYLE,
       center: MAP_CENTER_LNG_LAT,
       zoom: MAP_DEFAULT_ZOOM,
       minZoom: 5,
@@ -2178,7 +2181,12 @@ export default function LogisticsPage() {
     }
     const navigation = new mapLibrary.NavigationControl({ showCompass: false });
     map.addControl(navigation, "top-right");
-    const draw = new MapboxDraw({
+    const attribution = new mapLibrary.AttributionControl({
+      compact: true,
+      customAttribution: MAP_ATTRIBUTION,
+    });
+    map.addControl(attribution, "bottom-right");
+    const draw = new MapLibreDraw({
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
       defaultMode: "simple_select",
@@ -2194,7 +2202,7 @@ export default function LogisticsPage() {
     };
     const handleLoad = () => {
       ensureBuildingsLayer();
-      if (!MAP_STYLE_FALLBACK_USED && !map.getSource(ADDRESS_SOURCE_ID)) {
+      if (!isRasterFallback && !map.getSource(ADDRESS_SOURCE_ID)) {
         map.addSource(ADDRESS_SOURCE_ID, {
           type: "vector",
           url: ADDRESS_VECTOR_SOURCE_URL,
@@ -2958,11 +2966,11 @@ export default function LogisticsPage() {
           </Button>
         </div>
       </header>
-      {MAP_STYLE_FALLBACK_USED ? (
+      {isRasterFallback ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           {t("logistics.mapFallbackWarning", {
             defaultValue:
-              "Используется резервный стиль карты с ограниченной детализацией. Укажите VITE_MAPBOX_ACCESS_TOKEN, чтобы вернуть полные тайлы.",
+              "Карта использует временные растровые тайлы OpenStreetMap. Подключите локальные PMTiles в public/tiles, чтобы активировать детализированный стиль.",
           })}
         </div>
       ) : null}
@@ -3812,8 +3820,9 @@ export default function LogisticsPage() {
                   type="button"
                   size="xs"
                   variant={mapViewMode === "perspective" ? "default" : "outline"}
-                  onClick={() => setMapViewMode("perspective")}
+                  onClick={() => !isRasterFallback && setMapViewMode("perspective")}
                   aria-pressed={mapViewMode === "perspective"}
+                  disabled={isRasterFallback}
                 >
                   {t("logistics.viewModeTilted")}
                 </Button>

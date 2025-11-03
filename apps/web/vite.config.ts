@@ -117,8 +117,7 @@ function filterModulePreloadLinks() {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const mapboxAccessToken = env.VITE_MAPBOX_ACCESS_TOKEN || "";
-  const mapStyleUrl = env.VITE_MAPBOX_STYLE_URL || "mapbox://styles/mapbox/streets-v12";
+  const mapStyleMode = env.VITE_MAP_STYLE_MODE || "";
   const shouldOptimizeImages = process.env.SKIP_IMAGE_OPTIMIZER !== "1";
 
   return {
@@ -149,11 +148,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      __ERM_MAPBOX_ACCESS_TOKEN__: JSON.stringify(mapboxAccessToken),
-      __ERM_MAP_STYLE_URL__: JSON.stringify(mapStyleUrl),
-    },
-    optimizeDeps: {
-      exclude: ["@mapbox/node-pre-gyp"],
+      __ERM_MAP_STYLE_MODE__: JSON.stringify(mapStyleMode),
     },
     build: {
       emptyOutDir: true,
@@ -189,9 +184,9 @@ export default defineConfig(({ mode }) => {
               "class-variance-authority",
             ]),
             map: filterExistingModules([
-              "mapbox-gl",
               "maplibre-gl",
-              "@mapbox/mapbox-gl-draw",
+              "maplibre-gl-draw",
+              "pmtiles",
             ]),
           },
         },

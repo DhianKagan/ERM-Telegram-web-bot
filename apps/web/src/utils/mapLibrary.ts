@@ -1,30 +1,38 @@
-// Назначение: выбор и настройка реализации карт (Mapbox GL или MapLibre GL)
-// Основные модули: mapbox-gl, maplibre-gl
+// Назначение: единая точка подключения MapLibre и поддержки протокола PMTiles
+// Основные модули: maplibre-gl, pmtiles
 
-import mapboxglOriginal, {
+import maplibregl, {
   type GeoJSONSource,
   type LngLatBoundsLike,
   type Map as MapInstance,
   type MapLayerMouseEvent,
   type MapMouseEvent,
   type Marker as MapMarker,
-} from "mapbox-gl";
-import maplibregl from "maplibre-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+} from "maplibre-gl";
+import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
-import {
-  MAPBOX_ACCESS_TOKEN,
-  MAP_STYLE_FALLBACK_USED,
-} from "../config/map";
 
-mapboxglOriginal.accessToken = MAPBOX_ACCESS_TOKEN;
+let pmtilesProtocolRegistered = false;
 
-const mapImplementation: typeof mapboxglOriginal = MAP_STYLE_FALLBACK_USED
-  ? (maplibregl as unknown as typeof mapboxglOriginal)
-  : mapboxglOriginal;
+const registerPmtilesProtocol = () => {
+  if (pmtilesProtocolRegistered) {
+    return;
+  }
+  try {
+    const protocol = new Protocol();
+    maplibregl.addProtocol("pmtiles", (request) => protocol.tile(request));
+    pmtilesProtocolRegistered = true;
+  } catch (error) {
+    console.error("Не удалось зарегистрировать протокол PMTiles", error);
+  }
+};
 
-export const mapboxgl = mapboxglOriginal;
-export default mapImplementation;
+if (typeof window !== "undefined") {
+  registerPmtilesProtocol();
+}
+
+export default maplibregl;
+export { registerPmtilesProtocol };
 export type {
   GeoJSONSource,
   LngLatBoundsLike,

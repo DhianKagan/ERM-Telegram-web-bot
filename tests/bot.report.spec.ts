@@ -152,8 +152,11 @@ jest.mock('../apps/api/src/utils/attachments', () => ({
 jest.mock('../apps/api/src/utils/accessMask', () => ({ ACCESS_ADMIN: 8 }));
 
 jest.mock('../apps/api/src/services/route', () => ({
-  getRouteDistance: jest.fn(),
   clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../apps/api/src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(),
 }));
 
 jest.mock('../apps/api/src/services/reportGenerator', () =>

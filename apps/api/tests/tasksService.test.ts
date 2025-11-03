@@ -7,15 +7,18 @@ process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
 
 jest.mock('../src/services/route', () => ({
-  getRouteDistance: jest.fn(async () => ({ distance: 5000 })),
   clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(async () => 5),
 }));
 
 jest.mock('../src/services/wgLogEngine', () => ({
   writeLog: jest.fn().mockResolvedValue(undefined),
 }));
 
-const route = require('../src/services/route');
+const osrmClient = require('../src/geo/osrm');
 const { generateRouteLink } = require('shared');
 const TasksService = require('../src/tasks/tasks.service.ts').default;
 const { writeLog } = require('../src/services/wgLogEngine');
@@ -47,7 +50,7 @@ test('create заполняет ссылку и дистанцию', async () =>
   const expectedUrl = generateRouteLink({ lat: 0, lng: 0 }, { lat: 1, lng: 1 });
   expect(task.google_route_url).toBe(expectedUrl);
   expect(task.route_distance_km).toBe(5);
-  expect(route.getRouteDistance).toHaveBeenCalled();
+  expect(osrmClient.getOsrmDistance).toHaveBeenCalled();
 });
 
 test('update пересчитывает ссылку и дистанцию', async () => {

@@ -1,6 +1,7 @@
 // Сервис задач через репозиторий.
 // Основные модули: db/queries, services/route, shared
-import { getRouteDistance, clearRouteCache } from '../services/route';
+import { clearRouteCache } from '../services/route';
+import { getOsrmDistance } from '../geo/osrm';
 import { notifyTasksChanged } from '../services/logisticsEvents';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
@@ -322,17 +323,17 @@ class TasksService {
         data.finishCoordinates,
       );
       try {
-        const r = await getRouteDistance(
-          data.startCoordinates,
-          data.finishCoordinates,
-        );
-        if (typeof r.distance === 'number') {
-          data.route_distance_km = Number((r.distance / 1000).toFixed(1));
+        const distanceKm = await getOsrmDistance({
+          start: data.startCoordinates,
+          finish: data.finishCoordinates,
+        });
+        if (typeof distanceKm === 'number') {
+          data.route_distance_km = distanceKm;
         } else {
           clearRouteDistance();
         }
       } catch {
-        /* пропускаем ошибку расчёта */
+        clearRouteDistance();
       }
       return;
     }

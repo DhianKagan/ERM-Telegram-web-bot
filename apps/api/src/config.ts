@@ -217,11 +217,28 @@ if (!/^https:\/\//.test(appUrlEnv)) {
   );
 }
 
-const routingUrlEnv = (
-  process.env.ROUTING_URL || 'https://localhost:8000/route'
+const rawOsrmBase = (
+  process.env.OSRM_BASE_URL ||
+  process.env.ROUTING_URL ||
+  'http://localhost:5000'
 ).trim();
-if (!/^https:\/\//.test(routingUrlEnv)) {
-  throw new Error('ROUTING_URL должен начинаться с https://');
+
+let osrmBaseUrlValue: string;
+let routingUrlEnv: string;
+try {
+  const parsed = new URL(rawOsrmBase);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('OSRM_BASE_URL должен начинаться с http:// или https://');
+  }
+  parsed.search = '';
+  parsed.hash = '';
+  const normalizedPath = parsed.pathname.replace(/\/+$/, '');
+  osrmBaseUrlValue = `${parsed.origin}${normalizedPath}`;
+  const routePath = `${normalizedPath}/route/v1/driving`.replace(/^\/+/, '/');
+  routingUrlEnv = new URL(routePath, `${parsed.origin}/`).toString();
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  throw new Error(`OSRM_BASE_URL имеет неверный формат: ${message}`);
 }
 
 const graphhopperMatrixUrlRaw = (process.env.GRAPHHOPPER_MATRIX_URL || '').trim();
@@ -381,6 +398,7 @@ if (
 // Приводим порт к числу для корректной передачи в listen
 export const port = selectedPort;
 export const locale = process.env.LOCALE || 'ru';
+export const osrmBaseUrl = osrmBaseUrlValue;
 export const routingUrl = routingUrlEnv;
 export const cookieDomain = cookieDomainEnv;
 const config = {
@@ -394,6 +412,7 @@ const config = {
   appUrl,
   port,
   locale,
+  osrmBaseUrl,
   routingUrl,
   cookieDomain,
   vrpOrToolsEnabled,

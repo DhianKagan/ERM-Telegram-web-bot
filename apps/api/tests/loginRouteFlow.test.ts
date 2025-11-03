@@ -40,7 +40,11 @@ jest.mock('../src/db/queries', () => ({
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));
 jest.mock('../src/services/route', () => ({
-  getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
+  clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(async () => 0.1),
 }));
 
 const authRouter = require('../src/routes/authUser').default;

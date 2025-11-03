@@ -123,47 +123,51 @@ jest.mock("../utils/authFetch", () => ({
   default: (url: string, options?: any) => authFetchMock(url, options),
 }));
 
-jest.mock("mapbox-gl", () => ({
-  __esModule: true,
-  default: {
-    accessToken: "",
-    Map: jest.fn(() => ({
-      on: jest.fn(),
-      off: jest.fn(),
-      remove: jest.fn(),
-      addControl: jest.fn(),
-      easeTo: jest.fn(),
-      getZoom: jest.fn().mockReturnValue(10),
-    })),
-    NavigationControl: jest.fn(),
-    Marker: jest.fn(() => ({
-      setLngLat: jest.fn().mockReturnThis(),
-      addTo: jest.fn().mockReturnThis(),
-      on: jest.fn(),
-      remove: jest.fn(),
-    })),
-  },
-  Map: jest.fn(() => ({
-    on: jest.fn(),
-    off: jest.fn(),
-    remove: jest.fn(),
-    addControl: jest.fn(),
-    easeTo: jest.fn(),
-    getZoom: jest.fn().mockReturnValue(10),
-  })),
-  NavigationControl: jest.fn(),
-  Marker: jest.fn(() => ({
-    setLngLat: jest.fn().mockReturnThis(),
-    addTo: jest.fn().mockReturnThis(),
-    on: jest.fn(),
-    remove: jest.fn(),
-  })),
-  accessToken: "",
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
+jest.mock("pmtiles", () => ({
+  Protocol: jest.fn(() => ({ tile: jest.fn() })),
 }));
 
-jest.mock("mapbox-gl/dist/mapbox-gl.css", () => "");
-jest.mock("maplibre-gl", () => jest.requireMock("mapbox-gl"));
-jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
+const mapInstanceMock = () => ({
+  on: jest.fn(),
+  off: jest.fn(),
+  remove: jest.fn(),
+  addControl: jest.fn(),
+  easeTo: jest.fn(),
+  getZoom: jest.fn().mockReturnValue(10),
+});
+
+const markerMockFactory = () => ({
+  setLngLat: jest.fn().mockReturnThis(),
+  addTo: jest.fn().mockReturnThis(),
+  on: jest.fn(),
+  remove: jest.fn(),
+});
+
+jest.mock("maplibre-gl", () => {
+  const mapMock = mapInstanceMock();
+  const markerMock = markerMockFactory();
+  const NavigationControl = jest.fn();
+  const AttributionControl = jest.fn();
+  const Map = jest.fn(() => mapMock);
+  const Marker = jest.fn(() => markerMock);
+  const addProtocol = jest.fn();
+  return {
+    __esModule: true,
+    default: {
+      Map,
+      Marker,
+      NavigationControl,
+      AttributionControl,
+      addProtocol,
+    },
+    Map,
+    Marker,
+    NavigationControl,
+    AttributionControl,
+    addProtocol,
+  };
+});
 
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({

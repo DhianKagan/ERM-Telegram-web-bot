@@ -1,20 +1,9 @@
 /** @jest-environment jsdom */
-// Назначение: smoke-тест темы рисования при MapLibre fallback
+// Назначение: smoke-тест темы рисования для MapLibre
 // Основные модули: Jest, mapLibrary, customTheme
 
 import "@testing-library/jest-dom";
-import type { Map as MapConstructor } from "mapbox-gl";
-
-jest.mock("../config/map", () => {
-  const actual = jest.requireActual("../config/map");
-  return {
-    ...actual,
-    MAP_STYLE_FALLBACK_USED: true,
-  };
-});
-
-jest.mock("mapbox-gl/dist/mapbox-gl.css", () => ({}), { virtual: true });
-jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
+import type { Map as MapConstructor } from "maplibre-gl";
 
 const buildMapMock = () => ({
   addControl: jest.fn(),
@@ -23,8 +12,13 @@ const buildMapMock = () => ({
   remove: jest.fn(),
 });
 
+jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
+jest.mock("pmtiles", () => ({
+  Protocol: jest.fn(() => ({ tile: jest.fn() })),
+}));
+
 jest.mock(
-  "mapbox-gl",
+  "maplibre-gl",
   () => {
     const Map = jest.fn(() => buildMapMock());
     return {
@@ -36,33 +30,19 @@ jest.mock(
   { virtual: true },
 );
 
-jest.mock(
-  "maplibre-gl",
-  () => jest.requireMock("mapbox-gl"),
-  { virtual: true },
-);
-
-const mapboxDrawMock = jest.fn(
+const drawMock = jest.fn(
   (options?: { styles?: Array<{ paint?: Record<string, unknown> }> }) => {
     if (!options?.styles) {
-      console.error(
-        "line-dasharray выражение должно использовать literal для совместимости с MapLibre.",
-      );
-      return {};
+      throw new Error("styles обязательны для кастомной темы");
     }
     for (const style of options.styles) {
       const paint = style?.paint as Record<string, unknown> | undefined;
       const dashArray = paint?.["line-dasharray"];
       if (
         Array.isArray(dashArray) &&
-        dashArray.some(
-          (entry) => Array.isArray(entry) && entry.length > 0 && typeof entry[0] === "number",
-        )
+        dashArray.some((entry) => Array.isArray(entry))
       ) {
-        console.error(
-          "line-dasharray выражение должно использовать literal для совместимости с MapLibre.",
-        );
-        break;
+        throw new Error("line-dasharray должен быть массивом чисел");
       }
     }
     return {};
@@ -70,20 +50,19 @@ const mapboxDrawMock = jest.fn(
 );
 
 jest.mock(
-  "@mapbox/mapbox-gl-draw",
-  () => mapboxDrawMock,
+  "maplibre-gl-draw",
+  () => drawMock,
   { virtual: true },
 );
 
 describe("customTheme", () => {
-  it("поддерживает MapLibre без ошибок line-dasharray", () => {
-    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  it("рендерится без ошибок line-dasharray", () => {
     const { customTheme } = require("./drawTheme");
     const mapLibrary = require("./mapLibrary").default as { Map: MapConstructor };
 
     const container = document.createElement("div");
     new mapLibrary.Map({ container });
-    const Draw = require("@mapbox/mapbox-gl-draw") as jest.Mock;
+    const Draw = require("maplibre-gl-draw") as jest.Mock;
     new Draw({ styles: customTheme });
 
     const lineLayers = customTheme.filter(
@@ -91,9 +70,6 @@ describe("customTheme", () => {
         style.type === "line",
     );
 
-    expect(lineLayers.map((layer) => layer.id)).toEqual(
-      expect.arrayContaining(["gl-draw-lines-inactive", "gl-draw-lines-active"]),
-    );
     expect(lineLayers).toHaveLength(2);
     for (const layer of lineLayers) {
       const dashArray = layer.paint?.["line-dasharray"];
@@ -104,9 +80,5 @@ describe("customTheme", () => {
     expect(Draw).toHaveBeenCalledWith(
       expect.objectContaining({ styles: expect.any(Array) }),
     );
-    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("line-dasharray"),
-    );
-    consoleErrorSpy.mockRestore();
   });
 });

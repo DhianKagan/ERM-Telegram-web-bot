@@ -24,8 +24,11 @@ type RequestWithUser = Request & {
 };
 
 jest.mock('../src/services/route', () => ({
-  getRouteDistance: jest.fn(async () => ({ distance: 1000 })),
   clearRouteCache: jest.fn(),
+}));
+
+jest.mock('../src/geo/osrm', () => ({
+  getOsrmDistance: jest.fn(async () => 1.0),
 }));
 
 const mockDeleteMessage = jest.fn().mockResolvedValue(undefined);

@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Назначение: тесты страницы логистики с отображением техники и треков
-// Основные модули: React, @testing-library/react, Mapbox GL-моки
+// Основные модули: React, @testing-library/react, MapLibre GL-моки
 
 import "@testing-library/jest-dom";
 import React from "react";
@@ -16,13 +16,14 @@ import {
 import LogisticsPage, {
   LOGISTICS_FLEET_POLL_INTERVAL_MS,
 } from "./Logistics";
+import { MAP_ADDRESSES_PMTILES_URL } from "../config/map";
 import { taskStateController } from "../controllers/taskStateController";
 import type { LogisticsEvent, RoutePlan } from "shared";
 jest.mock("../config/map", () => {
   const actual = jest.requireActual("../config/map");
   return {
     ...actual,
-    MAP_STYLE_FALLBACK_USED: false,
+    MAP_STYLE_MODE: "pmtiles",
   };
 });
 jest.mock("react-i18next", () => {
@@ -154,11 +155,13 @@ jest.mock("react-i18next", () => {
     useTranslation: () => ({ t: translate, i18n }),
   };
 });
-jest.mock("mapbox-gl/dist/mapbox-gl.css", () => ({}), { virtual: true });
 jest.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}), { virtual: true });
-jest.mock("@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css", () => ({}), {
+jest.mock("maplibre-gl-draw/dist/maplibre-gl-draw.css", () => ({}), {
   virtual: true,
 });
+jest.mock("pmtiles", () => ({
+  Protocol: jest.fn(() => ({ tile: jest.fn() })),
+}));
 
 const buildMapInstance = () => {
   const sources = new Map<string, { setData: jest.Mock }>();
@@ -289,7 +292,7 @@ const buildMapInstance = () => {
 };
 
 jest.mock(
-  "mapbox-gl",
+  "maplibre-gl",
   () => {
     const Marker = jest.fn(() => ({
       setLngLat: jest.fn().mockReturnThis(),
@@ -297,27 +300,26 @@ jest.mock(
       remove: jest.fn(),
     }));
     const NavigationControl = jest.fn();
+    const AttributionControl = jest.fn();
     const Map = jest.fn(() => buildMapInstance());
+    const addProtocol = jest.fn();
     const module = {
       __esModule: true,
       default: {
-        accessToken: "",
         Map,
         Marker,
         NavigationControl,
+        AttributionControl,
+        addProtocol,
       },
       Map,
       Marker,
       NavigationControl,
-      accessToken: "",
+      AttributionControl,
+      addProtocol,
     };
     return module;
   },
-  { virtual: true },
-);
-jest.mock(
-  "maplibre-gl",
-  () => jest.requireMock("mapbox-gl"),
   { virtual: true },
 );
 
@@ -326,7 +328,7 @@ const drawDelete = jest.fn();
 const optimizeRouteMock = jest.fn().mockResolvedValue(null);
 
 jest.mock(
-  "@mapbox/mapbox-gl-draw",
+  "maplibre-gl-draw",
   () => {
     const constructor = jest.fn(
       (options?: {
@@ -840,7 +842,7 @@ describe("LogisticsPage", () => {
       ).toHaveLength(3),
     );
 
-    const mapModule = jest.requireMock("mapbox-gl");
+    const mapModule = jest.requireMock("maplibre-gl");
     const mapInstance = mapModule.Map.mock.results[0]?.value as any;
     expect(mapInstance).toBeTruthy();
 
@@ -936,7 +938,7 @@ describe("LogisticsPage", () => {
       </MemoryRouter>,
     );
 
-    const mapModule = jest.requireMock("mapbox-gl");
+    const mapModule = jest.requireMock("maplibre-gl");
     const mapCreation = mapModule.Map.mock.results.at(-1);
     const mapInstance = (mapCreation?.value ?? null) as any;
     expect(mapInstance).toBeTruthy();
@@ -944,7 +946,7 @@ describe("LogisticsPage", () => {
     await waitFor(() => {
       expect(mapInstance.addSource).toHaveBeenCalledWith(
         "logistics-addresses",
-        expect.objectContaining({ type: "vector", url: "mapbox://<account>.<tileset>" }),
+        expect.objectContaining({ type: "vector", url: MAP_ADDRESSES_PMTILES_URL }),
       );
     });
 

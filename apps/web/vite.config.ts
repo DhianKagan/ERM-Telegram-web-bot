@@ -141,11 +141,27 @@ export default defineConfig(({ mode }) => {
       cspNonceDevPlugin(),
     ].filter(Boolean),
     resolve: {
-      alias: {
-        "@": resolve(__dirname, "src"),
-        shared: resolve(__dirname, "../../packages/shared/src"),
-        "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
-      },
+      alias: (() => {
+        const entries: Record<string, string> = {
+          "@": resolve(__dirname, "src"),
+          shared: resolve(__dirname, "../../packages/shared/src"),
+          "react-intl": resolve(__dirname, "src/stubs/react-intl.tsx"),
+        };
+
+        const mapLibreDrawModuleId = "@mapbox/mapbox-gl-draw";
+        const mapLibreDrawStylesId = "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+
+        if (moduleExists(mapLibreDrawModuleId)) {
+          entries["maplibre-gl-draw"] = requireModule.resolve(mapLibreDrawModuleId);
+        }
+
+        if (moduleExists(mapLibreDrawStylesId)) {
+          entries["maplibre-gl-draw/dist/maplibre-gl-draw.css"] =
+            requireModule.resolve(mapLibreDrawStylesId);
+        }
+
+        return entries;
+      })(),
     },
     define: {
       __ERM_MAP_STYLE_MODE__: JSON.stringify(mapStyleMode),

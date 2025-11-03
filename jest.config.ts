@@ -20,6 +20,7 @@ const config: Config = {
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
     '^pmtiles$': '<rootDir>/tests/stubs/pmtiles.ts',
     '^maplibre-gl$': '<rootDir>/tests/stubs/maplibre-gl.ts',
+    '^maplibre-gl-draw$': '@mapbox/mapbox-gl-draw',
   },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',

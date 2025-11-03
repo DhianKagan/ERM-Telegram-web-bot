@@ -163,7 +163,7 @@ jest.mock("pmtiles", () => ({
   Protocol: jest.fn(() => ({ tile: jest.fn() })),
 }));
 
-const buildMapInstance = () => {
+function buildMapInstance() {
   const sources = new Map<string, { setData: jest.Mock }>();
   const layers = new Map<string, any>();
   const handlers = new Map<string, Set<(...args: any[]) => void>>();
@@ -289,7 +289,7 @@ const buildMapInstance = () => {
     }
   };
   return instance;
-};
+}
 
 jest.mock(
   "maplibre-gl",

@@ -1,0 +1,38 @@
+version: 1.0
+project: ERM-Telegram-web-bot
+
+policies:
+  codex_session_limit: "40m"     # одна сессия Codex
+  codex_daily_cap: "5h"          # лимит тарифа
+  require_chat_diff: true        # без diff из чата — запрет на запуск
+
+stages:
+  - id: prepare
+    type: chat
+    outputs: [ "pr.diff", "testplan.md", "commands.sh" ]
+    description: >
+      Анализ кода, генерация diff, тест-план, список команд.
+  - id: verify_fast
+    type: codex
+    limit: "40m"
+    command: "pnpm run ci:fast"
+    artifacts: [ "artifacts/junit.xml", "artifacts/lint.txt" ]
+  - id: verify_full
+    type: codex
+    limit: "90m"
+    command: "pnpm run ci:full"
+    when: "on-demand || release"
+    artifacts: [ "artifacts/junit.xml", "artifacts/coverage", "artifacts/e2e" ]
+  - id: build_release
+    type: codex
+    limit: "30m"
+    command: "pnpm build"
+    when: "tagged-release"
+
+rules:
+  - name: block_without_diff
+    if: "!exists(pr.diff)"
+    action: "deny"
+  - name: prefer_fast_first
+    if: "changed_files < 50"
+    action: "run: verify_fast"

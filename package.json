@@ -4,6 +4,8 @@
   "description": "Вспомогательные зависимости для запуска ESLint и тестов.",
   "scripts": {
     "predev": "node scripts/ensure-fonts.mjs",
+    "ci:fast": "pnpm lint && pnpm typecheck && pnpm test:unit",
+    "ci:full": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm semgrep",
     "prebuild": "node scripts/ensure-fonts.mjs && node scripts/generate_hero_images.mjs",
     "pretest": "pnpm --filter shared build",
     "pretest:unit": "pnpm --filter shared build",

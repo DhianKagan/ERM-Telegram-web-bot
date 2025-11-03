@@ -48,7 +48,7 @@ const buildEndpointUrl = (endpoint: Endpoint): URL => {
   return new URL(pathname, `${routingUrlObject.origin}/`);
 };
 
-const allowed = ['table', 'nearest', 'match', 'trip'] as const;
+const allowed = ['table', 'nearest', 'match', 'trip', 'route'] as const;
 
 type Endpoint = (typeof allowed)[number];
 

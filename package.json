@@ -68,6 +68,12 @@
     ],
     "patchedDependencies": {
       "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "ffmpeg-static",
+      "mongodb-memory-server",
+      "sharp"
+    ]
   }
 }

@@ -1,9 +1,0 @@
-diff --git a/internals/global-this.js b/internals/global-this.js
-index 7c6967d..c112233 100644
---- a/internals/global-this.js
-+++ b/internals/global-this.js
-@@ -14,3 +14,1 @@
--   check(typeof this == 'object' && this) ||
--   // eslint-disable-next-line no-new-func -- fallback
--   (function () { return this; })() || Function('return this')();
-+   check(typeof this == 'object' && this);

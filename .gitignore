@@ -32,6 +32,8 @@ Railway/analysis/**
 coverage/
 
 # другие
+.env.local
+.env.test
 .DS_Store
 .vscode/
 free-react-tailwind-admin-dashboard-main.zip

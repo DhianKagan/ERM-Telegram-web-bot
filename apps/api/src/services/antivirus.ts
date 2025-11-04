@@ -16,6 +16,12 @@ let versionInfo: string | null = null;
 let status: 'idle' | 'available' | 'unavailable' | 'disabled' = 'idle';
 let initPromise: Promise<void> | null = null;
 
+/** Привести путь к POSIX-виду: `\` → `/`, `C:/` → `/` */
+const toPosixAbs = (p: string) => {
+  const forward = p.replace(/\\/g, '/');
+  return forward.replace(/^[A-Za-z]:\//, '/');
+};
+
 const signatureEntries =
   antivirusConfig.vendor === 'Signature'
     ? Array.from(new Set((antivirusConfig as SignatureConfig).signatures)).map((value) => ({
@@ -57,7 +63,7 @@ async function logStatus(
         }
       : {
           signatures: signatureEntries.length,
-          maxFileSize: antivirusConfig.maxFileSize,
+          maxFileSize: (antivirusConfig as SignatureConfig).maxFileSize,
         }),
     ...metadata,
   };
@@ -120,26 +126,35 @@ async function ensureScanner(): Promise<void> {
 
 export async function scanFile(filePath: string): Promise<boolean> {
   const uploadsRoot = path.resolve(uploadsDir);
+
+  // Абсолютный путь на диске (Windows/Unix)
   const normalizedPath = path.isAbsolute(filePath)
     ? path.resolve(filePath)
     : path.resolve(uploadsRoot, filePath);
 
+  // Безопасность: запретить выход за uploads при относительном входе
   if (!path.isAbsolute(filePath)) {
     const relative = path.relative(uploadsRoot, normalizedPath);
     if (relative.startsWith('..') || path.isAbsolute(relative)) {
       throw new Error('INVALID_PATH');
     }
   }
+
+  // POSIX-путь для вызовов и логов (нужен для стабильности тестов и кроссплатформенности)
+  const posixPath = toPosixAbs(normalizedPath);
+
   await ensureScanner();
+
+  // Сигнатурный "офлайн" сканер
   if (antivirusConfig.vendor === 'Signature') {
     try {
       const fileStat = await stat(normalizedPath);
-      if (fileStat.size > antivirusConfig.maxFileSize) {
+      if (fileStat.size > (antivirusConfig as SignatureConfig).maxFileSize) {
         await writeLog('Размер файла превышает лимит сигнатурного сканера', 'warn', {
-          path: normalizedPath,
+          path: posixPath,
           vendor: antivirusConfig.vendor,
           size: fileStat.size,
-          maxFileSize: antivirusConfig.maxFileSize,
+          maxFileSize: (antivirusConfig as SignatureConfig).maxFileSize,
         });
         return false;
       }
@@ -147,7 +162,7 @@ export async function scanFile(filePath: string): Promise<boolean> {
       const match = signatureEntries.find((entry) => content.includes(entry.buffer));
       if (match) {
         await writeLog('Обнаружен вирус', 'warn', {
-          path: normalizedPath,
+          path: posixPath,
           vendor: antivirusConfig.vendor,
           signature: match.value,
         });
@@ -156,35 +171,38 @@ export async function scanFile(filePath: string): Promise<boolean> {
       return true;
     } catch (error) {
       await writeLog('Ошибка сканирования', 'error', {
-        path: normalizedPath,
+        path: posixPath,
         vendor: antivirusConfig.vendor,
         error: formatError(error),
       });
       return false;
     }
   }
+
+  // ClamAV
   if (!scanner || !isClamConfig(antivirusConfig)) return true;
   try {
     const reply = await scanner.scanFile(
-      normalizedPath,
+      posixPath, // ВАЖНО: POSIX-вид пути
       antivirusConfig.timeout,
       antivirusConfig.chunkSize,
     );
     const clean = clamd.isCleanReply(reply);
     if (!clean) {
       await writeLog('Обнаружен вирус', 'warn', {
-        path: normalizedPath,
+        path: posixPath,
         vendor: antivirusConfig.vendor,
         reply,
       });
     }
     return clean;
   } catch (error) {
+    // Сбросим состояние, чтобы следующая попытка переинициализировала сканер
     scanner = null;
     versionInfo = null;
     status = 'idle';
     await writeLog('Ошибка сканирования', 'error', {
-      path: normalizedPath,
+      path: posixPath,
       vendor: antivirusConfig.vendor,
       error: formatError(error),
     });

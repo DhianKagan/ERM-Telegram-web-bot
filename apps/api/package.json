@@ -5,7 +5,7 @@
   "types": "bot.d.ts",
   "scripts": {
     "pretest": "pnpm --filter shared build",
-    "test": "node -r ./node_modules/ts-node/register ./node_modules/jest/bin/jest.js --coverage",
+    "test": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --coverage",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
     "build": "tsc -b",

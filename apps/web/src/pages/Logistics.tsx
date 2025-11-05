@@ -16,7 +16,7 @@ import mapLibrary, {
 } from "../utils/mapLibrary";
 import type * as GeoJSON from "geojson";
 import MapLibreDraw from "maplibre-gl-draw";
-import "maplibre-gl-draw/dist/maplibre-gl-draw.css";
+import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import useTasks from "../context/useTasks";

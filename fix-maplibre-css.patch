@@ -1,0 +1,38 @@
+cat > fix-maplibre-build.patch <<'PATCH'
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 0000000..0000000 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -13,12 +13,12 @@ import mapLibrary, {
+   /* остальной импорт не меняем */
+ } from "../utils/mapLibrary";
+ import type * as GeoJSON from "geojson";
+ import MapLibreDraw from "maplibre-gl-draw";
+-import "maplibre-gl-draw/dist/maplibre-gl-draw.css";
++import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
+ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+ import { useAuth } from "../context/useAuth";
+ import useTasks from "../context/useTasks";
+ 
+ /* остальной файл без изменений */
+
+diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
+index 0000000..0000000 100644
+--- a/apps/web/vite.config.ts
++++ b/apps/web/vite.config.ts
+@@ -1,6 +1,15 @@
+ import { defineConfig } from "vite";
+ import react from "@vitejs/plugin-react";
+ 
+ export default defineConfig({
++  // Страхующий алиас: даже если где-то остался старый путь CSS — билд не упадёт
++  resolve: {
++    alias: {
++      "maplibre-gl-draw/dist/maplibre-gl-draw.css":
++        "maplibre-gl-draw/dist/mapbox-gl-draw.css",
++    },
++  },
+   plugins: [react()],
+   // остальная конфигурация без изменений
+ });
+PATCH

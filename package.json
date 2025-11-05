@@ -67,7 +67,7 @@
       "unrs-resolver"
     ],
     "patchedDependencies": {
-      "use-isomorphic-layout-effect@1.2.1": "patches/use-isomorphic-layout-effect@1.2.1.patch"
+
     },
     "onlyBuiltDependencies": [
       "esbuild",

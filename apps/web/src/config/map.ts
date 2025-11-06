@@ -56,6 +56,34 @@ const resolveStyleMode = (): MapStyleMode => {
   return isProduction ? "pmtiles" : "raster";
 };
 
+const LOCAL_GLYPHS_TEMPLATE = "/tiles/fonts/{fontstack}/{range}.pbf";
+const REMOTE_GLYPHS_TEMPLATE =
+  "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
+
+const sanitizeGlyphTemplate = (value: string | undefined): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed.includes("{fontstack}") || !trimmed.includes("{range}")) {
+    return undefined;
+  }
+  return trimmed;
+};
+
+const resolveGlyphsTemplate = (styleMode: MapStyleMode): string => {
+  const envTemplate =
+    sanitizeGlyphTemplate(fromProcess("VITE_MAP_GLYPHS_URL")) ??
+    sanitizeGlyphTemplate(fromProcess("VITE_MAP_GLYPHS_PATH"));
+  if (envTemplate) {
+    return envTemplate;
+  }
+  if (styleMode === "pmtiles") {
+    return REMOTE_GLYPHS_TEMPLATE;
+  }
+  return LOCAL_GLYPHS_TEMPLATE;
+};
+
 export const MAP_STYLE_MODE: MapStyleMode = resolveStyleMode();
 
 export const MAP_ATTRIBUTION = "© OpenStreetMap contributors, ODbL";
@@ -63,7 +91,7 @@ export const MAP_VECTOR_SOURCE_ID = "openmaptiles";
 export const MAP_ADDRESSES_SOURCE_ID = "addresses";
 export const MAP_BASEMAP_PMTILES_URL = "pmtiles://tiles/basemap.pmtiles";
 export const MAP_ADDRESSES_PMTILES_URL = "pmtiles://tiles/addresses.pmtiles";
-export const MAP_GLYPHS_PATH = "/tiles/fonts/{fontstack}/{range}.pbf";
+export const MAP_GLYPHS_PATH = resolveGlyphsTemplate(MAP_STYLE_MODE);
 
 const DEV_RASTER_STYLE: StyleSpecification = {
   version: 8,

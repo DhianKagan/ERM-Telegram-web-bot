@@ -6,6 +6,6 @@
   "description": "Build tools and scripts for ERM monorepo",
   "license": "UNLICENSED",
   "devDependencies": {
-    "ttf2woff2": "^5.0.0"
+    "ttf2woff2": "^8.0.0"
   }
 }

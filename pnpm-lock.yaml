@@ -543,6 +543,12 @@ importers:
 
   packages/shared: {}
 
+  scripts:
+    devDependencies:
+      ttf2woff2:
+        specifier: ^8.0.0
+        version: 8.0.0
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

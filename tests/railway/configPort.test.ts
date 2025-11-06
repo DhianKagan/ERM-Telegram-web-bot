@@ -45,6 +45,24 @@ describe('config port detection', () => {
     warnSpy.mockRestore();
   });
 
+  test('поддерживает формат tcp://host:port в RAILWAY_TCP_PORT', () => {
+    process.env.RAILWAY_TCP_PORT = 'tcp://0.0.0.0:44567';
+    process.env.PORT = '3001';
+
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    const config = require('../../apps/api/src/config');
+
+    expect(config.port).toBe(44567);
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Railway принудительно использует порт 44567, игнорируем PORT=3001.',
+    );
+
+    warnSpy.mockRestore();
+  });
+
   test('игнорирует HOST_PORT', () => {
     process.env.HOST_PORT = '8080';
     process.env.PORT = '4567';

@@ -362,7 +362,15 @@ const parsePort = (source: string | undefined | null): number | undefined => {
   if (!trimmed) {
     return undefined;
   }
-  const parsed = Number.parseInt(trimmed, 10);
+
+  const candidate = trimmed.includes(':')
+    ? trimmed.slice(trimmed.lastIndexOf(':') + 1)
+    : trimmed;
+  if (!/^\d+$/.test(candidate)) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(candidate, 10);
   if (Number.isNaN(parsed) || parsed <= 0 || parsed > 65535) {
     return undefined;
   }

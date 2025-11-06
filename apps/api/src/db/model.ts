@@ -182,6 +182,25 @@ const historySchema = new Schema<HistoryEntry>(
   { _id: false },
 );
 
+export interface TaskHistoryArchiveEntry {
+  taskId: Types.ObjectId;
+  entries: HistoryEntry[];
+  createdAt?: Date;
+  createdBy?: number;
+  reason?: string;
+}
+
+const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveEntry>(
+  {
+    taskId: { type: Schema.Types.ObjectId, ref: 'Task', index: true, required: true },
+    entries: { type: [historySchema], required: true },
+    createdAt: { type: Date, default: Date.now },
+    createdBy: { type: Number, default: 0 },
+    reason: { type: String },
+  },
+  { timestamps: false },
+);
+
 export type TaskKind = 'task' | 'request';
 
 export interface TaskAttrs {
@@ -278,6 +297,7 @@ export interface TaskAttrs {
   // Произвольные поля задачи
   custom?: Record<string, unknown>;
   history?: HistoryEntry[];
+  history_overflow_count?: number;
   archived_at?: Date;
   archived_by?: number;
 }
@@ -414,6 +434,7 @@ const taskSchema = new Schema<TaskDocument>(
     // Произвольные поля хранятся как объект
     custom: Schema.Types.Mixed,
     history: [historySchema],
+    history_overflow_count: { type: Number, default: 0 },
     archived_at: Date,
     archived_by: Number,
   },
@@ -543,6 +564,15 @@ const logSchema = new Schema<LogDocument>(
 );
 
 export const Task = mongoose.model<TaskDocument>('Task', taskSchema);
+
+export interface TaskHistoryArchiveDocument
+  extends TaskHistoryArchiveEntry,
+    Document {}
+
+export const TaskHistoryArchive = mongoose.model<TaskHistoryArchiveDocument>(
+  'TaskHistoryArchive',
+  taskHistoryArchiveSchema,
+);
 // Отдельная коллекция для архивных задач
 export const Archive = mongoose.model<TaskDocument>('Archive', taskSchema, 'archives');
 export const Role = mongoose.model<RoleDocument>('Role', roleSchema);

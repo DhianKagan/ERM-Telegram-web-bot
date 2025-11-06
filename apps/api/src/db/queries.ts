@@ -17,6 +17,7 @@ import {
   HistoryEntry,
   Comment,
   type TaskKind,
+  TaskHistoryArchive,
 } from './model';
 import { FleetVehicle } from './models/fleet';
 import * as logEngine from '../services/wgLogEngine';
@@ -77,8 +78,6 @@ const isTransportRequired = (value: unknown): boolean => {
   return TRANSPORT_REQUIRED_TYPES.has(value.trim());
 };
 
-const TASK_HISTORY_MAX_ENTRIES = 200;
-
 const isBsonSizeError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
@@ -98,27 +97,111 @@ const isBsonSizeError = (error: unknown): boolean => {
   return false;
 };
 
-const trimTaskHistoryEntries = async (
+const HISTORY_ARCHIVE_REASON = 'bson-document-overflow';
+
+const persistHistoryEntryToArchive = async (
   taskId: Types.ObjectId,
-  limit: number,
+  entry: HistoryEntry,
 ): Promise<void> => {
-  const normalizedLimit = Math.max(1, limit);
-  const sliceValue = -normalizedLimit;
-  const query = Task.updateOne(
-    { _id: taskId },
-    { $push: { history: { $each: [], $slice: sliceValue } } },
-  );
-  if (typeof query.exec === 'function') {
-    await query.exec();
-  } else {
-    await query;
+  const normalizedChangedBy =
+    typeof entry.changed_by === 'number' && Number.isFinite(entry.changed_by)
+      ? entry.changed_by
+      : 0;
+  try {
+    await TaskHistoryArchive.create({
+      taskId,
+      entries: [entry],
+      createdBy: normalizedChangedBy,
+      reason: HISTORY_ARCHIVE_REASON,
+    });
+  } catch (error) {
+    await logEngine
+      .writeLog('Не удалось сохранить историю задачи во внешний архив', 'error', {
+        taskId: taskId.toHexString(),
+        reason: HISTORY_ARCHIVE_REASON,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      .catch(() => undefined);
+    throw error;
+  }
+  try {
+    const updateQuery = Task.updateOne(
+      { _id: taskId },
+      {
+        $inc: { history_overflow_count: 1 },
+      },
+    );
+    if (typeof updateQuery.exec === 'function') {
+      await updateQuery.exec();
+    } else {
+      await updateQuery;
+    }
+  } catch (error) {
+    await logEngine
+      .writeLog('Не удалось отметить внешний архив истории задачи', 'error', {
+        taskId: taskId.toHexString(),
+        reason: HISTORY_ARCHIVE_REASON,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      .catch(() => undefined);
+    throw error;
   }
   await logEngine
-    .writeLog('История задачи усечена из-за превышения размера документа', 'warn', {
-      taskId: taskId.toHexString(),
-      limit: normalizedLimit,
-    })
+    .writeLog(
+      'История задачи сохранена во внешний архив из-за превышения размера документа',
+      'warn',
+      {
+        taskId: taskId.toHexString(),
+        reason: HISTORY_ARCHIVE_REASON,
+      },
+    )
     .catch(() => undefined);
+};
+
+const hydrateTaskHistory = async <T extends TaskDocument | null>(
+  task: T,
+): Promise<T> => {
+  if (!task) {
+    return task;
+  }
+  const rawId = task._id;
+  const hasOverflowFlag =
+    typeof (task as Record<string, unknown>).history_overflow_count === 'number' &&
+    Number((task as Record<string, unknown>).history_overflow_count) > 0;
+  if (!hasOverflowFlag && (!Array.isArray(task.history) || task.history.length === 0)) {
+    return task;
+  }
+  const normalizedId =
+    rawId instanceof Types.ObjectId
+      ? rawId
+      : typeof rawId === 'string' && Types.ObjectId.isValid(rawId)
+      ? new Types.ObjectId(rawId)
+      : null;
+  if (!normalizedId) {
+    return task;
+  }
+  const archiveDocs = await TaskHistoryArchive.find({ taskId: normalizedId })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean<{ entries?: HistoryEntry[] }>()
+    .exec();
+  if (!archiveDocs.length) {
+    return task;
+  }
+  const archivedEntries = archiveDocs.flatMap((doc) =>
+    Array.isArray(doc.entries) ? doc.entries : [],
+  );
+  if (!archivedEntries.length) {
+    return task;
+  }
+  const currentHistory = Array.isArray(task.history) ? [...task.history] : [];
+  const combined = [...archivedEntries, ...currentHistory];
+  combined.sort((a, b) => {
+    const left = a.changed_at instanceof Date ? a.changed_at.getTime() : new Date(a.changed_at).getTime();
+    const right = b.changed_at instanceof Date ? b.changed_at.getTime() : new Date(b.changed_at).getTime();
+    return left - right;
+  });
+  task.history = combined as TaskDocument['history'];
+  return task;
 };
 
 const toObjectId = (value: unknown): Types.ObjectId | null => {
@@ -858,7 +941,8 @@ export async function createTask(
 }
 
 export async function getTask(id: string): Promise<TaskDocument | null> {
-  return Task.findById(id);
+  const task = await Task.findById(id);
+  return hydrateTaskHistory(task);
 }
 
 export async function listMentionedTasks(
@@ -1007,8 +1091,14 @@ export async function updateTask(
       if (!normalizedId) {
         throw error;
       }
-      await trimTaskHistoryEntries(normalizedId, TASK_HISTORY_MAX_ENTRIES);
-      const retryQuery = runUpdate();
+      await persistHistoryEntryToArchive(normalizedId, entry);
+      const retryQuery = Task.findOneAndUpdate(
+        query,
+        {
+          $set: data,
+        },
+        { new: true },
+      );
       updated =
         typeof retryQuery.exec === 'function'
           ? await retryQuery.exec()
@@ -1016,6 +1106,9 @@ export async function updateTask(
     } else {
       throw error;
     }
+  }
+  if (updated) {
+    updated = await hydrateTaskHistory(updated);
   }
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
@@ -1258,21 +1351,62 @@ export async function addTime(
 ): Promise<TaskDocument | null> {
   const task = await Task.findById(id);
   if (!task) return null;
+  const normalizedId =
+    task._id instanceof Types.ObjectId
+      ? task._id
+      : Types.ObjectId.isValid(String(task._id))
+        ? new Types.ObjectId(String(task._id))
+        : null;
+  if (!normalizedId) {
+    throw new Error('Не удалось определить идентификатор задачи для обновления времени');
+  }
   const before = task.time_spent || 0;
-  task.time_spent = before + minutes;
-  task.history = [
-    ...(task.history || []),
-    {
-      changed_at: new Date(),
-      changed_by: userId,
-      changes: {
-        from: { time_spent: before },
-        to: { time_spent: task.time_spent },
-      },
+  const nextValue = before + minutes;
+  const entry: HistoryEntry = {
+    changed_at: new Date(),
+    changed_by: userId,
+    changes: {
+      from: { time_spent: before },
+      to: { time_spent: nextValue },
     },
-  ];
-  await task.save();
-  return task;
+  };
+  const baseQuery = { _id: normalizedId };
+  const runUpdate = () =>
+    Task.findOneAndUpdate(
+      baseQuery,
+      {
+        $set: { time_spent: nextValue },
+        $push: { history: entry },
+      },
+      { new: true },
+    );
+  let updated: TaskDocument | null;
+  try {
+    const query = runUpdate();
+    updated =
+      typeof query.exec === 'function' ? await query.exec() : await query;
+  } catch (error) {
+    if (isBsonSizeError(error)) {
+      await persistHistoryEntryToArchive(normalizedId, entry);
+      const retryQuery = Task.findOneAndUpdate(
+        baseQuery,
+        {
+          $set: { time_spent: nextValue },
+        },
+        { new: true },
+      );
+      updated =
+        typeof retryQuery.exec === 'function'
+          ? await retryQuery.exec()
+          : await retryQuery;
+    } else {
+      throw error;
+    }
+  }
+  if (updated) {
+    updated = await hydrateTaskHistory(updated);
+  }
+  return updated;
 }
 
 export async function bulkUpdate(

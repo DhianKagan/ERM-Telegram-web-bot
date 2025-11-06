@@ -1,12 +1,37 @@
 #!/usr/bin/env node
 // Назначение файла: конвертирует локальные TTF-шрифты в формат WOFF2.
-// Основные модули: fs/promises, path, url, ttf2woff2.
+// Основные модули: fs/promises, path, url, динамический импорт ttf2woff2.
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ttf2woff2 from 'ttf2woff2';
+
+let cachedTtf2Woff2 = null;
+
+async function loadTtf2Woff2() {
+  if (cachedTtf2Woff2) {
+    return cachedTtf2Woff2;
+  }
+
+  try {
+    const module = await import('ttf2woff2');
+    const resolved = module.default ?? module;
+    cachedTtf2Woff2 = resolved;
+    return resolved;
+  } catch (error) {
+    console.error('\n\x1b[31mОтсутствует зависимость "ttf2woff2"\x1b[0m');
+    console.error('Установите её в пакете web командой:');
+    console.error('  pnpm -F web add -D ttf2woff2');
+    console.error('\nЕсли сборка идёт в CI, убедитесь, что доступны инструменты сборки:');
+    console.error('  apt-get update && apt-get install -y --no-install-recommends build-essential python3');
+    if (error instanceof Error && error.message) {
+      console.error(`\nПодробности: ${error.message}`);
+    }
+    process.exit(1);
+  }
+}
 
 export async function convertFonts(fontsDir) {
+  const ttf2woff2 = await loadTtf2Woff2();
   const entries = await readdir(fontsDir, { withFileTypes: true });
   const ttfFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.ttf'));
 

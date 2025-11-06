@@ -3,6 +3,11 @@
 FROM node:20 AS build
 WORKDIR /app
 
+# Инструменты для сборки нативных модулей (ttf2woff2 и др.)
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends build-essential python3 ca-certificates git \
+  && rm -rf /var/lib/apt/lists/*
+
 # Установка зависимостей
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
 COPY apps/api/package.json apps/api/

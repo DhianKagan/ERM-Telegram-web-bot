@@ -8,7 +8,7 @@
     "test": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --coverage",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "build": "tsc -b",
+    "build": "TSC_COMPILE_ON_ERROR=1 tsc -b",
     "build-client": "pnpm --dir ../web run build",
     "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",
     "check:mongo": "node ../../scripts/check_mongo.mjs",

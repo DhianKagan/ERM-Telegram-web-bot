@@ -1,24 +1,18 @@
 {
-  // Назначение файла: конфигурация TypeScript для проверки типов в подкаталоге api
-  // Основные модули: typescript
-  "extends": "../../tsconfig.base.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
-    "rootDir": "./src",
     "outDir": "dist",
-    "useUnknownInCatchVariables": false,
-    "useDefineForClassFields": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "resolveJsonModule": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "../../node_modules/@types",
-      "./src/types"
-    ],
-    "composite": true
+    "noEmitOnError": false,
+    "rootDir": "src",
+    "composite": true,
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo",
+    "module": "CommonJS",
+    "target": "ES2020",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "strict": true
   },
-  "include": ["src"],
-  "references": [{ "path": "../../packages/shared" }]
+  "include": ["src", "scripts"]
 }

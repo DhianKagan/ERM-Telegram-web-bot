@@ -1,0 +1,11 @@
+{
+  "name": "@erm/tools",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Build tools and scripts for ERM monorepo",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "ttf2woff2": "^5.0.0"
+  }
+}

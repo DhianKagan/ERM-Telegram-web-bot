@@ -8,7 +8,6 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-COPY patches patches
 RUN corepack enable \
   && pnpm config set network-concurrency 1 \
   && pnpm config set fetch-retries 5 \

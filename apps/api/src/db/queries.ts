@@ -77,6 +77,50 @@ const isTransportRequired = (value: unknown): boolean => {
   return TRANSPORT_REQUIRED_TYPES.has(value.trim());
 };
 
+const TASK_HISTORY_MAX_ENTRIES = 200;
+
+const isBsonSizeError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const payload = error as { code?: unknown; message?: unknown };
+  if (payload && typeof payload.code === 'number' && payload.code === 10334) {
+    return true;
+  }
+  if (typeof payload?.message === 'string') {
+    const text = payload.message;
+    return (
+      text.includes('BSONObj size') ||
+      text.toLowerCase().includes('exceeds maximum document size') ||
+      text.toLowerCase().includes('exceeds max document size')
+    );
+  }
+  return false;
+};
+
+const trimTaskHistoryEntries = async (
+  taskId: Types.ObjectId,
+  limit: number,
+): Promise<void> => {
+  const normalizedLimit = Math.max(1, limit);
+  const sliceValue = -normalizedLimit;
+  const query = Task.updateOne(
+    { _id: taskId },
+    { $push: { history: { $each: [], $slice: sliceValue } } },
+  );
+  if (typeof query.exec === 'function') {
+    await query.exec();
+  } else {
+    await query;
+  }
+  await logEngine
+    .writeLog('История задачи усечена из-за превышения размера документа', 'warn', {
+      taskId: taskId.toHexString(),
+      limit: normalizedLimit,
+    })
+    .catch(() => undefined);
+};
+
 const toObjectId = (value: unknown): Types.ObjectId | null => {
   if (value instanceof Types.ObjectId) return value;
   if (typeof value === 'string') {
@@ -936,14 +980,43 @@ export async function updateTask(
   if (shouldAssertStatus) {
     query.status = 'Новая';
   }
-  const updated = await Task.findOneAndUpdate(
-    query,
-    {
-      $set: data,
-      $push: { history: entry },
-    },
-    { new: true },
-  );
+  const runUpdate = () =>
+    Task.findOneAndUpdate(
+      query,
+      {
+        $set: data,
+        $push: { history: entry },
+      },
+      { new: true },
+    );
+  let updated: TaskDocument | null;
+  try {
+    const updateQuery = runUpdate();
+    updated =
+      typeof updateQuery.exec === 'function'
+        ? await updateQuery.exec()
+        : await updateQuery;
+  } catch (error) {
+    if (isBsonSizeError(error) && prev._id) {
+      const normalizedId =
+        prev._id instanceof Types.ObjectId
+          ? prev._id
+          : Types.ObjectId.isValid(String(prev._id))
+            ? new Types.ObjectId(String(prev._id))
+            : undefined;
+      if (!normalizedId) {
+        throw error;
+      }
+      await trimTaskHistoryEntries(normalizedId, TASK_HISTORY_MAX_ENTRIES);
+      const retryQuery = runUpdate();
+      updated =
+        typeof retryQuery.exec === 'function'
+          ? await retryQuery.exec()
+          : await retryQuery;
+    } else {
+      throw error;
+    }
+  }
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
     await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
   } else if (updated && enrichedAttachments !== undefined) {

@@ -4,6 +4,8 @@
 
 - Добавлен статический анализ `pnpm security:scan`, использующий `eslint-plugin-security`,
   скрипты `setup_and_test.sh` и `pre_pr_check.sh` выполняют проверку перед пулл-реквестом.
+- Dockerfile переустанавливает production-зависимости через `pnpm install --prod`,
+  чтобы `ensureDefaults` находил `mongoose` и старт контейнера не падал.
 - Скрипт `ensureDefaults` расширяет поиск `mongoose` и `dotenv`,
   чтобы запуск на Railway не падал из-за путей `dist`.
 - Конфигурация MongoDB автоматически дополняет имя базы и authSource по переменным `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE`, что упрощает подключение через публичный прокси Railway; обновлены `.env.example` и документация.

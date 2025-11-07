@@ -453,12 +453,6 @@ importers:
       '@tailwindcss/forms':
         specifier: ^0.5.10
         version: 0.5.10(tailwindcss@4.1.12)
-      '@tailwindcss/node':
-        specifier: ^4.1.12
-        version: 4.1.12
-      '@tailwindcss/postcss':
-        specifier: ^4.1.12
-        version: 4.1.12
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.16(tailwindcss@4.1.12)
@@ -559,10 +553,6 @@ importers:
         version: 8.0.0
 
 packages:
-
-  '@alloc/quick-lru@5.2.0':
-    resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
-    engines: {node: '>=10'}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -3355,91 +3345,6 @@ packages:
 
   '@tailwindcss/node@4.1.12':
     resolution: {integrity: sha512-3hm9brwvQkZFe++SBt+oLjo4OLDtkvlE8q2WalaD/7QWaeM7KEJbAiY/LJZUaCs7Xa8aUu4xy3uoyX4q54UVdQ==}
-
-  '@tailwindcss/oxide-android-arm64@4.1.12':
-    resolution: {integrity: sha512-oNY5pq+1gc4T6QVTsZKwZaGpBb2N1H1fsc1GD4o7yinFySqIuRZ2E4NvGasWc6PhYJwGK2+5YT1f9Tp80zUQZQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [android]
-
-  '@tailwindcss/oxide-darwin-arm64@4.1.12':
-    resolution: {integrity: sha512-cq1qmq2HEtDV9HvZlTtrj671mCdGB93bVY6J29mwCyaMYCP/JaUBXxrQQQm7Qn33AXXASPUb2HFZlWiiHWFytw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-darwin-x64@4.1.12':
-    resolution: {integrity: sha512-6UCsIeFUcBfpangqlXay9Ffty9XhFH1QuUFn0WV83W8lGdX8cD5/+2ONLluALJD5+yJ7k8mVtwy3zMZmzEfbLg==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-freebsd-x64@4.1.12':
-    resolution: {integrity: sha512-JOH/f7j6+nYXIrHobRYCtoArJdMJh5zy5lr0FV0Qu47MID/vqJAY3r/OElPzx1C/wdT1uS7cPq+xdYYelny1ww==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [freebsd]
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.12':
-    resolution: {integrity: sha512-v4Ghvi9AU1SYgGr3/j38PD8PEe6bRfTnNSUE3YCMIRrrNigCFtHZ2TCm8142X8fcSqHBZBceDx+JlFJEfNg5zQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.12':
-    resolution: {integrity: sha512-YP5s1LmetL9UsvVAKusHSyPlzSRqYyRB0f+Kl/xcYQSPLEw/BvGfxzbH+ihUciePDjiXwHh+p+qbSP3SlJw+6g==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.12':
-    resolution: {integrity: sha512-V8pAM3s8gsrXcCv6kCHSuwyb/gPsd863iT+v1PGXC4fSL/OJqsKhfK//v8P+w9ThKIoqNbEnsZqNy+WDnwQqCA==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.12':
-    resolution: {integrity: sha512-xYfqYLjvm2UQ3TZggTGrwxjYaLB62b1Wiysw/YE3Yqbh86sOMoTn0feF98PonP7LtjsWOWcXEbGqDL7zv0uW8Q==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.12':
-    resolution: {integrity: sha512-ha0pHPamN+fWZY7GCzz5rKunlv9L5R8kdh+YNvP5awe3LtuXb5nRi/H27GeL2U+TdhDOptU7T6Is7mdwh5Ar3A==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-wasm32-wasi@4.1.12':
-    resolution: {integrity: sha512-4tSyu3dW+ktzdEpuk6g49KdEangu3eCYoqPhWNsZgUhyegEda3M9rG0/j1GV/JjVVsj+lG7jWAyrTlLzd/WEBg==}
-    engines: {node: '>=14.0.0'}
-    cpu: [wasm32]
-    bundledDependencies:
-      - '@napi-rs/wasm-runtime'
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-      - '@tybys/wasm-util'
-      - '@emnapi/wasi-threads'
-      - tslib
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.12':
-    resolution: {integrity: sha512-iGLyD/cVP724+FGtMWslhcFyg4xyYyM+5F4hGvKA7eifPkXHRAUDFaimu53fpNg9X8dfP75pXx/zFt/jlNF+lg==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.12':
-    resolution: {integrity: sha512-NKIh5rzw6CpEodv/++r0hGLlfgT/gFN+5WNdZtvh6wpU2BpGNgdjvj6H2oFc8nCM839QM1YOhjpgbAONUb4IxA==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [win32]
-
-  '@tailwindcss/oxide@4.1.12':
-    resolution: {integrity: sha512-gM5EoKHW/ukmlEtphNwaGx45fGoEmP10v51t9unv55voWh6WrOL19hfuIdo2FjxIaZzw776/BUQg7Pck++cIVw==}
-    engines: {node: '>= 10'}
-
-  '@tailwindcss/postcss@4.1.12':
-    resolution: {integrity: sha512-5PpLYhCAwf9SJEeIsSmCDLgyVfdBhdBpzX1OJ87anT9IVR0Z9pjM0FNixCAUAHGnMBGB8K99SwAheXrT0Kh6QQ==}
 
   '@tailwindcss/typography@0.5.16':
     resolution: {integrity: sha512-0wDLwCVF5V3x3b1SGXPCDcdsbDHMBe+lkFzBRaHeLvNi+nrrnZ1lA18u+OTWO8iSWU2GxUOCvlXtDuqftc1oiA==}
@@ -10086,8 +9991,6 @@ packages:
 
 snapshots:
 
-  '@alloc/quick-lru@5.2.0': {}
-
   '@ampproject/remapping@2.3.0':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.12
@@ -11981,6 +11884,8 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.3
       '@ckeditor/ckeditor5-upload': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-alignment@46.0.2':
     dependencies:
@@ -12233,6 +12138,8 @@ snapshots:
       '@ckeditor/ckeditor5-core': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-code-block@46.0.2':
     dependencies:
@@ -12325,6 +12232,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-classic@41.4.2':
     dependencies:
@@ -12350,6 +12259,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-decoupled@46.0.2':
     dependencies:
@@ -12368,6 +12279,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-inline@46.0.2':
     dependencies:
@@ -12386,6 +12299,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-editor-multi-root@46.0.2':
     dependencies:
@@ -12449,6 +12364,8 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-utils': 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-enter@46.0.2':
     dependencies:
@@ -12509,6 +12426,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.2':
     dependencies:
@@ -12518,8 +12437,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-font@46.0.3':
     dependencies:
@@ -12617,6 +12534,8 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-html-embed@46.0.2':
     dependencies:
@@ -12652,8 +12571,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-html-support@46.0.3':
     dependencies:
@@ -12732,8 +12649,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-indent@46.0.3':
     dependencies:
@@ -12799,8 +12714,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@41.4.2':
     dependencies:
@@ -12820,8 +12733,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.2
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@46.0.3':
     dependencies:
@@ -12918,8 +12829,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-mention@46.0.2':
     dependencies:
@@ -12956,8 +12865,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-page-break@46.0.2':
     dependencies:
@@ -12976,8 +12883,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-paragraph@41.4.2':
     dependencies:
@@ -13096,8 +13001,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-source-editing@46.0.2':
     dependencies:
@@ -13146,8 +13049,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.2
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-style@46.0.3':
     dependencies:
@@ -13160,8 +13061,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-table@41.4.2':
     dependencies:
@@ -13194,8 +13093,6 @@ snapshots:
       '@ckeditor/ckeditor5-widget': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-theme-lark@46.0.2':
     dependencies:
@@ -13366,8 +13263,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -15091,68 +14986,6 @@ snapshots:
       lightningcss: 1.30.1
       magic-string: 0.30.21
       source-map-js: 1.2.1
-      tailwindcss: 4.1.12
-
-  '@tailwindcss/oxide-android-arm64@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-arm64@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-x64@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-freebsd-x64@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-wasm32-wasi@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.12':
-    optional: true
-
-  '@tailwindcss/oxide@4.1.12':
-    dependencies:
-      detect-libc: 2.0.4
-      tar: 7.4.3
-    optionalDependencies:
-      '@tailwindcss/oxide-android-arm64': 4.1.12
-      '@tailwindcss/oxide-darwin-arm64': 4.1.12
-      '@tailwindcss/oxide-darwin-x64': 4.1.12
-      '@tailwindcss/oxide-freebsd-x64': 4.1.12
-      '@tailwindcss/oxide-linux-arm-gnueabihf': 4.1.12
-      '@tailwindcss/oxide-linux-arm64-gnu': 4.1.12
-      '@tailwindcss/oxide-linux-arm64-musl': 4.1.12
-      '@tailwindcss/oxide-linux-x64-gnu': 4.1.12
-      '@tailwindcss/oxide-linux-x64-musl': 4.1.12
-      '@tailwindcss/oxide-wasm32-wasi': 4.1.12
-      '@tailwindcss/oxide-win32-arm64-msvc': 4.1.12
-      '@tailwindcss/oxide-win32-x64-msvc': 4.1.12
-
-  '@tailwindcss/postcss@4.1.12':
-    dependencies:
-      '@alloc/quick-lru': 5.2.0
-      '@tailwindcss/node': 4.1.12
-      '@tailwindcss/oxide': 4.1.12
-      postcss: 8.5.6
       tailwindcss: 4.1.12
 
   '@tailwindcss/typography@0.5.16(tailwindcss@4.1.12)':

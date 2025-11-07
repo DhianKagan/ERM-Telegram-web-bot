@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "noEmitOnError": false,
@@ -11,8 +11,9 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "suppressImplicitAnyIndexErrors": true,
     "strict": true
   },
-  "include": ["src", "scripts"]
+  "include": [
+    "src"
+  ]
 }

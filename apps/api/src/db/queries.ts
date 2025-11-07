@@ -18,6 +18,7 @@ import {
   Comment,
   type TaskKind,
   TaskHistoryArchive,
+  TaskHistoryArchiveEntry,
 } from './model';
 import { FleetVehicle } from './models/fleet';
 import * as logEngine from '../services/wgLogEngine';
@@ -165,9 +166,10 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
     return task;
   }
   const rawId = task._id;
+  const overflowValue =
+    (task as unknown as { history_overflow_count?: unknown }).history_overflow_count;
   const hasOverflowFlag =
-    typeof (task as Record<string, unknown>).history_overflow_count === 'number' &&
-    Number((task as Record<string, unknown>).history_overflow_count) > 0;
+    typeof overflowValue === 'number' && Number.isFinite(overflowValue) && overflowValue > 0;
   if (!hasOverflowFlag && (!Array.isArray(task.history) || task.history.length === 0)) {
     return task;
   }
@@ -180,14 +182,17 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
   if (!normalizedId) {
     return task;
   }
-  const archiveDocs = await TaskHistoryArchive.find({ taskId: normalizedId })
+  const archiveDocs = await TaskHistoryArchive.find({
+    taskId: normalizedId,
+  })
     .sort({ createdAt: 1, _id: 1 })
-    .lean<{ entries?: HistoryEntry[] }>()
+    .lean<TaskHistoryArchiveEntry>()
     .exec();
-  if (!archiveDocs.length) {
+  if (!Array.isArray(archiveDocs) || archiveDocs.length === 0) {
     return task;
   }
-  const archivedEntries = archiveDocs.flatMap((doc) =>
+  const typedArchiveDocs = archiveDocs as TaskHistoryArchiveEntry[];
+  const archivedEntries = typedArchiveDocs.flatMap((doc) =>
     Array.isArray(doc.entries) ? doc.entries : [],
   );
   if (!archivedEntries.length) {

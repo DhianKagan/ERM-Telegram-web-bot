@@ -42,10 +42,60 @@ interface DotenvModule {
   config: (options?: { path?: string }) => void;
 }
 
-const scopedRequireHints = [
-  path.resolve(process.cwd(), 'apps/api/package.json'),
-  path.resolve(process.cwd(), 'apps/api/tsconfig.json'),
-];
+const collectAncestorDirs = (start: string): string[] => {
+  const ancestors: string[] = [];
+  let current = path.resolve(start);
+
+  while (ancestors[ancestors.length - 1] !== current) {
+    ancestors.push(current);
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  return ancestors;
+};
+
+const scopedRequireHints = (() => {
+  const hintFiles: string[] = [];
+  const seenHints = new Set<string>();
+
+  const pushHintsFor = (root: string) => {
+    const candidates = [
+      path.join(root, 'apps/api/package.json'),
+      path.join(root, 'apps/api/tsconfig.json'),
+      path.join(root, 'package.json'),
+    ];
+
+    for (const candidate of candidates) {
+      if (seenHints.has(candidate)) {
+        continue;
+      }
+      seenHints.add(candidate);
+      if (fs.existsSync(candidate)) {
+        hintFiles.push(candidate);
+      }
+    }
+  };
+
+  const roots = new Set<string>();
+  const registerRoots = (start: string) => {
+    for (const dir of collectAncestorDirs(start)) {
+      if (roots.has(dir)) {
+        continue;
+      }
+      roots.add(dir);
+      pushHintsFor(dir);
+    }
+  };
+
+  registerRoots(process.cwd());
+  registerRoots(__dirname);
+
+  return hintFiles;
+})();
 
 const createScopedLoaders = <TModule>(specifier: string): Array<() => TModule> => {
   const loaders: Array<() => TModule> = [

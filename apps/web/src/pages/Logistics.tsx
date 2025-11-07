@@ -1834,11 +1834,21 @@ export default function LogisticsPage() {
         ? undefined
         : Number(rawTelegramId) || undefined;
     fetchTasks({}, userId, true).then((data: unknown) => {
-      const raw = Array.isArray(data)
+      const listSource = Array.isArray(data)
         ? data
-        : data.items || data.tasks || data.data || [];
-      const mapped: Array<RouteTask | null> = raw.map((item: Record<string, unknown>) => {
-        const task = item as RouteTask & { id?: string };
+        : typeof data === "object" && data !== null
+          ? ((data as Record<string, unknown>).items ??
+              (data as Record<string, unknown>).tasks ??
+              (data as Record<string, unknown>).data ??
+              [])
+          : [];
+      const raw = Array.isArray(listSource) ? listSource : [];
+      const mapped: Array<RouteTask | null> = raw.map((item) => {
+        if (typeof item !== "object" || item === null) {
+          return null;
+        }
+        const task = item as Record<string, unknown> &
+          RouteTask & { id?: string };
         const identifier = String(task._id ?? task.id ?? "").trim();
         if (!identifier) {
           return null;

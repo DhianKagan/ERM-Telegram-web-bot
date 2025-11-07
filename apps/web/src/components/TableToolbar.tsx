@@ -2,6 +2,8 @@
 // Модули: React, @tanstack/react-table, jspdf
 import React from "react";
 import type { Table } from "@tanstack/react-table";
+import type JsPDFClass from "jspdf";
+import type { UserOptions as AutoTableOptions } from "jspdf-autotable";
 import { useTranslation } from "react-i18next";
 import GlobalSearch from "./GlobalSearch";
 import SearchFilters from "./SearchFilters";
@@ -12,6 +14,10 @@ interface Props<T> {
   showGlobalSearch?: boolean;
   showFilters?: boolean;
 }
+
+type JsPdfWithAutoTable = InstanceType<typeof JsPDFClass> & {
+  autoTable: (options: AutoTableOptions) => void;
+};
 
 export default function TableToolbar<T>({
   table,
@@ -52,8 +58,8 @@ export default function TableToolbar<T>({
       .rows.map((r) =>
         r.getVisibleCells().map((c) => String(c.getValue() ?? "")),
       );
-    const doc = new jsPDF();
-    (doc as any).autoTable({ head: [headers], body: rows });
+    const doc = new jsPDF() as JsPdfWithAutoTable;
+    doc.autoTable({ head: [headers], body: rows });
     doc.save("table.pdf");
   };
 

@@ -47,7 +47,7 @@ const config = [
       ],
       "@typescript-eslint/no-unused-expressions": "off",
       "@typescript-eslint/no-require-imports": "off",
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "error",
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },
@@ -59,6 +59,12 @@ const config = [
           patterns: ["apps/api/**"],
         },
       ],
+    },
+  },
+  {
+    files: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ];

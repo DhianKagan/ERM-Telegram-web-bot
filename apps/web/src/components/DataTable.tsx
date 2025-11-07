@@ -13,7 +13,7 @@ import {
 import TableToolbar from "./TableToolbar";
 
 interface DataTableProps<T> {
-  columns: ColumnDef<T, any>[];
+  columns: ColumnDef<T, unknown>[];
   data: T[];
   pageIndex: number;
   pageSize: number;

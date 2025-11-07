@@ -39,7 +39,7 @@ function bootstrap() {
       supportedPlatforms.includes(webApp.platform) &&
       versionAtLeast(webApp.version, minVersion);
     if (!isTelegram) {
-      (window as any).__ALERT_MESSAGE__ =
+      window.__ALERT_MESSAGE__ =
         "Требуется обновление Telegram. Загружается браузерная версия.";
     }
   }

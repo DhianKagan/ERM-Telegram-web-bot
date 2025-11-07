@@ -108,10 +108,10 @@ function AppContent({
 }
 
 export default function App() {
+  const initialAlertValue =
+    typeof window !== "undefined" ? window.__ALERT_MESSAGE__ ?? null : null;
   const [initialAlert, setInitialAlert] = React.useState<string | null>(
-    typeof window !== "undefined"
-      ? (window as any).__ALERT_MESSAGE__ || null
-      : null,
+    initialAlertValue,
   );
   return (
     <I18nextProvider i18n={i18n}>

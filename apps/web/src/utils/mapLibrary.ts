@@ -4,10 +4,12 @@
 import maplibregl, {
   type GeoJSONSource,
   type LngLatBoundsLike,
+  type Listener,
   type Map as MapInstance,
   type MapLayerMouseEvent,
   type MapMouseEvent,
   type Marker as MapMarker,
+  type ExpressionSpecification,
 } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -36,8 +38,10 @@ export { registerPmtilesProtocol };
 export type {
   GeoJSONSource,
   LngLatBoundsLike,
+  Listener,
   MapInstance,
   MapLayerMouseEvent,
   MapMouseEvent,
   MapMarker,
+  ExpressionSpecification,
 };

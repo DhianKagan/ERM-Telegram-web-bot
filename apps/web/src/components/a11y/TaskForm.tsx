@@ -2,8 +2,10 @@
 // Модули: React, shared
 import React from "react";
 import { taskFormSchema as formSchema } from "shared";
-import type { Field } from "../../../api/src/form";
+import type { Field, FormSchema } from "../../../api/src/form";
 import { FormField } from "./FormField";
+
+const formSchemaTyped = formSchema as FormSchema;
 
 type TaskFormProps = { customFields?: Field[] };
 
@@ -13,9 +15,9 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
       <input
         type="hidden"
         name="formVersion"
-        value={(formSchema as any).formVersion}
+        value={formSchemaTyped.formVersion}
       />
-      {formSchema.sections.map((section) => (
+      {formSchemaTyped.sections.map((section) => (
         <div
           key={section.name}
           className="xsm:grid-cols-2 grid grid-cols-1 gap-4"

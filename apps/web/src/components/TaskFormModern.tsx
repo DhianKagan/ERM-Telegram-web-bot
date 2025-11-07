@@ -2,11 +2,12 @@
 // Модули: React, shared
 import React, { useState, useEffect } from "react";
 import { taskFormSchema as formSchema } from "shared";
-import type { Field } from "../../../api/src/form";
+import type { Field, FormSchema } from "../../../api/src/form";
 import authFetch from "../utils/authFetch";
 import { updateTaskStatus } from "../services/tasks";
 
 type Template = { _id: string; name: string; data: Record<string, string> };
+const formSchemaTyped = formSchema as FormSchema;
 export type TaskFormModernProps = {
   defaultValues?: Record<string, string>;
   onSubmit: (data: Record<string, string>) => void;
@@ -140,7 +141,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ formVersion: (formSchema as any).formVersion, ...data });
+    onSubmit({ formVersion: formSchemaTyped.formVersion, ...data });
   };
 
   const taskId =
@@ -179,7 +180,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
           </select>
         </div>
       )}
-      {formSchema.sections.map((section) => (
+      {formSchemaTyped.sections.map((section) => (
         <div key={section.name} className="space-y-4">
           <h2 className="text-lg font-semibold">{section.label}</h2>
           {section.fields.map((field) => {

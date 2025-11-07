@@ -2,6 +2,7 @@
 // Модули: mongoose, dotenv, path, вспомогательные функции mongoUrl
 import * as fs from 'fs'; // модуль для проверки наличия .env
 import * as path from 'path'; // модуль для работы с путями
+import { createRequire } from 'module'; // модуль для подстановки require относительно workspace
 import {
   getMongoUrlFromEnv,
   formatCredentialSources,
@@ -41,35 +42,62 @@ interface DotenvModule {
   config: (options?: { path?: string }) => void;
 }
 
-const loadDotenvModule = (): DotenvModule | null => {
-  const candidates: Array<() => DotenvModule> = [
-    () => require('dotenv') as DotenvModule,
-    () =>
-      require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv')) as DotenvModule,
+const scopedRequireHints = [
+  path.resolve(process.cwd(), 'apps/api/package.json'),
+  path.resolve(process.cwd(), 'apps/api/tsconfig.json'),
+];
+
+const createScopedLoaders = <TModule>(specifier: string): Array<() => TModule> => {
+  const loaders: Array<() => TModule> = [
+    () => require(specifier) as TModule,
   ];
 
-  for (const attempt of candidates) {
+  for (const hint of scopedRequireHints) {
     try {
-      return attempt();
+      const scopedRequire = createRequire(hint);
+      loaders.push(() => scopedRequire(specifier) as TModule);
     } catch {
       continue;
     }
   }
 
-  console.warn('Модуль dotenv не найден, пропускаем загрузку .env');
+  return loaders;
+};
+
+const resolveModule = <TModule>(specifier: string): TModule | null => {
+  const loaders = createScopedLoaders<TModule>(specifier);
+
+  for (const load of loaders) {
+    try {
+      return load();
+    } catch {
+      continue;
+    }
+  }
+
   return null;
+};
+
+const loadDotenvModule = (): DotenvModule | null => {
+  const moduleInstance = resolveModule<DotenvModule>('dotenv');
+  if (!moduleInstance) {
+    console.warn('Модуль dotenv не найден, пропускаем загрузку .env');
+  }
+
+  return moduleInstance;
 };
 
 const dotenv = loadDotenvModule();
 
 const mongoose: MongooseModule = (() => {
-  try {
-    return require('mongoose');
-  } catch {
-    return require(
-      path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'),
+  const moduleInstance = resolveModule<MongooseModule>('mongoose');
+  if (!moduleInstance) {
+    throw new Error(
+      'Модуль mongoose не найден. Убедитесь, что зависимости приложения установлены перед запуском ensureDefaults.',
     );
   }
+
+  return moduleInstance;
 })();
 
 // Загружаем переменные окружения, не обращаясь к config

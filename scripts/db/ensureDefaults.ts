@@ -1,11 +1,40 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, dotenv, path, вспомогательные функции mongoUrl
 import * as path from 'path'; // модуль для работы с путями
-import type { ConnectOptions } from 'mongoose';
 import {
   getMongoUrlFromEnv,
   formatCredentialSources,
 } from './mongoUrl';
+
+interface ConnectOptions {
+  serverSelectionTimeoutMS?: number;
+}
+
+type MongooseSchema<TRecord> = unknown;
+
+interface MongooseModel<TRecord> {
+  updateOne(
+    filter: Partial<TRecord>,
+    update: Record<string, unknown>,
+    options: { upsert: boolean },
+  ): Promise<{ upsertedCount: number }>;
+}
+
+interface MongooseModule {
+  Schema: new <TRecord>(
+    definition: Record<string, unknown>,
+  ) => MongooseSchema<TRecord>;
+  model<TRecord>(name: string, schema: MongooseSchema<TRecord>): MongooseModel<TRecord>;
+  connect(uri: string, options: ConnectOptions): Promise<void>;
+  disconnect(): Promise<void>;
+  connection: {
+    db?: {
+      admin(): {
+        ping(): Promise<void>;
+      };
+    };
+  };
+}
 
 interface DotenvModule {
   config: (options?: { path?: string }) => void;
@@ -19,7 +48,7 @@ const dotenv: DotenvModule = (() => {
   }
 })();
 
-const mongoose: typeof import('mongoose') = (() => {
+const mongoose: MongooseModule = (() => {
   try {
     return require('mongoose');
   } catch {

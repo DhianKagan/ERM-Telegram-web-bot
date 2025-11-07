@@ -190,7 +190,11 @@ export interface TaskHistoryArchiveEntry {
   reason?: string;
 }
 
-const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveEntry>(
+const taskHistoryArchiveSchema = new Schema<
+  TaskHistoryArchiveDocument,
+  mongoose.Model<TaskHistoryArchiveDocument>,
+  TaskHistoryArchiveEntry
+>(
   {
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', index: true, required: true },
     entries: { type: [historySchema], required: true },

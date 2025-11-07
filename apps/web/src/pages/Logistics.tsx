@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import TaskTable from "../components/TaskTable";
 import { useTranslation } from "react-i18next";
 import mapLibrary, {
+  type ExpressionSpecification,
   type GeoJSONSource,
+  type Listener,
   type LngLatBoundsLike,
   type MapInstance,
   type MapLayerMouseEvent,
@@ -75,15 +77,26 @@ type LayerVisibilityState = {
   optimized: boolean;
 };
 
+type DrawFeatureEvent = { features?: GeoJSON.Feature[] };
+type DrawModeChangeEvent = { mode?: string };
+type GlobalRuntime = {
+  process?: { env?: Record<string, string | undefined> };
+};
+
+const getNodeEnv = (): string | undefined => {
+  if (typeof globalThis !== "object" || globalThis === null) {
+    return undefined;
+  }
+  const runtime = globalThis as GlobalRuntime;
+  return runtime.process?.env?.NODE_ENV;
+};
+
 const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   tasks: true,
   optimized: true,
 };
 
-const LOGISTICS_EVENT_DEBOUNCE_MS =
-  typeof process !== "undefined" && process.env.NODE_ENV === "test"
-    ? 0
-    : 400;
+const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === "test" ? 0 : 400;
 
 export const LOGISTICS_FLEET_POLL_INTERVAL_MS = 15_000;
 
@@ -132,7 +145,7 @@ const buildClusterStatusExpression = (status: TaskRouteStatusKey) => [
   0,
 ];
 
-const CLUSTER_STATUS_PROPERTIES: Record<TaskRouteStatusKey, any> = {
+const CLUSTER_STATUS_PROPERTIES: Record<TaskRouteStatusKey, ExpressionSpecification> = {
   draft: buildClusterStatusExpression("draft"),
   approved: buildClusterStatusExpression("approved"),
   completed: buildClusterStatusExpression("completed"),
@@ -1373,7 +1386,11 @@ export default function LogisticsPage() {
     }
     lastSyncedSignatureRef.current = displayedSignature;
     setSorted(displayedTasks);
-    const userId = Number((user as any)?.telegram_id) || undefined;
+    const rawTelegramId = user?.telegram_id;
+    const userId =
+      rawTelegramId === undefined || rawTelegramId === null
+        ? undefined
+        : Number(rawTelegramId) || undefined;
     controller.setIndex("logistics:all", displayedTasks, {
       kind: "task",
       mine: false,
@@ -1811,13 +1828,27 @@ export default function LogisticsPage() {
   }, []);
 
   const load = React.useCallback(() => {
-    const userId = Number((user as any)?.telegram_id) || undefined;
-    fetchTasks({}, userId, true).then((data: any) => {
-      const raw = Array.isArray(data)
+    const rawTelegramId = user?.telegram_id;
+    const userId =
+      rawTelegramId === undefined || rawTelegramId === null
+        ? undefined
+        : Number(rawTelegramId) || undefined;
+    fetchTasks({}, userId, true).then((data: unknown) => {
+      const listSource = Array.isArray(data)
         ? data
-        : data.items || data.tasks || data.data || [];
-      const mapped: Array<RouteTask | null> = raw.map((item: Record<string, unknown>) => {
-        const task = item as RouteTask & { id?: string };
+        : typeof data === "object" && data !== null
+          ? ((data as Record<string, unknown>).items ??
+              (data as Record<string, unknown>).tasks ??
+              (data as Record<string, unknown>).data ??
+              [])
+          : [];
+      const raw = Array.isArray(listSource) ? listSource : [];
+      const mapped: Array<RouteTask | null> = raw.map((item) => {
+        if (typeof item !== "object" || item === null) {
+          return null;
+        }
+        const task = item as Record<string, unknown> &
+          RouteTask & { id?: string };
         const identifier = String(task._id ?? task.id ?? "").trim();
         if (!identifier) {
           return null;
@@ -2504,13 +2535,14 @@ export default function LogisticsPage() {
     const createdZones: GeoZone[] = [];
     const updatedZones = new Map<string, GeoZoneFeature>();
 
-    const handleCreate = (event: { features?: GeoJSON.Feature[] }) => {
+    const handleCreate: Listener = (event) => {
+      const { features = [] } = event as DrawFeatureEvent;
       createdZones.length = 0;
       setGeoZones((prev) => {
         const base = [...prev];
         const baseLength = prev.length;
         const now = new Date().toISOString();
-        for (const feature of event.features ?? []) {
+        for (const feature of features) {
           if (!feature || !isPolygonGeometry(feature.geometry)) continue;
           const drawId =
             typeof feature.id === "string"
@@ -2548,9 +2580,10 @@ export default function LogisticsPage() {
       }
     };
 
-    const handleDelete = (event: { features?: GeoJSON.Feature[] }) => {
+    const handleDelete: Listener = (event) => {
+      const { features = [] } = event as DrawFeatureEvent;
       const removedDrawIds = new Set<string>();
-      for (const feature of event.features ?? []) {
+      for (const feature of features) {
         if (!feature) continue;
         const drawId =
           typeof feature.id === "string"
@@ -2581,9 +2614,10 @@ export default function LogisticsPage() {
       }
     };
 
-    const handleUpdate = (event: { features?: GeoJSON.Feature[] }) => {
+    const handleUpdate: Listener = (event) => {
+      const { features = [] } = event as DrawFeatureEvent;
       updatedZones.clear();
-      for (const feature of event.features ?? []) {
+      for (const feature of features) {
         if (!feature || !isPolygonGeometry(feature.geometry)) continue;
         const drawId =
           typeof feature.id === "string"
@@ -2622,20 +2656,21 @@ export default function LogisticsPage() {
       );
     };
 
-    const handleModeChange = (event: { mode: string }) => {
-      setIsDrawing(event.mode === "draw_polygon");
+    const handleModeChange: Listener = (event) => {
+      const { mode } = event as DrawModeChangeEvent;
+      setIsDrawing(mode === "draw_polygon");
     };
 
-    map.on("draw.create", handleCreate as any);
-    map.on("draw.delete", handleDelete as any);
-    map.on("draw.update", handleUpdate as any);
-    map.on("draw.modechange", handleModeChange as any);
+    map.on("draw.create", handleCreate);
+    map.on("draw.delete", handleDelete);
+    map.on("draw.update", handleUpdate);
+    map.on("draw.modechange", handleModeChange);
 
     return () => {
-      map.off("draw.create", handleCreate as any);
-      map.off("draw.delete", handleDelete as any);
-      map.off("draw.update", handleUpdate as any);
-      map.off("draw.modechange", handleModeChange as any);
+      map.off("draw.create", handleCreate);
+      map.off("draw.delete", handleDelete);
+      map.off("draw.update", handleUpdate);
+      map.off("draw.modechange", handleModeChange);
     };
   }, [activeGeoZoneIds, mapReady]);
 
@@ -2847,6 +2882,8 @@ export default function LogisticsPage() {
         openTask(taskId);
       }
     };
+    const handlePointClickListener: Listener = (event) =>
+      handlePointClick(event as MapLayerMouseEvent);
     const handleClusterClick = (event: MapLayerMouseEvent) => {
       const feature = event.features?.[0];
       if (!feature) return;
@@ -2858,7 +2895,7 @@ export default function LogisticsPage() {
         feature.geometry && feature.geometry.type === "Point"
           ? (feature.geometry.coordinates as GeoJSON.Position)
           : null;
-      (source as any).getClusterExpansionZoom(
+      source.getClusterExpansionZoom(
         clusterId,
         (error: Error | null, zoom: number) => {
           if (!error && typeof zoom === "number" && coordinates) {
@@ -2873,7 +2910,7 @@ export default function LogisticsPage() {
       const limit = Math.min(Math.max(total, 1), 50);
       const collected = new Set<string>();
       const gatherLeaves = (offset: number) => {
-        (source as any).getClusterLeaves(
+        source.getClusterLeaves(
           clusterId,
           limit,
           offset,
@@ -2907,25 +2944,27 @@ export default function LogisticsPage() {
       };
       gatherLeaves(0);
     };
+    const handleClusterClickListener: Listener = (event) =>
+      handleClusterClick(event as MapLayerMouseEvent);
     const setCursor = (cursor: string) => {
       const canvas = map.getCanvas();
       canvas.style.cursor = cursor;
     };
-    const handleEnter = () => setCursor("pointer");
-    const handleLeave = () => setCursor("");
-    map.on("click", TASK_POINTS_LAYER_ID, handlePointClick as any);
-    map.on("mouseenter", TASK_POINTS_LAYER_ID, handleEnter as any);
-    map.on("mouseleave", TASK_POINTS_LAYER_ID, handleLeave as any);
-    map.on("click", TASK_CLUSTER_LAYER_ID, handleClusterClick as any);
-    map.on("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter as any);
-    map.on("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave as any);
+    const handleEnter: Listener = () => setCursor("pointer");
+    const handleLeave: Listener = () => setCursor("");
+    map.on("click", TASK_POINTS_LAYER_ID, handlePointClickListener);
+    map.on("mouseenter", TASK_POINTS_LAYER_ID, handleEnter);
+    map.on("mouseleave", TASK_POINTS_LAYER_ID, handleLeave);
+    map.on("click", TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+    map.on("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter);
+    map.on("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave);
     return () => {
-      map.off("click", TASK_POINTS_LAYER_ID, handlePointClick as any);
-      map.off("mouseenter", TASK_POINTS_LAYER_ID, handleEnter as any);
-      map.off("mouseleave", TASK_POINTS_LAYER_ID, handleLeave as any);
-      map.off("click", TASK_CLUSTER_LAYER_ID, handleClusterClick as any);
-      map.off("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter as any);
-      map.off("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave as any);
+      map.off("click", TASK_POINTS_LAYER_ID, handlePointClickListener);
+      map.off("mouseenter", TASK_POINTS_LAYER_ID, handleEnter);
+      map.off("mouseleave", TASK_POINTS_LAYER_ID, handleLeave);
+      map.off("click", TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+      map.off("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter);
+      map.off("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave);
     };
   }, [mapReady, openTask, toggleSelectedVehicleId]);
 

@@ -60,7 +60,7 @@ export default function createStorageColumns(
     taskOptions?: TaskOption[];
     tasksLoading?: boolean;
   } = {},
-): ColumnDef<StorageRow, any>[] {
+): ColumnDef<StorageRow>[] {
   const handleTaskOpen = options.onTaskOpen;
   const attachOptions = options.taskOptions ?? [];
   const isTasksLoading = Boolean(options.tasksLoading);

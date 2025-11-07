@@ -3,6 +3,7 @@
 import React, { lazy, Suspense } from "react";
 const DataTable = lazy(() => import("./DataTable"));
 import taskColumns, { TaskRow } from "../columns/taskColumns";
+import type { User as AppUser } from "../types/user";
 import useTasks from "../context/useTasks";
 import coerceTaskId from "../utils/coerceTaskId";
 import matchTaskQuery from "../utils/matchTaskQuery";
@@ -11,7 +12,7 @@ type EntityKind = "task" | "request";
 
 interface TaskTableProps {
   tasks: TaskRow[];
-  users?: Record<number, any>;
+  users?: Record<number, AppUser>;
   page: number;
   pageCount?: number;
   mine?: boolean;
@@ -25,7 +26,7 @@ interface TaskTableProps {
 
 export default function TaskTable({
   tasks,
-  users = {},
+  users,
   page,
   pageCount,
   mine = false,
@@ -37,9 +38,13 @@ export default function TaskTable({
   onDataChange,
 }: TaskTableProps) {
   const { query, filters } = useTasks();
+  const userMap = React.useMemo<Record<number, AppUser>>(
+    () => users ?? {},
+    [users],
+  );
   const columns = React.useMemo(
-    () => taskColumns(users, entityKind),
-    [users, entityKind],
+    () => taskColumns(userMap, entityKind),
+    [userMap, entityKind],
   );
 
   React.useEffect(() => {
@@ -51,7 +56,7 @@ export default function TaskTable({
       <DataTable<TaskRow>
         columns={columns}
         data={tasks.filter((t) => {
-          if (query && !matchTaskQuery(t, query, users)) return false;
+          if (query && !matchTaskQuery(t, query, userMap)) return false;
           if (filters.status.length && !filters.status.includes(t.status))
             return false;
           if (

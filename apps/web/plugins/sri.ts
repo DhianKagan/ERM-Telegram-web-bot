@@ -5,6 +5,8 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { createHash } from "crypto";
 import type { Buffer } from "node:buffer";
+import { cwd } from "node:process";
+import type { OutputAsset, OutputBundle } from "rollup";
 
 export default function sri(): Plugin {
   return {
@@ -12,12 +14,16 @@ export default function sri(): Plugin {
     apply: "build",
     enforce: "post",
     writeBundle(options, bundle) {
-      Object.values(bundle)
-        .filter(
-          (item) => item.type === "asset" && item.fileName.endsWith(".html"),
+      Object.values(bundle as OutputBundle)
+        .filter((item): item is OutputAsset =>
+          item.type === "asset" && item.fileName.endsWith(".html"),
         )
         .forEach((htmlAsset) => {
-          const $ = load((htmlAsset as any).source as string);
+          const sourceContent =
+            typeof htmlAsset.source === "string"
+              ? htmlAsset.source
+              : htmlAsset.source?.toString() ?? "";
+          const $ = load(sourceContent);
           $("script[src],link[href]").each((_, el) => {
             const attr = el.attribs.src ? "src" : "href";
             const url = el.attribs[attr];
@@ -33,10 +39,8 @@ export default function sri(): Plugin {
             el.attribs.integrity = `sha384-${hash}`;
             if (!el.attribs.crossorigin) el.attribs.crossorigin = "anonymous";
           });
-          writeFileSync(
-            resolve(options.dir!, (htmlAsset as any).fileName),
-            $.html(),
-          );
+          const outputDir = options.dir ?? cwd();
+          writeFileSync(resolve(outputDir, htmlAsset.fileName), $.html());
         });
     },
   };

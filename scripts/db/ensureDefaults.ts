@@ -1,5 +1,6 @@
 // Назначение: проверяет наличие обязательных ролей и создаёт их при отсутствии
 // Модули: mongoose, dotenv, path, вспомогательные функции mongoUrl
+import * as fs from 'fs'; // модуль для проверки наличия .env
 import * as path from 'path'; // модуль для работы с путями
 import {
   getMongoUrlFromEnv,
@@ -40,13 +41,26 @@ interface DotenvModule {
   config: (options?: { path?: string }) => void;
 }
 
-const dotenv: DotenvModule = (() => {
-  try {
-    return require('dotenv') as DotenvModule;
-  } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv')) as DotenvModule;
+const loadDotenvModule = (): DotenvModule | null => {
+  const candidates: Array<() => DotenvModule> = [
+    () => require('dotenv') as DotenvModule,
+    () =>
+      require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv')) as DotenvModule,
+  ];
+
+  for (const attempt of candidates) {
+    try {
+      return attempt();
+    } catch {
+      continue;
+    }
   }
-})();
+
+  console.warn('Модуль dotenv не найден, пропускаем загрузку .env');
+  return null;
+};
+
+const dotenv = loadDotenvModule();
 
 const mongoose: MongooseModule = (() => {
   try {
@@ -59,7 +73,10 @@ const mongoose: MongooseModule = (() => {
 })();
 
 // Загружаем переменные окружения, не обращаясь к config
-dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+const envPath = path.resolve(__dirname, '../..', '.env');
+if (dotenv && fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 const mongoResolution = getMongoUrlFromEnv();
 const mongoUrl = mongoResolution.url;

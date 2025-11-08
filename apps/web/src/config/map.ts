@@ -38,6 +38,30 @@ const sanitizeStyleMode = (value: string | undefined): MapStyleMode | undefined 
   return undefined;
 };
 
+type ImportMetaEnvLike = {
+  readonly MODE?: string;
+  readonly DEV?: boolean;
+  readonly PROD?: boolean;
+  readonly VITE_MAP_STYLE_MODE?: string;
+  readonly VITE_USE_PMTILES?: string;
+};
+
+const getImportMetaEnv = (): ImportMetaEnvLike | undefined => {
+  try {
+    const meta = import.meta as unknown as { env?: ImportMetaEnvLike };
+    if (!meta || typeof meta !== "object") {
+      return undefined;
+    }
+    const env = meta.env;
+    if (!env || typeof env !== "object") {
+      return undefined;
+    }
+    return env;
+  } catch {
+    return undefined;
+  }
+};
+
 const resolveStyleMode = (): MapStyleMode => {
   const explicit =
     sanitizeStyleMode(fromProcess("VITE_MAP_STYLE_MODE")) ??
@@ -45,15 +69,35 @@ const resolveStyleMode = (): MapStyleMode => {
   if (explicit) {
     return explicit;
   }
+  const metaEnv = getImportMetaEnv();
+  const metaStyle = sanitizeStyleMode(metaEnv?.VITE_MAP_STYLE_MODE);
+  if (metaStyle) {
+    return metaStyle;
+  }
   const envHint = fromProcess("VITE_USE_PMTILES");
   if (envHint && envHint.trim()) {
     return envHint === "0" || envHint.toLowerCase() === "false"
       ? "raster"
       : "pmtiles";
   }
+  const metaHint = metaEnv?.VITE_USE_PMTILES;
+  if (metaHint && metaHint.trim()) {
+    return metaHint === "0" || metaHint.toLowerCase() === "false"
+      ? "raster"
+      : "pmtiles";
+  }
   const nodeEnv = fromProcess("NODE_ENV");
   const isProduction = nodeEnv === "production" || nodeEnv === "production-build";
-  return isProduction ? "pmtiles" : "raster";
+  if (isProduction) {
+    return "pmtiles";
+  }
+  if (metaEnv?.PROD) {
+    return "pmtiles";
+  }
+  if (metaEnv?.DEV) {
+    return "raster";
+  }
+  return "raster";
 };
 
 const LOCAL_GLYPHS_TEMPLATE = "/tiles/fonts/{fontstack}/{range}.pbf";

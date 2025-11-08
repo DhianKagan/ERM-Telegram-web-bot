@@ -94,6 +94,40 @@ const modulePreloadPattern = new RegExp(
 
 const fontPreloadPattern = /<link\s[^>]*rel=["'][^"']*preload[^"']*["'][^>]*href=["'][^"']*fonts\/fonts\.css["'][^>]*>/gi;
 
+type MapStyleMode = "pmtiles" | "raster";
+
+function normalizeMapStyleMode(value: string | undefined): MapStyleMode | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["pmtiles", "vector", "tiles"].includes(normalized)) {
+    return "pmtiles";
+  }
+  if (["raster", "osm", "fallback"].includes(normalized)) {
+    return "raster";
+  }
+  return undefined;
+}
+
+function resolveBuildMapStyleMode(
+  env: Record<string, string | undefined>,
+  mode: string,
+): MapStyleMode {
+  const explicit = normalizeMapStyleMode(env.VITE_MAP_STYLE_MODE);
+  if (explicit) {
+    return explicit;
+  }
+  const pmtilesHint = env.VITE_USE_PMTILES?.trim();
+  if (pmtilesHint) {
+    const useFallback = pmtilesHint === "0" || pmtilesHint.toLowerCase() === "false";
+    return useFallback ? "raster" : "pmtiles";
+  }
+  const normalizedMode = mode.trim().toLowerCase();
+  const isProduction = normalizedMode === "production" || normalizedMode === "production-build";
+  return isProduction ? "pmtiles" : "raster";
+}
+
 function filterModulePreloadLinks() {
   return {
     name: "filter-modulepreload-links",
@@ -117,7 +151,7 @@ function filterModulePreloadLinks() {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const mapStyleMode = env.VITE_MAP_STYLE_MODE || "";
+  const mapStyleMode = resolveBuildMapStyleMode(env, mode);
   const shouldOptimizeImages = process.env.SKIP_IMAGE_OPTIMIZER !== "1";
 
   return {

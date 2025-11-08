@@ -648,6 +648,18 @@ const waitForRetryAfter = async (
 
 const CLOSE_RETRY_GRACE_MS = 2000;
 
+const waitForCloseThrottle = async (until: number): Promise<void> => {
+  const remainingMs = until - Date.now();
+  if (remainingMs <= 0) {
+    return;
+  }
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  console.warn(
+    `Пропускаем завершение long polling методом close, осталось ожидать ${remainingSeconds} с`,
+  );
+  await sleep(remainingMs);
+};
+
 const initializeCloseThrottle = (): number => {
   const storedUntil = getCloseThrottleUntil();
   if (storedUntil > Date.now()) {
@@ -681,12 +693,7 @@ const resetLongPollingSession = async (): Promise<void> => {
   }
   const now = Date.now();
   if (now < closeThrottleUntil) {
-    const remainingSeconds = Math.ceil(
-      (closeThrottleUntil - now) / 1000,
-    );
-    console.warn(
-      `Пропускаем завершение long polling методом close, осталось ожидать ${remainingSeconds} с`,
-    );
+    await waitForCloseThrottle(closeThrottleUntil);
     return;
   }
   try {

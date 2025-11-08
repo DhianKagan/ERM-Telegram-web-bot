@@ -51,7 +51,7 @@ test('startBot ограничивает число попыток и приме�
   exitSpy.mockRestore();
   timeout.mockRestore();
   jest.useRealTimers();
-}, 20000);
+}, 40000);
 
 test('startBot завершает предыдущую long polling сессию при конфликте 409', async () => {
   jest.useFakeTimers();
@@ -115,7 +115,7 @@ test('startBot ожидает retry_after после ошибки 429 метод
   const delays = timeoutSpy.mock.calls.map((call) => call[1]);
   expect(delays).toContain(retryAfterSeconds * 1000);
   expect(delays.filter((value) => value === retryAfterSeconds * 1000).length).toBeGreaterThanOrEqual(1);
-  expect(delays).toContain(1000);
+  expect(delays.filter((value) => value === 1000).length).toBeGreaterThanOrEqual(1);
 
   expect(__launch).toHaveBeenCalledTimes(2);
 
@@ -133,6 +133,9 @@ test('startBot не вызывает close повторно, пока дейст
   __launch.mockClear();
   __telegram.callApi.mockClear();
   __telegram.deleteWebhook.mockClear();
+
+  const timeoutSpy = jest.spyOn(global, 'setTimeout');
+  const warnSpy = jest.spyOn(console, 'warn');
 
   __launch
     .mockRejectedValueOnce({ response: { error_code: 409 } })
@@ -155,6 +158,21 @@ test('startBot не вызывает close повторно, пока дейст
   await jest.runAllTimersAsync();
   await promise;
 
+  const delays = timeoutSpy.mock.calls.map((call) => call[1]);
+  expect(delays).toContain(retryAfterSeconds * 1000);
+  expect(delays.filter((value) => value === 1000).length).toBeGreaterThanOrEqual(1);
+  expect(
+    warnSpy.mock.calls.some(
+      ([message]) =>
+        typeof message === 'string' &&
+        message.startsWith(
+          'Пропускаем завершение long polling методом close, осталось ожидать',
+        ),
+    ),
+  ).toBe(true);
+
   expect(__telegram.callApi).toHaveBeenCalledTimes(1);
+  warnSpy.mockRestore();
+  timeoutSpy.mockRestore();
   jest.useRealTimers();
 });

@@ -1,5 +1,6 @@
 // Назначение файла: стартовый скрипт API.
 // Основные модули: di, api
+import './loadEnv';
 import './di';
 import config from './config';
 import buildApp from './api/server';

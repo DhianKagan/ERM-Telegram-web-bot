@@ -35,7 +35,7 @@ test('startBot ограничивает число попыток и приме�
     .mockImplementation((() => undefined) as any);
   const timeout = jest.spyOn(global, 'setTimeout');
   const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
-  __resetCloseThrottleForTests();
+  await __resetCloseThrottleForTests();
   const { __launch } = require('telegraf');
   __launch.mockRejectedValue({ response: { error_code: 502 } });
 
@@ -56,7 +56,7 @@ test('startBot ограничивает число попыток и приме�
 test('startBot завершает предыдущую long polling сессию при конфликте 409', async () => {
   jest.useFakeTimers();
   const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
-  __resetCloseThrottleForTests();
+  await __resetCloseThrottleForTests();
   const { __launch, __telegram } = require('telegraf');
   __launch.mockRejectedValueOnce({ response: { error_code: 409 } });
   __launch.mockResolvedValue(undefined);
@@ -77,7 +77,7 @@ test('startBot ожидает retry_after после ошибки 429 метод
   jest.useFakeTimers();
   const timeoutSpy = jest.spyOn(global, 'setTimeout');
   const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
-  __resetCloseThrottleForTests();
+  await __resetCloseThrottleForTests();
   const { __launch, __telegram } = require('telegraf');
   const retryAfterSeconds = 3;
 
@@ -126,7 +126,7 @@ test('startBot ожидает retry_after после ошибки 429 метод
 test('startBot не вызывает close повторно, пока действует throttling', async () => {
   jest.useFakeTimers();
   const { startBot, __resetCloseThrottleForTests } = await import('../src/bot/bot');
-  __resetCloseThrottleForTests();
+  await __resetCloseThrottleForTests();
   const { __launch, __telegram } = require('telegraf');
   const retryAfterSeconds = 5;
 

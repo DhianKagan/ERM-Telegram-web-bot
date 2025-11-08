@@ -3,12 +3,62 @@
 
 import type { LogisticsEvent } from "shared";
 
+type ImportMetaEnvLike = {
+  readonly VITE_DISABLE_SSE?: string;
+};
+
+const parseBooleanFlag = (
+  value: string | undefined,
+): boolean | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+};
+
+const readDisableFlag = (): boolean => {
+  const processEnv =
+    typeof process !== "undefined" && typeof process.env === "object"
+      ? process.env.VITE_DISABLE_SSE
+      : undefined;
+  const processHint = parseBooleanFlag(processEnv);
+  if (processHint !== undefined) {
+    return processHint;
+  }
+  try {
+    const meta = import.meta as unknown as { env?: ImportMetaEnvLike };
+    const metaValue = meta?.env?.VITE_DISABLE_SSE;
+    const metaHint = parseBooleanFlag(metaValue);
+    if (metaHint !== undefined) {
+      return metaHint;
+    }
+  } catch {
+    // Игнорируем отсутствие import.meta в окружении тестов.
+  }
+  return false;
+};
+
+const isSseDisabled = readDisableFlag();
+
 export type LogisticsEventListener = (event: LogisticsEvent) => void;
 
 export function subscribeLogisticsEvents(
   listener: LogisticsEventListener,
   onError?: (event: Event) => void,
 ): () => void {
+  if (isSseDisabled) {
+    console.warn(
+      "Подписка на события логистики отключена переменной окружения VITE_DISABLE_SSE.",
+    );
+    return () => undefined;
+  }
   if (typeof window === "undefined" || typeof EventSource === "undefined") {
     return () => undefined;
   }

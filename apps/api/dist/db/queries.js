@@ -182,8 +182,8 @@ const hydrateTaskHistory = async (task) => {
         return task;
     }
     const rawId = task._id;
-    const hasOverflowFlag = typeof task.history_overflow_count === 'number' &&
-        Number(task.history_overflow_count) > 0;
+    const overflowValue = task.history_overflow_count;
+    const hasOverflowFlag = typeof overflowValue === 'number' && Number.isFinite(overflowValue) && overflowValue > 0;
     if (!hasOverflowFlag && (!Array.isArray(task.history) || task.history.length === 0)) {
         return task;
     }
@@ -195,14 +195,17 @@ const hydrateTaskHistory = async (task) => {
     if (!normalizedId) {
         return task;
     }
-    const archiveDocs = await model_1.TaskHistoryArchive.find({ taskId: normalizedId })
+    const archiveDocs = await model_1.TaskHistoryArchive.find({
+        taskId: normalizedId,
+    })
         .sort({ createdAt: 1, _id: 1 })
         .lean()
         .exec();
-    if (!archiveDocs.length) {
+    if (!Array.isArray(archiveDocs) || archiveDocs.length === 0) {
         return task;
     }
-    const archivedEntries = archiveDocs.flatMap((doc) => Array.isArray(doc.entries) ? doc.entries : []);
+    const typedArchiveDocs = archiveDocs;
+    const archivedEntries = typedArchiveDocs.flatMap((doc) => Array.isArray(doc.entries) ? doc.entries : []);
     if (!archivedEntries.length) {
         return task;
     }

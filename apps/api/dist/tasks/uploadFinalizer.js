@@ -15,6 +15,7 @@ const storage_1 = require("../config/storage");
 const model_1 = require("../db/model");
 const fileUrls_1 = require("../utils/fileUrls");
 const wgLogEngine_1 = require("../services/wgLogEngine");
+const safeMoveFile_1 = require("../lib/fs/safeMoveFile");
 const uploadsDirAbs = node_path_1.default.resolve(storage_1.uploadsDir);
 const TEMP_URL_PREFIX = 'temp://';
 exports.TEMP_URL_PREFIX = TEMP_URL_PREFIX;
@@ -92,14 +93,14 @@ const finalizePendingUploads = async (options) => {
             const userDir = node_path_1.default.resolve(uploadsDirAbs, String(entry.userId));
             await promises_1.default.mkdir(userDir, { recursive: true });
             const finalPath = ensureWithin(userDir, node_path_1.default.join(userDir, node_path_1.default.basename(entry.tempPath)));
-            await promises_1.default.rename(entry.tempPath, finalPath);
+            await (0, safeMoveFile_1.safeMoveFile)(entry.tempPath, finalPath);
             movedPaths.push(finalPath);
             let thumbnailRelative;
             let thumbnailFinalPath;
             if (entry.tempThumbnailPath) {
                 const thumbTarget = ensureWithin(userDir, node_path_1.default.join(userDir, node_path_1.default.basename(entry.tempThumbnailPath)));
                 try {
-                    await promises_1.default.rename(entry.tempThumbnailPath, thumbTarget);
+                    await (0, safeMoveFile_1.safeMoveFile)(entry.tempThumbnailPath, thumbTarget);
                     thumbnailFinalPath = thumbTarget;
                     movedThumbnails.push(thumbTarget);
                     thumbnailRelative = relativeToUploads(thumbTarget);

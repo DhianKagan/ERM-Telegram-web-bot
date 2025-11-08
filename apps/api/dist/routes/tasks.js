@@ -39,6 +39,7 @@ const roles_guard_1 = __importDefault(require("../auth/roles.guard"));
 const accessMask_1 = require("../utils/accessMask");
 const fileUrls_1 = require("../utils/fileUrls");
 const validate_1 = require("../utils/validate");
+const safeMoveFile_1 = require("../lib/fs/safeMoveFile");
 if (!fs_1.default.existsSync(storage_1.uploadsDir))
     fs_1.default.mkdirSync(storage_1.uploadsDir, { recursive: true });
 if (ffmpeg_static_1.default)
@@ -629,7 +630,7 @@ const handleChunks = async (req, res) => {
                 res.status(400).json({ error: 'Недопустимое имя файла' });
                 return;
             }
-            fs_1.default.renameSync(final, target);
+            await (0, safeMoveFile_1.safeMoveFile)(final, target);
             const diskFile = {
                 ...file,
                 destination: targetDir,

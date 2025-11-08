@@ -197,11 +197,11 @@ export declare const Task: mongoose.Model<TaskDocument, {}, {}, {}, mongoose.Doc
 }, any>;
 export interface TaskHistoryArchiveDocument extends TaskHistoryArchiveEntry, Document {
 }
-export declare const TaskHistoryArchive: mongoose.Model<unknown, unknown, unknown, unknown, mongoose.Document<unknown, unknown, unknown, unknown, unknown> & Omit<{
-    _id: Types.ObjectId;
-} & {
+export declare const TaskHistoryArchive: mongoose.Model<TaskHistoryArchiveDocument, {}, {}, {}, mongoose.Document<unknown, {}, TaskHistoryArchiveDocument, {}, {}> & TaskHistoryArchiveDocument & Required<{
+    _id: unknown;
+}> & {
     __v: number;
-}, never>, TaskHistoryArchiveDocument>;
+}, any>;
 export declare const Archive: mongoose.Model<TaskDocument, {}, {}, {}, mongoose.Document<unknown, {}, TaskDocument, {}, {}> & TaskDocument & Required<{
     _id: unknown;
 }> & {

@@ -41,6 +41,11 @@ import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
 import ReportGeneratorService from '../services/reportGenerator';
 import TasksService from '../tasks/tasks.service';
 import queries from '../db/queries';
+import {
+  getCloseThrottleUntil,
+  resetCloseThrottle,
+  updateCloseThrottleUntil,
+} from './closeThrottleStore';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('BOT_TOKEN загружен');
@@ -643,7 +648,18 @@ const waitForRetryAfter = async (
 
 const CLOSE_RETRY_GRACE_MS = 2000;
 
-let closeThrottleUntil = 0;
+const initializeCloseThrottle = (): number => {
+  const storedUntil = getCloseThrottleUntil();
+  if (storedUntil > Date.now()) {
+    return storedUntil;
+  }
+  if (storedUntil > 0) {
+    resetCloseThrottle();
+  }
+  return 0;
+};
+
+let closeThrottleUntil = initializeCloseThrottle();
 
 const resetLongPollingSession = async (): Promise<void> => {
   try {
@@ -676,12 +692,14 @@ const resetLongPollingSession = async (): Promise<void> => {
   try {
     await bot.telegram.callApi('close', {});
     closeThrottleUntil = 0;
+    resetCloseThrottle();
     console.warn('Текущая long polling сессия Telegram завершена методом close');
   } catch (closeError) {
     const retryAfterSeconds = extractRetryAfterSeconds(closeError);
     if (retryAfterSeconds) {
       closeThrottleUntil =
         Date.now() + retryAfterSeconds * 1000 + CLOSE_RETRY_GRACE_MS;
+      updateCloseThrottleUntil(closeThrottleUntil);
     }
     console.error(
       'Не удалось завершить предыдущую long polling сессию методом close',
@@ -2175,9 +2193,10 @@ export async function startBot(retry = 0): Promise<void> {
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-export const __resetCloseThrottleForTests = (): void => {
+export const __resetCloseThrottleForTests = async (): Promise<void> => {
   if (process.env.NODE_ENV === 'test') {
     closeThrottleUntil = 0;
+    await resetCloseThrottle();
   }
 };
 

@@ -33,4 +33,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app .
 EXPOSE 3000
-CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && npx pm2-runtime ecosystem.config.cjs"]
+CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && ./node_modules/.bin/pm2-runtime ecosystem.config.cjs"]

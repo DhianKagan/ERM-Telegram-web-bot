@@ -4,7 +4,9 @@ import './loadEnv';
 import './di';
 import config from './config';
 import buildApp from './api/server';
+app.use(corsMiddleware);
 
+import { corsMiddleware } from './middleware/cors';
 buildApp()
   .then((app) => {
     const port: number = config.port;

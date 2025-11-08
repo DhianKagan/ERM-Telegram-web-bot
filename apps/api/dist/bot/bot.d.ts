@@ -18,6 +18,6 @@ export declare const buildDirectTaskMessage: (task: Record<string, unknown> & {
 export declare const buildDirectTaskKeyboard: (link: string | null | undefined, appLink?: string | null | undefined) => ReturnType<typeof Markup.inlineKeyboard> | undefined;
 declare function processStatusAction(ctx: Context, status: 'В работе' | 'Выполнена' | 'Отменена', responseMessage: string): Promise<void>;
 export declare function startBot(retry?: number): Promise<void>;
-export declare const __resetCloseThrottleForTests: () => void;
+export declare const __resetCloseThrottleForTests: () => Promise<void>;
 export { processStatusAction };
 export { handleReportCommand };

@@ -11,6 +11,7 @@ import { uploadsDir } from '../config/storage';
 import { File, Task } from '../db/model';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 import { writeLog } from '../services/wgLogEngine';
+import { safeMoveFile } from '../lib/fs/safeMoveFile';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 const TEMP_URL_PREFIX = 'temp://';
@@ -122,7 +123,7 @@ export const finalizePendingUploads = async (
       const userDir = path.resolve(uploadsDirAbs, String(entry.userId));
       await fs.mkdir(userDir, { recursive: true });
       const finalPath = ensureWithin(userDir, path.join(userDir, path.basename(entry.tempPath)));
-      await fs.rename(entry.tempPath, finalPath);
+      await safeMoveFile(entry.tempPath, finalPath);
       movedPaths.push(finalPath);
       let thumbnailRelative: string | undefined;
       let thumbnailFinalPath: string | undefined;
@@ -132,7 +133,7 @@ export const finalizePendingUploads = async (
           path.join(userDir, path.basename(entry.tempThumbnailPath)),
         );
         try {
-          await fs.rename(entry.tempThumbnailPath, thumbTarget);
+          await safeMoveFile(entry.tempThumbnailPath, thumbTarget);
           thumbnailFinalPath = thumbTarget;
           movedThumbnails.push(thumbTarget);
           thumbnailRelative = relativeToUploads(thumbTarget);

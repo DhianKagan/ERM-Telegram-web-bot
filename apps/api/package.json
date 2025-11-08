@@ -8,6 +8,7 @@
     "test": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --coverage",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
+    "start:pm2": "pm2-runtime ecosystem.config.cjs",
     "build": "cross-env TSC_COMPILE_ON_ERROR=1 tsc -b",
     "build-client": "pnpm --dir ../web run build",
     "format": "prettier --config ../prettier.config.cjs \"src/**/*.{js,ts}\"",

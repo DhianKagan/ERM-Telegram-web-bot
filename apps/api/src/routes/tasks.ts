@@ -56,6 +56,7 @@ import {
   buildThumbnailUrl,
 } from '../utils/fileUrls';
 import { handleValidation } from '../utils/validate';
+import { safeMoveFile } from '../lib/fs/safeMoveFile';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -746,7 +747,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
         res.status(400).json({ error: 'Недопустимое имя файла' });
         return;
       }
-      fs.renameSync(final, target);
+      await safeMoveFile(final, target);
       const diskFile: Express.Multer.File = {
         ...file,
         destination: targetDir,

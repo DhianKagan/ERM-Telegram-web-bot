@@ -22,7 +22,7 @@ const isTestEnvironment =
 const strictEnvs = new Set(['production', 'production-build']);
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
-dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
 
 type EnvPick = { key: string; value: string };
 

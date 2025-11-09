@@ -1,0 +1,17 @@
+{
+  // Назначение файла: конфигурация TypeScript для серверного приложения API
+  // Основные модули: typescript
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    "composite": true,
+    "strict": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -1,17 +1,24 @@
 {
-  // Назначение файла: конфигурация TypeScript для серверного приложения API
+  // Назначение файла: конфигурация TypeScript для проверки типов в подкаталоге api
   // Основные модули: typescript
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "es2019",
     "module": "commonjs",
-    "moduleResolution": "node",
-    "rootDir": "src",
+    "rootDir": "./src",
     "outDir": "dist",
-    "types": ["node"],
-    "composite": true,
-    "strict": true
+    "useUnknownInCatchVariables": false,
+    "useDefineForClassFields": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "../../node_modules/@types",
+      "./src/types"
+    ],
+    "composite": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src"],
+  "references": [{ "path": "../../packages/shared" }]
 }

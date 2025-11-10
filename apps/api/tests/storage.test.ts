@@ -31,6 +31,9 @@ const mockFileFindById = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null
 const mockFileFindOneAndDelete = jest.fn(() => ({
   lean: jest.fn().mockResolvedValue(null),
 }));
+const mockFileUpdateOne = jest.fn(() => ({
+  exec: jest.fn().mockResolvedValue(undefined),
+}));
 
 type TaskQuery<T> = {
   select: jest.Mock<TaskQuery<T>, []>;
@@ -53,6 +56,7 @@ jest.mock('../src/db/model', () => ({
     find: mockFileFind,
     findById: mockFileFindById,
     findOneAndDelete: mockFileFindOneAndDelete,
+    updateOne: mockFileUpdateOne,
   },
   Task: {
     updateOne: jest.fn(),
@@ -88,6 +92,10 @@ describe('storage routes', () => {
     mockFileFind.mockReset();
     mockFileFindById.mockReset();
     mockFileFindOneAndDelete.mockReset();
+    mockFileUpdateOne.mockReset();
+    mockFileUpdateOne.mockImplementation(() => ({
+      exec: jest.fn().mockResolvedValue(undefined),
+    }));
     mockTaskFind.mockReset();
     mockTaskFindOne.mockReset();
     mockTaskFindById.mockReset();
@@ -142,6 +150,40 @@ describe('storage routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('single.txt');
     expect(res.body.taskNumber).toBe('A-2');
+  });
+
+  test('get file resolves taskId через поле files', async () => {
+    const fileId = '64d000000000000000000099';
+    const fallbackTaskId = '64d0000000000000000000aa';
+    mockFileFindById.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: fileId,
+        userId: 3,
+        name: 'preview.pdf',
+        path: 'preview.pdf',
+        type: 'application/pdf',
+        size: 123,
+        uploadedAt: new Date(),
+      }),
+    });
+    mockTaskFindOne.mockImplementation(() =>
+      createTaskQuery({
+        _id: fallbackTaskId,
+        task_number: 'ERM-55',
+        title: 'Документы',
+        attachments: [],
+        files: [`/api/v1/files/${fileId}?mode=inline`],
+      }),
+    );
+
+    const res = await request(app).get(`/${fileId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.taskId).toBe(fallbackTaskId);
+    expect(res.body.taskNumber).toBe('ERM-55');
+    expect(mockFileUpdateOne).toHaveBeenCalledWith(
+      { _id: fileId },
+      expect.objectContaining({ $set: expect.objectContaining({ taskId: expect.anything() }) }),
+    );
   });
 
   test('delete file', async () => {

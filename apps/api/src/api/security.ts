@@ -12,6 +12,13 @@ type CSPConfig = NonNullable<
   Exclude<HelmetOptions['contentSecurityPolicy'], boolean>
 >;
 
+const DEFAULT_MAP_STYLE_URL =
+  'https://api.protomaps.com/styles/v5/light/en.json?key=e2ee205f93bfd080';
+
+const ensureEntry = (bucket: string[], value: string) => {
+  if (!bucket.includes(value)) bucket.push(value);
+};
+
 const parseList = (env?: string): string[] =>
   env
     ? env
@@ -27,15 +34,30 @@ export default function applySecurity(app: express.Express): void {
     next();
   });
 
+  const mapStyleUrl =
+    process.env.VITE_MAP_STYLE_URL && process.env.VITE_MAP_STYLE_URL.trim()
+      ? process.env.VITE_MAP_STYLE_URL.trim()
+      : DEFAULT_MAP_STYLE_URL;
+  let mapStyleOrigin: string | null = null;
+  try {
+    mapStyleOrigin = new URL(mapStyleUrl).origin;
+  } catch {
+    mapStyleOrigin = null;
+  }
   const connectSrc = [
     "'self'",
     'https://router.project-osrm.org',
     ...parseList(process.env.CSP_CONNECT_SRC_ALLOWLIST),
   ];
+  const protomapsOrigin = 'https://api.protomaps.com';
+  ensureEntry(connectSrc, protomapsOrigin);
   try {
     connectSrc.push(new URL(config.routingUrl).origin);
   } catch {
     // Игнорируем некорректный routingUrl
+  }
+  if (mapStyleOrigin) {
+    ensureEntry(connectSrc, mapStyleOrigin);
   }
 
   const imgSrc = [
@@ -46,6 +68,10 @@ export default function applySecurity(app: express.Express): void {
     'https://c.tile.openstreetmap.org',
     ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
   ];
+  ensureEntry(imgSrc, protomapsOrigin);
+  if (mapStyleOrigin) {
+    ensureEntry(imgSrc, mapStyleOrigin);
+  }
 
   type ResWithNonce = ServerResponse & { locals: { cspNonce: string } };
   const scriptSrc = [
@@ -64,6 +90,12 @@ export default function applySecurity(app: express.Express): void {
 
   const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
 
+  const workerSrc = [
+    "'self'",
+    'blob:',
+    ...parseList(process.env.CSP_WORKER_SRC_ALLOWLIST),
+  ];
+
   const directives: NonNullable<CSPConfig['directives']> = {
     'frame-src': ["'self'", 'https://oauth.telegram.org'],
     'script-src': scriptSrc,
@@ -71,6 +103,7 @@ export default function applySecurity(app: express.Express): void {
     'font-src': fontSrc,
     'img-src': imgSrc,
     'connect-src': connectSrc,
+    'worker-src': workerSrc,
   };
 
   if (reportOnly) directives['upgrade-insecure-requests'] = null;

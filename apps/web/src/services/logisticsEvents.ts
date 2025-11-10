@@ -121,20 +121,20 @@ export function subscribeLogisticsEvents(
         signal: controller.signal,
       });
       const contentType = response.headers.get("content-type") ?? "";
+      const normalizedContentType = contentType.split(";")[0]?.trim().toLowerCase();
       const isEventStream =
-        response.ok && contentType.toLowerCase().includes("text/event-stream");
+        response.ok && normalizedContentType === "text/event-stream";
       if (!controller.signal.aborted) {
         abortedByProbe = true;
         controller.abort();
       }
       if (!isEventStream) {
         console.warn(
-          "Сервер логистики не вернул поток событий (text/event-stream), подписка отключена.",
+          "Сервер логистики не вернул поток событий (text/event-stream). Попытка подписки через EventSource продолжится, возможна деградация.",
         );
         if (onError) {
           onError(buildSyntheticEvent("logistics:eventstream-unavailable"));
         }
-        return;
       }
       attachSource();
     } catch (error) {

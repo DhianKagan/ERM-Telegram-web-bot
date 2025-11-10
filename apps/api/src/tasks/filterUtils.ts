@@ -1,225 +1,108 @@
-/**
- * Назначение: утилиты нормализации фильтров задач API.
- * Основные модули: обработка списков строк и идентификаторов, подготовка фильтров задач.
- */
+// Утилиты для нормализации и парсинга фильтров задач
+// Основные модули: TaskFilters, типы фильтров задач
+import type { TaskFilters } from '../db/queries';
+import type { TaskKind } from '../db/model';
 
-export type StringListInput =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | readonly StringListInput[]
-  | StringListInput[];
-
-export interface TaskFilterInput {
-  readonly status?: StringListInput;
-  readonly taskType?: StringListInput;
-  readonly assignees?: StringListInput;
-  readonly assignee?: StringListInput;
-  readonly from?: string | null;
-  readonly to?: string | null;
-  readonly kanban?: unknown;
-  readonly kind?: string | null;
-}
-
-export interface NormalizedTaskFilters {
-  status?: string | string[];
-  taskType?: string | string[];
-  assignees?: number[];
-  from?: string;
-  to?: string;
-  kanban?: boolean;
-  kind?: string;
-}
-
-export interface NormalizeTaskFiltersResult {
-  normalized: NormalizedTaskFilters;
+export interface FilterNormalizationResult {
+  normalized: TaskFilters;
   statusValues: string[];
   taskTypeValues: string[];
   assigneeValues: number[];
-  kindFilter?: string;
+  kindFilter?: TaskKind;
 }
 
-const TRUE_VALUES = new Set(['1', 'true', 'yes', 'y']);
-const FALSE_VALUES = new Set(['0', 'false', 'no', 'n']);
-
-const addUnique = <T>(collection: T[], seen: Set<T>, value: T): void => {
-  if (!seen.has(value)) {
-    seen.add(value);
-    collection.push(value);
+export function parseStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => parseStringList(item))
+      .filter((item): item is string => typeof item === 'string' && item.length > 0);
   }
-};
-
-const toNormalizedString = (value: unknown): string | undefined => {
   if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
   }
+  return [];
+}
 
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return `${value}`;
-  }
-
-  return undefined;
-};
-
-const parseBoolean = (value: unknown): boolean | undefined => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'number') {
-    if (Number.isNaN(value)) {
-      return undefined;
+export function parseAssigneeList(value: unknown): number[] {
+  const result = new Set<number>();
+  const addValue = (raw: unknown) => {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      result.add(raw);
+      return;
     }
-
-    return value !== 0;
+    parseStringList(raw).forEach((item) => {
+      const parsed = Number(item);
+      if (Number.isFinite(parsed)) {
+        result.add(parsed);
+      }
+    });
+  };
+  if (Array.isArray(value)) {
+    value.forEach(addValue);
+  } else if (value !== undefined && value !== null) {
+    addValue(value);
   }
+  return Array.from(result.values());
+}
 
-  if (typeof value === 'string') {
-    const trimmed = value.trim().toLowerCase();
+export function normalizeTaskFilters(
+  filters: Record<string, unknown>,
+): FilterNormalizationResult {
+  const statusValues = parseStringList(filters.status);
+  const taskTypeValues = parseStringList(
+    filters.taskType !== undefined ? filters.taskType : filters.type,
+  );
+  const assigneeCandidates = [
+    ...parseAssigneeList(filters.assignees),
+    ...parseAssigneeList(filters.assignee),
+  ];
+  const assigneeValues = Array.from(new Set(assigneeCandidates));
 
-    if (trimmed.length === 0) {
-      return undefined;
+  const normalized: TaskFilters = {};
+  let kindFilter: TaskKind | undefined;
+
+  if (typeof filters.kind === 'string') {
+    const trimmed = filters.kind.trim();
+    if (trimmed === 'task' || trimmed === 'request') {
+      normalized.kind = trimmed;
+      kindFilter = trimmed;
     }
-
-    if (TRUE_VALUES.has(trimmed)) {
-      return true;
-    }
-
-    if (FALSE_VALUES.has(trimmed)) {
-      return false;
-    }
-
-    const numeric = Number.parseFloat(trimmed);
-
-    if (!Number.isNaN(numeric)) {
-      return numeric !== 0;
-    }
   }
 
-  return undefined;
-};
-
-const collectStrings = (input: StringListInput, result: string[], seen: Set<string>): void => {
-  if (Array.isArray(input)) {
-    for (const item of input) {
-      collectStrings(item, result, seen);
-    }
-    return;
+  if (typeof filters.from === 'string' && filters.from.trim().length > 0) {
+    normalized.from = filters.from;
+  }
+  if (typeof filters.to === 'string' && filters.to.trim().length > 0) {
+    normalized.to = filters.to;
   }
 
-  if (input && typeof input === 'object') {
-    return;
+  const kanbanValue = Array.isArray(filters.kanban)
+    ? filters.kanban[0]
+    : filters.kanban;
+  if (typeof kanbanValue === 'boolean') {
+    normalized.kanban = kanbanValue;
+  } else if (typeof kanbanValue === 'string') {
+    const normalizedValue = kanbanValue.trim().toLowerCase();
+    normalized.kanban = normalizedValue === 'true' || normalizedValue === '1';
   }
 
-  const value = toNormalizedString(input);
-
-  if (value === undefined) {
-    return;
-  }
-
-  for (const part of value.split(',')) {
-    const normalizedPart = part.trim();
-
-    if (normalizedPart.length === 0) {
-      continue;
-    }
-
-    addUnique(result, seen, normalizedPart);
-  }
-};
-
-export const parseStringList = (value: StringListInput): string[] => {
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  if (value !== undefined && value !== null) {
-    collectStrings(value, result, seen);
-  }
-
-  return result;
-};
-
-export const parseAssigneeList = (value: StringListInput): number[] => {
-  const seen = new Set<number>();
-  const result: number[] = [];
-
-  if (value === undefined || value === null) {
-    return result;
-  }
-
-  const candidates = parseStringList(value);
-
-  for (const candidate of candidates) {
-    const parsed = Number.parseInt(candidate, 10);
-
-    if (Number.isNaN(parsed)) {
-      continue;
-    }
-
-    addUnique(result, seen, parsed);
-  }
-
-  return result;
-};
-
-export const normalizeTaskFilters = (
-  filters: TaskFilterInput,
-): NormalizeTaskFiltersResult => {
-  const statusValues = filters.status !== undefined ? parseStringList(filters.status) : [];
-  const taskTypeValues = filters.taskType !== undefined ? parseStringList(filters.taskType) : [];
-
-  const assigneeValues: number[] = [];
-  const assigneeSeen = new Set<number>();
-
-  const initialAssignees = filters.assignees !== undefined ? parseAssigneeList(filters.assignees) : [];
-  for (const assignee of initialAssignees) {
-    addUnique(assigneeValues, assigneeSeen, assignee);
-  }
-
-  const extraAssignees = filters.assignee !== undefined ? parseAssigneeList(filters.assignee) : [];
-  for (const assignee of extraAssignees) {
-    addUnique(assigneeValues, assigneeSeen, assignee);
-  }
-
-  const normalized: NormalizedTaskFilters = {};
-
-  if (statusValues.length > 1) {
-    normalized.status = statusValues;
-  } else if (statusValues.length === 1) {
+  if (statusValues.length === 1) {
     [normalized.status] = statusValues;
+  } else if (statusValues.length > 1) {
+    normalized.status = statusValues;
   }
 
-  if (taskTypeValues.length > 1) {
-    normalized.taskType = taskTypeValues;
-  } else if (taskTypeValues.length === 1) {
+  if (taskTypeValues.length === 1) {
     [normalized.taskType] = taskTypeValues;
+  } else if (taskTypeValues.length > 1) {
+    normalized.taskType = taskTypeValues;
   }
 
   if (assigneeValues.length > 0) {
     normalized.assignees = assigneeValues;
-  }
-
-  const fromValue = toNormalizedString(filters.from ?? undefined);
-  if (fromValue !== undefined) {
-    normalized.from = fromValue;
-  }
-
-  const toValue = toNormalizedString(filters.to ?? undefined);
-  if (toValue !== undefined) {
-    normalized.to = toValue;
-  }
-
-  const kanbanValue = parseBoolean(filters.kanban);
-  if (kanbanValue !== undefined) {
-    normalized.kanban = kanbanValue;
-  }
-
-  const kindValue = typeof filters.kind === 'string' ? filters.kind.trim() : undefined;
-  if (kindValue) {
-    normalized.kind = kindValue;
   }
 
   return {
@@ -227,6 +110,6 @@ export const normalizeTaskFilters = (
     statusValues,
     taskTypeValues,
     assigneeValues,
-    kindFilter: normalized.kind,
+    kindFilter,
   };
-};
+}

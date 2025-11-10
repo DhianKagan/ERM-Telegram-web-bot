@@ -131,20 +131,7 @@ export default async function registerRoutes(
     return csrf(req, res, next);
   });
 
-  // --- CORS allowlist (auto-injected) ---
-const __corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-const __corsOptions = {
-  origin: function (origin, cb) {
-    if (!origin) return cb(null, true); // allow tools/curl; tighten if needed
-    return __corsOrigins.includes(origin) ? cb(null, true) : cb(new Error('CORS: origin not allowed'), false);
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-XSRF-TOKEN'],
-  maxAge: 600
-};
-app.use(cors(__corsOptions));
-// --- end CORS allowlist ---
+  app.use(cors());
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);

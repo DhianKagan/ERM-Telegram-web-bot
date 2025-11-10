@@ -77,13 +77,20 @@ describe('collectAttachmentLinks', () => {
 
     expect(TaskModel.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        $or: [
-          {
+        $or: expect.arrayContaining([
+          expect.objectContaining({
             'attachments.url': expect.objectContaining({
               $regex: expect.any(RegExp),
             }),
-          },
-        ],
+          }),
+          expect.objectContaining({
+            files: expect.objectContaining({
+              $elemMatch: expect.objectContaining({
+                $regex: expect.any(RegExp),
+              }),
+            }),
+          }),
+        ]),
       }),
     );
     const fallback = firstLookup.get(fileId);
@@ -99,6 +106,35 @@ describe('collectAttachmentLinks', () => {
     const secondLookup = await collectAttachmentLinks(updatedCandidates);
 
     expect(secondLookup.size).toBe(0);
+    expect(TaskModel.find).toHaveBeenCalledTimes(1);
+  });
+
+  it('распознаёт идентификаторы в массиве files', async () => {
+    const fileId = new Types.ObjectId().toHexString();
+    const taskId = new Types.ObjectId();
+    const leanMock = jest.fn().mockResolvedValue([
+      {
+        _id: taskId,
+        task_number: 'ERM-77',
+        title: 'Задача с files',
+        attachments: [],
+        files: [`/api/v1/files/${fileId}?mode=inline`],
+      },
+    ]);
+    const selectMock = jest.fn().mockReturnValue({ lean: leanMock });
+    TaskModel.find.mockReturnValue({ select: selectMock });
+
+    const lookup = await collectAttachmentLinks([
+      { id: fileId, hasTask: false },
+    ]);
+
+    expect(lookup.get(fileId)).toEqual(
+      expect.objectContaining({
+        taskId: taskId.toHexString(),
+        number: 'ERM-77',
+        title: 'Задача с files',
+      }),
+    );
     expect(TaskModel.find).toHaveBeenCalledTimes(1);
   });
 });

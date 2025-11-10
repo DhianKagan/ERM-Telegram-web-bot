@@ -3935,11 +3935,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       </label>
                       <ul className="flex flex-wrap gap-3">
                         {attachments.map((a) => {
-                          const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(
-                            a.url,
-                          );
                           const thumbnail = ensureInlineMode(a.thumbnailUrl);
                           const inlineUrl = ensureInlineMode(a.url) ?? a.url;
+                          const basePath = inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
+                          const isImage =
+                            Boolean(thumbnail) ||
+                            /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(basePath);
                           const previewSrc = thumbnail ?? inlineUrl;
                           return (
                             <li

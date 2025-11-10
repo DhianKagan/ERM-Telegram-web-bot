@@ -12,7 +12,7 @@ import {
   type Attachment,
   type FileDocument,
 } from '../db/model';
-import { extractAttachmentIds } from '../utils/attachments';
+import { extractAttachmentIds, extractFileIdFromUrl } from '../utils/attachments';
 import {
   buildFileUrl,
   buildInlineFileUrl,
@@ -58,15 +58,106 @@ const TASK_URL_SUFFIX = '(?:[/?#].*|$)';
 const buildAttachmentQuery = (
   ids: string[],
 ):
-  | { $or: Array<{ 'attachments.url': { $regex: RegExp } }> }
+  | {
+      $or: Array<
+        | { 'attachments.url': { $regex: RegExp } }
+        | { files: { $elemMatch: { $regex: RegExp } } }
+      >;
+    }
   | null => {
   if (ids.length === 0) return null;
-  const orConditions = ids.map((id) => ({
-    'attachments.url': {
-      $regex: new RegExp(`/${id}${TASK_URL_SUFFIX}`),
-    },
-  }));
+  const orConditions = ids.flatMap((id) => {
+    const pattern = new RegExp(`/${id}${TASK_URL_SUFFIX}`, 'i');
+    return [
+      {
+        'attachments.url': {
+          $regex: pattern,
+        },
+      },
+      {
+        files: {
+          $elemMatch: {
+            $regex: pattern,
+          },
+        },
+      },
+    ];
+  });
   return { $or: orConditions };
+};
+
+const HEX_OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+
+const normalizeObjectIdString = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!HEX_OBJECT_ID.test(trimmed)) return null;
+  return Types.ObjectId.isValid(trimmed) ? trimmed.toLowerCase() : null;
+};
+
+const collectIdsFromString = (value: string): string[] => {
+  const normalized = value.trim();
+  if (!normalized) {
+    return [];
+  }
+  const result = new Set<string>();
+  const fromUrl = extractFileIdFromUrl(normalized);
+  if (fromUrl) {
+    result.add(fromUrl.toLowerCase());
+  }
+  if (normalized.length === 24) {
+    const direct = normalizeObjectIdString(normalized);
+    if (direct) {
+      result.add(direct);
+    }
+  }
+  const matches = normalized.match(/[0-9a-fA-F]{24}/g);
+  if (matches) {
+    matches.forEach((candidate) => {
+      const converted = normalizeObjectIdString(candidate);
+      if (converted) {
+        result.add(converted);
+      }
+    });
+  }
+  return Array.from(result.values());
+};
+
+const normalizeLookupId = (value: unknown): string | null => {
+  if (value instanceof Types.ObjectId) {
+    return value.toHexString();
+  }
+  if (typeof value === 'string') {
+    const direct = normalizeObjectIdString(value);
+    if (direct) {
+      return direct;
+    }
+    const extracted = collectIdsFromString(value);
+    if (extracted.length > 0) {
+      return extracted[0] ?? null;
+    }
+  }
+  return null;
+};
+
+const collectTaskFileReferences = (
+  task: {
+    attachments?: Attachment[] | null;
+    files?: unknown;
+  },
+): Set<string> => {
+  const references = new Set<string>();
+  const attachmentIds = extractAttachmentIds(
+    (task.attachments as Attachment[] | undefined) ?? [],
+  );
+  attachmentIds.forEach((entry) => references.add(entry.toHexString()));
+  if (Array.isArray(task.files)) {
+    task.files.forEach((item) => {
+      if (typeof item !== 'string') return;
+      collectIdsFromString(item).forEach((id) => references.add(id));
+    });
+  }
+  return references;
 };
 
 const normalizeTitle = (value?: string | null) => {
@@ -122,7 +213,16 @@ export const collectAttachmentLinks = async (
 ): Promise<
   Map<string, { taskId: string; number?: string | null; title?: string | null }>
 > => {
-  const pendingIds = candidates
+  const normalizedCandidates = candidates
+    .map((candidate) => ({
+      id: normalizeLookupId(candidate.id),
+      hasTask: candidate.hasTask,
+    }))
+    .filter(
+      (candidate): candidate is { id: string; hasTask: boolean } =>
+        candidate.id !== null,
+    );
+  const pendingIds = normalizedCandidates
     .filter((file) => !file.hasTask)
     .map((file) => file.id);
   if (!pendingIds.length) {
@@ -133,7 +233,7 @@ export const collectAttachmentLinks = async (
     return new Map();
   }
   const tasks = await Task.find(query)
-    .select(['_id', 'task_number', 'title', 'attachments'])
+    .select(['_id', 'task_number', 'title', 'attachments', 'files'])
     .lean();
   const lookup = new Map<
     string,
@@ -142,11 +242,11 @@ export const collectAttachmentLinks = async (
   if (!tasks.length) return lookup;
   const available = new Set(pendingIds);
   tasks.forEach((task) => {
-    const attachments = extractAttachmentIds(
-      (task.attachments as Attachment[] | undefined) ?? [],
-    );
-    attachments.forEach((attachmentId) => {
-      const key = attachmentId.toHexString();
+    const references = collectTaskFileReferences(task as {
+      attachments?: Attachment[] | null;
+      files?: unknown;
+    });
+    references.forEach((key) => {
       if (!available.has(key) || lookup.has(key)) return;
       lookup.set(key, {
         taskId: String(task._id),
@@ -169,10 +269,21 @@ export async function listFiles(
     const taskIds = files
       .map((file) => file.taskId)
       .filter((id): id is Types.ObjectId => Boolean(id));
-    const candidates = files.map((file) => ({
-      id: String(file._id),
-      hasTask: Boolean(file.taskId),
-    }));
+    const candidates = files
+      .map((file) => {
+        const normalizedId = normalizeLookupId(file._id);
+        if (!normalizedId) {
+          return null;
+        }
+        return {
+          id: normalizedId,
+          hasTask: Boolean(file.taskId),
+        };
+      })
+      .filter(
+        (candidate): candidate is { id: string; hasTask: boolean } =>
+          candidate !== null,
+      );
     const attachmentsLookup = await collectAttachmentLinks(candidates);
     const taskMap = new Map<
       string,
@@ -195,7 +306,10 @@ export async function listFiles(
       let taskId = f.taskId ? String(f.taskId) : undefined;
       let taskMeta = taskId ? taskMap.get(taskId) : undefined;
       if (!taskId) {
-        const fallback = attachmentsLookup.get(String(f._id));
+        const normalizedFileId = normalizeLookupId(f._id);
+        const fallback = normalizedFileId
+          ? attachmentsLookup.get(normalizedFileId)
+          : undefined;
         if (fallback) {
           taskId = fallback.taskId;
           taskMeta = { title: fallback.title, number: fallback.number };
@@ -247,16 +361,15 @@ export async function getFile(id: string): Promise<StoredFile | null> {
     const fallbackQuery = buildAttachmentQuery([String(doc._id)]);
     if (fallbackQuery) {
       const fallback = await Task.findOne(fallbackQuery)
-        .select(['_id', 'task_number', 'title', 'attachments'])
+        .select(['_id', 'task_number', 'title', 'attachments', 'files'])
         .lean();
       if (fallback) {
-        const attachments = extractAttachmentIds(
-          (fallback.attachments as Attachment[] | undefined) ?? [],
-        );
-        const matched = attachments.some((entry) =>
-          entry.equals(doc._id as Types.ObjectId),
-        );
-        if (matched) {
+        const references = collectTaskFileReferences(fallback as {
+          attachments?: Attachment[] | null;
+          files?: unknown;
+        });
+        const key = normalizeLookupId(doc._id);
+        if (key && references.has(key)) {
           taskId = String(fallback._id);
           taskMeta = fallback;
           await persistTaskLink(

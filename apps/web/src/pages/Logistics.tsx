@@ -207,6 +207,7 @@ const OPT_LAYER_ID = "logistics-optimized-routes-line";
 const ADDRESS_SOURCE_ID = "logistics-addresses";
 const ADDRESS_LAYER_ID = "logistics-addresses-labels";
 const ADDRESS_VECTOR_SOURCE_URL = MAP_ADDRESSES_PMTILES_URL;
+const HAS_ADDRESS_VECTOR_SOURCE = Boolean(ADDRESS_VECTOR_SOURCE_URL);
 const ADDRESS_VECTOR_SOURCE_LAYER = "addresses";
 const MAJOR_LABEL_LAYER_CANDIDATES = [
   "settlement-subdivision-label",
@@ -713,12 +714,17 @@ export default function LogisticsPage() {
   const mapRef = React.useRef<MapInstance | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
   React.useEffect(() => {
-    if (!isRasterFallback) {
+    if (isRasterFallback) {
+      console.warn(
+        "Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль."
+      );
       return;
     }
-    console.warn(
-      "Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль."
-    );
+    if (!HAS_ADDRESS_VECTOR_SOURCE) {
+      console.warn(
+        "Адресные плитки не подключены. Слой домовых номеров будет пропущен."
+      );
+    }
   }, []);
   const [mapViewMode, setMapViewMode] = React.useState<
     "planar" | "perspective"
@@ -2233,7 +2239,11 @@ export default function LogisticsPage() {
     };
     const handleLoad = () => {
       ensureBuildingsLayer();
-      if (!isRasterFallback && !map.getSource(ADDRESS_SOURCE_ID)) {
+      if (
+        !isRasterFallback &&
+        HAS_ADDRESS_VECTOR_SOURCE &&
+        !map.getSource(ADDRESS_SOURCE_ID)
+      ) {
         map.addSource(ADDRESS_SOURCE_ID, {
           type: "vector",
           url: ADDRESS_VECTOR_SOURCE_URL,

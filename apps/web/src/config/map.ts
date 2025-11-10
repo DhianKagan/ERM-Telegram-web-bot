@@ -1,12 +1,55 @@
 // Map config unified for MapLibre + Protomaps CDN
-// URL стиля (light v5) — можно переопределить через VITE_MAP_STYLE_URL
-export const MAP_STYLE_URL =
-  (import.meta as any)?.env?.VITE_MAP_STYLE_URL ||
+
+type MapStyleMode = 'pmtiles' | 'raster';
+
+declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
+
+const DEFAULT_MAP_STYLE_URL =
   'https://api.protomaps.com/styles/v5/light/en.json?key=e2ee205f93bfd080';
 
+type ImportMetaWithEnv = { readonly env?: { readonly VITE_MAP_STYLE_URL?: string } };
+
+const readMapStyleUrl = (): string => {
+  const processValue =
+    typeof process !== 'undefined' && typeof process.env === 'object'
+      ? process.env.VITE_MAP_STYLE_URL
+      : undefined;
+  if (typeof processValue === 'string' && processValue.trim() !== '') {
+    return processValue;
+  }
+  try {
+    const meta = import.meta as unknown as ImportMetaWithEnv;
+    const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
+    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+      return metaValue;
+    }
+  } catch {
+    // Игнорируем отсутствие import.meta в окружении тестов.
+  }
+  return DEFAULT_MAP_STYLE_URL;
+};
+
+const resolveMapStyleMode = (): MapStyleMode => {
+  if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
+    return __ERM_MAP_STYLE_MODE__;
+  }
+  if (typeof globalThis === 'object' && globalThis !== null) {
+    const candidate = (globalThis as {
+      __ERM_MAP_STYLE_MODE__?: unknown;
+    }).__ERM_MAP_STYLE_MODE__;
+    if (candidate === 'pmtiles' || candidate === 'raster') {
+      return candidate;
+    }
+  }
+  return 'raster';
+};
+
+// URL стиля (light v5) — можно переопределить через VITE_MAP_STYLE_URL
+export const MAP_STYLE_URL = readMapStyleUrl();
+
 // Совместимость с существующими импортами:
-export const MAP_STYLE = MAP_STYLE_URL;                  // ранее могли импортировать как MAP_STYLE
-export const MAP_STYLE_MODE: 'light' | 'dark' = 'light'; // если в UI есть тумблер темы
+export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
+export const MAP_STYLE_MODE: MapStyleMode = resolveMapStyleMode();
 
 // Атрибуция (Protomaps + OpenStreetMap contributors)
 export const MAP_ATTRIBUTION =
@@ -25,9 +68,8 @@ export const MAP_VECTOR_SOURCE_ID = 'basemap';
 // Скорость анимации (если используется для пробегов транспорта)
 export const MAP_ANIMATION_SPEED_KMH = 50;
 
-// Ранее использовалось для локальных адресных pmtiles; теперь не требуется.
-// Оставим пустой строкой для совместимости — код выше должен проверять на truthy.
-export const MAP_ADDRESSES_PMTILES_URL = '';
+// Локальный путь к адресным PMTiles.
+export const MAP_ADDRESSES_PMTILES_URL = 'pmtiles://tiles/addresses.pmtiles';
 
 // Дополнительные алиасы (если где-то использовались короткие имена)
 export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;

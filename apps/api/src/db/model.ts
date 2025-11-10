@@ -190,7 +190,11 @@ export interface TaskHistoryArchiveEntry {
   reason?: string;
 }
 
-const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveEntry>(
+export interface TaskHistoryArchiveDocument
+  extends TaskHistoryArchiveEntry,
+    Document {}
+
+const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveDocument>(
   {
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', index: true, required: true },
     entries: { type: [historySchema], required: true },
@@ -564,10 +568,6 @@ const logSchema = new Schema<LogDocument>(
 );
 
 export const Task = mongoose.model<TaskDocument>('Task', taskSchema);
-
-export interface TaskHistoryArchiveDocument
-  extends TaskHistoryArchiveEntry,
-    Document {}
 
 export const TaskHistoryArchive = mongoose.model<TaskHistoryArchiveDocument>(
   'TaskHistoryArchive',

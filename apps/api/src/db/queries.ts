@@ -165,9 +165,9 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
     return task;
   }
   const rawId = task._id;
+  const overflowValue = task.history_overflow_count;
   const hasOverflowFlag =
-    typeof (task as Record<string, unknown>).history_overflow_count === 'number' &&
-    Number((task as Record<string, unknown>).history_overflow_count) > 0;
+    typeof overflowValue === 'number' && Number.isFinite(overflowValue) && overflowValue > 0;
   if (!hasOverflowFlag && (!Array.isArray(task.history) || task.history.length === 0)) {
     return task;
   }
@@ -182,7 +182,7 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
   }
   const archiveDocs = await TaskHistoryArchive.find({ taskId: normalizedId })
     .sort({ createdAt: 1, _id: 1 })
-    .lean<{ entries?: HistoryEntry[] }>()
+    .lean()
     .exec();
   if (!archiveDocs.length) {
     return task;

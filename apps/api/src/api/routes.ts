@@ -1,4 +1,12 @@
 // Назначение файла: настройка маршрутов HTTP API.
+// --- csrf cookie flags (auto-injected) ---
+const __isProd = process.env.NODE_ENV === 'production';
+export const cookieFlags = {
+  sameSite: __isProd ? 'None' : 'Lax',
+  secure:   __isProd ? true   : false,
+  httpOnly: false
+};
+// --- end csrf cookie flags ---
 // Основные модули: express, middleware, сервисы, роутеры
 import express, {
   Request,

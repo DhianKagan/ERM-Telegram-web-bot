@@ -1,3 +1,5 @@
+import { preloadCsrf } from './lib/csrf';
+preloadCsrf();
 // Точка входа: выбирает режим приложения (браузер или Telegram)
 import React from "react";
 import * as ReactDOM from "react-dom/client";

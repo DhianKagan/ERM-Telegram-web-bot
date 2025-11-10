@@ -182,3 +182,10 @@
 Решение: <итоговая рекомендация: одобрить / запросить правки, аргументы>.
 Ссылки: CODE_REVIEW_GUIDE.md, связанные задачи/issue.
 ```
+
+## Repo Map & Snapshots
+- Шпаргалка: [docs/REPO_MAP.md](docs/REPO_MAP.md)
+- Снимки репозитория:
+  - Bash: `./scripts/repo-snapshot.sh`
+  - PowerShell: `./scripts/repo-snapshot.ps1`
+- Артефакты пишутся в корень как `repo_snapshot-YYYYMMDD-HHMM.txt`.

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ts="$(date +%Y%m%d-%H%M)"
+out="repo_snapshot-$ts.txt"
+
+{
+  echo "=== REPO SNAPSHOT @ $ts ==="
+  echo
+  echo "## git root"
+  git rev-parse --show-toplevel || true
+  echo
+
+  echo "## tree (maxdepth=2)"
+  find . -maxdepth 2 -type d | sort
+  echo
+
+  echo "## CI workflows"
+  find .github/workflows -maxdepth 1 -type f 2>/dev/null || true
+  echo
+
+  echo "## package.json (все)"
+  find . -name "package.json" 2>/dev/null
+  echo
+
+  echo "## env-файлы"
+  find . -name ".env*" 2>/dev/null
+  echo
+
+  echo "## точки входа API и мидлвары"
+  find apps/api -maxdepth 3 -type f \( -iname "*main.*" -o -iname "*index.*" -o -iname "*middleware*" -o -iname "*guard*" -o -iname "*auth*" \) 2>/dev/null || true
+  echo
+
+  echo "## точки входа WEB"
+  find apps/web -maxdepth 3 -type f \( -iname "next.config.*" -o -iname "vite.config.*" -o -iname "*main.*" -o -iname "*index.*" \) 2>/dev/null || true
+  echo
+
+  echo "## поиск ключевых слов (JWT/CSRF/Telegram/CORS) — первые 200 совпадений"
+  echo "# JWT:"
+  grep -RIn --exclude-dir=node_modules --exclude-dir=.git -E "JWT|jsonwebtoken|jwt" apps 2>/dev/null | head -n 200 || true
+  echo
+  echo "# CSRF:"
+  grep -RIn --exclude-dir=node_modules --exclude-dir=.git -E "csrf|CSRF" apps 2>/dev/null | head -n 200 || true
+  echo
+  echo "# Telegram:"
+  grep -RIn --exclude-dir=node_modules --exclude-dir=.git -E "Telegram|telegraf|aiogram" apps 2>/dev/null | head -n 200 || true
+  echo
+  echo "# CORS:"
+  grep -RIn --exclude-dir=node_modules --exclude-dir=.git -E "CORS|cors" apps 2>/dev/null | head -n 200 || true
+  echo
+
+  echo "## тесты"
+  find tests -maxdepth 2 -type d 2>/dev/null || true
+  echo
+
+  echo "## scripts"
+  find scripts -maxdepth 2 -type f 2>/dev/null || true
+  echo
+
+  echo "## важные файлы (первые 120 строк)"
+  for f in AGENTS.md CHANGELOG.md CONTRIBUTING.md ROADMAP.md Dockerfile; do
+    if [ -f "$f" ]; then
+      echo "--- $f ---"
+      sed -n '1,120p' "$f"
+      echo
+    fi
+  done
+} > "$out" 2>&1
+
+echo "Снимок записан в $out"

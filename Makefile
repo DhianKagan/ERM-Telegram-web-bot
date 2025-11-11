@@ -63,3 +63,9 @@ lpt:
 	CI=true pnpm test:e2e || (echo "❌ e2e tests failed" && exit 1)
 	@mkdir -p codex/reports && echo "# ✅ LPT passed – all checks OK." > codex/reports/lpt-summary.md
 	@echo "✅ Local Production Test passed."
+
+
+.PHONY: lpt-fix
+lpt-fix:
+	pnpm format || (echo "❌ format failed" && exit 1)
+	$(MAKE) lpt

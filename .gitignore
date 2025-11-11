@@ -5,13 +5,11 @@ bot/public/*
 !bot/public/admin-placeholder.html
 !bot/public/uploads/
 !bot/public/uploads/.gitkeep
-
 # переменные окружения
 .env
 .env.*
 !Railway/.env
 Railway/config/pipeline.env
-
 # логи
 npm-debug.log*
 yarn-debug.log*
@@ -24,13 +22,10 @@ Railway/logs/**
 Railway/analysis/**
 !Railway/analysis/
 !Railway/analysis/.gitkeep
-
 # Docker
 *.tar
-
 # отчёты покрытия
 coverage/
-
 # другие
 .env.local
 .env.test
@@ -42,3 +37,5 @@ apps/web/public/hero/*
 !apps/web/public/hero/.gitkeep
 apps/web/public/fonts/*.ttf
 repo_snapshot-*.txt
+.pnpm-store/
+pnpm-debug.log

@@ -45,3 +45,4 @@ repo_snapshot-*.txt
 
 # patch backups
 *.bak-*
+*.bak-*

@@ -42,3 +42,6 @@ apps/web/public/hero/*
 !apps/web/public/hero/.gitkeep
 apps/web/public/fonts/*.ttf
 repo_snapshot-*.txt
+
+# patch backups
+*.bak-*

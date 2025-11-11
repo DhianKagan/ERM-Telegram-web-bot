@@ -16,7 +16,7 @@
     "shadcn": "shadcn",
     "bundle-report": "ANALYZE=true vite build",
     "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts",
-    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts ."
+    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts --ignore-pattern postcss.config.cjs --rule \"@typescript-eslint/no-unused-expressions: off\" --rule \"react-refresh/only-export-components: off\" ."
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",

@@ -59,7 +59,7 @@ lpt:
 	# ensure deps installed for all workspaces
 	pnpm install --frozen-lockfile || pnpm install
 	@echo "Running LPT..."
-	pnpm codex:check || (echo "❌ codex:check failed" && exit 1)
+	pnpm format:check && pnpm -r run lint:lpt && pnpm typecheck && pnpm audit
 	CI=true pnpm test:api || (echo "❌ unit tests failed" && exit 1)
 	CI=true pnpm build --filter shared --filter api --filter web --mode ci || (echo "❌ build failed" && exit 1)
 	CI=true pnpm test:e2e || (echo "❌ e2e tests failed" && exit 1)

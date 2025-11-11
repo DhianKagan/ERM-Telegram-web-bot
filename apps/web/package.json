@@ -15,7 +15,8 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "shadcn": "shadcn",
     "bundle-report": "ANALYZE=true vite build",
-    "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts"
+    "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts",
+    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts ."
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",

@@ -15,7 +15,8 @@
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd apps/api --project tsconfig.json --files tests/requestWithUser.test-d.ts --files src/types/request.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
-    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.config.ts src"
+    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.config.ts src",
+    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts src"
   },
   "author": "",
   "license": "ISC",

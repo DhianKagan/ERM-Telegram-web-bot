@@ -56,6 +56,8 @@ ci-local: fetch install prebuild shared build-rest compile copy-static docker-bu
 
 
 lpt:
+	# ensure deps installed for all workspaces
+	pnpm install --frozen-lockfile || pnpm install
 	@echo "Running LPT..."
 	pnpm codex:check || (echo "❌ codex:check failed" && exit 1)
 	CI=true pnpm test:api || (echo "❌ unit tests failed" && exit 1)

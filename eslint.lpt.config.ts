@@ -9,9 +9,20 @@ import globals from 'globals';
 
 export default [
   {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: { ...globals.node },
+    },
+    rules: {
+      'no-undef': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     // Перенос игноров из .eslintignore + служебные/генерируемые файлы
     ignores: [
-  "patch_cjs/**",
+      "patch_cjs/**",
   "pnpm-lock.yaml",
   "package.json",
   "eslint.lpt.config.ts",
@@ -20,8 +31,9 @@ export default [
   "src/routes/tasks.ts",
   "src/services/optimizer.ts",
   "src/services/wgLogEngine.ts",
-  "src/tasks/uploadFinalizer.ts"
-]
+  "src/tasks/uploadFinalizer.ts",
+      'apps/web/postcss.config.cjs'
+    ]
   },
 
   // Базовые рекомендации JS
@@ -42,6 +54,8 @@ export default [
       }
     },
     rules: {
+      'prefer-const': 'off',
+      'react-refresh/only-export-components': 'off',
       // Послабления под LPT (локальная проверка, не прод-качество)
       'no-undef': 'off',
       'no-redeclare': 'off',

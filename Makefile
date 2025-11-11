@@ -5,11 +5,11 @@ SHELL := /bin/bash
 export DOCKER_BUILDKIT := 1
 export BUILDKIT_PROGRESS := plain
 
-.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local
+.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local lpt
 
 # ---- Utility ----
 clean:
-	git clean -xfd -e .env -e '.env.*' || true
+	# (ci-safe patch) removed destructive clean
 	pnpm store prune || true
 
 fetch:
@@ -51,5 +51,15 @@ docker-image:
 	docker build --pull --no-cache -t local/agromarket:dev .
 
 # ---- One-shot local CI reproduction ----
-ci-local: clean fetch install prebuild shared build-rest compile copy-static docker-build
+ci-local: fetch install prebuild shared build-rest compile copy-static docker-build
 	@echo "✅ Локальный прогон CI завершён успешно"
+
+
+lpt:
+	@echo "Running LPT..."
+	pnpm codex:check || (echo "❌ codex:check failed" && exit 1)
+	CI=true pnpm test:api || (echo "❌ unit tests failed" && exit 1)
+	CI=true pnpm build --filter shared --filter api --filter web --mode ci || (echo "❌ build failed" && exit 1)
+	CI=true pnpm test:e2e || (echo "❌ e2e tests failed" && exit 1)
+	@mkdir -p codex/reports && echo "# ✅ LPT passed – all checks OK." > codex/reports/lpt-summary.md
+	@echo "✅ Local Production Test passed."

@@ -19,7 +19,8 @@
     "approve-builds": "pnpm approve-builds",
     "rebuild": "pnpm rebuild",
     "clean": "pnpm store prune && pnpm -r exec rimraf node_modules dist",
-    "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static mongodb-memory-server && pnpm rebuild"
+    "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static mongodb-memory-server && pnpm rebuild",
+    "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm audit"
   },
   "devDependencies": {
     "@tailwindcss/node": "^4.1.12",

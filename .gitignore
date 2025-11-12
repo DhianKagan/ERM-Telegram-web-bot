@@ -39,3 +39,4 @@ apps/web/public/fonts/*.ttf
 repo_snapshot-*.txt
 .pnpm-store/
 pnpm-debug.log
+make-lpt.log

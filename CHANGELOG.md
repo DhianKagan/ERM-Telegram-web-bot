@@ -624,3 +624,6 @@
 - Столбцы «Старт» и «Финиш» показывают названия локаций со ссылками Google.
 - Выход из приложения очищает кеш браузера и закрывает мини‑приложение.
 - Устранена ошибка `ERR_PACKAGE_PATH_NOT_EXPORTED` для пакета zod.
+- ### 2025-11-08 — Обновления инструкций
+- AGENTS.md: добавлен блок "Assistant runtime (для чат-агента)" и инструкция для парсинга.
+- .openai/assistant_instructions.json: добавлено поле `updated_at`, флаг `assistant_should_parse_agents_md` и ссылка `changelog`.

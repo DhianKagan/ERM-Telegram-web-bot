@@ -1,7 +1,6 @@
 // Назначение файла: объявления интерфейсов Telegram WebApp
 // Основные модули: Telegram.WebApp
 
- 
 interface Telegram {
   WebApp?: Telegram.WebApp;
 }
@@ -15,7 +14,6 @@ declare namespace Telegram {
     translate?(key: string): string;
   }
 }
- 
 
 declare global {
   interface Window {

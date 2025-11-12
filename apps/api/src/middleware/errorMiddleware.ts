@@ -19,7 +19,7 @@ export default function errorMiddleware(
   err: unknown,
   req: RequestWithUser,
   res: Response,
-  _next: NextFunction,  
+  _next: NextFunction,
 ): void {
   const error = err as {
     [key: string]: unknown;

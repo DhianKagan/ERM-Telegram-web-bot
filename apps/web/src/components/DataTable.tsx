@@ -1,6 +1,6 @@
 // Назначение файла: универсальная таблица на React Table с виртуализацией строк
 // Основные модули: React, @tanstack/react-table, TableToolbar
- 
+
 import React from 'react';
 import {
   ColumnDef,

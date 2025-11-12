@@ -550,7 +550,7 @@ const buildCompletionNote = (
 };
 
 // Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
- 
+
 export function DeadlineCountdownBadge({
   startValue,
   dueValue,
@@ -762,7 +762,6 @@ type ActualTimeCellProps = {
   entityKind: EntityKind;
 };
 
- 
 function ActualTimeCell({
   progressStartValue,
   plannedStartValue,

@@ -1151,7 +1151,6 @@ describe('LogisticsPage', () => {
       if (hiddenDescriptor) {
         Object.defineProperty(document, 'hidden', hiddenDescriptor);
       } else {
-         
         delete (document as Partial<Document>).hidden;
       }
     }

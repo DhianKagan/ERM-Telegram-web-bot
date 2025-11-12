@@ -108,9 +108,7 @@
       "findings": [
         {
           "version": "6.21.0",
-          "paths": [
-            "apps__api>undici"
-          ]
+          "paths": ["apps__api>undici"]
         }
       ],
       "found_by": null,
@@ -123,9 +121,7 @@
       "reported_by": null,
       "title": "Use of Insufficiently Random Values in undici",
       "metadata": null,
-      "cves": [
-        "CVE-2025-22150"
-      ],
+      "cves": ["CVE-2025-22150"],
       "access": "public",
       "severity": "moderate",
       "module_name": "undici",
@@ -138,18 +134,14 @@
         "score": 6.8,
         "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N"
       },
-      "cwe": [
-        "CWE-330"
-      ],
+      "cwe": ["CWE-330"],
       "url": "https://github.com/advisories/GHSA-c76h-2ccp-4975"
     },
     "1104500": {
       "findings": [
         {
           "version": "6.21.0",
-          "paths": [
-            "apps__api>undici"
-          ]
+          "paths": ["apps__api>undici"]
         }
       ],
       "found_by": null,
@@ -162,9 +154,7 @@
       "reported_by": null,
       "title": "undici Denial of Service attack via bad certificate data",
       "metadata": null,
-      "cves": [
-        "CVE-2025-47279"
-      ],
+      "cves": ["CVE-2025-47279"],
       "access": "public",
       "severity": "low",
       "module_name": "undici",
@@ -177,9 +167,7 @@
         "score": 3.1,
         "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
       },
-      "cwe": [
-        "CWE-401"
-      ],
+      "cwe": ["CWE-401"],
       "url": "https://github.com/advisories/GHSA-cxrh-j4jr-qwg3"
     },
     "1107251": {
@@ -201,9 +189,7 @@
       "reported_by": null,
       "title": "CKEditor 5 cross-site scripting (XSS) vulnerability in the clipboard package",
       "metadata": null,
-      "cves": [
-        "CVE-2025-58064"
-      ],
+      "cves": ["CVE-2025-58064"],
       "access": "public",
       "severity": "low",
       "module_name": "ckeditor5",
@@ -216,24 +202,18 @@
         "score": 0,
         "vectorString": null
       },
-      "cwe": [
-        "CWE-79"
-      ],
+      "cwe": ["CWE-79"],
       "url": "https://github.com/advisories/GHSA-x9gp-vjh6-3wv6"
     },
     "1107326": {
       "findings": [
         {
           "version": "7.1.3",
-          "paths": [
-            ".>vitest>vite"
-          ]
+          "paths": [".>vitest>vite"]
         },
         {
           "version": "7.1.3",
-          "paths": [
-            "apps__web>vite"
-          ]
+          "paths": ["apps__web>vite"]
         }
       ],
       "found_by": null,
@@ -246,9 +226,7 @@
       "reported_by": null,
       "title": "Vite middleware may serve files starting with the same name with the public directory",
       "metadata": null,
-      "cves": [
-        "CVE-2025-58751"
-      ],
+      "cves": ["CVE-2025-58751"],
       "access": "public",
       "severity": "low",
       "module_name": "vite",
@@ -261,26 +239,18 @@
         "score": 0,
         "vectorString": null
       },
-      "cwe": [
-        "CWE-22",
-        "CWE-200",
-        "CWE-284"
-      ],
+      "cwe": ["CWE-22", "CWE-200", "CWE-284"],
       "url": "https://github.com/advisories/GHSA-g4jq-h2w9-997c"
     },
     "1107330": {
       "findings": [
         {
           "version": "7.1.3",
-          "paths": [
-            ".>vitest>vite"
-          ]
+          "paths": [".>vitest>vite"]
         },
         {
           "version": "7.1.3",
-          "paths": [
-            "apps__web>vite"
-          ]
+          "paths": ["apps__web>vite"]
         }
       ],
       "found_by": null,
@@ -293,9 +263,7 @@
       "reported_by": null,
       "title": "Vite's `server.fs` settings were not applied to HTML files",
       "metadata": null,
-      "cves": [
-        "CVE-2025-58752"
-      ],
+      "cves": ["CVE-2025-58752"],
       "access": "public",
       "severity": "low",
       "module_name": "vite",
@@ -308,26 +276,18 @@
         "score": 0,
         "vectorString": null
       },
-      "cwe": [
-        "CWE-23",
-        "CWE-200",
-        "CWE-284"
-      ],
+      "cwe": ["CWE-23", "CWE-200", "CWE-284"],
       "url": "https://github.com/advisories/GHSA-jqfw-vq24-v9c3"
     },
     "1109137": {
       "findings": [
         {
           "version": "7.1.3",
-          "paths": [
-            ".>vitest>vite"
-          ]
+          "paths": [".>vitest>vite"]
         },
         {
           "version": "7.1.3",
-          "paths": [
-            "apps__web>vite"
-          ]
+          "paths": ["apps__web>vite"]
         }
       ],
       "found_by": null,
@@ -340,9 +300,7 @@
       "reported_by": null,
       "title": "vite allows server.fs.deny bypass via backslash on Windows",
       "metadata": null,
-      "cves": [
-        "CVE-2025-62522"
-      ],
+      "cves": ["CVE-2025-62522"],
       "access": "public",
       "severity": "moderate",
       "module_name": "vite",
@@ -355,18 +313,14 @@
         "score": 0,
         "vectorString": null
       },
-      "cwe": [
-        "CWE-22"
-      ],
+      "cwe": ["CWE-22"],
       "url": "https://github.com/advisories/GHSA-93m4-6634-74q7"
     },
     "1109241": {
       "findings": [
         {
           "version": "13.15.15",
-          "paths": [
-            "apps__web>validator"
-          ]
+          "paths": ["apps__web>validator"]
         }
       ],
       "found_by": null,
@@ -379,9 +333,7 @@
       "reported_by": null,
       "title": "validator.js has a URL validation bypass vulnerability in its isURL function",
       "metadata": null,
-      "cves": [
-        "CVE-2025-56200"
-      ],
+      "cves": ["CVE-2025-56200"],
       "access": "public",
       "severity": "moderate",
       "module_name": "validator",
@@ -394,9 +346,7 @@
         "score": 6.1,
         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
       },
-      "cwe": [
-        "CWE-79"
-      ],
+      "cwe": ["CWE-79"],
       "url": "https://github.com/advisories/GHSA-9965-vmph-33xx"
     }
   },

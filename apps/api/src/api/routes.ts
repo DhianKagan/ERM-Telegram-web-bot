@@ -139,18 +139,27 @@ export default async function registerRoutes(
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+
   const __corsOptions = {
-    origin: function (origin, cb) {
-      if (!origin) return cb(null, true); // allow tools/curl; tighten if needed
-      return __corsOrigins.includes(origin)
-        ? cb(null, true)
-        : cb(new Error('CORS: origin not allowed'), false);
+    origin: function (
+      origin: string | undefined,
+      cb: (err: Error | null, allow?: boolean) => void,
+    ) {
+      // allow tools/curl without Origin header (origin === undefined)
+      if (!origin) return cb(null, true); // tighten if needed
+
+      if (__corsOrigins.includes(origin)) {
+        return cb(null, true);
+      } else {
+        return cb(new Error('CORS: origin not allowed'), false);
+      }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN'],
     maxAge: 600,
   };
+
   app.use(cors(__corsOptions));
   // --- end CORS allowlist ---
   const prefix = '/api/v1';

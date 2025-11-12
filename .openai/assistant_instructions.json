@@ -29,6 +29,7 @@
   },
   "verification": {
     "chain_of_verification": true,
+    "assistant_should_parse_agents_md": true,
     "role_based_reasoning": true,
     "show_calculations_on_request": true
   },

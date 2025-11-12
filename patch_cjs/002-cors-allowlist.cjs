@@ -12,16 +12,26 @@ const fs = require('fs');
 const path = require('path');
 
 const now = new Date();
-const ts = String(now.getFullYear()) +
-  String(now.getMonth()+1).padStart(2,'0') +
-  String(now.getDate()).padStart(2,'0') +
-  String(now.getHours()).padStart(2,'0') +
-  String(now.getMinutes()).padStart(2,'0');
+const ts =
+  String(now.getFullYear()) +
+  String(now.getMonth() + 1).padStart(2, '0') +
+  String(now.getDate()).padStart(2, '0') +
+  String(now.getHours()).padStart(2, '0') +
+  String(now.getMinutes()).padStart(2, '0');
 
-const ensureDir = (p) => { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true }); };
-const read = (p) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
-const backup = (p) => { const b = p + `.bak-${ts}`; fs.copyFileSync(p, b); return b; };
-const write = (p, s) => { ensureDir(path.dirname(p)); fs.writeFileSync(p, s, 'utf8'); };
+const ensureDir = (p) => {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+};
+const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
+const backup = (p) => {
+  const b = p + `.bak-${ts}`;
+  fs.copyFileSync(p, b);
+  return b;
+};
+const write = (p, s) => {
+  ensureDir(path.dirname(p));
+  fs.writeFileSync(p, s, 'utf8');
+};
 
 const apiRoutes = 'apps/api/src/api/routes.ts';
 const envExample = 'apps/api/.env.local.example';
@@ -31,7 +41,10 @@ let report = [];
 
 (function patchCors() {
   const src = read(apiRoutes);
-  if (!src) { report.push(`[SKIP] ${apiRoutes} not found`); return; }
+  if (!src) {
+    report.push(`[SKIP] ${apiRoutes} not found`);
+    return;
+  }
 
   const before = src;
 
@@ -43,15 +56,17 @@ let report = [];
     if (importIdx !== -1) {
       const lineEnd = updated.indexOf('\n', importIdx);
       const insertPos = lineEnd === -1 ? updated.length : lineEnd + 1;
-      updated = updated.slice(0, insertPos) + `import cors from 'cors';\n` + updated.slice(insertPos);
+      updated =
+        updated.slice(0, insertPos) +
+        `import cors from 'cors';\n` +
+        updated.slice(insertPos);
     } else {
       updated = `import cors from 'cors';\n` + updated;
     }
   }
 
   // 2) build allowlist middleware block
-  const corsBlock =
-`// --- CORS allowlist (auto-injected) ---
+  const corsBlock = `// --- CORS allowlist (auto-injected) ---
 const __corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const __corsOptions = {
   origin: function (origin, cb) {
@@ -68,12 +83,19 @@ app.use(cors(__corsOptions));
 
   // 3) replace app.use(cors()) if present, else insert block once
   if (/app\.use\s*\(\s*cors\s*\(\s*\)\s*\)\s*;?/m.test(updated)) {
-    updated = updated.replace(/app\.use\s*\(\s*cors\s*\(\s*\)\s*\)\s*;?/m, corsBlock);
+    updated = updated.replace(
+      /app\.use\s*\(\s*cors\s*\(\s*\)\s*\)\s*;?/m,
+      corsBlock,
+    );
   } else if (!/CORS allowlist \(auto-injected\)/.test(updated)) {
     // heuristic: put after first occurrence of "const app" or after imports
     const appIdx = updated.search(/const\s+app\s*=\s*/);
-    const insertPos = appIdx !== -1 ? updated.indexOf('\n', appIdx) + 1 : updated.indexOf('\n') + 1;
-    updated = updated.slice(0, insertPos) + corsBlock + '\n' + updated.slice(insertPos);
+    const insertPos =
+      appIdx !== -1
+        ? updated.indexOf('\n', appIdx) + 1
+        : updated.indexOf('\n') + 1;
+    updated =
+      updated.slice(0, insertPos) + corsBlock + '\n' + updated.slice(insertPos);
   }
 
   // 4) ensure 'X-XSRF-TOKEN' in any existing cors allowedHeaders (best-effort)
@@ -81,8 +103,10 @@ app.use(cors(__corsOptions));
     /(allowedHeaders\s*:\s*\[)([^\]]*)(\])/m,
     (m, a, b, c) => {
       const has = /\bX-XSRF-TOKEN\b/.test(b);
-      return has ? m : `${a}${b ? b.trim().replace(/\s+$/, '') + ', ' : ''}'X-XSRF-TOKEN'${c}`;
-    }
+      return has
+        ? m
+        : `${a}${b ? b.trim().replace(/\s+$/, '') + ', ' : ''}'X-XSRF-TOKEN'${c}`;
+    },
   );
 
   if (updated !== before) {
@@ -90,7 +114,9 @@ app.use(cors(__corsOptions));
     write(apiRoutes, updated);
     report.push(`[OK] ${apiRoutes} patched (backup: ${b})`);
   } else {
-    report.push(`[SKIP] ${apiRoutes} unchanged (patterns not found or already applied)`);
+    report.push(
+      `[SKIP] ${apiRoutes} unchanged (patterns not found or already applied)`,
+    );
   }
 })();
 
@@ -98,12 +124,10 @@ app.use(cors(__corsOptions));
   let content = read(envExample);
   const line = 'CORS_ORIGINS=http://localhost:5173,http://localhost:3000';
   if (!content) {
-    write(envExample, [
-      '# Example env for API',
-      'JWT_SECRET=replace_me',
-      line,
-      ''
-    ].join('\n'));
+    write(
+      envExample,
+      ['# Example env for API', 'JWT_SECRET=replace_me', line, ''].join('\n'),
+    );
     report.push(`[OK] ${envExample} created`);
   } else if (!/^CORS_ORIGINS=/m.test(content)) {
     const b = backup(envExample);
@@ -127,7 +151,7 @@ app.use(cors(__corsOptions));
     '*.tsx text eol=lf',
     '*.js text eol=lf',
     '*.jsx text eol=lf',
-    '*.md text eol=lf'
+    '*.md text eol=lf',
   ].join('\n');
 
   const cur = read(gitattributes);

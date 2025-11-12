@@ -12,11 +12,19 @@ const path = require('path');
 
 const now = new Date();
 const ts = new Intl.DateTimeFormat('uk-UA', {
-  year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit'
-}).format(now).replace(/\D+/g,'').slice(0,12); // yyyymmddhhmm
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+  .format(now)
+  .replace(/\D+/g, '')
+  .slice(0, 12); // yyyymmddhhmm
 
-const ensureDir = (p) => { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true }); };
+const ensureDir = (p) => {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+};
 const writeOrBackup = (targetPath, content) => {
   ensureDir(path.dirname(targetPath));
   if (!fs.existsSync(targetPath)) {
@@ -34,7 +42,11 @@ const appendIfMissing = (targetPath, markerTitle, block) => {
   if (data.includes(markerTitle)) return false;
   const backup = `${targetPath}.bak-${ts}`;
   fs.writeFileSync(backup, data, 'utf8');
-  fs.writeFileSync(targetPath, data.trimEnd() + '\n\n' + block.trimStart() + '\n', 'utf8');
+  fs.writeFileSync(
+    targetPath,
+    data.trimEnd() + '\n\n' + block.trimStart() + '\n',
+    'utf8',
+  );
   return true;
 };
 
@@ -157,7 +169,7 @@ const SNAPSHOT_SH = [
   '  for f in AGENTS.md CHANGELOG.md CONTRIBUTING.md ROADMAP.md Dockerfile; do',
   '    if [ -f "$f" ]; then',
   '      echo "--- $f ---"',
-  "      sed -n '1,120p' \"$f\"",
+  '      sed -n \'1,120p\' "$f"',
   '      echo',
   '    fi',
   '  done',
@@ -224,9 +236,12 @@ const SNAPSHOT_PS1 = [
 
 // -------- write files --------
 const mapRes = writeOrBackup('docs/REPO_MAP.md', REPO_MAP);
-const shRes  = writeOrBackup('scripts/repo-snapshot.sh', SNAPSHOT_SH);
-try { if (process.platform !== 'win32') fs.chmodSync('scripts/repo-snapshot.sh', 0o755); } catch {}
-const psRes  = writeOrBackup('scripts/repo-snapshot.ps1', SNAPSHOT_PS1);
+const shRes = writeOrBackup('scripts/repo-snapshot.sh', SNAPSHOT_SH);
+try {
+  if (process.platform !== 'win32')
+    fs.chmodSync('scripts/repo-snapshot.sh', 0o755);
+} catch {}
+const psRes = writeOrBackup('scripts/repo-snapshot.ps1', SNAPSHOT_PS1);
 
 // Optional: link block in AGENTS.md
 const AGENTS_BLOCK_TITLE = '## Repo Map & Snapshots';
@@ -238,12 +253,18 @@ const AGENTS_BLOCK = [
   '  - PowerShell: `./scripts/repo-snapshot.ps1`',
   '- Артефакты пишутся в корень как `repo_snapshot-YYYYMMDD-HHMM.txt`.',
 ].join('\n');
-const addedToAgents = appendIfMissing('AGENTS.md', AGENTS_BLOCK_TITLE, AGENTS_BLOCK);
+const addedToAgents = appendIfMissing(
+  'AGENTS.md',
+  AGENTS_BLOCK_TITLE,
+  AGENTS_BLOCK,
+);
 
 // Report
 const lines = [];
 lines.push(`[docs/REPO_MAP.md] ${mapRes.action}`);
 lines.push(`[scripts/repo-snapshot.sh] ${shRes.action}`);
 lines.push(`[scripts/repo-snapshot.ps1] ${psRes.action}`);
-lines.push(`[AGENTS.md] ${addedToAgents ? 'appended' : 'skipped (not found or section exists)'}`);
+lines.push(
+  `[AGENTS.md] ${addedToAgents ? 'appended' : 'skipped (not found or section exists)'}`,
+);
 console.log(lines.join('\n'));

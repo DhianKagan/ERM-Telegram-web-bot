@@ -1,6 +1,6 @@
 // Контекст управления боковой панелью
-import React, { useState } from "react";
-import { SidebarContext, type SidebarState } from "./SidebarContext";
+import React, { useState } from 'react';
+import { SidebarContext, type SidebarState } from './SidebarContext';
 
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

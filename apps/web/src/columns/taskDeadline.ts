@@ -1,11 +1,11 @@
 // Назначение файла: функции расчёта и форматирования сроков задач.
 // Основные модули: стандартный объект Date.
 
-export type DeadlineLevel = "safe" | "warn" | "danger";
+export type DeadlineLevel = 'safe' | 'warn' | 'danger';
 
-type PendingIssue = "missing-start" | "invalid-range";
+type PendingIssue = 'missing-start' | 'invalid-range';
 
-type InvalidReason = "missing" | "invalid";
+type InvalidReason = 'missing' | 'invalid';
 
 export interface DeadlineStateBase {
   dueDate: Date | null;
@@ -14,25 +14,25 @@ export interface DeadlineStateBase {
 }
 
 export interface CountdownState extends DeadlineStateBase {
-  kind: "countdown";
+  kind: 'countdown';
   remainingMs: number;
   ratio: number;
   level: DeadlineLevel;
 }
 
 export interface PendingState extends DeadlineStateBase {
-  kind: "pending";
+  kind: 'pending';
   remainingMs: number;
   issue: PendingIssue;
 }
 
 export interface OverdueState extends DeadlineStateBase {
-  kind: "overdue";
+  kind: 'overdue';
   remainingMs: number;
 }
 
 export interface InvalidState extends DeadlineStateBase {
-  kind: "invalid";
+  kind: 'invalid';
   reason: InvalidReason;
 }
 
@@ -77,8 +77,8 @@ export const getDeadlineState = (
 
   if (!dueDate) {
     return {
-      kind: "invalid",
-      reason: dueValue ? "invalid" : "missing",
+      kind: 'invalid',
+      reason: dueValue ? 'invalid' : 'missing',
       dueDate: null,
       startDate,
       remainingMs: null,
@@ -89,7 +89,7 @@ export const getDeadlineState = (
 
   if (remainingMs < 0) {
     return {
-      kind: "overdue",
+      kind: 'overdue',
       dueDate,
       startDate,
       remainingMs,
@@ -98,8 +98,8 @@ export const getDeadlineState = (
 
   if (!startDate) {
     return {
-      kind: "pending",
-      issue: "missing-start",
+      kind: 'pending',
+      issue: 'missing-start',
       dueDate,
       startDate: null,
       remainingMs,
@@ -108,8 +108,8 @@ export const getDeadlineState = (
 
   if (startDate.getTime() >= dueDate.getTime()) {
     return {
-      kind: "pending",
-      issue: "invalid-range",
+      kind: 'pending',
+      issue: 'invalid-range',
       dueDate,
       startDate,
       remainingMs,
@@ -120,15 +120,15 @@ export const getDeadlineState = (
   const ratio = clampRatio(remainingMs / totalMs);
   let level: DeadlineLevel;
   if (ratio > 0.6) {
-    level = "safe";
+    level = 'safe';
   } else if (ratio >= 0.2) {
-    level = "warn";
+    level = 'warn';
   } else {
-    level = "danger";
+    level = 'danger';
   }
 
   return {
-    kind: "countdown",
+    kind: 'countdown',
     ratio,
     level,
     dueDate,
@@ -139,7 +139,7 @@ export const getDeadlineState = (
 
 export const formatDurationShort = (value: number) => {
   if (!Number.isFinite(value) || value === 0) {
-    return "0м";
+    return '0м';
   }
   const abs = Math.abs(value);
   const parts: string[] = [];
@@ -153,18 +153,17 @@ export const formatDurationShort = (value: number) => {
     }
   };
 
-  pushPart(DAY, "д");
+  pushPart(DAY, 'д');
   if (parts.length < 2) {
-    pushPart(HOUR, "ч");
+    pushPart(HOUR, 'ч');
   }
   if (parts.length < 2) {
-    pushPart(MINUTE, "м");
+    pushPart(MINUTE, 'м');
   }
 
   if (parts.length === 0) {
-    return "<1м";
+    return '<1м';
   }
 
-  return parts.slice(0, 2).join(" ");
+  return parts.slice(0, 2).join(' ');
 };
-

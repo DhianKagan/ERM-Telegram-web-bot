@@ -1,6 +1,6 @@
 // Назначение: запросы к API хранения файлов
 // Основные модули: authFetch
-import authFetch from "../utils/authFetch";
+import authFetch from '../utils/authFetch';
 
 export interface StoredFile {
   id: string;
@@ -37,9 +37,9 @@ export interface StorageDiagnosticsReport {
 
 export const fetchFiles = (params?: { userId?: number; type?: string }) => {
   const qs = new URLSearchParams();
-  if (params?.userId) qs.set("userId", String(params.userId));
-  if (params?.type) qs.set("type", params.type);
-  const url = `/api/v1/storage${qs.toString() ? `?${qs}` : ""}`;
+  if (params?.userId) qs.set('userId', String(params.userId));
+  if (params?.type) qs.set('type', params.type);
+  const url = `/api/v1/storage${qs.toString() ? `?${qs}` : ''}`;
   return authFetch(url).then((r) => (r.ok ? r.json() : [])) as Promise<
     StoredFile[]
   >;
@@ -52,16 +52,15 @@ export const fetchFile = (id: string) =>
 
 export const removeFile = (id: string) =>
   authFetch(`/api/v1/storage/${encodeURIComponent(id)}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
 
 export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
   const response = await authFetch(`/api/v1/storage/diagnostics`);
   if (!response.ok) {
-    throw new Error("diagnostics");
+    throw new Error('diagnostics');
   }
   return (await response.json()) as StorageDiagnosticsReport;
 };
 
 export default { fetchFiles, fetchFile, removeFile, runDiagnostics };
-

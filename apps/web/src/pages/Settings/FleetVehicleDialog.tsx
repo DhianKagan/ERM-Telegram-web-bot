@@ -1,15 +1,15 @@
 // Назначение: модальное окно создания и редактирования транспорта
 // Основные модули: React, ConfirmDialog, services/fleets
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
-import ConfirmDialog from "../../components/ConfirmDialog";
-import type { FleetVehicleDto } from "shared";
-import type { FleetVehiclePayload } from "../../services/fleets";
+import { Button } from '@/components/ui/button';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import type { FleetVehicleDto } from 'shared';
+import type { FleetVehiclePayload } from '../../services/fleets';
 
 interface FleetVehicleDialogProps {
   open: boolean;
-  mode: "create" | "update";
+  mode: 'create' | 'update';
   vehicle: FleetVehicleDto | null;
   saving: boolean;
   onSubmit: (payload: FleetVehiclePayload, id?: string) => Promise<void>;
@@ -23,8 +23,8 @@ interface FormState {
   odometerInitial: string;
   odometerCurrent: string;
   mileageTotal: string;
-  transportType: "Легковой" | "Грузовой";
-  fuelType: "Бензин" | "Дизель" | "Газ";
+  transportType: 'Легковой' | 'Грузовой';
+  fuelType: 'Бензин' | 'Дизель' | 'Газ';
   fuelRefilled: string;
   fuelAverageConsumption: string;
   fuelSpentTotal: string;
@@ -32,17 +32,17 @@ interface FormState {
 }
 
 const emptyForm: FormState = {
-  name: "",
-  registrationNumber: "",
-  odometerInitial: "0",
-  odometerCurrent: "0",
-  mileageTotal: "0",
-  transportType: "Легковой",
-  fuelType: "Бензин",
-  fuelRefilled: "0",
-  fuelAverageConsumption: "0",
-  fuelSpentTotal: "0",
-  currentTasks: "",
+  name: '',
+  registrationNumber: '',
+  odometerInitial: '0',
+  odometerCurrent: '0',
+  mileageTotal: '0',
+  transportType: 'Легковой',
+  fuelType: 'Бензин',
+  fuelRefilled: '0',
+  fuelAverageConsumption: '0',
+  fuelSpentTotal: '0',
+  currentTasks: '',
 };
 
 const parseTasks = (value: string): string[] =>
@@ -81,14 +81,14 @@ export default function FleetVehicleDialog({
         fuelRefilled: String(vehicle.fuelRefilled),
         fuelAverageConsumption: String(vehicle.fuelAverageConsumption),
         fuelSpentTotal: String(vehicle.fuelSpentTotal),
-        currentTasks: currentTasks.join("\n"),
+        currentTasks: currentTasks.join('\n'),
       });
       setError(null);
       setConfirmSave(false);
       setConfirmDelete(false);
       return;
     }
-    if (open && mode === "create") {
+    if (open && mode === 'create') {
       setForm(emptyForm);
       setError(null);
       setConfirmSave(false);
@@ -102,20 +102,20 @@ export default function FleetVehicleDialog({
     }
   }, [open, mode, vehicle]);
 
-  const isUpdate = mode === "update" && vehicle;
+  const isUpdate = mode === 'update' && vehicle;
 
   const payload = useMemo(() => {
     const base: FleetVehiclePayload = {
       name: form.name.trim(),
       registrationNumber: form.registrationNumber.trim().toUpperCase(),
-      odometerInitial: Number(form.odometerInitial || "0"),
-      odometerCurrent: Number(form.odometerCurrent || "0"),
-      mileageTotal: Number(form.mileageTotal || "0"),
+      odometerInitial: Number(form.odometerInitial || '0'),
+      odometerCurrent: Number(form.odometerCurrent || '0'),
+      mileageTotal: Number(form.mileageTotal || '0'),
       transportType: form.transportType,
       fuelType: form.fuelType,
-      fuelRefilled: Number(form.fuelRefilled || "0"),
-      fuelAverageConsumption: Number(form.fuelAverageConsumption || "0"),
-      fuelSpentTotal: Number(form.fuelSpentTotal || "0"),
+      fuelRefilled: Number(form.fuelRefilled || '0'),
+      fuelAverageConsumption: Number(form.fuelAverageConsumption || '0'),
+      fuelSpentTotal: Number(form.fuelSpentTotal || '0'),
       currentTasks: parseTasks(form.currentTasks),
     };
     return base;
@@ -124,11 +124,13 @@ export default function FleetVehicleDialog({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.name.trim()) {
-      setError("Название обязательно");
+      setError('Название обязательно');
       return;
     }
-    if (!/^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u.test(payload.registrationNumber)) {
-      setError("Регистрационный номер должен быть в формате XX 0000 XX");
+    if (
+      !/^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u.test(payload.registrationNumber)
+    ) {
+      setError('Регистрационный номер должен быть в формате XX 0000 XX');
       return;
     }
     setError(null);
@@ -144,7 +146,7 @@ export default function FleetVehicleDialog({
       const message =
         submitError instanceof Error
           ? submitError.message
-          : "Не удалось сохранить транспорт";
+          : 'Не удалось сохранить транспорт';
       setError(message);
       setConfirmSave(false);
     }
@@ -160,7 +162,7 @@ export default function FleetVehicleDialog({
       const message =
         deleteError instanceof Error
           ? deleteError.message
-          : "Не удалось удалить транспорт";
+          : 'Не удалось удалить транспорт';
       setError(message);
       setConfirmDelete(false);
     }
@@ -176,7 +178,9 @@ export default function FleetVehicleDialog({
             name="name"
             className="h-10 w-full rounded border px-3"
             value={form.name}
-            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, name: event.target.value }))
+            }
             disabled={saving}
             required
           />
@@ -189,7 +193,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3 uppercase"
             value={form.registrationNumber}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, registrationNumber: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                registrationNumber: event.target.value,
+              }))
             }
             disabled={saving}
             required
@@ -204,7 +211,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.transportType}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, transportType: event.target.value as FormState["transportType"] }))
+              setForm((prev) => ({
+                ...prev,
+                transportType: event.target.value as FormState['transportType'],
+              }))
             }
             disabled={saving}
             required
@@ -223,7 +233,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.odometerInitial}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, odometerInitial: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                odometerInitial: event.target.value,
+              }))
             }
             disabled={saving}
             required
@@ -239,7 +252,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.odometerCurrent}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, odometerCurrent: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                odometerCurrent: event.target.value,
+              }))
             }
             disabled={saving}
             required
@@ -269,7 +285,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.fuelType}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, fuelType: event.target.value as FormState["fuelType"] }))
+              setForm((prev) => ({
+                ...prev,
+                fuelType: event.target.value as FormState['fuelType'],
+              }))
             }
             disabled={saving}
           >
@@ -305,14 +324,19 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.fuelAverageConsumption}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, fuelAverageConsumption: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                fuelAverageConsumption: event.target.value,
+              }))
             }
             disabled={saving}
             required
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Затрачено топлива всего, л</span>
+          <span className="text-sm font-medium">
+            Затрачено топлива всего, л
+          </span>
           <input
             type="number"
             min="0"
@@ -321,7 +345,10 @@ export default function FleetVehicleDialog({
             className="h-10 w-full rounded border px-3"
             value={form.fuelSpentTotal}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, fuelSpentTotal: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                fuelSpentTotal: event.target.value,
+              }))
             }
             disabled={saving}
             required
@@ -329,7 +356,9 @@ export default function FleetVehicleDialog({
         </label>
       </div>
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Текущие задачи (ID через запятую или перенос строки)</span>
+        <span className="text-sm font-medium">
+          Текущие задачи (ID через запятую или перенос строки)
+        </span>
         <textarea
           id="fleet-vehicle-current-tasks"
           name="currentTasks"

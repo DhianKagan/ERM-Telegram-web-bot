@@ -1,11 +1,7 @@
 // Назначение: синхронизирует срок выполнения с датой начала и отслеживает смещение
 // Основные модули: React, react-hook-form
-import React from "react";
-import type {
-  Path,
-  PathValue,
-  UseFormSetValue,
-} from "react-hook-form";
+import React from 'react';
+import type { Path, PathValue, UseFormSetValue } from 'react-hook-form';
 
 interface FormValuesWithDueDate {
   dueDate?: string;
@@ -47,7 +43,7 @@ const useDueDateOffset = <TFormValues extends FormValuesWithDueDate>(
     const nextDue = new Date(startTime + dueOffset);
     if (Number.isNaN(nextDue.getTime())) return;
     setValue(
-      "dueDate" as Path<TFormValues>,
+      'dueDate' as Path<TFormValues>,
       formatInputDate(nextDue) as PathValue<TFormValues, Path<TFormValues>>,
     );
   }, [startDateValue, dueOffset, setValue, formatInputDate, autoSync]);
@@ -56,7 +52,7 @@ const useDueDateOffset = <TFormValues extends FormValuesWithDueDate>(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const value = event.target.value;
       setValue(
-        "dueDate" as Path<TFormValues>,
+        'dueDate' as Path<TFormValues>,
         value as PathValue<TFormValues, Path<TFormValues>>,
       );
       if (!startDateValue) return;

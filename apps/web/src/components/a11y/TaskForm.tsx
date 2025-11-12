@@ -1,9 +1,9 @@
 // Форма задачи с адаптивной сеткой, генерируемая по схеме
 // Модули: React, shared
-import React from "react";
-import { taskFormSchema as formSchema } from "shared";
-import type { Field, FormSchema } from "../../../api/src/form";
-import { FormField } from "./FormField";
+import React from 'react';
+import { taskFormSchema as formSchema } from 'shared';
+import type { Field, FormSchema } from '../../../api/src/form';
+import { FormField } from './FormField';
 
 const formSchemaTyped = formSchema as FormSchema;
 
@@ -29,7 +29,7 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
             <FormField
               key={field.name}
               label={field.label}
-              className={field.type === "textarea" ? "md:col-span-2" : ""}
+              className={field.type === 'textarea' ? 'md:col-span-2' : ''}
             >
               {renderField(field)}
             </FormField>
@@ -42,7 +42,7 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
             <FormField
               key={field.name}
               label={field.label}
-              className={field.type === "textarea" ? "md:col-span-2" : ""}
+              className={field.type === 'textarea' ? 'md:col-span-2' : ''}
             >
               {renderField(field)}
             </FormField>
@@ -56,7 +56,7 @@ export function TaskForm({ customFields = [] }: TaskFormProps) {
 const renderField = (field: Field) => {
   const fieldId = `task-form-${field.name}`;
   switch (field.type) {
-    case "text":
+    case 'text':
       return (
         <input
           id={fieldId}
@@ -65,7 +65,7 @@ const renderField = (field: Field) => {
           required={field.required}
         />
       );
-    case "datetime":
+    case 'datetime':
       return (
         <input
           type="datetime-local"
@@ -75,7 +75,7 @@ const renderField = (field: Field) => {
           required={field.required}
         />
       );
-    case "segment":
+    case 'segment':
       return (
         <select
           className="input select"
@@ -90,7 +90,7 @@ const renderField = (field: Field) => {
           ))}
         </select>
       );
-    case "textarea":
+    case 'textarea':
       return (
         <textarea
           className="input min-h-[120px]"

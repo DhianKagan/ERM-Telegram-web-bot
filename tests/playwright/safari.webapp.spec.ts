@@ -61,8 +61,14 @@ test.afterAll(() => {
   server.close();
 });
 
-test('Safari определяет Telegram WebApp по платформе macos', async ({ page, browserName }) => {
-  test.skip(browserName !== 'webkit', 'Тест запускается только в Safari (WebKit).');
+test('Safari определяет Telegram WebApp по платформе macos', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'webkit',
+    'Тест запускается только в Safari (WebKit).',
+  );
 
   await page.addInitScript(() => {
     window.Telegram = {
@@ -76,6 +82,8 @@ test('Safari определяет Telegram WebApp по платформе macos'
   await page.goto(baseURL);
   await expect(page.locator('#mode')).toHaveText('telegram:macos');
 
-  const alertMessage = await page.evaluate(() => (window as any).__ALERT_MESSAGE__ ?? null);
+  const alertMessage = await page.evaluate(
+    () => (window as any).__ALERT_MESSAGE__ ?? null,
+  );
   expect(alertMessage).toBeNull();
 });

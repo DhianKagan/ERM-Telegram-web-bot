@@ -14,7 +14,10 @@ const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/utils/rateLimiter', () => () => (_req, _res, next) => next());
 jest.mock('../src/middleware/auth', () => () => (_req, _res, next) => next());
-jest.mock('../src/middleware/requireRole', () => () => (_req, _res, next) => next());
+jest.mock(
+  '../src/middleware/requireRole',
+  () => () => (_req, _res, next) => next(),
+);
 
 jest.mock('../src/db/repos/collectionRepo', () => ({
   create: jest.fn(),

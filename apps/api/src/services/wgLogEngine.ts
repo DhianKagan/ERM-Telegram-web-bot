@@ -1,7 +1,11 @@
 // Назначение: управление структурированным логированием и выдачей логов
 // Основные модули: pino, path, utils/trace
 import path from 'node:path';
-import pino, { type Logger, type LoggerOptions, type TransportTargetOptions } from 'pino';
+import pino, {
+  type Logger,
+  type LoggerOptions,
+  type TransportTargetOptions,
+} from 'pino';
 
 import { getTrace } from '../utils/trace';
 
@@ -29,7 +33,13 @@ export interface BufferedLogEntry {
 type AllowedLevels = 'debug' | 'info' | 'warn' | 'error' | 'log';
 type LogLevel = AllowedLevels;
 
-const allowedLevels = new Set<AllowedLevels>(['debug', 'info', 'warn', 'error', 'log']);
+const allowedLevels = new Set<AllowedLevels>([
+  'debug',
+  'info',
+  'warn',
+  'error',
+  'log',
+]);
 const levelToken = Symbol('wgLogLevel');
 const defaultBufferSize = Number(process.env.LOG_BUFFER_SIZE ?? 2000);
 
@@ -43,7 +53,8 @@ class LogRingBuffer {
   private readonly entries: InternalLogEntry[] = [];
 
   constructor(capacity: number) {
-    this.capacity = Number.isFinite(capacity) && capacity > 0 ? Math.floor(capacity) : 2000;
+    this.capacity =
+      Number.isFinite(capacity) && capacity > 0 ? Math.floor(capacity) : 2000;
   }
 
   add(entry: BufferedLogEntry): void {
@@ -56,7 +67,8 @@ class LogRingBuffer {
 
   list(params: ListLogParams = {}): BufferedLogEntry[] {
     const normalizedLevel =
-      typeof params.level === 'string' && allowedLevels.has(params.level as AllowedLevels)
+      typeof params.level === 'string' &&
+      allowedLevels.has(params.level as AllowedLevels)
         ? (params.level as AllowedLevels)
         : undefined;
     const normalizedTrace =
@@ -70,7 +82,11 @@ class LogRingBuffer {
     const fromTime = parseDate(params.from);
     const toTime = parseDate(params.to);
     const limit = clamp(Number(params.limit) || 100, 1, this.capacity);
-    const page = clamp(Number(params.page) || 1, 1, Math.ceil(this.entries.length / limit) || 1);
+    const page = clamp(
+      Number(params.page) || 1,
+      1,
+      Math.ceil(this.entries.length / limit) || 1,
+    );
 
     const filtered = this.entries.filter((entry) => {
       if (normalizedLevel && entry.level !== normalizedLevel) {
@@ -127,7 +143,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.floor(value);
 }
 
-function sortEntries(entries: InternalLogEntry[], sort?: string): InternalLogEntry[] {
+function sortEntries(
+  entries: InternalLogEntry[],
+  sort?: string,
+): InternalLogEntry[] {
   const list = [...entries];
   switch (sort) {
     case 'date_asc':
@@ -155,7 +174,11 @@ function sanitizeValue(
   seen: WeakSet<Record<string, unknown>> = new WeakSet(),
 ): unknown {
   if (value === null || typeof value === 'undefined') return value;
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
   if (typeof value === 'bigint') {
@@ -169,9 +192,13 @@ function sanitizeValue(
   }
   if (Array.isArray(value)) {
     if (depth >= 2) {
-      return value.slice(0, 5).map((item) => sanitizeValue(item, depth + 1, seen));
+      return value
+        .slice(0, 5)
+        .map((item) => sanitizeValue(item, depth + 1, seen));
     }
-    return value.slice(0, 20).map((item) => sanitizeValue(item, depth + 1, seen));
+    return value
+      .slice(0, 20)
+      .map((item) => sanitizeValue(item, depth + 1, seen));
   }
   if (typeof value === 'object') {
     const record = value as Record<string, unknown>;
@@ -197,13 +224,17 @@ function sanitizeError(error: Error): Record<string, unknown> {
   return {
     name: error.name,
     message: error.message,
-    stack: typeof error.stack === 'string' ? error.stack.split('\n').slice(0, 15).join('\n') : undefined,
+    stack:
+      typeof error.stack === 'string'
+        ? error.stack.split('\n').slice(0, 15).join('\n')
+        : undefined,
   };
 }
 
-function extractPayload(
-  args: unknown[],
-): Pick<BufferedLogEntry, 'message' | 'metadata'> & {
+function extractPayload(args: unknown[]): Pick<
+  BufferedLogEntry,
+  'message' | 'metadata'
+> & {
   levelOverride?: AllowedLevels;
 } {
   if (!args.length) {
@@ -218,16 +249,27 @@ function extractPayload(
   if (first instanceof Error) {
     metadata = sanitizeError(first);
     message = typeof second === 'string' ? second : first.message;
-  } else if (typeof first === 'object' && first !== null && !Array.isArray(first)) {
+  } else if (
+    typeof first === 'object' &&
+    first !== null &&
+    !Array.isArray(first)
+  ) {
     const override = (first as Record<PropertyKey, unknown>)[levelToken];
-    if (typeof override === 'string' && allowedLevels.has(override as AllowedLevels)) {
+    if (
+      typeof override === 'string' &&
+      allowedLevels.has(override as AllowedLevels)
+    ) {
       levelOverride = override as AllowedLevels;
       delete (first as Record<PropertyKey, unknown>)[levelToken];
     }
-    metadata = sanitizeValue(first, 0, seen) as Record<string, unknown> | undefined;
+    metadata = sanitizeValue(first, 0, seen) as
+      | Record<string, unknown>
+      | undefined;
     if (second instanceof Error) {
       const errorMeta = sanitizeError(second);
-      metadata = metadata ? { ...metadata, error: errorMeta } : { error: errorMeta };
+      metadata = metadata
+        ? { ...metadata, error: errorMeta }
+        : { error: errorMeta };
       message = typeof second.message === 'string' ? second.message : '';
     } else if (typeof second === 'string') {
       message = second;
@@ -247,7 +289,10 @@ function extractPayload(
   if (rest.length) {
     const extras = rest
       .map((item) => sanitizeValue(item, 0, seen))
-      .filter((item): item is Exclude<typeof item, undefined> => typeof item !== 'undefined');
+      .filter(
+        (item): item is Exclude<typeof item, undefined> =>
+          typeof item !== 'undefined',
+      );
     if (extras.length) {
       metadata = metadata ? { ...metadata, extra: extras } : { extra: extras };
     }
@@ -263,7 +308,8 @@ function extractPayload(
 function safeToString(value: unknown): string {
   try {
     if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return String(value);
     if (typeof value === 'bigint') return value.toString();
     if (typeof value === 'object') return JSON.stringify(sanitizeValue(value));
     return String(value);
@@ -342,7 +388,9 @@ function buildLogger(): Logger {
 
 const loggingDisabled = process.env.SUPPRESS_LOGS === '1';
 
-const logger: Logger = loggingDisabled ? pino({ level: 'silent' }) : buildLogger();
+const logger: Logger = loggingDisabled
+  ? pino({ level: 'silent' })
+  : buildLogger();
 
 async function notifySideChannels(
   level: Exclude<AllowedLevels, 'log'>,
@@ -384,7 +432,10 @@ async function notifySideChannels(
       fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: telegramChat, text: textParts.join('\n') }),
+        body: JSON.stringify({
+          chat_id: telegramChat,
+          text: textParts.join('\n'),
+        }),
       }).catch((error) => {
         console.error('Не удалось отправить лог в Telegram', error);
       }),
@@ -423,12 +474,18 @@ if (loggingDisabled) {
     metadata: Record<string, unknown> = {},
   ) => {
     const normalizedLevel = normalizeLevel(level);
-    const sanitizedMetadata = (sanitizeValue(metadata) as Record<string, unknown> | undefined) ?? undefined;
+    const sanitizedMetadata =
+      (sanitizeValue(metadata) as Record<string, unknown> | undefined) ??
+      undefined;
     if (sanitizedMetadata) {
-      (sanitizedMetadata as Record<PropertyKey, unknown>)[levelToken] = normalizedLevel;
+      (sanitizedMetadata as Record<PropertyKey, unknown>)[levelToken] =
+        normalizedLevel;
       logger[normalizedLevel](sanitizedMetadata, message);
     } else {
-      logger[normalizedLevel]({ [levelToken]: normalizedLevel } as Record<PropertyKey, unknown>, message);
+      logger[normalizedLevel](
+        { [levelToken]: normalizedLevel } as Record<PropertyKey, unknown>,
+        message,
+      );
     }
     await notifySideChannels(normalizedLevel, {
       message,

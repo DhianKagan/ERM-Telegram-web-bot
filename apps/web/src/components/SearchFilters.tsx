@@ -1,9 +1,9 @@
 // Фильтры поиска задач
 // Модули: React, shared, useTasks
-import React from "react";
-import { TASK_STATUSES, PRIORITIES, TASK_TYPES } from "shared";
-import useTasks from "../context/useTasks";
-import type { TaskFilterUser } from "../context/TasksContext";
+import React from 'react';
+import { TASK_STATUSES, PRIORITIES, TASK_TYPES } from 'shared';
+import useTasks from '../context/useTasks';
+import type { TaskFilterUser } from '../context/TasksContext';
 
 interface Props {
   inline?: boolean;
@@ -21,14 +21,14 @@ export default function SearchFilters({ inline = false }: Props) {
     (prefix: string, value: string) =>
       `${prefix}-${value}`
         .toLowerCase()
-        .replace(/[^a-z0-9а-яё]+/gi, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, ""),
+        .replace(/[^a-z0-9а-яё]+/gi, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, ''),
     [],
   );
 
   const toggleString = (
-    key: "status" | "priority" | "taskTypes",
+    key: 'status' | 'priority' | 'taskTypes',
     value: string,
   ) => {
     setLocal((prev) => {
@@ -63,7 +63,7 @@ export default function SearchFilters({ inline = false }: Props) {
           Статус
         </span>
         {TASK_STATUSES.map((s) => {
-          const fieldId = toFieldId("status", s);
+          const fieldId = toFieldId('status', s);
           return (
             <label
               key={s}
@@ -75,7 +75,7 @@ export default function SearchFilters({ inline = false }: Props) {
                 name="status[]"
                 type="checkbox"
                 checked={local.status.includes(s)}
-                onChange={() => toggleString("status", s)}
+                onChange={() => toggleString('status', s)}
               />
               {s}
             </label>
@@ -87,7 +87,7 @@ export default function SearchFilters({ inline = false }: Props) {
           Приоритет
         </span>
         {PRIORITIES.map((p) => {
-          const fieldId = toFieldId("priority", p);
+          const fieldId = toFieldId('priority', p);
           return (
             <label
               key={p}
@@ -99,7 +99,7 @@ export default function SearchFilters({ inline = false }: Props) {
                 name="priority[]"
                 type="checkbox"
                 checked={local.priority.includes(p)}
-                onChange={() => toggleString("priority", p)}
+                onChange={() => toggleString('priority', p)}
               />
               {p}
             </label>
@@ -111,7 +111,7 @@ export default function SearchFilters({ inline = false }: Props) {
           Тип задачи
         </span>
         {TASK_TYPES.map((type) => {
-          const fieldId = toFieldId("task-type", type);
+          const fieldId = toFieldId('task-type', type);
           return (
             <label
               key={type}
@@ -123,7 +123,7 @@ export default function SearchFilters({ inline = false }: Props) {
                 name="taskTypes[]"
                 type="checkbox"
                 checked={local.taskTypes.includes(type)}
-                onChange={() => toggleString("taskTypes", type)}
+                onChange={() => toggleString('taskTypes', type)}
               />
               {type}
             </label>
@@ -136,7 +136,7 @@ export default function SearchFilters({ inline = false }: Props) {
         </span>
         <div className="max-h-28 overflow-y-auto pr-1">
           {filterUsers.map((user) => {
-            const fieldId = toFieldId("assignee", String(user.id));
+            const fieldId = toFieldId('assignee', String(user.id));
             return (
               <label
                 key={user.id}

@@ -4,10 +4,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { User } from '../../apps/api/src/db/model';
 import { resolveRoleId } from '../../apps/api/src/db/roleCache';
-import {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-} from './mongoUrl';
+import { getMongoUrlFromEnv, formatCredentialSources } from './mongoUrl';
 
 function resolveMongoUrl(): string {
   const resolution = getMongoUrlFromEnv();

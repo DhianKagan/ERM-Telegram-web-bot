@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const fs = require('fs');
-let mk = fs.readFileSync('Makefile','utf8');
+let mk = fs.readFileSync('Makefile', 'utf8');
 
 if (!mk.includes('.PHONY: lpt-fix')) {
   mk += `

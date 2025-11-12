@@ -1,9 +1,9 @@
 // Назначение: модальное окно предупреждения
 // Основные модули: React, Modal
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import Modal from "./Modal";
+import { Button } from '@/components/ui/button';
+import Modal from './Modal';
 
 interface AlertDialogProps {
   open: boolean;
@@ -16,7 +16,7 @@ export default function AlertDialog({
   open,
   message,
   onClose,
-  closeText = "Закрыть",
+  closeText = 'Закрыть',
 }: AlertDialogProps) {
   return (
     <Modal open={open} onClose={onClose}>

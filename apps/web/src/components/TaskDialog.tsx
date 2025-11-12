@@ -1,22 +1,22 @@
 // Общая форма создания и редактирования задач
 // Модули: React, ReactDOM, контексты, сервисы задач, shared, EmployeeLink, SingleSelect, логирование, coerceTaskId
-import React from "react";
-import { createPortal } from "react-dom";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import CKEditorPopup from "./CKEditorPopup";
-import MultiUserSelect from "./MultiUserSelect";
-import SingleSelect from "./SingleSelect";
-import ConfirmDialog from "./ConfirmDialog";
-import AlertDialog from "./AlertDialog";
-import { useAuth } from "../context/useAuth";
-import { useTranslation } from "react-i18next";
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import CKEditorPopup from './CKEditorPopup';
+import MultiUserSelect from './MultiUserSelect';
+import SingleSelect from './SingleSelect';
+import ConfirmDialog from './ConfirmDialog';
+import AlertDialog from './AlertDialog';
+import { useAuth } from '../context/useAuth';
+import { useTranslation } from 'react-i18next';
 import {
   PROJECT_TIMEZONE,
   PROJECT_TIMEZONE_LABEL,
   taskFields as fields,
-} from "shared";
+} from 'shared';
 import {
   createTask,
   createRequest,
@@ -30,74 +30,74 @@ import {
   saveTaskDraft,
   deleteTaskDraft,
   type TaskDraft,
-} from "../services/tasks";
+} from '../services/tasks';
 import type {
   TransportDriverOption,
   TransportVehicleOption,
-} from "../services/tasks";
-import authFetch from "../utils/authFetch";
-import parseGoogleAddress from "../utils/parseGoogleAddress";
-import { validateURL } from "../utils/validation";
-import extractCoords from "../utils/extractCoords";
+} from '../services/tasks';
+import authFetch from '../utils/authFetch';
+import parseGoogleAddress from '../utils/parseGoogleAddress';
+import { validateURL } from '../utils/validation';
+import extractCoords from '../utils/extractCoords';
 import {
   expandLink,
   searchAddress as searchMapAddress,
   reverseGeocode as reverseMapGeocode,
   type AddressSuggestion,
-} from "../services/maps";
-import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import fetchRoute from "../services/route";
-import haversine from "../utils/haversine";
-import createRouteLink from "../utils/createRouteLink";
+} from '../services/maps';
+import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import fetchRoute from '../services/route';
+import haversine from '../utils/haversine';
+import createRouteLink from '../utils/createRouteLink';
 import {
   useForm,
   Controller,
   type Resolver,
   type FieldErrors,
-} from "react-hook-form";
-import FileUploader from "./FileUploader";
-import Spinner from "./Spinner";
-import type { Attachment, HistoryItem, UserBrief } from "../types/task";
-import type { Task } from "shared";
-import EmployeeLink from "./EmployeeLink";
+} from 'react-hook-form';
+import FileUploader from './FileUploader';
+import Spinner from './Spinner';
+import type { Attachment, HistoryItem, UserBrief } from '../types/task';
+import type { Task } from 'shared';
+import EmployeeLink from './EmployeeLink';
 import {
   creatorBadgeClass,
   fallbackBadgeClass as taskFallbackBadgeClass,
   getPriorityBadgeClass,
   getStatusBadgeClass,
   getTypeBadgeClass,
-} from "../columns/taskColumns";
-import useDueDateOffset from "../hooks/useDueDateOffset";
-import coerceTaskId from "../utils/coerceTaskId";
+} from '../columns/taskColumns';
+import useDueDateOffset from '../hooks/useDueDateOffset';
+import coerceTaskId from '../utils/coerceTaskId';
 import mapLibrary, {
   type MapInstance,
   type MapMouseEvent,
   type MapMarker,
-} from "../utils/mapLibrary";
+} from '../utils/mapLibrary';
 import {
   MAP_ATTRIBUTION,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MAX_BOUNDS,
   MAP_STYLE,
-} from "../config/map";
+} from '../config/map';
 
-type TaskKind = "task" | "request";
+type TaskKind = 'task' | 'request';
 
 type MapPickerState = {
-  target: "start" | "finish";
+  target: 'start' | 'finish';
   initialCoords: { lat: number; lng: number } | null;
 };
 
 const ensureInlineMode = (value?: string | null): string | undefined => {
   if (!value) return undefined;
-  if (value.startsWith("blob:") || value.startsWith("data:")) {
+  if (value.startsWith('blob:') || value.startsWith('data:')) {
     return value;
   }
-  if (value.includes("mode=inline")) {
+  if (value.includes('mode=inline')) {
     return value;
   }
-  const separator = value.includes("?") ? "&" : "?";
+  const separator = value.includes('?') ? '&' : '?';
   return `${value}${separator}mode=inline`;
 };
 
@@ -146,29 +146,29 @@ interface InitialValues {
   photosMessageId?: unknown;
 }
 
-const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
+const historyDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
   hour12: false,
   timeZone: PROJECT_TIMEZONE,
 });
 
 const formatHistoryInstant = (date: Date): string =>
-  `${historyDateFormatter.format(date).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
+  `${historyDateFormatter.format(date).replace(', ', ' ')} ${PROJECT_TIMEZONE_LABEL}`;
 
 const toRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
+  value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
 
 const toAssigneeNumber = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return null;
     const parsed = Number(trimmed);
@@ -178,18 +178,18 @@ const toAssigneeNumber = (value: unknown): number | null => {
 };
 
 const normalizePriorityOption = (value?: string | null) => {
-  if (typeof value !== "string") {
+  if (typeof value !== 'string') {
     return undefined;
   }
   const trimmed = value.trim();
   if (!trimmed) {
     return undefined;
   }
-  return /^бессроч/i.test(trimmed) ? "До выполнения" : trimmed;
+  return /^бессроч/i.test(trimmed) ? 'До выполнения' : trimmed;
 };
 
 const parseMetricInput = (value: string): number | null => {
-  const normalized = value.trim().replace(/\s+/g, "").replace(/,/g, ".");
+  const normalized = value.trim().replace(/\s+/g, '').replace(/,/g, '.');
   if (!normalized) return null;
   const parsed = Number(normalized);
   if (!Number.isFinite(parsed)) return null;
@@ -197,14 +197,14 @@ const parseMetricInput = (value: string): number | null => {
 };
 
 const formatMetricValue = (value: unknown): string => {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : "";
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : '';
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return value;
   }
-  return "";
+  return '';
 };
 
 const buildTelegramMessageLink = (
@@ -215,24 +215,24 @@ const buildTelegramMessageLink = (
     return null;
   }
   const rawMessageId =
-    typeof messageId === "number"
+    typeof messageId === 'number'
       ? messageId
-      : typeof messageId === "string"
+      : typeof messageId === 'string'
         ? Number(messageId.trim())
         : NaN;
   if (!Number.isFinite(rawMessageId) || rawMessageId <= 0) {
     return null;
   }
   const chat =
-    typeof chatId === "number"
+    typeof chatId === 'number'
       ? chatId.toString()
-      : typeof chatId === "string"
+      : typeof chatId === 'string'
         ? chatId.trim()
-        : "";
+        : '';
   if (!chat) {
     return null;
   }
-  if (chat.startsWith("@")) {
+  if (chat.startsWith('@')) {
     return `https://t.me/${chat.slice(1)}/${rawMessageId}`;
   }
   if (/^-100\d+$/.test(chat)) {
@@ -244,28 +244,28 @@ const buildTelegramMessageLink = (
   return null;
 };
 
-const REQUEST_TYPE_NAME = "Заявка";
+const REQUEST_TYPE_NAME = 'Заявка';
 
 const detectTaskKind = (
   task?: Partial<Task> & Record<string, unknown>,
-): "task" | "request" => {
-  if (!task) return "task";
+): 'task' | 'request' => {
+  if (!task) return 'task';
   const rawKind =
-    typeof task.kind === "string" ? task.kind.trim().toLowerCase() : "";
-  if (rawKind === "request") return "request";
+    typeof task.kind === 'string' ? task.kind.trim().toLowerCase() : '';
+  if (rawKind === 'request') return 'request';
   const typeValue =
-    typeof task.task_type === "string" ? task.task_type.trim() : "";
-  return typeValue === REQUEST_TYPE_NAME ? "request" : "task";
+    typeof task.task_type === 'string' ? task.task_type.trim() : '';
+  return typeValue === REQUEST_TYPE_NAME ? 'request' : 'task';
 };
 
-const currencyFormatter = new Intl.NumberFormat("uk-UA", {
+const currencyFormatter = new Intl.NumberFormat('uk-UA', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 const parseCurrencyInput = (value: string): number | null => {
   if (!value.trim()) return 0;
-  const sanitized = value.replace(/\s*грн\.?/gi, "").trim();
+  const sanitized = value.replace(/\s*грн\.?/gi, '').trim();
   const parsed = parseMetricInput(sanitized);
   if (parsed === null) return null;
   if (!Number.isFinite(parsed)) return null;
@@ -274,13 +274,13 @@ const parseCurrencyInput = (value: string): number | null => {
 
 const formatCurrencyDisplay = (value: unknown): string => {
   if (value === null || value === undefined) return currencyFormatter.format(0);
-  if (typeof value === "number") return currencyFormatter.format(value);
-  if (typeof value === "string") {
+  if (typeof value === 'number') return currencyFormatter.format(value);
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return currencyFormatter.format(0);
     const parsed = parseCurrencyInput(trimmed);
     if (parsed === null) {
-      const sanitized = trimmed.replace(/\s*грн\.?/gi, "").trim();
+      const sanitized = trimmed.replace(/\s*грн\.?/gi, '').trim();
       return sanitized || currencyFormatter.format(0);
     }
     return currencyFormatter.format(parsed);
@@ -289,7 +289,7 @@ const formatCurrencyDisplay = (value: unknown): string => {
 };
 
 const formatCreatedLabel = (value: string): string => {
-  if (!value) return "";
+  if (!value) return '';
   const parsed = parseIsoDate(value);
   if (!parsed) return value;
   return formatHistoryInstant(parsed);
@@ -302,10 +302,8 @@ const parseIsoDate = (value?: string | null): Date | null => {
   return parsed;
 };
 
-const toCoordsValue = (
-  value: unknown,
-): { lat: number; lng: number } | null => {
-  if (!value || typeof value !== "object") return null;
+const toCoordsValue = (value: unknown): { lat: number; lng: number } | null => {
+  if (!value || typeof value !== 'object') return null;
   const candidate = value as { lat?: unknown; lng?: unknown };
   const lat = Number(candidate.lat);
   const lng = Number(candidate.lng);
@@ -316,7 +314,7 @@ const toCoordsValue = (
 };
 
 const formatCoords = (coords: { lat: number; lng: number } | null): string => {
-  if (!coords) return "";
+  if (!coords) return '';
   const lat = Number.isFinite(coords.lat)
     ? coords.lat.toFixed(6)
     : String(coords.lat);
@@ -356,9 +354,10 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
   const mapRef = React.useRef<MapInstance | null>(null);
   const markerRef = React.useRef<MapMarker | null>(null);
   const titleId = React.useId();
-  const [coords, setCoords] = React.useState<{ lat: number; lng: number } | null>(
-    initialValue,
-  );
+  const [coords, setCoords] = React.useState<{
+    lat: number;
+    lng: number;
+  } | null>(initialValue);
 
   React.useEffect(() => {
     if (open) {
@@ -383,12 +382,12 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
     });
     mapRef.current = map;
     const navigation = new mapLibrary.NavigationControl({ showCompass: false });
-    map.addControl(navigation, "top-right");
+    map.addControl(navigation, 'top-right');
     const attribution = new mapLibrary.AttributionControl({
       compact: true,
       customAttribution: MAP_ATTRIBUTION,
     });
-    map.addControl(attribution, "bottom-right");
+    map.addControl(attribution, 'bottom-right');
 
     const applyMarker = (lng: number, lat: number) => {
       const currentMarker = markerRef.current;
@@ -396,7 +395,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
         const marker = new mapLibrary.Marker({ draggable: true })
           .setLngLat([lng, lat])
           .addTo(map);
-        marker.on("dragend", () => {
+        marker.on('dragend', () => {
           const lngLat = marker.getLngLat();
           setCoords({ lat: lngLat.lat, lng: lngLat.lng });
         });
@@ -405,8 +404,11 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
         currentMarker.setLngLat([lng, lat]);
       }
       setCoords({ lat, lng });
-      const targetZoom = Math.max(map.getZoom ? map.getZoom() : MAP_DEFAULT_ZOOM, 12);
-      if (typeof map.easeTo === "function") {
+      const targetZoom = Math.max(
+        map.getZoom ? map.getZoom() : MAP_DEFAULT_ZOOM,
+        12,
+      );
+      if (typeof map.easeTo === 'function') {
         map.easeTo({ center: [lng, lat], zoom: targetZoom, duration: 400 });
       }
     };
@@ -419,10 +421,10 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       const { lng, lat } = event.lngLat;
       applyMarker(lng, lat);
     };
-    map.on("click", handleClick);
+    map.on('click', handleClick);
 
     return () => {
-      map.off("click", handleClick);
+      map.off('click', handleClick);
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;
@@ -492,26 +494,26 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
 };
 
 const sanitizeLocationLink = (value: unknown): string => {
-  if (typeof value !== "string") {
-    return "";
+  if (typeof value !== 'string') {
+    return '';
   }
   const normalized = validateURL(value);
   if (!normalized) {
-    return "";
+    return '';
   }
   try {
     const parsed = new URL(normalized);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.toString();
     }
   } catch {
-    return "";
+    return '';
   }
-  return "";
+  return '';
 };
 
 const resolveAppOrigin = (): string | null => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === 'undefined') return null;
   try {
     return window.location.origin;
   } catch {
@@ -527,9 +529,13 @@ const isManagedShortLink = (value: string): boolean => {
     if (origin && parsed.origin !== origin) {
       return false;
     }
-    const segments = parsed.pathname.split("/").filter(Boolean);
-    const index = segments.indexOf("l");
-    return index !== -1 && index === segments.length - 2 && Boolean(segments[index + 1]);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const index = segments.indexOf('l');
+    return (
+      index !== -1 &&
+      index === segments.length - 2 &&
+      Boolean(segments[index + 1])
+    );
   } catch {
     return false;
   }
@@ -537,33 +543,33 @@ const isManagedShortLink = (value: string): boolean => {
 
 const toIsoString = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     const fromNumber = new Date(value);
-    return Number.isNaN(fromNumber.getTime()) ? "" : fromNumber.toISOString();
+    return Number.isNaN(fromNumber.getTime()) ? '' : fromNumber.toISOString();
   }
   if (
     value &&
-    typeof value === "object" &&
-    "$date" in (value as Record<string, unknown>)
+    typeof value === 'object' &&
+    '$date' in (value as Record<string, unknown>)
   ) {
     const raw = (value as Record<string, unknown>).$date;
-    return typeof raw === "string" ? raw : "";
+    return typeof raw === 'string' ? raw : '';
   }
-  if (typeof value === "string") return value;
-  return "";
+  if (typeof value === 'string') return value;
+  return '';
 };
 
 const normalizeHistory = (raw: unknown): HistoryItem[] => {
   if (!raw) return [];
   const source = Array.isArray(raw)
     ? raw
-    : typeof raw === "object"
+    : typeof raw === 'object'
       ? Object.values(raw as Record<string, unknown>)
       : [];
   return source
     .filter(
       (entry): entry is Record<string, unknown> =>
-        entry !== null && typeof entry === "object",
+        entry !== null && typeof entry === 'object',
     )
     .map((entry) => {
       const record = entry as Record<string, unknown>;
@@ -572,7 +578,7 @@ const normalizeHistory = (raw: unknown): HistoryItem[] => {
       const to = toRecord(changes.to);
       const changedByRaw = record.changed_by;
       const changedBy =
-        typeof changedByRaw === "number"
+        typeof changedByRaw === 'number'
           ? changedByRaw
           : Number(changedByRaw) || 0;
       return {
@@ -593,18 +599,18 @@ const normalizeHistory = (raw: unknown): HistoryItem[] => {
 
 const formatHistoryDate = (value: string): string => {
   const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return value || "";
+  if (Number.isNaN(parsed)) return value || '';
   return formatHistoryInstant(new Date(parsed));
 };
 
 const formatHistoryValue = (value: unknown): string => {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return '—';
   if (value instanceof Date) return formatHistoryInstant(value);
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const parsed = parseIsoDate(value);
     return parsed ? formatHistoryInstant(parsed) : value;
   }
-  if (typeof value === "number" || typeof value === "boolean")
+  if (typeof value === 'number' || typeof value === 'boolean')
     return String(value);
   try {
     return JSON.stringify(value);
@@ -618,59 +624,70 @@ const normalizePriorityBadgeLabel = (value: string): string => {
   if (!trimmed) {
     return trimmed;
   }
-  return /^бессроч/i.test(trimmed) ? "До выполнения" : trimmed;
+  return /^бессроч/i.test(trimmed) ? 'До выполнения' : trimmed;
 };
 
 const resolveBadgeKind = (
   rawKey: string,
-): "status" | "priority" | "taskType" | null => {
+): 'status' | 'priority' | 'taskType' | null => {
   const key = rawKey.trim().toLowerCase();
-  if (key === "status") return "status";
-  if (key === "priority" || key === "priority_label" || key === "prioritylabel") {
-    return "priority";
+  if (key === 'status') return 'status';
+  if (
+    key === 'priority' ||
+    key === 'priority_label' ||
+    key === 'prioritylabel'
+  ) {
+    return 'priority';
   }
-  if (key === "task_type" || key === "tasktype" || key === "type") {
-    return "taskType";
+  if (key === 'task_type' || key === 'tasktype' || key === 'type') {
+    return 'taskType';
   }
   return null;
 };
 
-const renderTaskBadge = (key: string, value: string): React.ReactNode | null => {
+const renderTaskBadge = (
+  key: string,
+  value: string,
+): React.ReactNode | null => {
   const kind = resolveBadgeKind(key);
   if (!kind) {
     return null;
   }
   const trimmed = value.trim();
-  if (!trimmed || trimmed === "—") {
+  if (!trimmed || trimmed === '—') {
     return null;
   }
-  if (kind === "status") {
+  if (kind === 'status') {
     const className = getStatusBadgeClass(trimmed) ?? taskFallbackBadgeClass;
     return <span className={className}>{trimmed}</span>;
   }
-  if (kind === "priority") {
+  if (kind === 'priority') {
     const className =
       getPriorityBadgeClass(trimmed) ?? `${taskFallbackBadgeClass} normal-case`;
-    return <span className={className}>{normalizePriorityBadgeLabel(trimmed)}</span>;
+    return (
+      <span className={className}>{normalizePriorityBadgeLabel(trimmed)}</span>
+    );
   }
   const className =
     getTypeBadgeClass(trimmed) ?? `${taskFallbackBadgeClass} normal-case`;
   return <span className={className}>{trimmed}</span>;
 };
 
-type HistoryBadgeVariant = "plain" | "prev" | "next";
+type HistoryBadgeVariant = 'plain' | 'prev' | 'next';
 
 const renderHistoryValueNode = (
   key: string,
   value: string,
   variant: HistoryBadgeVariant,
 ): React.ReactNode => {
-  const normalized = typeof value === "string" ? value : String(value ?? "");
+  const normalized = typeof value === 'string' ? value : String(value ?? '');
   const trimmed = normalized.trim();
-  if (!trimmed || trimmed === "—") {
-    if (variant === "prev") {
+  if (!trimmed || trimmed === '—') {
+    if (variant === 'prev') {
       return (
-        <span className="text-gray-400 line-through decoration-gray-300">—</span>
+        <span className="text-gray-400 line-through decoration-gray-300">
+          —
+        </span>
       );
     }
     return <span className="text-gray-500">—</span>;
@@ -678,19 +695,19 @@ const renderHistoryValueNode = (
   const badge = renderTaskBadge(key, trimmed);
   if (!badge) {
     const className =
-      variant === "prev"
-        ? "text-gray-500 line-through decoration-gray-400"
-        : "font-semibold text-gray-900";
+      variant === 'prev'
+        ? 'text-gray-500 line-through decoration-gray-400'
+        : 'font-semibold text-gray-900';
     return <span className={className}>{trimmed}</span>;
   }
-  if (variant === "prev") {
+  if (variant === 'prev') {
     return (
       <span className="inline-flex items-center gap-1 text-gray-500 line-through decoration-gray-400">
         {badge}
       </span>
     );
   }
-  if (variant === "next") {
+  if (variant === 'next') {
     return (
       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
         {badge}
@@ -708,7 +725,7 @@ const hasDimensionValues = (
   weight: string,
 ) =>
   [length, width, height, volume, weight].some(
-    (value) => typeof value === "string" && value.trim().length > 0,
+    (value) => typeof value === 'string' && value.trim().length > 0,
   );
 
 const START_OFFSET_MS = 60 * 60 * 1000;
@@ -739,36 +756,36 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   const isEdit = Boolean(effectiveTaskId);
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === 'admin';
   const normalizedAccess =
-    typeof user?.access === "number"
+    typeof user?.access === 'number'
       ? user.access
-      : typeof user?.access === "string"
+      : typeof user?.access === 'string'
         ? Number.parseInt(user.access, 10)
         : Number.NaN;
   const canDeleteTask =
     Number.isFinite(normalizedAccess) &&
     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
-  const canEditAll = isAdmin || user?.role === "manager";
+  const canEditAll = isAdmin || user?.role === 'manager';
   const { t: rawT, i18n } = useTranslation();
-  const initialKind = React.useMemo(() => kind ?? "task", [kind]);
-  const [entityKind, setEntityKind] = React.useState<"task" | "request">(
+  const initialKind = React.useMemo(() => kind ?? 'task', [kind]);
+  const [entityKind, setEntityKind] = React.useState<'task' | 'request'>(
     initialKind,
   );
   const adaptTaskText = React.useCallback(
     (input: string): string => {
-      if (entityKind !== "request") return input;
+      if (entityKind !== 'request') return input;
       const replacements: [RegExp, string][] = [
-        [/\bЗадачи\b/g, "Заявки"],
-        [/\bзадачи\b/g, "заявки"],
-        [/\bЗадачу\b/g, "Заявку"],
-        [/\bзадачу\b/g, "заявку"],
-        [/\bЗадаче\b/g, "Заявке"],
-        [/\bзадаче\b/g, "заявке"],
-        [/\bЗадачей\b/g, "Заявкой"],
-        [/\bзадачей\b/g, "заявкой"],
-        [/\bЗадача\b/g, "Заявка"],
-        [/\bзадача\b/g, "заявка"],
+        [/\bЗадачи\b/g, 'Заявки'],
+        [/\bзадачи\b/g, 'заявки'],
+        [/\bЗадачу\b/g, 'Заявку'],
+        [/\bзадачу\b/g, 'заявку'],
+        [/\bЗадаче\b/g, 'Заявке'],
+        [/\bзадаче\b/g, 'заявке'],
+        [/\bЗадачей\b/g, 'Заявкой'],
+        [/\bзадачей\b/g, 'заявкой'],
+        [/\bЗадача\b/g, 'Заявка'],
+        [/\bзадача\b/g, 'заявка'],
       ];
       return replacements.reduce(
         (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
@@ -794,10 +811,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [initialDates, setInitialDates] = React.useState<{
     start: string;
     due: string;
-  }>({ start: "", due: "" });
-  const [requestId, setRequestId] = React.useState("");
-  const [created, setCreated] = React.useState("");
-  const [completedAt, setCompletedAt] = React.useState("");
+  }>({ start: '', due: '' });
+  const [requestId, setRequestId] = React.useState('');
+  const [created, setCreated] = React.useState('');
+  const [completedAt, setCompletedAt] = React.useState('');
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = React.useState(false);
   const dialogTitleId = React.useId();
@@ -811,15 +828,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const taskFormResolver = React.useCallback<Resolver<TaskFormValues>>(
     async (values) => {
       const normalizedTitle =
-        typeof values.title === "string" ? values.title.trim() : "";
+        typeof values.title === 'string' ? values.title.trim() : '';
       const normalizedDescription =
-        typeof values.description === "string" ? values.description : "";
+        typeof values.description === 'string' ? values.description : '';
       const normalizedAssignee =
-        typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
+        typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
       const normalizedStartRaw =
-        typeof values.startDate === "string" ? values.startDate.trim() : "";
+        typeof values.startDate === 'string' ? values.startDate.trim() : '';
       const normalizedDueRaw =
-        typeof values.dueDate === "string" ? values.dueDate.trim() : "";
+        typeof values.dueDate === 'string' ? values.dueDate.trim() : '';
       const normalized: TaskFormValues = {
         title: normalizedTitle,
         description: normalizedDescription,
@@ -830,14 +847,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const fieldErrors: FieldErrors<TaskFormValues> = {};
       if (!normalizedTitle) {
         fieldErrors.title = {
-          type: "required",
-          message: t("titleRequired"),
+          type: 'required',
+          message: t('titleRequired'),
         };
       }
       if (!normalizedAssignee) {
         fieldErrors.assigneeId = {
-          type: "required",
-          message: t("assigneeRequiredError"),
+          type: 'required',
+          message: t('assigneeRequiredError'),
         };
       }
       if (normalized.startDate && normalized.dueDate) {
@@ -849,8 +866,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           dueTime < startTime
         ) {
           fieldErrors.dueDate = {
-            type: "validate",
-            message: t("dueBeforeStart"),
+            type: 'validate',
+            message: t('dueBeforeStart'),
           };
         }
       }
@@ -874,11 +891,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   } = useForm<TaskFormValues>({
     resolver: taskFormResolver,
     defaultValues: {
-      title: "",
-      description: "",
-      assigneeId: "",
-      startDate: "",
-      dueDate: "",
+      title: '',
+      description: '',
+      assigneeId: '',
+      startDate: '',
+      dueDate: '',
     },
   });
   const resetRef = React.useRef(reset);
@@ -890,18 +907,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [],
   );
   const RAW_DEFAULT_TASK_TYPE =
-    fields.find((f) => f.name === "task_type")?.default || "";
+    fields.find((f) => f.name === 'task_type')?.default || '';
   const DEFAULT_PRIORITY =
-    fields.find((f) => f.name === "priority")?.default || "";
+    fields.find((f) => f.name === 'priority')?.default || '';
   const DEFAULT_TRANSPORT =
-    fields.find((f) => f.name === "transport_type")?.default || "";
+    fields.find((f) => f.name === 'transport_type')?.default || '';
   const DEFAULT_PAYMENT =
-    fields.find((f) => f.name === "payment_method")?.default || "";
+    fields.find((f) => f.name === 'payment_method')?.default || '';
   const DEFAULT_PAYMENT_AMOUNT =
-    fields.find((f) => f.name === "payment_amount")?.default || "0";
-  const DEFAULT_STATUS = fields.find((f) => f.name === "status")?.default || "";
+    fields.find((f) => f.name === 'payment_amount')?.default || '0';
+  const DEFAULT_STATUS = fields.find((f) => f.name === 'status')?.default || '';
   const { requestTypeOptions, taskTypeOptions } = React.useMemo(() => {
-    const source = fields.find((f) => f.name === "task_type")?.options || [];
+    const source = fields.find((f) => f.name === 'task_type')?.options || [];
     return {
       requestTypeOptions: source.filter((type) => type === REQUEST_TYPE_NAME),
       taskTypeOptions: source.filter((type) => type !== REQUEST_TYPE_NAME),
@@ -911,22 +928,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const DEFAULT_TASK_TYPE =
     RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME
       ? RAW_DEFAULT_TASK_TYPE
-      : (taskTypeOptions[0] ?? "");
+      : (taskTypeOptions[0] ?? '');
 
   const formatInputDate = React.useCallback((value: Date) => {
     const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, "0");
-    const day = `${value.getDate()}`.padStart(2, "0");
-    const hours = `${value.getHours()}`.padStart(2, "0");
-    const minutes = `${value.getMinutes()}`.padStart(2, "0");
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }, []);
   const formatIsoForInput = React.useCallback(
     (value: string) => {
-      if (!value) return "";
+      if (!value) return '';
       const parsed = new Date(value);
       if (Number.isNaN(parsed.getTime())) {
-        return "";
+        return '';
       }
       return formatInputDate(parsed);
     },
@@ -951,12 +968,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
 
   const watchedDraftValues = watch();
-  const startDateValue = watch("startDate");
-  const dueDateValue = watch("dueDate");
+  const startDateValue = watch('startDate');
+  const dueDateValue = watch('dueDate');
   const shouldAutoSyncDueDate = React.useMemo(() => {
     if (!startDateValue) return false;
     if (!isEdit) return true;
-    const currentDue = typeof dueDateValue === "string" ? dueDateValue : "";
+    const currentDue = typeof dueDateValue === 'string' ? dueDateValue : '';
     const initialDue = initialDates.due;
     if (!initialDue) {
       return currentDue.trim().length === 0;
@@ -972,25 +989,31 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   });
 
   const [taskType, setTaskType] = React.useState(
-    initialKind === "request" ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
+    initialKind === 'request' ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
   );
-  const [comment, setComment] = React.useState("");
+  const [comment, setComment] = React.useState('');
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
-  const [transportDriverId, setTransportDriverId] = React.useState<string>("");
-  const [transportDriverName, setTransportDriverName] = React.useState<string>("");
-  const [transportVehicleId, setTransportVehicleId] = React.useState<string>("");
-  const [transportVehicleName, setTransportVehicleName] = React.useState<string>("");
+  const [transportDriverId, setTransportDriverId] = React.useState<string>('');
+  const [transportDriverName, setTransportDriverName] =
+    React.useState<string>('');
+  const [transportVehicleId, setTransportVehicleId] =
+    React.useState<string>('');
+  const [transportVehicleName, setTransportVehicleName] =
+    React.useState<string>('');
   const [transportVehicleRegistration, setTransportVehicleRegistration] =
-    React.useState<string>("");
-  const [transportDriverOptions, setTransportDriverOptions] =
-    React.useState<TransportDriverOption[]>([]);
-  const [transportVehicleOptions, setTransportVehicleOptions] =
-    React.useState<TransportVehicleOption[]>([]);
+    React.useState<string>('');
+  const [transportDriverOptions, setTransportDriverOptions] = React.useState<
+    TransportDriverOption[]
+  >([]);
+  const [transportVehicleOptions, setTransportVehicleOptions] = React.useState<
+    TransportVehicleOption[]
+  >([]);
   const [transportOptionsLoading, setTransportOptionsLoading] =
     React.useState(false);
-  const [transportOptionsError, setTransportOptionsError] =
-    React.useState<string | null>(null);
+  const [transportOptionsError, setTransportOptionsError] = React.useState<
+    string | null
+  >(null);
   const [transportOptionsLoaded, setTransportOptionsLoaded] =
     React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState(DEFAULT_PAYMENT);
@@ -1000,35 +1023,35 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
   const [initialStatus, setInitialStatus] = React.useState(DEFAULT_STATUS);
   const [taskAssigneeIds, setTaskAssigneeIds] = React.useState<number[]>([]);
-  const [cargoLength, setCargoLength] = React.useState("");
-  const [cargoWidth, setCargoWidth] = React.useState("");
-  const [cargoHeight, setCargoHeight] = React.useState("");
-  const [cargoVolume, setCargoVolume] = React.useState("");
-  const [cargoWeight, setCargoWeight] = React.useState("");
+  const [cargoLength, setCargoLength] = React.useState('');
+  const [cargoWidth, setCargoWidth] = React.useState('');
+  const [cargoHeight, setCargoHeight] = React.useState('');
+  const [cargoVolume, setCargoVolume] = React.useState('');
+  const [cargoWeight, setCargoWeight] = React.useState('');
   const [showLogistics, setShowLogistics] = React.useState(false);
   const [mapPicker, setMapPicker] = React.useState<MapPickerState | null>(null);
-  const [creator, setCreator] = React.useState("");
+  const [creator, setCreator] = React.useState('');
   const currentUserId =
-    typeof user?.telegram_id === "number" ? user.telegram_id : null;
+    typeof user?.telegram_id === 'number' ? user.telegram_id : null;
   const creatorNumericId = React.useMemo(() => {
     const parsed = Number(creator);
     return Number.isFinite(parsed) ? parsed : null;
   }, [creator]);
-  const isCreator = currentUserId !== null && creatorNumericId === currentUserId;
+  const isCreator =
+    currentUserId !== null && creatorNumericId === currentUserId;
   const isExecutor = React.useMemo(
     () => currentUserId !== null && taskAssigneeIds.includes(currentUserId),
     [taskAssigneeIds, currentUserId],
   );
   const sameActor = isCreator && isExecutor;
-  const isTaskNew = initialStatus === "Новая";
-  const canEditTask =
-    canEditAll || isExecutor || (isCreator && isTaskNew);
+  const isTaskNew = initialStatus === 'Новая';
+  const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
   const canChangeStatus =
     canEditAll ||
     (isExecutor && !sameActor) ||
     ((isCreator || sameActor) && isTaskNew);
-  const [start, setStart] = React.useState("");
-  const [startLink, setStartLink] = React.useState("");
+  const [start, setStart] = React.useState('');
+  const [startLink, setStartLink] = React.useState('');
   const [startCoordinates, setStartCoordinates] = React.useState<{
     lat: number;
     lng: number;
@@ -1045,8 +1068,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const startSearchTimeoutRef = React.useRef<number | null>(null);
   const startSearchRequestRef = React.useRef(0);
   const startInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [end, setEnd] = React.useState("");
-  const [endLink, setEndLink] = React.useState("");
+  const [end, setEnd] = React.useState('');
+  const [endLink, setEndLink] = React.useState('');
   const [finishCoordinates, setFinishCoordinates] = React.useState<{
     lat: number;
     lng: number;
@@ -1054,11 +1077,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [finishSuggestions, setFinishSuggestions] = React.useState<
     AddressSuggestion[]
   >([]);
-  const [finishSuggestionsOpen, setFinishSuggestionsOpen] = React.useState(false);
+  const [finishSuggestionsOpen, setFinishSuggestionsOpen] =
+    React.useState(false);
   const [finishSearchLoading, setFinishSearchLoading] = React.useState(false);
-  const [finishSearchError, setFinishSearchError] = React.useState<string | null>(
-    null,
-  );
+  const [finishSearchError, setFinishSearchError] = React.useState<
+    string | null
+  >(null);
   const finishSearchAbortRef = React.useRef<AbortController | null>(null);
   const finishSearchTimeoutRef = React.useRef<number | null>(null);
   const finishSearchRequestRef = React.useRef(0);
@@ -1097,17 +1121,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     () => sanitizeLocationLink(endLink),
     [endLink],
   );
-  const priorities = fields.find((f) => f.name === "priority")?.options || [];
+  const priorities = fields.find((f) => f.name === 'priority')?.options || [];
   const transports =
-    fields.find((f) => f.name === "transport_type")?.options || [];
+    fields.find((f) => f.name === 'transport_type')?.options || [];
   const payments =
-    fields.find((f) => f.name === "payment_method")?.options || [];
-  const statuses = fields.find((f) => f.name === "status")?.options || [];
+    fields.find((f) => f.name === 'payment_method')?.options || [];
+  const statuses = fields.find((f) => f.name === 'status')?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
-  const [previewAttachment, setPreviewAttachment] = React.useState<
-    { name: string; url: string } | null
-  >(null);
+  const [previewAttachment, setPreviewAttachment] = React.useState<{
+    name: string;
+    url: string;
+  } | null>(null);
   const [draft, setDraft] = React.useState<TaskDraft | null>(null);
   const [draftLoading, setDraftLoading] = React.useState(false);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
@@ -1117,10 +1142,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const skipNextDraftSyncRef = React.useRef(true);
   const [photosLink, setPhotosLink] = React.useState<string | null>(null);
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
-  const [routeLink, setRouteLink] = React.useState("");
+  const [routeLink, setRouteLink] = React.useState('');
   const autoRouteRef = React.useRef(true);
   const transportRequiresDetails = React.useMemo(
-    () => transportType === "Легковой" || transportType === "Грузовой",
+    () => transportType === 'Легковой' || transportType === 'Грузовой',
     [transportType],
   );
   const loadTransportOptions = React.useCallback(
@@ -1139,7 +1164,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         const message =
           error instanceof Error && error.message
             ? error.message
-            : "Не удалось загрузить транспорт";
+            : 'Не удалось загрузить транспорт';
         setTransportOptionsError(message);
         if (force) {
           setTransportOptionsLoaded(false);
@@ -1163,14 +1188,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   React.useEffect(() => {
     if (!transportDriverId) {
-      if (transportDriverName) setTransportDriverName("");
+      if (transportDriverName) setTransportDriverName('');
     }
   }, [transportDriverId, transportDriverName]);
   React.useEffect(() => {
     if (!transportVehicleId) {
-      if (transportVehicleName) setTransportVehicleName("");
+      if (transportVehicleName) setTransportVehicleName('');
       if (transportVehicleRegistration) {
-        setTransportVehicleRegistration("");
+        setTransportVehicleRegistration('');
       }
       return;
     }
@@ -1195,11 +1220,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   React.useEffect(() => {
     const prev = prevTransportRequiresRef.current;
     if (prev && !transportRequiresDetails) {
-      setTransportDriverId("");
-      setTransportDriverName("");
-      setTransportVehicleId("");
-      setTransportVehicleName("");
-      setTransportVehicleRegistration("");
+      setTransportDriverId('');
+      setTransportDriverName('');
+      setTransportVehicleId('');
+      setTransportVehicleName('');
+      setTransportVehicleRegistration('');
     }
     prevTransportRequiresRef.current = transportRequiresDetails;
   }, [transportRequiresDetails]);
@@ -1221,13 +1246,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     return list
       .map((item) => {
         const normalized = item.name.trim();
-        const fallbackName = normalized.length > 0 ? normalized : String(item.id);
+        const fallbackName =
+          normalized.length > 0 ? normalized : String(item.id);
         return {
           ...item,
           name: fallbackName,
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   }, [transportDriverOptions, transportDriverId, transportDriverName]);
   const driverOptions = React.useMemo(
     () =>
@@ -1245,13 +1271,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [driverOptionItems, transportDriverId],
   );
   React.useEffect(() => {
-    if (selectedDriverOption && selectedDriverOption.name !== transportDriverName) {
+    if (
+      selectedDriverOption &&
+      selectedDriverOption.name !== transportDriverName
+    ) {
       setTransportDriverName(selectedDriverOption.name);
     }
   }, [selectedDriverOption, transportDriverName]);
   const vehicleOptions = React.useMemo(() => {
-    const allowedType =
-      transportType === "Грузовой" ? "Грузовой" : "Легковой";
+    const allowedType = transportType === 'Грузовой' ? 'Грузовой' : 'Легковой';
     const list = transportVehicleOptions
       .filter((vehicle) => vehicle.transportType === allowedType)
       .slice();
@@ -1262,11 +1290,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       list.push({
         id: transportVehicleId,
         name: transportVehicleName || transportVehicleId,
-        registrationNumber: transportVehicleRegistration || "",
+        registrationNumber: transportVehicleRegistration || '',
         transportType: allowedType,
       });
     }
-    return list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   }, [
     transportVehicleOptions,
     transportVehicleId,
@@ -1292,9 +1320,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       (vehicle) => vehicle.id === transportVehicleId,
     );
     if (!hasVehicle) {
-      setTransportVehicleId("");
-      setTransportVehicleName("");
-      setTransportVehicleRegistration("");
+      setTransportVehicleId('');
+      setTransportVehicleName('');
+      setTransportVehicleRegistration('');
     }
   }, [transportRequiresDetails, transportVehicleId, vehicleOptions]);
   const showTransportFields =
@@ -1305,16 +1333,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         transportDriverName ||
         transportVehicleName,
     );
-  const canEditTransport =
-    editing && (canEditAll || isCreator || isExecutor);
+  const canEditTransport = editing && (canEditAll || isCreator || isExecutor);
   const doneOptions = [
-    { value: "full", label: t("doneFull") },
-    { value: "partial", label: t("donePartial") },
-    { value: "changed", label: t("doneChanged") },
+    { value: 'full', label: t('doneFull') },
+    { value: 'partial', label: t('donePartial') },
+    { value: 'changed', label: t('doneChanged') },
   ];
   const [showDoneSelect, setShowDoneSelect] = React.useState(false);
   // выбранная кнопка действия
-  const [selectedAction, setSelectedAction] = React.useState("");
+  const [selectedAction, setSelectedAction] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [startDateNotice, setStartDateNotice] = React.useState<string | null>(
     null,
@@ -1325,15 +1352,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     completed: boolean;
   } | null>(null);
   React.useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === 'undefined') return;
     const { body, documentElement } = document;
     const previousOverflow = body.style.overflow;
     const previousPaddingRight = body.style.paddingRight;
     const scrollbarWidth =
-      typeof window !== "undefined"
+      typeof window !== 'undefined'
         ? window.innerWidth - documentElement.clientWidth
         : 0;
-    body.style.overflow = "hidden";
+    body.style.overflow = 'hidden';
     if (scrollbarWidth > 0) {
       body.style.paddingRight = `${scrollbarWidth}px`;
     }
@@ -1343,26 +1370,27 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     };
   }, []);
   React.useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === 'undefined') return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
       }
     };
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
   React.useEffect(() => {
     if (!id) return;
     commitResolvedTaskId(id);
   }, [id, commitResolvedTaskId]);
-  const { ref: titleFieldRef, ...titleFieldRest } = register("title");
-  const titleValue = watch("title", "");
+  const { ref: titleFieldRef, ...titleFieldRest } = register('title');
+  const titleValue = watch('title', '');
   const isTitleFilled = React.useMemo(
-    () => (typeof titleValue === "string" ? titleValue.trim().length > 0 : false),
+    () =>
+      typeof titleValue === 'string' ? titleValue.trim().length > 0 : false,
     [titleValue],
   );
   const canUploadAttachments = editing && isTitleFilled;
@@ -1377,11 +1405,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   React.useEffect(() => {
     const node = titleRef.current;
     if (!node) return;
-    node.style.height = "";
+    node.style.height = '';
     node.style.height = `${node.scrollHeight}px`;
   }, [titleValue]);
   React.useEffect(() => {
-    if (!isEdit && entityKind === "request") {
+    if (!isEdit && entityKind === 'request') {
       setTaskType(DEFAULT_REQUEST_TYPE);
     }
   }, [DEFAULT_REQUEST_TYPE, entityKind, isEdit]);
@@ -1399,9 +1427,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   const removeAttachment = (a: Attachment) => {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
-    setPreviewAttachment((prev) =>
-      prev && prev.url === a.url ? null : prev,
-    );
+    setPreviewAttachment((prev) => (prev && prev.url === a.url ? null : prev));
   };
 
   const applyTaskDetails = React.useCallback(
@@ -1412,9 +1438,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const detectedKind = detectTaskKind(taskData);
       setEntityKind(detectedKind);
       const rawTaskType =
-        typeof taskData.task_type === "string" ? taskData.task_type : "";
+        typeof taskData.task_type === 'string' ? taskData.task_type : '';
       const normalizedTaskType = (() => {
-        if (detectedKind === "request") {
+        if (detectedKind === 'request') {
           if (rawTaskType === REQUEST_TYPE_NAME) {
             return rawTaskType;
           }
@@ -1457,52 +1483,53 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         ? (taskData.assignees as (string | number | null | undefined)[])[0]
         : (taskData as Record<string, unknown>).assigned_user_id;
       const assigneeId = (() => {
-        if (rawAssignee === null || rawAssignee === undefined) return "";
-        if (typeof rawAssignee === "string") {
+        if (rawAssignee === null || rawAssignee === undefined) return '';
+        if (typeof rawAssignee === 'string') {
           const trimmed = rawAssignee.trim();
-          return trimmed.length > 0 ? trimmed : "";
+          return trimmed.length > 0 ? trimmed : '';
         }
         return String(rawAssignee);
       })();
       const driverNumeric = toAssigneeNumber(
         (taskData as Record<string, unknown>).transport_driver_id,
       );
-      const driverIdValue = driverNumeric !== null ? String(driverNumeric) : "";
+      const driverIdValue = driverNumeric !== null ? String(driverNumeric) : '';
       const driverNameRaw = (taskData as Record<string, unknown>)
         .transport_driver_name;
       const driverNameStored =
-        typeof driverNameRaw === "string" ? driverNameRaw.trim() : "";
+        typeof driverNameRaw === 'string' ? driverNameRaw.trim() : '';
       const driverUser =
         driverNumeric !== null && usersMap
           ? usersMap[String(driverNumeric)]
           : undefined;
-      const driverDisplay = driverNameStored
-        || (driverUser
+      const driverDisplay =
+        driverNameStored ||
+        (driverUser
           ? driverUser.name ||
             driverUser.telegram_username ||
             driverUser.username ||
             String(driverNumeric)
           : driverNumeric !== null
             ? String(driverNumeric)
-            : "");
+            : '');
       const vehicleIdValue =
-        typeof taskData.transport_vehicle_id === "string"
+        typeof taskData.transport_vehicle_id === 'string'
           ? taskData.transport_vehicle_id
-          : "";
+          : '';
       const vehicleNameValue =
-        typeof taskData.transport_vehicle_name === "string"
+        typeof taskData.transport_vehicle_name === 'string'
           ? taskData.transport_vehicle_name
-          : "";
+          : '';
       const vehicleRegistrationValue =
-        typeof taskData.transport_vehicle_registration === "string"
+        typeof taskData.transport_vehicle_registration === 'string'
           ? taskData.transport_vehicle_registration
-          : "";
+          : '';
       const rawCreated =
         ((taskData as Record<string, unknown>).createdAt as
           | string
           | undefined) ||
         created ||
-        "";
+        '';
       const createdDateValue = parseIsoDateMemo(rawCreated);
       if (createdDateValue) {
         setCreated(createdDateValue.toISOString());
@@ -1520,7 +1547,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         ? formatInputDate(normalizedStartDate)
         : createdDateValue
           ? formatInputDate(createdDateValue)
-          : "";
+          : '';
       const dueCandidate = parseIsoDateMemo(
         (taskData.due_date as string | undefined) ?? null,
       );
@@ -1536,7 +1563,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           ? formatInputDate(
               new Date(normalizedStartDate.getTime() + DEFAULT_DUE_OFFSET_MS),
             )
-          : "";
+          : '';
       const diff =
         startDate && dueDate
           ? new Date(dueDate).getTime() - new Date(startDate).getTime()
@@ -1544,15 +1571,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setDueOffset(diff);
       setInitialDates({ start: startDate, due: dueDate });
       stableReset({
-        title: (taskData.title as string) || "",
-        description: (taskData.task_description as string) || "",
+        title: (taskData.title as string) || '',
+        description: (taskData.task_description as string) || '',
         assigneeId,
         startDate,
         dueDate,
       });
       hasAutofilledAssignee.current = true;
       setTaskType(normalizedTaskType);
-      setComment((taskData.comment as string) || "");
+      setComment((taskData.comment as string) || '');
       setPriority(curPriority);
       setTransportType(curTransport);
       setTransportDriverId(driverIdValue);
@@ -1571,7 +1598,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const heightValue = formatMetricValue(taskData.cargo_height_m);
       const weightValue = formatMetricValue(taskData.cargo_weight_kg);
       const volumeValue =
-        typeof taskData.cargo_volume_m3 === "number"
+        typeof taskData.cargo_volume_m3 === 'number'
           ? String(taskData.cargo_volume_m3)
           : formatMetricValue(taskData.cargo_volume_m3);
       setCargoLength(lengthValue);
@@ -1586,20 +1613,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         volumeValue,
         weightValue,
       );
-      const startLocationValue = (taskData.start_location as string) || "";
-      const endLocationValue = (taskData.end_location as string) || "";
+      const startLocationValue = (taskData.start_location as string) || '';
+      const endLocationValue = (taskData.end_location as string) || '';
       const startLocationLinkRaw =
-        (taskData.start_location_link as string) || "";
-      const endLocationLinkRaw = (taskData.end_location_link as string) || "";
+        (taskData.start_location_link as string) || '';
+      const endLocationLinkRaw = (taskData.end_location_link as string) || '';
       const startLocationLink = sanitizeLocationLink(startLocationLinkRaw);
       const endLocationLink = sanitizeLocationLink(endLocationLinkRaw);
       const startCoordsFromTask = toCoordsValue(taskData.startCoordinates);
       const endCoordsFromTask = toCoordsValue(taskData.finishCoordinates);
       const storedRouteLinkRaw = sanitizeLocationLink(
-        (taskData.google_route_url as string) || "",
+        (taskData.google_route_url as string) || '',
       );
       const distanceValue =
-        typeof taskData.route_distance_km === "number"
+        typeof taskData.route_distance_km === 'number'
           ? taskData.route_distance_km
           : null;
       const rawLogisticsEnabled = (taskData as Record<string, unknown>)
@@ -1614,11 +1641,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           hasDims,
       );
       const logisticsEnabled =
-        typeof rawLogisticsEnabled === "boolean"
+        typeof rawLogisticsEnabled === 'boolean'
           ? rawLogisticsEnabled
           : hasLogisticsData;
       setShowLogistics(logisticsEnabled);
-      setCreator(String((taskData.created_by as unknown) || ""));
+      setCreator(String((taskData.created_by as unknown) || ''));
       setStart(startLocationValue);
       setStartLink(startLocationLink);
       setStartCoordinates(
@@ -1640,7 +1667,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setRouteLink(storedRouteLinkRaw);
       } else {
         autoRouteRef.current = true;
-        setRouteLink("");
+        setRouteLink('');
       }
       setAttachments(
         ((taskData.attachments as Attachment[]) || []) as Attachment[],
@@ -1663,28 +1690,28 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       }
       setDistanceKm(distanceValue);
       initialRef.current = {
-        title: (taskData.title as string) || "",
+        title: (taskData.title as string) || '',
         taskType: normalizedTaskType,
-        description: (taskData.task_description as string) || "",
-        comment: (taskData.comment as string) || "",
+        description: (taskData.task_description as string) || '',
+        comment: (taskData.comment as string) || '',
         priority: curPriority,
         transportType: curTransport,
         paymentMethod: curPayment,
         paymentAmount: amountValue,
         status: curStatus,
         completedAt: curCompletedAt,
-        creator: String((taskData.created_by as unknown) || ""),
+        creator: String((taskData.created_by as unknown) || ''),
         assigneeId,
         assigneeIds: normalizedAssigneeIds,
-        start: (taskData.start_location as string) || "",
+        start: (taskData.start_location as string) || '',
         startLink: startLocationLink,
-        end: (taskData.end_location as string) || "",
+        end: (taskData.end_location as string) || '',
         endLink: endLocationLink,
         startDate,
         dueDate,
         attachments: ((taskData.attachments as Attachment[]) ||
           []) as Attachment[],
-        distanceKm: typeof distanceValue === "number" ? distanceValue : null,
+        distanceKm: typeof distanceValue === 'number' ? distanceValue : null,
         cargoLength: lengthValue,
         cargoWidth: widthValue,
         cargoHeight: heightValue,
@@ -1756,24 +1783,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       if (Number.isFinite(computed)) {
         const formatted = computed.toFixed(3);
         if (formatted !== cargoVolume) setCargoVolume(formatted);
-      } else if (cargoVolume !== "") {
-        setCargoVolume("");
+      } else if (cargoVolume !== '') {
+        setCargoVolume('');
       }
       return;
     }
     if (
       (cargoLength.trim() || cargoWidth.trim() || cargoHeight.trim()) &&
-      cargoVolume !== ""
+      cargoVolume !== ''
     ) {
-      setCargoVolume("");
+      setCargoVolume('');
     }
   }, [cargoLength, cargoWidth, cargoHeight, cargoVolume]);
 
   const toNumericValue = (value: unknown): number | null => {
-    if (typeof value === "number" && Number.isFinite(value)) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
       return value;
     }
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       const trimmed = value.trim();
       if (!trimmed) return null;
       const parsed = Number(trimmed);
@@ -1785,16 +1812,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const collectDraftPayload = React.useCallback(() => {
     const values = getValues();
     const titleValue =
-      typeof values.title === "string" ? values.title.trim() : "";
+      typeof values.title === 'string' ? values.title.trim() : '';
     const descriptionValue =
-      typeof values.description === "string" ? values.description : "";
+      typeof values.description === 'string' ? values.description : '';
     const assigneeRaw =
-      typeof values.assigneeId === "string" ? values.assigneeId.trim() : "";
+      typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
     const assigneeNumeric = toNumericValue(assigneeRaw);
     const resolvedAssignee =
       assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
     const resolvedTaskType =
-      entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
+      entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
 
     const payload: Record<string, unknown> = {
       title: titleValue,
@@ -1870,7 +1897,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
 
     if (requestId) {
-      if (entityKind === "request") {
+      if (entityKind === 'request') {
         payload.request_id = requestId;
       } else {
         payload.task_number = requestId;
@@ -1879,7 +1906,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
     const amountValue = parseCurrencyInput(paymentAmount);
     if (amountValue !== null) payload.payment_amount = amountValue;
-    else if (paymentAmount.trim()) payload.payment_amount = paymentAmount.trim();
+    else if (paymentAmount.trim())
+      payload.payment_amount = paymentAmount.trim();
 
     const lengthValue = parseMetricInput(cargoLength);
     if (lengthValue !== null) payload.cargo_length_m = lengthValue;
@@ -2024,13 +2052,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const { start: defaultStartDate, due: defaultDueDate } =
       computeDefaultDates(createdAt);
     setCreated((prev) => prev || createdAt.toISOString());
-    setCompletedAt("");
+    setCompletedAt('');
     setHistory([]);
     setResolvedTaskId(null);
     const summaryUrl =
-      initialKind === "request"
-        ? "/api/v1/tasks/report/summary?kind=request"
-        : "/api/v1/tasks/report/summary";
+      initialKind === 'request'
+        ? '/api/v1/tasks/report/summary?kind=request'
+        : '/api/v1/tasks/report/summary';
     summaryFetchRef.current =
       summaryFetchRef.current?.kind === initialKind
         ? summaryFetchRef.current
@@ -2041,8 +2069,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       authFetch(summaryUrl)
         .then((r) => (r.ok ? r.json() : { count: 0 }))
         .then((s) => {
-          const num = String((s.count || 0) + 1).padStart(6, "0");
-          const prefix = initialKind === "request" ? "REQ" : "ERM";
+          const num = String((s.count || 0) + 1).padStart(6, '0');
+          const prefix = initialKind === 'request' ? 'REQ' : 'ERM';
           setRequestId(`${prefix}_${num}`);
         })
         .catch(() => {
@@ -2064,38 +2092,38 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setTaskAssigneeIds(defaultAssigneeIds);
     setInitialStatus(DEFAULT_STATUS);
     initialRef.current = {
-      title: "",
+      title: '',
       taskType:
-        initialKind === "request" ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
-      description: "",
-      comment: "",
+        initialKind === 'request' ? DEFAULT_REQUEST_TYPE : DEFAULT_TASK_TYPE,
+      description: '',
+      comment: '',
       priority: DEFAULT_PRIORITY,
       transportType: DEFAULT_TRANSPORT,
       paymentMethod: DEFAULT_PAYMENT,
       paymentAmount: formatCurrencyDisplay(DEFAULT_PAYMENT_AMOUNT),
       status: DEFAULT_STATUS,
-      completedAt: "",
-      creator: user ? String(user.telegram_id) : "",
-      assigneeId: "",
+      completedAt: '',
+      creator: user ? String(user.telegram_id) : '',
+      assigneeId: '',
       assigneeIds: defaultAssigneeIds,
-      start: "",
-      startLink: "",
-      end: "",
-      endLink: "",
+      start: '',
+      startLink: '',
+      end: '',
+      endLink: '',
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
       attachments: [],
       distanceKm: null,
-      cargoLength: "",
-      cargoWidth: "",
-      cargoHeight: "",
-      cargoVolume: "",
-      cargoWeight: "",
-      transportDriverId: "",
-      transportDriverName: "",
-      transportVehicleId: "",
-      transportVehicleName: "",
-      transportVehicleRegistration: "",
+      cargoLength: '',
+      cargoWidth: '',
+      cargoHeight: '',
+      cargoVolume: '',
+      cargoWeight: '',
+      transportDriverId: '',
+      transportDriverName: '',
+      transportVehicleId: '',
+      transportVehicleName: '',
+      transportVehicleRegistration: '',
       showLogistics: false,
       photosLink: null,
       photosChatId: undefined,
@@ -2103,24 +2131,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     };
     setInitialDates({ start: defaultStartDate, due: defaultDueDate });
     stableReset({
-      title: "",
-      description: "",
-      assigneeId: "",
+      title: '',
+      description: '',
+      assigneeId: '',
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
     });
     hasAutofilledAssignee.current = false;
-    setCargoLength("");
-    setCargoWidth("");
-    setCargoHeight("");
-    setCargoVolume("");
-    setCargoWeight("");
+    setCargoLength('');
+    setCargoWidth('');
+    setCargoHeight('');
+    setCargoVolume('');
+    setCargoWeight('');
     setShowLogistics(false);
-    setTransportDriverId("");
-    setTransportDriverName("");
-    setTransportVehicleId("");
-    setTransportVehicleName("");
-    setTransportVehicleRegistration("");
+    setTransportDriverId('');
+    setTransportDriverName('');
+    setTransportVehicleId('');
+    setTransportVehicleName('');
+    setTransportVehicleRegistration('');
     setDueOffset(DEFAULT_DUE_OFFSET_MS);
   }, [
     isEdit,
@@ -2160,7 +2188,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [isEdit, startDateNotice, startDateValue]);
 
   React.useEffect(() => {
-    if (entityKind === "request") {
+    if (entityKind === 'request') {
       if (user) {
         setCreator(String((user as UserBrief).telegram_id));
       }
@@ -2174,7 +2202,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       return;
     }
     if (canEditAll) {
-      authFetch("/api/v1/users")
+      authFetch('/api/v1/users')
         .then((r) => (r.ok ? r.json() : []))
         .then((list) => {
           setUsers(list as UserBrief[]);
@@ -2201,20 +2229,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           const payload = (data.payload || {}) as Partial<Task> &
             Record<string, unknown>;
           applyTaskDetails(payload);
-          const meta = (payload.draftMeta as Record<string, unknown> | undefined) ?? {};
-          if (typeof meta.transportDriverName === "string") {
+          const meta =
+            (payload.draftMeta as Record<string, unknown> | undefined) ?? {};
+          if (typeof meta.transportDriverName === 'string') {
             setTransportDriverName(meta.transportDriverName);
           }
-          if (typeof meta.transportVehicleName === "string") {
+          if (typeof meta.transportVehicleName === 'string') {
             setTransportVehicleName(meta.transportVehicleName);
           }
-          if (typeof meta.transportVehicleRegistration === "string") {
+          if (typeof meta.transportVehicleRegistration === 'string') {
             setTransportVehicleRegistration(meta.transportVehicleRegistration);
           }
-          if (typeof meta.photosLink === "string") {
+          if (typeof meta.photosLink === 'string') {
             setPhotosLink(meta.photosLink);
           }
-          setAlertMsg((prev) => prev ?? t("taskDraftLoaded"));
+          setAlertMsg((prev) => prev ?? t('taskDraftLoaded'));
           setHasDraftChanges(true);
           skipNextDraftSyncRef.current = true;
           window.setTimeout(() => {
@@ -2222,7 +2251,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             try {
               draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
             } catch (error) {
-              console.warn("Не удалось зафиксировать состояние черновика", error);
+              console.warn(
+                'Не удалось зафиксировать состояние черновика',
+                error,
+              );
             }
           }, 0);
         } else {
@@ -2234,7 +2266,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       })
       .catch((error) => {
         if (cancelled) return;
-        console.warn("Не удалось загрузить черновик задачи", error);
+        console.warn('Не удалось загрузить черновик задачи', error);
       })
       .finally(() => {
         if (!cancelled) setDraftLoading(false);
@@ -2279,14 +2311,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           setStartSuggestions(items);
         })
         .catch((error) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
+          if (error instanceof DOMException && error.name === 'AbortError') {
             return;
           }
           if (startSearchRequestRef.current !== requestId) {
             return;
           }
           setStartSuggestions([]);
-          setStartSearchError(t("addressSearchFailed"));
+          setStartSearchError(t('addressSearchFailed'));
         })
         .finally(() => {
           if (startSearchRequestRef.current === requestId) {
@@ -2323,14 +2355,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           setFinishSuggestions(items);
         })
         .catch((error) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
+          if (error instanceof DOMException && error.name === 'AbortError') {
             return;
           }
           if (finishSearchRequestRef.current !== requestId) {
             return;
           }
           setFinishSuggestions([]);
-          setFinishSearchError(t("addressSearchFailed"));
+          setFinishSearchError(t('addressSearchFailed'));
         })
         .finally(() => {
           if (finishSearchRequestRef.current === requestId) {
@@ -2415,7 +2447,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     (value: string) => {
       autoRouteRef.current = true;
       setStart(value);
-      setStartLink("");
+      setStartLink('');
       setStartCoordinates(null);
       setStartSearchError(null);
       setStartSuggestionsOpen(true);
@@ -2428,7 +2460,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     (value: string) => {
       autoRouteRef.current = true;
       setEnd(value);
-      setEndLink("");
+      setEndLink('');
       setFinishCoordinates(null);
       setFinishSearchError(null);
       setFinishSuggestionsOpen(true);
@@ -2441,9 +2473,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     if (!sanitized) {
-      setStart("");
+      setStart('');
       setStartCoordinates(null);
-      setStartLink("");
+      setStartLink('');
       setStartSuggestionsOpen(false);
       cancelStartSearch();
       clearStartSuggestions();
@@ -2464,7 +2496,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (backendCoords) {
           coords = backendCoords;
         }
-        if (typeof data.short === "string") {
+        if (typeof data.short === 'string') {
           const shortCandidate = sanitizeLocationLink(data.short);
           link = shortCandidate || sanitized;
         } else {
@@ -2487,9 +2519,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     if (!sanitized) {
-      setEnd("");
+      setEnd('');
       setFinishCoordinates(null);
-      setEndLink("");
+      setEndLink('');
       setFinishSuggestionsOpen(false);
       cancelFinishSearch();
       clearFinishSuggestions();
@@ -2510,7 +2542,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (backendCoords) {
           coords = backendCoords;
         }
-        if (typeof data.short === "string") {
+        if (typeof data.short === 'string') {
           const shortCandidate = sanitizeLocationLink(data.short);
           link = shortCandidate || sanitized;
         } else {
@@ -2530,7 +2562,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   };
 
   const handleMapConfirm = React.useCallback(
-    async (target: "start" | "finish", coords: { lat: number; lng: number }) => {
+    async (
+      target: 'start' | 'finish',
+      coords: { lat: number; lng: number },
+    ) => {
       autoRouteRef.current = true;
       setMapPicker(null);
       const link = buildMapsLink(coords);
@@ -2544,13 +2579,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             ? `${place.label}, ${place.description}`
             : place.label;
         } else {
-          setAlertMsg((prev) => prev ?? t("addressReverseNotFound"));
+          setAlertMsg((prev) => prev ?? t('addressReverseNotFound'));
         }
       } catch (error) {
-        console.warn("Не удалось получить адрес по координатам", error);
-        setAlertMsg((prev) => prev ?? t("addressReverseFailed"));
+        console.warn('Не удалось получить адрес по координатам', error);
+        setAlertMsg((prev) => prev ?? t('addressReverseFailed'));
       }
-      if (target === "start") {
+      if (target === 'start') {
         cancelStartSearch();
         clearStartSuggestions();
         setStartSuggestionsOpen(false);
@@ -2579,11 +2614,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
 
   const openMapPicker = React.useCallback(
-    (target: "start" | "finish") => {
+    (target: 'start' | 'finish') => {
       setMapPicker({
         target,
         initialCoords:
-          target === "start" ? startCoordinates ?? null : finishCoordinates ?? null,
+          target === 'start'
+            ? (startCoordinates ?? null)
+            : (finishCoordinates ?? null),
       });
     },
     [finishCoordinates, startCoordinates],
@@ -2604,7 +2641,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       fetchRoute(startCoordinates, finishCoordinates)
         .then((r) => {
           if (cancelled) return;
-          if (r && typeof r.distance === "number" && Number.isFinite(r.distance)) {
+          if (
+            r &&
+            typeof r.distance === 'number' &&
+            Number.isFinite(r.distance)
+          ) {
             setDistanceKm(Number((r.distance / 1000).toFixed(1)));
             return;
           }
@@ -2619,7 +2660,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     setDistanceKm(null);
     if (autoRouteRef.current) {
-      setRouteLink("");
+      setRouteLink('');
     }
     return undefined;
   }, [startCoordinates, finishCoordinates]);
@@ -2629,363 +2670,368 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     try {
       await deleteTaskDraft(entityKind);
       setDraft(null);
-      setAlertMsg(t("taskDraftCleared"));
+      setAlertMsg(t('taskDraftCleared'));
       setHasDraftChanges(false);
       skipNextDraftSyncRef.current = true;
       try {
         draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
       } catch (error) {
-        console.warn("Не удалось сбросить состояние черновика", error);
+        console.warn('Не удалось сбросить состояние черновика', error);
       }
     } catch (error) {
-      console.error("Не удалось удалить черновик", error);
+      console.error('Не удалось удалить черновик', error);
       if (error instanceof TaskRequestError) {
         setAlertMsg(
-          t("taskDraftClearFailedWithReason", { reason: error.message }),
+          t('taskDraftClearFailedWithReason', { reason: error.message }),
         );
       } else if (error instanceof Error && error.message) {
         setAlertMsg(
-          t("taskDraftClearFailedWithReason", { reason: error.message }),
+          t('taskDraftClearFailedWithReason', { reason: error.message }),
         );
       } else {
-        setAlertMsg(t("taskDraftClearFailed"));
+        setAlertMsg(t('taskDraftClearFailed'));
       }
     } finally {
       setDraftLoading(false);
     }
   }, [collectDraftPayload, entityKind, t]);
 
-  const submit = handleSubmit(async (formData) => {
-    try {
-      const creationDate = parseIsoDate(created);
-      if (formData.startDate && creationDate) {
-        const parsedStart = parseIsoDate(formData.startDate);
-        if (parsedStart) {
-          const startMinutes = Math.floor(parsedStart.getTime() / 60000);
-          const createdMinutes = Math.floor(creationDate.getTime() / 60000);
-          if (startMinutes < createdMinutes) {
-            setError("startDate", {
-              type: "validate",
-              message: t("startBeforeCreated"),
-            });
-            setAlertMsg(t("startBeforeCreated"));
-            return;
+  const submit = handleSubmit(
+    async (formData) => {
+      try {
+        const creationDate = parseIsoDate(created);
+        if (formData.startDate && creationDate) {
+          const parsedStart = parseIsoDate(formData.startDate);
+          if (parsedStart) {
+            const startMinutes = Math.floor(parsedStart.getTime() / 60000);
+            const createdMinutes = Math.floor(creationDate.getTime() / 60000);
+            if (startMinutes < createdMinutes) {
+              setError('startDate', {
+                type: 'validate',
+                message: t('startBeforeCreated'),
+              });
+              setAlertMsg(t('startBeforeCreated'));
+              return;
+            }
           }
         }
-      }
-      const initialValues = initialRef.current;
-      const initialStart = initialValues?.startDate || "";
-      const initialDue = initialValues?.dueDate || "";
-      const startValue = formData.startDate || "";
-      const dueValue = formData.dueDate || "";
-      const isNewTask = !isEdit;
-      let startInputValue = startValue;
-      let dueInputValue = dueValue;
-      let shouldSetStart = false;
-      let shouldSetDue = false;
-      let shouldIncludeStart = false;
-      let shouldIncludeDue = false;
-      if (isNewTask) {
-        const defaults = computeDefaultDates(creationDate ?? undefined);
-        const startMatchesInitial =
-          Boolean(startValue) &&
-          Boolean(initialStart) &&
-          startValue === initialStart;
-        const startCleared = !startValue && Boolean(initialStart);
-        startInputValue = startValue || defaults.start;
-        if (startMatchesInitial || (!startValue && !initialStart)) {
-          startInputValue = formatInputDate(new Date());
-        } else if (startCleared) {
-          startInputValue = formatInputDate(new Date());
-        }
-        const dueMatchesInitial =
-          Boolean(dueValue) && Boolean(initialDue) && dueValue === initialDue;
-        dueInputValue = dueValue || defaults.due;
-        const dueUnchanged = (!dueValue && !initialDue) || dueMatchesInitial;
-        if (dueUnchanged) {
-          const startMs = new Date(startInputValue).getTime();
-          const offset =
-            initialStart && initialDue
-              ? new Date(initialDue).getTime() -
-                new Date(initialStart).getTime()
-              : DEFAULT_DUE_OFFSET_MS;
-          if (Number.isFinite(startMs)) {
-            dueInputValue = formatInputDate(new Date(startMs + offset));
+        const initialValues = initialRef.current;
+        const initialStart = initialValues?.startDate || '';
+        const initialDue = initialValues?.dueDate || '';
+        const startValue = formData.startDate || '';
+        const dueValue = formData.dueDate || '';
+        const isNewTask = !isEdit;
+        let startInputValue = startValue;
+        let dueInputValue = dueValue;
+        let shouldSetStart = false;
+        let shouldSetDue = false;
+        let shouldIncludeStart = false;
+        let shouldIncludeDue = false;
+        if (isNewTask) {
+          const defaults = computeDefaultDates(creationDate ?? undefined);
+          const startMatchesInitial =
+            Boolean(startValue) &&
+            Boolean(initialStart) &&
+            startValue === initialStart;
+          const startCleared = !startValue && Boolean(initialStart);
+          startInputValue = startValue || defaults.start;
+          if (startMatchesInitial || (!startValue && !initialStart)) {
+            startInputValue = formatInputDate(new Date());
+          } else if (startCleared) {
+            startInputValue = formatInputDate(new Date());
           }
-        }
-        shouldSetStart = true;
-        shouldSetDue = true;
-        shouldIncludeStart = true;
-        shouldIncludeDue = true;
-      } else {
-        const startChanged = startValue !== initialStart;
-        const dueChanged = dueValue !== initialDue;
-        if (!startChanged) {
-          startInputValue = initialStart;
-        }
-        if (!dueChanged) {
-          dueInputValue = initialDue;
-        }
-        if (startChanged) {
+          const dueMatchesInitial =
+            Boolean(dueValue) && Boolean(initialDue) && dueValue === initialDue;
+          dueInputValue = dueValue || defaults.due;
+          const dueUnchanged = (!dueValue && !initialDue) || dueMatchesInitial;
+          if (dueUnchanged) {
+            const startMs = new Date(startInputValue).getTime();
+            const offset =
+              initialStart && initialDue
+                ? new Date(initialDue).getTime() -
+                  new Date(initialStart).getTime()
+                : DEFAULT_DUE_OFFSET_MS;
+            if (Number.isFinite(startMs)) {
+              dueInputValue = formatInputDate(new Date(startMs + offset));
+            }
+          }
           shouldSetStart = true;
+          shouldSetDue = true;
           shouldIncludeStart = true;
+          shouldIncludeDue = true;
+        } else {
+          const startChanged = startValue !== initialStart;
+          const dueChanged = dueValue !== initialDue;
+          if (!startChanged) {
+            startInputValue = initialStart;
+          }
+          if (!dueChanged) {
+            dueInputValue = initialDue;
+          }
+          if (startChanged) {
+            shouldSetStart = true;
+            shouldIncludeStart = true;
+          }
+          if (dueChanged) {
+            shouldSetDue = true;
+            shouldIncludeDue = true;
+          }
         }
-        if (dueChanged) {
+        let startMs = Number.NaN;
+        let dueMs = Number.NaN;
+        if (startInputValue) {
+          startMs = new Date(startInputValue).getTime();
+        }
+        if (dueInputValue) {
+          dueMs = new Date(dueInputValue).getTime();
+        }
+        if (!Number.isNaN(startMs) && !Number.isNaN(dueMs) && dueMs < startMs) {
+          dueInputValue = formatInputDate(
+            new Date(startMs + DEFAULT_DUE_OFFSET_MS),
+          );
           shouldSetDue = true;
           shouldIncludeDue = true;
+          dueMs = new Date(dueInputValue).getTime();
         }
-      }
-      let startMs = Number.NaN;
-      let dueMs = Number.NaN;
-      if (startInputValue) {
-        startMs = new Date(startInputValue).getTime();
-      }
-      if (dueInputValue) {
-        dueMs = new Date(dueInputValue).getTime();
-      }
-      if (!Number.isNaN(startMs) && !Number.isNaN(dueMs) && dueMs < startMs) {
-        dueInputValue = formatInputDate(
-          new Date(startMs + DEFAULT_DUE_OFFSET_MS),
-        );
-        shouldSetDue = true;
-        shouldIncludeDue = true;
-        dueMs = new Date(dueInputValue).getTime();
-      }
-      if (!Number.isNaN(startMs) && !Number.isNaN(dueMs)) {
-        setDueOffset(dueMs - startMs);
-      }
-      if (shouldSetStart) {
-        setValue("startDate", startInputValue);
-      }
-      if (shouldSetDue) {
-        setValue("dueDate", dueInputValue);
-      }
-      const assignedRaw =
-        typeof formData.assigneeId === "string"
-          ? formData.assigneeId.trim()
-          : "";
-      if (!assignedRaw) {
-        setError("assigneeId", {
-          type: "required",
-          message: t("assigneeRequiredError"),
-        });
-        setAlertMsg(t("assigneeRequiredError"));
-        return;
-      }
-      const assignedNumeric = toNumericValue(assignedRaw);
-      const assignedValue =
-        assignedNumeric !== null ? assignedNumeric : assignedRaw;
-      const resolvedTaskType =
-        entityKind === "request" ? DEFAULT_REQUEST_TYPE : taskType;
-      const payload: Record<string, unknown> = {
-        title: formData.title,
-        task_type: resolvedTaskType,
-        task_description: formData.description,
-        comment,
-        priority,
-        transport_type: transportType,
-        payment_method: paymentMethod,
-        status,
-        created_by: toNumericValue(creator),
-        assigned_user_id: assignedValue,
-        start_location: start,
-        start_location_link: startLink,
-        end_location: end,
-        end_location_link: endLink,
-        logistics_enabled: showLogistics,
-      };
-      const driverCandidate = transportDriverId.trim();
-      if (driverCandidate) {
-        const driverNumeric = Number.parseInt(driverCandidate, 10);
-        payload.transport_driver_id = Number.isFinite(driverNumeric)
-          ? driverNumeric
-          : driverCandidate;
-      } else {
-        payload.transport_driver_id = null;
-      }
-      const driverNameValue = transportDriverName.trim();
-      if (driverNameValue) {
-        payload.transport_driver_name = driverNameValue;
-      } else if (!driverCandidate) {
-        payload.transport_driver_name = null;
-      }
-      const vehicleCandidate = transportVehicleId.trim();
-      if (vehicleCandidate) {
-        payload.transport_vehicle_id = vehicleCandidate;
-      } else {
-        payload.transport_vehicle_id = null;
-      }
-      const vehicleNameValue = transportVehicleName.trim();
-      if (vehicleNameValue) {
-        payload.transport_vehicle_name = vehicleNameValue;
-      } else if (!vehicleCandidate) {
-        payload.transport_vehicle_name = null;
-      }
-      const vehicleRegistrationValue = transportVehicleRegistration.trim();
-      if (vehicleRegistrationValue) {
-        payload.transport_vehicle_registration = vehicleRegistrationValue;
-      } else if (!vehicleCandidate) {
-        payload.transport_vehicle_registration = null;
-      }
-      if (!isNewTask && payload.created_by === null) {
-        delete payload.created_by;
-      }
-      if (shouldIncludeStart) {
-        payload.start_date = startInputValue || "";
-      }
-      if (shouldIncludeDue) {
-        payload.due_date = dueInputValue || "";
-      }
-      const amountValue = parseCurrencyInput(paymentAmount);
-      if (amountValue === null) {
-        setAlertMsg(t("paymentAmountInvalid"));
-        return;
-      }
-      payload.payment_amount = amountValue;
-      const lengthValue = parseMetricInput(cargoLength);
-      const widthValue = parseMetricInput(cargoWidth);
-      const heightValue = parseMetricInput(cargoHeight);
-      const weightValue = parseMetricInput(cargoWeight);
-      const volumeValue =
-        lengthValue !== null && widthValue !== null && heightValue !== null
-          ? lengthValue * widthValue * heightValue
-          : parseMetricInput(cargoVolume);
-      if (lengthValue !== null) payload.cargo_length_m = lengthValue;
-      else if (isEdit) payload.cargo_length_m = "";
-      if (widthValue !== null) payload.cargo_width_m = widthValue;
-      else if (isEdit) payload.cargo_width_m = "";
-      if (heightValue !== null) payload.cargo_height_m = heightValue;
-      else if (isEdit) payload.cargo_height_m = "";
-      if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
-      else if (isEdit) payload.cargo_volume_m3 = "";
-      if (weightValue !== null) payload.cargo_weight_kg = weightValue;
-      else if (isEdit) payload.cargo_weight_kg = "";
-      if (startCoordinates) payload.startCoordinates = startCoordinates;
-      if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
-      if (distanceKm !== null) payload.route_distance_km = distanceKm;
-      if (routeLink) payload.google_route_url = routeLink;
-      const sendPayload = { ...payload, attachments };
-      let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
-      const currentTaskId = effectiveTaskId ?? "";
-      let savedId = currentTaskId;
-      if (isEdit && currentTaskId) {
-        const response = await updateTask(currentTaskId, sendPayload);
-        if (!response.ok) throw new Error("SAVE_FAILED");
-        const updated = (await response.json()) as
+        if (!Number.isNaN(startMs) && !Number.isNaN(dueMs)) {
+          setDueOffset(dueMs - startMs);
+        }
+        if (shouldSetStart) {
+          setValue('startDate', startInputValue);
+        }
+        if (shouldSetDue) {
+          setValue('dueDate', dueInputValue);
+        }
+        const assignedRaw =
+          typeof formData.assigneeId === 'string'
+            ? formData.assigneeId.trim()
+            : '';
+        if (!assignedRaw) {
+          setError('assigneeId', {
+            type: 'required',
+            message: t('assigneeRequiredError'),
+          });
+          setAlertMsg(t('assigneeRequiredError'));
+          return;
+        }
+        const assignedNumeric = toNumericValue(assignedRaw);
+        const assignedValue =
+          assignedNumeric !== null ? assignedNumeric : assignedRaw;
+        const resolvedTaskType =
+          entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+        const payload: Record<string, unknown> = {
+          title: formData.title,
+          task_type: resolvedTaskType,
+          task_description: formData.description,
+          comment,
+          priority,
+          transport_type: transportType,
+          payment_method: paymentMethod,
+          status,
+          created_by: toNumericValue(creator),
+          assigned_user_id: assignedValue,
+          start_location: start,
+          start_location_link: startLink,
+          end_location: end,
+          end_location_link: endLink,
+          logistics_enabled: showLogistics,
+        };
+        const driverCandidate = transportDriverId.trim();
+        if (driverCandidate) {
+          const driverNumeric = Number.parseInt(driverCandidate, 10);
+          payload.transport_driver_id = Number.isFinite(driverNumeric)
+            ? driverNumeric
+            : driverCandidate;
+        } else {
+          payload.transport_driver_id = null;
+        }
+        const driverNameValue = transportDriverName.trim();
+        if (driverNameValue) {
+          payload.transport_driver_name = driverNameValue;
+        } else if (!driverCandidate) {
+          payload.transport_driver_name = null;
+        }
+        const vehicleCandidate = transportVehicleId.trim();
+        if (vehicleCandidate) {
+          payload.transport_vehicle_id = vehicleCandidate;
+        } else {
+          payload.transport_vehicle_id = null;
+        }
+        const vehicleNameValue = transportVehicleName.trim();
+        if (vehicleNameValue) {
+          payload.transport_vehicle_name = vehicleNameValue;
+        } else if (!vehicleCandidate) {
+          payload.transport_vehicle_name = null;
+        }
+        const vehicleRegistrationValue = transportVehicleRegistration.trim();
+        if (vehicleRegistrationValue) {
+          payload.transport_vehicle_registration = vehicleRegistrationValue;
+        } else if (!vehicleCandidate) {
+          payload.transport_vehicle_registration = null;
+        }
+        if (!isNewTask && payload.created_by === null) {
+          delete payload.created_by;
+        }
+        if (shouldIncludeStart) {
+          payload.start_date = startInputValue || '';
+        }
+        if (shouldIncludeDue) {
+          payload.due_date = dueInputValue || '';
+        }
+        const amountValue = parseCurrencyInput(paymentAmount);
+        if (amountValue === null) {
+          setAlertMsg(t('paymentAmountInvalid'));
+          return;
+        }
+        payload.payment_amount = amountValue;
+        const lengthValue = parseMetricInput(cargoLength);
+        const widthValue = parseMetricInput(cargoWidth);
+        const heightValue = parseMetricInput(cargoHeight);
+        const weightValue = parseMetricInput(cargoWeight);
+        const volumeValue =
+          lengthValue !== null && widthValue !== null && heightValue !== null
+            ? lengthValue * widthValue * heightValue
+            : parseMetricInput(cargoVolume);
+        if (lengthValue !== null) payload.cargo_length_m = lengthValue;
+        else if (isEdit) payload.cargo_length_m = '';
+        if (widthValue !== null) payload.cargo_width_m = widthValue;
+        else if (isEdit) payload.cargo_width_m = '';
+        if (heightValue !== null) payload.cargo_height_m = heightValue;
+        else if (isEdit) payload.cargo_height_m = '';
+        if (volumeValue !== null) payload.cargo_volume_m3 = volumeValue;
+        else if (isEdit) payload.cargo_volume_m3 = '';
+        if (weightValue !== null) payload.cargo_weight_kg = weightValue;
+        else if (isEdit) payload.cargo_weight_kg = '';
+        if (startCoordinates) payload.startCoordinates = startCoordinates;
+        if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+        if (distanceKm !== null) payload.route_distance_km = distanceKm;
+        if (routeLink) payload.google_route_url = routeLink;
+        const sendPayload = { ...payload, attachments };
+        let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
+        const currentTaskId = effectiveTaskId ?? '';
+        let savedId = currentTaskId;
+        if (isEdit && currentTaskId) {
+          const response = await updateTask(currentTaskId, sendPayload);
+          if (!response.ok) throw new Error('SAVE_FAILED');
+          const updated = (await response.json()) as
+            | (Partial<Task> & Record<string, unknown>)
+            | null;
+          savedTask = updated;
+          const updatedIdCandidate =
+            ((updated as Record<string, unknown>)._id as string | undefined) ??
+            ((updated as Record<string, unknown>).id as string | undefined) ??
+            currentTaskId;
+          savedId =
+            coerceTaskId(updatedIdCandidate) ?? updatedIdCandidate ?? '';
+        } else {
+          const created = await (entityKind === 'request'
+            ? createRequest(sendPayload)
+            : createTask(sendPayload));
+          if (!created) throw new Error('SAVE_FAILED');
+          savedTask = created as Partial<Task> & Record<string, unknown>;
+          const createdIdCandidate =
+            ((created as Record<string, unknown>)._id as string | undefined) ??
+            ((created as Record<string, unknown>).id as string | undefined) ??
+            savedId;
+          savedId =
+            coerceTaskId(createdIdCandidate) ?? createdIdCandidate ?? '';
+        }
+        let detail: {
+          task?: Record<string, unknown>;
+          users?: Record<string, UserBrief>;
+        } | null = null;
+        if (savedId) {
+          commitResolvedTaskId(savedId);
+          try {
+            const fetchId = coerceTaskId(savedId) ?? savedId;
+            detail = await authFetch(`/api/v1/tasks/${fetchId}`).then((r) =>
+              r.ok ? r.json() : null,
+            );
+          } catch {
+            detail = null;
+          }
+        }
+        const taskData = (detail?.task || detail || savedTask) as
           | (Partial<Task> & Record<string, unknown>)
           | null;
-        savedTask = updated;
-        const updatedIdCandidate =
-          ((updated as Record<string, unknown>)._id as string | undefined) ??
-          ((updated as Record<string, unknown>).id as string | undefined) ??
-          currentTaskId;
-        savedId = coerceTaskId(updatedIdCandidate) ?? updatedIdCandidate ?? "";
-      } else {
-        const created = await (entityKind === "request"
-          ? createRequest(sendPayload)
-          : createTask(sendPayload));
-        if (!created) throw new Error("SAVE_FAILED");
-        savedTask = created as Partial<Task> & Record<string, unknown>;
-        const createdIdCandidate =
-          ((created as Record<string, unknown>)._id as string | undefined) ??
-          ((created as Record<string, unknown>).id as string | undefined) ??
-          savedId;
-        savedId = coerceTaskId(createdIdCandidate) ?? createdIdCandidate ?? "";
-      }
-      let detail: {
-        task?: Record<string, unknown>;
-        users?: Record<string, UserBrief>;
-      } | null = null;
-      if (savedId) {
-        commitResolvedTaskId(savedId);
-        try {
-          const fetchId = coerceTaskId(savedId) ?? savedId;
-          detail = await authFetch(`/api/v1/tasks/${fetchId}`).then((r) =>
-            r.ok ? r.json() : null,
+        if (taskData) {
+          applyTaskDetails(
+            taskData,
+            detail?.users as Record<string, UserBrief> | undefined,
           );
-        } catch {
-          detail = null;
-        }
-      }
-      const taskData = (detail?.task || detail || savedTask) as
-        | (Partial<Task> & Record<string, unknown>)
-        | null;
-      if (taskData) {
-        applyTaskDetails(
-          taskData,
-          detail?.users as Record<string, UserBrief> | undefined,
-        );
-        const createdAtRaw =
-          (taskData.createdAt as string | undefined) ||
-          ((detail?.task as Record<string, unknown>)?.createdAt as
-            | string
-            | undefined);
-        if (createdAtRaw) {
-          const createdDate = new Date(createdAtRaw);
-          if (!Number.isNaN(createdDate.getTime())) {
-            setCreated(createdDate.toISOString());
+          const createdAtRaw =
+            (taskData.createdAt as string | undefined) ||
+            ((detail?.task as Record<string, unknown>)?.createdAt as
+              | string
+              | undefined);
+          if (createdAtRaw) {
+            const createdDate = new Date(createdAtRaw);
+            if (!Number.isNaN(createdDate.getTime())) {
+              setCreated(createdDate.toISOString());
+            }
           }
+          const detailTask = detail?.task as
+            | Record<string, unknown>
+            | undefined;
+          if (detailTask?.history) {
+            setHistory(normalizeHistory(detailTask.history));
+          }
+          const requestLabel =
+            (detailTask?.task_number as string | undefined) ||
+            (detailTask?.request_id as string | undefined) ||
+            (taskData.task_number as string | undefined) ||
+            (taskData.request_id as string | undefined);
+          if (requestLabel) setRequestId(requestLabel);
         }
-        const detailTask = detail?.task as Record<string, unknown> | undefined;
-        if (detailTask?.history) {
-          setHistory(normalizeHistory(detailTask.history));
-        }
-        const requestLabel =
-          (detailTask?.task_number as string | undefined) ||
-          (detailTask?.request_id as string | undefined) ||
-          (taskData.task_number as string | undefined) ||
-          (taskData.request_id as string | undefined);
-        if (requestLabel) setRequestId(requestLabel);
-      }
-      setAlertMsg(isEdit ? t("taskUpdated") : t("taskCreated"));
-      if (!isEdit) {
-        try {
-          await deleteTaskDraft(entityKind);
-          setDraft(null);
-          setHasDraftChanges(false);
-          skipNextDraftSyncRef.current = true;
+        setAlertMsg(isEdit ? t('taskUpdated') : t('taskCreated'));
+        if (!isEdit) {
           try {
-            draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+            await deleteTaskDraft(entityKind);
+            setDraft(null);
+            setHasDraftChanges(false);
+            skipNextDraftSyncRef.current = true;
+            try {
+              draftSnapshotRef.current = JSON.stringify(collectDraftPayload());
+            } catch (error) {
+              console.warn('Не удалось обновить состояние черновика', error);
+            }
           } catch (error) {
-            console.warn("Не удалось обновить состояние черновика", error);
+            console.warn('Не удалось удалить сохранённый черновик', error);
           }
-        } catch (error) {
-          console.warn("Не удалось удалить сохранённый черновик", error);
         }
+        if (taskData && onSave) onSave(taskData as Task);
+      } catch (e) {
+        console.error(e);
+        if (e instanceof TaskRequestError) {
+          const reason = e.message.trim();
+          setAlertMsg(
+            reason
+              ? t('taskSaveFailedWithReason', { reason })
+              : t('taskSaveFailed'),
+          );
+        } else if (e instanceof Error && e.message) {
+          setAlertMsg(t('taskSaveFailedWithReason', { reason: e.message }));
+        } else {
+          setAlertMsg(t('taskSaveFailed'));
+        }
+      } finally {
+        setIsSubmitting(false);
       }
-      if (taskData && onSave) onSave(taskData as Task);
-    } catch (e) {
-      console.error(e);
-      if (e instanceof TaskRequestError) {
-        const reason = e.message.trim();
-        setAlertMsg(
-          reason
-            ? t("taskSaveFailedWithReason", { reason })
-            : t("taskSaveFailed"),
-        );
-      } else if (e instanceof Error && e.message) {
-        setAlertMsg(t("taskSaveFailedWithReason", { reason: e.message }));
-      } else {
-        setAlertMsg(t("taskSaveFailed"));
+    },
+    (formErrors: FieldErrors<TaskFormValues>) => {
+      if (formErrors.assigneeId) {
+        setIsSubmitting(false);
+        setAlertMsg(t('assigneeRequiredError'));
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-  },
-  (formErrors: FieldErrors<TaskFormValues>) => {
-    if (formErrors.assigneeId) {
-      setIsSubmitting(false);
-      setAlertMsg(t("assigneeRequiredError"));
-    }
-  },
-);
+    },
+  );
 
   const [alertMsg, setAlertMsg] = React.useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
-  const [pendingDoneOption, setPendingDoneOption] = React.useState("");
+  const [pendingDoneOption, setPendingDoneOption] = React.useState('');
 
   React.useEffect(() => {
     if (isEdit || !editing) {
@@ -3018,17 +3064,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           if (draftSaveRequestIdRef.current !== requestId) {
             return;
           }
-          console.error("Не удалось сохранить черновик", error);
+          console.error('Не удалось сохранить черновик', error);
           if (error instanceof TaskRequestError) {
             setAlertMsg(
-              t("taskDraftSaveFailedWithReason", { reason: error.message }),
+              t('taskDraftSaveFailedWithReason', { reason: error.message }),
             );
           } else if (error instanceof Error && error.message) {
             setAlertMsg(
-              t("taskDraftSaveFailedWithReason", { reason: error.message }),
+              t('taskDraftSaveFailedWithReason', { reason: error.message }),
             );
           } else {
-            setAlertMsg(t("taskDraftSaveFailed"));
+            setAlertMsg(t('taskDraftSaveFailed'));
           }
         })
         .finally(() => {
@@ -3040,14 +3086,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [
-    collectDraftPayload,
-    editing,
-    entityKind,
-    isEdit,
-    t,
-    watchedDraftValues,
-  ]);
+  }, [collectDraftPayload, editing, entityKind, isEdit, t, watchedDraftValues]);
 
   const handleDelete = async () => {
     const targetId = effectiveTaskId;
@@ -3055,7 +3094,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     await deleteTask(targetId);
     if (onSave) onSave(null);
     onClose();
-    setAlertMsg(t("taskDeleted"));
+    setAlertMsg(t('taskDeleted'));
   };
 
   const resetForm = () => {
@@ -3096,7 +3135,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setAttachments(d.attachments as Attachment[]);
     setPhotosLink(
       buildTelegramMessageLink(d.photosChatId, d.photosMessageId) ??
-        (typeof d.photosLink === "string" ? d.photosLink : null),
+        (typeof d.photosLink === 'string' ? d.photosLink : null),
     );
     setDistanceKm(d.distanceKm);
     setShowLogistics(Boolean(d.showLogistics));
@@ -3107,23 +3146,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const targetId = effectiveTaskId;
     if (!targetId) return;
     const prev = status;
-    setStatus("В работе");
+    setStatus('В работе');
     try {
       const [data] = await Promise.all([
-        updateTask(targetId, { status: "В работе" }).then((r) =>
+        updateTask(targetId, { status: 'В работе' }).then((r) =>
           r.ok ? r.json() : null,
         ),
-        updateTaskStatus(targetId, "В работе"),
+        updateTaskStatus(targetId, 'В работе'),
       ]);
       if (data) {
         if (onSave) onSave(data);
         if (initialRef.current) {
-          initialRef.current.status = "В работе";
+          initialRef.current.status = 'В работе';
         }
-        setInitialStatus("В работе");
+        setInitialStatus('В работе');
       } else {
         setStatus(prev);
-        setAlertMsg(t("taskSaveFailed"));
+        setAlertMsg(t('taskSaveFailed'));
       }
     } catch (error) {
       console.error(error);
@@ -3132,16 +3171,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         const reason = error.message.trim();
         setAlertMsg(
           reason
-            ? t("taskSaveFailedWithReason", { reason })
-            : t("taskSaveFailed"),
+            ? t('taskSaveFailedWithReason', { reason })
+            : t('taskSaveFailed'),
         );
       } else if (error instanceof Error && error.message) {
-        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+        setAlertMsg(t('taskSaveFailedWithReason', { reason: error.message }));
       } else {
-        setAlertMsg(t("taskSaveFailed"));
+        setAlertMsg(t('taskSaveFailed'));
       }
     } finally {
-      setSelectedAction("accept");
+      setSelectedAction('accept');
     }
   };
 
@@ -3149,15 +3188,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const targetId = effectiveTaskId;
     if (!targetId) return;
     const prev = status;
-    setStatus("Выполнена");
+    setStatus('Выполнена');
     try {
       const [data] = await Promise.all([
         updateTask(targetId, {
-          status: "Выполнена",
+          status: 'Выполнена',
           completed_at: new Date().toISOString(),
           completion_result: opt,
         }).then((r) => (r.ok ? r.json() : null)),
-        updateTaskStatus(targetId, "Выполнена"),
+        updateTaskStatus(targetId, 'Выполнена'),
       ]);
       if (data) {
         const completedValue = toIsoString(
@@ -3167,14 +3206,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         const fallbackCompleted = new Date().toISOString();
         setCompletedAt(completedValue || fallbackCompleted);
         if (initialRef.current) {
-          initialRef.current.status = "Выполнена";
+          initialRef.current.status = 'Выполнена';
           initialRef.current.completedAt = completedValue || fallbackCompleted;
         }
-        setInitialStatus("Выполнена");
+        setInitialStatus('Выполнена');
         if (onSave) onSave(data);
       } else {
         setStatus(prev);
-        setAlertMsg(t("taskSaveFailed"));
+        setAlertMsg(t('taskSaveFailed'));
       }
     } catch (error) {
       console.error(error);
@@ -3183,29 +3222,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         const reason = error.message.trim();
         setAlertMsg(
           reason
-            ? t("taskSaveFailedWithReason", { reason })
-            : t("taskSaveFailed"),
+            ? t('taskSaveFailedWithReason', { reason })
+            : t('taskSaveFailed'),
         );
       } else if (error instanceof Error && error.message) {
-        setAlertMsg(t("taskSaveFailedWithReason", { reason: error.message }));
+        setAlertMsg(t('taskSaveFailedWithReason', { reason: error.message }));
       } else {
-        setAlertMsg(t("taskSaveFailed"));
+        setAlertMsg(t('taskSaveFailed'));
       }
     } finally {
       setShowDoneSelect(false);
-      setSelectedAction("done");
+      setSelectedAction('done');
     }
   };
 
   const creatorId = Number(creator);
   const hasCreator = Number.isFinite(creatorId) && creator.trim().length > 0;
-  const creatorName = hasCreator ? resolveUserName(creatorId) : "";
+  const creatorName = hasCreator ? resolveUserName(creatorId) : '';
   const headerLabel = React.useMemo(() => {
-    const parts: string[] = [t("task")];
+    const parts: string[] = [t('task')];
     if (requestId) parts.push(requestId);
-    const createdLabel = created ? formatCreatedLabel(created) : "";
+    const createdLabel = created ? formatCreatedLabel(created) : '';
     if (createdLabel) parts.push(createdLabel);
-    return parts.join(" ").trim();
+    return parts.join(' ').trim();
   }, [created, requestId, t]);
   const handleBackdropClick = React.useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -3219,7 +3258,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const startQueryLength = start.trim().length;
   const finishQueryLength = end.trim().length;
 
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return null;
   }
 
@@ -3234,7 +3273,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
           <div
             className="pointer-events-auto relative mx-auto w-full max-w-6xl space-y-6 overflow-y-auto rounded-2xl bg-white p-4 shadow-lg sm:p-6"
-            style={{ WebkitOverflowScrolling: "touch", maxHeight: "calc(100vh - 2rem)" }}
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              maxHeight: 'calc(100vh - 2rem)',
+            }}
             role="dialog"
             aria-modal="true"
             aria-labelledby={dialogTitleId}
@@ -3248,7 +3290,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               </h3>
               {hasCreator ? (
                 <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-600">
-                  <span>{t("taskCreatedBy")}</span>
+                  <span>{t('taskCreatedBy')}</span>
                   <EmployeeLink
                     employeeId={creatorId}
                     className={creatorBadgeClass}
@@ -3258,7 +3300,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 </div>
               ) : (
                 <span className="mt-1 block text-sm text-gray-500">
-                  {t("taskCreatorUnknown")}
+                  {t('taskCreatorUnknown')}
                 </span>
               )}
             </div>
@@ -3268,8 +3310,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   type="button"
                   onClick={() => setEditing(true)}
                   className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
-                  title={t("edit")}
-                  aria-label={t("edit")}
+                  title={t('edit')}
+                  aria-label={t('edit')}
                 >
                   ✎
                 </button>
@@ -3279,8 +3321,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 onClick={resetForm}
                 className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={!editing}
-                title={t("reset")}
-                aria-label={t("reset")}
+                title={t('reset')}
+                aria-label={t('reset')}
               >
                 <ArrowPathIcon className="h-5 w-5" />
               </button>
@@ -3288,8 +3330,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 type="button"
                 onClick={onClose}
                 className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100"
-                title={t("close")}
-                aria-label={t("close")}
+                title={t('close')}
+                aria-label={t('close')}
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -3303,22 +3345,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       control={control}
                       render={({ field }) => (
                         <MultiUserSelect
-                          label={t("assignees")}
+                          label={t('assignees')}
                           users={users}
                           value={
-                            typeof field.value === "string" &&
+                            typeof field.value === 'string' &&
                             field.value.trim().length > 0
                               ? field.value.trim()
                               : null
                           }
-                          onChange={(val) => field.onChange(val ?? "")}
+                          onChange={(val) => field.onChange(val ?? '')}
                           onBlur={field.onBlur}
                           disabled={!editing}
                           required
-                          placeholder={t("assigneeSelectPlaceholder")}
+                          placeholder={t('assigneeSelectPlaceholder')}
                           hint={
                             !errors.assigneeId
-                              ? t("assigneeSelectHint")
+                              ? t('assigneeSelectHint')
                               : undefined
                           }
                           error={errors.assigneeId?.message ?? null}
@@ -3328,35 +3370,37 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium">
-                      {t("taskTitle")}
+                      {t('taskTitle')}
                     </label>
                     <textarea
                       {...titleFieldRest}
                       ref={handleTitleRef}
                       rows={1}
-                      placeholder={t("title")}
+                      placeholder={t('title')}
                       className="focus:ring-brand-200 focus:border-accentPrimary min-h-[44px] w-full resize-none rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.95rem] font-semibold focus:ring focus:outline-none sm:text-base"
                       disabled={!editing}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter") {
+                        if (event.key === 'Enter') {
                           event.preventDefault();
                         }
                       }}
                     />
                     {errors.title && (
-                      <p className="text-sm text-red-600">{errors.title.message}</p>
+                      <p className="text-sm text-red-600">
+                        {errors.title.message}
+                      </p>
                     )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium">
-                      {t("taskSection")}
+                      {t('taskSection')}
                     </label>
                     <Controller
                       name="description"
                       control={control}
                       render={({ field }) => (
                         <CKEditorPopup
-                          value={field.value || ""}
+                          value={field.value || ''}
                           onChange={field.onChange}
                           readOnly={!editing}
                         />
@@ -3371,10 +3415,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         name="showLogistics"
                         className="h-4 w-4"
                         checked={showLogistics}
-                        onChange={(e) => handleLogisticsToggle(e.target.checked)}
+                        onChange={(e) =>
+                          handleLogisticsToggle(e.target.checked)
+                        }
                         disabled={!editing}
                       />
-                      {t("logisticsToggle")}
+                      {t('logisticsToggle')}
                     </label>
                     {showLogistics && (
                       <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
@@ -3383,7 +3429,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-start-address"
                           >
-                            {t("startPoint")}
+                            {t('startPoint')}
                           </label>
                           <div className="mt-1 space-y-2">
                             <div className="relative">
@@ -3404,7 +3450,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   }, 120);
                                 }}
                                 onKeyDown={(event) => {
-                                  if (event.key === "Enter" && editing) {
+                                  if (event.key === 'Enter' && editing) {
                                     if (startSuggestions.length > 0) {
                                       event.preventDefault();
                                       handleStartSuggestionSelect(
@@ -3412,11 +3458,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       );
                                     }
                                   }
-                                  if (event.key === "Escape") {
+                                  if (event.key === 'Escape') {
                                     setStartSuggestionsOpen(false);
                                   }
                                 }}
-                                placeholder={t("addressPlaceholder", {
+                                placeholder={t('addressPlaceholder', {
                                   count: MIN_ADDRESS_QUERY_LENGTH,
                                 })}
                                 className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
@@ -3426,7 +3472,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
                                   {startSearchLoading ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchLoading")}
+                                      {t('addressSearchLoading')}
                                     </div>
                                   ) : startSearchError ? (
                                     <div className="px-3 py-2 text-sm text-red-600">
@@ -3434,18 +3480,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     </div>
                                   ) : startQueryLength === 0 ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchHint", {
+                                      {t('addressSearchHint', {
                                         count: MIN_ADDRESS_QUERY_LENGTH,
                                       })}
                                     </div>
-                                  ) : startQueryLength < MIN_ADDRESS_QUERY_LENGTH ? (
+                                  ) : startQueryLength <
+                                    MIN_ADDRESS_QUERY_LENGTH ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchHint", {
+                                      {t('addressSearchHint', {
                                         count: MIN_ADDRESS_QUERY_LENGTH,
                                       })}
                                     </div>
                                   ) : startSuggestions.length ? (
-                                    <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+                                    <ul
+                                      className="max-h-60 overflow-y-auto py-1"
+                                      role="listbox"
+                                    >
                                       {startSuggestions.map((suggestion) => (
                                         <li
                                           key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
@@ -3453,7 +3503,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                           className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
                                           onMouseDown={(event) => {
                                             event.preventDefault();
-                                            handleStartSuggestionSelect(suggestion);
+                                            handleStartSuggestionSelect(
+                                              suggestion,
+                                            );
                                           }}
                                         >
                                           <div className="font-medium text-slate-800">
@@ -3469,7 +3521,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     </ul>
                                   ) : (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchNoResults")}
+                                      {t('addressSearchNoResults')}
                                     </div>
                                   )}
                                 </div>
@@ -3484,7 +3536,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     rel="noopener noreferrer"
                                     className="text-accentPrimary underline break-words"
                                   >
-                                    {start || t("link")}
+                                    {start || t('link')}
                                   </a>
                                   {startCoordinates && (
                                     <input
@@ -3494,7 +3546,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       readOnly
                                       className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
                                       onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t("coordinates")}
+                                      aria-label={t('coordinates')}
                                     />
                                   )}
                                 </div>
@@ -3502,7 +3554,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   <div className="flex items-center gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => handleStartLink("")}
+                                      onClick={() => handleStartLink('')}
                                       className="shrink-0 text-red-600"
                                     >
                                       ✖
@@ -3511,9 +3563,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => openMapPicker("start")}
+                                      onClick={() => openMapPicker('start')}
                                     >
-                                      {t("selectOnMap")}
+                                      {t('selectOnMap')}
                                     </Button>
                                   </div>
                                 ) : null}
@@ -3524,8 +3576,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   id="task-start-link"
                                   name="startLink"
                                   value={startLink}
-                                  onChange={(e) => handleStartLink(e.target.value)}
-                                  placeholder={t("googleMapsLink")}
+                                  onChange={(e) =>
+                                    handleStartLink(e.target.value)
+                                  }
+                                  placeholder={t('googleMapsLink')}
                                   className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                   disabled={!editing}
                                 />
@@ -3535,22 +3589,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   rel="noopener"
                                   className={cn(
                                     buttonVariants({
-                                      variant: "default",
-                                      size: "sm",
+                                      variant: 'default',
+                                      size: 'sm',
                                     }),
-                                    "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
+                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
                                   )}
                                 >
-                                  {t("map")}
+                                  {t('map')}
                                 </a>
                                 {editing ? (
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => openMapPicker("start")}
+                                    onClick={() => openMapPicker('start')}
                                   >
-                                    {t("selectOnMap")}
+                                    {t('selectOnMap')}
                                   </Button>
                                 ) : null}
                               </div>
@@ -3562,7 +3616,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-finish-address"
                           >
-                            {t("endPoint")}
+                            {t('endPoint')}
                           </label>
                           <div className="mt-1 space-y-2">
                             <div className="relative">
@@ -3583,7 +3637,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   }, 120);
                                 }}
                                 onKeyDown={(event) => {
-                                  if (event.key === "Enter" && editing) {
+                                  if (event.key === 'Enter' && editing) {
                                     if (finishSuggestions.length > 0) {
                                       event.preventDefault();
                                       handleFinishSuggestionSelect(
@@ -3591,11 +3645,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       );
                                     }
                                   }
-                                  if (event.key === "Escape") {
+                                  if (event.key === 'Escape') {
                                     setFinishSuggestionsOpen(false);
                                   }
                                 }}
-                                placeholder={t("addressPlaceholder", {
+                                placeholder={t('addressPlaceholder', {
                                   count: MIN_ADDRESS_QUERY_LENGTH,
                                 })}
                                 className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
@@ -3605,7 +3659,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
                                   {finishSearchLoading ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchLoading")}
+                                      {t('addressSearchLoading')}
                                     </div>
                                   ) : finishSearchError ? (
                                     <div className="px-3 py-2 text-sm text-red-600">
@@ -3613,18 +3667,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     </div>
                                   ) : finishQueryLength === 0 ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchHint", {
+                                      {t('addressSearchHint', {
                                         count: MIN_ADDRESS_QUERY_LENGTH,
                                       })}
                                     </div>
-                                  ) : finishQueryLength < MIN_ADDRESS_QUERY_LENGTH ? (
+                                  ) : finishQueryLength <
+                                    MIN_ADDRESS_QUERY_LENGTH ? (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchHint", {
+                                      {t('addressSearchHint', {
                                         count: MIN_ADDRESS_QUERY_LENGTH,
                                       })}
                                     </div>
                                   ) : finishSuggestions.length ? (
-                                    <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+                                    <ul
+                                      className="max-h-60 overflow-y-auto py-1"
+                                      role="listbox"
+                                    >
                                       {finishSuggestions.map((suggestion) => (
                                         <li
                                           key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
@@ -3632,7 +3690,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                           className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
                                           onMouseDown={(event) => {
                                             event.preventDefault();
-                                            handleFinishSuggestionSelect(suggestion);
+                                            handleFinishSuggestionSelect(
+                                              suggestion,
+                                            );
                                           }}
                                         >
                                           <div className="font-medium text-slate-800">
@@ -3648,7 +3708,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     </ul>
                                   ) : (
                                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t("addressSearchNoResults")}
+                                      {t('addressSearchNoResults')}
                                     </div>
                                   )}
                                 </div>
@@ -3663,7 +3723,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     rel="noopener noreferrer"
                                     className="text-accentPrimary underline break-words"
                                   >
-                                    {end || t("link")}
+                                    {end || t('link')}
                                   </a>
                                   {finishCoordinates && (
                                     <input
@@ -3673,7 +3733,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       readOnly
                                       className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
                                       onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t("coordinates")}
+                                      aria-label={t('coordinates')}
                                     />
                                   )}
                                 </div>
@@ -3681,7 +3741,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   <div className="flex items-center gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => handleEndLink("")}
+                                      onClick={() => handleEndLink('')}
                                       className="shrink-0 text-red-600"
                                     >
                                       ✖
@@ -3690,9 +3750,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => openMapPicker("finish")}
+                                      onClick={() => openMapPicker('finish')}
                                     >
-                                      {t("selectOnMap")}
+                                      {t('selectOnMap')}
                                     </Button>
                                   </div>
                                 ) : null}
@@ -3703,8 +3763,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   id="task-end-link"
                                   name="endLink"
                                   value={endLink}
-                                  onChange={(e) => handleEndLink(e.target.value)}
-                                  placeholder={t("googleMapsLink")}
+                                  onChange={(e) =>
+                                    handleEndLink(e.target.value)
+                                  }
+                                  placeholder={t('googleMapsLink')}
                                   className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                   disabled={!editing}
                                 />
@@ -3714,22 +3776,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   rel="noopener"
                                   className={cn(
                                     buttonVariants({
-                                      variant: "default",
-                                      size: "sm",
+                                      variant: 'default',
+                                      size: 'sm',
                                     }),
-                                    "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
+                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
                                   )}
                                 >
-                                  {t("map")}
+                                  {t('map')}
                                 </a>
                                 {editing ? (
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => openMapPicker("finish")}
+                                    onClick={() => openMapPicker('finish')}
                                   >
-                                    {t("selectOnMap")}
+                                    {t('selectOnMap')}
                                   </Button>
                                 ) : null}
                               </div>
@@ -3741,13 +3803,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-distance"
                           >
-                            {t("distance")}
+                            {t('distance')}
                           </label>
                           <input
                             id="task-distance"
                             name="distanceKm"
-                            value={distanceKm ?? ""}
-                            onChange={(e) => setDistanceKm(parseMetricInput(e.target.value))}
+                            value={distanceKm ?? ''}
+                            onChange={(e) =>
+                              setDistanceKm(parseMetricInput(e.target.value))
+                            }
                             className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                             placeholder="0"
                             inputMode="decimal"
@@ -3759,7 +3823,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-transport-type"
                           >
-                            {t("transportType")}
+                            {t('transportType')}
                           </label>
                           <select
                             id="task-transport-type"
@@ -3780,7 +3844,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-cargo-length"
                           >
-                            {t("cargoLength")}
+                            {t('cargoLength')}
                           </label>
                           <input
                             id="task-cargo-length"
@@ -3798,7 +3862,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-cargo-width"
                           >
-                            {t("cargoWidth")}
+                            {t('cargoWidth')}
                           </label>
                           <input
                             id="task-cargo-width"
@@ -3816,7 +3880,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-cargo-height"
                           >
-                            {t("cargoHeight")}
+                            {t('cargoHeight')}
                           </label>
                           <input
                             id="task-cargo-height"
@@ -3834,7 +3898,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-cargo-volume"
                           >
-                            {t("cargoVolume")}
+                            {t('cargoVolume')}
                           </label>
                           <input
                             id="task-cargo-volume"
@@ -3850,7 +3914,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-cargo-weight"
                           >
-                            {t("cargoWeight")}
+                            {t('cargoWeight')}
                           </label>
                           <input
                             id="task-cargo-weight"
@@ -3865,7 +3929,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         </div>
                         <div className="sm:col-span-2 lg:col-span-1">
                           <label className="block text-sm font-medium">
-                            {t("paymentMethod")}
+                            {t('paymentMethod')}
                           </label>
                           <select
                             value={paymentMethod}
@@ -3885,11 +3949,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-payment-amount"
                           >
-                            {t("paymentAmount")}
+                            {t('paymentAmount')}
                           </label>
                           <div
                             className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:ring ${
-                              editing ? "" : "opacity-80"
+                              editing ? '' : 'opacity-80'
                             }`}
                           >
                             <input
@@ -3912,7 +3976,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             </span>
                           </div>
                           <p className="mt-1 text-xs text-slate-500">
-                            {t("paymentAmountFormat")}
+                            {t('paymentAmountFormat')}
                           </p>
                         </div>
                       </div>
@@ -3920,7 +3984,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium">
-                      {t("comment")}
+                      {t('comment')}
                     </label>
                     <CKEditorPopup
                       value={comment}
@@ -3931,13 +3995,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   {attachments.length > 0 && (
                     <div className="space-y-2">
                       <label className="block text-sm font-medium">
-                        {t("attachments")}
+                        {t('attachments')}
                       </label>
                       <ul className="flex flex-wrap gap-3">
                         {attachments.map((a) => {
                           const thumbnail = ensureInlineMode(a.thumbnailUrl);
                           const inlineUrl = ensureInlineMode(a.url) ?? a.url;
-                          const basePath = inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
+                          const basePath =
+                            inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
                           const isImage =
                             Boolean(thumbnail) ||
                             /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(basePath);
@@ -3953,18 +4018,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     type="button"
                                     onClick={() =>
                                       setPreviewAttachment({
-                                        name: a.name || "Изображение",
+                                        name: a.name || 'Изображение',
                                         url: inlineUrl,
                                       })
                                     }
                                     className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring focus:ring-indigo-200"
-                                    title={a.name || "Изображение"}
+                                    title={a.name || 'Изображение'}
                                   >
                                     <img
                                       srcSet={`${previewSrc} 1x, ${inlineUrl} 2x`}
                                       sizes="80px"
                                       src={previewSrc}
-                                      alt={a.name || "Изображение"}
+                                      alt={a.name || 'Изображение'}
                                       className="h-full w-full object-cover transition group-hover:scale-105"
                                     />
                                   </button>
@@ -3975,7 +4040,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     rel="noopener"
                                     className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-sm text-accentPrimary transition hover:bg-slate-100"
                                   >
-                                    {a.name || "Файл"}
+                                    {a.name || 'Файл'}
                                   </a>
                                 )}
                                 {editing && (
@@ -3985,7 +4050,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     className="px-0 text-red-500"
                                     onClick={() => removeAttachment(a)}
                                   >
-                                    {t("delete")}
+                                    {t('delete')}
                                   </Button>
                                 )}
                               </div>
@@ -4007,8 +4072,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                          buttonVariants({ variant: "outline", size: "pill" }),
-                          "inline-flex w-fit",
+                          buttonVariants({ variant: 'outline', size: 'pill' }),
+                          'inline-flex w-fit',
                         )}
                       >
                         Фото
@@ -4023,7 +4088,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   />
                   {editing && !isTitleFilled ? (
                     <p className="mt-1 text-xs text-slate-500">
-                      {t("fillTitleToUpload")}
+                      {t('fillTitleToUpload')}
                     </p>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -4034,20 +4099,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         size="pill"
                         onClick={() => setShowHistory(true)}
                       >
-                        {t("history")}
+                        {t('history')}
                       </Button>
                     )}
                     <div className="ml-auto flex flex-wrap gap-2">
-                      {editing &&
-                      !isEdit &&
-                      (draft || hasDraftChanges) && (
+                      {editing && !isEdit && (draft || hasDraftChanges) && (
                         <Button
                           variant="ghost"
                           size="pill"
                           onClick={handleDeleteDraft}
                           disabled={draftLoading || isSavingDraft}
                         >
-                          {t("clearDraft")}
+                          {t('clearDraft')}
                         </Button>
                       )}
                       {isEdit && canDeleteTask && editing && (
@@ -4056,7 +4119,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           size="pill"
                           onClick={() => setShowDeleteConfirm(true)}
                         >
-                          {t("delete")}
+                          {t('delete')}
                         </Button>
                       )}
                       {editing && (
@@ -4069,9 +4132,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           {isSubmitting ? (
                             <Spinner />
                           ) : isEdit ? (
-                            t("save")
+                            t('save')
                           ) : (
-                            t("create")
+                            t('create')
                           )}
                         </Button>
                       )}
@@ -4082,18 +4145,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       open={showSaveConfirm}
                       message={
                         isEdit
-                          ? t("saveChangesQuestion")
-                          : t("createTaskQuestion")
+                          ? t('saveChangesQuestion')
+                          : t('createTaskQuestion')
                       }
-                      confirmText={isEdit ? t("save") : t("create")}
-                      cancelText={t("cancel")}
+                      confirmText={isEdit ? t('save') : t('create')}
+                      cancelText={t('cancel')}
                       onConfirm={async () => {
                         setShowSaveConfirm(false);
                         setIsSubmitting(true);
                         try {
                           await submit();
                         } catch (error) {
-                          console.warn("Не удалось сохранить задачу", error);
+                          console.warn('Не удалось сохранить задачу', error);
                           setIsSubmitting(false);
                         }
                       }}
@@ -4108,19 +4171,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         className="block text-sm font-medium"
                         htmlFor="task-dialog-start-date"
                       >
-                        {t("startDate")}
+                        {t('startDate')}
                       </label>
                       <input
                         id="task-dialog-start-date"
                         type="datetime-local"
-                        {...register("startDate")}
+                        {...register('startDate')}
                         min={formatIsoForInput(created)}
                         className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                         disabled={!editing}
                       />
                       {!isEdit && startDateNotice ? (
                         <p className="mt-1 text-xs font-medium text-amber-600">
-                          {t("startDateAutoNotice", { date: startDateNotice })}
+                          {t('startDateAutoNotice', { date: startDateNotice })}
                         </p>
                       ) : null}
                     </div>
@@ -4129,12 +4192,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         className="block text-sm font-medium"
                         htmlFor="task-dialog-due-date"
                       >
-                        {t("dueDate")}
+                        {t('dueDate')}
                       </label>
                       <input
                         id="task-dialog-due-date"
                         type="datetime-local"
-                        {...register("dueDate", { onChange: handleDueDateChange })}
+                        {...register('dueDate', {
+                          onChange: handleDueDateChange,
+                        })}
                         className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                         disabled={!editing}
                       />
@@ -4143,15 +4208,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium">
-                        {t("taskType")}
+                        {t('taskType')}
                       </label>
                       <select
                         value={taskType}
                         onChange={(e) => setTaskType(e.target.value)}
                         className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing || entityKind === "request"}
+                        disabled={!editing || entityKind === 'request'}
                       >
-                        {(entityKind === "request"
+                        {(entityKind === 'request'
                           ? requestTypeOptions
                           : taskTypeOptions
                         ).map((option) => (
@@ -4163,7 +4228,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium">
-                        {t("priority")}
+                        {t('priority')}
                       </label>
                       <select
                         value={priority}
@@ -4180,7 +4245,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium">
-                        {t("status")}
+                        {t('status')}
                       </label>
                       <select
                         value={status}
@@ -4200,13 +4265,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         className="block text-sm font-medium"
                         htmlFor="task-dialog-completed-at"
                       >
-                        {t("actualTime")}
+                        {t('actualTime')}
                       </label>
                       <input
                         type="datetime-local"
                         id="task-dialog-completed-at"
                         name="completedAtDisplay"
-                        value={completedAt ? formatIsoForInput(completedAt) : ""}
+                        value={
+                          completedAt ? formatIsoForInput(completedAt) : ''
+                        }
                         readOnly
                         placeholder="—"
                         className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
@@ -4217,24 +4284,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     <div className="space-y-4">
                       <div className="space-y-1.5">
                         <SingleSelect
-                          label={t("transportDriver")}
+                          label={t('transportDriver')}
                           options={driverOptions}
                           value={transportDriverId || null}
                           onChange={(option) => {
-                            const value = option?.value ?? "";
+                            const value = option?.value ?? '';
                             setTransportDriverId(value);
                             if (!value) {
-                              setTransportDriverName("");
+                              setTransportDriverName('');
                               return;
                             }
                             setTransportDriverName(option?.label ?? value);
                           }}
-                          disabled={!canEditTransport || !transportRequiresDetails}
-                          placeholder={t("transportDriverPlaceholder")}
+                          disabled={
+                            !canEditTransport || !transportRequiresDetails
+                          }
+                          placeholder={t('transportDriverPlaceholder')}
                         />
                         {transportOptionsLoading && transportRequiresDetails ? (
                           <p className="mt-1 text-xs text-slate-500">
-                            {t("transportOptionsLoading")}
+                            {t('transportOptionsLoading')}
                           </p>
                         ) : null}
                         {transportOptionsError ? (
@@ -4249,7 +4318,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   void loadTransportOptions(true);
                                 }}
                               >
-                                {t("transportOptionsReload")}
+                                {t('transportOptionsReload')}
                               </button>
                             ) : null}
                           </p>
@@ -4257,15 +4326,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       </div>
                       <div className="space-y-1.5">
                         <SingleSelect
-                          label={t("transportVehicle")}
+                          label={t('transportVehicle')}
                           options={vehicleSelectOptions}
                           value={transportVehicleId || null}
                           onChange={(option) => {
-                            const value = option?.value ?? "";
+                            const value = option?.value ?? '';
                             setTransportVehicleId(value);
                             if (!value) {
-                              setTransportVehicleName("");
-                              setTransportVehicleRegistration("");
+                              setTransportVehicleName('');
+                              setTransportVehicleRegistration('');
                               return;
                             }
                             const candidate = vehicleOptions.find(
@@ -4278,11 +4347,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                               );
                             } else {
                               setTransportVehicleName(option?.label ?? value);
-                              setTransportVehicleRegistration("");
+                              setTransportVehicleRegistration('');
                             }
                           }}
-                          disabled={!canEditTransport || !transportRequiresDetails}
-                          placeholder={t("transportVehiclePlaceholder")}
+                          disabled={
+                            !canEditTransport || !transportRequiresDetails
+                          }
+                          placeholder={t('transportVehiclePlaceholder')}
                         />
                         {!transportRequiresDetails && transportVehicleName ? (
                           <p className="mt-1 text-xs text-slate-500">
@@ -4299,9 +4370,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               {canDeleteTask && (
                 <ConfirmDialog
                   open={showDeleteConfirm}
-                  message={t("deleteTaskQuestion")}
-                  confirmText={t("delete")}
-                  cancelText={t("cancel")}
+                  message={t('deleteTaskQuestion')}
+                  confirmText={t('delete')}
+                  cancelText={t('cancel')}
                   onConfirm={() => {
                     setShowDeleteConfirm(false);
                     handleDelete();
@@ -4314,25 +4385,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button
                       className={cn(
-                        "rounded-lg",
-                        selectedAction === "accept" &&
-                          "ring-accentPrimary ring-2",
+                        'rounded-lg',
+                        selectedAction === 'accept' &&
+                          'ring-accentPrimary ring-2',
                       )}
-                      variant={status === "В работе" ? "success" : "default"}
+                      variant={status === 'В работе' ? 'success' : 'default'}
                       onClick={() => setShowAcceptConfirm(true)}
                     >
-                      {t("accept")}
+                      {t('accept')}
                     </Button>
                     <Button
                       className={cn(
-                        "rounded-lg",
-                        selectedAction === "done" &&
-                          "ring-accentPrimary ring-2",
+                        'rounded-lg',
+                        selectedAction === 'done' &&
+                          'ring-accentPrimary ring-2',
                       )}
-                      variant={status === "Выполнена" ? "success" : "default"}
+                      variant={status === 'Выполнена' ? 'success' : 'default'}
                       onClick={() => setShowDoneSelect((v) => !v)}
                     >
-                      {t("done")}
+                      {t('done')}
                     </Button>
                   </div>
                   {showDoneSelect && (
@@ -4347,7 +4418,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         }}
                         className="focus:ring-brand-200 focus:border-accentPrimary mt-1 mb-2 w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                       >
-                        <option value="">{t("selectOption")}</option>
+                        <option value="">{t('selectOption')}</option>
                         {doneOptions.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
@@ -4358,9 +4429,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   )}
                   <ConfirmDialog
                     open={showAcceptConfirm}
-                    message={t("acceptTaskQuestion")}
-                    confirmText={t("accept")}
-                    cancelText={t("cancel")}
+                    message={t('acceptTaskQuestion')}
+                    confirmText={t('accept')}
+                    cancelText={t('cancel')}
                     onConfirm={() => {
                       setShowAcceptConfirm(false);
                       acceptTask();
@@ -4369,9 +4440,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   />
                   <ConfirmDialog
                     open={showDoneConfirm}
-                    message={t("completeTaskQuestion")}
-                    confirmText={t("done")}
-                    cancelText={t("cancel")}
+                    message={t('completeTaskQuestion')}
+                    confirmText={t('done')}
+                    cancelText={t('cancel')}
                     onConfirm={() => {
                       setShowDoneConfirm(false);
                       completeTask(pendingDoneOption);
@@ -4397,7 +4468,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               type="button"
               className="absolute right-4 top-4 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80 focus:outline-none focus:ring focus:ring-white/40"
               onClick={() => setPreviewAttachment(null)}
-              aria-label={t("close")}
+              aria-label={t('close')}
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -4416,13 +4487,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         <MapPickerDialog
           open
           title={
-            mapPicker.target === "start"
-              ? t("selectStartPoint")
-              : t("selectFinishPoint")
+            mapPicker.target === 'start'
+              ? t('selectStartPoint')
+              : t('selectFinishPoint')
           }
-          confirmLabel={t("mapSelectionConfirm", { defaultValue: t("save") })}
-          cancelLabel={t("cancel")}
-          hint={t("mapSelectionHint")}
+          confirmLabel={t('mapSelectionConfirm', { defaultValue: t('save') })}
+          cancelLabel={t('cancel')}
+          hint={t('mapSelectionHint')}
           initialValue={mapPicker.initialCoords}
           onConfirm={(coords) => handleMapConfirm(mapPicker.target, coords)}
           onCancel={() => setMapPicker(null)}
@@ -4431,10 +4502,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded border-2 border-red-500 bg-white p-4">
-            <h4 className="mb-2 font-semibold">{t("history")}</h4>
+            <h4 className="mb-2 font-semibold">{t('history')}</h4>
             <ul className="space-y-2 text-xs sm:text-sm">
               {history.length === 0 ? (
-                <li className="text-gray-500">{t("historyEmpty")}</li>
+                <li className="text-gray-500">{t('historyEmpty')}</li>
               ) : (
                 history.map((entry, index) => {
                   const timeLabel = formatHistoryDate(entry.changed_at);
@@ -4442,16 +4513,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   const fromState = entry.changes.from || {};
                   const toState = entry.changes.to || {};
                   const fromStatusRaw = (fromState as Record<string, unknown>)[
-                    "status"
+                    'status'
                   ];
                   const toStatusRaw = (toState as Record<string, unknown>)[
-                    "status"
+                    'status'
                   ];
                   const fromStatus = formatHistoryValue(fromStatusRaw);
                   const toStatus = formatHistoryValue(toStatusRaw);
                   const showStatusChange =
-                    fromStatus !== "—" &&
-                    toStatus !== "—" &&
+                    fromStatus !== '—' &&
+                    toStatus !== '—' &&
                     fromStatus !== toStatus;
                   const keys = Array.from(
                     new Set([
@@ -4460,7 +4531,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     ]),
                   );
                   const keysToRender = showStatusChange
-                    ? keys.filter((key) => key !== "status")
+                    ? keys.filter((key) => key !== 'status')
                     : keys;
                   const hasDetailedChanges = keysToRender.some((key) => {
                     const prevValue = formatHistoryValue(
@@ -4477,15 +4548,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       className="rounded border border-gray-200 bg-white p-2 shadow-sm"
                     >
                       <div className="flex flex-wrap items-baseline gap-1 text-xs font-medium text-gray-700 sm:text-sm">
-                        <span>{timeLabel || "—"}</span>
+                        <span>{timeLabel || '—'}</span>
                         <span className="text-gray-500">{author}</span>
                       </div>
                       {showStatusChange && (
                         <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-700 sm:text-sm">
                           <span>Изменил статус с</span>
-                          {renderHistoryValueNode("status", fromStatus, "plain")}
+                          {renderHistoryValueNode(
+                            'status',
+                            fromStatus,
+                            'plain',
+                          )}
                           <span>на</span>
-                          {renderHistoryValueNode("status", toStatus, "plain")}
+                          {renderHistoryValueNode('status', toStatus, 'plain')}
                         </p>
                       )}
                       {keysToRender.length > 0 && (
@@ -4506,9 +4581,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 <span className="font-medium text-gray-600">
                                   {key}:
                                 </span>
-                                {renderHistoryValueNode(key, prevValue, "prev")}
+                                {renderHistoryValueNode(key, prevValue, 'prev')}
                                 <span className="text-gray-400">→</span>
-                                {renderHistoryValueNode(key, nextValue, "next")}
+                                {renderHistoryValueNode(key, nextValue, 'next')}
                               </li>
                             );
                           })}
@@ -4528,16 +4603,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               className="mt-2 rounded-lg"
               onClick={() => setShowHistory(false)}
             >
-              {t("close")}
+              {t('close')}
             </Button>
           </div>
         </div>
       )}
       <AlertDialog
         open={alertMsg !== null}
-        message={alertMsg || ""}
+        message={alertMsg || ''}
         onClose={() => setAlertMsg(null)}
-        closeText={t("close")}
+        closeText={t('close')}
       />
     </div>,
     document.body,

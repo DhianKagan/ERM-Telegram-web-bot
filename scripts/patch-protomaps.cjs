@@ -2,18 +2,26 @@
 const fs = require('fs');
 const path = require('path');
 
-function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
+function ensureDir(p) {
+  fs.mkdirSync(p, { recursive: true });
+}
 function writeFile(fp, content) {
   ensureDir(path.dirname(fp));
   fs.writeFileSync(fp, content, 'utf8');
   console.log('✅ wrote', fp);
 }
 function patchFile(fp, replacer) {
-  if (!fs.existsSync(fp)) { console.log('⚠️  skip (not found):', fp); return; }
+  if (!fs.existsSync(fp)) {
+    console.log('⚠️  skip (not found):', fp);
+    return;
+  }
   const src = fs.readFileSync(fp, 'utf8');
   const dst = replacer(src);
   if (dst === src) console.log('ℹ️  no changes needed for', fp);
-  else { fs.writeFileSync(fp, dst, 'utf8'); console.log('✅ patched', fp); }
+  else {
+    fs.writeFileSync(fp, dst, 'utf8');
+    console.log('✅ patched', fp);
+  }
 }
 
 // 1) Makefile — не падать без Docker локально
@@ -23,15 +31,15 @@ patchFile(path.resolve('Makefile'), (txt) =>
     `# Docker может быть недоступен локально (Windows без Docker Desktop).
 # Чтобы не рушить локальную проверку, допускаем graceful-degrade.
 # В CI этот шаг всё равно будет выполняться.
-docker build --target build --pull --no-cache -t local/agromarket-build:tmp . || true`
-  )
+docker build --target build --pull --no-cache -t local/agromarket-build:tmp . || true`,
+  ),
 );
 
 // 2) .env.example для веба с URL стиля
 writeFile(
   path.resolve('apps/web/.env.example'),
   `VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/en.json?key=e2ee205f93bfd080
-`
+`,
 );
 
 // 3) config/map.ts
@@ -44,7 +52,7 @@ export const MAP_STYLE_URL =
 
 export const DEFAULT_CENTER: [number, number] = [30.5234, 50.4501]; // Kyiv
 export const DEFAULT_ZOOM = 6;
-`
+`,
 );
 
 // 4) mapLibrary.ts — без локальных pmtiles
@@ -69,7 +77,7 @@ export function createMap(opts: CreateMapOptions) {
   });
   return map;
 }
-`
+`,
 );
 
 // 5) Если нет локального .env — создадим из example
@@ -99,15 +107,23 @@ function grep(root, needle) {
 }
 const hits = grep(path.resolve('apps/web/src'), '/cp/tiles/basemap.pmtiles');
 if (hits.length) {
-  console.log('🔎 Найдены упоминания локального pmtiles (удали/замени вручную):');
-  hits.forEach(p => console.log('   -', path.relative(process.cwd(), p)));
+  console.log(
+    '🔎 Найдены упоминания локального pmtiles (удали/замени вручную):',
+  );
+  hits.forEach((p) => console.log('   -', path.relative(process.cwd(), p)));
 } else {
-  console.log('✅ Не найдено упоминаний "/cp/tiles/basemap.pmtiles" в apps/web/src');
+  console.log(
+    '✅ Не найдено упоминаний "/cp/tiles/basemap.pmtiles" в apps/web/src',
+  );
 }
 
 console.log('\n🏁 Готово. Сборка:');
 console.log('   pnpm -F web prebuild');
 console.log('   pnpm -r --filter !shared build');
 console.log('\n📌 В компоненте карты подключи:');
-console.log("   import { createMap } from '../mapLibrary'; // скорректируй путь при необходимости");
-console.log("   // useEffect(() => { const m = createMap({ container: 'map' }); return () => m.remove(); }, []);");
+console.log(
+  "   import { createMap } from '../mapLibrary'; // скорректируй путь при необходимости",
+);
+console.log(
+  "   // useEffect(() => { const m = createMap({ container: 'map' }); return () => m.remove(); }, []);",
+);

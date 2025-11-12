@@ -267,13 +267,13 @@ test.beforeEach(() => {
   files.splice(0, files.length, ...initialFiles.map((f) => ({ ...f })));
 });
 
-test('подтверждает удаление, фильтрует список и отправляет DELETE-запрос', async ({ page }) => {
+test('подтверждает удаление, фильтрует список и отправляет DELETE-запрос', async ({
+  page,
+}) => {
   await page.goto(`${baseUrl}/cp/storage`);
   await page.getByRole('cell', { name: 'report.pdf' }).waitFor();
 
-  await page
-    .locator('#user-filters input[value="1"]')
-    .check();
+  await page.locator('#user-filters input[value="1"]').check();
   await page.click('#apply');
   await expect(page.getByText('report.pdf')).toBeVisible();
   await expect(page.getByText('photo.jpg')).not.toBeVisible();
@@ -285,17 +285,26 @@ test('подтверждает удаление, фильтрует список
   });
 
   const requestPromise = page.waitForRequest(
-    (request) => request.method() === 'DELETE' && request.url().includes('/api/v1/storage/'),
+    (request) =>
+      request.method() === 'DELETE' &&
+      request.url().includes('/api/v1/storage/'),
   );
 
   await page.getByRole('button', { name: ru.storage.delete }).click();
 
   const request = await requestPromise;
-  expect(request.url()).toContain(encodeURIComponent('64d000000000000000000001'));
+  expect(request.url()).toContain(
+    encodeURIComponent('64d000000000000000000001'),
+  );
 
   await expect(page.locator('#toast')).toHaveText(ru.storage.deleteSuccess);
-  await expect(page.locator('#toast')).toHaveAttribute('data-status', 'success');
+  await expect(page.locator('#toast')).toHaveAttribute(
+    'data-status',
+    'success',
+  );
   await expect(page.locator('#count')).toHaveText('0');
 
-  expect(messages[0]).toBe(ru.storage.deleteConfirm.replace('{{name}}', 'report.pdf'));
+  expect(messages[0]).toBe(
+    ru.storage.deleteConfirm.replace('{{name}}', 'report.pdf'),
+  );
 });

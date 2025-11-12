@@ -44,22 +44,25 @@ async function setMenuButton(): Promise<void> {
     menu_button: {
       type: 'web_app',
       text: 'Открыть приложение',
-      web_app: { url }
-    }
+      web_app: { url },
+    },
   };
   if (chatId) params.chat_id = chatId;
-  const res = await fetchFn(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
-  });
+  const res = await fetchFn(
+    `https://api.telegram.org/bot${token}/setChatMenuButton`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+  );
   const data: { ok: boolean; description?: string } = await res.json();
   if (!data.ok) throw new Error(data.description || 'Неизвестная ошибка');
 }
 
 setMenuButton()
   .then(() => console.log('Кнопка меню обновлена'))
-  .catch(err => {
+  .catch((err) => {
     console.error('Ошибка:', (err as Error).message);
     process.exit(1);
   });

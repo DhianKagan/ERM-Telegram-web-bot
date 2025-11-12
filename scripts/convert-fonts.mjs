@@ -16,7 +16,9 @@ async function loadTtf2Woff2() {
   try {
     // Резолвим ttf2woff2 относительно текущего пакета (scripts/@erm/tools),
     // чтобы pnpm не требовал зависимость в корне монорепы.
-    const requireFromHere = createRequire(new URL('./package.json', import.meta.url));
+    const requireFromHere = createRequire(
+      new URL('./package.json', import.meta.url),
+    );
     const ttf2woff2Path = requireFromHere.resolve('ttf2woff2');
     const module = await import(pathToFileURL(ttf2woff2Path).href);
     const resolved = module.default ?? module;
@@ -26,8 +28,12 @@ async function loadTtf2Woff2() {
     console.error('\n\x1b[31mНе удалось загрузить модуль "ttf2woff2"\x1b[0m');
     console.error('Пакет должен быть установлен в @erm/tools (scripts):');
     console.error('  pnpm --filter @erm/tools add -D ttf2woff2@latest');
-    console.error('\nЕсли сборка идёт в CI, убедитесь, что доступны инструменты сборки:');
-    console.error('  apt-get update && apt-get install -y --no-install-recommends build-essential python3');
+    console.error(
+      '\nЕсли сборка идёт в CI, убедитесь, что доступны инструменты сборки:',
+    );
+    console.error(
+      '  apt-get update && apt-get install -y --no-install-recommends build-essential python3',
+    );
     if (error instanceof Error && error.message) {
       console.error(`\nПодробности: ${error.message}`);
     }
@@ -38,7 +44,9 @@ async function loadTtf2Woff2() {
 export async function convertFonts(fontsDir) {
   const ttf2woff2 = await loadTtf2Woff2();
   const entries = await readdir(fontsDir, { withFileTypes: true });
-  const ttfFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.ttf'));
+  const ttfFiles = entries.filter(
+    (entry) => entry.isFile() && entry.name.endsWith('.ttf'),
+  );
 
   let convertedCount = 0;
   for (const entry of ttfFiles) {
@@ -47,7 +55,10 @@ export async function convertFonts(fontsDir) {
 
     let needsConversion = false;
     try {
-      const [ttfStat, woff2Stat] = await Promise.all([stat(ttfPath), stat(woff2Path)]);
+      const [ttfStat, woff2Stat] = await Promise.all([
+        stat(ttfPath),
+        stat(woff2Path),
+      ]);
       if (ttfStat.mtimeMs > woff2Stat.mtimeMs || woff2Stat.size === 0) {
         needsConversion = true;
       }

@@ -1,7 +1,7 @@
 // Назначение файла: объявления интерфейсов Telegram WebApp
 // Основные модули: Telegram.WebApp
 
-/* eslint-disable no-redeclare */
+ 
 interface Telegram {
   WebApp?: Telegram.WebApp;
 }
@@ -15,7 +15,7 @@ declare namespace Telegram {
     translate?(key: string): string;
   }
 }
-/* eslint-enable no-redeclare */
+ 
 
 declare global {
   interface Window {

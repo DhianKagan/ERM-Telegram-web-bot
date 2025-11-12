@@ -21,7 +21,8 @@ export const getShortLinkPathPrefix = (): string => {
     const trimmed = SHORT_PATH_PREFIX.replace(/\/+$/, '');
     return trimmed || '/l';
   }
-  const normalized = SHORT_PATH_PREFIX.replace(/\/+$/, '') || SHORT_PATH_SEGMENT;
+  const normalized =
+    SHORT_PATH_PREFIX.replace(/\/+$/, '') || SHORT_PATH_SEGMENT;
   return `/${normalized}`;
 };
 
@@ -37,7 +38,8 @@ const APP_ORIGIN = (() => {
   }
 })();
 
-const SLUG_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const SLUG_ALPHABET =
+  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const isStorageReady = (): boolean => {
   try {
@@ -119,14 +121,16 @@ export const extractSlug = (input: string): string | null => {
     if (!parsed.pathname.startsWith(prefix)) {
       return null;
     }
-    const slugCandidate = parsed.pathname.slice(prefix.length).split('/')[0] ?? '';
+    const slugCandidate =
+      parsed.pathname.slice(prefix.length).split('/')[0] ?? '';
     return normalizeSlug(slugCandidate);
   } catch {
     return null;
   }
 };
 
-export const isShortLink = (input: string): boolean => extractSlug(input) !== null;
+export const isShortLink = (input: string): boolean =>
+  extractSlug(input) !== null;
 
 const resolveByFilter = async (
   filter: FilterQuery<ShortLinkDocument>,
@@ -146,7 +150,9 @@ const resolveByFilter = async (
   }
 };
 
-export const resolveShortLink = async (input: string): Promise<string | null> => {
+export const resolveShortLink = async (
+  input: string,
+): Promise<string | null> => {
   const slug = extractSlug(input) ?? normalizeSlug(input);
   if (!slug) return null;
   const doc = await resolveByFilter({ slug });
@@ -193,7 +199,10 @@ export const ensureShortLink = async (
       const doc = await ShortLink.create({ slug, url: normalized });
       return { slug: doc.slug, shortUrl: buildShortLink(doc.slug) };
     } catch (error) {
-      const mongoError = error as { code?: number; keyPattern?: Record<string, unknown> };
+      const mongoError = error as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+      };
       if (mongoError?.code === 11000) {
         if (mongoError.keyPattern?.url) {
           const duplicate = await resolveExistingByUrl(normalized);

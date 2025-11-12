@@ -22,15 +22,27 @@ jest.mock('../apps/api/src/di', () => ({
   __esModule: true,
   default: {
     resolve: () => ({
-      list: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
-      executors: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
-      mentioned: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      list: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
+      executors: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
+      mentioned: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
       transportOptions: jest.fn(
         (_req: unknown, _res: unknown, next?: () => void) => next?.(),
       ),
-      summary: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
-      chart: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
-      detail: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      summary: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
+      chart: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
+      detail: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
       createRequest: [
         jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
       ],
@@ -43,7 +55,9 @@ jest.mock('../apps/api/src/di', () => ({
       addTime: [
         jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
       ],
-      remove: jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
+      remove: jest.fn((_req: unknown, _res: unknown, next?: () => void) =>
+        next?.(),
+      ),
       bulk: [
         jest.fn((_req: unknown, _res: unknown, next?: () => void) => next?.()),
       ],
@@ -106,13 +120,15 @@ jest.mock('../apps/api/src/services/wgLogEngine', () => ({
   writeLog: jest.fn(),
 }));
 
-jest.mock('../apps/api/src/middleware/auth', () =>
-  function authMock(): RequestHandler {
-    return (req, _res, next) => {
-      (req as any).user = { id: currentUserId, access: ACCESS_MANAGER };
-      next();
-    };
-  },
+jest.mock(
+  '../apps/api/src/middleware/auth',
+  () =>
+    function authMock(): RequestHandler {
+      return (req, _res, next) => {
+        (req as any).user = { id: currentUserId, access: ACCESS_MANAGER };
+        next();
+      };
+    },
 );
 
 jest.mock('../apps/api/src/db/model', () => {
@@ -142,7 +158,10 @@ jest.mock('../apps/api/src/db/model', () => {
     const [head, ...rest] = path;
     return extractValues((source as Record<string, unknown>)[head], rest);
   };
-  const matchesCriteria = (entity: Record<string, unknown>, criteria: any): boolean => {
+  const matchesCriteria = (
+    entity: Record<string, unknown>,
+    criteria: any,
+  ): boolean => {
     if (!criteria || typeof criteria !== 'object') {
       return true;
     }
@@ -169,12 +188,15 @@ jest.mock('../apps/api/src/db/model', () => {
         if (Array.isArray(candidate.$nin)) {
           return values.every(
             (current) =>
-              !candidate.$nin!.some((entry) => String(current) === String(entry)),
+              !candidate.$nin!.some(
+                (entry) => String(current) === String(entry),
+              ),
           );
         }
         if (candidate.$regex instanceof RegExp) {
           return values.some(
-            (current) => typeof current === 'string' && candidate.$regex!.test(current),
+            (current) =>
+              typeof current === 'string' && candidate.$regex!.test(current),
           );
         }
         if (Object.prototype.hasOwnProperty.call(candidate, '$eq')) {
@@ -370,7 +392,11 @@ jest.mock('../apps/api/src/db/model', () => {
           });
         }
       });
-      return { acknowledged: true, matchedCount: modified, modifiedCount: modified };
+      return {
+        acknowledged: true,
+        matchedCount: modified,
+        modifiedCount: modified,
+      };
     }),
   };
   const Task = {
@@ -468,7 +494,9 @@ beforeAll(async () => {
   const tasksModule = await import('../apps/api/src/routes/tasks');
   handleChunks = tasksModule.handleChunks;
   ({ uploadsDir } = await import('../apps/api/src/config/storage'));
-  ({ deleteFile, listFiles } = await import('../apps/api/src/services/dataStorage'));
+  ({ deleteFile, listFiles } = await import(
+    '../apps/api/src/services/dataStorage'
+  ));
   ({ default: filesRouter } = await import('../apps/api/src/routes/files'));
   app = express();
   const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
@@ -478,7 +506,11 @@ beforeAll(async () => {
   };
   const chunkUpload = multer({
     storage: multer.memoryStorage(),
-    fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    fileFilter: (
+      _req: Request,
+      file: Express.Multer.File,
+      cb: FileFilterCallback,
+    ) => {
       if (checkFile(file)) {
         cb(null, true);
         return;
@@ -568,7 +600,9 @@ describe('Chunk upload', () => {
 
   test('загружает документ DOCX', async () => {
     const chunks = [
-      Buffer.from('PK\u0003\u0004\u0014\u0000\u0006\u0000\u0008\u0000\u0000\u0000!\u0000ERM docx test'),
+      Buffer.from(
+        'PK\u0003\u0004\u0014\u0000\u0006\u0000\u0008\u0000\u0000\u0000!\u0000ERM docx test',
+      ),
     ];
     const { attachment, storedPath } = await uploadViaChunks(
       'chunk-docx',
@@ -615,7 +649,9 @@ describe('Chunk upload', () => {
   });
 
   test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {
-    sharpToFileMock.mockRejectedValueOnce(new Error('pngload: libspng read error'));
+    sharpToFileMock.mockRejectedValueOnce(
+      new Error('pngload: libspng read error'),
+    );
     const chunks = [Buffer.from('thumb fail image')];
     const { attachment, storedPath } = await uploadViaChunks(
       'thumb-fail',
@@ -715,7 +751,11 @@ describe('Chunk upload', () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Файл не получен');
     expect(storedFiles).toHaveLength(0);
-    const chunkDir = path.join(uploadsDir, String(currentUserId), 'missing-file');
+    const chunkDir = path.join(
+      uploadsDir,
+      String(currentUserId),
+      'missing-file',
+    );
     expect(fs.existsSync(chunkDir)).toBe(false);
   });
 

@@ -15,7 +15,10 @@ export interface TravelMatrixResult {
   warnings: string[];
 }
 
-type GraphhopperFetcher = (input: string, init: RequestInit) => Promise<Response>;
+type GraphhopperFetcher = (
+  input: string,
+  init: RequestInit,
+) => Promise<Response>;
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -32,7 +35,9 @@ const haversineMeters = (
   const sinLat = Math.sin(dLat / 2);
   const sinLng = Math.sin(dLng / 2);
   const h = sinLat * sinLat + sinLng * sinLng * Math.cos(lat1) * Math.cos(lat2);
-  return Math.round(2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h))) * 1000);
+  return Math.round(
+    2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h))) * 1000,
+  );
 };
 
 const buildHaversineMatrix = (
@@ -47,11 +52,17 @@ const buildHaversineMatrix = (
     }),
   );
 
-const toSecondsFromMeters = (distanceMeters: number, averageSpeedKmph: number): number => {
+const toSecondsFromMeters = (
+  distanceMeters: number,
+  averageSpeedKmph: number,
+): number => {
   if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
     return 0;
   }
-  const speed = Number.isFinite(averageSpeedKmph) && averageSpeedKmph > 0 ? averageSpeedKmph : 30;
+  const speed =
+    Number.isFinite(averageSpeedKmph) && averageSpeedKmph > 0
+      ? averageSpeedKmph
+      : 30;
   return Math.max(0, Math.round((distanceMeters * 3.6) / speed));
 };
 
@@ -116,7 +127,9 @@ export async function buildTravelMatrix(
   }
 
   if (!graphhopperConfig.matrixUrl) {
-    return buildFallbackResult(points, options, ['GraphHopper отключён. Используем Haversine.']);
+    return buildFallbackResult(points, options, [
+      'GraphHopper отключён. Используем Haversine.',
+    ]);
   }
 
   const fetcher = getFetcher();
@@ -127,11 +140,15 @@ export async function buildTravelMatrix(
   const controller = options.signal
     ? undefined
     : typeof AbortController === 'function'
-    ? new AbortController()
-    : undefined;
+      ? new AbortController()
+      : undefined;
 
   let timeoutId: NodeJS.Timeout | undefined;
-  if (controller && typeof options.timeoutMs === 'number' && options.timeoutMs > 0) {
+  if (
+    controller &&
+    typeof options.timeoutMs === 'number' &&
+    options.timeoutMs > 0
+  ) {
     timeoutId = setTimeout(() => controller.abort(), options.timeoutMs);
     timeoutId.unref?.();
   }
@@ -162,7 +179,9 @@ export async function buildTravelMatrix(
     const distanceMatrix = sanitizeMatrix(payload.distances, size);
     const timeMatrix = sanitizeMatrix(payload.times, size);
     const warnings = Array.isArray(payload.info?.messages)
-      ? payload.info.messages.filter((item): item is string => typeof item === 'string')
+      ? payload.info.messages.filter(
+          (item): item is string => typeof item === 'string',
+        )
       : [];
     return {
       provider: 'graphhopper',
@@ -171,8 +190,11 @@ export async function buildTravelMatrix(
       warnings,
     };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Неизвестная ошибка GraphHopper';
-    return buildFallbackResult(points, options, [`GraphHopper недоступен: ${reason}`]);
+    const reason =
+      error instanceof Error ? error.message : 'Неизвестная ошибка GraphHopper';
+    return buildFallbackResult(points, options, [
+      `GraphHopper недоступен: ${reason}`,
+    ]);
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);

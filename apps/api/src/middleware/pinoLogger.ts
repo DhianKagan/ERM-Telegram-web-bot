@@ -30,7 +30,8 @@ const middleware: RequestHandler = pinoHttp({
     if (res.statusCode >= 400) return 'warn';
     return 'info';
   },
-  customSuccessMessage: (_req: Request, res: Response) => `HTTP ${res.statusCode}`,
+  customSuccessMessage: (_req: Request, res: Response) =>
+    `HTTP ${res.statusCode}`,
   customErrorMessage: (_req: Request, res: Response, err: Error) =>
     `HTTP ${res.statusCode}: ${err.message}`,
 }) as unknown as RequestHandler;

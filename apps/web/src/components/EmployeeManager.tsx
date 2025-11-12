@@ -1,10 +1,10 @@
 // Компонент управления сотрудником, содержит форму с селекторами
 // Модули: React, services/collections
-import React from "react";
+import React from 'react';
 import {
   fetchCollectionItems,
   type CollectionItem,
-} from "../services/collections";
+} from '../services/collections';
 
 export type EmployeeManagerProps = {
   onSubmit: (data: {
@@ -26,25 +26,25 @@ type EmployeeManagerComponent = React.FC<EmployeeManagerProps> & {
 };
 
 const EmployeeManager: EmployeeManagerComponent = ({ onSubmit }) => {
-  const [name, setName] = React.useState("");
-  const [departmentId, setDepartmentId] = React.useState("");
-  const [divisionId, setDivisionId] = React.useState("");
-  const [positionId, setPositionId] = React.useState("");
+  const [name, setName] = React.useState('');
+  const [departmentId, setDepartmentId] = React.useState('');
+  const [divisionId, setDivisionId] = React.useState('');
+  const [positionId, setPositionId] = React.useState('');
   const [departments, setDepartments] = React.useState<CollectionItem[]>([]);
   const [divisions, setDivisions] = React.useState<CollectionItem[]>([]);
   const [positions, setPositions] = React.useState<CollectionItem[]>([]);
 
   React.useEffect(() => {
-    if (typeof fetch === "undefined") return;
-    fetchCollectionItems("departments", "", 1, 100).then((d) =>
-      setDepartments(d.items),
-    ).catch(() => setDepartments([]));
-    fetchCollectionItems("divisions", "", 1, 100).then((d) =>
-      setDivisions(d.items),
-    ).catch(() => setDivisions([]));
-    fetchCollectionItems("positions", "", 1, 100).then((d) =>
-      setPositions(d.items),
-    ).catch(() => setPositions([]));
+    if (typeof fetch === 'undefined') return;
+    fetchCollectionItems('departments', '', 1, 100)
+      .then((d) => setDepartments(d.items))
+      .catch(() => setDepartments([]));
+    fetchCollectionItems('divisions', '', 1, 100)
+      .then((d) => setDivisions(d.items))
+      .catch(() => setDivisions([]));
+    fetchCollectionItems('positions', '', 1, 100)
+      .then((d) => setPositions(d.items))
+      .catch(() => setPositions([]));
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,9 +128,9 @@ const EmployeeManager: EmployeeManagerComponent = ({ onSubmit }) => {
 EmployeeManager.selectors = {
   form: '[data-testid="employee-form"]',
   nameInput: '[data-testid="employee-name"]',
-  departmentSelect: "#employee-dept",
-  divisionSelect: "#employee-div",
-  positionSelect: "#employee-pos",
+  departmentSelect: '#employee-dept',
+  divisionSelect: '#employee-div',
+  positionSelect: '#employee-pos',
 };
 
 export default EmployeeManager;

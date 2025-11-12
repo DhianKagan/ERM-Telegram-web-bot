@@ -1,5 +1,5 @@
 // Пагинация списка элементов
-import React from "react";
+import React from 'react';
 
 export default function Pagination({
   total,
@@ -24,7 +24,7 @@ export default function Pagination({
         <button
           key={p}
           onClick={() => onChange(p)}
-          className={`border-stroke text-body hover:bg-gray rounded border px-3 py-1 ${p === page ? "bg-gray font-medium" : ""}`}
+          className={`border-stroke text-body hover:bg-gray rounded border px-3 py-1 ${p === page ? 'bg-gray font-medium' : ''}`}
         >
           {p}
         </button>

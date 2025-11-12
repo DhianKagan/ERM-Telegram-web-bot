@@ -3,11 +3,7 @@
 
 import type { Coords } from './mapUtils';
 
-export type PaymentMethod =
-  | 'Наличные'
-  | 'Карта'
-  | 'Безнал'
-  | 'Без оплаты';
+export type PaymentMethod = 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
 
 export interface Task {
   _id: string;
@@ -125,7 +121,12 @@ export interface FleetVehicleDto {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
-  transportHistory?: { taskId: string; taskTitle?: string; assignedAt: string; removedAt?: string }[];
+  transportHistory?: {
+    taskId: string;
+    taskTitle?: string;
+    assignedAt: string;
+    removedAt?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
   unitId?: number;
@@ -269,6 +270,11 @@ export interface RoutePlanAnalyticsSummary {
   };
   sla: {
     average: number | null;
-    byPeriod: Array<{ date: string; onTime: number; total: number; rate: number | null }>;
+    byPeriod: Array<{
+      date: string;
+      onTime: number;
+      total: number;
+      rate: number | null;
+    }>;
   };
 }

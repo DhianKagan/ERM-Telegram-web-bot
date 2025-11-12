@@ -56,7 +56,9 @@ export function resolveTaskAlbumLink(
     return null;
   }
 
-  const messageIdNumeric = normalizeMessageId(source.telegram_photos_message_id);
+  const messageIdNumeric = normalizeMessageId(
+    source.telegram_photos_message_id,
+  );
   if (messageIdNumeric === null) {
     return null;
   }
@@ -66,12 +68,16 @@ export function resolveTaskAlbumLink(
   const topicIdForLink =
     explicitTopicId ??
     (fallbackTopicId &&
-      (!explicitChatId || !fallbackChatId || explicitChatId === fallbackChatId)
-        ? fallbackTopicId
-        : null);
+    (!explicitChatId || !fallbackChatId || explicitChatId === fallbackChatId)
+      ? fallbackTopicId
+      : null);
 
   return (
-    buildChatMessageLink(targetChatId, messageIdNumeric, topicIdForLink ?? undefined) ?? null
+    buildChatMessageLink(
+      targetChatId,
+      messageIdNumeric,
+      topicIdForLink ?? undefined,
+    ) ?? null
   );
 }
 

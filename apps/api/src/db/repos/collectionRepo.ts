@@ -56,7 +56,10 @@ export async function update(
 ): Promise<CollectionItemDocument | null> {
   const set: Record<string, unknown> = {};
   const unset: Record<string, unknown> = {};
-  if (Object.prototype.hasOwnProperty.call(data, 'type') && data.type !== undefined) {
+  if (
+    Object.prototype.hasOwnProperty.call(data, 'type') &&
+    data.type !== undefined
+  ) {
     set.type = data.type;
   }
   if (Object.prototype.hasOwnProperty.call(data, 'name')) {

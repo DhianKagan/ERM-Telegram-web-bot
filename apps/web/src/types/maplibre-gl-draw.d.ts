@@ -1,10 +1,10 @@
 // Назначение: типы для библиотеки maplibre-gl-draw
 // Основные модули: maplibre-gl-draw, maplibre-gl, geojson
 
-import type { Feature, FeatureCollection } from "geojson";
-import type { Map as MapInstance } from "maplibre-gl";
+import type { Feature, FeatureCollection } from 'geojson';
+import type { Map as MapInstance } from 'maplibre-gl';
 
-declare module "maplibre-gl-draw" {
+declare module 'maplibre-gl-draw' {
   export interface MapLibreDrawControls {
     point?: boolean;
     line_string?: boolean;
@@ -14,7 +14,7 @@ declare module "maplibre-gl-draw" {
     uncombine_features?: boolean;
   }
 
-  export type MapLibreDrawLayer = Parameters<MapInstance["addLayer"]>[0];
+  export type MapLibreDrawLayer = Parameters<MapInstance['addLayer']>[0];
 
   export interface MapLibreDrawOptions {
     defaultMode?: string;

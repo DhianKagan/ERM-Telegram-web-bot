@@ -58,7 +58,10 @@ import {
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
-import { getShortLinkPathPrefix, resolveShortLinkBySlug } from '../services/shortLinks';
+import {
+  getShortLinkPathPrefix,
+  resolveShortLinkBySlug,
+} from '../services/shortLinks';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -132,19 +135,24 @@ export default async function registerRoutes(
   });
 
   // --- CORS allowlist (auto-injected) ---
-const __corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-const __corsOptions = {
-  origin: function (origin, cb) {
-    if (!origin) return cb(null, true); // allow tools/curl; tighten if needed
-    return __corsOrigins.includes(origin) ? cb(null, true) : cb(new Error('CORS: origin not allowed'), false);
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-XSRF-TOKEN'],
-  maxAge: 600
-};
-app.use(cors(__corsOptions));
-// --- end CORS allowlist ---
+  const __corsOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const __corsOptions = {
+    origin: function (origin, cb) {
+      if (!origin) return cb(null, true); // allow tools/curl; tighten if needed
+      return __corsOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error('CORS: origin not allowed'), false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN'],
+    maxAge: 600,
+  };
+  app.use(cors(__corsOptions));
+  // --- end CORS allowlist ---
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
@@ -203,7 +211,8 @@ app.use(cors(__corsOptions));
   app.get(
     shortLinkRoute,
     asyncHandler(async (req: Request, res: Response) => {
-      const slug = typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
+      const slug =
+        typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
       if (!slug) {
         res.status(404).send('Not found');
         return;
@@ -357,8 +366,7 @@ app.use(cors(__corsOptions));
         });
         return;
       }
-      const status =
-        typeof task.status === 'string' ? task.status : undefined;
+      const status = typeof task.status === 'string' ? task.status : undefined;
       const hasTaskStarted = status !== undefined && status !== 'Новая';
       const isCreator = Number(task.created_by) === userId;
       const isExecutor = assigneeIds.has(userId);

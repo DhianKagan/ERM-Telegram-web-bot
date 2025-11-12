@@ -3,10 +3,7 @@
 import * as fs from 'fs'; // модуль для проверки наличия .env
 import * as path from 'path'; // модуль для работы с путями
 import { createRequire } from 'module'; // модуль для подстановки require относительно workspace
-import {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-} from './mongoUrl';
+import { getMongoUrlFromEnv, formatCredentialSources } from './mongoUrl';
 
 interface ConnectOptions {
   serverSelectionTimeoutMS?: number;
@@ -26,7 +23,10 @@ interface MongooseModule {
   Schema: new <TRecord>(
     definition: Record<string, unknown>,
   ) => MongooseSchema<TRecord>;
-  model<TRecord>(name: string, schema: MongooseSchema<TRecord>): MongooseModel<TRecord>;
+  model<TRecord>(
+    name: string,
+    schema: MongooseSchema<TRecord>,
+  ): MongooseModel<TRecord>;
   connect(uri: string, options: ConnectOptions): Promise<void>;
   disconnect(): Promise<void>;
   connection: {
@@ -97,10 +97,10 @@ const scopedRequireHints = (() => {
   return hintFiles;
 })();
 
-const createScopedLoaders = <TModule>(specifier: string): Array<() => TModule> => {
-  const loaders: Array<() => TModule> = [
-    () => require(specifier) as TModule,
-  ];
+const createScopedLoaders = <TModule>(
+  specifier: string,
+): Array<() => TModule> => {
+  const loaders: Array<() => TModule> = [() => require(specifier) as TModule];
 
   for (const hint of scopedRequireHints) {
     try {

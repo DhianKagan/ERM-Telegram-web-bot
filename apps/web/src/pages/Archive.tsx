@@ -1,38 +1,34 @@
 // Страница архива задач
 // Основные модули: React, DataTable, сервисы архива
-import React from "react";
-import DataTable from "../components/DataTable";
-import archiveColumns from "../columns/archiveColumns";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "../context/useToast";
-import { useAuth } from "../context/useAuth";
-import { fetchArchive, purgeArchive } from "../services/archives";
-import type { ArchiveTask } from "../types/archive";
-import {
-  ARCHIVE_ACCESS,
-  ACCESS_TASK_DELETE,
-  hasAccess,
-} from "../utils/access";
+import React from 'react';
+import DataTable from '../components/DataTable';
+import archiveColumns from '../columns/archiveColumns';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '../context/useToast';
+import { useAuth } from '../context/useAuth';
+import { fetchArchive, purgeArchive } from '../services/archives';
+import type { ArchiveTask } from '../types/archive';
+import { ARCHIVE_ACCESS, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
 
 const PAGE_SIZE = 25;
 
 const toId = (value: unknown): string => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (typeof value === "object" && value !== null && "toString" in value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object' && value !== null && 'toString' in value) {
     try {
       return (value as { toString(): string }).toString();
     } catch {
-      return "";
+      return '';
     }
   }
-  return "";
+  return '';
 };
 
 const normalizeDate = (value: unknown): string | undefined => {
-  if (typeof value === "string") return value;
+  if (typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
   return undefined;
 };
@@ -46,12 +42,12 @@ export default function ArchivePage() {
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
   const [purging, setPurging] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [appliedSearch, setAppliedSearch] = React.useState("");
+  const [search, setSearch] = React.useState('');
+  const [appliedSearch, setAppliedSearch] = React.useState('');
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
-  const access = typeof user?.access === "number" ? user.access : 0;
+  const access = typeof user?.access === 'number' ? user.access : 0;
   const canViewArchive = hasAccess(access, ARCHIVE_ACCESS);
   const canPurge = hasAccess(access, ACCESS_TASK_DELETE);
 
@@ -73,21 +69,20 @@ export default function ArchivePage() {
         if (cancelled) return;
         const mapped = data.items.map((item) => {
           const record = item as Record<string, unknown>;
-          const id = toId(record._id ?? record.id ?? record.task_number ?? "");
+          const id = toId(record._id ?? record.id ?? record.task_number ?? '');
           return {
             id,
             task_number:
-              typeof record.task_number === "string"
+              typeof record.task_number === 'string'
                 ? record.task_number
                 : undefined,
-            title:
-              typeof record.title === "string" ? record.title : undefined,
+            title: typeof record.title === 'string' ? record.title : undefined,
             status:
-              typeof record.status === "string" ? record.status : undefined,
+              typeof record.status === 'string' ? record.status : undefined,
             archived_at: normalizeDate(record.archived_at),
             createdAt: normalizeDate(record.createdAt),
             archived_by:
-              typeof record.archived_by === "number" &&
+              typeof record.archived_by === 'number' &&
               Number.isFinite(record.archived_by)
                 ? (record.archived_by as number)
                 : undefined,
@@ -114,8 +109,8 @@ export default function ArchivePage() {
           const message =
             error instanceof Error
               ? error.message
-              : "Не удалось загрузить архив задач";
-          addToast(message, "error");
+              : 'Не удалось загрузить архив задач';
+          addToast(message, 'error');
         }
       } finally {
         if (!cancelled) {
@@ -141,8 +136,8 @@ export default function ArchivePage() {
   );
 
   const handleSearchReset = React.useCallback(() => {
-    setSearch("");
-    setAppliedSearch("");
+    setSearch('');
+    setAppliedSearch('');
     setPage(0);
   }, []);
 
@@ -181,9 +176,9 @@ export default function ArchivePage() {
     try {
       const removed = await purgeArchive(Array.from(selectedIds));
       if (removed > 0) {
-        addToast(`Удалено ${removed} задач`, "success");
+        addToast(`Удалено ${removed} задач`, 'success');
       } else {
-        addToast("Задачи не были удалены", "error");
+        addToast('Задачи не были удалены', 'error');
       }
       setSelectedIds(new Set());
       setRefreshKey((prev) => prev + 1);
@@ -191,8 +186,8 @@ export default function ArchivePage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Не удалось выполнить полное удаление";
-      addToast(message, "error");
+          : 'Не удалось выполнить полное удаление';
+      addToast(message, 'error');
     } finally {
       setPurging(false);
     }
@@ -224,10 +219,10 @@ export default function ArchivePage() {
   const totalLabel = (() => {
     const remainder10 = total % 10;
     const remainder100 = total % 100;
-    if (remainder10 === 1 && remainder100 !== 11) return "задача";
+    if (remainder10 === 1 && remainder100 !== 11) return 'задача';
     if ([2, 3, 4].includes(remainder10) && ![12, 13, 14].includes(remainder100))
-      return "задачи";
-    return "задач";
+      return 'задачи';
+    return 'задач';
   })();
 
   return (

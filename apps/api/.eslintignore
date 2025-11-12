@@ -1,6 +1,0 @@
-src/db/queries.ts
-src/geo/osrm.ts
-src/routes/tasks.ts
-src/services/optimizer.ts
-src/services/wgLogEngine.ts
-src/tasks/uploadFinalizer.ts

@@ -49,7 +49,9 @@ const normalizeMeta = (
   meta?: Record<string, unknown>,
 ): Record<string, unknown> | undefined => (meta ? { ...meta } : undefined);
 
-const mapCollectionItem = (doc: LeanCollectionItem): AggregatedCollectionItem => ({
+const mapCollectionItem = (
+  doc: LeanCollectionItem,
+): AggregatedCollectionItem => ({
   _id: toStringId(doc._id),
   type: doc.type,
   name: doc.name,
@@ -66,7 +68,8 @@ const mapDepartment = (doc: LeanDepartment): AggregatedCollectionItem => ({
     legacy: true,
     readonly: true,
     source: 'departments',
-    readonlyReason: 'Элемент перенесён из коллекции Department и доступен только для чтения.',
+    readonlyReason:
+      'Элемент перенесён из коллекции Department и доступен только для чтения.',
     sourceId: toStringId(doc._id),
     fleetId: doc.fleetId ? toStringId(doc.fleetId) : undefined,
   },
@@ -81,7 +84,8 @@ const mapEmployee = (doc: LeanEmployee): AggregatedCollectionItem => ({
     legacy: true,
     readonly: true,
     source: 'employees',
-    readonlyReason: 'Сотрудник хранится в коллекции Employee и доступен только для чтения.',
+    readonlyReason:
+      'Сотрудник хранится в коллекции Employee и доступен только для чтения.',
     sourceId: toStringId(doc._id),
     departmentId: doc.departmentId ? toStringId(doc.departmentId) : undefined,
     divisionId: doc.divisionId ? toStringId(doc.divisionId) : undefined,
@@ -235,7 +239,8 @@ const matchesFilters = (
 
 const paginate = <T>(items: T[], page: number, limit: number): T[] => {
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 20;
+  const safeLimit =
+    Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 20;
   const start = (safePage - 1) * safeLimit;
   const end = start + safeLimit;
   return items.slice(start, end);
@@ -251,7 +256,9 @@ export async function listCollectionsWithLegacy(
   if (filters.name) baseQuery.name = filters.name;
   if (filters.value) baseQuery.value = filters.value;
 
-  const baseItemsRaw = (await CollectionItem.find(baseQuery).lean()) as LeanCollectionItem[];
+  const baseItemsRaw = (await CollectionItem.find(
+    baseQuery,
+  ).lean()) as LeanCollectionItem[];
   const items = baseItemsRaw.map(mapCollectionItem);
 
   const typeFilter = filters.type;
@@ -277,7 +284,8 @@ export async function listCollectionsWithLegacy(
 
   if (shouldIncludeLegacyType(typeFilter)) {
     if (!typeFilter || typeFilter === 'departments') {
-      const departmentsRaw = (await Department.find().lean()) as LeanDepartment[];
+      const departmentsRaw =
+        (await Department.find().lean()) as LeanDepartment[];
       const existingNames = byTypeName.get('departments') ?? new Set<string>();
       const existingIds = byTypeId.get('departments') ?? new Set<string>();
       departmentsRaw.forEach((dept) => {

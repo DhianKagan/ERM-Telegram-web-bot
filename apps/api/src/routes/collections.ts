@@ -7,7 +7,10 @@ import createRateLimiter from '../utils/rateLimiter';
 import authMiddleware from '../middleware/auth';
 import requireRole from '../middleware/requireRole';
 import * as repo from '../db/repos/collectionRepo';
-import { CollectionItem, CollectionItemAttrs } from '../db/models/CollectionItem';
+import {
+  CollectionItem,
+  CollectionItemAttrs,
+} from '../db/models/CollectionItem';
 import { Employee } from '../db/models/employee';
 import { Task } from '../db/model';
 import { listCollectionsWithLegacy } from '../services/collectionsAggregator';
@@ -133,7 +136,8 @@ router.post(
       .bail()
       .custom((raw, { req }) => {
         if (typeof raw !== 'string') return false;
-        const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
+        const type =
+          typeof req.body?.type === 'string' ? req.body.type.trim() : '';
         const normalized = normalizeValueByType(type, raw);
         if (type === 'departments') {
           return true;

@@ -31,14 +31,8 @@ router.get(
   authMiddleware(),
   validate([
     query('lat').isFloat({ min: -90, max: 90 }),
-    query('lng')
-      .optional()
-      .isFloat({ min: -180, max: 180 })
-      .bail(),
-    query('lon')
-      .optional()
-      .isFloat({ min: -180, max: 180 })
-      .bail(),
+    query('lng').optional().isFloat({ min: -180, max: 180 }).bail(),
+    query('lon').optional().isFloat({ min: -180, max: 180 }).bail(),
     query('lat').custom((_, { req }) => {
       const hasLng = typeof req?.query?.lng === 'string';
       const hasLon = typeof req?.query?.lon === 'string';

@@ -34,9 +34,7 @@ const normalizeCompletedAt = (
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-const prepareTaskPayload = (
-  input: TaskData = {},
-): Partial<TaskDocument> => {
+const prepareTaskPayload = (input: TaskData = {}): Partial<TaskDocument> => {
   const { completed_at, ...rest } = input;
   const payload: Partial<TaskDocument> = {
     ...(rest as Partial<TaskDocument>),

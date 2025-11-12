@@ -35,7 +35,9 @@ const safeDecode = (value: string): string => {
   return current;
 };
 
-const parseCombinedValue = (value: string | null | undefined): Coords | null => {
+const parseCombinedValue = (
+  value: string | null | undefined,
+): Coords | null => {
   if (!value) {
     return null;
   }
@@ -59,7 +61,10 @@ const looksLikeUrl = (value: string): boolean => {
   }
 };
 
-const extractNestedCoords = (value: string | null, depth: number): Coords | null => {
+const extractNestedCoords = (
+  value: string | null,
+  depth: number,
+): Coords | null => {
   if (!value || depth > MAX_NESTING_DEPTH) {
     return null;
   }
@@ -127,7 +132,9 @@ const extractCoordsInternal = (url: string, depth = 0): Coords | null => {
       return coords;
     }
   }
-  const invertedBangMatch = decoded.match(/!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/);
+  const invertedBangMatch = decoded.match(
+    /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/,
+  );
   if (invertedBangMatch) {
     const coords = parseCoordPair(invertedBangMatch[2], invertedBangMatch[1]);
     if (coords) {

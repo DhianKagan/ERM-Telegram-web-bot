@@ -30,7 +30,9 @@ jest.mock('../apps/api/src/bot/bot', () => {
         deleteMessage: deleteMessageMock,
       },
     },
-    buildTaskAppLink: jest.fn(() => 'https://example.com/tasks?task=507f1f77bcf86cd799439011'),
+    buildTaskAppLink: jest.fn(
+      () => 'https://example.com/tasks?task=507f1f77bcf86cd799439011',
+    ),
     buildDirectTaskKeyboard: jest.fn(),
     buildDirectTaskMessage: jest.fn(() => ''),
     __sendMessageMock: sendMessageMock,
@@ -257,24 +259,27 @@ describe('notifyTaskCreated вложения', () => {
       status: 'Новая',
     } as unknown as TaskDocument & { toObject(): unknown };
 
-    (plainTask as unknown as { toObject: () => unknown }).toObject = () => plainTask;
+    (plainTask as unknown as { toObject: () => unknown }).toObject = () =>
+      plainTask;
 
     const controller = new TasksController({} as any);
-    await (controller as unknown as { notifyTaskCreated(task: TaskDocument, userId: number): Promise<void> }).notifyTaskCreated(
-      plainTask as TaskDocument,
-      55,
-    );
+    await (
+      controller as unknown as {
+        notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+      }
+    ).notifyTaskCreated(plainTask as TaskDocument, 55);
 
     expect(sendMediaGroupMock).toHaveBeenCalledTimes(1);
     expect(sendPhotoMock).not.toHaveBeenCalled();
 
     expect(sendMessageMock).toHaveBeenCalledTimes(3);
-    const youtubeCall = sendMessageMock.mock.calls.find((call) =>
-      typeof call?.[1] === 'string' && call[1].includes('▶️'),
+    const youtubeCall = sendMessageMock.mock.calls.find(
+      (call) => typeof call?.[1] === 'string' && call[1].includes('▶️'),
     );
     expect(youtubeCall?.[1]).toContain('▶️');
-    const commentCall = sendMessageMock.mock.calls.find((call) =>
-      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    const commentCall = sendMessageMock.mock.calls.find(
+      (call) =>
+        typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
     );
     expect(commentCall?.[1]).toContain('Нет комментариев');
     expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
@@ -286,10 +291,12 @@ describe('notifyTaskCreated вложения', () => {
         $unset?: Record<string, unknown>;
       };
       expect(updatePayload.$set?.telegram_message_id).toBe(groupMessageId);
-      expect(updatePayload.$set?.telegram_preview_message_ids).toEqual([301, 302]);
-      expect(
-        updatePayload.$set?.telegram_attachments_message_ids,
-      ).toEqual(expect.arrayContaining([youtubeMessageId]));
+      expect(updatePayload.$set?.telegram_preview_message_ids).toEqual([
+        301, 302,
+      ]);
+      expect(updatePayload.$set?.telegram_attachments_message_ids).toEqual(
+        expect.arrayContaining([youtubeMessageId]),
+      );
       expect(updatePayload.$set?.telegram_comment_message_id).toBe(
         commentMessageId,
       );
@@ -365,8 +372,9 @@ describe('notifyTaskCreated вложения', () => {
     expect(deleteMessageMock).toHaveBeenCalledWith(expect.any(String), 311);
     expect(sendMessageMock).toHaveBeenCalledTimes(3);
     expect(sendPhotoMock).toHaveBeenCalledTimes(1);
-    const commentCall = sendMessageMock.mock.calls.find((call) =>
-      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    const commentCall = sendMessageMock.mock.calls.find(
+      (call) =>
+        typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
     );
     expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
     const updateCall = updateTaskMock.mock.calls[0];
@@ -424,12 +432,11 @@ describe('notifyTaskCreated вложения', () => {
     expect(dmCall).toBeDefined();
     const dmOptions = dmCall?.[2] as { parse_mode?: string } | undefined;
     expect(dmOptions?.parse_mode).toBe('HTML');
-    const commentCall = sendMessageMock.mock.calls.find((call) =>
-      typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
+    const commentCall = sendMessageMock.mock.calls.find(
+      (call) =>
+        typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
     );
-    expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(
-      groupMessageId,
-    );
+    expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
   });
 
   it('публикует фото в отдельной теме и сохраняет ссылку на альбом', async () => {

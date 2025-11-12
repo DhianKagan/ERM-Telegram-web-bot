@@ -2,9 +2,9 @@
  * Назначение файла: извлекает короткий адрес из ссылки Google Maps.
  * Основные модули: parseGoogleAddress.
  */
-import extractCoords from "./extractCoords";
+import extractCoords from './extractCoords';
 
-const GOOGLE_LABEL_FALLBACK = "Точка на карте";
+const GOOGLE_LABEL_FALLBACK = 'Точка на карте';
 
 const formatCoords = (
   coords: { lat: number; lng: number } | null,
@@ -27,10 +27,10 @@ const isGoogleHost = (candidate: string): boolean => {
   }
   const host = candidate.toLowerCase();
   return (
-    host.includes("google") ||
-    host.endsWith("goo.gl") ||
-    host.endsWith("maps.app") ||
-    host.endsWith("maps.app.goo.gl")
+    host.includes('google') ||
+    host.endsWith('goo.gl') ||
+    host.endsWith('maps.app') ||
+    host.endsWith('maps.app.goo.gl')
   );
 };
 
@@ -42,17 +42,19 @@ export default function parseGoogleAddress(url: string): string {
   try {
     const place = url.match(/\/place\/([^/]+)/);
     if (place) {
-      return decodeURIComponent(place[1].replace(/\+/g, " ")).split(",")[0];
+      return decodeURIComponent(place[1].replace(/\+/g, ' ')).split(',')[0];
     }
     const q = url.match(/[?&]q=([^&]+)/);
     if (q) {
-      return decodeURIComponent(q[1].replace(/\+/g, " ")).split(",")[0];
+      return decodeURIComponent(q[1].replace(/\+/g, ' ')).split(',')[0];
     }
     const parsed = new URL(url);
     if (isGoogleHost(parsed.hostname)) {
-      const searchLabel = parsed.searchParams.get("q");
+      const searchLabel = parsed.searchParams.get('q');
       if (searchLabel) {
-        return decodeURIComponent(searchLabel.replace(/\+/g, " ")).split(",")[0];
+        return decodeURIComponent(searchLabel.replace(/\+/g, ' ')).split(
+          ',',
+        )[0];
       }
       if (coordsLabel) {
         return coordsLabel;

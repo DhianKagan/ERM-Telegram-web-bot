@@ -58,9 +58,7 @@ function sanitizeUpdate<T extends Record<string, unknown>>(
   return res;
 }
 
-function normalizeAttachmentsField(
-  target: Record<string, unknown>,
-): void {
+function normalizeAttachmentsField(target: Record<string, unknown>): void {
   if (!target || typeof target !== 'object') return;
   if (!Object.prototype.hasOwnProperty.call(target, 'attachments')) return;
   const normalized = coerceAttachments(target.attachments);
@@ -116,11 +114,15 @@ const persistHistoryEntryToArchive = async (
     });
   } catch (error) {
     await logEngine
-      .writeLog('Не удалось сохранить историю задачи во внешний архив', 'error', {
-        taskId: taskId.toHexString(),
-        reason: HISTORY_ARCHIVE_REASON,
-        error: error instanceof Error ? error.message : String(error),
-      })
+      .writeLog(
+        'Не удалось сохранить историю задачи во внешний архив',
+        'error',
+        {
+          taskId: taskId.toHexString(),
+          reason: HISTORY_ARCHIVE_REASON,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      )
       .catch(() => undefined);
     throw error;
   }
@@ -167,16 +169,21 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
   const rawId = task._id;
   const overflowValue = task.history_overflow_count;
   const hasOverflowFlag =
-    typeof overflowValue === 'number' && Number.isFinite(overflowValue) && overflowValue > 0;
-  if (!hasOverflowFlag && (!Array.isArray(task.history) || task.history.length === 0)) {
+    typeof overflowValue === 'number' &&
+    Number.isFinite(overflowValue) &&
+    overflowValue > 0;
+  if (
+    !hasOverflowFlag &&
+    (!Array.isArray(task.history) || task.history.length === 0)
+  ) {
     return task;
   }
   const normalizedId =
     rawId instanceof Types.ObjectId
       ? rawId
       : typeof rawId === 'string' && Types.ObjectId.isValid(rawId)
-      ? new Types.ObjectId(rawId)
-      : null;
+        ? new Types.ObjectId(rawId)
+        : null;
   if (!normalizedId) {
     return task;
   }
@@ -196,8 +203,14 @@ const hydrateTaskHistory = async <T extends TaskDocument | null>(
   const currentHistory = Array.isArray(task.history) ? [...task.history] : [];
   const combined = [...archivedEntries, ...currentHistory];
   combined.sort((a, b) => {
-    const left = a.changed_at instanceof Date ? a.changed_at.getTime() : new Date(a.changed_at).getTime();
-    const right = b.changed_at instanceof Date ? b.changed_at.getTime() : new Date(b.changed_at).getTime();
+    const left =
+      a.changed_at instanceof Date
+        ? a.changed_at.getTime()
+        : new Date(a.changed_at).getTime();
+    const right =
+      b.changed_at instanceof Date
+        ? b.changed_at.getTime()
+        : new Date(b.changed_at).getTime();
     return left - right;
   });
   task.history = combined as TaskDocument['history'];
@@ -219,7 +232,10 @@ async function normalizeTransportFields(
   payload: Partial<TaskDocument> & Record<string, unknown>,
   previous: TaskDocument | null,
 ): Promise<void> {
-  const typeCandidate = Object.prototype.hasOwnProperty.call(payload, 'transport_type')
+  const typeCandidate = Object.prototype.hasOwnProperty.call(
+    payload,
+    'transport_type',
+  )
     ? payload.transport_type
     : previous?.transport_type;
   const requiresTransport = isTransportRequired(typeCandidate);
@@ -256,9 +272,11 @@ async function normalizeTransportFields(
       typeof driverRaw === 'number'
         ? driverRaw
         : typeof driverRaw === 'string'
-        ? Number(driverRaw.trim())
-        : Number.NaN;
-    payload.transport_driver_id = Number.isFinite(driverValue) ? driverValue : null;
+          ? Number(driverRaw.trim())
+          : Number.NaN;
+    payload.transport_driver_id = Number.isFinite(driverValue)
+      ? driverValue
+      : null;
   } else if (previous) {
     payload.transport_driver_id = previous.transport_driver_id ?? null;
   }
@@ -287,7 +305,8 @@ async function normalizeTransportFields(
       typeof previous.transport_driver_name === 'string'
         ? previous.transport_driver_name.trim()
         : null;
-    payload.transport_driver_name = prevName && prevName.length > 0 ? prevName : null;
+    payload.transport_driver_name =
+      prevName && prevName.length > 0 ? prevName : null;
   } else {
     payload.transport_driver_name = null;
   }
@@ -315,12 +334,12 @@ async function normalizeTransportFields(
       .lean<{ name?: string | null; username?: string | null }>()
       .exec();
     const resolvedName = driver
-      ? (typeof driver.name === 'string' && driver.name.trim().length > 0
-          ? driver.name.trim()
-          : typeof driver.username === 'string' &&
+      ? typeof driver.name === 'string' && driver.name.trim().length > 0
+        ? driver.name.trim()
+        : typeof driver.username === 'string' &&
             driver.username.trim().length > 0
           ? driver.username.trim()
-          : null)
+          : null
       : null;
     if (resolvedName) {
       payload.transport_driver_name = resolvedName;
@@ -410,7 +429,9 @@ async function detachVehicle(vehicleId: string, taskId: string): Promise<void> {
   const vehicle = await FleetVehicle.findById(vehicleId);
   if (!vehicle) return;
   if (Array.isArray(vehicle.currentTasks)) {
-    vehicle.currentTasks = vehicle.currentTasks.filter((item) => item !== taskId);
+    vehicle.currentTasks = vehicle.currentTasks.filter(
+      (item) => item !== taskId,
+    );
   }
   if (Array.isArray(vehicle.transportHistory)) {
     const entry = vehicle.transportHistory.find(
@@ -429,8 +450,12 @@ async function syncVehicleAssignments(
 ): Promise<void> {
   const taskId = toTaskIdString(current, previous);
   if (!taskId) return;
-  const prevRequires = previous ? isTransportRequired(previous.transport_type) : false;
-  const nextRequires = current ? isTransportRequired(current.transport_type) : false;
+  const prevRequires = previous
+    ? isTransportRequired(previous.transport_type)
+    : false;
+  const nextRequires = current
+    ? isTransportRequired(current.transport_type)
+    : false;
 
   const prevVehicleId =
     prevRequires && previous?.transport_vehicle_id
@@ -449,8 +474,8 @@ async function syncVehicleAssignments(
       typeof current?.title === 'string'
         ? current.title
         : typeof previous?.title === 'string'
-        ? previous.title
-        : undefined;
+          ? previous.title
+          : undefined;
     await attachVehicle(nextVehicleId, taskId, title);
   } else if (prevVehicleId && !nextVehicleId) {
     await detachVehicle(prevVehicleId, taskId);
@@ -570,12 +595,16 @@ const mergeAttachmentSources = (
       pickString(current.thumbnailUrl, sources.previous?.thumbnailUrl) ??
       thumbnailFromFile,
     uploadedBy:
-      pickNumber(current.uploadedBy, sources.previous?.uploadedBy, sources.file?.userId) ??
-      current.uploadedBy,
+      pickNumber(
+        current.uploadedBy,
+        sources.previous?.uploadedBy,
+        sources.file?.userId,
+      ) ?? current.uploadedBy,
     uploadedAt,
     type:
       pickString(current.type, sources.previous?.type, sources.file?.type) ??
-      (current.type ?? 'application/octet-stream'),
+      current.type ??
+      'application/octet-stream',
     size:
       pickNumber(current.size, sources.previous?.size, sources.file?.size) ??
       current.size,
@@ -604,7 +633,9 @@ async function enrichAttachmentsFromContent(
   if (!Array.isArray(attachmentsRaw) || attachmentsRaw.length === 0) {
     return [];
   }
-  const attachments = attachmentsRaw.map((item) => ({ ...item })) as Attachment[];
+  const attachments = attachmentsRaw.map((item) => ({
+    ...item,
+  })) as Attachment[];
   const previousByKey = new Map<string, Attachment>();
   if (previous && Array.isArray(previous.attachments)) {
     previous.attachments.forEach((item) => {
@@ -643,7 +674,6 @@ async function enrichAttachmentsFromContent(
     });
   });
   return attachments;
-
 }
 
 const REQUEST_TYPE_NAME = 'Заявка';
@@ -701,7 +731,9 @@ export async function findTaskIdByPublicIdentifier(
         $or: [{ task_number: trimmed }, { request_id: trimmed }],
       })
       .select({ _id: 1 })
-      .lean<{ _id?: Types.ObjectId | string | { toHexString?: () => string } | null }>();
+      .lean<{
+        _id?: Types.ObjectId | string | { toHexString?: () => string } | null;
+      }>();
     return normalizeObjectId(fallbackTask?._id);
   } catch (lookupError) {
     await Promise.resolve(
@@ -935,7 +967,11 @@ export async function createTask(
     changes: { from: {}, to: payload },
   };
   const task = await Task.create({ ...payload, history: [entry] });
-  await syncTaskAttachments(task._id as Types.ObjectId, task.attachments, userId);
+  await syncTaskAttachments(
+    task._id as Types.ObjectId,
+    task.attachments,
+    userId,
+  );
   await safeSyncVehicleAssignments(null, task);
   return task;
 }
@@ -990,7 +1026,9 @@ export async function updateTask(
   const creatorId = Number(prev.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
   const assignedUserId =
-    typeof prev.assigned_user_id === 'number' ? prev.assigned_user_id : undefined;
+    typeof prev.assigned_user_id === 'number'
+      ? prev.assigned_user_id
+      : undefined;
   const assignees = Array.isArray(prev.assignees)
     ? prev.assignees
         .map((candidate) => Number(candidate))
@@ -1111,9 +1149,17 @@ export async function updateTask(
     updated = await hydrateTaskHistory(updated);
   }
   if (updated && Object.prototype.hasOwnProperty.call(fields, 'attachments')) {
-    await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+    await syncTaskAttachments(
+      updated._id as Types.ObjectId,
+      updated.attachments,
+      userId,
+    );
   } else if (updated && enrichedAttachments !== undefined) {
-    await syncTaskAttachments(updated._id as Types.ObjectId, updated.attachments, userId);
+    await syncTaskAttachments(
+      updated._id as Types.ObjectId,
+      updated.attachments,
+      userId,
+    );
   }
   if (updated) {
     await safeSyncVehicleAssignments(prev, updated);
@@ -1176,7 +1222,11 @@ export async function updateTaskStatus(
       }
     }
   }
-  if (hasAssignments && !isExecutor && !(status === 'Отменена' && allowCreatorCancellation)) {
+  if (
+    hasAssignments &&
+    !isExecutor &&
+    !(status === 'Отменена' && allowCreatorCancellation)
+  ) {
     throw new Error('Нет прав на изменение статуса задачи');
   }
   if (status === 'Выполнена' && currentStatus) {
@@ -1243,8 +1293,7 @@ export async function getTasks(
   const isQuery = (v: unknown): v is Query<TaskDocument[], TaskDocument> =>
     typeof v === 'object' && v !== null && 'exec' in v;
   if (filters.kanban) {
-    const kindFilter =
-      filters.kind === 'request' ? 'request' : 'task';
+    const kindFilter = filters.kind === 'request' ? 'request' : 'task';
     const res = Task.find({ kind: kindFilter }) as unknown;
     if (isQuery(res)) {
       const list = await res.sort('-createdAt').exec();
@@ -1358,7 +1407,9 @@ export async function addTime(
         ? new Types.ObjectId(String(task._id))
         : null;
   if (!normalizedId) {
-    throw new Error('Не удалось определить идентификатор задачи для обновления времени');
+    throw new Error(
+      'Не удалось определить идентификатор задачи для обновления времени',
+    );
   }
   const before = task.time_spent || 0;
   const nextValue = before + minutes;
@@ -1467,23 +1518,25 @@ export async function deleteTask(
       ? data.created_by
       : 0;
   if (Array.isArray(data.history) && data.history.length > 0) {
-    const normalized = data.history.map((entry: HistoryEntry | null | undefined) => {
-      if (entry && typeof entry === 'object') {
-        const withFallback = { ...entry } as HistoryEntry & {
-          changed_by?: unknown;
-        };
-        const changedBy = withFallback.changed_by;
-        if (typeof changedBy !== 'number' || !Number.isFinite(changedBy)) {
-          withFallback.changed_by = fallbackUserId;
+    const normalized = data.history.map(
+      (entry: HistoryEntry | null | undefined) => {
+        if (entry && typeof entry === 'object') {
+          const withFallback = { ...entry } as HistoryEntry & {
+            changed_by?: unknown;
+          };
+          const changedBy = withFallback.changed_by;
+          if (typeof changedBy !== 'number' || !Number.isFinite(changedBy)) {
+            withFallback.changed_by = fallbackUserId;
+          }
+          return withFallback as HistoryEntry;
         }
-        return withFallback as HistoryEntry;
-      }
-      return {
-        changed_at: new Date(),
-        changed_by: fallbackUserId,
-        changes: { from: {}, to: {} },
-      } satisfies HistoryEntry;
-    });
+        return {
+          changed_at: new Date(),
+          changed_by: fallbackUserId,
+          changes: { from: {}, to: {} },
+        } satisfies HistoryEntry;
+      },
+    );
     data.history = normalized;
   }
   (data as unknown as Record<string, unknown>).request_id = `${
@@ -1525,8 +1578,12 @@ export async function listArchivedTasks(
 }> {
   const pageRaw = Number(params.page);
   const limitRaw = Number(params.limit);
-  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 200) : 25;
+  const page =
+    Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+  const limit =
+    Number.isFinite(limitRaw) && limitRaw > 0
+      ? Math.min(Math.floor(limitRaw), 200)
+      : 25;
   const filter: Record<string, unknown> = {};
   const search = typeof params.search === 'string' ? params.search.trim() : '';
   if (search) {

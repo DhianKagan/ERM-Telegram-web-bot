@@ -52,13 +52,18 @@ jest.mock('../src/services/tasks', () => ({
   mentioned: jest.fn(),
 }));
 
-jest.mock('../src/middleware/taskAccess', () =>
-  (_req: unknown, _res: unknown, next: NextFunction) => next(),
+jest.mock(
+  '../src/middleware/taskAccess',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 
 jest.mock('../src/db/queries', () => ({
   getUser: jest.fn(async () => ({ roleId: mockManagerRoleId })),
-  createUser: jest.fn(async () => ({ username: 'u', role: 'manager', roleId: mockManagerRoleId })),
+  createUser: jest.fn(async () => ({
+    username: 'u',
+    role: 'manager',
+    roleId: mockManagerRoleId,
+  })),
   updateUser: jest.fn(async () => ({})),
   accessByRole: (r: string) => (r === 'admin' ? 6 : r === 'manager' ? 4 : 1),
 }));

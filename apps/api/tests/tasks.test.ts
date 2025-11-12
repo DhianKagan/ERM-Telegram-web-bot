@@ -61,7 +61,10 @@ jest.mock('../src/db/model', () => ({
       status: 'Новая',
       time_spent: 0,
     })),
-    findOneAndUpdate: jest.fn(async (query, d) => ({ _id: query._id, ...(d.$set || d) })),
+    findOneAndUpdate: jest.fn(async (query, d) => ({
+      _id: query._id,
+      ...(d.$set || d),
+    })),
     findById: jest.fn(async () => ({
       _id: '1',
       time_spent: 0,
@@ -77,7 +80,9 @@ jest.mock('../src/db/model', () => ({
       telegram_attachments_message_ids: [501],
       telegram_dm_message_ids: [{ user_id: 7, message_id: 601 }],
     })),
-    findByIdAndUpdate: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
+    findByIdAndUpdate: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue(null),
+    })),
     findByIdAndDelete: jest.fn(async () => ({
       _id: '507f191e810c19729de860ea',
       request_id: 'ERM_000001',
@@ -117,7 +122,8 @@ jest
 
 jest.mock('../src/api/middleware', () => {
   const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
+      handler,
   );
   const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
     res.status(500).json({
@@ -128,7 +134,9 @@ jest.mock('../src/api/middleware', () => {
   return {
     verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
       const rawRole = req.headers['x-role'];
-      const role = Array.isArray(rawRole) ? rawRole[0] ?? 'admin' : rawRole ?? 'admin';
+      const role = Array.isArray(rawRole)
+        ? (rawRole[0] ?? 'admin')
+        : (rawRole ?? 'admin');
       const rawAccess = req.headers['x-access'];
       const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
       const access = accessValue !== undefined ? Number(accessValue) : 6;
@@ -142,8 +150,9 @@ jest.mock('../src/api/middleware', () => {
   };
 });
 
-jest.mock('../src/middleware/taskAccess', () =>
-  (_req: unknown, _res: unknown, next: NextFunction) => next(),
+jest.mock(
+  '../src/middleware/taskAccess',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 
 const router = require('../src/routes/tasks').default;

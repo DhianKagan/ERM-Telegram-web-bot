@@ -30,8 +30,12 @@ const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
   asyncHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
-    res.status(500).json({ error: err.message }),
+  errorHandler: (
+    err: Error,
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) => res.status(500).json({ error: err.message }),
 }));
 
 jest.mock('../src/services/route', () => ({

@@ -65,8 +65,12 @@ beforeEach(() => {
   app.get('/api/v1/csrf', csrf, (req: RequestWithCsrf, res: Response) => {
     res.json({ csrfToken: req.csrfToken() });
   });
-  app.post('/api/protected', (_req: Request, res: Response) => res.json({ ok: true }));
-  app.post('/api/tma/protected', (_req: Request, res: Response) => res.json({ ok: true }));
+  app.post('/api/protected', (_req: Request, res: Response) =>
+    res.json({ ok: true }),
+  );
+  app.post('/api/tma/protected', (_req: Request, res: Response) =>
+    res.json({ ok: true }),
+  );
   app.use(errorMiddleware);
 });
 

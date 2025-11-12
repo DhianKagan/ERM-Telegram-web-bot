@@ -1,16 +1,13 @@
 // Назначение: заглушка типов для sharp в тестах
 declare module 'sharp' {
-  type SharpColor = string | { r: number; g: number; b: number; alpha?: number };
+  type SharpColor =
+    | string
+    | { r: number; g: number; b: number; alpha?: number };
 
   type ResizeOptions = {
     width?: number;
     height?: number;
-    fit?:
-      | 'cover'
-      | 'contain'
-      | 'fill'
-      | 'inside'
-      | 'outside';
+    fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside';
     position?: string | number;
     withoutEnlargement?: boolean;
   };
@@ -50,7 +47,11 @@ declare module 'sharp' {
   interface SharpInstance {
     metadata(): Promise<Metadata>;
     resize(options: ResizeOptions): SharpInstance;
-    resize(width: number, height: number, options?: ResizeOptions): SharpInstance;
+    resize(
+      width: number,
+      height: number,
+      options?: ResizeOptions,
+    ): SharpInstance;
     flatten(options?: FlattenOptions): SharpInstance;
     jpeg(options?: JpegOptions): SharpInstance;
     composite(images: CompositeInput[]): SharpInstance;

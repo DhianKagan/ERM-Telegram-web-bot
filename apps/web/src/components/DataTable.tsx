@@ -1,16 +1,16 @@
 // Назначение файла: универсальная таблица на React Table с виртуализацией строк
 // Основные модули: React, @tanstack/react-table, TableToolbar
-/* eslint-disable react-refresh/only-export-components */
-import React from "react";
+ 
+import React from 'react';
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   Table as TableType,
-} from "@tanstack/react-table";
+} from '@tanstack/react-table';
 
-import TableToolbar from "./TableToolbar";
+import TableToolbar from './TableToolbar';
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -45,27 +45,30 @@ interface ColumnMeta {
 }
 
 export const defaultBadgeClassName = [
-  "inline-flex min-h-[1.65rem] max-w-full items-center justify-start gap-1",
-  "rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold leading-tight text-slate-900",
-  "ring-1 ring-slate-300/80 bg-slate-100/90 shadow-xs",
-  "dark:text-slate-100 dark:ring-slate-600/60 dark:bg-slate-800/80",
-  "truncate",
-].join(" ");
+  'inline-flex min-h-[1.65rem] max-w-full items-center justify-start gap-1',
+  'rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold leading-tight text-slate-900',
+  'ring-1 ring-slate-300/80 bg-slate-100/90 shadow-xs',
+  'dark:text-slate-100 dark:ring-slate-600/60 dark:bg-slate-800/80',
+  'truncate',
+].join(' ');
 export const defaultBadgeWrapperClassName =
-  "flex flex-wrap items-center gap-1.5";
+  'flex flex-wrap items-center gap-1.5';
 
 const sanitizeHtml = (html: string): string =>
-  html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const normalizeToText = (value: unknown): string => {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') {
     return sanitizeHtml(value);
   }
-  if (typeof value === "number" || typeof value === "boolean") {
+  if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value).trim();
   }
-  return "";
+  return '';
 };
 
 const extractBadgeItems = (value: React.ReactNode): string[] => {
@@ -77,7 +80,7 @@ const extractBadgeItems = (value: React.ReactNode): string[] => {
   };
   const visit = (node: React.ReactNode) => {
     if (node === null || node === undefined || node === false) return;
-    if (typeof node === "string" || typeof node === "number") {
+    if (typeof node === 'string' || typeof node === 'number') {
       const text = String(node).trim();
       if (!text) return;
       const parts = text
@@ -102,9 +105,9 @@ const extractBadgeItems = (value: React.ReactNode): string[] => {
       if (items.length === beforeLength) {
         const props = element.props || {};
         const fallbackCandidates: unknown[] = [
-          props["data-badge-label"],
-          props["data-label"],
-          props["aria-label"],
+          props['data-badge-label'],
+          props['data-label'],
+          props['aria-label'],
           props.title,
         ];
         fallbackCandidates.forEach((candidate) => {
@@ -116,19 +119,19 @@ const extractBadgeItems = (value: React.ReactNode): string[] => {
           | { __html?: unknown }
           | undefined;
         const rawHtml =
-          html && typeof html.__html === "string"
+          html && typeof html.__html === 'string'
             ? sanitizeHtml(html.__html)
-            : "";
+            : '';
         if (rawHtml) {
           pushItem(rawHtml);
         }
         const renderValue = props.renderValue;
-        if (typeof renderValue === "function") {
+        if (typeof renderValue === 'function') {
           const rendered = normalizeToText(renderValue());
           pushItem(rendered);
         }
         const getValue = props.getValue;
-        if (typeof getValue === "function") {
+        if (typeof getValue === 'function') {
           const rawValue = normalizeToText(getValue());
           pushItem(rawValue);
         }
@@ -175,38 +178,36 @@ const renderBadgeContent = (
 };
 
 const containerClasses = [
-  "relative w-full overflow-auto rounded-xl border border-border/70",
-  "bg-background shadow-sm dark:border-border/60",
-].join(" ");
+  'relative w-full overflow-auto rounded-xl border border-border/70',
+  'bg-background shadow-sm dark:border-border/60',
+].join(' ');
 
 const tableClasses = [
-  "min-w-full table-auto caption-bottom font-ui text-[12px] leading-tight",
-  "text-foreground dark:text-foreground sm:text-[13px]",
-].join(" ");
+  'min-w-full table-auto caption-bottom font-ui text-[12px] leading-tight',
+  'text-foreground dark:text-foreground sm:text-[13px]',
+].join(' ');
 
 const headerCellClasses = [
-  "border-b border-border/70 px-1.5 py-1.5 text-left align-middle font-semibold",
-  "text-[11px] leading-snug text-foreground sm:px-2 sm:text-[13px]",
-  "whitespace-normal",
-].join(" ");
+  'border-b border-border/70 px-1.5 py-1.5 text-left align-middle font-semibold',
+  'text-[11px] leading-snug text-foreground sm:px-2 sm:text-[13px]',
+  'whitespace-normal',
+].join(' ');
 
 const bodyCellClasses = [
-  "relative z-[1] px-1.5 py-1.5 align-top text-[12px] leading-snug",
-  "text-foreground sm:px-2 sm:text-sm",
-  "whitespace-normal",
-].join(" ");
+  'relative z-[1] px-1.5 py-1.5 align-top text-[12px] leading-snug',
+  'text-foreground sm:px-2 sm:text-sm',
+  'whitespace-normal',
+].join(' ');
 
 const bodyRowClasses = [
-  "group relative isolate min-h-[2.5rem] cursor-pointer select-none",
-  "odd:bg-sky-50/70 even:bg-emerald-50/70 odd:text-slate-900 even:text-slate-900",
-  "hover:odd:bg-sky-100/80 hover:even:bg-emerald-100/80",
-  "dark:odd:bg-slate-800/70 dark:even:bg-slate-700/70 dark:text-slate-100",
-  "dark:hover:odd:bg-slate-700 dark:hover:even:bg-slate-600",
-].join(" ");
+  'group relative isolate min-h-[2.5rem] cursor-pointer select-none',
+  'odd:bg-sky-50/70 even:bg-emerald-50/70 odd:text-slate-900 even:text-slate-900',
+  'hover:odd:bg-sky-100/80 hover:even:bg-emerald-100/80',
+  'dark:odd:bg-slate-800/70 dark:even:bg-slate-700/70 dark:text-slate-100',
+  'dark:hover:odd:bg-slate-700 dark:hover:even:bg-slate-600',
+].join(' ');
 
-const headerRowClasses = [
-  "bg-muted/20 text-foreground",
-].join(" ");
+const headerRowClasses = ['bg-muted/20 text-foreground'].join(' ');
 
 export default function DataTable<T>({
   columns,
@@ -223,7 +224,7 @@ export default function DataTable<T>({
   wrapCellsAsBadges = false,
   badgeClassName = defaultBadgeClassName,
   badgeWrapperClassName = defaultBadgeWrapperClassName,
-  badgeEmptyPlaceholder = "—",
+  badgeEmptyPlaceholder = '—',
   enableVirtualization = true,
   virtualizationOverscan = 6,
   virtualizationThreshold = 40,
@@ -264,7 +265,7 @@ export default function DataTable<T>({
       setViewportHeight(element.clientHeight || maxBodyHeight);
     };
     updateHeight();
-    if (typeof ResizeObserver !== "undefined") {
+    if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(updateHeight);
       observer.observe(element);
       return () => observer.disconnect();
@@ -332,10 +333,11 @@ export default function DataTable<T>({
               <tr key={hg.id} className={headerRowClasses}>
                 {hg.headers.map((header) => {
                   const meta =
-                    (header.column.columnDef.meta as ColumnMeta | undefined) || {};
+                    (header.column.columnDef.meta as ColumnMeta | undefined) ||
+                    {};
                   const baseSize = header.getSize();
                   const computedWidth =
-                    typeof meta.width === "string"
+                    typeof meta.width === 'string'
                       ? meta.width
                       : Number.isFinite(baseSize)
                         ? `${baseSize}px`
@@ -345,14 +347,14 @@ export default function DataTable<T>({
                     meta.headerClassName,
                   ]
                     .filter(Boolean)
-                    .join(" ");
+                    .join(' ');
                   return (
                     <th
                       key={header.id}
                       style={{
                         width: computedWidth,
-                        minWidth: meta.minWidth ?? "4rem",
-                        maxWidth: meta.maxWidth ?? "24rem",
+                        minWidth: meta.minWidth ?? '4rem',
+                        maxWidth: meta.maxWidth ?? '24rem',
                       }}
                       className={headerClassName}
                     >
@@ -378,24 +380,26 @@ export default function DataTable<T>({
               <tr
                 key={row.id}
                 onClick={() => onRowClick?.(row.original)}
-                className={onRowClick ? bodyRowClasses : bodyRowClasses.replace("cursor-pointer", "cursor-default")}
+                className={
+                  onRowClick
+                    ? bodyRowClasses
+                    : bodyRowClasses.replace('cursor-pointer', 'cursor-default')
+                }
               >
                 {row.getVisibleCells().map((cell) => {
                   const meta =
-                    (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
+                    (cell.column.columnDef.meta as ColumnMeta | undefined) ||
+                    {};
                   const baseSize = cell.column.getSize();
                   const computedWidth =
-                    typeof meta.width === "string"
+                    typeof meta.width === 'string'
                       ? meta.width
                       : Number.isFinite(baseSize)
                         ? `${baseSize}px`
                         : undefined;
-                  const cellClassName = [
-                    bodyCellClasses,
-                    meta.cellClassName,
-                  ]
+                  const cellClassName = [bodyCellClasses, meta.cellClassName]
                     .filter(Boolean)
-                    .join(" ");
+                    .join(' ');
                   const cellContent = flexRender(
                     cell.column.columnDef.cell,
                     cell.getContext(),
@@ -407,8 +411,8 @@ export default function DataTable<T>({
                       key={cell.id}
                       style={{
                         width: computedWidth,
-                        minWidth: meta.minWidth ?? "4rem",
-                        maxWidth: meta.maxWidth ?? "24rem",
+                        minWidth: meta.minWidth ?? '4rem',
+                        maxWidth: meta.maxWidth ?? '24rem',
                       }}
                       className={cellClassName}
                     >
@@ -432,7 +436,10 @@ export default function DataTable<T>({
             ) : null}
             {!rows.length ? (
               <tr>
-                <td colSpan={columnCount} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <td
+                  colSpan={columnCount}
+                  className="px-4 py-6 text-center text-sm text-muted-foreground"
+                >
                   Нет данных для отображения
                 </td>
               </tr>
@@ -451,7 +458,7 @@ export default function DataTable<T>({
           </button>
           <span className="px-1 text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
             Стр. {pageIndex + 1}
-            {pageCount ? ` / ${pageCount}` : ""}
+            {pageCount ? ` / ${pageCount}` : ''}
           </span>
           <button
             onClick={() =>

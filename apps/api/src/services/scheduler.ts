@@ -135,7 +135,10 @@ export function startScheduler(): void {
         for (const userId of recipients) {
           if (!preferenceCache.has(userId)) {
             const user = await User.findOne({ telegram_id: userId }).lean();
-            preferenceCache.set(userId, !user || user.receive_reminders !== false);
+            preferenceCache.set(
+              userId,
+              !user || user.receive_reminders !== false,
+            );
           }
           if (preferenceCache.get(userId)) {
             allowedRecipients.push(userId);
@@ -144,7 +147,9 @@ export function startScheduler(): void {
         if (!allowedRecipients.length) continue;
 
         const dueRaw = (t.due_date as unknown) ?? null;
-        const dueDate = dueRaw ? new Date(dueRaw as string | number | Date) : null;
+        const dueDate = dueRaw
+          ? new Date(dueRaw as string | number | Date)
+          : null;
         if (!dueDate || Number.isNaN(dueDate.getTime())) continue;
 
         const identifier =
@@ -155,7 +160,9 @@ export function startScheduler(): void {
             : String(t._id));
         const diffMs = dueDate.getTime() - now.getTime();
         const durationText = formatDuration(Math.abs(diffMs));
-        const formattedDue = deadlineFormatter.format(dueDate).replace(', ', ' ');
+        const formattedDue = deadlineFormatter
+          .format(dueDate)
+          .replace(', ', ' ');
         const groupChatId = resolveChatId();
         const link = buildChatMessageLink(
           groupChatId,
@@ -210,10 +217,7 @@ export function startScheduler(): void {
       const cutoff = new Date(Date.now() - retentionMs);
       const removed = await removeDetachedFilesOlderThan(cutoff);
       if (removed > 0) {
-        console.info(
-          'Очистка хранилища завершена, удалено файлов:',
-          removed,
-        );
+        console.info('Очистка хранилища завершена, удалено файлов:', removed);
       }
     });
   }

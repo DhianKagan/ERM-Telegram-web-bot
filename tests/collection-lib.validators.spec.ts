@@ -47,10 +47,18 @@ describe('валидаторы коллекций', () => {
     expect(
       validateFleet({ ...fleet, registrationNumber: '', fuelType: 'Другое' }),
     ).toBe(false);
-    expect(validateDepartment({ id: 'd1', name: 'Отдел', fleetId: 'f1' })).toBe(true);
-    expect(validateDepartment({ id: 'd1', name: 'Отдел', fleetId: '' })).toBe(false);
-    expect(validateEmployee({ id: 'e1', name: 'Иван', departmentId: 'd1' })).toBe(true);
-    expect(validateEmployee({ id: 'e1', name: 'Иван', departmentId: '' })).toBe(false);
+    expect(validateDepartment({ id: 'd1', name: 'Отдел', fleetId: 'f1' })).toBe(
+      true,
+    );
+    expect(validateDepartment({ id: 'd1', name: 'Отдел', fleetId: '' })).toBe(
+      false,
+    );
+    expect(
+      validateEmployee({ id: 'e1', name: 'Иван', departmentId: 'd1' }),
+    ).toBe(true);
+    expect(validateEmployee({ id: 'e1', name: 'Иван', departmentId: '' })).toBe(
+      false,
+    );
   });
 });
 

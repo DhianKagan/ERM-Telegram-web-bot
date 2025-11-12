@@ -43,7 +43,9 @@ const parseWarnings = (source: unknown): string[] => {
   return source.filter((item): item is string => typeof item === 'string');
 };
 
-const runPythonSolver = async (payload: OrToolsSolveRequest): Promise<OrToolsSolveResult> => {
+const runPythonSolver = async (
+  payload: OrToolsSolveRequest,
+): Promise<OrToolsSolveResult> => {
   if (!vrpOrToolsEnabled) {
     return {
       enabled: false,
@@ -80,7 +82,9 @@ const runPythonSolver = async (payload: OrToolsSolveRequest): Promise<OrToolsSol
 
     worker.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`or_tools_solver.py завершился с кодом ${code}: ${stderr}`));
+        reject(
+          new Error(`or_tools_solver.py завершился с кодом ${code}: ${stderr}`),
+        );
         return;
       }
 
@@ -90,7 +94,9 @@ const runPythonSolver = async (payload: OrToolsSolveRequest): Promise<OrToolsSol
           enabled: true,
           routes: Array.isArray(parsed.routes)
             ? parsed.routes.map((route: unknown[]) =>
-                (Array.isArray(route) ? route : []).filter((item): item is string => typeof item === 'string'),
+                (Array.isArray(route) ? route : []).filter(
+                  (item): item is string => typeof item === 'string',
+                ),
               )
             : [],
           totalDistanceKm: Number(parsed.total_distance_km) || 0,
@@ -98,7 +104,11 @@ const runPythonSolver = async (payload: OrToolsSolveRequest): Promise<OrToolsSol
           warnings: parseWarnings(parsed.warnings),
         });
       } catch (error) {
-        reject(new Error(`Не удалось разобрать ответ OR-Tools: ${(error as Error).message}`));
+        reject(
+          new Error(
+            `Не удалось разобрать ответ OR-Tools: ${(error as Error).message}`,
+          ),
+        );
       }
     });
 
@@ -109,7 +119,10 @@ const runPythonSolver = async (payload: OrToolsSolveRequest): Promise<OrToolsSol
 
 const EARTH_RADIUS_KM = 6371;
 
-const haversineDistance = (a: { lat: number; lng: number }, b: { lat: number; lng: number }): number => {
+const haversineDistance = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number => {
   const toRad = (value: number) => (value * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);

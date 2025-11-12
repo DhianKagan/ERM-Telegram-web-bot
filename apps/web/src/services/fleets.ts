@@ -1,7 +1,7 @@
 // Назначение: сервисные функции для работы с объектами автопарка
 // Основные модули: authFetch, shared/FleetVehicleDto
-import authFetch from "../utils/authFetch";
-import type { FleetVehicleDto } from "shared";
+import authFetch from '../utils/authFetch';
+import type { FleetVehicleDto } from 'shared';
 
 type PendingRequest = {
   controller: AbortController;
@@ -19,8 +19,8 @@ export interface FleetVehiclePayload {
   odometerInitial: number;
   odometerCurrent: number;
   mileageTotal: number;
-  transportType: "Легковой" | "Грузовой";
-  fuelType: "Бензин" | "Дизель" | "Газ";
+  transportType: 'Легковой' | 'Грузовой';
+  fuelType: 'Бензин' | 'Дизель' | 'Газ';
   fuelRefilled: number;
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
@@ -42,7 +42,7 @@ function parseResponse(res: Response, fallback: string) {
 }
 
 export async function listFleetVehicles(
-  search = "",
+  search = '',
   page = 1,
   limit = 10,
 ): Promise<FleetVehicleResponse> {
@@ -63,13 +63,13 @@ export async function listFleetVehicles(
 
   const controller = new AbortController();
   const params = new URLSearchParams();
-  params.set("page", String(page));
-  params.set("limit", String(limit));
-  if (search) params.set("search", search);
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+  if (search) params.set('search', search);
   const request = authFetch(`/api/v1/fleets?${params.toString()}`, {
     signal: controller.signal,
   })
-    .then((res) => parseResponse(res, "Не удалось загрузить транспорт"))
+    .then((res) => parseResponse(res, 'Не удалось загрузить транспорт'))
     .finally(() => {
       const entry = pendingRequests.get(key);
       if (entry?.controller === controller) {
@@ -91,19 +91,21 @@ export async function fetchFleetVehicles(
   void _fleetId;
   const data = await listFleetVehicles();
   return {
-    fleet: { id: "manual-fleet", name: "Автопарк" },
+    fleet: { id: 'manual-fleet', name: 'Автопарк' },
     vehicles: data.items,
   };
 }
 
-export async function createFleetVehicle(payload: FleetVehiclePayload): Promise<FleetVehicleDto> {
-  const res = await authFetch("/api/v1/fleets", {
-    method: "POST",
+export async function createFleetVehicle(
+  payload: FleetVehiclePayload,
+): Promise<FleetVehicleDto> {
+  const res = await authFetch('/api/v1/fleets', {
+    method: 'POST',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return parseResponse(res, "Не удалось создать транспорт");
+  return parseResponse(res, 'Не удалось создать транспорт');
 }
 
 export async function updateFleetVehicle(
@@ -111,21 +113,21 @@ export async function updateFleetVehicle(
   payload: Partial<FleetVehiclePayload>,
 ): Promise<FleetVehicleDto> {
   const res = await authFetch(`/api/v1/fleets/${id}`, {
-    method: "PUT",
+    method: 'PUT',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return parseResponse(res, "Не удалось обновить транспорт");
+  return parseResponse(res, 'Не удалось обновить транспорт');
 }
 
 export async function deleteFleetVehicle(id: string): Promise<void> {
   const res = await authFetch(`/api/v1/fleets/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     confirmed: true,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось удалить транспорт");
+    const text = await res.text().catch(() => '');
+    throw new Error(text || 'Не удалось удалить транспорт');
   }
 }

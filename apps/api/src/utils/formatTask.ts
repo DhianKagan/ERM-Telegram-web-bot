@@ -56,10 +56,7 @@ const parseDateInput = (value?: string | Date | null): Date | null => {
   return Number.isNaN(candidate.getTime()) ? null : candidate;
 };
 
-const getRussianPlural = (
-  value: number,
-  forms: [string, string, string],
-) => {
+const getRussianPlural = (value: number, forms: [string, string, string]) => {
   const absValue = Math.abs(value) % 100;
   if (absValue >= 11 && absValue <= 14) {
     return forms[2];
@@ -167,7 +164,7 @@ const STATUS_COLOR_MAP: Record<string, BadgeStyle> = {
 };
 
 const PRIORITY_COLOR_MAP: Record<string, BadgeStyle> = {
-  'срочно': {
+  срочно: {
     fill: { color: ROSE_500_HEX, opacity: 0.2 },
     ring: { color: ROSE_500_HEX, opacity: 0.4 },
   },
@@ -316,9 +313,10 @@ const emphasizeValue = (
   style: BadgeStyle | null,
   options: { fallbackEmoji?: string } = {},
 ): string => {
-  const emojiCandidate =
-    style?.fill?.color ? pickColorEmoji(style.fill.color) : null;
-  const emoji = (options.fallbackEmoji ?? emojiCandidate) ?? '';
+  const emojiCandidate = style?.fill?.color
+    ? pickColorEmoji(style.fill.color)
+    : null;
+  const emoji = options.fallbackEmoji ?? emojiCandidate ?? '';
   const escaped = mdEscape(value);
   const prefix = emoji ? `${emoji} ` : '';
   return `*${prefix}${escaped}*`;
@@ -379,9 +377,7 @@ const toAbsoluteUrl = (value: string): string | null => {
     return `https:${trimmed}`;
   }
   if (!appUrlBase) return trimmed;
-  const normalizedPath = trimmed.startsWith('/')
-    ? trimmed.slice(1)
-    : trimmed;
+  const normalizedPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
   return `${appUrlBase}/${normalizedPath}`;
 };
 
@@ -411,7 +407,10 @@ const preserveConsecutiveSpaces = (value: string): string =>
     return ` ${'\u00a0'.repeat(match.length - 1)}`;
   });
 
-const renderNodes = (nodes: DomNode[] | undefined, context: RenderContext): string => {
+const renderNodes = (
+  nodes: DomNode[] | undefined,
+  context: RenderContext,
+): string => {
   if (!nodes?.length) return '';
   return nodes
     .map((node) => renderNode(node, context))
@@ -461,16 +460,28 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
     }
     case 'strong':
     case 'b':
-      return wrapInline(renderNodes(element.children as DomNode[], context), '*');
+      return wrapInline(
+        renderNodes(element.children as DomNode[], context),
+        '*',
+      );
     case 'em':
     case 'i':
-      return wrapInline(renderNodes(element.children as DomNode[], context), '_');
+      return wrapInline(
+        renderNodes(element.children as DomNode[], context),
+        '_',
+      );
     case 'u':
-      return wrapInline(renderNodes(element.children as DomNode[], context), '__');
+      return wrapInline(
+        renderNodes(element.children as DomNode[], context),
+        '__',
+      );
     case 's':
     case 'del':
     case 'strike':
-      return wrapInline(renderNodes(element.children as DomNode[], context), '~');
+      return wrapInline(
+        renderNodes(element.children as DomNode[], context),
+        '~',
+      );
     case 'code': {
       const content = renderNodes(element.children as DomNode[], {
         ...context,
@@ -498,7 +509,10 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
     case 'ol': {
       const nextContext: RenderContext = {
         ...context,
-        listStack: [...context.listStack, { type: name as 'ul' | 'ol', index: 0 }],
+        listStack: [
+          ...context.listStack,
+          { type: name as 'ul' | 'ol', index: 0 },
+        ],
       };
       const items = (element.children as DomNode[]).map((child) =>
         renderNode(child, nextContext),
@@ -516,9 +530,7 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
       if (!body) return '';
       const indent = '  '.repeat(Math.max(stack.length - 1, 0));
       const marker =
-        current && current.type === 'ol'
-          ? `${current.index}\\. `
-          : '• ';
+        current && current.type === 'ol' ? `${current.index}\\. ` : '• ';
       const lines = body.split(/\n+/);
       const firstLine = `${indent}${marker}${lines[0].trimStart()}`;
       const rest = lines
@@ -528,7 +540,10 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
       return rest ? `${firstLine}\n${rest}` : firstLine;
     }
     case 'blockquote': {
-      const content = renderNodes(element.children as DomNode[], context).trim();
+      const content = renderNodes(
+        element.children as DomNode[],
+        context,
+      ).trim();
       if (!content) return '';
       return (
         '\n' +
@@ -541,7 +556,10 @@ const renderNode = (node: DomNode, context: RenderContext): string => {
     }
     case 'a': {
       const href = element.attribs?.href?.trim();
-      const labelRaw = renderNodes(element.children as DomNode[], context).trim();
+      const labelRaw = renderNodes(
+        element.children as DomNode[],
+        context,
+      ).trim();
       if (!href) {
         return labelRaw;
       }
@@ -573,7 +591,9 @@ export const convertHtmlToMarkdown = (html: string): string => {
   return finalizeMarkdown(rendered);
 };
 
-const extractInlineImages = (html: string): {
+const extractInlineImages = (
+  html: string,
+): {
   cleanedHtml: string;
   images: InlineImage[];
 } => {
@@ -722,9 +742,11 @@ export default function formatTask(
       value: `${lengthValue}×${widthValue}×${heightValue} м`,
     });
   } else {
-    if (lengthValue) cargoEntries.push({ label: 'Д', value: `${lengthValue} м` });
+    if (lengthValue)
+      cargoEntries.push({ label: 'Д', value: `${lengthValue} м` });
     if (widthValue) cargoEntries.push({ label: 'Ш', value: `${widthValue} м` });
-    if (heightValue) cargoEntries.push({ label: 'В', value: `${heightValue} м` });
+    if (heightValue)
+      cargoEntries.push({ label: 'В', value: `${heightValue} м` });
   }
   if (typeof task.cargo_volume_m3 === 'number') {
     cargoEntries.push({
@@ -739,9 +761,7 @@ export default function formatTask(
     });
   }
   const logisticsEnabled =
-    typeof task.logistics_enabled === 'boolean'
-      ? task.logistics_enabled
-      : true;
+    typeof task.logistics_enabled === 'boolean' ? task.logistics_enabled : true;
   if (task.payment_method) {
     infoLines.push(
       `💳 Способ оплаты: ${emphasizeValue(String(task.payment_method), null)}`,
@@ -749,9 +769,7 @@ export default function formatTask(
   }
   if (typeof task.payment_amount === 'number') {
     const formatted = currencyFormatter.format(task.payment_amount);
-    infoLines.push(
-      `💵 Сумма: ${emphasizeValue(`${formatted} грн`, null)}`,
-    );
+    infoLines.push(`💵 Сумма: ${emphasizeValue(`${formatted} грн`, null)}`);
   }
   if (infoLines.length) {
     sections.push({
@@ -773,9 +791,14 @@ export default function formatTask(
       const arrow = start && end ? ' → ' : '';
       logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
     }
-    if (task.route_distance_km !== undefined && task.route_distance_km !== null) {
+    if (
+      task.route_distance_km !== undefined &&
+      task.route_distance_km !== null
+    ) {
       const distanceValue = `${String(task.route_distance_km)} км`;
-      logisticsLines.push(`🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`);
+      logisticsLines.push(
+        `🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`,
+      );
     }
     if (task.transport_type) {
       logisticsLines.push(
@@ -786,16 +809,24 @@ export default function formatTask(
       typeof task.transport_driver_name === 'string'
         ? task.transport_driver_name.trim()
         : '';
-    const driverIdRaw = task.transport_driver_id as number | string | null | undefined;
-    if (driverIdRaw !== null && driverIdRaw !== undefined && driverIdRaw !== '') {
+    const driverIdRaw = task.transport_driver_id as
+      | number
+      | string
+      | null
+      | undefined;
+    if (
+      driverIdRaw !== null &&
+      driverIdRaw !== undefined &&
+      driverIdRaw !== ''
+    ) {
       const driverKey =
         typeof driverIdRaw === 'string' ? driverIdRaw.trim() : driverIdRaw;
       const numericCandidate =
         typeof driverKey === 'number'
           ? driverKey
           : Number.isFinite(Number(driverKey))
-          ? Number(driverKey)
-          : null;
+            ? Number(driverKey)
+            : null;
       const lookupKey =
         numericCandidate !== null ? numericCandidate : driverKey;
       const userData = users[lookupKey];
@@ -808,8 +839,8 @@ export default function formatTask(
         numericCandidate !== null
           ? numericCandidate
           : typeof driverKey === 'string' && driverKey
-          ? driverKey
-          : driverKey;
+            ? driverKey
+            : driverKey;
       logisticsLines.push(`🚘 Водитель: ${userLink(linkId, resolvedName)}`);
     } else if (driverNameRaw) {
       logisticsLines.push(`🚘 Водитель: *${mdEscape(driverNameRaw)}*`);

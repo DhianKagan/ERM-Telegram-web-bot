@@ -1,19 +1,19 @@
 // Назначение: выпадающее меню профиля пользователя.
 // Основные модули: React, Radix Dropdown Menu, useAuth, useEmployeeDialog.
-import React from "react";
-import { UserCircleIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import { UserCircleIcon } from '@heroicons/react/24/outline';
 
-import { cn } from "@/lib/utils";
-import { useAuth } from "../context/useAuth";
-import { Button } from "./ui/button";
+import { cn } from '@/lib/utils';
+import { useAuth } from '../context/useAuth';
+import { Button } from './ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import useEmployeeDialog from "../hooks/useEmployeeDialog";
+} from './ui/dropdown-menu';
+import useEmployeeDialog from '../hooks/useEmployeeDialog';
 
 interface ProfileDropdownProps {
   children?: React.ReactNode;
@@ -31,7 +31,8 @@ export default function ProfileDropdown({
     return null;
   }
 
-  const name = user.name || user.telegram_username || user.username || "Профиль";
+  const name =
+    user.name || user.telegram_username || user.username || 'Профиль';
 
   return (
     <DropdownMenu>

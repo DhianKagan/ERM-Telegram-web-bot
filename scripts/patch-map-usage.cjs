@@ -20,8 +20,11 @@ function toPosix(p) {
 }
 
 function ensureImport(filePath, content, importSpec, importPath) {
-  const has = new RegExp(`from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`).test(content)
-          && new RegExp(`\\{[^}]*\\b${importSpec}\\b[^}]*\\}`).test(content);
+  const has =
+    new RegExp(
+      `from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`,
+    ).test(content) &&
+    new RegExp(`\\{[^}]*\\b${importSpec}\\b[^}]*\\}`).test(content);
   if (has) return content;
 
   // Вставим импорт сразу после первых импортов
@@ -29,7 +32,8 @@ function ensureImport(filePath, content, importSpec, importPath) {
   const specLine = `import { ${importSpec} } from '${rel.startsWith('.') ? rel : './' + rel}';\n`;
   const lines = content.split('\n');
   let lastImport = -1;
-  for (let i = 0; i < lines.length; i++) if (/^\s*import\b/.test(lines[i])) lastImport = i;
+  for (let i = 0; i < lines.length; i++)
+    if (/^\s*import\b/.test(lines[i])) lastImport = i;
   if (lastImport >= 0) {
     lines.splice(lastImport + 1, 0, specLine);
     return lines.join('\n');
@@ -67,19 +71,27 @@ function patchFile(fp) {
     process.exit(1);
   }
   if (!fs.existsSync(LIB_PATH)) {
-    console.error('❌ Не найден', LIB_PATH, '— сначала запусти scripts/patch-protomaps.cjs');
+    console.error(
+      '❌ Не найден',
+      LIB_PATH,
+      '— сначала запусти scripts/patch-protomaps.cjs',
+    );
     process.exit(1);
   }
 
   const files = walk(SRC_ROOT);
   let count = 0;
   for (const f of files) {
-    try { if (patchFile(f)) count++; } catch (e) {
+    try {
+      if (patchFile(f)) count++;
+    } catch (e) {
       console.warn('⚠️  ошибка обработки', f, e.message);
     }
   }
   if (count === 0) {
-    console.log('ℹ️  Прямых вызовов new maplibregl.Map не найдено — возможно, карта уже инициализируется через createMap.');
+    console.log(
+      'ℹ️  Прямых вызовов new maplibregl.Map не найдено — возможно, карта уже инициализируется через createMap.',
+    );
   } else {
     console.log(`\n🏁 Готово: изменено файлов: ${count}`);
   }

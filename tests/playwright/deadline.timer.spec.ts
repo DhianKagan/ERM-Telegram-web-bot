@@ -45,19 +45,35 @@ test.describe('Калькулятор сроков задач', () => {
   });
 
   test('обрабатывает отсутствующие и повреждённые даты', () => {
-    const withoutDue = getDeadlineState('2024-02-01T12:00:00.000Z', undefined, reference);
+    const withoutDue = getDeadlineState(
+      '2024-02-01T12:00:00.000Z',
+      undefined,
+      reference,
+    );
     expect(withoutDue.kind).toBe('invalid');
 
-    const withoutStart = getDeadlineState(undefined, '2024-03-05T12:00:00.000Z', reference);
+    const withoutStart = getDeadlineState(
+      undefined,
+      '2024-03-05T12:00:00.000Z',
+      reference,
+    );
     expect(withoutStart.kind).toBe('pending');
 
-    const reversed = getDeadlineState('2024-03-10T12:00:00.000Z', '2024-03-01T12:00:00.000Z', reference);
+    const reversed = getDeadlineState(
+      '2024-03-10T12:00:00.000Z',
+      '2024-03-01T12:00:00.000Z',
+      reference,
+    );
     expect(reversed.kind).toBe('pending');
     if (reversed.kind === 'pending') {
       expect(reversed.issue).toBe('invalid-range');
     }
 
-    const invalid = getDeadlineState('2024-02-01T12:00:00.000Z', 'неизвестно', reference);
+    const invalid = getDeadlineState(
+      '2024-02-01T12:00:00.000Z',
+      'неизвестно',
+      reference,
+    );
     expect(invalid.kind).toBe('invalid');
   });
 });

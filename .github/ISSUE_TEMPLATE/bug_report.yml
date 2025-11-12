@@ -1,6 +1,6 @@
-name: "Баг"
-description: "Сообщить об ошибке"
-title: "[Bug] "
+name: 'Баг'
+description: 'Сообщить об ошибке'
+title: '[Bug] '
 labels: [bug]
 body:
   - type: markdown
@@ -10,14 +10,14 @@ body:
   - type: textarea
     id: steps
     attributes:
-      label: "Шаги"
+      label: 'Шаги'
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: "Ожидаемое поведение"
+      label: 'Ожидаемое поведение'
   - type: textarea
     id: logs
     attributes:
-      label: "Логи"
+      label: 'Логи'

@@ -24,7 +24,6 @@ const drops = new client.Counter({
   labelNames: ['name', 'key'],
 });
 
-
 function hasConfirmedHeader(value: unknown): boolean {
   if (value === undefined || value === null) {
     return false;
@@ -64,9 +63,11 @@ function resolveTelegramId(req: RequestWithUser): string | undefined {
   const body = req.body as Record<string, unknown> | undefined;
   const query = req.query as Record<string, unknown> | undefined;
   const params = req.params as Record<string, unknown> | undefined;
-  const session = (req as unknown as {
-    session?: Record<string, unknown>;
-  }).session;
+  const session = (
+    req as unknown as {
+      session?: Record<string, unknown>;
+    }
+  ).session;
 
   const candidates: unknown[] = [
     body?.telegramId,
@@ -125,7 +126,8 @@ export default function createRateLimiter({
           };
         }
       ).rateLimit;
-      const keyBase = resolveTelegramId(req) ?? ipKeyGenerator(req.ip as string);
+      const keyBase =
+        resolveTelegramId(req) ?? ipKeyGenerator(req.ip as string);
       drops.inc({ name, key: keyBase });
       const reset = info?.resetTime;
       if (reset instanceof Date) {

@@ -10,11 +10,7 @@ import securityPlugin from 'eslint-plugin-security';
 const config = [
   {
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: [
-      'apps/api/public/**',
-      'apps/web/public/**',
-      'dist/**',
-    ],
+    ignores: ['apps/api/public/**', 'apps/web/public/**', 'dist/**'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

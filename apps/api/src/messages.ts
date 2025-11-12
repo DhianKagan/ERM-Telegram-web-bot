@@ -18,7 +18,8 @@ const messages = {
     'Недостаточно прав: только администраторы могут назначать задачи.',
   taskAssigned: 'Задача назначена.',
   adminsOnly: 'Только для админов',
-  reportAdminsOnly: 'Недостаточно прав: команда доступна только администраторам.',
+  reportAdminsOnly:
+    'Недостаточно прав: команда доступна только администраторам.',
   reportGenerationSuccess: 'Отчёты сформированы и отправлены.',
   reportGenerationError: 'Не удалось сформировать отчёты.',
   invalidAddUserFormat: 'Формат: /add_user id username',
@@ -47,8 +48,7 @@ const messages = {
     'Не удалось отправить запрос на отмену. Напишите боту в личные сообщения.',
   cancelRequestCreatorMissing:
     'Не удалось определить автора задачи для назначения запроса.',
-  cancelRequestUnavailable:
-    'Запрос на отмену можно создать только для задач.',
+  cancelRequestUnavailable: 'Запрос на отмену можно создать только для задач.',
   cancelRequestReasonLength:
     'Причина удаления должна содержать не менее 50 символов.',
   cancelRequestConfirmPrompt:

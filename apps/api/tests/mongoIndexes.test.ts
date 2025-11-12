@@ -35,7 +35,10 @@ describe('индексы MongoDB', () => {
       await db.dropDatabase();
     } catch (error) {
       const maybe = error as { codeName?: string; message?: string };
-      if (maybe?.codeName !== 'NamespaceNotFound' && !maybe?.message?.includes('ns not found')) {
+      if (
+        maybe?.codeName !== 'NamespaceNotFound' &&
+        !maybe?.message?.includes('ns not found')
+      ) {
         throw error;
       }
     }
@@ -86,10 +89,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('сортировка по дате создания использует индекс', async () => {
-      const cursor = getDb()
-        .collection('tasks')
-        .find()
-        .sort({ createdAt: -1 });
+      const cursor = getDb().collection('tasks').find().sort({ createdAt: -1 });
       const exp = await cursor.explain('queryPlanner');
       expect(planHasStage(exp.queryPlanner.winningPlan, 'IXSCAN')).toBe(true);
     });
@@ -102,9 +102,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются индексы ключа и владельца', async () => {
-      const indexes = await getDb()
-        .collection('uploads')
-        .indexes();
+      const indexes = await getDb().collection('uploads').indexes();
       expect(indexes.some((i) => i.name === 'key_unique')).toBe(true);
       expect(indexes.some((i) => i.name === 'owner_idx')).toBe(true);
     });
@@ -121,9 +119,7 @@ describe('индексы MongoDB', () => {
     });
 
     test('создаются уникальный и текстовый индексы', async () => {
-      const indexes = await getDb()
-        .collection('collectionitems')
-        .indexes();
+      const indexes = await getDb().collection('collectionitems').indexes();
       expect(indexes.some((i) => i.name === 'type_name_unique')).toBe(true);
       expect(indexes.some((i) => i.name === 'search_text')).toBe(true);
     });

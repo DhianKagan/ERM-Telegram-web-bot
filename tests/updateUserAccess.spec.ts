@@ -10,9 +10,7 @@ process.env.APP_URL = 'https://localhost';
 
 const createFindOneCursor = (access?: number) => ({
   lean: jest.fn().mockReturnValue({
-    exec: jest.fn().mockResolvedValue(
-      access === undefined ? null : { access },
-    ),
+    exec: jest.fn().mockResolvedValue(access === undefined ? null : { access }),
   }),
 });
 
@@ -45,8 +43,12 @@ const ADMIN_MASK = ACCESS_ADMIN | ACCESS_MANAGER;
 
 describe('updateUser', () => {
   beforeEach(() => {
-    model.User.findOne.mockImplementation(() => createFindOneCursor(ACCESS_TASK_DELETE | ADMIN_MASK));
-    model.User.findOneAndUpdate.mockResolvedValue({ access: ACCESS_TASK_DELETE | ADMIN_MASK });
+    model.User.findOne.mockImplementation(() =>
+      createFindOneCursor(ACCESS_TASK_DELETE | ADMIN_MASK),
+    );
+    model.User.findOneAndUpdate.mockResolvedValue({
+      access: ACCESS_TASK_DELETE | ADMIN_MASK,
+    });
   });
 
   afterEach(() => {

@@ -184,6 +184,7 @@
 ```
 
 ## Repo Map & Snapshots
+
 - Шпаргалка: [docs/REPO_MAP.md](docs/REPO_MAP.md)
 - Снимки репозитория:
   - Bash: `./scripts/repo-snapshot.sh`

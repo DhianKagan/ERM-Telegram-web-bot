@@ -7,7 +7,10 @@ process.env.CHAT_ID = '555';
 process.env.APP_URL = 'https://localhost';
 
 const buildNotModifiedError = () => ({
-  response: { error_code: 400, description: 'Bad Request: message is not modified' },
+  response: {
+    error_code: 400,
+    description: 'Bad Request: message is not modified',
+  },
 });
 
 const mockEditMessageText = jest.fn();
@@ -27,7 +30,9 @@ jest.mock('../src/utils/formatTask', () => ({
   })),
 }));
 
-const mockUpdateOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue(undefined) }));
+const mockUpdateOne = jest.fn(() => ({
+  exec: jest.fn().mockResolvedValue(undefined),
+}));
 
 jest.mock('../src/db/model', () => ({
   Task: { updateOne: mockUpdateOne },
@@ -84,7 +89,9 @@ describe('TaskSyncController — обновление inline-клавиатур�
   it('повторно применяет inline-клавиатуру при ошибке «message is not modified»', async () => {
     mockEditMessageText.mockRejectedValueOnce(buildNotModifiedError());
 
-    const { default: TaskSyncController } = require('../src/controllers/taskSync.controller');
+    const {
+      default: TaskSyncController,
+    } = require('../src/controllers/taskSync.controller');
     const controller = new TaskSyncController(botMock as never);
 
     const override = {
@@ -116,4 +123,3 @@ describe('TaskSyncController — обновление inline-клавиатур�
     expect(mockDeleteMessage).not.toHaveBeenCalled();
   });
 });
-

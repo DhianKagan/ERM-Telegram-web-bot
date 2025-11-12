@@ -1,33 +1,33 @@
 // Назначение: страница списка задач
 // Основные модули: React, контексты аутентификации и уведомлений
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import Breadcrumbs from "../components/Breadcrumbs";
-import Pagination from "../components/Pagination";
-import SkeletonCard from "../components/SkeletonCard";
-import Spinner from "../components/Spinner";
-import { useAuth } from "../context/useAuth";
-import { useToast } from "../context/useToast";
-import { createTask, TaskRequestError } from "../services/tasks";
-import authFetch from "../utils/authFetch";
-import type { Task } from "shared";
+import { Button } from '@/components/ui/button';
+import Breadcrumbs from '../components/Breadcrumbs';
+import Pagination from '../components/Pagination';
+import SkeletonCard from '../components/SkeletonCard';
+import Spinner from '../components/Spinner';
+import { useAuth } from '../context/useAuth';
+import { useToast } from '../context/useToast';
+import { createTask, TaskRequestError } from '../services/tasks';
+import authFetch from '../utils/authFetch';
+import type { Task } from 'shared';
 
 type TaskWithDesc = Task & { task_description: string };
 
 export default function Tasks() {
   const [tasks, setTasks] = React.useState<TaskWithDesc[]>([]);
-  const [text, setText] = React.useState("");
+  const [text, setText] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [posting, setPosting] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const perPage = 10;
   const { addToast } = useToast();
   const { user } = useAuth();
-  const isManager = user?.role === "manager" || user?.role === "admin";
+  const isManager = user?.role === 'manager' || user?.role === 'admin';
 
   React.useEffect(() => {
-    authFetch("/api/v1/tasks")
+    authFetch('/api/v1/tasks')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         setTasks(data);
@@ -41,8 +41,8 @@ export default function Tasks() {
     try {
       const res = await createTask({ title: text, task_description: text });
       if (res) {
-        setText("");
-        addToast("Задача создана");
+        setText('');
+        addToast('Задача создана');
         setTasks([...tasks, res]);
       }
     } catch (error) {
@@ -51,7 +51,7 @@ export default function Tasks() {
       } else if (error instanceof Error) {
         addToast(`Не удалось создать задачу: ${error.message}`);
       } else {
-        addToast("Не удалось создать задачу");
+        addToast('Не удалось создать задачу');
       }
     } finally {
       setPosting(false);
@@ -63,7 +63,7 @@ export default function Tasks() {
   return (
     <div className="space-y-6">
       <Breadcrumbs
-        items={[{ label: "Задачи", href: "/tasks" }, { label: "Задачи" }]}
+        items={[{ label: 'Задачи', href: '/tasks' }, { label: 'Задачи' }]}
       />
       <h2 className="text-xl font-semibold">Задачи</h2>
       {!isManager && (
@@ -83,7 +83,7 @@ export default function Tasks() {
           placeholder="Описание"
         />
         <Button type="submit" className="xsm:w-full">
-          {posting ? <Spinner /> : "Создать"}
+          {posting ? <Spinner /> : 'Создать'}
         </Button>
       </form>
       {loading ? (

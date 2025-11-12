@@ -1,5 +1,5 @@
 # Назначение файла: перечисление пакетов в монорепозитории.
 packages:
-  - "apps/*"
-  - "packages/*"
-  - "scripts"
+  - 'apps/*'
+  - 'packages/*'
+  - 'scripts'

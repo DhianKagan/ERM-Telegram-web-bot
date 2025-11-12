@@ -14,10 +14,7 @@ declare const before: (
 declare const after: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -108,11 +105,13 @@ describe('PATCH /api/v1/tasks/:id без изменения дат', function ()
     assert.equal(response.body.priority, 'Срочно');
     const stored = await Task.findById(taskId).lean();
     assert.ok(stored, 'ожидали найденную задачу после обновления');
-    assert.ok(Array.isArray(stored?.history), 'должна существовать история изменений');
-    const history =
-      stored?.history as Array<{
-        changes: { from: Record<string, unknown>; to: Record<string, unknown> };
-      }>;
+    assert.ok(
+      Array.isArray(stored?.history),
+      'должна существовать история изменений',
+    );
+    const history = stored?.history as Array<{
+      changes: { from: Record<string, unknown>; to: Record<string, unknown> };
+    }>;
     assert.equal(history.length, 2);
     const lastEntry = history[history.length - 1];
     assert.deepEqual(lastEntry.changes.to, { priority: 'Срочно' });

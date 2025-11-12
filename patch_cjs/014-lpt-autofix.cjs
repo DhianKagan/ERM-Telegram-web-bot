@@ -3,8 +3,11 @@
 // purpose: добавить цель lpt-fix в Makefile: prettier --write . && make lpt
 const fs = require('fs');
 const path = 'Makefile';
-if (!fs.existsSync(path)) { console.error('[ERR] Makefile not found'); process.exit(1); }
-let mk = fs.readFileSync(path,'utf8');
+if (!fs.existsSync(path)) {
+  console.error('[ERR] Makefile not found');
+  process.exit(1);
+}
+let mk = fs.readFileSync(path, 'utf8');
 if (!mk.includes('\nlpt-fix:')) {
   mk += `
 

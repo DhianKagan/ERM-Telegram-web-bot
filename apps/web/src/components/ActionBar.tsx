@@ -1,8 +1,8 @@
 // Назначение файла: компонент панели действий с хлебными крошками, вкладками и тулбаром
 // Основные модули: React, cn util
-import React from "react";
+import React from 'react';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 interface ActionBarProps {
   breadcrumbs?: React.ReactNode;
@@ -24,9 +24,9 @@ export default function ActionBar({
   return (
     <section
       className={cn(
-        "flex flex-col gap-3 rounded-3xl border border-[color:var(--color-gray-200)]",
-        "bg-[color:var(--color-gray-25)] p-4 shadow-[var(--shadow-theme-sm)] sm:p-6",
-        "dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]",
+        'flex flex-col gap-3 rounded-3xl border border-[color:var(--color-gray-200)]',
+        'bg-[color:var(--color-gray-25)] p-4 shadow-[var(--shadow-theme-sm)] sm:p-6',
+        'dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]',
         className,
       )}
     >
@@ -35,7 +35,7 @@ export default function ActionBar({
           {breadcrumbs}
         </div>
       ) : null}
-      {(title || description || toolbar) ? (
+      {title || description || toolbar ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             {title ? (
@@ -56,7 +56,9 @@ export default function ActionBar({
           ) : null}
         </div>
       ) : null}
-      {children ? <div className="space-y-3 sm:space-y-4">{children}</div> : null}
+      {children ? (
+        <div className="space-y-3 sm:space-y-4">{children}</div>
+      ) : null}
     </section>
   );
 }

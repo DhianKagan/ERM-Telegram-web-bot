@@ -1,8 +1,8 @@
 // Назначение: защита маршрута, модули: React Router и хук useAuth
-import { type ReactNode } from "react";
-import { useAuth } from "../context/useAuth";
-import { Navigate } from "react-router-dom";
-import Loader from "./Loader";
+import { type ReactNode } from 'react';
+import { useAuth } from '../context/useAuth';
+import { Navigate } from 'react-router-dom';
+import Loader from './Loader';
 
 interface ProtectedRouteProps {
   children: ReactNode;

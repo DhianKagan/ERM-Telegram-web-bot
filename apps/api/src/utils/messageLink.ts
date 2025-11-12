@@ -53,7 +53,9 @@ export function buildChatMessageLink(
   })();
 
   const buildUrl = (base: string) =>
-    topicId !== null ? `${base}/${topicId}/${messageId}` : `${base}/${messageId}`;
+    topicId !== null
+      ? `${base}/${topicId}/${messageId}`
+      : `${base}/${messageId}`;
 
   if (chatId.startsWith('@')) {
     return buildUrl(`https://t.me/${chatId.slice(1)}`);

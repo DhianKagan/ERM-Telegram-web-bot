@@ -15,10 +15,7 @@ declare const before: (
 declare const after: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -45,7 +42,8 @@ describe('POST /api/v1/collections', function () {
     process.env.SESSION_SECRET ||= 'test-session-secret';
 
     await mongoose.connect(uri);
-    const router = (await import('../../apps/api/src/routes/collections')).default;
+    const router = (await import('../../apps/api/src/routes/collections'))
+      .default;
 
     app = express();
     app.use(express.json());
@@ -94,7 +92,10 @@ describe('POST /api/v1/collections', function () {
     assert.equal(response.body.type, 'departments');
     assert.equal(response.body.name, 'Без отдела');
     assert.equal(response.body.value, '');
-    assert.ok(response.body._id, 'Не получен идентификатор созданного департамента');
+    assert.ok(
+      response.body._id,
+      'Не получен идентификатор созданного департамента',
+    );
   });
 
   it('возвращает 400 для других типов с пустым value', async () => {

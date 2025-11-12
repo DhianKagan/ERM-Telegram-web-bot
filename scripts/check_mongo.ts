@@ -6,10 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-} from './db/mongoUrl';
+import { getMongoUrlFromEnv, formatCredentialSources } from './db/mongoUrl';
 
 try {
   const dotenv = await import('dotenv');

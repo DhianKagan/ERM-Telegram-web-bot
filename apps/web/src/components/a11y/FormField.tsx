@@ -1,6 +1,6 @@
 // Поле формы с уникальным идентификатором
 // Модули: React
-import React from "react";
+import React from 'react';
 
 type FieldProps = {
   label: string;
@@ -13,7 +13,7 @@ export function FormField({
   label,
   children,
   hint,
-  className = "",
+  className = '',
 }: FieldProps) {
   const id = React.useId();
   return (

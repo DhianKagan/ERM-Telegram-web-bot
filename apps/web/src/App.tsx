@@ -1,29 +1,29 @@
 // Корневой компонент мини‑приложения ERM
-import React, { Suspense, lazy, useEffect } from "react";
-import { useTranslation, I18nextProvider } from "react-i18next";
-import i18n from "./i18n";
+import React, { Suspense, lazy, useEffect } from 'react';
+import { useTranslation, I18nextProvider } from 'react-i18next';
+import i18n from './i18n';
 import {
   BrowserRouter as Router,
   useLocation,
   useNavigate,
-} from "react-router-dom";
-import ErrorBoundary from "./components/ErrorBoundary";
-import AlertDialog from "./components/AlertDialog";
-import { AuthProvider } from "./context/AuthProvider";
-import { useAuth } from "./context/useAuth";
-import { ToastProvider } from "./context/ToastProvider";
+} from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
+import AlertDialog from './components/AlertDialog';
+import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/useAuth';
+import { ToastProvider } from './context/ToastProvider';
 
-const AuthenticatedApp = lazy(() => import("./AuthenticatedApp"));
-const CodeLogin = lazy(() => import("./pages/CodeLogin"));
-const AttachmentMenu = lazy(() => import("./pages/AttachmentMenu"));
-const ToastsLazy = lazy(() => import("./components/Toasts"));
+const AuthenticatedApp = lazy(() => import('./AuthenticatedApp'));
+const CodeLogin = lazy(() => import('./pages/CodeLogin'));
+const AttachmentMenu = lazy(() => import('./pages/AttachmentMenu'));
+const ToastsLazy = lazy(() => import('./components/Toasts'));
 
 function LoginLayout() {
   const { t } = useTranslation();
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-sm space-y-4 rounded border bg-white p-6 shadow">
-        <Suspense fallback={<div>{t("loading")}</div>}>
+        <Suspense fallback={<div>{t('loading')}</div>}>
           <CodeLogin />
         </Suspense>
       </div>
@@ -50,29 +50,29 @@ function AppContent({
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { t } = useTranslation();
-  const isLogin = location.pathname.startsWith("/login");
-  const isAttachmentMenu = location.pathname.startsWith("/menu");
+  const isLogin = location.pathname.startsWith('/login');
+  const isAttachmentMenu = location.pathname.startsWith('/menu');
   useEffect(() => {
     if (loading || isAttachmentMenu) return;
     if (!user && !isLogin) {
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     } else if (user && isLogin) {
-      navigate("/tasks", { replace: true });
+      navigate('/tasks', { replace: true });
     }
   }, [isAttachmentMenu, isLogin, loading, navigate, user]);
   const alert = (
     <AlertDialog
       open={!!initialAlert}
-      message={initialAlert || ""}
+      message={initialAlert || ''}
       onClose={onCloseAlert}
-      closeText={i18n.t("close")}
+      closeText={i18n.t('close')}
     />
   );
   if (isAttachmentMenu) {
     return (
       <>
         <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
-          <Suspense fallback={<div>{t("loading")}</div>}>
+          <Suspense fallback={<div>{t('loading')}</div>}>
             <AttachmentMenu />
           </Suspense>
         </ErrorBoundary>
@@ -84,7 +84,7 @@ function AppContent({
     return (
       <>
         <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-          <div>{t("loading")}</div>
+          <div>{t('loading')}</div>
         </main>
         {alert}
       </>
@@ -101,7 +101,7 @@ function AppContent({
     );
   }
   return (
-    <Suspense fallback={<div>{t("loading")}</div>}>
+    <Suspense fallback={<div>{t('loading')}</div>}>
       <AuthenticatedApp alert={alert} />
     </Suspense>
   );
@@ -109,7 +109,7 @@ function AppContent({
 
 export default function App() {
   const initialAlertValue =
-    typeof window !== "undefined" ? window.__ALERT_MESSAGE__ ?? null : null;
+    typeof window !== 'undefined' ? (window.__ALERT_MESSAGE__ ?? null) : null;
   const [initialAlert, setInitialAlert] = React.useState<string | null>(
     initialAlertValue,
   );

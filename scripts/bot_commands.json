@@ -1,5 +1,3 @@
 {
-  "commands": [
-    {"command": "start", "description": "Показать меню"}
-  ]
+  "commands": [{ "command": "start", "description": "Показать меню" }]
 }

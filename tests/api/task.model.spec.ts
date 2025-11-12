@@ -14,10 +14,7 @@ declare const after: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 
 declare const it: (
   name: string,

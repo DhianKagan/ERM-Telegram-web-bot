@@ -1,73 +1,69 @@
 // Компонент загрузки файлов с drag-and-drop и прогрессом
 // Основные модули: React, authFetch, типы задач
-import React from "react";
-import { useTranslation } from "react-i18next";
-import authFetch from "../utils/authFetch";
-import { showToast } from "../utils/toast";
-import type { Attachment } from "../types/task";
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import authFetch from '../utils/authFetch';
+import { showToast } from '../utils/toast';
+import type { Attachment } from '../types/task';
 
 const ACCEPTED_EXTENSIONS = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".bmp",
-  ".svg",
-  ".heic",
-  ".heif",
-  ".pdf",
-  ".doc",
-  ".docx",
-  ".docm",
-  ".dotx",
-  ".dotm",
-  ".xls",
-  ".xlsx",
-  ".xlsm",
-  ".xlsb",
-  ".xltm",
-  ".xltx",
-  ".xlam",
-  ".ppt",
-  ".pptx",
-  ".pptm",
-  ".potx",
-  ".potm",
-  ".ppsx",
-  ".ppsm",
-  ".txt",
-  ".csv",
-  ".odt",
-  ".ods",
-  ".odp",
-  ".zip",
-  ".rar",
-  ".7z",
-  ".mp4",
-  ".mov",
-  ".mkv",
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.svg',
+  '.heic',
+  '.heif',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.docm',
+  '.dotx',
+  '.dotm',
+  '.xls',
+  '.xlsx',
+  '.xlsm',
+  '.xlsb',
+  '.xltm',
+  '.xltx',
+  '.xlam',
+  '.ppt',
+  '.pptx',
+  '.pptm',
+  '.potx',
+  '.potm',
+  '.ppsx',
+  '.ppsm',
+  '.txt',
+  '.csv',
+  '.odt',
+  '.ods',
+  '.odp',
+  '.zip',
+  '.rar',
+  '.7z',
+  '.mp4',
+  '.mov',
+  '.mkv',
 ]);
 
-const ACCEPT_ATTR = [
-  "image/*",
-  "video/*",
-  ...Array.from(ACCEPTED_EXTENSIONS),
-];
+const ACCEPT_ATTR = ['image/*', 'video/*', ...Array.from(ACCEPTED_EXTENSIONS)];
 
 const cleanupUrl = (url: string) => {
-  if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+  if (url.startsWith('blob:')) URL.revokeObjectURL(url);
 };
 
 const ensureInlineMode = (value?: string | null): string | undefined => {
   if (!value) return undefined;
-  if (value.startsWith("blob:") || value.startsWith("data:")) {
+  if (value.startsWith('blob:') || value.startsWith('data:')) {
     return value;
   }
-  if (value.includes("mode=inline")) {
+  if (value.includes('mode=inline')) {
     return value;
   }
-  const separator = value.includes("?") ? "&" : "?";
+  const separator = value.includes('?') ? '&' : '?';
   return `${value}${separator}mode=inline`;
 };
 
@@ -101,17 +97,18 @@ export default function FileUploader({
 
   const handleFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
-      const dotIndex = file.name.lastIndexOf(".");
-      const ext = dotIndex === -1 ? "" : file.name.slice(dotIndex).toLowerCase();
+      const dotIndex = file.name.lastIndexOf('.');
+      const ext =
+        dotIndex === -1 ? '' : file.name.slice(dotIndex).toLowerCase();
       if (!ACCEPTED_EXTENSIONS.has(ext)) {
-        showToast(t("invalidFileType"), "error");
+        showToast(t('invalidFileType'), 'error');
         return;
       }
       const it: UploadItem = {
         file,
         url: URL.createObjectURL(file),
         name: file.name,
-        isImage: file.type.startsWith("image/"),
+        isImage: file.type.startsWith('image/'),
         size: file.size,
         progress: 0,
       };
@@ -136,7 +133,7 @@ export default function FileUploader({
                 attachment: att,
                 progress: 100,
                 url: previewUrl,
-                isImage: att.type.startsWith("image/"),
+                isImage: att.type.startsWith('image/'),
               };
             }),
           );
@@ -148,8 +145,8 @@ export default function FileUploader({
           const message =
             error instanceof Error && error.message
               ? error.message
-              : t("uploadFailed");
-          showToast(message, "error");
+              : t('uploadFailed');
+          showToast(message, 'error');
           cleanupUrl(it.url);
         });
     });
@@ -163,8 +160,9 @@ export default function FileUploader({
     if (disabled) return;
     const node = fileInputRef.current;
     if (!node) return;
-    const picker = (node as HTMLInputElement & { showPicker?: () => void }).showPicker;
-    if (typeof picker === "function") {
+    const picker = (node as HTMLInputElement & { showPicker?: () => void })
+      .showPicker;
+    if (typeof picker === 'function') {
       picker.call(node);
       return;
     }
@@ -177,7 +175,7 @@ export default function FileUploader({
       return;
     }
     const target = event.target as HTMLElement | null;
-    if (target?.closest("label")) {
+    if (target?.closest('label')) {
       return;
     }
     event.preventDefault();
@@ -209,23 +207,23 @@ export default function FileUploader({
     for (let i = 0; i < total; i++) {
       const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
       const fd = new FormData();
-      fd.append("fileId", id);
-      fd.append("chunkIndex", String(i));
-      fd.append("totalChunks", String(total));
-      fd.append("file", chunk, file.name);
-      if (taskId && typeof taskId === "string" && taskId.trim()) {
-        fd.append("taskId", taskId);
+      fd.append('fileId', id);
+      fd.append('chunkIndex', String(i));
+      fd.append('totalChunks', String(total));
+      fd.append('file', chunk, file.name);
+      if (taskId && typeof taskId === 'string' && taskId.trim()) {
+        fd.append('taskId', taskId);
       }
-      const res = await authFetch("/api/v1/tasks/upload-chunk", {
-        method: "POST",
+      const res = await authFetch('/api/v1/tasks/upload-chunk', {
+        method: 'POST',
         body: fd,
       });
       if (!res.ok) {
         const copy = res.clone();
-        let message = t("uploadFailed");
+        let message = t('uploadFailed');
         try {
           const data = (await copy.json()) as { error?: string };
-          if (typeof data?.error === "string" && data.error.trim()) {
+          if (typeof data?.error === 'string' && data.error.trim()) {
             message = data.error;
           }
         } catch {
@@ -263,26 +261,26 @@ export default function FileUploader({
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
-        aria-label={t("dragFilesOrSelect")}
+        aria-label={t('dragFilesOrSelect')}
         className={`mt-2 flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
           disabled
-            ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-70"
-            : "cursor-pointer border-accentPrimary/60 bg-accentPrimary/5 text-slate-700 hover:border-accentPrimary hover:bg-accentPrimary/10"
+            ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-70'
+            : 'cursor-pointer border-accentPrimary/60 bg-accentPrimary/5 text-slate-700 hover:border-accentPrimary hover:bg-accentPrimary/10'
         }`}
       >
         <div className="flex flex-col items-center gap-2">
-          <p className="text-base font-medium">{t("dragFilesOrSelect")}</p>
+          <p className="text-base font-medium">{t('dragFilesOrSelect')}</p>
           <label
             htmlFor={fileInputId}
             className={`rounded-full border border-accentPrimary px-4 py-1.5 text-sm font-semibold text-accentPrimary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
               disabled
-                ? "cursor-not-allowed opacity-60"
-                : "cursor-pointer hover:bg-accentPrimary/10 focus-visible:ring-accentPrimary"
+                ? 'cursor-not-allowed opacity-60'
+                : 'cursor-pointer hover:bg-accentPrimary/10 focus-visible:ring-accentPrimary'
             }`}
           >
-            {t("chooseFiles")}
+            {t('chooseFiles')}
           </label>
-          <p className="text-xs text-slate-500">{t("uploadTapHint")}</p>
+          <p className="text-xs text-slate-500">{t('uploadTapHint')}</p>
         </div>
         <input
           ref={fileInputRef}
@@ -292,7 +290,7 @@ export default function FileUploader({
           multiple
           onChange={handleChange}
           disabled={disabled}
-          accept={ACCEPT_ATTR.join(",")}
+          accept={ACCEPT_ATTR.join(',')}
           className="sr-only"
         />
       </div>
@@ -323,7 +321,7 @@ export default function FileUploader({
               )}
               <div className="flex-1">
                 <p className="text-sm">
-                  {it.name} ({(it.size / 1024 / 1024).toFixed(1)} {t("mb")})
+                  {it.name} ({(it.size / 1024 / 1024).toFixed(1)} {t('mb')})
                 </p>
                 <div className="h-2 rounded bg-gray-200">
                   <div
@@ -337,7 +335,7 @@ export default function FileUploader({
                 className="text-red-500"
                 onClick={() => removeItem(it)}
               >
-                {t("delete")}
+                {t('delete')}
               </button>
             </li>
           ))}

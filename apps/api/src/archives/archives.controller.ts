@@ -17,7 +17,8 @@ export default class ArchivesController {
     const params: ArchiveListParams = {
       page: req.query.page ? Number(req.query.page) : undefined,
       limit: req.query.limit ? Number(req.query.limit) : undefined,
-      search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      search:
+        typeof req.query.search === 'string' ? req.query.search : undefined,
     };
     const data = await this.service.list(params);
     res.json(data);
@@ -31,7 +32,9 @@ export default class ArchivesController {
     ): Promise<void> => {
       const ids = Array.isArray(req.body?.ids)
         ? (req.body.ids as unknown[])
-            .map((value) => (typeof value === 'string' ? value : String(value ?? '')).trim())
+            .map((value) =>
+              (typeof value === 'string' ? value : String(value ?? '')).trim(),
+            )
             .filter((value) => value.length > 0)
         : [];
       const removed = await this.service.purge(ids);

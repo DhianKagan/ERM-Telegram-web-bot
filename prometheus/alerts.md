@@ -12,7 +12,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Высокая задержка HTTP на {{ $labels.route }}"
+          summary: 'Высокая задержка HTTP на {{ $labels.route }}'
   - name: osrm-errors
     rules:
       - alert: OsrmErrors
@@ -21,5 +21,5 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Ошибки OSRM"
+          summary: 'Ошибки OSRM'
 ```

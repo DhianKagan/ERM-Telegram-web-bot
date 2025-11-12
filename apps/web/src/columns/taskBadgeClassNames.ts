@@ -1,89 +1,90 @@
 // Классы бейджей задач и утилиты; модули: shared
-import type { Task } from "shared";
+import type { Task } from 'shared';
 
 const badgeBaseClass =
-  "inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs";
-export const badgeTextClass = "text-black dark:text-white";
+  'inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs';
+export const badgeTextClass = 'text-black dark:text-white';
 
-export const buildBadgeClass = (tones: string, extraClass = "") =>
-  [badgeBaseClass, "transition-colors", badgeTextClass, extraClass, tones]
+export const buildBadgeClass = (tones: string, extraClass = '') =>
+  [badgeBaseClass, 'transition-colors', badgeTextClass, extraClass, tones]
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
 
 export const pillBadgeBaseClass =
-  "inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]";
+  'inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]';
 
-export const creatorBadgeClass =
-  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
+export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
 
 export const fallbackBadgeClass = buildBadgeClass(
-  "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
+  'bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35',
 );
 
-const statusBadgeClassMap: Record<Task["status"], string> = {
+const statusBadgeClassMap: Record<Task['status'], string> = {
   Новая: buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
-  "В работе": buildBadgeClass(
-    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  'В работе': buildBadgeClass(
+    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
   ),
   Выполнена: buildBadgeClass(
-    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
   ),
   Отменена: buildBadgeClass(
-    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
   ),
 };
 
 const urgentPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40",
+  'bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40',
 );
 
 const highPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40",
+  'bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40',
 );
 
 const normalPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
+  'bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30',
 );
 
 const lowPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20",
+  'bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20',
 );
 
 const priorityBadgeClassMap: Record<string, string> = {
   срочно: buildBadgeClass(
-    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
   ),
   'в течение дня': buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
   'до выполнения': buildBadgeClass(
-    "bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45",
-    "normal-case",
+    'bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45',
+    'normal-case',
   ),
 };
 
 const typeBadgeClassMap: Record<string, string> = {
   доставить: buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
   купить: buildBadgeClass(
-    "bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45",
+    'bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45',
   ),
   выполнить: buildBadgeClass(
-    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
   ),
   построить: buildBadgeClass(
-    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
   ),
   починить: buildBadgeClass(
-    "bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45",
+    'bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45',
   ),
 };
 
-const hasOwn = <T extends Record<PropertyKey, unknown>>(obj: T, key: PropertyKey): key is keyof T =>
-  Object.prototype.hasOwnProperty.call(obj, key);
+const hasOwn = <T extends Record<PropertyKey, unknown>>(
+  obj: T,
+  key: PropertyKey,
+): key is keyof T => Object.prototype.hasOwnProperty.call(obj, key);
 
 export const getStatusBadgeClass = (value: string) => {
   if (hasOwn(statusBadgeClassMap, value)) {

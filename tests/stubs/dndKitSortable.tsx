@@ -1,6 +1,6 @@
 // Назначение файла: Jest-заглушка для пакета @dnd-kit/sortable
 // Основные модули: React
-import React from "react";
+import React from 'react';
 
 type ContextProps = {
   children?: React.ReactNode;

@@ -26,7 +26,10 @@ import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
 import { File } from '../db/model';
-import { findTaskIdByPublicIdentifier, syncTaskAttachments } from '../db/queries';
+import {
+  findTaskIdByPublicIdentifier,
+  syncTaskAttachments,
+} from '../db/queries';
 import { scanFile } from '../services/antivirus';
 import { writeLog } from '../services/wgLogEngine';
 import {
@@ -36,9 +39,7 @@ import {
 } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
 import { coerceAttachments } from '../utils/attachments';
-import {
-  appendPendingUpload,
-} from '../utils/requestUploads';
+import { appendPendingUpload } from '../utils/requestUploads';
 import {
   ensureUploadContext,
   clearUploadContext,
@@ -116,7 +117,9 @@ async function createThumbnail(
   const thumbPath = path.join(file.destination, thumbName);
   try {
     if (file.mimetype.startsWith('image/')) {
-      await sharp(filePath).resize(320, 240, { fit: 'inside' }).toFile(thumbPath);
+      await sharp(filePath)
+        .resize(320, 240, { fit: 'inside' })
+        .toFile(thumbPath);
       return thumbPath;
     }
     if (file.mimetype.startsWith('video/')) {
@@ -180,7 +183,9 @@ const readTaskIdFromRequest = (req: RequestWithUser): string | undefined => {
   if (bodyTaskId) return bodyTaskId;
   const bodySnakeTaskId = selectTaskIdCandidate(body?.task_id);
   if (bodySnakeTaskId) return bodySnakeTaskId;
-  const queryTaskId = selectTaskIdCandidate((req.query as Record<string, unknown>)?.taskId);
+  const queryTaskId = selectTaskIdCandidate(
+    (req.query as Record<string, unknown>)?.taskId,
+  );
   if (queryTaskId) return queryTaskId;
   const querySnakeTaskId = selectTaskIdCandidate(
     (req.query as Record<string, unknown>)?.task_id,
@@ -201,8 +206,9 @@ const syncAttachmentsForRequest = async (
     return;
   }
   const userId = resolveNumericUserId(req.user?.id);
-  const normalizedAttachments =
-    attachments as Parameters<typeof syncTaskAttachments>[1];
+  const normalizedAttachments = attachments as Parameters<
+    typeof syncTaskAttachments
+  >[1];
   try {
     await syncTaskAttachments(taskId, normalizedAttachments, userId);
     return;
@@ -210,7 +216,10 @@ const syncAttachmentsForRequest = async (
     const trimmedId = typeof taskId === 'string' ? taskId.trim() : undefined;
     if (trimmedId) {
       try {
-        const resolvedId = await findTaskIdByPublicIdentifier(trimmedId, userId);
+        const resolvedId = await findTaskIdByPublicIdentifier(
+          trimmedId,
+          userId,
+        );
         if (resolvedId) {
           await syncTaskAttachments(resolvedId, normalizedAttachments, userId);
           return;
@@ -230,15 +239,11 @@ const syncAttachmentsForRequest = async (
       }
     }
     await Promise.resolve(
-      writeLog(
-        'Не удалось привязать вложения к задаче при загрузке',
-        'error',
-        {
-          taskId,
-          userId,
-          error: (error as Error).message,
-        },
-      ),
+      writeLog('Не удалось привязать вложения к задаче при загрузке', 'error', {
+        taskId,
+        userId,
+        error: (error as Error).message,
+      }),
     ).catch(() => undefined);
   }
 };
@@ -290,13 +295,12 @@ export const processUploads: RequestHandler = async (req, res, next) => {
             },
             { path: 1, thumbnailPath: 1 },
           ).lean<StaleEntry[]>();
-          const staleEntries = await (
-            typeof (staleQuery as { exec?: unknown }).exec === 'function'
-              ? (staleQuery as { exec: () => Promise<StaleEntry[]> }).exec()
-              : Promise.resolve(
-                  staleQuery as StaleEntry[] | Promise<StaleEntry[]>,
-                )
-          );
+          const staleEntries = await (typeof (staleQuery as { exec?: unknown })
+            .exec === 'function'
+            ? (staleQuery as { exec: () => Promise<StaleEntry[]> }).exec()
+            : Promise.resolve(
+                staleQuery as StaleEntry[] | Promise<StaleEntry[]>,
+              ));
           if (staleEntries.length > 0) {
             const staleIds = staleEntries.map((entry) => entry._id);
             await File.deleteMany({ _id: { $in: staleIds } });
@@ -337,10 +341,12 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         },
       ]);
       const rawStats =
-        (aggregation[0] as {
-          count?: number;
-          size?: number;
-        } | undefined) || {};
+        (aggregation[0] as
+          | {
+              count?: number;
+              size?: number;
+            }
+          | undefined) || {};
       const stats: { count: number; size: number } = {
         count: rawStats.count ?? 0,
         size: rawStats.size ?? 0,
@@ -468,7 +474,10 @@ const ensureRequestHandler = (
   }) satisfies RequestHandler;
 };
 
-const downloadPdfHandler = ensureRequestHandler(ctrl.downloadPdf, 'downloadPdf');
+const downloadPdfHandler = ensureRequestHandler(
+  ctrl.downloadPdf,
+  'downloadPdf',
+);
 const downloadExcelHandler = ensureRequestHandler(
   ctrl.downloadExcel,
   'downloadExcel',
@@ -553,7 +562,7 @@ const chunkUploadMiddleware: RequestHandler = (req, res, next) => {
       const message =
         err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
           ? 'Файл превышает допустимый размер'
-        : (err as Error).message;
+          : (err as Error).message;
       res.status(400).json({ error: message });
       return;
     }
@@ -817,7 +826,6 @@ export const handleChunks: RequestHandler = async (req, res) => {
   }
 };
 
-
 router.post(
   '/upload-chunk',
   ...requireTaskCreationRights,
@@ -906,9 +914,8 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
   }
   const attachmentsField = (req.body as Record<string, unknown>).attachments;
   if (attachmentsField !== undefined) {
-    (req.body as BodyWithAttachments).attachments = readAttachmentsField(
-      attachmentsField,
-    );
+    (req.body as BodyWithAttachments).attachments =
+      readAttachmentsField(attachmentsField);
   }
   next();
 };

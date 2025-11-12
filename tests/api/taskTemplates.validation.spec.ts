@@ -7,10 +7,7 @@ import request from 'supertest';
 import { strict as assert } from 'assert';
 import type { RequestHandler } from 'express';
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -94,7 +91,9 @@ describe('GET /api/v1/task-templates/:id', function () {
     const originalRouterModule = require.cache[routerPath];
 
     try {
-      const routerModule = await import('../../apps/api/src/routes/taskTemplates');
+      const routerModule = await import(
+        '../../apps/api/src/routes/taskTemplates'
+      );
       const router = routerModule.default;
 
       const app = express();
@@ -136,4 +135,3 @@ describe('GET /api/v1/task-templates/:id', function () {
     }
   });
 });
-

@@ -11,7 +11,9 @@ import { TextDecoder, TextEncoder } from 'util';
 const requireForMock = createRequire(__filename);
 
 type MockFunction = ((...args: unknown[]) => unknown) & {
-  mockImplementation: (implementation: (...args: unknown[]) => unknown) => MockFunction;
+  mockImplementation: (
+    implementation: (...args: unknown[]) => unknown,
+  ) => MockFunction;
   mockResolvedValue: (value: unknown) => MockFunction;
   mockRejectedValue: (reason: unknown) => MockFunction;
 };
@@ -28,7 +30,9 @@ const ensureJest = (): JestLike => {
     return existingJest;
   }
 
-  const createMockFn = (implementation?: (...args: unknown[]) => unknown): MockFunction => {
+  const createMockFn = (
+    implementation?: (...args: unknown[]) => unknown,
+  ): MockFunction => {
     let currentImplementation = implementation;
     const mockFn: MockFunction = ((...args: unknown[]) => {
       if (!currentImplementation) {
@@ -65,7 +69,9 @@ const ensureJest = (): JestLike => {
         children: [],
         paths: [],
       } as unknown as NodeJS.Module;
-      (requireForMock.cache as Record<string, NodeJS.Module | undefined>)[resolvedPath] = mockedModule;
+      (requireForMock.cache as Record<string, NodeJS.Module | undefined>)[
+        resolvedPath
+      ] = mockedModule;
     },
   };
 
@@ -85,13 +91,18 @@ jestApi.mock('../apps/api/src/utils/delay', () => ({
   delay: jestApi.fn(async () => {}),
 }));
 
-const modulePrototype = (Module as unknown as {
-  prototype: NodeJS.Module & {
-    __ermMongoosePatched?: boolean;
-  };
-}).prototype;
+const modulePrototype = (
+  Module as unknown as {
+    prototype: NodeJS.Module & {
+      __ermMongoosePatched?: boolean;
+    };
+  }
+).prototype;
 if (!modulePrototype.__ermMongoosePatched) {
-  const appMongoosePath = path.resolve(__dirname, '../apps/api/node_modules/mongoose');
+  const appMongoosePath = path.resolve(
+    __dirname,
+    '../apps/api/node_modules/mongoose',
+  );
   const originalRequire = Module.prototype.require;
   Module.prototype.require = function patchedRequire(id: string) {
     if (id === 'mongoose') {

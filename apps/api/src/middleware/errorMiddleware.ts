@@ -19,7 +19,7 @@ export default function errorMiddleware(
   err: unknown,
   req: RequestWithUser,
   res: Response,
-  _next: NextFunction, // eslint-disable-line @typescript-eslint/no-unused-vars
+  _next: NextFunction,  
 ): void {
   const error = err as {
     [key: string]: unknown;

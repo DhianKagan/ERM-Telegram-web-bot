@@ -2,35 +2,35 @@
  * Назначение файла: проверка fetchTasks при переполненном localStorage и загрузке после профиля.
  * Основные модули: fetchTasks.
  */
-jest.mock("../utils/authFetch", () => ({
+jest.mock('../utils/authFetch', () => ({
   __esModule: true,
   default: jest.fn(),
 }));
 
-import type {} from "../types/telegram";
+import type {} from '../types/telegram';
 
-import authFetch from "../utils/authFetch";
-import { fetchTasks } from "./tasks";
+import authFetch from '../utils/authFetch';
+import { fetchTasks } from './tasks';
 
-describe("fetchTasks", () => {
-  test("игнорирует переполнение localStorage", async () => {
+describe('fetchTasks', () => {
+  test('игнорирует переполнение localStorage', async () => {
     const data = { tasks: [], users: [], total: 0 };
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => data,
     });
     const setItem = jest.fn(() => {
-      throw new Error("QuotaExceededError");
+      throw new Error('QuotaExceededError');
     });
     (globalThis as any).localStorage = {
-      getItem: () => "",
+      getItem: () => '',
       setItem,
     };
     const res = await fetchTasks();
     expect(res).toEqual(data);
     expect(setItem).toHaveBeenCalled();
   });
-  test("skipCache отключает чтение и запись", async () => {
+  test('skipCache отключает чтение и запись', async () => {
     const data = { tasks: [], users: [], total: 0 };
     (authFetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -44,7 +44,7 @@ describe("fetchTasks", () => {
     expect(getItem).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
   });
-  test("перезагружает данные после загрузки профиля", async () => {
+  test('перезагружает данные после загрузки профиля', async () => {
     jest.clearAllMocks();
     const anonData = { tasks: [], users: [], total: 0 };
     const userData = { tasks: [{ id: 1 }], users: [], total: 1 } as any;

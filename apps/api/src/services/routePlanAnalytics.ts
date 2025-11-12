@@ -60,10 +60,12 @@ export async function fetchRoutePlanAnalytics(
   filters: RoutePlanAnalyticsFilters,
 ): Promise<RoutePlanAnalyticsSummary> {
   const now = new Date();
-  const safeTo = filters.to && Number.isFinite(filters.to.getTime()) ? filters.to : now;
-  const startCandidate = filters.from && Number.isFinite(filters.from.getTime())
-    ? filters.from
-    : new Date(safeTo.getTime() - (DEFAULT_RANGE_DAYS - 1) * DAY_MS);
+  const safeTo =
+    filters.to && Number.isFinite(filters.to.getTime()) ? filters.to : now;
+  const startCandidate =
+    filters.from && Number.isFinite(filters.from.getTime())
+      ? filters.from
+      : new Date(safeTo.getTime() - (DEFAULT_RANGE_DAYS - 1) * DAY_MS);
 
   const periodFrom = startCandidate;
   const periodTo = safeTo;
@@ -186,7 +188,11 @@ export async function fetchRoutePlanAnalytics(
   const visited = new Set<string>();
   const startDateUtc = fromDateKey(startKey);
   const endDateUtc = fromDateKey(endKey);
-  for (let time = startDateUtc.getTime(); time <= endDateUtc.getTime(); time += DAY_MS) {
+  for (
+    let time = startDateUtc.getTime();
+    time <= endDateUtc.getTime();
+    time += DAY_MS
+  ) {
     const key = toDateKey(new Date(time));
     if (!visited.has(key)) {
       resultKeys.push(key);
@@ -220,7 +226,12 @@ export async function fetchRoutePlanAnalytics(
       return { date: key, onTime: 0, total: 0, rate: null };
     }
     const rate = entry.onTime / entry.total;
-    return { date: key, onTime: entry.onTime, total: entry.total, rate: roundRate(rate) };
+    return {
+      date: key,
+      onTime: entry.onTime,
+      total: entry.total,
+      rate: roundRate(rate),
+    };
   });
 
   const summary: RoutePlanAnalyticsSummary = {
@@ -238,8 +249,7 @@ export async function fetchRoutePlanAnalytics(
       byPeriod: loadSeries,
     },
     sla: {
-      average:
-        totalStops > 0 ? roundRate(totalOnTimeStops / totalStops) : null,
+      average: totalStops > 0 ? roundRate(totalOnTimeStops / totalStops) : null,
       byPeriod: slaSeries,
     },
   };

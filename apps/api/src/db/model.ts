@@ -196,7 +196,12 @@ export interface TaskHistoryArchiveDocument
 
 const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveDocument>(
   {
-    taskId: { type: Schema.Types.ObjectId, ref: 'Task', index: true, required: true },
+    taskId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Task',
+      index: true,
+      required: true,
+    },
     entries: { type: [historySchema], required: true },
     createdAt: { type: Date, default: Date.now },
     createdBy: { type: Number, default: 0 },
@@ -328,7 +333,14 @@ const taskSchema = new Schema<TaskDocument>(
     // Тип задачи пополнился вариантами строительства, ремонта и заявок
     task_type: {
       type: String,
-      enum: ['Доставить', 'Купить', 'Выполнить', 'Построить', 'Починить', 'Заявка'],
+      enum: [
+        'Доставить',
+        'Купить',
+        'Выполнить',
+        'Построить',
+        'Починить',
+        'Заявка',
+      ],
     },
     task_type_id: Number,
     start_date: Date,
@@ -574,12 +586,20 @@ export const TaskHistoryArchive = mongoose.model<TaskHistoryArchiveDocument>(
   taskHistoryArchiveSchema,
 );
 // Отдельная коллекция для архивных задач
-export const Archive = mongoose.model<TaskDocument>('Archive', taskSchema, 'archives');
+export const Archive = mongoose.model<TaskDocument>(
+  'Archive',
+  taskSchema,
+  'archives',
+);
 export const Role = mongoose.model<RoleDocument>('Role', roleSchema);
 // Коллекция пользователей бота отличается от AuthUser и хранится отдельно
 // Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
 // с историческими индексами, которые могли остаться в `users`
-export const User = mongoose.model<UserDocument>('User', userSchema, 'telegram_users');
+export const User = mongoose.model<UserDocument>(
+  'User',
+  userSchema,
+  'telegram_users',
+);
 export const Log = mongoose.model<LogDocument>('Log', logSchema);
 
 export interface ShortLinkAttrs {
@@ -605,8 +625,14 @@ const shortLinkSchema = new Schema<ShortLinkDocument>(
   },
 );
 
-shortLinkSchema.index({ slug: 1 }, { unique: true, name: 'short_link_slug_unique' });
-shortLinkSchema.index({ url: 1 }, { unique: true, name: 'short_link_url_unique' });
+shortLinkSchema.index(
+  { slug: 1 },
+  { unique: true, name: 'short_link_slug_unique' },
+);
+shortLinkSchema.index(
+  { url: 1 },
+  { unique: true, name: 'short_link_url_unique' },
+);
 
 export const ShortLink = mongoose.model<ShortLinkDocument>(
   'ShortLink',

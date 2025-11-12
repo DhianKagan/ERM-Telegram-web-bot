@@ -12,7 +12,8 @@ type TaskModelMock = {
   find: jest.Mock;
 };
 
-type CollectAttachmentLinksFn = typeof import('../apps/api/src/services/dataStorage').collectAttachmentLinks;
+type CollectAttachmentLinksFn =
+  typeof import('../apps/api/src/services/dataStorage').collectAttachmentLinks;
 
 jest.mock('../apps/api/src/db/model', () => {
   const { Types } = jest.requireActual('mongoose');
@@ -35,8 +36,12 @@ describe('collectAttachmentLinks', () => {
   let TaskModel: TaskModelMock;
 
   beforeAll(async () => {
-    ({ collectAttachmentLinks } = await import('../apps/api/src/services/dataStorage'));
-    const mockedModels = (await import('../apps/api/src/db/model')) as unknown as {
+    ({ collectAttachmentLinks } = await import(
+      '../apps/api/src/services/dataStorage'
+    ));
+    const mockedModels = (await import(
+      '../apps/api/src/db/model'
+    )) as unknown as {
       Task: TaskModelMock;
     };
     ({ Task: TaskModel } = mockedModels);

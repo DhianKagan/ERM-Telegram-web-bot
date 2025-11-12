@@ -22,11 +22,15 @@ const allowed: Record<string, string[]> = {
   ],
   'application/vnd.ms-word.template.macroEnabled.12': ['.dotm'],
   'application/vnd.ms-excel': ['.xls'],
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+    '.xlsx',
+  ],
   'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
   'application/vnd.ms-excel.sheet.binary.macroEnabled.12': ['.xlsb'],
   'application/vnd.ms-excel.template.macroEnabled.12': ['.xltm'],
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.template': ['.xltx'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.template': [
+    '.xltx',
+  ],
   'application/vnd.ms-excel.addin.macroEnabled.12': ['.xlam'],
   'application/vnd.ms-powerpoint': ['.ppt'],
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': [
@@ -57,7 +61,9 @@ const allowed: Record<string, string[]> = {
 };
 
 const allowedExtensions = new Set(
-  Object.values(allowed).flatMap((values) => values.map((ext) => ext.toLowerCase())),
+  Object.values(allowed).flatMap((values) =>
+    values.map((ext) => ext.toLowerCase()),
+  ),
 );
 
 const extensionToMime = new Map<string, string>();
@@ -80,7 +86,11 @@ export function checkFile(file: Express.Multer.File): boolean {
   if (matches) {
     return matches.includes(ext);
   }
-  if (mime === '' || mime === 'application/octet-stream' || mime === 'binary/octet-stream') {
+  if (
+    mime === '' ||
+    mime === 'application/octet-stream' ||
+    mime === 'binary/octet-stream'
+  ) {
     const isAllowed = allowedExtensions.has(ext);
     if (isAllowed) {
       const canonical = extensionToMime.get(ext);

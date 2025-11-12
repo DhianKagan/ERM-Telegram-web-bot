@@ -2,6 +2,6 @@
 // Основные модули: отсутствуют
 export const CSS = {
   Transform: {
-    toString: (_transform?: Record<string, unknown> | null) => "",
+    toString: (_transform?: Record<string, unknown> | null) => '',
   },
 };

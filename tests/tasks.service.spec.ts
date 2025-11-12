@@ -62,16 +62,22 @@ jest.mock('../apps/api/src/services/logisticsEvents', () => ({
   notifyTasksChanged: jest.fn(),
 }));
 
-const { resolveTaskTypeTopicId } =
-  jest.requireMock('../apps/api/src/services/taskTypeSettings');
+const { resolveTaskTypeTopicId } = jest.requireMock(
+  '../apps/api/src/services/taskTypeSettings',
+);
 const { getOsrmDistance } = jest.requireMock('../apps/api/src/geo/osrm');
-const { notifyTasksChanged } = jest.requireMock('../apps/api/src/services/logisticsEvents');
+const { notifyTasksChanged } = jest.requireMock(
+  '../apps/api/src/services/logisticsEvents',
+);
 
-type TasksServiceCtor = typeof import('../apps/api/src/tasks/tasks.service').default;
+type TasksServiceCtor =
+  typeof import('../apps/api/src/tasks/tasks.service').default;
 let TasksService: TasksServiceCtor;
 
 beforeAll(async () => {
-  ({ default: TasksService } = await import('../apps/api/src/tasks/tasks.service'));
+  ({ default: TasksService } = await import(
+    '../apps/api/src/tasks/tasks.service'
+  ));
 });
 
 type RepositoryMocks = {
@@ -88,14 +94,20 @@ type RepositoryMocks = {
 };
 
 const createRepo = (): RepositoryMocks => ({
-  createTask: jest.fn(async (data: Partial<TaskDocument>) => ({
-    _id: 'task-id',
-    ...(data as Record<string, unknown>),
-  } as TaskDocument)),
-  updateTask: jest.fn(async (_id: string, data: Partial<TaskDocument>) => ({
-    _id,
-    ...(data as Record<string, unknown>),
-  } as TaskDocument)),
+  createTask: jest.fn(
+    async (data: Partial<TaskDocument>) =>
+      ({
+        _id: 'task-id',
+        ...(data as Record<string, unknown>),
+      }) as TaskDocument,
+  ),
+  updateTask: jest.fn(
+    async (_id: string, data: Partial<TaskDocument>) =>
+      ({
+        _id,
+        ...(data as Record<string, unknown>),
+      }) as TaskDocument,
+  ),
   addTime: jest.fn(),
   bulkUpdate: jest.fn(),
   getTasks: jest.fn(),
@@ -116,9 +128,9 @@ describe('TasksService — привязка тем Telegram', () => {
     const repo = createRepo();
     const service = new TasksService(repo as unknown as any);
 
-    await service.create(
-      { task_type: ' Доставить ' } as unknown as Partial<TaskDocument>,
-    );
+    await service.create({
+      task_type: ' Доставить ',
+    } as unknown as Partial<TaskDocument>);
 
     expect(resolveTaskTypeTopicId).toHaveBeenCalledWith('Доставить');
     expect(repo.createTask).toHaveBeenCalledTimes(1);

@@ -1,15 +1,15 @@
 // Назначение: форма редактирования пользователя
 // Основные модули: React, ConfirmDialog
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import ConfirmDialog from "../../components/ConfirmDialog";
+import { Button } from '@/components/ui/button';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import {
   fetchCollectionItems,
   type CollectionItem,
-} from "../../services/collections";
-import { fetchRoles } from "../../services/roles";
-import { ROLE_OPTIONS } from "../../utils/roleDisplay";
+} from '../../services/collections';
+import { fetchRoles } from '../../services/roles';
+import { ROLE_OPTIONS } from '../../utils/roleDisplay';
 
 export interface UserFormData {
   telegram_id?: number;
@@ -47,15 +47,15 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
   const [roles, setRoles] = React.useState<Role[]>([]);
 
   React.useEffect(() => {
-    fetchCollectionItems("departments", "", 1, 100).then((d) =>
-      setDepartments(d.items),
-    ).catch(() => setDepartments([]));
-    fetchCollectionItems("divisions", "", 1, 100).then((d) =>
-      setDivisions(d.items),
-    ).catch(() => setDivisions([]));
-    fetchCollectionItems("positions", "", 1, 100).then((d) =>
-      setPositions(d.items),
-    ).catch(() => setPositions([]));
+    fetchCollectionItems('departments', '', 1, 100)
+      .then((d) => setDepartments(d.items))
+      .catch(() => setDepartments([]));
+    fetchCollectionItems('divisions', '', 1, 100)
+      .then((d) => setDivisions(d.items))
+      .catch(() => setDivisions([]));
+    fetchCollectionItems('positions', '', 1, 100)
+      .then((d) => setPositions(d.items))
+      .catch(() => setPositions([]));
     fetchRoles().then((r) => setRoles(r));
   }, []);
 
@@ -81,7 +81,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-telegram-id"
           name="telegramId"
           className="h-10 w-full rounded border px-3"
-          value={form.telegram_id ?? ""}
+          value={form.telegram_id ?? ''}
           onChange={(e) =>
             onChange({
               ...form,
@@ -98,7 +98,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-username"
           name="username"
           className="h-10 w-full rounded border px-3"
-          value={form.username || ""}
+          value={form.username || ''}
           onChange={(e) => onChange({ ...form, username: e.target.value })}
           readOnly={!!form.telegram_id}
         />
@@ -109,7 +109,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-name"
           name="name"
           className="h-10 w-full rounded border px-3"
-          value={form.name || ""}
+          value={form.name || ''}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
         />
       </div>
@@ -119,7 +119,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-phone"
           name="phone"
           className="h-10 w-full rounded border px-3"
-          value={form.phone || ""}
+          value={form.phone || ''}
           onChange={(e) => onChange({ ...form, phone: e.target.value })}
         />
       </div>
@@ -129,7 +129,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-mob"
           name="mobNumber"
           className="h-10 w-full rounded border px-3"
-          value={form.mobNumber || ""}
+          value={form.mobNumber || ''}
           onChange={(e) => onChange({ ...form, mobNumber: e.target.value })}
         />
       </div>
@@ -139,7 +139,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           id="settings-user-email"
           name="email"
           className="h-10 w-full rounded border px-3"
-          value={form.email || ""}
+          value={form.email || ''}
           onChange={(e) => onChange({ ...form, email: e.target.value })}
         />
       </div>
@@ -147,7 +147,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <label className="block text-sm font-medium">Роль</label>
         <select
           className="h-10 w-full rounded border px-3"
-          value={form.role || "user"}
+          value={form.role || 'user'}
           onChange={(e) => handleRoleChange(e.target.value)}
         >
           {ROLE_OPTIONS.map((option) => (
@@ -161,7 +161,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <label className="block text-sm font-medium">Департамент</label>
         <select
           className="h-10 w-full rounded border px-3"
-          value={form.departmentId || ""}
+          value={form.departmentId || ''}
           onChange={(e) => onChange({ ...form, departmentId: e.target.value })}
         >
           <option value=""></option>
@@ -176,7 +176,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <label className="block text-sm font-medium">Отдел</label>
         <select
           className="h-10 w-full rounded border px-3"
-          value={form.divisionId || ""}
+          value={form.divisionId || ''}
           onChange={(e) => onChange({ ...form, divisionId: e.target.value })}
         >
           <option value=""></option>
@@ -191,7 +191,7 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
         <label className="block text-sm font-medium">Должность</label>
         <select
           className="h-10 w-full rounded border px-3"
-          value={form.positionId || ""}
+          value={form.positionId || ''}
           onChange={(e) => onChange({ ...form, positionId: e.target.value })}
         >
           <option value=""></option>

@@ -7,12 +7,15 @@ const fuelTypes = ['Бензин', 'Дизель', 'Газ'];
 const transportTypes = ['Легковой', 'Грузовой'];
 
 function numberField(field: string) {
-  return body(field).isNumeric().withMessage(`${field} должен быть числом`).custom((value) => {
-    if (Number(value) < 0) {
-      throw new Error(`${field} не может быть отрицательным`);
-    }
-    return true;
-  });
+  return body(field)
+    .isNumeric()
+    .withMessage(`${field} должен быть числом`)
+    .custom((value) => {
+      if (Number(value) < 0) {
+        throw new Error(`${field} не может быть отрицательным`);
+      }
+      return true;
+    });
 }
 
 function tasksField() {

@@ -16,7 +16,12 @@ import {
   writeLog,
 } from '../services/service';
 import '../db/model';
-import type { TaskDocument, Comment, UserDocument, Attachment } from '../db/model';
+import type {
+  TaskDocument,
+  Comment,
+  UserDocument,
+  Attachment,
+} from '../db/model';
 import { FleetVehicle, type FleetVehicleAttrs } from '../db/models/fleet';
 import {
   taskAcceptConfirmKeyboard,
@@ -28,7 +33,10 @@ import { TASK_STATUS_ICON_MAP } from '../utils/taskStatusIcons';
 import buildChatMessageLink from '../utils/messageLink';
 import formatTask from '../utils/formatTask';
 import { createTask, getUsersMap } from '../db/queries';
-import { buildHistorySummaryLog, getTaskIdentifier } from '../tasks/taskMessages';
+import {
+  buildHistorySummaryLog,
+  getTaskIdentifier,
+} from '../tasks/taskMessages';
 import { buildTaskAppLink } from '../tasks/taskLinks';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Task as SharedTask } from 'shared';
@@ -80,7 +88,10 @@ class CancellationRequestError extends Error {
 }
 
 const cancelRequestSessions = new Map<number, CancelRequestSession>();
-const commentSessions = new Map<number, { taskId: string; identifier: string }>();
+const commentSessions = new Map<
+  number,
+  { taskId: string; identifier: string }
+>();
 const HISTORY_ALERT_LIMIT = 190;
 const CANCEL_REASON_MIN_LENGTH = 50;
 const CANCEL_REASON_MAX_LENGTH = 2000;
@@ -95,9 +106,7 @@ process.on('uncaughtException', (err) => {
 
 function normalizeInlineKeyboard(
   markup: InlineKeyboardMarkup | undefined,
-): ReadonlyArray<
-  ReadonlyArray<Record<string, unknown>>
-> | undefined {
+): ReadonlyArray<ReadonlyArray<Record<string, unknown>>> | undefined {
   if (!markup || typeof markup !== 'object') {
     return markup === undefined ? undefined : [];
   }
@@ -116,7 +125,9 @@ function normalizeInlineKeyboard(
   );
 }
 
-function normalizeButton(button: InlineKeyboardButton): Record<string, unknown> {
+function normalizeButton(
+  button: InlineKeyboardButton,
+): Record<string, unknown> {
   const plain = button as unknown as Record<string, unknown>;
   return Object.fromEntries(
     Object.entries(plain)
@@ -238,7 +249,10 @@ const htmlEscapeMap: Record<string, string> = {
 const htmlEscapePattern = /[&<>"']/g;
 
 const escapeHtml = (value: string): string =>
-  String(value).replace(htmlEscapePattern, (char) => htmlEscapeMap[char] ?? char);
+  String(value).replace(
+    htmlEscapePattern,
+    (char) => htmlEscapeMap[char] ?? char,
+  );
 
 const normalizeReasonText = (reason: string): string => {
   const normalized = reason.replace(/\r\n/g, '\n').trim();
@@ -315,7 +329,8 @@ async function loadCancelRequestContext(
     throw new CancellationRequestError('creator_missing');
   }
   const identifier =
-    getTaskIdentifier(plain as Parameters<typeof getTaskIdentifier>[0]) || taskId;
+    getTaskIdentifier(plain as Parameters<typeof getTaskIdentifier>[0]) ||
+    taskId;
   const docId =
     typeof plain._id === 'object' &&
     plain._id !== null &&
@@ -370,7 +385,10 @@ async function createCancellationRequestFromTask(
     try {
       await taskSyncController.onWebTaskUpdate(requestId, created);
     } catch (error) {
-      console.error('Не удалось синхронизировать заявку на удаление задачи', error);
+      console.error(
+        'Не удалось синхронизировать заявку на удаление задачи',
+        error,
+      );
     }
   }
   try {
@@ -400,7 +418,8 @@ async function updateMessageReplyMarkup(
     if (isMessageMissingOnEditError(error)) {
       const callback = ctx.callbackQuery;
       if (callback && typeof callback === 'object' && 'data' in callback) {
-        const rawData = typeof callback.data === 'string' ? callback.data : null;
+        const rawData =
+          typeof callback.data === 'string' ? callback.data : null;
         if (rawData) {
           const [, taskId] = rawData.split(':');
           if (taskId) {
@@ -421,9 +440,9 @@ async function updateMessageReplyMarkup(
   }
 }
 
-function extractInlineKeyboardMarkup(ctx: Context):
-  | InlineKeyboardMarkup
-  | undefined {
+function extractInlineKeyboardMarkup(
+  ctx: Context,
+): InlineKeyboardMarkup | undefined {
   const rawMessage = ctx.callbackQuery?.message;
   if (!rawMessage || typeof rawMessage !== 'object') {
     return undefined;
@@ -442,10 +461,7 @@ function extractInlineKeyboardMarkup(ctx: Context):
 async function showMainMenu(ctx: Context): Promise<void> {
   await ctx.reply(
     messages.menuPrompt,
-    Markup.keyboard([
-      ['Регистрация в ERM'],
-      ['ERM веб-клиент'],
-    ]).resize(),
+    Markup.keyboard([['Регистрация в ERM'], ['ERM веб-клиент']]).resize(),
   );
 }
 
@@ -547,7 +563,7 @@ async function handleReportCommand(ctx: Context): Promise<void> {
         id:
           typeof user.telegram_id === 'number'
             ? user.telegram_id
-            : user.id ?? undefined,
+            : (user.id ?? undefined),
         role: user.role,
         access: user.access,
       }
@@ -656,7 +672,9 @@ const resetLongPollingSession = async (): Promise<void> => {
   }
   try {
     await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-    console.warn('Webhook удалён, обновления сброшены перед повторным запуском');
+    console.warn(
+      'Webhook удалён, обновления сброшены перед повторным запуском',
+    );
   } catch (deleteError) {
     console.error(
       'Не удалось удалить webhook перед повторным запуском long polling',
@@ -665,9 +683,7 @@ const resetLongPollingSession = async (): Promise<void> => {
   }
   const now = Date.now();
   if (now < closeThrottleUntil) {
-    const remainingSeconds = Math.ceil(
-      (closeThrottleUntil - now) / 1000,
-    );
+    const remainingSeconds = Math.ceil((closeThrottleUntil - now) / 1000);
     console.warn(
       `Пропускаем завершение long polling методом close, осталось ожидать ${remainingSeconds} с`,
     );
@@ -676,7 +692,9 @@ const resetLongPollingSession = async (): Promise<void> => {
   try {
     await bot.telegram.callApi('close', {});
     closeThrottleUntil = 0;
-    console.warn('Текущая long polling сессия Telegram завершена методом close');
+    console.warn(
+      'Текущая long polling сессия Telegram завершена методом close',
+    );
   } catch (closeError) {
     const retryAfterSeconds = extractRetryAfterSeconds(closeError);
     if (retryAfterSeconds) {
@@ -691,11 +709,10 @@ const resetLongPollingSession = async (): Promise<void> => {
   }
 };
 
-const getCallbackData = (
-  callback: Context['callbackQuery'],
-): string | null => {
+const getCallbackData = (callback: Context['callbackQuery']): string | null => {
   if (!callback) return null;
-  if ('data' in callback && typeof callback.data === 'string') return callback.data;
+  if ('data' in callback && typeof callback.data === 'string')
+    return callback.data;
   return null;
 };
 
@@ -735,9 +752,7 @@ const formatDateTimeLabel = (value?: string | Date | null): string | null => {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  const formatted = directMessageDateFormatter
-    .format(date)
-    .replace(', ', ' ');
+  const formatted = directMessageDateFormatter.format(date).replace(', ', ' ');
   return `${formatted} (${PROJECT_TIMEZONE_LABEL})`;
 };
 
@@ -746,9 +761,7 @@ const toNumericId = (value: unknown): number | null => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-const collectTaskUserIds = (
-  task: Record<string, unknown>,
-): number[] => {
+const collectTaskUserIds = (task: Record<string, unknown>): number[] => {
   const ids = new Set<number>();
   const singleKeys: (keyof typeof task)[] = [
     'assigned_user_id',
@@ -899,7 +912,9 @@ export const buildDirectTaskMessage = (
       const label = identifier ? htmlEscape(identifier) : 'по ссылке';
       return `<a href="${link}">${label}</a>`;
     }
-    return identifier ? `<b>${htmlEscape(identifier)}</b>` : '<b>без номера</b>';
+    return identifier
+      ? `<b>${htmlEscape(identifier)}</b>`
+      : '<b>без номера</b>';
   })();
   lines.push(`Задача ${headerContent}`);
   if (title) {
@@ -914,9 +929,7 @@ export const buildDirectTaskMessage = (
     lines.push(`Срок: <code>${htmlEscape(dueLabel)}</code>`);
   }
   const startLocation =
-    typeof task.start_location === 'string'
-      ? task.start_location.trim()
-      : '';
+    typeof task.start_location === 'string' ? task.start_location.trim() : '';
   const endLocation =
     typeof task.end_location === 'string' ? task.end_location.trim() : '';
   const startLink =
@@ -986,7 +999,9 @@ export const buildDirectTaskKeyboard = (
     return undefined;
   }
   if (typeof Markup.inlineKeyboard !== 'function') {
-    console.warn('Пропущено построение inline-клавиатуры: отсутствует поддержка');
+    console.warn(
+      'Пропущено построение inline-клавиатуры: отсутствует поддержка',
+    );
     return undefined;
   }
   const keyboard = Markup.inlineKeyboard([row]) as ReturnType<
@@ -1137,8 +1152,7 @@ async function ensureUserCanUpdateTask(
     const assignees = collectAssigneeIds(
       (task as { assignees?: unknown }).assignees,
     );
-    const hasAssignments =
-      assignedUserId !== null || assignees.length > 0;
+    const hasAssignments = assignedUserId !== null || assignees.length > 0;
     const isAllowed =
       (assignedUserId !== null && assignedUserId === userId) ||
       assignees.includes(userId);
@@ -1177,13 +1191,17 @@ async function refreshTaskKeyboard(
       const taskDoc = await getTask(taskId);
       if (taskDoc) {
         const plainSource =
-          typeof (taskDoc as { toObject?: () => unknown }).toObject === 'function'
+          typeof (taskDoc as { toObject?: () => unknown }).toObject ===
+          'function'
             ? (taskDoc as { toObject(): unknown }).toObject()
             : (taskDoc as unknown);
         context = { plain: plainSource as TaskPresentation, users: {} };
       }
     } catch (error) {
-      console.error('Не удалось получить задачу для обновления клавиатуры', error);
+      console.error(
+        'Не удалось получить задачу для обновления клавиатуры',
+        error,
+      );
     }
   }
   const plain = context.plain;
@@ -1205,13 +1223,12 @@ async function refreshTaskKeyboard(
     await updateMessageReplyMarkup(ctx, keyboard?.reply_markup ?? undefined);
   } else {
     const kind = detectTaskKind(plain ?? undefined);
-    const albumLink =
-      plain
-        ? resolveTaskAlbumLink(plain, {
-            fallbackChatId: chatId,
-            fallbackTopicId: topicId,
-          })
-        : null;
+    const albumLink = plain
+      ? resolveTaskAlbumLink(plain, {
+          fallbackChatId: chatId,
+          fallbackTopicId: topicId,
+        })
+      : null;
     const replyMarkup = taskStatusInlineMarkup(
       taskId,
       status,
@@ -1269,7 +1286,10 @@ async function processStatusAction(
       snapshot = { plain: plainSource as TaskPresentation, users: {} };
     }
   } catch (error) {
-    console.error('Не удалось получить задачу перед обновлением статуса', error);
+    console.error(
+      'Не удалось получить задачу перед обновлением статуса',
+      error,
+    );
   }
   if (status === 'Отменена') {
     const snapshotTask = snapshot.plain;
@@ -1323,10 +1343,13 @@ async function processStatusAction(
         ? (updatedPlain._id as { toString(): string }).toString()
         : String((updatedPlain as { _id?: unknown })._id ?? taskId);
     const override = updatedPlain as unknown as TaskPresentation;
-    const presentation = await syncTaskPresentation(docId, override ?? undefined);
-    const appliedStatus = (
-      (presentation.plain?.status as SharedTask['status'] | undefined) ?? status
-    ) as SharedTask['status'];
+    const presentation = await syncTaskPresentation(
+      docId,
+      override ?? undefined,
+    );
+    const appliedStatus = ((presentation.plain?.status as
+      | SharedTask['status']
+      | undefined) ?? status) as SharedTask['status'];
     const plainForView = {
       ...(override ?? {}),
       ...(presentation.plain ?? {}),
@@ -1367,7 +1390,10 @@ async function processStatusAction(
         try {
           await updateMessageReplyMarkup(ctx, inlineMarkup);
         } catch (updateError) {
-          console.warn('Не удалось обновить клавиатуру уведомления', updateError);
+          console.warn(
+            'Не удалось обновить клавиатуру уведомления',
+            updateError,
+          );
         }
       }
     } else {
@@ -1545,7 +1571,10 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось обновить клавиатуру после неопределённого пользователя', error);
+      console.error(
+        'Не удалось обновить клавиатуру после неопределённого пользователя',
+        error,
+      );
     }
     return;
   }
@@ -1560,7 +1589,10 @@ bot.action(/^task_accept_confirm:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось восстановить клавиатуру после отмены подтверждения', error);
+      console.error(
+        'Не удалось восстановить клавиатуру после отмены подтверждения',
+        error,
+      );
     }
     return;
   }
@@ -1584,7 +1616,10 @@ bot.action(/^task_accept_cancel:.+$/, async (ctx) => {
   try {
     await refreshTaskKeyboard(ctx, taskId);
   } catch (error) {
-    console.error('Не удалось восстановить клавиатуру после отмены подтверждения', error);
+    console.error(
+      'Не удалось восстановить клавиатуру после отмены подтверждения',
+      error,
+    );
   }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
@@ -1632,7 +1667,10 @@ bot.action(/^task_done_confirm:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось обновить клавиатуру после неопределённого пользователя', error);
+      console.error(
+        'Не удалось обновить клавиатуру после неопределённого пользователя',
+        error,
+      );
     }
     return;
   }
@@ -1647,7 +1685,10 @@ bot.action(/^task_done_confirm:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось восстановить клавиатуру после отказа завершения', error);
+      console.error(
+        'Не удалось восстановить клавиатуру после отказа завершения',
+        error,
+      );
     }
     return;
   }
@@ -1671,7 +1712,10 @@ bot.action(/^task_done_cancel:.+$/, async (ctx) => {
   try {
     await refreshTaskKeyboard(ctx, taskId);
   } catch (error) {
-    console.error('Не удалось восстановить клавиатуру после отмены завершения', error);
+    console.error(
+      'Не удалось восстановить клавиатуру после отмены завершения',
+      error,
+    );
   }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
@@ -1833,7 +1877,10 @@ bot.action(/^task_cancel_confirm:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось восстановить клавиатуру после отказа отмены', error);
+      console.error(
+        'Не удалось восстановить клавиатуру после отказа отмены',
+        error,
+      );
     }
     return;
   }
@@ -1856,7 +1903,10 @@ bot.action(/^task_cancel_cancel:.+$/, async (ctx) => {
   try {
     await refreshTaskKeyboard(ctx, taskId);
   } catch (error) {
-    console.error('Не удалось восстановить клавиатуру после отмены действия', error);
+    console.error(
+      'Не удалось восстановить клавиатуру после отмены действия',
+      error,
+    );
   }
   await ctx.answerCbQuery(messages.taskStatusCanceled);
 });
@@ -1888,7 +1938,10 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
     try {
       await refreshTaskKeyboard(ctx, taskId);
     } catch (error) {
-      console.error('Не удалось восстановить клавиатуру после отказа отмены', error);
+      console.error(
+        'Не удалось восстановить клавиатуру после отказа отмены',
+        error,
+      );
     }
     return;
   }
@@ -1897,7 +1950,9 @@ bot.action(/^task_cancel:.+$/, async (ctx) => {
 
 const registerTextHandler = bot.on?.bind(bot);
 if (!registerTextHandler) {
-  console.warn('Метод bot.on недоступен, обработчик текстов не будет зарегистрирован');
+  console.warn(
+    'Метод bot.on недоступен, обработчик текстов не будет зарегистрирован',
+  );
 } else {
   registerTextHandler('text', async (ctx) => {
     const userId = ctx.from?.id;
@@ -1940,7 +1995,8 @@ if (!registerTextHandler) {
           }
         });
         const usersRaw = await getUsersMap(Array.from(authorIds));
-        const authorMeta: Record<number, { name?: string; username?: string }> = {};
+        const authorMeta: Record<number, { name?: string; username?: string }> =
+          {};
         Object.entries(usersRaw ?? {}).forEach(([key, value]) => {
           const numeric = Number(key);
           if (!Number.isFinite(numeric)) {
@@ -1972,9 +2028,12 @@ if (!registerTextHandler) {
         const existingAttachments = Array.isArray(task.attachments)
           ? (task.attachments as Attachment[])
           : undefined;
-        const commentAttachments = buildAttachmentsFromCommentHtml(commentHtml, {
-          existing: existingAttachments,
-        });
+        const commentAttachments = buildAttachmentsFromCommentHtml(
+          commentHtml,
+          {
+            existing: existingAttachments,
+          },
+        );
         const updatePayload: Partial<TaskDocument> = {
           comment: commentHtml,
           comments: nextEntries,
@@ -1994,7 +2053,10 @@ if (!registerTextHandler) {
         }
         commentSessions.delete(userId);
         await ctx.reply(messages.commentSaved);
-        await taskSyncController.syncAfterChange(commentSession.taskId, updated);
+        await taskSyncController.syncAfterChange(
+          commentSession.taskId,
+          updated,
+        );
       } catch (error) {
         commentSessions.delete(userId);
         console.error('Не удалось сохранить комментарий задачи', error);
@@ -2027,7 +2089,10 @@ if (!registerTextHandler) {
           'Подтвердить',
           `cancel_request_confirm:${session.taskId}`,
         ),
-        Markup.button.callback('Отмена', `cancel_request_abort:${session.taskId}`),
+        Markup.button.callback(
+          'Отмена',
+          `cancel_request_abort:${session.taskId}`,
+        ),
       ],
     ];
     const keyboard = Markup.inlineKeyboard(confirmRows) as ReturnType<
@@ -2146,8 +2211,7 @@ export async function startBot(retry = 0): Promise<void> {
     const code = e.response?.error_code;
     const isConflict = code === 409;
     const isRateLimited = code === 429;
-    const canRetry =
-      retry < MAX_RETRIES || isConflict || isRateLimited;
+    const canRetry = retry < MAX_RETRIES || isConflict || isRateLimited;
     if (retryableCodes.has(code ?? 0) && canRetry) {
       if (isConflict) {
         console.warn(

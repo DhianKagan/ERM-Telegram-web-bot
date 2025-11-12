@@ -20,7 +20,9 @@ const mongoose: typeof import('mongoose') = (() => {
   try {
     return require('mongoose');
   } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'));
+    return require(
+      path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'),
+    );
   }
 })();
 
@@ -34,11 +36,10 @@ const compiledDataStoragePath = path.resolve(
   'apps/api/dist/services/dataStorage.js',
 );
 
-const dataStorageModule: typeof import('../../apps/api/src/services/dataStorage') = fs.existsSync(
-  compiledDataStoragePath,
-)
-  ? require(compiledDataStoragePath)
-  : require(path.resolve(process.cwd(), 'apps/api/src/services/dataStorage'));
+const dataStorageModule: typeof import('../../apps/api/src/services/dataStorage') =
+  fs.existsSync(compiledDataStoragePath)
+    ? require(compiledDataStoragePath)
+    : require(path.resolve(process.cwd(), 'apps/api/src/services/dataStorage'));
 
 const { removeDetachedFilesOlderThan } = dataStorageModule;
 
@@ -48,7 +49,9 @@ const ttlMinutesRaw = process.env.FILE_CLEANUP_TTL_MINUTES || '1440';
 const ttlMinutes = Number(ttlMinutesRaw);
 
 if (!Number.isFinite(ttlMinutes) || ttlMinutes <= 0) {
-  console.log('FILE_CLEANUP_TTL_MINUTES не задан или не положительный, очистка пропущена');
+  console.log(
+    'FILE_CLEANUP_TTL_MINUTES не задан или не положительный, очистка пропущена',
+  );
   process.exit(0);
 }
 
@@ -66,9 +69,10 @@ if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
 
 async function connectMongo(): Promise<void> {
   const timeout = 5000;
-  const connectOptions: ConnectOptions & { serverSelectionTimeoutMS?: number } = {
-    serverSelectionTimeoutMS: timeout,
-  };
+  const connectOptions: ConnectOptions & { serverSelectionTimeoutMS?: number } =
+    {
+      serverSelectionTimeoutMS: timeout,
+    };
   await mongoose.connect(mongoUrl, connectOptions);
 }
 

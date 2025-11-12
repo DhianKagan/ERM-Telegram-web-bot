@@ -6,16 +6,16 @@ import {
   useMemo,
   useState,
   type FormEvent,
-} from "react";
-import clsx from "clsx";
-import { Button } from "@/components/ui/button";
-import ConfirmDialog from "./ConfirmDialog";
+} from 'react';
+import clsx from 'clsx';
+import { Button } from '@/components/ui/button';
+import ConfirmDialog from './ConfirmDialog';
 import {
   fetchCollectionItems,
   type CollectionItem,
-} from "../services/collections";
-import { fetchRoles, type Role } from "../services/roles";
-import { ROLE_OPTIONS } from "../utils/roleDisplay";
+} from '../services/collections';
+import { fetchRoles, type Role } from '../services/roles';
+import { ROLE_OPTIONS } from '../utils/roleDisplay';
 import {
   createUser,
   fetchUser,
@@ -23,54 +23,54 @@ import {
   updateUser,
   type GeneratedUserCredentials,
   type UserDetails,
-} from "../services/users";
-import { useAuth } from "../context/useAuth";
-import { showToast } from "../utils/toast";
-import { hasAccess, ACCESS_ADMIN } from "../utils/access";
-import type { UserFormData } from "../pages/Settings/UserForm";
+} from '../services/users';
+import { useAuth } from '../context/useAuth';
+import { showToast } from '../utils/toast';
+import { hasAccess, ACCESS_ADMIN } from '../utils/access';
+import type { UserFormData } from '../pages/Settings/UserForm';
 
 interface EmployeeCardFormProps {
   telegramId?: string;
   className?: string;
-  mode?: "create" | "update";
+  mode?: 'create' | 'update';
   onSaved?: (user: UserDetails) => void;
 }
 
 const emptyForm: UserFormData = {
   telegram_id: undefined,
-  username: "",
-  name: "",
-  phone: "",
-  mobNumber: "",
-  email: "",
-  role: "user",
+  username: '',
+  name: '',
+  phone: '',
+  mobNumber: '',
+  email: '',
+  role: 'user',
   access: 1,
-  roleId: "",
-  departmentId: "",
-  divisionId: "",
-  positionId: "",
+  roleId: '',
+  departmentId: '',
+  divisionId: '',
+  positionId: '',
 };
 
 function mapUserToForm(user: UserDetails): UserFormData {
   return {
     telegram_id: user.telegram_id,
-    username: user.telegram_username || user.username || "",
-    name: user.name || "",
-    phone: user.phone || "",
-    mobNumber: user.mobNumber || "",
-    email: user.email || "",
-    role: user.role || "user",
+    username: user.telegram_username || user.username || '',
+    name: user.name || '',
+    phone: user.phone || '',
+    mobNumber: user.mobNumber || '',
+    email: user.email || '',
+    role: user.role || 'user',
     access: user.access,
-    roleId: user.roleId || "",
-    departmentId: user.departmentId || "",
-    divisionId: user.divisionId || "",
-    positionId: user.positionId || "",
+    roleId: user.roleId || '',
+    departmentId: user.departmentId || '',
+    divisionId: user.divisionId || '',
+    positionId: user.positionId || '',
   };
 }
 
 const normalize = (value: unknown): string => {
-  if (value === undefined || value === null) return "";
-  if (typeof value === "number") return String(value);
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'number') return String(value);
   return String(value);
 };
 
@@ -82,14 +82,16 @@ export default function EmployeeCardForm({
 }: EmployeeCardFormProps) {
   const { user } = useAuth();
   const [form, setForm] = useState<UserFormData>({ ...emptyForm });
-  const [initialForm, setInitialForm] = useState<UserFormData>({ ...emptyForm });
+  const [initialForm, setInitialForm] = useState<UserFormData>({
+    ...emptyForm,
+  });
   const [departments, setDepartments] = useState<CollectionItem[]>([]);
   const [divisions, setDivisions] = useState<CollectionItem[]>([]);
   const [positions, setPositions] = useState<CollectionItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const resolvedMode = mode ?? (telegramId ? "update" : "create");
+  const resolvedMode = mode ?? (telegramId ? 'update' : 'create');
   const [loading, setLoading] = useState<boolean>(
-    resolvedMode === "update" && !!telegramId,
+    resolvedMode === 'update' && !!telegramId,
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -97,19 +99,19 @@ export default function EmployeeCardForm({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [prefillError, setPrefillError] = useState<string | null>(null);
 
-  const isCreateMode = resolvedMode === "create";
+  const isCreateMode = resolvedMode === 'create';
   const canEdit = hasAccess(user?.access, ACCESS_ADMIN);
 
   useEffect(() => {
-    fetchCollectionItems("departments", "", 1, 100).then((d) =>
-      setDepartments(d.items),
-    ).catch(() => setDepartments([]));
-    fetchCollectionItems("divisions", "", 1, 100).then((d) =>
-      setDivisions(d.items),
-    ).catch(() => setDivisions([]));
-    fetchCollectionItems("positions", "", 1, 100).then((d) =>
-      setPositions(d.items),
-    ).catch(() => setPositions([]));
+    fetchCollectionItems('departments', '', 1, 100)
+      .then((d) => setDepartments(d.items))
+      .catch(() => setDepartments([]));
+    fetchCollectionItems('divisions', '', 1, 100)
+      .then((d) => setDivisions(d.items))
+      .catch(() => setDivisions([]));
+    fetchCollectionItems('positions', '', 1, 100)
+      .then((d) => setPositions(d.items))
+      .catch(() => setPositions([]));
     fetchRoles().then((list) => setRoles(list));
   }, []);
 
@@ -153,9 +155,9 @@ export default function EmployeeCardForm({
           const message =
             error instanceof Error
               ? error.message
-              : "Не удалось подготовить данные";
+              : 'Не удалось подготовить данные';
           setPrefillError(message);
-          showToast(message, "error");
+          showToast(message, 'error');
         });
       return () => {
         active = false;
@@ -174,7 +176,7 @@ export default function EmployeeCardForm({
     fetchUser(telegramId)
       .then((data) => {
         if (!data) {
-          setError("Пользователь не найден");
+          setError('Пользователь не найден');
           setForm({ ...emptyForm });
           setInitialForm({ ...emptyForm });
           return;
@@ -184,8 +186,8 @@ export default function EmployeeCardForm({
         setInitialForm({ ...mapped });
       })
       .catch((e) => {
-        const message = e instanceof Error ? e.message : "Ошибка загрузки";
-        setError(message || "Ошибка загрузки");
+        const message = e instanceof Error ? e.message : 'Ошибка загрузки';
+        setError(message || 'Ошибка загрузки');
         setForm({ ...emptyForm });
         setInitialForm({ ...emptyForm });
       })
@@ -203,7 +205,9 @@ export default function EmployeeCardForm({
       return Boolean(form.telegram_id && form.username);
     }
     const keys = Object.keys(initialForm) as (keyof UserFormData)[];
-    return keys.some((key) => normalize(form[key]) !== normalize(initialForm[key]));
+    return keys.some(
+      (key) => normalize(form[key]) !== normalize(initialForm[key]),
+    );
   }, [canEdit, form, initialForm, isCreateMode]);
 
   const updateField = <K extends keyof UserFormData>(
@@ -239,9 +243,9 @@ export default function EmployeeCardForm({
           const message =
             error instanceof Error
               ? error.message
-              : "Не удалось подготовить данные";
+              : 'Не удалось подготовить данные';
           setPrefillError(message);
-          showToast(message, "error");
+          showToast(message, 'error');
         });
       return;
     }
@@ -263,7 +267,7 @@ export default function EmployeeCardForm({
     }
     if (isCreateMode) {
       if (!form.telegram_id || !form.username) {
-        showToast("Укажите ID и username сотрудника", "error");
+        showToast('Укажите ID и username сотрудника', 'error');
         setConfirmSave(false);
         return;
       }
@@ -271,20 +275,21 @@ export default function EmployeeCardForm({
       try {
         const telegramIdValue = Number(form.telegram_id);
         if (!Number.isFinite(telegramIdValue)) {
-          throw new Error("ID должен быть числом");
+          throw new Error('ID должен быть числом');
         }
         await createUser(telegramIdValue, form.username, form.roleId);
         const { telegram_id: _, ...payload } = form;
         const updated = await updateUser(telegramIdValue, payload);
-        if (!updated) throw new Error("Не удалось сохранить изменения");
+        if (!updated) throw new Error('Не удалось сохранить изменения');
         const mapped = mapUserToForm(updated);
         setForm(mapped);
         setInitialForm({ ...mapped });
         onSaved?.(updated);
-        setSuccessMessage("Сотрудник создан");
+        setSuccessMessage('Сотрудник создан');
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Не удалось сохранить";
-        showToast(message, "error");
+        const message =
+          error instanceof Error ? error.message : 'Не удалось сохранить';
+        showToast(message, 'error');
       } finally {
         setSaving(false);
         setConfirmSave(false);
@@ -299,15 +304,16 @@ export default function EmployeeCardForm({
     try {
       const { telegram_id: telegramIdValue, ...payload } = form;
       const updated = await updateUser(telegramIdValue, payload);
-      if (!updated) throw new Error("Не удалось сохранить изменения");
+      if (!updated) throw new Error('Не удалось сохранить изменения');
       const mapped = mapUserToForm(updated);
       setForm(mapped);
       setInitialForm({ ...mapped });
       onSaved?.(updated);
-      setSuccessMessage("Данные сотрудника сохранены");
+      setSuccessMessage('Данные сотрудника сохранены');
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось сохранить";
-      showToast(message, "error");
+      const message =
+        error instanceof Error ? error.message : 'Не удалось сохранить';
+      showToast(message, 'error');
     } finally {
       setSaving(false);
       setConfirmSave(false);
@@ -315,19 +321,21 @@ export default function EmployeeCardForm({
   };
 
   if (!telegramId && !isCreateMode) {
-    return <div className="text-sm text-gray-500">Выберите сотрудника слева</div>;
+    return (
+      <div className="text-sm text-gray-500">Выберите сотрудника слева</div>
+    );
   }
 
   return (
-    <div className={clsx("space-y-4", className)}>
+    <div className={clsx('space-y-4', className)}>
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">
-          {isCreateMode ? "Новый сотрудник" : "Карточка сотрудника"}
+          {isCreateMode ? 'Новый сотрудник' : 'Карточка сотрудника'}
         </h2>
         <p className="text-sm text-gray-500">
           {isCreateMode
-            ? "Заполните данные и сохраните, чтобы создать запись."
-            : "Измените данные и подтвердите сохранение."}
+            ? 'Заполните данные и сохраните, чтобы создать запись.'
+            : 'Измените данные и подтвердите сохранение.'}
         </p>
       </div>
       {loading && <div>Загрузка...</div>}
@@ -349,7 +357,8 @@ export default function EmployeeCardForm({
           )}
           {!canEdit && (
             <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              У вас нет прав на редактирование, данные доступны только для чтения.
+              У вас нет прав на редактирование, данные доступны только для
+              чтения.
             </div>
           )}
           <div className="grid gap-4 md:grid-cols-2">
@@ -358,10 +367,10 @@ export default function EmployeeCardForm({
               <input
                 name="telegramId"
                 className="h-10 w-full rounded border px-3"
-                value={form.telegram_id ?? ""}
+                value={form.telegram_id ?? ''}
                 onChange={(e) =>
                   updateField(
-                    "telegram_id",
+                    'telegram_id',
                     e.target.value ? Number(e.target.value) : undefined,
                   )
                 }
@@ -374,8 +383,8 @@ export default function EmployeeCardForm({
               <input
                 name="username"
                 className="h-10 w-full rounded border px-3"
-                value={form.username || ""}
-                onChange={(e) => updateField("username", e.target.value)}
+                value={form.username || ''}
+                onChange={(e) => updateField('username', e.target.value)}
                 readOnly={!isCreateMode}
                 required
               />
@@ -385,8 +394,8 @@ export default function EmployeeCardForm({
               <input
                 name="name"
                 className="h-10 w-full rounded border px-3"
-                value={form.name || ""}
-                onChange={(e) => updateField("name", e.target.value)}
+                value={form.name || ''}
+                onChange={(e) => updateField('name', e.target.value)}
                 disabled={!canEdit}
               />
             </label>
@@ -395,8 +404,8 @@ export default function EmployeeCardForm({
               <input
                 name="phone"
                 className="h-10 w-full rounded border px-3"
-                value={form.phone || ""}
-                onChange={(e) => updateField("phone", e.target.value)}
+                value={form.phone || ''}
+                onChange={(e) => updateField('phone', e.target.value)}
                 disabled={!canEdit}
               />
             </label>
@@ -405,8 +414,8 @@ export default function EmployeeCardForm({
               <input
                 name="mobNumber"
                 className="h-10 w-full rounded border px-3"
-                value={form.mobNumber || ""}
-                onChange={(e) => updateField("mobNumber", e.target.value)}
+                value={form.mobNumber || ''}
+                onChange={(e) => updateField('mobNumber', e.target.value)}
                 disabled={!canEdit}
               />
             </label>
@@ -415,8 +424,8 @@ export default function EmployeeCardForm({
               <input
                 name="email"
                 className="h-10 w-full rounded border px-3"
-                value={form.email || ""}
-                onChange={(e) => updateField("email", e.target.value)}
+                value={form.email || ''}
+                onChange={(e) => updateField('email', e.target.value)}
                 disabled={!canEdit}
               />
             </label>
@@ -424,7 +433,7 @@ export default function EmployeeCardForm({
               <span className="block text-sm font-medium">Роль</span>
               <select
                 className="h-10 w-full rounded border px-3"
-                value={form.role || "user"}
+                value={form.role || 'user'}
                 onChange={(e) => handleRoleChange(e.target.value)}
                 disabled={!canEdit}
               >
@@ -439,8 +448,8 @@ export default function EmployeeCardForm({
               <span className="block text-sm font-medium">Департамент</span>
               <select
                 className="h-10 w-full rounded border px-3"
-                value={form.departmentId || ""}
-                onChange={(e) => updateField("departmentId", e.target.value)}
+                value={form.departmentId || ''}
+                onChange={(e) => updateField('departmentId', e.target.value)}
                 disabled={!canEdit}
               >
                 <option value=""></option>
@@ -455,8 +464,8 @@ export default function EmployeeCardForm({
               <span className="block text-sm font-medium">Отдел</span>
               <select
                 className="h-10 w-full rounded border px-3"
-                value={form.divisionId || ""}
-                onChange={(e) => updateField("divisionId", e.target.value)}
+                value={form.divisionId || ''}
+                onChange={(e) => updateField('divisionId', e.target.value)}
                 disabled={!canEdit}
               >
                 <option value=""></option>
@@ -471,8 +480,8 @@ export default function EmployeeCardForm({
               <span className="block text-sm font-medium">Должность</span>
               <select
                 className="h-10 w-full rounded border px-3"
-                value={form.positionId || ""}
-                onChange={(e) => updateField("positionId", e.target.value)}
+                value={form.positionId || ''}
+                onChange={(e) => updateField('positionId', e.target.value)}
                 disabled={!canEdit}
               >
                 <option value=""></option>
@@ -487,7 +496,7 @@ export default function EmployeeCardForm({
           {canEdit && (
             <div className="flex gap-3">
               <Button type="submit" disabled={!isDirty || saving}>
-                {saving ? "Сохранение..." : "Сохранить"}
+                {saving ? 'Сохранение...' : 'Сохранить'}
               </Button>
               <Button
                 type="button"
@@ -503,7 +512,11 @@ export default function EmployeeCardForm({
       )}
       <ConfirmDialog
         open={confirmSave}
-        message={isCreateMode ? "Создать сотрудника?" : "Сохранить изменения сотрудника?"}
+        message={
+          isCreateMode
+            ? 'Создать сотрудника?'
+            : 'Сохранить изменения сотрудника?'
+        }
         onConfirm={persistChanges}
         onCancel={() => setConfirmSave(false)}
         confirmText="Сохранить"

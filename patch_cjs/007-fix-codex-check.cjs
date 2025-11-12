@@ -12,7 +12,7 @@ pkg.scripts['codex:check'] = [
   'pnpm format:check',
   'pnpm lint',
   'pnpm typecheck',
-  'pnpm audit'
+  'pnpm audit',
 ].join(' && ');
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));

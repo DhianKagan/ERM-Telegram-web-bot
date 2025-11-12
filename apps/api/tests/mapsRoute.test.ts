@@ -74,9 +74,13 @@ test('POST /api/v1/maps/expand обрабатывает управляемую �
     .post('/api/v1/maps/expand')
     .send({ url: 'https://localhost/l/demo' });
   expect(resolveShortLink).toHaveBeenCalledWith('https://localhost/l/demo');
-  expect(expandMapsUrl).toHaveBeenCalledWith('https://maps.google.com/expanded');
+  expect(expandMapsUrl).toHaveBeenCalledWith(
+    'https://maps.google.com/expanded',
+  );
   expect(res.body.short).toBe('https://localhost/l/demo');
-  expect(normalizeManagedShortLink).toHaveBeenCalledWith('https://localhost/l/demo');
+  expect(normalizeManagedShortLink).toHaveBeenCalledWith(
+    'https://localhost/l/demo',
+  );
 });
 
 afterAll(() => {

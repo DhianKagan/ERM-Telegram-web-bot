@@ -44,9 +44,7 @@ const config = [
     },
   },
   {
-    files: ['**/*.ts'],
-    ignores: ['apps/web/**'],
-    languageOptions: {
+    files: ['**/*.ts'],    languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       parser: tsParser,

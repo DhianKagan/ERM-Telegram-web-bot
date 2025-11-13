@@ -79,7 +79,8 @@ export const insert3dBuildingsLayer = (map: MapInstance): string | null => {
     const buildingsLayer = createBuildingsLayer();
     try {
       map.addLayer(buildingsLayer, beforeLayerId ?? undefined);
-    } catch (_error) { void _error; 
+    } catch (_error) {
+      void _error;
       return beforeLayerId;
     }
   } else if (beforeLayerId) {

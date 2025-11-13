@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* eslint-disable no-undef */
 
 /**
  * Назначение файла: конфигурация Vite для мини-приложения.

@@ -37,6 +37,7 @@
     "apexcharts": "^4.7.0",
     "chart.js": "^4.5.0",
     "chonky": "2.3.2",
+    "ckeditor5": "46.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.6",

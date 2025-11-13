@@ -38,10 +38,7 @@ const buildEndpointUrl = (endpoint: Endpoint): URL => {
   const parts =
     routeSegmentIndex === -1
       ? [...routePathSegments, endpoint]
-      : [
-          ...routePathSegments.slice(0, routeSegmentIndex),
-          endpoint,
-        ];
+      : [...routePathSegments.slice(0, routeSegmentIndex), endpoint];
   const normalized = parts.filter((segment) => segment.length > 0);
   const pathname = normalized.length ? `/${normalized.join('/')}` : '/';
   return new URL(pathname, `${routingUrlObject.origin}/`);

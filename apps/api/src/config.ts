@@ -236,7 +236,9 @@ try {
   parsed.hash = '';
   const normalizedPath = parsed.pathname.replace(/\/+$/, '');
   osrmBaseUrlValue = `${parsed.origin}${normalizedPath}`;
-  const routeTail = normalizedPath.endsWith("/route") ? "/v1/driving" : "/route/v1/driving";
+  const routeTail = normalizedPath.endsWith('/route')
+    ? '/v1/driving'
+    : '/route/v1/driving';
   const routePath = `${normalizedPath}${routeTail}`.replace(/^\/+/, '/');
   routingUrlEnv = new URL(routePath, `${parsed.origin}/`).toString();
 } catch (error) {

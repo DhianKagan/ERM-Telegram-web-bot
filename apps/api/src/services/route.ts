@@ -41,7 +41,6 @@ const buildEndpointUrl = (endpoint: Endpoint): URL => {
       : [
           ...routePathSegments.slice(0, routeSegmentIndex),
           endpoint,
-          ...routePathSegments.slice(routeSegmentIndex + 1),
         ];
   const normalized = parts.filter((segment) => segment.length > 0);
   const pathname = normalized.length ? `/${normalized.join('/')}` : '/';

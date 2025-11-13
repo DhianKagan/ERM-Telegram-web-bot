@@ -1,3 +1,16 @@
+
+// Авто-вставка: мокируем DB helpers для стабилизации теста "добавление времени"
+jest.mock('../src/db/queries', () => {
+  const original = jest.requireActual('../src/db/queries');
+  return {
+    ...original,
+    // распространённые функции, используемые тестами на операцию времени
+    findTaskById: jest.fn(async (id) => ({ _id: id, id, assigned_user_id: null, save: jest.fn(async () => ({})) })),
+    updateTaskTime: jest.fn(async (id, minutes, userId) => ({ id, minutes })),
+    getTask: jest.fn(async (id) => ({ _id: id })),
+  };
+});
+
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
 import type { Express, NextFunction, Request, Response } from 'express';

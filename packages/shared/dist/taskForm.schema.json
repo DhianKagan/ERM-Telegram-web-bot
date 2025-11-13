@@ -1,52 +1,52 @@
 {
-  "formVersion": 1,
-  "sections": [
-    {
-      "name": "main",
-      "label": "Основное",
-      "fields": [
+    "formVersion": 1,
+    "sections": [
         {
-          "name": "title",
-          "type": "text",
-          "label": "Название",
-          "required": true
-        },
-        { "name": "startDate", "type": "datetime", "label": "Начало" },
-        { "name": "dueDate", "type": "datetime", "label": "Дедлайн" }
-      ]
-    },
-    {
-      "name": "params",
-      "label": "Параметры",
-      "fields": [
-        {
-          "name": "status",
-          "type": "segment",
-          "label": "Статус",
-          "options": [
-            { "value": "new", "label": "Новая" },
-            { "value": "in_day", "label": "В день" },
-            { "value": "overdue", "label": "Просроч" },
-            { "value": "no_due", "label": "Без срока" }
-          ]
+            "name": "main",
+            "label": "Основное",
+            "fields": [
+                {
+                    "name": "title",
+                    "type": "text",
+                    "label": "Название",
+                    "required": true
+                },
+                { "name": "startDate", "type": "datetime", "label": "Начало" },
+                { "name": "dueDate", "type": "datetime", "label": "Дедлайн" }
+            ]
         },
         {
-          "name": "priority",
-          "type": "segment",
-          "label": "Приоритет",
-          "options": [
-            { "value": "low", "label": "Низкий" },
-            { "value": "normal", "label": "Обычный" },
-            { "value": "high", "label": "Высокий" },
-            { "value": "urgent", "label": "Срочный" }
-          ]
+            "name": "params",
+            "label": "Параметры",
+            "fields": [
+                {
+                    "name": "status",
+                    "type": "segment",
+                    "label": "Статус",
+                    "options": [
+                        { "value": "new", "label": "Новая" },
+                        { "value": "in_day", "label": "В день" },
+                        { "value": "overdue", "label": "Просроч" },
+                        { "value": "no_due", "label": "Без срока" }
+                    ]
+                },
+                {
+                    "name": "priority",
+                    "type": "segment",
+                    "label": "Приоритет",
+                    "options": [
+                        { "value": "low", "label": "Низкий" },
+                        { "value": "normal", "label": "Обычный" },
+                        { "value": "high", "label": "Высокий" },
+                        { "value": "urgent", "label": "Срочный" }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "details",
+            "label": "Детали",
+            "fields": [{ "name": "note", "type": "textarea", "label": "Комментарий" }]
         }
-      ]
-    },
-    {
-      "name": "details",
-      "label": "Детали",
-      "fields": [{ "name": "note", "type": "textarea", "label": "Комментарий" }]
-    }
-  ]
+    ]
 }

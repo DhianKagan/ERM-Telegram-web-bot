@@ -89,7 +89,6 @@
   "overrides": {
     "@ckeditor/ckeditor5": "46.0.3",
     "@ckeditor/ckeditor5-build-classic": "46.0.3",
-    "ckeditor5": "46.0.3",
-    "@ckeditor/ckeditor5-adapter-ckfinder>ckeditor5": "46.0.3"
+    "ckeditor5": "46.0.3"
   }
 }

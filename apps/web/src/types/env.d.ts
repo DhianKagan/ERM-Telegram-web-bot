@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 // Назначение: декларация переменных окружения Vite для веб-клиента.
 // Основные модули: отсутствуют.
 

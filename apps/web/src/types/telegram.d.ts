@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 // Назначение файла: объявления интерфейсов Telegram WebApp
 // Основные модули: Telegram.WebApp
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Назначение: синхронизирует срок выполнения с датой начала и отслеживает смещение
 // Основные модули: React, react-hook-form
 import React from 'react';

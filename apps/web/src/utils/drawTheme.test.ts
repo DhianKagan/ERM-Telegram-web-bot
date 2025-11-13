@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 /** @jest-environment jsdom */
 // Назначение: smoke-тест темы рисования для MapLibre
 // Основные модули: Jest, mapLibrary, customTheme

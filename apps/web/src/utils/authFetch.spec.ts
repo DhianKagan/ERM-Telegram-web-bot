@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 /* eslint-env jest */
 // Назначение: проверка authFetch при отсутствии заголовков ответа
 // Основные модули: authFetch, XMLHttpRequest

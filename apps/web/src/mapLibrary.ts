@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+// import maplibregl from 'maplibre-gl';
 import { MAP_STYLE_URL, DEFAULT_CENTER, DEFAULT_ZOOM } from './config/map';
 import { createMap } from './mapLibrary.ts';
 

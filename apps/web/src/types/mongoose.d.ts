@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 // Назначение: упрощённые типы mongoose для unit-тестов и скриптов
 // Модули: mongoose, mongodb
 

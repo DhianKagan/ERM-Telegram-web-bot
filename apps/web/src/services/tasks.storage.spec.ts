@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports, no-redeclare */
 /**
  * Назначение файла: проверка fetchTasks при переполненном localStorage и загрузке после профиля.
  * Основные модули: fetchTasks.

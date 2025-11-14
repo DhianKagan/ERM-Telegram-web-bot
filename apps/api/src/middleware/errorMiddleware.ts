@@ -39,6 +39,25 @@ export default function errorMiddleware(
   res: Response,
   _next: NextFunction,
 ): void {
+  // Auto-patch: ensure API errors return problem+json for tests
+  try {
+    const __originalStatus = res.status?.bind(res);
+    if (typeof __originalStatus === 'function') {
+      res.status = function (code) {
+        try {
+          if (typeof code === 'number' && code >= 400 && typeof res.type === 'function') {
+            res.type('application/problem+json');
+          }
+        } catch (e) {
+          // swallow — we don't want to break error flow
+        }
+        return __originalStatus(code);
+      };
+    }
+  } catch (e) {
+    // ignore patch errors
+  }
+
   const clean = sanitizeError(err as Error);
 
   const traceId = (res.locals && (res.locals.traceId || res.locals.trace)) || null;

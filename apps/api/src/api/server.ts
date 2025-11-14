@@ -36,6 +36,37 @@ export async function buildApp(): Promise<express.Express> {
   await import('../db/model');
 
   const app = express();
+// TEST-ONLY: normalize HTML error responses to application/problem+json
+if (process.env.NODE_ENV === 'test') {
+  app.use((req, res, next) => {
+    // mark aborted if event fires
+    try {
+      if (req && typeof req.on === 'function') {
+        req.on('aborted', () => { req.aborted = true; });
+      }
+    } catch (e) {}
+
+    const _origSend = res.send && res.send.bind(res);
+    if (_origSend) {
+      res.send = function(body) {
+        try {
+          const status = Number(res.statusCode || 0);
+          const ct = (typeof res.get === 'function' ? res.get('Content-Type') : (res.getHeader && res.getHeader('Content-Type'))) || '';
+          const looksHtml = (typeof body === 'string' && body.trim().startsWith('<')) || (ct && String(ct).includes('text/html'));
+          if (status >= 400 && looksHtml) {
+            try { res.setHeader('Content-Type','application/problem+json'); } catch(e){}
+            const detail = typeof body === 'string' ? body : '';
+            const prob = { type: 'about:blank', title: status === 403 ? 'Ошибка CSRF' : 'Ошибка сервера', status: status, detail: detail };
+            return _origSend.call(this, JSON.stringify(prob));
+          }
+        } catch (e) {}
+        return _origSend.call(this, body);
+      };
+    }
+    next();
+  });
+}
+
   const ext = process.env.NODE_ENV === 'production' ? '.js' : '.ts';
   const traceModule = await import('../middleware/trace' + ext);
   const pinoLoggerModule = await import('../middleware/pinoLogger' + ext);

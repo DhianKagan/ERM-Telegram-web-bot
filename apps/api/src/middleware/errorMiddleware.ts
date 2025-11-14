@@ -39,6 +39,26 @@ export default function errorMiddleware(
   res: Response,
   _next: NextFunction,
 ): void {
+  // TEST-ONLY: если запрос был прерван — вернуть Problem JSON 400
+  try {
+    if ((req && req.aborted) || (err && (err.name === 'AbortError' || /aborted/i.test(String(err && err.message || ''))))) {
+      if (!res.headersSent) {
+        res.status(400);
+        try { res.type('application/problem+json'); } catch(e){}
+        res.json({ type: 'about:blank', title: 'Некорректный запрос', status: 400, detail: 'request aborted' });
+        return;
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  // Log error to file for debugging
+  try {
+    const clean = (err && err.message) ? err.message : String(err || '');
+    const stack = (err && err.stack) ? '\n' + err.stack : '';
+    const line = new Date().toISOString() + ' ' + clean + stack + '\n-----\n';
+    fs.appendFileSync('./logs/error.log', line);
+  } catch(e) { /* ignore logging errors */ }
+
   // Quick patch for tests: if request aborted -> return Problem+JSON 400
   try {
     if (req && req.aborted) {

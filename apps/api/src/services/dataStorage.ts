@@ -419,12 +419,17 @@ export async function deleteFile(
         : file.taskId instanceof Types.ObjectId
           ? file.taskId.toHexString()
           : undefined;
+    const fileUrl = buildFileUrl(file._id);
+    const inlineUrl = buildInlineFileUrl(file._id);
+    const urlVariants = Array.from(
+      new Set([fileUrl, inlineUrl, `/api/v1/files/${file._id}`]),
+    );
     const updatedTask = await Task.findByIdAndUpdate(
       file.taskId,
       {
         $pull: {
-          attachments: { url: `/api/v1/files/${file._id}` },
-          files: `/api/v1/files/${file._id}`,
+          attachments: { url: { $in: urlVariants } },
+          files: { $in: urlVariants },
         },
       },
       { new: true, projection: { attachments: 1 } },

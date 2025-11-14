@@ -4,7 +4,6 @@ import {
   Router,
   RequestHandler,
   NextFunction,
-  Request,
   Response,
 } from 'express';
 import authMiddleware from '../middleware/auth';
@@ -18,6 +17,7 @@ import container from '../di';
 import { TOKENS } from '../di/tokens';
 import type StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
 import TaskSyncController from '../controllers/taskSync.controller';
+import type RequestWithUser from '../types/request';
 import { syncTaskAttachments } from '../db/queries';
 
 const router: Router = Router();
@@ -39,7 +39,7 @@ router.get(
     query('userId').optional().isInt(),
     query('type').optional().isString(),
   ] as unknown as RequestHandler[],
-  async (req: Request, res: Response) => {
+  async (req: RequestWithUser, res: Response) => {
     const filters = {
       userId: req.query.userId ? Number(req.query.userId) : undefined,
       type: req.query.type as string | undefined,
@@ -55,7 +55,7 @@ router.get(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('id').isMongoId() as unknown as RequestHandler,
-  async (req, res) => {
+  async (req: RequestWithUser, res: Response) => {
     const file = await getFile(req.params.id);
     if (!file) {
       res.status(404).json({ error: 'Файл не найден' });
@@ -71,7 +71,7 @@ router.delete(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   param('id').isMongoId() as unknown as RequestHandler,
-  async (req, res, next: NextFunction) => {
+  async (req: RequestWithUser, res: Response, next: NextFunction) => {
     try {
       const deletionResult = await deleteFile(req.params.id);
       if (deletionResult?.taskId) {

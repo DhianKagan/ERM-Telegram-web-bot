@@ -83,7 +83,12 @@ function isCsrfError(err: unknown): boolean {
   return /csrf/i.test(name) || /csrf/i.test(message);
 }
 
-function resolveStatus(err: unknown, aborted: boolean, csrf: boolean): number {
+function resolveStatus(
+  err: unknown,
+  aborted: boolean,
+  csrf: boolean,
+  currentStatus?: number,
+): number {
   if (aborted) {
     return 400;
   }
@@ -104,6 +109,13 @@ function resolveStatus(err: unknown, aborted: boolean, csrf: boolean): number {
     ) {
       return candidate.statusCode;
     }
+  }
+  if (
+    typeof currentStatus === 'number' &&
+    Number.isFinite(currentStatus) &&
+    currentStatus >= 400
+  ) {
+    return currentStatus;
   }
   return 500;
 }
@@ -167,7 +179,7 @@ export default function errorMiddleware(
   void _next;
   const aborted = isRequestAborted(err, req);
   const csrfError = isCsrfError(err);
-  const status = resolveStatus(err, aborted, csrfError);
+  const status = resolveStatus(err, aborted, csrfError, res.statusCode);
   const clean = sanitizeError(err);
   const traceId =
     (res.locals && (res.locals.traceId || res.locals.trace)) || undefined;

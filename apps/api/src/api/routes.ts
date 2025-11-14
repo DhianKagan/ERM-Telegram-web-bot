@@ -215,9 +215,9 @@ export default async function registerRoutes(
 
       if (__corsOrigins.includes(origin)) {
         return cb(null, true);
-      } else {
-        return cb(new Error('CORS: origin not allowed'), false);
       }
+
+      return cb(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

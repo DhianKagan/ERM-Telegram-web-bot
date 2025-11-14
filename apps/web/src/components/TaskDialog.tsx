@@ -101,6 +101,183 @@ const ensureInlineMode = (value?: string | null): string | undefined => {
   return `${value}${separator}mode=inline`;
 };
 
+const FILE_ID_PATTERN = /\/(?:api\/v1\/files)\/([0-9a-f]{24})/i;
+
+const extractFileId = (url: string): string | null => {
+  if (typeof url !== 'string') return null;
+  const match = FILE_ID_PATTERN.exec(url.trim());
+  return match ? match[1].toLowerCase() : null;
+};
+
+const buildAttachmentKey = (url: string): string => {
+  const id = extractFileId(url);
+  if (id) return id;
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const [withoutHash] = trimmed.split('#');
+  const [pathPart] = withoutHash.split('?');
+  return pathPart.toLowerCase();
+};
+
+const normalizeAttachment = (attachment: Attachment): Attachment => {
+  const name =
+    typeof attachment.name === 'string' && attachment.name.trim()
+      ? attachment.name.trim()
+      : 'Файл';
+  const type =
+    typeof attachment.type === 'string' && attachment.type.trim()
+      ? attachment.type
+      : 'application/octet-stream';
+  const size =
+    typeof attachment.size === 'number' && Number.isFinite(attachment.size)
+      ? attachment.size
+      : 0;
+  const url = ensureInlineMode(attachment.url) ?? attachment.url;
+  const normalized: Attachment = {
+    ...attachment,
+    name,
+    url,
+    type,
+    size,
+  };
+  const inlineThumb = ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
+  if (inlineThumb) {
+    normalized.thumbnailUrl = inlineThumb;
+  } else if ('thumbnailUrl' in normalized) {
+    delete (normalized as { thumbnailUrl?: string }).thumbnailUrl;
+  }
+  return normalized;
+};
+
+const mergeAttachmentLists = (
+  base: Attachment[],
+  extras: Attachment[],
+): Attachment[] => {
+  const order: string[] = [];
+  const map = new Map<string, Attachment>();
+  const register = (list: Attachment[]) => {
+    list.forEach((attachment) => {
+      const normalized = normalizeAttachment(attachment);
+      const key = buildAttachmentKey(normalized.url);
+      if (!map.has(key)) {
+        order.push(key);
+      }
+      map.set(key, normalized);
+    });
+  };
+  register(base);
+  register(extras);
+  return order.map((key) => map.get(key)!).filter(Boolean);
+};
+
+const parseAttributeIds = (value: string | null): string[] => {
+  if (!value) return [];
+  return value
+    .split(/[,;\s]+/)
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token.length === 24 && /^[0-9a-f]+$/.test(token));
+};
+
+const collectCommentAttachmentIds = (html: string): string[] => {
+  if (!html || !html.trim()) {
+    return [];
+  }
+  const ids = new Set<string>();
+  const registerFromUrl = (candidate: string | null | undefined) => {
+    if (!candidate) return;
+    const id = extractFileId(candidate);
+    if (id) ids.add(id);
+  };
+  if (typeof window !== 'undefined' && typeof DOMParser !== 'undefined') {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      doc.querySelectorAll('img[src]').forEach((node) => {
+        registerFromUrl(node.getAttribute('src'));
+      });
+      doc.querySelectorAll('source[src]').forEach((node) => {
+        registerFromUrl(node.getAttribute('src'));
+      });
+      doc.querySelectorAll('img[srcset],source[srcset]').forEach((node) => {
+        const srcset = node.getAttribute('srcset');
+        if (!srcset) return;
+        srcset
+          .split(',')
+          .map((entry) => entry.trim().split(/\s+/, 1)[0])
+          .forEach((entry) => registerFromUrl(entry));
+      });
+      doc.querySelectorAll('a[href]').forEach((node) => {
+        registerFromUrl(node.getAttribute('href'));
+      });
+      const dataAttrs = [
+        'data-attachment-id',
+        'data-attachment-ids',
+        'data-file-id',
+        'data-file-ids',
+      ];
+      dataAttrs.forEach((attr) => {
+        doc.querySelectorAll(`[${attr}]`).forEach((node) => {
+          parseAttributeIds(node.getAttribute(attr)).forEach((id) => ids.add(id));
+        });
+      });
+    } catch {
+      /* игнорируем сбой парсинга */
+    }
+  }
+  const fallback = /\/api\/v1\/files\/([0-9a-f]{24})/gi;
+  let match: RegExpExecArray | null;
+  while ((match = fallback.exec(html)) !== null) {
+    ids.add((match[1] ?? '').toLowerCase());
+  }
+  return Array.from(ids);
+};
+
+const buildCommentAttachments = (commentHtml: string): Attachment[] => {
+  const ids = collectCommentAttachmentIds(commentHtml);
+  return ids.map((id) => {
+    const baseUrl = `/api/v1/files/${id}`;
+    const inlineUrl = ensureInlineMode(baseUrl) ?? baseUrl;
+    return {
+      name: 'Изображение',
+      url: inlineUrl,
+      thumbnailUrl: inlineUrl,
+      type: 'image/*',
+      size: 0,
+    } as Attachment;
+  });
+};
+
+const collectTaskAttachments = (
+  attachmentsInput: unknown,
+  filesInput: unknown,
+  commentHtml: string,
+): Attachment[] => {
+  const existing = Array.isArray(attachmentsInput)
+    ? (attachmentsInput as Attachment[]).filter(
+        (item): item is Attachment => Boolean(item && typeof item.url === 'string'),
+      )
+    : [];
+  let result = mergeAttachmentLists([], existing);
+  if (Array.isArray(filesInput)) {
+    const fileAttachments = (filesInput as unknown[])
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter((path) => path.startsWith('/api/v1/files/'))
+      .map(
+        (path) =>
+          ({
+            name: 'Файл',
+            url: path,
+            type: 'application/octet-stream',
+            size: 0,
+          }) as Attachment,
+      );
+    result = mergeAttachmentLists(result, fileAttachments);
+  }
+  const commentAttachments = buildCommentAttachments(commentHtml);
+  result = mergeAttachmentLists(result, commentAttachments);
+  return result;
+};
+
 interface Props {
   onClose: () => void;
   onSave?: (data: Task | null) => void;
@@ -1579,7 +1756,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       });
       hasAutofilledAssignee.current = true;
       setTaskType(normalizedTaskType);
-      setComment((taskData.comment as string) || '');
+      const commentHtml = (taskData.comment as string) || '';
+      const attachmentsFromTask = collectTaskAttachments(
+        taskData.attachments,
+        (taskData as Record<string, unknown>).files,
+        commentHtml,
+      );
+      setComment(commentHtml);
       setPriority(curPriority);
       setTransportType(curTransport);
       setTransportDriverId(driverIdValue);
@@ -1669,9 +1852,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         autoRouteRef.current = true;
         setRouteLink('');
       }
-      setAttachments(
-        ((taskData.attachments as Attachment[]) || []) as Attachment[],
-      );
+      setAttachments(attachmentsFromTask);
       const albumChat = (taskData as Record<string, unknown>)
         .telegram_photos_chat_id;
       const albumMessage = (taskData as Record<string, unknown>)
@@ -1693,7 +1874,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         title: (taskData.title as string) || '',
         taskType: normalizedTaskType,
         description: (taskData.task_description as string) || '',
-        comment: (taskData.comment as string) || '',
+        comment: commentHtml,
         priority: curPriority,
         transportType: curTransport,
         paymentMethod: curPayment,
@@ -1709,8 +1890,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         endLink: endLocationLink,
         startDate,
         dueDate,
-        attachments: ((taskData.attachments as Attachment[]) ||
-          []) as Attachment[],
+        attachments: mergeAttachmentLists([], attachmentsFromTask),
         distanceKm: typeof distanceValue === 'number' ? distanceValue : null,
         cargoLength: lengthValue,
         cargoWidth: widthValue,
@@ -3132,7 +3312,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStartLink(d.startLink);
     setEnd(d.end);
     setEndLink(d.endLink);
-    setAttachments(d.attachments as Attachment[]);
+    setAttachments(mergeAttachmentLists([], d.attachments as Attachment[]));
     setPhotosLink(
       buildTelegramMessageLink(d.photosChatId, d.photosMessageId) ??
         (typeof d.photosLink === 'string' ? d.photosLink : null),
@@ -4082,7 +4262,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   ) : null}
                   <FileUploader
                     disabled={!canUploadAttachments}
-                    onUploaded={(a) => setAttachments((p) => [...p, a])}
+                    onUploaded={(a) =>
+                      setAttachments((p) => mergeAttachmentLists(p, [a]))
+                    }
                     onRemove={(a) => removeAttachment(a)}
                     taskId={effectiveTaskId}
                   />

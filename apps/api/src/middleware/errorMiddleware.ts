@@ -60,7 +60,8 @@ function isRequestAborted(err: unknown, req: Request): boolean {
   if (/AbortError/i.test(name)) {
     return true;
   }
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  const message =
+    typeof candidate.message === 'string' ? candidate.message : '';
   return /aborted/i.test(message);
 }
 
@@ -78,7 +79,8 @@ function isCsrfError(err: unknown): boolean {
     return true;
   }
   const name = typeof candidate.name === 'string' ? candidate.name : '';
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  const message =
+    typeof candidate.message === 'string' ? candidate.message : '';
   return /csrf/i.test(name) || /csrf/i.test(message);
 }
 
@@ -91,10 +93,16 @@ function resolveStatus(err: unknown, aborted: boolean, csrf: boolean): number {
   }
   if (err && typeof err === 'object') {
     const candidate = err as Partial<KnownError>;
-    if (typeof candidate.status === 'number' && Number.isFinite(candidate.status)) {
+    if (
+      typeof candidate.status === 'number' &&
+      Number.isFinite(candidate.status)
+    ) {
       return candidate.status;
     }
-    if (typeof candidate.statusCode === 'number' && Number.isFinite(candidate.statusCode)) {
+    if (
+      typeof candidate.statusCode === 'number' &&
+      Number.isFinite(candidate.statusCode)
+    ) {
       return candidate.statusCode;
     }
   }
@@ -161,15 +169,21 @@ export default function errorMiddleware(
   const csrfError = isCsrfError(err);
   const status = resolveStatus(err, aborted, csrfError);
   const clean = sanitizeError(err);
-  const traceId = (res.locals && (res.locals.traceId || res.locals.trace)) || undefined;
-  const userId = (res.locals && res.locals.user && res.locals.user.id) || undefined;
+  const traceId =
+    (res.locals && (res.locals.traceId || res.locals.trace)) || undefined;
+  const userId =
+    (res.locals && res.locals.user && res.locals.user.id) || undefined;
 
   const time = new Date().toISOString();
   const method = req.method;
   const url = req.originalUrl || req.url;
-  const ip = req.ip || (req.connection && 'remoteAddress' in req.connection
-    ? String((req.connection as { remoteAddress?: unknown }).remoteAddress ?? '')
-    : undefined);
+  const ip =
+    req.ip ||
+    (req.connection && 'remoteAddress' in req.connection
+      ? String(
+          (req.connection as { remoteAddress?: unknown }).remoteAddress ?? '',
+        )
+      : undefined);
 
   const body = getRequestBody(req);
   const stack = getStack(err, clean);
@@ -191,7 +205,21 @@ export default function errorMiddleware(
   };
 
   appendErrorLog(JSON.stringify(logObject));
-  appendErrorLog('--- ' + time + ' ' + method + ' ' + url + ' trace:' + (traceId ?? '-') + ' user:' + (userId ?? '-') + ' ip:' + (ip ?? '-') + ' ---');
+  appendErrorLog(
+    '--- ' +
+      time +
+      ' ' +
+      method +
+      ' ' +
+      url +
+      ' trace:' +
+      (traceId ?? '-') +
+      ' user:' +
+      (userId ?? '-') +
+      ' ip:' +
+      (ip ?? '-') +
+      ' ---',
+  );
   appendErrorLog(stack);
   appendErrorLog('');
 
@@ -199,7 +227,14 @@ export default function errorMiddleware(
   console.error('API error:', clean);
   try {
     writeLog(
-      'Ошибка ' + clean + ' path:' + url + ' ip:' + (ip ?? '-') + ' trace:' + (traceId ?? '-'),
+      'Ошибка ' +
+        clean +
+        ' path:' +
+        url +
+        ' ip:' +
+        (ip ?? '-') +
+        ' trace:' +
+        (traceId ?? '-'),
       'error',
     );
   } catch (writeErr) {
@@ -225,4 +260,3 @@ export default function errorMiddleware(
 
   res.status(problem.status).json(problem);
 }
-

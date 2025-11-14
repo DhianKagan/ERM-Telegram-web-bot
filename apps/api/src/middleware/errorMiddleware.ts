@@ -1,89 +1,107 @@
-// Назначение: единая обработка ошибок API в формате RFC 9457
-// Основные модули: prom-client, service, problem utils
-import { Response, NextFunction } from 'express';
-import client from 'prom-client';
+/**
+ * Универсальный error middleware.
+ * Записывает детальный JSON + human-readable стек в ./logs/error.log
+ */
+import { Request, Response, NextFunction } from 'express';
+import fs from 'fs';
+import path from 'path';
+// Путь к sanitizeError и writeLog зависит от структуры репо — эти модули у вас уже есть
+import { sanitizeError } from '../utils/sanitizeError';
 import { writeLog } from '../services/service';
-import { randomUUID } from 'crypto';
-import type { RequestWithUser } from '../types/request';
-import { sendProblem } from '../utils/problem';
-import { ProblemDetails } from '../types/problem';
-import { apiErrors } from '../api/middleware';
-import sanitizeError from '../utils/sanitizeError';
 
-const csrfErrors = new client.Counter({
-  name: 'csrf_errors_total',
-  help: 'Количество ошибок CSRF',
-});
+const LOG_DIR = path.join(process.cwd(), 'logs');
+const ERROR_LOG_FILE = path.join(LOG_DIR, 'error.log');
+
+function ensureLogDir() {
+  try {
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Не удалось создать logs/:', e);
+  }
+}
+
+function appendErrorLog(entry: string) {
+  try {
+    ensureLogDir();
+    fs.appendFileSync(ERROR_LOG_FILE, entry + '\n', { encoding: 'utf8' });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Не удалось записать в error.log:', e);
+  }
+}
 
 export default function errorMiddleware(
   err: unknown,
-  req: RequestWithUser,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
-  const error = err as {
-    [key: string]: unknown;
-    message: string;
-    type?: string;
-    code?: string;
-  };
-  const traceId =
-    ((req as unknown as Record<string, string>).traceId as
-      | string
-      | undefined) || randomUUID();
-  if (error.type === 'request.aborted') {
-    const problem: Omit<ProblemDetails, 'instance'> = {
-      type: 'about:blank',
-      title: 'Некорректный запрос',
-      status: 400,
-      detail: 'Клиент оборвал соединение',
-    };
-    sendProblem(req, res, problem);
-    apiErrors.inc({ method: req.method, path: req.originalUrl, status: 400 });
-    return;
-  }
-  if (error.code === 'EBADCSRFTOKEN' || /CSRF token/.test(error.message)) {
-    if (process.env.NODE_ENV !== 'test') {
-      csrfErrors.inc();
-      const header = req.headers['x-xsrf-token']
-        ? String(req.headers['x-xsrf-token']).slice(0, 8)
-        : 'none';
-      const cookie =
-        req.cookies && (req.cookies as Record<string, string>)['XSRF-TOKEN']
-          ? String((req.cookies as Record<string, string>)['XSRF-TOKEN']).slice(
-              0,
-              8,
-            )
-          : 'none';
-      const uid = req.user ? `${req.user.id}/${req.user.username}` : 'anon';
-      writeLog(
-        `Ошибка CSRF-токена header:${header} cookie:${cookie} user:${uid} trace:${traceId} instance:${traceId}`,
-      ).catch(() => {});
+  const clean = sanitizeError(err as Error);
+
+  const traceId = (res.locals && (res.locals.traceId || res.locals.trace)) || null;
+  const userId = (res.locals && res.locals.user && res.locals.user.id) || null;
+
+  const time = new Date().toISOString();
+  const method = req.method;
+  const url = req.originalUrl || req.url;
+  const ip = req.ip || (req.connection && (req.connection as any).remoteAddress) || null;
+
+  const bodyStr = (() => {
+    try {
+      return JSON.stringify(req.body);
+    } catch {
+      return String(req.body);
     }
-    const problem: Omit<ProblemDetails, 'instance'> = {
-      type: 'about:blank',
-      title: 'Ошибка CSRF',
-      status: 403,
-      detail:
-        'Токен недействителен или отсутствует. Обновите страницу и попробуйте ещё раз.',
-    };
-    sendProblem(req, res, problem);
-    apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
-    return;
-  }
-  const clean = sanitizeError(error);
-  console.error('API error:', clean);
-  writeLog(
-    `Ошибка ${clean} path:${req.originalUrl} ip:${req.ip} trace:${traceId} instance:${traceId}`,
-    'error',
-  ).catch(() => {});
-  const status = res.statusCode >= 400 ? res.statusCode : 500;
-  const problem: Omit<ProblemDetails, 'instance'> = {
-    type: 'about:blank',
-    title: 'Внутренняя ошибка',
-    status,
-    detail: error.message,
+  })();
+
+  const stack = err instanceof Error && ((err as Error).stack || (err as Error).message)
+    ? (err as Error).stack
+    : String(clean);
+
+  const logObject = {
+    time,
+    traceId,
+    method,
+    url,
+    ip,
+    userId,
+    clean,
+    body: bodyStr,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      'user-agent': req.headers['user-agent'],
+    },
   };
-  sendProblem(req, res, problem);
-  apiErrors.inc({ method: req.method, path: req.originalUrl, status });
+
+  // JSON-представление (машинно-удобно)
+  appendErrorLog(JSON.stringify(logObject));
+  // Human-readable запись
+  appendErrorLog(`--- ${time} ${method} ${url} trace:${traceId || '-'} user:${userId || '-'} ip:${ip || '-'} ---`);
+  appendErrorLog(stack || '');
+  appendErrorLog(''); // пустая строка для разделения записей
+
+  // Дублируем в console.error + центральный лог
+  // eslint-disable-next-line no-console
+  console.error('API error:', clean);
+  try {
+    writeLog(
+      `Ошибка ${typeof clean === 'string' ? clean : JSON.stringify(clean)} path:${url} ip:${ip} trace:${traceId}`,
+      'error',
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('writeLog error:', e);
+  }
+
+  const status =
+    (err && typeof err === 'object' && 'status' in (err as any) && (err as any).status) || 500;
+
+  res.status(typeof status === 'number' ? status : 500).json({
+    error: (err && (err as any).message) || 'Internal Server Error',
+    traceId: traceId || undefined,
+  });
 }

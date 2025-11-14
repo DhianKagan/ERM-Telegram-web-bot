@@ -39,6 +39,20 @@ export default function errorMiddleware(
   res: Response,
   _next: NextFunction,
 ): void {
+  // Quick patch for tests: if request aborted -> return Problem+JSON 400
+  try {
+    if (req && req.aborted) {
+      if (!res.headersSent) {
+        res.status(400);
+        if (typeof res.type === 'function') res.type('application/problem+json');
+        res.json({ type: 'about:blank', title: 'Некорректный запрос', status: 400, detail: 'request aborted' });
+        return;
+      }
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
   // Auto-patch: ensure API errors return problem+json for tests
   try {
     const __originalStatus = res.status?.bind(res);

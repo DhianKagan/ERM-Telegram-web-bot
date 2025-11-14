@@ -89,9 +89,7 @@ describe('files route', () => {
         }),
     });
     deleteFile.mockResolvedValue(undefined);
-    await request(app)
-      .delete('/444444444444444444444444')
-      .expect(204);
+    await request(app).delete('/444444444444444444444444').expect(204);
     expect(deleteFile).toHaveBeenCalledWith('444444444444444444444444');
   });
 
@@ -99,9 +97,7 @@ describe('files route', () => {
     File.findById.mockReturnValue({
       lean: () => Promise.resolve(null),
     });
-    await request(app)
-      .delete('/555555555555555555555555')
-      .expect(404);
+    await request(app).delete('/555555555555555555555555').expect(404);
     expect(deleteFile).not.toHaveBeenCalled();
   });
 });

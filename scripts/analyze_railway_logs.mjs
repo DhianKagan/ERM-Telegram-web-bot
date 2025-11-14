@@ -43,7 +43,10 @@ function parseArgs(argv) {
 function normalizeMessage(line) {
   return line
     .replace(/^[^A-Za-zА-Яа-я0-9]+/, '')
-    .replace(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?\s*/u, '')
+    .replace(
+      /\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?\s*/u,
+      '',
+    )
     .replace(/^\[[^\]]+\]\s*/, '')
     .trim();
 }
@@ -70,51 +73,59 @@ const RECOMMENDATIONS = {
     title: 'Прогнать линтер',
     command: 'pnpm lint',
     autoRun: true,
-    reason: 'Ошибки уровня TypeError/ReferenceError часто выявляются линтером до деплоя.'
+    reason:
+      'Ошибки уровня TypeError/ReferenceError часто выявляются линтером до деплоя.',
   },
   testApi: {
     id: 'test-api',
     title: 'Запустить API-тесты',
     command: 'pnpm test:api',
     autoRun: true,
-    reason: 'API-тесты помогают воспроизвести ошибки бизнес-логики, найденные в логах.'
+    reason:
+      'API-тесты помогают воспроизвести ошибки бизнес-логики, найденные в логах.',
   },
   checkMongo: {
     id: 'check-mongo',
     title: 'Проверить подключение к MongoDB',
     command: 'node scripts/check_mongo.mjs',
     autoRun: true,
-    reason: 'Логи содержат проблемы подключения к MongoDB; проверяем доступность базы.'
+    reason:
+      'Логи содержат проблемы подключения к MongoDB; проверяем доступность базы.',
   },
   reviewValidation: {
     id: 'review-validation',
     title: 'Проверить схемы валидации',
     autoRun: false,
-    reason: 'Обнаружены ValidationError — требуется сверить схемы DTO и ответы API.'
+    reason:
+      'Обнаружены ValidationError — требуется сверить схемы DTO и ответы API.',
   },
   investigateTimeout: {
     id: 'investigate-timeout',
     title: 'Проверить таймауты запросов',
     autoRun: false,
-    reason: 'Во время деплоя возникали таймауты — убедитесь, что внешние сервисы доступны и таймауты увеличены.'
+    reason:
+      'Во время деплоя возникали таймауты — убедитесь, что внешние сервисы доступны и таймауты увеличены.',
   },
   inspectTelegram: {
     id: 'inspect-telegram',
     title: 'Проверить вебхук Telegram',
     autoRun: false,
-    reason: 'Ошибки Telegram API — убедитесь, что вебхук и токен бота заданы корректно.'
+    reason:
+      'Ошибки Telegram API — убедитесь, что вебхук и токен бота заданы корректно.',
   },
   memoryProfile: {
     id: 'memory-profile',
     title: 'Проанализировать потребление памяти',
     autoRun: false,
-    reason: 'Обнаружены признаки нехватки памяти, проанализируйте нагрузку и оптимизируйте код.'
+    reason:
+      'Обнаружены признаки нехватки памяти, проанализируйте нагрузку и оптимизируйте код.',
   },
   portInUse: {
     id: 'port-in-use',
     title: 'Проверить занятые порты',
     autoRun: false,
-    reason: 'Приложение не смогло занять порт — проверьте фоновые процессы и конфигурацию Railway.'
+    reason:
+      'Приложение не смогло занять порт — проверьте фоновые процессы и конфигурацию Railway.',
   },
   formatCode: {
     id: 'format-code',
@@ -122,61 +133,71 @@ const RECOMMENDATIONS = {
     command: 'pnpm format',
     autoRun: true,
     reason:
-      'Логи содержат ошибки форматирования. Прогоним Prettier, чтобы автоматически привести код к стандарту проекта.'
-  }
+      'Логи содержат ошибки форматирования. Прогоним Prettier, чтобы автоматически привести код к стандарту проекта.',
+  },
 };
 
 const PATTERNS = [
   {
     id: 'type-error',
-    regex: /(TypeError|ReferenceError|SyntaxError|is not defined|Cannot read properties|Cannot set properties)/i,
-    recommendationIds: ['lint', 'testApi']
+    regex:
+      /(TypeError|ReferenceError|SyntaxError|is not defined|Cannot read properties|Cannot set properties)/i,
+    recommendationIds: ['lint', 'testApi'],
   },
   {
     id: 'unhandled-rejection',
     regex: /UnhandledPromiseRejection|Unhandled rejection|Unhandled error/i,
-    recommendationIds: ['testApi']
+    recommendationIds: ['testApi'],
   },
   {
     id: 'mongo-connection',
-    regex: /(Mongo(Network)?Error|failed to connect to server|ECONNREFUSED.*27017)/i,
-    recommendationIds: ['checkMongo']
+    regex:
+      /(Mongo(Network)?Error|failed to connect to server|ECONNREFUSED.*27017)/i,
+    recommendationIds: ['checkMongo'],
   },
   {
     id: 'validation-error',
     regex: /ValidationError|invalid input|BadRequestException/i,
-    recommendationIds: ['reviewValidation', 'testApi']
+    recommendationIds: ['reviewValidation', 'testApi'],
   },
   {
     id: 'timeout',
     regex: /(ETIMEDOUT|TimeoutError|timed out|took too long)/i,
-    recommendationIds: ['investigateTimeout']
+    recommendationIds: ['investigateTimeout'],
   },
   {
     id: 'telegram-error',
     regex: /telegram\s*(bot)?\s*api|ETELEGRAM|400 Bad Request: webhook/i,
-    recommendationIds: ['inspectTelegram']
+    recommendationIds: ['inspectTelegram'],
   },
   {
     id: 'memory',
     regex: /(OutOfMemory|JavaScript heap out of memory|ENOMEM)/i,
-    recommendationIds: ['memoryProfile']
+    recommendationIds: ['memoryProfile'],
   },
   {
     id: 'port',
     regex: /EADDRINUSE|address already in use/i,
-    recommendationIds: ['portInUse']
+    recommendationIds: ['portInUse'],
   },
   {
     id: 'formatting',
     regex:
       /(Run \w+ lint --fix|Run pnpm lint --fix|Formatting issues detected|Prettier failed|Delete ␍|Expected indentation of|Insert `;`)/i,
-    recommendationIds: ['formatCode']
-  }
+    recommendationIds: ['formatCode'],
+  },
 ];
 
-function buildOutputPaths({ logPath, prefix, outputDir, jsonPath, markdownPath }) {
-  const resolvedOutputDir = outputDir ? path.resolve(outputDir) : path.resolve('Railway', 'analysis');
+function buildOutputPaths({
+  logPath,
+  prefix,
+  outputDir,
+  jsonPath,
+  markdownPath,
+}) {
+  const resolvedOutputDir = outputDir
+    ? path.resolve(outputDir)
+    : path.resolve('Railway', 'analysis');
   fs.mkdirSync(resolvedOutputDir, { recursive: true });
 
   const safePrefix = prefix
@@ -185,14 +206,18 @@ function buildOutputPaths({ logPath, prefix, outputDir, jsonPath, markdownPath }
   const timestamp = new Date().toISOString().replace(/[:]/g, '-');
   const baseName = `${safePrefix}-${timestamp}`;
 
-  const resolvedJson = jsonPath ? path.resolve(jsonPath) : path.join(resolvedOutputDir, `${baseName}.json`);
-  const resolvedMarkdown = markdownPath ? path.resolve(markdownPath) : path.join(resolvedOutputDir, `${baseName}.md`);
+  const resolvedJson = jsonPath
+    ? path.resolve(jsonPath)
+    : path.join(resolvedOutputDir, `${baseName}.json`);
+  const resolvedMarkdown = markdownPath
+    ? path.resolve(markdownPath)
+    : path.join(resolvedOutputDir, `${baseName}.md`);
 
   return {
     outputDir: resolvedOutputDir,
     jsonPath: resolvedJson,
     markdownPath: resolvedMarkdown,
-    baseName
+    baseName,
   };
 }
 
@@ -202,7 +227,15 @@ function summarizeEntries(map, limit = 5) {
     .slice(0, limit);
 }
 
-function renderMarkdown({ logPath, stats, errors, warnings, recommendations, jsonPath, baseName }) {
+function renderMarkdown({
+  logPath,
+  stats,
+  errors,
+  warnings,
+  recommendations,
+  jsonPath,
+  baseName,
+}) {
   const lines = [];
   lines.push(`# Анализ логов ${baseName}`);
   lines.push('');
@@ -216,7 +249,9 @@ function renderMarkdown({ logPath, stats, errors, warnings, recommendations, jso
   if (errors.length) {
     lines.push('## Ключевые ошибки');
     errors.forEach((entry, index) => {
-      lines.push(`${index + 1}. **${entry.message}** — ${entry.count} повторов.`);
+      lines.push(
+        `${index + 1}. **${entry.message}** — ${entry.count} повторов.`,
+      );
       if (entry.samples.length) {
         lines.push('   - Примеры:');
         entry.samples.forEach((sample) => {
@@ -249,7 +284,9 @@ function renderMarkdown({ logPath, stats, errors, warnings, recommendations, jso
     lines.push('## Рекомендации по улучшению');
     recommendations.forEach((rec) => {
       const auto = rec.autoRun ? ' (будет выполнено автоматически)' : '';
-      lines.push(`- ${rec.title}${auto}: ${rec.reason}${rec.command ? ` — команда: \`${rec.command}\`` : ''}`);
+      lines.push(
+        `- ${rec.title}${auto}: ${rec.reason}${rec.command ? ` — команда: \`${rec.command}\`` : ''}`,
+      );
     });
     lines.push('');
   } else {
@@ -259,7 +296,9 @@ function renderMarkdown({ logPath, stats, errors, warnings, recommendations, jso
   }
 
   lines.push('---');
-  lines.push(`Отчёт сформирован автоматически скриптом \`scripts/analyze_railway_logs.mjs\`. JSON: ${jsonPath}`);
+  lines.push(
+    `Отчёт сформирован автоматически скриптом \`scripts/analyze_railway_logs.mjs\`. JSON: ${jsonPath}`,
+  );
   lines.push('');
 
   return lines.join(os.EOL);
@@ -290,7 +329,7 @@ function main() {
     totalLines: lines.length,
     errors: 0,
     warnings: 0,
-    infos: 0
+    infos: 0,
   };
 
   const errorMap = new Map();
@@ -342,7 +381,7 @@ function main() {
         message: normalized,
         count: 0,
         samples: [],
-        context: []
+        context: [],
       };
       entry.count += 1;
       if (entry.samples.length < 3 && !entry.samples.includes(line.trim())) {
@@ -363,7 +402,7 @@ function main() {
       const normalized = normalizeMessage(line);
       const entry = warnMap.get(normalized) || {
         message: normalized,
-        count: 0
+        count: 0,
       };
       entry.count += 1;
       warnMap.set(normalized, entry);
@@ -379,7 +418,7 @@ function main() {
     prefix: args.prefix,
     outputDir: args['output-dir'],
     jsonPath: args.json,
-    markdownPath: args.markdown
+    markdownPath: args.markdown,
   });
 
   const markdown = renderMarkdown({
@@ -389,7 +428,7 @@ function main() {
     warnings: topWarnings,
     recommendations,
     jsonPath,
-    baseName
+    baseName,
   });
   fs.writeFileSync(markdownPath, markdown, 'utf8');
 
@@ -400,7 +439,7 @@ function main() {
     stats,
     errors: topErrors,
     warnings: topWarnings,
-    recommendations
+    recommendations,
   };
   fs.writeFileSync(jsonPath, JSON.stringify(jsonPayload, null, 2), 'utf8');
 

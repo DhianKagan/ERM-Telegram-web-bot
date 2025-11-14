@@ -78,8 +78,7 @@ container.registerSingleton(
 );
 container.registerSingleton(TOKENS.TaskDraftsController, TaskDraftsController);
 container.register(TOKENS.ReportGeneratorService, {
-  useFactory: (c) =>
-    new ReportGeneratorService(c.resolve(TOKENS.TasksService)),
+  useFactory: (c) => new ReportGeneratorService(c.resolve(TOKENS.TasksService)),
 });
 
 export { container };

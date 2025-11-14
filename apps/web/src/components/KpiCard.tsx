@@ -1,5 +1,5 @@
 // Карточка KPI: отображает название, значение и дельту
-import React from "react";
+import React from 'react';
 
 interface KpiCardProps {
   title: string;
@@ -21,9 +21,9 @@ export default function KpiCard({
         <p className="text-accentPrimary mt-1 text-2xl font-bold">{value}</p>
         {delta !== undefined && (
           <p
-            className={`text-sm ${delta >= 0 ? "text-green-500" : "text-red-500"}`}
+            className={`text-sm ${delta >= 0 ? 'text-green-500' : 'text-red-500'}`}
           >
-            {delta >= 0 ? "+" : ""}
+            {delta >= 0 ? '+' : ''}
             {delta}
           </p>
         )}

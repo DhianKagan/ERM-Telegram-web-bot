@@ -31,7 +31,7 @@ export const getOsrmDistance = async (
       return null;
     }
     return Number((result.distance / 1000).toFixed(1));
-  } catch (error) {
+  } catch {
     return null;
   }
 };

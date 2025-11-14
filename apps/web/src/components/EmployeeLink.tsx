@@ -1,16 +1,16 @@
 // Назначение: кнопка-ссылка для открытия карточки сотрудника в модальном окне.
 // Основные модули: React, clsx, useEmployeeDialog.
-import React from "react";
-import clsx from "clsx";
-import useEmployeeDialog from "../hooks/useEmployeeDialog";
+import React from 'react';
+import clsx from 'clsx';
+import useEmployeeDialog from '../hooks/useEmployeeDialog';
 
 type EmployeeLinkProps = {
   employeeId: number | string;
   stopPropagation?: boolean;
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type" | "onClick">;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'onClick'>;
 
 const baseClassName =
-  "inline-flex cursor-pointer items-center text-accentPrimary transition-colors duration-150 hover:text-accentPrimary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+  'inline-flex cursor-pointer items-center text-accentPrimary transition-colors duration-150 hover:text-accentPrimary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentPrimary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 const EmployeeLink: React.FC<EmployeeLinkProps> = ({
   employeeId,

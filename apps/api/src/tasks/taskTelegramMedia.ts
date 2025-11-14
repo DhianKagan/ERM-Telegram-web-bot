@@ -16,10 +16,7 @@ import {
   type TaskDocument,
 } from '../db/model';
 import { uploadsDir } from '../config/storage';
-import type {
-  FormatTaskSection,
-  InlineImage,
-} from '../utils/formatTask';
+import type { FormatTaskSection, InlineImage } from '../utils/formatTask';
 import { SECTION_SEPARATOR } from '../utils/formatTask';
 
 type LocalPhotoInfo = {
@@ -116,7 +113,10 @@ const findBreakIndex = (text: string, limit: number): number => {
   return Math.min(limit, text.length);
 };
 
-const splitMessageForTelegramLimit = (text: string, limit: number): string[] => {
+const splitMessageForTelegramLimit = (
+  text: string,
+  limit: number,
+): string[] => {
   const normalized = typeof text === 'string' ? text : '';
   if (!normalized) {
     return [];
@@ -259,9 +259,7 @@ const toAbsoluteAttachmentUrl = (
   if (!baseUrl) {
     return null;
   }
-  const normalizedPath = trimmed.startsWith('/')
-    ? trimmed.slice(1)
-    : trimmed;
+  const normalizedPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
   return `${baseUrl}/${normalizedPath}`;
 };
 
@@ -336,10 +334,7 @@ export class TaskTelegramMedia {
             ? attachment.type.trim().toLowerCase()
             : '';
         if (!type.startsWith('image/')) return;
-        const absolute = toAbsoluteAttachmentUrl(
-          url,
-          this.attachmentsBaseUrl,
-        );
+        const absolute = toAbsoluteAttachmentUrl(url, this.attachmentsBaseUrl);
         if (!absolute) return;
         const [mimeType] = type.split(';', 1);
         const name =
@@ -347,7 +342,8 @@ export class TaskTelegramMedia {
             ? attachment.name.trim()
             : undefined;
         const size =
-          typeof attachment.size === 'number' && Number.isFinite(attachment.size)
+          typeof attachment.size === 'number' &&
+          Number.isFinite(attachment.size)
             ? attachment.size
             : undefined;
         if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
@@ -450,7 +446,9 @@ export class TaskTelegramMedia {
         const options: Parameters<typeof this.bot.telegram.sendMessage>[2] = {
           parse_mode: 'MarkdownV2',
           link_preview_options: { is_disabled: true },
-          ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+          ...(typeof topicId === 'number'
+            ? { message_thread_id: topicId }
+            : {}),
           ...(withKeyboard && keyboardMarkup
             ? { reply_markup: keyboardMarkup }
             : {}),
@@ -465,7 +463,10 @@ export class TaskTelegramMedia {
           lastTextMessageId = extraMessage.message_id;
         }
       } catch (error) {
-        console.error('Не удалось отправить дополнительный текст задачи', error);
+        console.error(
+          'Не удалось отправить дополнительный текст задачи',
+          error,
+        );
         throw error;
       }
     };
@@ -701,18 +702,20 @@ export class TaskTelegramMedia {
         : {}),
     });
 
-    const localPhotoInfoCache = cache ?? new Map<string, LocalPhotoInfo | null>();
+    const localPhotoInfoCache =
+      cache ?? new Map<string, LocalPhotoInfo | null>();
     const resolvePhotoInput = (url: string) =>
       this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
 
     const pendingImages: { url: string; caption?: string }[] = [];
-    type SendMediaGroupOptions =
-      NonNullable<Parameters<typeof this.bot.telegram.sendMediaGroup>[2]> & {
-        reply_parameters?: {
-          message_id: number;
-          allow_sending_without_reply?: boolean;
-        };
+    type SendMediaGroupOptions = NonNullable<
+      Parameters<typeof this.bot.telegram.sendMediaGroup>[2]
+    > & {
+      reply_parameters?: {
+        message_id: number;
+        allow_sending_without_reply?: boolean;
       };
+    };
     const mediaGroupOptionsBase = (): SendMediaGroupOptions => ({
       ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
       ...(replyTo
@@ -725,7 +728,10 @@ export class TaskTelegramMedia {
         : {}),
     });
 
-    const sendSingleImage = async (current: { url: string; caption?: string }) => {
+    const sendSingleImage = async (current: {
+      url: string;
+      caption?: string;
+    }) => {
       const caption = current.caption;
       const sendPhotoAttempt = async () => {
         const options = photoOptionsBase();
@@ -734,7 +740,11 @@ export class TaskTelegramMedia {
           options.parse_mode = 'MarkdownV2';
         }
         const media = await resolvePhotoInput(current.url);
-        const response = await this.bot.telegram.sendPhoto(chat, media, options);
+        const response = await this.bot.telegram.sendPhoto(
+          chat,
+          media,
+          options,
+        );
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
         }
@@ -819,7 +829,10 @@ export class TaskTelegramMedia {
 
     for (const attachment of attachments) {
       if (attachment.kind === 'image') {
-        pendingImages.push({ url: attachment.url, caption: attachment.caption });
+        pendingImages.push({
+          url: attachment.url,
+          caption: attachment.caption,
+        });
         continue;
       }
       await flushImages();
@@ -871,8 +884,8 @@ export class TaskTelegramMedia {
     chat: string | number,
     messageIds: number[],
   ): Promise<void> {
-    const normalized = messageIds.filter((value) =>
-      typeof value === 'number' && Number.isFinite(value),
+    const normalized = messageIds.filter(
+      (value) => typeof value === 'number' && Number.isFinite(value),
     );
     for (const messageId of normalized) {
       try {
@@ -902,7 +915,8 @@ export class TaskTelegramMedia {
       const url = hasInlineParam
         ? absolute
         : `${absolute}${absolute.includes('?') ? '&' : '?'}mode=inline`;
-      const caption = image.alt && image.alt.trim() ? image.alt.trim() : undefined;
+      const caption =
+        image.alt && image.alt.trim() ? image.alt.trim() : undefined;
       const payload: NormalizedImage = { kind: 'image', url };
       if (caption) {
         payload.caption = caption;
@@ -1076,7 +1090,9 @@ export class TaskTelegramMedia {
     }
   }
 
-  private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
+  private async resolveLocalPhotoInfo(
+    url: string,
+  ): Promise<LocalPhotoInfo | null> {
     const fileId = this.extractLocalFileId(url);
     if (!fileId) return null;
     try {
@@ -1090,8 +1106,12 @@ export class TaskTelegramMedia {
       }
       const query = fileModel.findById(fileId);
       const record =
-        query && typeof (query as unknown as { lean?: () => unknown }).lean === 'function'
-          ? await (query as unknown as { lean: () => Promise<FileDocument | null> }).lean()
+        query &&
+        typeof (query as unknown as { lean?: () => unknown }).lean ===
+          'function'
+          ? await (
+              query as unknown as { lean: () => Promise<FileDocument | null> }
+            ).lean()
           : ((await query) as unknown as FileDocument | null);
       if (!record || typeof record.path !== 'string' || !record.path.trim()) {
         return null;
@@ -1099,11 +1119,7 @@ export class TaskTelegramMedia {
       const normalizedPath = record.path.trim();
       const target = path.resolve(uploadsAbsoluteDir, normalizedPath);
       const relative = path.relative(uploadsAbsoluteDir, target);
-      if (
-        !relative ||
-        relative.startsWith('..') ||
-        path.isAbsolute(relative)
-      ) {
+      if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
         return null;
       }
       await access(target);
@@ -1148,12 +1164,7 @@ export class TaskTelegramMedia {
     if (!error || typeof error !== 'object') {
       return null;
     }
-    const {
-      response,
-      description,
-      message,
-      cause,
-    } = error as {
+    const { response, description, message, cause } = error as {
       response?: { description?: unknown };
       description?: unknown;
       message?: unknown;
@@ -1227,9 +1238,9 @@ export class TaskTelegramMedia {
         : typeof candidate.description === 'string'
           ? candidate.description
           : '';
-    return descriptionSource.toLowerCase().includes(
-      'message to delete not found',
-    );
+    return descriptionSource
+      .toLowerCase()
+      .includes('message to delete not found');
   }
 }
 

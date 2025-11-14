@@ -67,7 +67,9 @@ export async function detail(req: Request, res: Response): Promise<void> {
   res.json({ plan });
 }
 
-const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes'] => {
+const normalizeRoutesPayload = (
+  routes: unknown,
+): RoutePlanUpdatePayload['routes'] => {
   if (!Array.isArray(routes)) return undefined;
   return routes
     .map((route) => {
@@ -77,7 +79,10 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
       let driverId: number | string | null | undefined;
       if (rawDriverId === null) {
         driverId = null;
-      } else if (typeof rawDriverId === 'number' && Number.isFinite(rawDriverId)) {
+      } else if (
+        typeof rawDriverId === 'number' &&
+        Number.isFinite(rawDriverId)
+      ) {
         driverId = Number(rawDriverId);
       } else if (typeof rawDriverId === 'string') {
         const trimmed = rawDriverId.trim();
@@ -85,7 +90,10 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
       }
       const notesRaw = data.notes;
       const normalized: RoutePlanRouteInput = {
-        id: typeof data.id === 'string' && data.id.trim() ? data.id.trim() : undefined,
+        id:
+          typeof data.id === 'string' && data.id.trim()
+            ? data.id.trim()
+            : undefined,
         order:
           typeof data.order === 'number' && Number.isFinite(data.order)
             ? Number(data.order)
@@ -94,8 +102,8 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
           data.vehicleId === null
             ? null
             : typeof data.vehicleId === 'string' && data.vehicleId.trim()
-            ? data.vehicleId.trim()
-            : undefined,
+              ? data.vehicleId.trim()
+              : undefined,
         vehicleName:
           typeof data.vehicleName === 'string' && data.vehicleName.trim()
             ? data.vehicleName.trim()
@@ -109,10 +117,12 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
           notesRaw === null
             ? null
             : typeof notesRaw === 'string' && notesRaw.trim()
-            ? notesRaw.trim()
-            : undefined,
+              ? notesRaw.trim()
+              : undefined,
         tasks: Array.isArray(data.tasks)
-          ? data.tasks.map((taskId) => String(taskId)).filter((taskId) => !!taskId)
+          ? data.tasks
+              .map((taskId) => String(taskId))
+              .filter((taskId) => !!taskId)
           : [],
       };
       return normalized;
@@ -121,7 +131,11 @@ const normalizeRoutesPayload = (routes: unknown): RoutePlanUpdatePayload['routes
 };
 
 export async function update(
-  req: RequestWithUser<Record<string, string>, unknown, RoutePlanUpdateRequestBody>,
+  req: RequestWithUser<
+    Record<string, string>,
+    unknown,
+    RoutePlanUpdateRequestBody
+  >,
   res: Response,
 ): Promise<void> {
   const errors = validationResult(req);
@@ -160,7 +174,11 @@ export async function update(
 }
 
 export async function changeStatus(
-  req: RequestWithUser<Record<string, string>, unknown, RoutePlanStatusRequestBody>,
+  req: RequestWithUser<
+    Record<string, string>,
+    unknown,
+    RoutePlanStatusRequestBody
+  >,
   res: Response,
 ): Promise<void> {
   const errors = validationResult(req);
@@ -176,9 +194,9 @@ export async function changeStatus(
     return;
   }
   const statusValue = req.body?.status;
-  const status = (typeof statusValue === 'string'
-    ? statusValue.trim()
-    : statusValue) as RoutePlanStatus;
+  const status = (
+    typeof statusValue === 'string' ? statusValue.trim() : statusValue
+  ) as RoutePlanStatus;
   const actorId = parseActorId(req.user?.id);
   const plan = await updatePlanStatus(req.params.id, status, actorId);
   if (!plan) {

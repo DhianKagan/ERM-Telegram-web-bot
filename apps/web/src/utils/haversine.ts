@@ -1,6 +1,6 @@
 // Назначение файла: расчёт геодезического расстояния между двумя координатами
 // Основные модули: отсутствуют
-import type { LatLng } from "./extractCoords";
+import type { LatLng } from './extractCoords';
 
 const EARTH_RADIUS_KM = 6371;
 

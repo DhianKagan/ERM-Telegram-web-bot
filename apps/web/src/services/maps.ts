@@ -1,11 +1,11 @@
 // Назначение: запросы к API карт
 // Основные модули: authFetch
-import authFetch from "../utils/authFetch";
+import authFetch from '../utils/authFetch';
 
 export const expandLink = (url: string) =>
-  authFetch("/api/v1/maps/expand", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  authFetch('/api/v1/maps/expand', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   }).then((r) => (r.ok ? r.json() : null));
 
@@ -24,7 +24,7 @@ const buildQuery = (params: Record<string, string | number>): string => {
     search.set(key, String(value));
   });
   const query = search.toString();
-  return query ? `?${query}` : "";
+  return query ? `?${query}` : '';
 };
 
 export const searchAddress = async (
@@ -38,7 +38,7 @@ export const searchAddress = async (
   const limit = Math.min(Math.max(options.limit ?? 5, 1), 10);
   const headers: Record<string, string> = {};
   if (options.language && options.language.trim()) {
-    headers["Accept-Language"] = options.language;
+    headers['Accept-Language'] = options.language;
   }
   const res = await authFetch(
     `/api/v1/maps/search${buildQuery({ q: trimmed, limit })}`,
@@ -48,11 +48,11 @@ export const searchAddress = async (
     },
   );
   if (!res.ok) {
-    throw new Error("MAPS_SEARCH_FAILED");
+    throw new Error('MAPS_SEARCH_FAILED');
   }
-  const data = (await res.json().catch(() => null)) as
-    | { items?: AddressSuggestion[] }
-    | null;
+  const data = (await res.json().catch(() => null)) as {
+    items?: AddressSuggestion[];
+  } | null;
   if (!data || !Array.isArray(data.items)) {
     return [];
   }
@@ -68,7 +68,7 @@ export const reverseGeocode = async (
   }
   const headers: Record<string, string> = {};
   if (options.language && options.language.trim()) {
-    headers["Accept-Language"] = options.language;
+    headers['Accept-Language'] = options.language;
   }
   const res = await authFetch(
     `/api/v1/maps/reverse${buildQuery({ lat: coords.lat, lng: coords.lng })}`,
@@ -78,11 +78,11 @@ export const reverseGeocode = async (
     },
   );
   if (!res.ok) {
-    throw new Error("MAPS_REVERSE_FAILED");
+    throw new Error('MAPS_REVERSE_FAILED');
   }
-  const data = (await res.json().catch(() => null)) as
-    | { place?: AddressSuggestion | null }
-    | null;
+  const data = (await res.json().catch(() => null)) as {
+    place?: AddressSuggestion | null;
+  } | null;
   if (!data) {
     return null;
   }

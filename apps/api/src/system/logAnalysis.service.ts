@@ -37,7 +37,12 @@ export interface RailwayLogAnalysisSummary {
 
 @injectable()
 export default class LogAnalysisService {
-  private readonly analysisDir = path.resolve(__dirname, '../../..', 'Railway', 'analysis');
+  private readonly analysisDir = path.resolve(
+    __dirname,
+    '../../..',
+    'Railway',
+    'analysis',
+  );
 
   async getLatestSummary(): Promise<RailwayLogAnalysisSummary | null> {
     let entries;
@@ -75,12 +80,15 @@ export default class LogAnalysisService {
       generatedAt?: string;
     };
 
-    const stats = payload.stats ?? { totalLines: 0, errors: 0, warnings: 0, infos: 0 };
+    const stats = payload.stats ?? {
+      totalLines: 0,
+      errors: 0,
+      warnings: 0,
+      infos: 0,
+    };
     const fallbackDate = new Date(latest.mtime).toISOString();
 
-    const normalizeIssues = (
-      list: unknown,
-    ): RailwayLogIssueSummary[] => {
+    const normalizeIssues = (list: unknown): RailwayLogIssueSummary[] => {
       if (!Array.isArray(list)) {
         return [];
       }
@@ -90,15 +98,20 @@ export default class LogAnalysisService {
             return null;
           }
           const record = item as Record<string, unknown>;
-          const message = typeof record.message === 'string' ? record.message : '';
+          const message =
+            typeof record.message === 'string' ? record.message : '';
           if (!message) {
             return null;
           }
           const samples = Array.isArray(record.samples)
-            ? (record.samples.filter((value) => typeof value === 'string') as string[])
+            ? (record.samples.filter(
+                (value) => typeof value === 'string',
+              ) as string[])
             : undefined;
           const context = Array.isArray(record.context)
-            ? (record.context.filter((value) => typeof value === 'string') as string[])
+            ? (record.context.filter(
+                (value) => typeof value === 'string',
+              ) as string[])
             : undefined;
           return {
             message,
@@ -128,7 +141,8 @@ export default class LogAnalysisService {
           if (!id || !title || !reason) {
             return null;
           }
-          const command = typeof record.command === 'string' ? record.command : undefined;
+          const command =
+            typeof record.command === 'string' ? record.command : undefined;
           return {
             id,
             title,

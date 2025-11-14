@@ -45,7 +45,9 @@ describe('Объединение вложений', () => {
     process.env.STORAGE_DIR = storageDir;
     jest.isolateModules(() => {
       const tasks = require('../apps/api/src/routes/tasks');
-      const { uploadsDir: configUploadsDir } = require('../apps/api/src/config/storage');
+      const {
+        uploadsDir: configUploadsDir,
+      } = require('../apps/api/src/config/storage');
       uploadsDir = configUploadsDir;
       const processUploads: RequestHandler = tasks.processUploads;
       const normalizeArrays: RequestHandler = tasks.normalizeArrays;
@@ -107,7 +109,9 @@ describe('Объединение вложений', () => {
         contentType: 'text/plain',
       });
     expect(response.status).toBe(200);
-    const attachments = response.body.attachments as Array<Record<string, unknown>>;
+    const attachments = response.body.attachments as Array<
+      Record<string, unknown>
+    >;
     expect(attachments).toHaveLength(2);
     expect(attachments[0]).toMatchObject({
       url: '/api/v1/files/legacy',

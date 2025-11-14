@@ -4,14 +4,9 @@ import JSON5 from 'json5';
 import { Types } from 'mongoose';
 import type { Attachment } from '../db/model';
 
-const jsonParsers = [
-  JSON.parse,
-  JSON5.parse,
-];
+const jsonParsers = [JSON.parse, JSON5.parse];
 
-const isPlainObject = (
-  value: unknown,
-): value is Record<string, unknown> =>
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 const toNumber = (value: unknown): number | undefined => {
@@ -114,9 +109,7 @@ function parseAttachmentLike(value: unknown): Attachment[] | undefined {
   return [];
 }
 
-export function coerceAttachments(
-  value: unknown,
-): Attachment[] | undefined {
+export function coerceAttachments(value: unknown): Attachment[] | undefined {
   return parseAttachmentLike(value);
 }
 
@@ -196,7 +189,9 @@ const extractIdsFromCommentHtml = (html: string): string[] => {
   return Array.from(ids.values());
 };
 
-export const extractFileIdFromUrl = (url: string | null | undefined): string | null => {
+export const extractFileIdFromUrl = (
+  url: string | null | undefined,
+): string | null => {
   if (typeof url !== 'string') {
     return null;
   }
@@ -224,9 +219,8 @@ export const buildAttachmentsFromCommentHtml = (
 ): Attachment[] => {
   const existing: Attachment[] = Array.isArray(options.existing)
     ? options.existing
-        .filter(
-          (candidate): candidate is Attachment =>
-            Boolean(candidate && typeof candidate.url === 'string'),
+        .filter((candidate): candidate is Attachment =>
+          Boolean(candidate && typeof candidate.url === 'string'),
         )
         .map((candidate) => ({ ...candidate }))
     : [];

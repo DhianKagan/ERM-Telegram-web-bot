@@ -1,6 +1,6 @@
 // Контекст аутентификации
-import { createContext } from "react";
-import type { User } from "../types/user";
+import { createContext } from 'react';
+import type { User } from '../types/user';
 
 interface AuthContextType {
   user: User | null;

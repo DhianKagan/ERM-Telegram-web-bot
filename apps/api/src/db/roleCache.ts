@@ -17,7 +17,9 @@ async function loadRoleId(name: string): Promise<CacheValue> {
   return role ? (role._id as Types.ObjectId) : null;
 }
 
-export async function resolveRoleId(name: string): Promise<Types.ObjectId | null> {
+export async function resolveRoleId(
+  name: string,
+): Promise<Types.ObjectId | null> {
   const normalized = normalizeRoleName(name);
   if (!normalized) return null;
 

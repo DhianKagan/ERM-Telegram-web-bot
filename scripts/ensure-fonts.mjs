@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 // Назначение файла: проверяет наличие локальных шрифтов, скачивает недостающие и конвертирует их в WOFF2.
 // Основные модули: fs/promises, path, url, fetch, dns, child_process
-import { access, mkdir, readFile, readdir, writeFile, unlink } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+  unlink,
+} from 'node:fs/promises';
 import dns from 'node:dns';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
@@ -58,7 +65,9 @@ async function downloadViaCurl(url, targetPath) {
   await new Promise((resolve, reject) => {
     execFile('curl', ['-fsSL', '-o', targetPath, url], (error) => {
       if (error) {
-        reject(new Error(`Не удалось скачать ${url} через curl: ${error.message}`));
+        reject(
+          new Error(`Не удалось скачать ${url} через curl: ${error.message}`),
+        );
         return;
       }
       resolve();
@@ -71,7 +80,9 @@ async function downloadFont({ file, url }) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Не удалось скачать ${file}: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Не удалось скачать ${file}: ${response.status} ${response.statusText}`,
+      );
     }
     const buffer = Buffer.from(await response.arrayBuffer());
     await writeFile(target, buffer);
@@ -85,7 +96,8 @@ async function downloadFont({ file, url }) {
   try {
     await downloadViaCurl(url, target);
   } catch (curlError) {
-    const message = curlError instanceof Error ? curlError.message : String(curlError);
+    const message =
+      curlError instanceof Error ? curlError.message : String(curlError);
     throw new Error(`Не удалось скачать ${file}: ${message}`);
   }
 }
@@ -156,7 +168,10 @@ async function updateFontSri() {
   }
   const hash = createHash('sha384').update(cssBuffer).digest('base64');
   const sri = `sha384-${hash}`;
-  const versionHash = createHash('sha256').update(cssBuffer).digest('hex').slice(0, 16);
+  const versionHash = createHash('sha256')
+    .update(cssBuffer)
+    .digest('hex')
+    .slice(0, 16);
   const hashedFile = `fonts.${versionHash}.css`;
 
   await Promise.all([
@@ -172,7 +187,8 @@ async function updateFontSri() {
     })(),
   ]);
 
-  const fontLinkRegex = /<link\s+[^>]*href=["']\/fonts\/fonts(?:\.[^"']+)?\.css["'][^>]*>/gi;
+  const fontLinkRegex =
+    /<link\s+[^>]*href=["']\/fonts\/fonts(?:\.[^"']+)?\.css["'][^>]*>/gi;
   const targets = [
     apiIndexPath,
     path.join(__dirname, '../apps/web/index.html'),
@@ -195,15 +211,24 @@ async function updateFontSri() {
       const updated = indexHtml.replace(fontLinkRegex, (tag) => {
         let nextTag = tag;
         if (!nextTag.includes(`/fonts/${hashedFile}`)) {
-          nextTag = nextTag.replace(hrefAttrRegex, `href="/fonts/${hashedFile}"`);
+          nextTag = nextTag.replace(
+            hrefAttrRegex,
+            `href="/fonts/${hashedFile}"`,
+          );
         }
         if (integrityRegex.test(nextTag)) {
           nextTag = nextTag.replace(integrityRegex, `integrity="${sri}"`);
         } else {
-          nextTag = nextTag.replace(hrefAttrRegex, (match) => `${match} integrity="${sri}"`);
+          nextTag = nextTag.replace(
+            hrefAttrRegex,
+            (match) => `${match} integrity="${sri}"`,
+          );
         }
         if (!/crossorigin=/i.test(nextTag)) {
-          nextTag = nextTag.replace(/\s*\/?>(?!.*>)/, (end) => ` crossorigin="anonymous"${end}`);
+          nextTag = nextTag.replace(
+            /\s*\/?>(?!.*>)/,
+            (end) => ` crossorigin="anonymous"${end}`,
+          );
         }
         if (nextTag !== tag) {
           changed = true;
@@ -212,7 +237,9 @@ async function updateFontSri() {
       });
       if (changed) {
         await writeFile(htmlPath, updated);
-        console.log(`Обновили подключение шрифтов в ${path.relative(process.cwd(), htmlPath)}`);
+        console.log(
+          `Обновили подключение шрифтов в ${path.relative(process.cwd(), htmlPath)}`,
+        );
       }
     }),
   );

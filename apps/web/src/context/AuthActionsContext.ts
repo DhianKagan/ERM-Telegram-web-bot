@@ -1,6 +1,6 @@
 // Контекст действий аутентификации
-import { createContext } from "react";
-import type { User } from "../types/user";
+import { createContext } from 'react';
+import type { User } from '../types/user';
 
 interface AuthActionsContextType {
   logout: () => Promise<void>;

@@ -1,6 +1,6 @@
 // Компонент управления департаментом, содержит форму с селекторами
 // Модули: React
-import React from "react";
+import React from 'react';
 
 export type DepartmentManagerProps = {
   onSubmit: (data: { name: string }) => void;
@@ -14,7 +14,7 @@ type DepartmentManagerComponent = React.FC<DepartmentManagerProps> & {
 };
 
 const DepartmentManager: DepartmentManagerComponent = ({ onSubmit }) => {
-  const [name, setName] = React.useState("");
+  const [name, setName] = React.useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

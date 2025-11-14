@@ -28,10 +28,15 @@ jest.mock('telegraf', () => {
     start = jest.fn();
     command = jest.fn();
     hears = jest.fn();
-    action = jest.fn((trigger: string | RegExp, handler: (ctx: unknown) => Promise<void> | void) => {
-      actionHandlers.push({ trigger, handler });
-      return this;
-    });
+    action = jest.fn(
+      (
+        trigger: string | RegExp,
+        handler: (ctx: unknown) => Promise<void> | void,
+      ) => {
+        actionHandlers.push({ trigger, handler });
+        return this;
+      },
+    );
     on = jest.fn();
     use = jest.fn();
     stop = jest.fn();
@@ -67,7 +72,9 @@ const taskStatusKeyboardMock = jest
   .mockImplementation(
     (id: string, status?: string, options?: { kind?: string }) => ({
       reply_markup: {
-        inline_keyboard: [[{ callback_data: `status:${id}`, text: status ?? '' }]],
+        inline_keyboard: [
+          [{ callback_data: `status:${id}`, text: status ?? '' }],
+        ],
       },
       options,
     }),
@@ -100,11 +107,13 @@ jest.mock('../apps/api/src/utils/taskButtons', () => ({
   __esModule: true,
   default: (...args: unknown[]) =>
     taskStatusKeyboardMock(
-      ...(args as [string, string | undefined, Record<string, unknown> | undefined]),
+      ...(args as [
+        string,
+        string | undefined,
+        Record<string, unknown> | undefined,
+      ]),
     ),
-  taskStatusInlineMarkup: (
-    ...args: unknown[]
-  ) =>
+  taskStatusInlineMarkup: (...args: unknown[]) =>
     taskStatusInlineMarkupMock(
       ...(args as [
         string,
@@ -113,15 +122,12 @@ jest.mock('../apps/api/src/utils/taskButtons', () => ({
         Record<string, unknown> | undefined,
       ]),
     ),
-  taskAcceptConfirmKeyboard: (
-    ...args: unknown[]
-  ) => taskAcceptConfirmKeyboardMock(...(args as [string])),
-  taskDoneConfirmKeyboard: (
-    ...args: unknown[]
-  ) => taskDoneConfirmKeyboardMock(...(args as [string])),
-  taskCancelConfirmKeyboard: (
-    ...args: unknown[]
-  ) => taskCancelConfirmKeyboardMock(...(args as [string])),
+  taskAcceptConfirmKeyboard: (...args: unknown[]) =>
+    taskAcceptConfirmKeyboardMock(...(args as [string])),
+  taskDoneConfirmKeyboard: (...args: unknown[]) =>
+    taskDoneConfirmKeyboardMock(...(args as [string])),
+  taskCancelConfirmKeyboard: (...args: unknown[]) =>
+    taskCancelConfirmKeyboardMock(...(args as [string])),
 }));
 
 jest.mock('../apps/api/src/messages', () => ({
@@ -172,9 +178,9 @@ function getActionHandlers(): ActionHandler[] {
   return telegraf.__getActionHandlers();
 }
 
-function findActionHandler(part: string):
-  | ((ctx: unknown) => Promise<void> | void)
-  | undefined {
+function findActionHandler(
+  part: string,
+): ((ctx: unknown) => Promise<void> | void) | undefined {
   const actions = getActionHandlers();
   const regexEntry = actions.find(
     ({ trigger }) => trigger instanceof RegExp && trigger.source.includes(part),
@@ -214,7 +220,9 @@ beforeEach(() => {
   taskStatusInlineMarkupMock.mockReset();
   taskStatusKeyboardMock.mockImplementation((id: string, status?: string) => ({
     reply_markup: {
-      inline_keyboard: [[{ callback_data: `status:${id}`, text: status ?? '' }]],
+      inline_keyboard: [
+        [{ callback_data: `status:${id}`, text: status ?? '' }],
+      ],
     },
   }));
   taskAcceptConfirmKeyboardMock.mockReset();
@@ -251,8 +259,9 @@ test('не обращается к истории в чате при обнов�
     { source: 'telegram' },
   );
   expect(editMessageTextMock).not.toHaveBeenCalled();
-  const historyCalls = sendMessageMock.mock.calls.filter(([, text]) =>
-    typeof text === 'string' && text.includes('История изменений'),
+  const historyCalls = sendMessageMock.mock.calls.filter(
+    ([, text]) =>
+      typeof text === 'string' && text.includes('История изменений'),
   );
   expect(historyCalls).toHaveLength(0);
 });
@@ -277,11 +286,7 @@ test('не редактирует клавиатуру при повторном
     assignees: [],
   });
   updateTaskStatusMock.mockResolvedValue({ _id: 'task123' });
-  const ctx = createActionContext(
-    'task_accept_confirm:task123',
-    42,
-    markup,
-  );
+  const ctx = createActionContext('task_accept_confirm:task123', 42, markup);
   (ctx as { chat?: { type: string } }).chat = { type: 'private' };
   (ctx as { editMessageText?: jest.Mock }).editMessageText = jest
     .fn()
@@ -291,12 +296,9 @@ test('не редактирует клавиатуру при повторном
   await fn(ctx);
 
   expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith(undefined);
-  expect(updateTaskStatusMock).toHaveBeenCalledWith(
-    'task123',
-    'В работе',
-    42,
-    { source: 'telegram' },
-  );
+  expect(updateTaskStatusMock).toHaveBeenCalledWith('task123', 'В работе', 42, {
+    source: 'telegram',
+  });
 });
 
 describe('обработка завершения задачи', () => {

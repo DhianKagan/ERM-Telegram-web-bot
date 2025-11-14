@@ -1,5 +1,5 @@
 // Компонент показывает полоски-заглушки вместо таблицы во время загрузки данных
-import React from "react";
+import React from 'react';
 
 export default function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (

@@ -1,8 +1,8 @@
 // Назначение: HTTP-запросы для работы с маршрутными планами.
 // Основные модули: authFetch, shared
 
-import type { RoutePlan, RoutePlanStatus } from "shared";
-import authFetch from "../utils/authFetch";
+import type { RoutePlan, RoutePlanStatus } from 'shared';
+import authFetch from '../utils/authFetch';
 
 export interface RoutePlanUpdatePayload {
   title?: string;
@@ -30,12 +30,12 @@ export async function listRoutePlans(
   page?: number,
 ): Promise<RoutePlanListResponse> {
   const params = new URLSearchParams();
-  if (status) params.set("status", status);
-  if (limit) params.set("limit", String(limit));
-  if (page) params.set("page", String(page));
+  if (status) params.set('status', status);
+  if (limit) params.set('limit', String(limit));
+  if (page) params.set('page', String(page));
   const response = await authFetch(`/api/v1/route-plans?${params.toString()}`);
   if (!response.ok) {
-    throw new Error("Не удалось загрузить маршрутные планы");
+    throw new Error('Не удалось загрузить маршрутные планы');
   }
   return (await response.json()) as RoutePlanListResponse;
 }
@@ -43,7 +43,7 @@ export async function listRoutePlans(
 export async function getRoutePlan(id: string): Promise<RoutePlan> {
   const response = await authFetch(`/api/v1/route-plans/${id}`);
   if (!response.ok) {
-    throw new Error("Маршрутный план не найден");
+    throw new Error('Маршрутный план не найден');
   }
   const data = await response.json();
   return data.plan as RoutePlan;
@@ -54,12 +54,12 @@ export async function updateRoutePlan(
   payload: RoutePlanUpdatePayload,
 ): Promise<RoutePlan> {
   const response = await authFetch(`/api/v1/route-plans/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error("Не удалось сохранить маршрутный план");
+    throw new Error('Не удалось сохранить маршрутный план');
   }
   const data = await response.json();
   return data.plan as RoutePlan;
@@ -70,12 +70,12 @@ export async function changeRoutePlanStatus(
   status: RoutePlanStatus,
 ): Promise<RoutePlan> {
   const response = await authFetch(`/api/v1/route-plans/${id}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
   });
   if (!response.ok) {
-    throw new Error("Не удалось обновить статус маршрутного плана");
+    throw new Error('Не удалось обновить статус маршрутного плана');
   }
   const data = await response.json();
   return data.plan as RoutePlan;
@@ -83,10 +83,10 @@ export async function changeRoutePlanStatus(
 
 export async function deleteRoutePlan(id: string): Promise<void> {
   const response = await authFetch(`/api/v1/route-plans/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (!response.ok) {
-    throw new Error("Не удалось удалить маршрутный план");
+    throw new Error('Не удалось удалить маршрутный план');
   }
 }
 

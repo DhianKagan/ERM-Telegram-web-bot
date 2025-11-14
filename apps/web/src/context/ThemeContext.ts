@@ -1,6 +1,6 @@
 // Контекст токенов темы интерфейса
 // Модули: React
-import { createContext } from "react";
+import { createContext } from 'react';
 
 export interface ThemeTokens {
   primary: string;
@@ -16,8 +16,8 @@ interface ThemeContextType {
 }
 
 export const ThemeContext = createContext<ThemeContextType>({
-  theme: "light",
+  theme: 'light',
   setTheme: () => {},
-  tokens: { primary: "#2563EB", background: "#FFFFFF", foreground: "#1C2434" },
+  tokens: { primary: '#2563EB', background: '#FFFFFF', foreground: '#1C2434' },
   setTokens: () => {},
 });

@@ -1,103 +1,98 @@
 // Конфигурация колонок задач для React Table
 // Модули: React, @tanstack/react-table, heroicons, EmployeeLink
-import React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from "shared";
-import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
-import EmployeeLink from "../components/EmployeeLink";
-import { getDeadlineState, type DeadlineState } from "./taskDeadline";
-import type { User as AppUser } from "../types/user";
+import React from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from 'shared';
+import { QuestionMarkCircleIcon } from '@heroicons/react/20/solid';
+import EmployeeLink from '../components/EmployeeLink';
+import { getDeadlineState, type DeadlineState } from './taskDeadline';
+import type { User as AppUser } from '../types/user';
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
 const badgeBaseClass =
-  "inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs";
-const badgeTextClass = "text-black dark:text-white";
+  'inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs';
+const badgeTextClass = 'text-black dark:text-white';
 
-const buildBadgeClass = (tones: string, extraClass = "") =>
-  [badgeBaseClass, "transition-colors", badgeTextClass, extraClass, tones]
+const buildBadgeClass = (tones: string, extraClass = '') =>
+  [badgeBaseClass, 'transition-colors', badgeTextClass, extraClass, tones]
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
 
 const focusableBadgeClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 const pillBadgeBaseClass =
-  "inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]";
+  'inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]';
 
-const dateBadgeClass =
-  `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
+const dateBadgeClass = `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
 const dateBadgeTimeClass =
-  "text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200";
+  'text-[0.65rem] font-semibold text-slate-500 dark:text-slate-200';
 
-const numberBadgeClass =
-  `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
+const numberBadgeClass = `${pillBadgeBaseClass} justify-center font-mono uppercase tracking-[0.18em] text-[0.68rem] ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 
-const titleBadgeClass =
-  `${pillBadgeBaseClass} justify-start normal-case ${badgeTextClass} ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:ring-indigo-300/45`;
+const titleBadgeClass = `${pillBadgeBaseClass} justify-start normal-case ${badgeTextClass} ring-1 ring-indigo-500/40 bg-indigo-500/15 dark:bg-indigo-400/25 dark:ring-indigo-300/45`;
 
-export const creatorBadgeClass =
-  `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
+export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
 
-const assigneeBadgeClass =
-  `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:ring-violet-300/45`;
+const assigneeBadgeClass = `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-violet-500/35 bg-violet-500/20 dark:bg-violet-400/30 dark:ring-violet-300/45`;
 
 export const fallbackBadgeClass = buildBadgeClass(
-  "bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35",
+  'bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35',
 );
 
-const locationBadgeClass =
-  `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:ring-emerald-300/30`;
+const locationBadgeClass = `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-emerald-500/30 bg-emerald-500/15 dark:bg-emerald-400/20 dark:ring-emerald-300/30`;
 
-const locationLinkBadgeClass =
-  `${locationBadgeClass} ${focusableBadgeClass} no-underline underline-offset-4 hover:underline`;
+const locationLinkBadgeClass = `${locationBadgeClass} ${focusableBadgeClass} no-underline underline-offset-4 hover:underline`;
 
-const statusBadgeClassMap: Record<Task["status"], string> = {
+const statusBadgeClassMap: Record<Task['status'], string> = {
   Новая: buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
-  "В работе": buildBadgeClass(
-    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  'В работе': buildBadgeClass(
+    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
   ),
   Выполнена: buildBadgeClass(
-    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
   ),
   Отменена: buildBadgeClass(
-    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
   ),
 };
 
 const urgentPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40",
+  'bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40',
 );
 
 const highPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40",
+  'bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40',
 );
 
 const normalPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30",
+  'bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30',
 );
 
 const lowPriorityBadgeClass = buildBadgeClass(
-  "bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20",
+  'bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20',
 );
 
 const priorityBadgeClassMap: Record<string, string> = {
   срочно: buildBadgeClass(
-    "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
   ),
   'в течение дня': buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
   'до выполнения': buildBadgeClass(
-    "bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45",
-    "normal-case",
+    'bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45',
+    'normal-case',
   ),
 };
 
-const hasOwn = <T extends Record<PropertyKey, unknown>>(obj: T, key: PropertyKey): key is keyof T =>
-  Object.prototype.hasOwnProperty.call(obj, key);
+const hasOwn = <T extends Record<PropertyKey, unknown>>(
+  obj: T,
+  key: PropertyKey,
+): key is keyof T => Object.prototype.hasOwnProperty.call(obj, key);
 
 export const getStatusBadgeClass = (value: string) => {
   if (hasOwn(statusBadgeClassMap, value)) {
@@ -135,29 +130,29 @@ const normalizePriorityLabel = (value: string) => {
     return trimmed;
   }
   if (/^бессроч/i.test(trimmed)) {
-    return "До выполнения";
+    return 'До выполнения';
   }
   return trimmed;
 };
 
 const completionNoteTextClass =
-  "text-[11px] font-medium text-slate-600 dark:text-slate-300";
+  'text-[11px] font-medium text-slate-600 dark:text-slate-300';
 
 const typeBadgeClassMap: Record<string, string> = {
   доставить: buildBadgeClass(
-    "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
   ),
   купить: buildBadgeClass(
-    "bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45",
+    'bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45',
   ),
   выполнить: buildBadgeClass(
-    "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
   ),
   построить: buildBadgeClass(
-    "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
   ),
   починить: buildBadgeClass(
-    "bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45",
+    'bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45',
   ),
 };
 
@@ -188,15 +183,15 @@ export const getTypeBadgeClass = (value: string) => {
 };
 
 const parseDistance = (value: unknown) => {
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null;
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) {
       return null;
     }
-    const normalized = Number(trimmed.replace(/\s+/g, "").replace(/,/g, "."));
+    const normalized = Number(trimmed.replace(/\s+/g, '').replace(/,/g, '.'));
     return Number.isFinite(normalized) ? normalized : null;
   }
   return null;
@@ -205,34 +200,34 @@ const parseDistance = (value: unknown) => {
 const formatDistanceLabel = (value: unknown) => {
   const numeric = parseDistance(value);
   if (numeric !== null) {
-    return numeric.toLocaleString("ru-RU", {
+    return numeric.toLocaleString('ru-RU', {
       maximumFractionDigits: 2,
       minimumFractionDigits: 2,
     });
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return value.trim();
   }
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return value.toString();
   }
-  return "";
+  return '';
 };
 
 const shortDistanceBadgeClass = buildBadgeClass(
-  "bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45",
+  'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
 );
 
 const mediumDistanceBadgeClass = buildBadgeClass(
-  "bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45",
+  'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
 );
 
 const longDistanceBadgeClass = buildBadgeClass(
-  "bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45",
+  'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
 );
 
 const extraLongDistanceBadgeClass = buildBadgeClass(
-  "bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45",
+  'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
 );
 
 const getDistanceBadgeClass = (value: unknown) => {
@@ -252,26 +247,26 @@ const getDistanceBadgeClass = (value: unknown) => {
   return extraLongDistanceBadgeClass;
 };
 
-const fullDateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
+const fullDateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
   hour12: false,
   timeZone: PROJECT_TIMEZONE,
 });
 
-const datePartFmt = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
+const datePartFmt = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
   timeZone: PROJECT_TIMEZONE,
 });
 
-const timePartFmt = new Intl.DateTimeFormat("ru-RU", {
-  hour: "2-digit",
-  minute: "2-digit",
+const timePartFmt = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit',
+  minute: '2-digit',
   hour12: false,
   timeZone: PROJECT_TIMEZONE,
 });
@@ -287,7 +282,7 @@ const parseDateInput = (value?: string | null) => {
 const formatDate = (value?: string) => {
   const date = parseDateInput(value);
   if (!date) return null;
-  const full = `${fullDateTimeFmt.format(date).replace(", ", " ")} ${PROJECT_TIMEZONE_LABEL}`;
+  const full = `${fullDateTimeFmt.format(date).replace(', ', ' ')} ${PROJECT_TIMEZONE_LABEL}`;
   const datePart = datePartFmt.format(date);
   const timePart = timePartFmt.format(date);
   return {
@@ -299,7 +294,7 @@ const formatDate = (value?: string) => {
 
 const renderDateCell = (value?: string) => {
   const formatted = formatDate(value);
-  if (!formatted) return "";
+  if (!formatted) return '';
   return (
     <span className={dateBadgeClass} title={formatted.full}>
       <time
@@ -325,7 +320,7 @@ const compactText = (value: string, maxLength: number) => {
   return `${shortened}…`;
 };
 
-export type EntityKind = "task" | "request";
+export type EntityKind = 'task' | 'request';
 
 export interface TaskRow extends Task {
   id: string;
@@ -342,18 +337,18 @@ export interface TaskRow extends Task {
   end_location_link?: string | null;
 }
 
-type EntityCase = "nominative" | "accusative" | "genitive";
+type EntityCase = 'nominative' | 'accusative' | 'genitive';
 
 const ENTITY_WORDS: Record<EntityKind, Record<EntityCase, string>> = {
   task: {
-    nominative: "Задача",
-    accusative: "Задачу",
-    genitive: "задачи",
+    nominative: 'Задача',
+    accusative: 'Задачу',
+    genitive: 'задачи',
   },
   request: {
-    nominative: "Заявка",
-    accusative: "Заявку",
-    genitive: "заявки",
+    nominative: 'Заявка',
+    accusative: 'Заявку',
+    genitive: 'заявки',
   },
 };
 
@@ -370,24 +365,24 @@ const resolveEntityKind = (
   value: unknown,
   fallback: EntityKind,
 ): EntityKind => {
-  if (typeof value === "string" && value.trim().toLowerCase() === "request") {
-    return "request";
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'request') {
+    return 'request';
   }
   return fallback;
 };
 
 const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+  value.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
 
 type CountdownLikeState = Extract<
   DeadlineState,
-  { kind: "countdown" | "pending" | "overdue" }
+  { kind: 'countdown' | 'pending' | 'overdue' }
 >;
 
 const countdownBadgeBaseClass = `${pillBadgeBaseClass} min-w-0 justify-start normal-case ${badgeTextClass} tabular-nums ring-1`;
 
 const countdownToneClassMap: Record<
-  "safe" | "warn" | "danger" | "overdue" | "pending",
+  'safe' | 'warn' | 'danger' | 'overdue' | 'pending',
   string
 > = {
   safe: `${countdownBadgeBaseClass} bg-emerald-500/25 ring-emerald-500/45 dark:bg-emerald-400/25 dark:ring-emerald-300/45`,
@@ -405,7 +400,7 @@ const formatCountdownParts = (remainingMs: number) => {
   const days = Math.floor(totalMinutes / (24 * 60));
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const minutes = totalMinutes % 60;
-  const pad = (value: number) => value.toString().padStart(2, "0");
+  const pad = (value: number) => value.toString().padStart(2, '0');
   return {
     days,
     hours,
@@ -416,10 +411,7 @@ const formatCountdownParts = (remainingMs: number) => {
   };
 };
 
-const getRussianPlural = (
-  value: number,
-  forms: [string, string, string],
-) => {
+const getRussianPlural = (value: number, forms: [string, string, string]) => {
   const absValue = Math.abs(value) % 100;
   if (absValue >= 11 && absValue <= 14) {
     return forms[2];
@@ -437,60 +429,48 @@ const getRussianPlural = (
 const getCountdownToneKey = (
   state: CountdownLikeState,
 ): keyof typeof countdownToneClassMap => {
-  if (state.kind === "overdue") {
-    return "overdue";
+  if (state.kind === 'overdue') {
+    return 'overdue';
   }
-  if (state.kind === "pending") {
-    return "pending";
+  if (state.kind === 'pending') {
+    return 'pending';
   }
   return state.level;
 };
 
 const buildCountdownLabel = (state: CountdownLikeState) => {
   const { days, hours, minutes } = formatCountdownParts(state.remainingMs);
-  if (state.kind === "overdue") {
+  if (state.kind === 'overdue') {
     return `Просрочено на ${days} ${getRussianPlural(days, [
-      "день",
-      "дня",
-      "дней",
+      'день',
+      'дня',
+      'дней',
     ])} ${hours} ${getRussianPlural(hours, [
-      "час",
-      "часа",
-      "часов",
-    ])} ${minutes} ${getRussianPlural(minutes, [
-      "минута",
-      "минуты",
-      "минут",
-    ])}`;
+      'час',
+      'часа',
+      'часов',
+    ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
   }
-  if (state.kind === "pending") {
+  if (state.kind === 'pending') {
     return `Начало через ${days} ${getRussianPlural(days, [
-      "день",
-      "дня",
-      "дней",
+      'день',
+      'дня',
+      'дней',
     ])} ${hours} ${getRussianPlural(hours, [
-      "час",
-      "часа",
-      "часов",
-    ])} ${minutes} ${getRussianPlural(minutes, [
-      "минута",
-      "минуты",
-      "минут",
-    ])}`;
+      'час',
+      'часа',
+      'часов',
+    ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
   }
   return `До дедлайна ${days} ${getRussianPlural(days, [
-    "день",
-    "дня",
-    "дней",
+    'день',
+    'дня',
+    'дней',
   ])} ${hours} ${getRussianPlural(hours, [
-    "час",
-    "часа",
-    "часов",
-  ])} ${minutes} ${getRussianPlural(minutes, [
-    "минута",
-    "минуты",
-    "минут",
-  ])}`;
+    'час',
+    'часа',
+    'часов',
+  ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
 };
 
 const buildCountdownTitle = (
@@ -501,14 +481,14 @@ const buildCountdownTitle = (
   if (!formatted) {
     return rawDue ? rawDue.trim() : undefined;
   }
-  if (state.kind === "overdue") {
+  if (state.kind === 'overdue') {
     return `Просрочено с ${formatted.full}`;
   }
-  if (state.kind === "pending") {
+  if (state.kind === 'pending') {
     const note =
-      state.issue === "missing-start"
-        ? "Не указана дата начала"
-        : "Диапазон дат некорректен";
+      state.issue === 'missing-start'
+        ? 'Не указана дата начала'
+        : 'Диапазон дат некорректен';
     return `${note}. Срок ${formatted.full}`;
   }
   return `Выполнить до ${formatted.full}`;
@@ -519,35 +499,33 @@ const COMPLETION_THRESHOLD_MS = 60_000;
 const formatCompletionOffset = (diffMs: number) => {
   const absValue = Math.abs(diffMs);
   if (absValue < COMPLETION_THRESHOLD_MS) {
-    return "менее минуты";
+    return 'менее минуты';
   }
   const { days, hours, minutes } = formatCountdownParts(absValue);
   const parts: string[] = [];
   if (days) {
-    parts.push(`${days} ${getRussianPlural(days, ["день", "дня", "дней"])}`);
+    parts.push(`${days} ${getRussianPlural(days, ['день', 'дня', 'дней'])}`);
   }
   if (hours) {
-    parts.push(
-      `${hours} ${getRussianPlural(hours, ["час", "часа", "часов"])}`,
-    );
+    parts.push(`${hours} ${getRussianPlural(hours, ['час', 'часа', 'часов'])}`);
   }
   if (minutes && parts.length < 2) {
     parts.push(
-      `${minutes} ${getRussianPlural(minutes, ["минута", "минуты", "минут"])}`,
+      `${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`,
     );
   }
   if (!parts.length) {
-    return "менее минуты";
+    return 'менее минуты';
   }
-  return parts.slice(0, 2).join(" ");
+  return parts.slice(0, 2).join(' ');
 };
 
 const buildCompletionNote = (
-  status: Task["status"] | undefined,
+  status: Task['status'] | undefined,
   dueValue?: string,
   completedValue?: string | null,
 ) => {
-  if (status !== "Выполнена") {
+  if (status !== 'Выполнена') {
     return null;
   }
   const dueDate = parseDateInput(dueValue);
@@ -560,11 +538,11 @@ const buildCompletionNote = (
     return null;
   }
   if (Math.abs(diff) < COMPLETION_THRESHOLD_MS) {
-    return "Выполнена точно в срок";
+    return 'Выполнена точно в срок';
   }
   const offset = formatCompletionOffset(diff);
   if (!offset) {
-    return "Выполнена точно в срок";
+    return 'Выполнена точно в срок';
   }
   return diff < 0
     ? `Выполнена досрочно на ${offset}`
@@ -572,7 +550,7 @@ const buildCompletionNote = (
 };
 
 // Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
-// eslint-disable-next-line react-refresh/only-export-components
+
 export function DeadlineCountdownBadge({
   startValue,
   dueValue,
@@ -583,18 +561,16 @@ export function DeadlineCountdownBadge({
   startValue?: string;
   dueValue?: string;
   rawDue?: string;
-  status?: Task["status"];
+  status?: Task['status'];
   completedAt?: string | null;
 }) {
   const completedDate = React.useMemo(
     () => parseDateInput(completedAt),
     [completedAt],
   );
-  const isCompleted = status === "Выполнена";
+  const isCompleted = status === 'Выполнена';
 
-  const [now, setNow] = React.useState<Date>(
-    () => completedDate ?? new Date(),
-  );
+  const [now, setNow] = React.useState<Date>(() => completedDate ?? new Date());
 
   React.useEffect(() => {
     if (isCompleted) {
@@ -622,14 +598,14 @@ export function DeadlineCountdownBadge({
     [status, dueValue, completedAt],
   );
 
-  if (state.kind === "invalid") {
+  if (state.kind === 'invalid') {
     return (
       <span
         className={`${neutralCountdownBadgeClass} inline-flex items-center gap-1.5`}
         title={
-          state.reason === "missing"
-            ? "Срок не назначен"
-            : "Срок указан некорректно"
+          state.reason === 'missing'
+            ? 'Срок не назначен'
+            : 'Срок указан некорректно'
         }
       >
         <QuestionMarkCircleIcon
@@ -663,7 +639,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedDays}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.days, ["день", "дня", "дней"])}
+            {getRussianPlural(parts.days, ['день', 'дня', 'дней'])}
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
@@ -671,7 +647,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedHours}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.hours, ["час", "часа", "часов"])}
+            {getRussianPlural(parts.hours, ['час', 'часа', 'часов'])}
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
@@ -679,7 +655,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedMinutes}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.minutes, ["минута", "минуты", "минут"])}
+            {getRussianPlural(parts.minutes, ['минута', 'минуты', 'минут'])}
           </span>
         </span>
       </span>
@@ -691,7 +667,7 @@ export function DeadlineCountdownBadge({
 }
 
 const durationToneClassMap: Record<
-  "completed" | "cancelled" | "active" | "planned" | "idle",
+  'completed' | 'cancelled' | 'active' | 'planned' | 'idle',
   string
 > = {
   completed: `${countdownBadgeBaseClass} bg-emerald-500/25 ring-emerald-500/45 dark:bg-emerald-400/25 dark:ring-emerald-300/45`,
@@ -703,42 +679,38 @@ const durationToneClassMap: Record<
 
 const formatDurationPhrase = (
   parts: ReturnType<typeof formatCountdownParts>,
-  variant: "completed" | "running",
+  variant: 'completed' | 'running',
   entityKind: EntityKind,
 ) => {
   const { days, hours, minutes } = parts;
   if (!days && !hours && !minutes) {
-    return variant === "completed"
-      ? `${entityWord(entityKind, "nominative")} завершена менее чем за минуту`
-      : "Затрачено менее минуты";
+    return variant === 'completed'
+      ? `${entityWord(entityKind, 'nominative')} завершена менее чем за минуту`
+      : 'Затрачено менее минуты';
   }
-  const dayLabel = `${days} ${getRussianPlural(days, [
-    "день",
-    "дня",
-    "дней",
-  ])}`;
+  const dayLabel = `${days} ${getRussianPlural(days, ['день', 'дня', 'дней'])}`;
   const hourLabel = `${hours} ${getRussianPlural(hours, [
-    "час",
-    "часа",
-    "часов",
+    'час',
+    'часа',
+    'часов',
   ])}`;
   const minuteLabel = `${minutes} ${getRussianPlural(minutes, [
-    "минута",
-    "минуты",
-    "минут",
+    'минута',
+    'минуты',
+    'минут',
   ])}`;
   const phrase = `${dayLabel} ${hourLabel} ${minuteLabel}`;
-  return variant === "completed"
-    ? `${entityWord(entityKind, "nominative")} завершена за ${phrase}`
+  return variant === 'completed'
+    ? `${entityWord(entityKind, 'nominative')} завершена за ${phrase}`
     : `Затрачено ${phrase}`;
 };
 
 const buildDurationTitle = (
-  variant: "completed" | "running" | "idle",
+  variant: 'completed' | 'running' | 'idle',
   startValue?: string,
   endValue?: string,
   parts?: ReturnType<typeof formatCountdownParts>,
-  entityKind: EntityKind = "task",
+  entityKind: EntityKind = 'task',
 ) => {
   const titleParts: string[] = [];
   const startFormatted = startValue ? formatDate(startValue) : null;
@@ -748,7 +720,7 @@ const buildDurationTitle = (
   }
   if (endFormatted) {
     titleParts.push(
-      variant === "completed"
+      variant === 'completed'
         ? `Завершено: ${endFormatted.full}`
         : `Текущее время: ${endFormatted.full}`,
     );
@@ -756,41 +728,40 @@ const buildDurationTitle = (
   if (parts) {
     const phrase = formatDurationPhrase(
       parts,
-      variant === "completed" ? "completed" : "running",
+      variant === 'completed' ? 'completed' : 'running',
       entityKind,
     );
     const normalized =
-      variant === "completed"
+      variant === 'completed'
         ? phrase.replace(
             new RegExp(
               `^${escapeRegExp(
-                `${entityWord(entityKind, "nominative")} завершена за `,
+                `${entityWord(entityKind, 'nominative')} завершена за `,
               )}`,
             ),
-            "Продолжительность: ",
+            'Продолжительность: ',
           )
-        : phrase.replace(/^Затрачено\s/, "Продолжительность: ");
+        : phrase.replace(/^Затрачено\s/, 'Продолжительность: ');
     titleParts.push(
-      variant === "idle" ? `Продолжительность: ${phrase}` : normalized,
+      variant === 'idle' ? `Продолжительность: ${phrase}` : normalized,
     );
   }
   if (!titleParts.length) {
-    return variant === "idle"
-      ? "Продолжительность появится после указания даты начала"
-      : "Нет данных о продолжительности";
+    return variant === 'idle'
+      ? 'Продолжительность появится после указания даты начала'
+      : 'Нет данных о продолжительности';
   }
-  return titleParts.join("\n");
+  return titleParts.join('\n');
 };
 
 type ActualTimeCellProps = {
   progressStartValue?: string | null;
   plannedStartValue?: string | null;
   completedValue?: string | null;
-  status?: Task["status"];
+  status?: Task['status'];
   entityKind: EntityKind;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 function ActualTimeCell({
   progressStartValue,
   plannedStartValue,
@@ -810,9 +781,9 @@ function ActualTimeCell({
     () => parseDateInput(completedValue),
     [completedValue],
   );
-  const isFinished = status === "Выполнена" || status === "Отменена";
-  const isCancelled = status === "Отменена";
-  const isNotStarted = status === "Новая";
+  const isFinished = status === 'Выполнена' || status === 'Отменена';
+  const isCancelled = status === 'Отменена';
+  const isNotStarted = status === 'Новая';
 
   const timerStartDate = React.useMemo(() => {
     if (isNotStarted) {
@@ -844,9 +815,8 @@ function ActualTimeCell({
     return () => window.clearInterval(timer);
   }, [isFinished, completedDate, timerStartDate]);
 
-  const effectiveEndDate = isFinished && completedDate
-    ? completedDate
-    : referenceDate;
+  const effectiveEndDate =
+    isFinished && completedDate ? completedDate : referenceDate;
   const durationMs = timerStartDate
     ? Math.max(0, effectiveEndDate.getTime() - timerStartDate.getTime())
     : null;
@@ -857,47 +827,48 @@ function ActualTimeCell({
     return durationMs !== null ? formatCountdownParts(durationMs) : null;
   }, [durationMs, isNotStarted]);
 
-  const endIso = React.useMemo(() => effectiveEndDate.toISOString(), [
-    effectiveEndDate,
-  ]);
+  const endIso = React.useMemo(
+    () => effectiveEndDate.toISOString(),
+    [effectiveEndDate],
+  );
 
-  const variant: "completed" | "running" | "idle" =
+  const variant: 'completed' | 'running' | 'idle' =
     isNotStarted || !timerStartDate
-      ? "idle"
+      ? 'idle'
       : isFinished
-      ? "completed"
-      : "running";
+        ? 'completed'
+        : 'running';
 
   const toneKey: keyof typeof durationToneClassMap =
     isNotStarted || !timerStartDate
-      ? "idle"
+      ? 'idle'
       : isFinished
-      ? isCancelled
-        ? "cancelled"
-        : "completed"
-      : status === "В работе"
-      ? "active"
-      : "planned";
+        ? isCancelled
+          ? 'cancelled'
+          : 'completed'
+        : status === 'В работе'
+          ? 'active'
+          : 'planned';
 
   const label = isNotStarted
-    ? `${entityWord(entityKind, "nominative")} ещё не начата`
+    ? `${entityWord(entityKind, 'nominative')} ещё не начата`
     : durationParts
-    ? formatDurationPhrase(
-        durationParts,
-        variant === "completed" ? "completed" : "running",
-        entityKind,
-      )
-    : "Продолжительность появится после начала";
+      ? formatDurationPhrase(
+          durationParts,
+          variant === 'completed' ? 'completed' : 'running',
+          entityKind,
+        )
+      : 'Продолжительность появится после начала';
 
   const startValueForTooltip =
     progressStartValue ?? plannedStartValue ?? undefined;
 
   const durationBadgeTitle = isNotStarted
-    ? `Таймер запустится после перевода ${entityWord(entityKind, "genitive", { lower: true })} в статус «В работе»`
+    ? `Таймер запустится после перевода ${entityWord(entityKind, 'genitive', { lower: true })} в статус «В работе»`
     : buildDurationTitle(
         variant,
         startValueForTooltip,
-        variant === "completed" ? completedValue ?? undefined : endIso,
+        variant === 'completed' ? (completedValue ?? undefined) : endIso,
         durationParts ?? undefined,
         entityKind,
       );
@@ -915,28 +886,28 @@ function ActualTimeCell({
     }
     if (!timerStartDate) {
       const placeholder =
-        status === "Новая"
-          ? "Не начата"
-          : status === "В работе"
-          ? "В работе"
-          : "В ожидании";
+        status === 'Новая'
+          ? 'Не начата'
+          : status === 'В работе'
+            ? 'В работе'
+            : 'В ожидании';
       const title =
-        status === "Новая"
-          ? `${entityWord(entityKind, "nominative")} ещё не начата`
-          : status === "В работе"
-          ? "Таймер запустится после фиксации начала"
-          : "Дата начала отсутствует";
+        status === 'Новая'
+          ? `${entityWord(entityKind, 'nominative')} ещё не начата`
+          : status === 'В работе'
+            ? 'Таймер запустится после фиксации начала'
+            : 'Дата начала отсутствует';
       return (
         <span className={dateBadgeClass} title={title}>
           <span className="truncate">{placeholder}</span>
         </span>
       );
     }
-    const placeholder = status === "В работе" ? "В работе" : "В ожидании";
+    const placeholder = status === 'В работе' ? 'В работе' : 'В ожидании';
     return (
       <span
         className={dateBadgeClass}
-        title={`${entityWord(entityKind, "nominative")} ещё не завершена`}
+        title={`${entityWord(entityKind, 'nominative')} ещё не завершена`}
       >
         <span className="truncate">{placeholder}</span>
       </span>
@@ -961,11 +932,7 @@ function ActualTimeCell({
                 {durationParts.paddedDays}
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-                {getRussianPlural(durationParts.days, [
-                  "день",
-                  "дня",
-                  "дней",
-                ])}
+                {getRussianPlural(durationParts.days, ['день', 'дня', 'дней'])}
               </span>
             </span>
             <span className="flex flex-col items-center leading-tight">
@@ -974,9 +941,9 @@ function ActualTimeCell({
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
                 {getRussianPlural(durationParts.hours, [
-                  "час",
-                  "часа",
-                  "часов",
+                  'час',
+                  'часа',
+                  'часов',
                 ])}
               </span>
             </span>
@@ -986,9 +953,9 @@ function ActualTimeCell({
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
                 {getRussianPlural(durationParts.minutes, [
-                  "минута",
-                  "минуты",
-                  "минут",
+                  'минута',
+                  'минуты',
+                  'минут',
                 ])}
               </span>
             </span>
@@ -1005,64 +972,67 @@ function ActualTimeCell({
 
 export default function taskColumns(
   users: Record<number, AppUser>,
-  defaultKind: EntityKind = "task",
+  defaultKind: EntityKind = 'task',
 ): ColumnDef<TaskRow>[] {
   const cols: ColumnDef<TaskRow>[] = [
     {
-      header: "Номер",
-      id: "number",
+      header: 'Номер',
+      id: 'number',
       accessorFn: (row) => {
         const rowKind = resolveEntityKind(row.kind, defaultKind);
         const rawValue =
-          rowKind === "request"
+          rowKind === 'request'
             ? row.request_id || row.task_number || row._id
             : row.task_number || row.request_id || row._id;
-        if (typeof rawValue === "string") {
+        if (typeof rawValue === 'string') {
           return rawValue;
         }
         if (rawValue === undefined || rawValue === null) {
-          return "";
+          return '';
         }
         return String(rawValue);
       },
       meta: {
-        width: "clamp(4.25rem, 8vw, 6.25rem)",
-        minWidth: "4rem",
-        maxWidth: "6.5rem",
+        width: 'clamp(4.25rem, 8vw, 6.25rem)',
+        minWidth: '4rem',
+        maxWidth: '6.5rem',
         cellClassName:
-          "whitespace-nowrap text-center font-mono tabular-nums sm:text-left sm:pl-1.5",
-        headerClassName: "whitespace-nowrap text-center sm:text-left",
+          'whitespace-nowrap text-center font-mono tabular-nums sm:text-left sm:pl-1.5',
+        headerClassName: 'whitespace-nowrap text-center sm:text-left',
       },
       cell: (p) => {
         const row = p.row.original as TaskRow;
         const rowKind = resolveEntityKind(row.kind, defaultKind);
-        const value = (p.getValue<string>() || "").trim();
+        const value = (p.getValue<string>() || '').trim();
         const fallback =
-          rowKind === "request"
-            ? (row.request_id as string | undefined) ??
+          rowKind === 'request'
+            ? ((row.request_id as string | undefined) ??
               (row.task_number as string | undefined) ??
-              String(row._id)
-            : (row.task_number as string | undefined) ??
+              String(row._id))
+            : ((row.task_number as string | undefined) ??
               (row.request_id as string | undefined) ??
-              String(row._id);
-        const display = value || fallback || "";
+              String(row._id));
+        const display = value || fallback || '';
         const numericMatch = display.match(/\d+/);
         const shortValue = numericMatch ? numericMatch[0] : display;
         return (
-          <span className={`${numberBadgeClass} justify-center`} title={display}>
+          <span
+            className={`${numberBadgeClass} justify-center`}
+            title={display}
+          >
             <span className="truncate">{shortValue}</span>
           </span>
         );
       },
     },
     {
-      header: `${entityWord(defaultKind, "accusative")} создал`,
-      accessorKey: "createdAt",
+      header: `${entityWord(defaultKind, 'accusative')} создал`,
+      accessorKey: 'createdAt',
       meta: {
-        width: "clamp(9rem, 18vw, 14rem)",
-        minWidth: "8.5rem",
-        maxWidth: "16rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(9rem, 18vw, 14rem)',
+        minWidth: '8.5rem',
+        maxWidth: '16rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
         const rawCreator =
@@ -1070,11 +1040,11 @@ export default function taskColumns(
           (row.original.createdBy as unknown) ??
           (row.original.creator as unknown);
         const creatorId =
-          typeof rawCreator === "number"
+          typeof rawCreator === 'number'
             ? rawCreator
-            : typeof rawCreator === "string" && rawCreator.trim()
-            ? Number(rawCreator)
-            : NaN;
+            : typeof rawCreator === 'string' && rawCreator.trim()
+              ? Number(rawCreator)
+              : NaN;
         if (!Number.isFinite(creatorId)) {
           return <span className="text-muted-foreground">—</span>;
         }
@@ -1099,16 +1069,16 @@ export default function taskColumns(
       },
     },
     {
-      header: "Название",
-      accessorKey: "title",
+      header: 'Название',
+      accessorKey: 'title',
       meta: {
-        width: "clamp(8rem, 18vw, 18rem)",
-        minWidth: "7rem",
-        maxWidth: "18rem",
-        cellClassName: "align-top",
+        width: 'clamp(8rem, 18vw, 18rem)',
+        minWidth: '7rem',
+        maxWidth: '18rem',
+        cellClassName: 'align-top',
       },
       cell: (p) => {
-        const v = p.getValue<string>() || "";
+        const v = p.getValue<string>() || '';
         const compact = compactText(v, 72);
         const row = p.row.original as TaskRow;
         const completionNote = buildCompletionNote(
@@ -1118,17 +1088,14 @@ export default function taskColumns(
         );
         return (
           <div className="flex flex-col items-start gap-1">
-            <span
-              title={v}
-              className={`${titleBadgeClass} whitespace-normal`}
-            >
+            <span title={v} className={`${titleBadgeClass} whitespace-normal`}>
               <span
                 className="block max-w-full break-words text-left leading-snug"
                 style={{
-                  display: "-webkit-box",
+                  display: '-webkit-box',
                   WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
                 }}
               >
                 {compact}
@@ -1142,19 +1109,19 @@ export default function taskColumns(
       },
     },
     {
-      header: "Исполнители",
-      accessorKey: "assignees",
+      header: 'Исполнители',
+      accessorKey: 'assignees',
       meta: {
-        width: "clamp(7rem, 20vw, 13rem)",
-        minWidth: "6rem",
-        maxWidth: "13rem",
+        width: 'clamp(7rem, 20vw, 13rem)',
+        minWidth: '6rem',
+        maxWidth: '13rem',
       },
       cell: ({ row }) => {
         const ids = Array.isArray(row.original.assignees)
           ? row.original.assignees
-          : typeof row.original.assigned_user_id === "number"
-          ? [row.original.assigned_user_id]
-          : [];
+          : typeof row.original.assigned_user_id === 'number'
+            ? [row.original.assigned_user_id]
+            : [];
         if (!ids.length) {
           return <span className="text-muted-foreground">—</span>;
         }
@@ -1166,7 +1133,7 @@ export default function taskColumns(
             users[id]?.username ||
             String(id),
         }));
-        const tooltip = labels.map((item) => item.label).join(", ");
+        const tooltip = labels.map((item) => item.label).join(', ');
         return (
           <div
             className="flex w-full flex-wrap items-start gap-1 leading-tight"
@@ -1187,18 +1154,18 @@ export default function taskColumns(
       },
     },
     {
-      header: "Статус",
-      accessorKey: "status",
+      header: 'Статус',
+      accessorKey: 'status',
       meta: {
-        width: "clamp(4.5rem, 8vw, 6.5rem)",
-        minWidth: "4.5rem",
-        maxWidth: "6.5rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(4.5rem, 8vw, 6.5rem)',
+        minWidth: '4.5rem',
+        maxWidth: '6.5rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
-        const value = p.getValue<string>() || "";
+        const value = p.getValue<string>() || '';
         if (!value) {
-          return "";
+          return '';
         }
         const badgeClass = getStatusBadgeClass(value);
         if (!badgeClass) {
@@ -1208,18 +1175,18 @@ export default function taskColumns(
       },
     },
     {
-      header: "Приоритет",
-      accessorKey: "priority",
+      header: 'Приоритет',
+      accessorKey: 'priority',
       meta: {
-        width: "clamp(8.5rem, 15vw, 12.5rem)",
-        minWidth: "8.5rem",
-        maxWidth: "12.5rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(8.5rem, 15vw, 12.5rem)',
+        minWidth: '8.5rem',
+        maxWidth: '12.5rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
-        const value = p.getValue<string>() || "";
+        const value = p.getValue<string>() || '';
         if (!value.trim()) {
-          return "";
+          return '';
         }
         const display = normalizePriorityLabel(value);
         const badgeClass = getPriorityBadgeClass(value);
@@ -1232,24 +1199,24 @@ export default function taskColumns(
       },
     },
     {
-      header: "Начало",
-      accessorKey: "start_date",
+      header: 'Начало',
+      accessorKey: 'start_date',
       meta: {
-        width: "clamp(6.75rem, 11vw, 8.75rem)",
-        minWidth: "6.5rem",
-        maxWidth: "9rem",
-        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
+        width: 'clamp(6.75rem, 11vw, 8.75rem)',
+        minWidth: '6.5rem',
+        maxWidth: '9rem',
+        cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
     },
     {
-      header: "Дедлайн",
-      accessorKey: "due_date",
+      header: 'Дедлайн',
+      accessorKey: 'due_date',
       meta: {
-        width: "clamp(10.5rem, 20vw, 15.5rem)",
-        minWidth: "10rem",
-        maxWidth: "16.5rem",
-        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
+        width: 'clamp(10.5rem, 20vw, 15.5rem)',
+        minWidth: '10rem',
+        maxWidth: '16.5rem',
+        cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => {
         const dueValue = p.getValue<string>();
@@ -1267,7 +1234,7 @@ export default function taskColumns(
           return countdown;
         }
         const dateCell = renderDateCell(dueValue);
-        if (typeof dateCell === "string") {
+        if (typeof dateCell === 'string') {
           if (!dateCell) {
             return countdown;
           }
@@ -1287,13 +1254,13 @@ export default function taskColumns(
       },
     },
     {
-      header: "Время выполнения",
-      accessorKey: "completed_at",
+      header: 'Время выполнения',
+      accessorKey: 'completed_at',
       meta: {
-        width: "clamp(10.5rem, 20vw, 15.5rem)",
-        minWidth: "10rem",
-        maxWidth: "16.5rem",
-        cellClassName: "whitespace-nowrap text-xs sm:text-sm",
+        width: 'clamp(10.5rem, 20vw, 15.5rem)',
+        minWidth: '10rem',
+        maxWidth: '16.5rem',
+        cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => {
         const row = p.row.original;
@@ -1310,19 +1277,19 @@ export default function taskColumns(
       },
     },
     {
-      header: "Тип",
-      accessorKey: "task_type",
+      header: 'Тип',
+      accessorKey: 'task_type',
       meta: {
-        width: "clamp(4.5rem, 8vw, 6.5rem)",
-        minWidth: "4.5rem",
-        maxWidth: "6.5rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(4.5rem, 8vw, 6.5rem)',
+        minWidth: '4.5rem',
+        maxWidth: '6.5rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
-        const value = p.getValue<string>() || "";
+        const value = p.getValue<string>() || '';
         const trimmed = value.trim();
         if (!trimmed) {
-          return "";
+          return '';
         }
         const badgeClass = getTypeBadgeClass(trimmed);
         const className = badgeClass || `${fallbackBadgeClass} normal-case`;
@@ -1334,18 +1301,19 @@ export default function taskColumns(
       },
     },
     {
-      header: "Старт",
-      accessorKey: "start_location",
+      header: 'Старт',
+      accessorKey: 'start_location',
       meta: {
-        width: "clamp(5.5rem, 14vw, 9.5rem)",
-        minWidth: "5rem",
-        maxWidth: "9.5rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(5.5rem, 14vw, 9.5rem)',
+        minWidth: '5rem',
+        maxWidth: '9.5rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
-        const name = row.original.start_location ?? "";
+        const name = row.original.start_location ?? '';
         const trimmed = name.trim();
-        const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
+        const firstToken =
+          trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
         const compact = compactText(firstToken, 24);
         const link = row.original.start_location_link ?? undefined;
         return link ? (
@@ -1366,18 +1334,19 @@ export default function taskColumns(
       },
     },
     {
-      header: "Финиш",
-      accessorKey: "end_location",
+      header: 'Финиш',
+      accessorKey: 'end_location',
       meta: {
-        width: "clamp(5.5rem, 14vw, 9.5rem)",
-        minWidth: "5rem",
-        maxWidth: "9.5rem",
-        cellClassName: "whitespace-nowrap",
+        width: 'clamp(5.5rem, 14vw, 9.5rem)',
+        minWidth: '5rem',
+        maxWidth: '9.5rem',
+        cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
-        const name = row.original.end_location ?? "";
+        const name = row.original.end_location ?? '';
         const trimmed = name.trim();
-        const firstToken = trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
+        const firstToken =
+          trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
         const compact = compactText(firstToken, 24);
         const link = row.original.end_location_link ?? undefined;
         return link ? (
@@ -1398,23 +1367,27 @@ export default function taskColumns(
       },
     },
     {
-      header: "Км",
-      accessorKey: "route_distance_km",
+      header: 'Км',
+      accessorKey: 'route_distance_km',
       meta: {
-        width: "clamp(3.25rem, 6vw, 4.75rem)",
-        minWidth: "3rem",
-        maxWidth: "4.75rem",
-        cellClassName: "whitespace-nowrap text-center sm:text-left",
-        headerClassName: "text-center sm:text-left",
+        width: 'clamp(3.25rem, 6vw, 4.75rem)',
+        minWidth: '3rem',
+        maxWidth: '4.75rem',
+        cellClassName: 'whitespace-nowrap text-center sm:text-left',
+        headerClassName: 'text-center sm:text-left',
       },
       cell: (p) => {
         const raw = p.getValue<number | string | null>();
-        if (raw === null || raw === undefined || (typeof raw === "string" && !raw.trim())) {
-          return "";
+        if (
+          raw === null ||
+          raw === undefined ||
+          (typeof raw === 'string' && !raw.trim())
+        ) {
+          return '';
         }
         const display = formatDistanceLabel(raw);
         if (!display) {
-          return "";
+          return '';
         }
         const badgeClass = getDistanceBadgeClass(raw);
         const className = badgeClass || fallbackBadgeClass;

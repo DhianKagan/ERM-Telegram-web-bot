@@ -7,8 +7,12 @@ import { moveFile } from '../../src/utils/moveFile';
 
 describe('moveFile', () => {
   it('перемещает файл и создаёт недостающие каталоги', async () => {
-    const sourceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'move-file-src-'));
-    const destinationRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'move-file-dest-'));
+    const sourceRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'move-file-src-'),
+    );
+    const destinationRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'move-file-dest-'),
+    );
     const sourcePath = path.join(sourceRoot, 'source.txt');
     const destinationPath = path.join(destinationRoot, 'nested', 'target.txt');
     await fs.writeFile(sourcePath, 'payload', 'utf8');
@@ -25,19 +29,21 @@ describe('moveFile', () => {
   });
 
   it('копирует файл при ошибке EXDEV и удаляет исходник', async () => {
-    const sourceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'move-file-src-exdev-'));
-    const destinationRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'move-file-dest-exdev-'));
+    const sourceRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'move-file-src-exdev-'),
+    );
+    const destinationRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'move-file-dest-exdev-'),
+    );
     const sourcePath = path.join(sourceRoot, 'source.txt');
     const destinationPath = path.join(destinationRoot, 'target.txt');
     await fs.writeFile(sourcePath, 'fallback', 'utf8');
 
-    const renameMock = jest
-      .spyOn(fs, 'rename')
-      .mockImplementation(async () => {
-        const err = new Error('cross-device link') as NodeJS.ErrnoException;
-        err.code = 'EXDEV';
-        throw err;
-      });
+    const renameMock = jest.spyOn(fs, 'rename').mockImplementation(async () => {
+      const err = new Error('cross-device link') as NodeJS.ErrnoException;
+      err.code = 'EXDEV';
+      throw err;
+    });
     const copySpy = jest.spyOn(fs, 'copyFile');
     const unlinkSpy = jest.spyOn(fs, 'unlink');
 

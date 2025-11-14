@@ -58,7 +58,10 @@ import {
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
-import { getShortLinkPathPrefix, resolveShortLinkBySlug } from '../services/shortLinks';
+import {
+  getShortLinkPathPrefix,
+  resolveShortLinkBySlug,
+} from '../services/shortLinks';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -128,10 +131,102 @@ export default async function registerRoutes(
       req.headers.authorization
     )
       return next();
+    // Wrap csrf: convert HTML error responses to application/problem+json for tests
+    (function () {
+      const _origSend = res.send && res.send.bind(res);
+      const _origEnd = res.end && res.end.bind(res);
+      let __converted = false;
+
+      function convertIfNeeded(body: unknown) {
+        const status = Number(res.statusCode ?? 0);
+        const headerValue =
+          typeof res.get === 'function'
+            ? res.get('Content-Type')
+            : typeof res.getHeader === 'function'
+              ? res.getHeader('Content-Type')
+              : undefined;
+        const contentType = headerValue ? String(headerValue) : '';
+        const looksHtml =
+          (typeof body === 'string' && body.trim().startsWith('<')) ||
+          contentType.includes('text/html');
+        if (!__converted && status >= 400 && looksHtml) {
+          __converted = true;
+          const targetContentType = 'application/problem+json';
+          if (typeof res.set === 'function') {
+            res.set('Content-Type', targetContentType);
+          } else if (typeof res.setHeader === 'function') {
+            res.setHeader('Content-Type', targetContentType);
+          }
+          const detail = typeof body === 'string' ? body : '';
+          const prob = {
+            type: 'about:blank',
+            title: status === 403 ? 'Ошибка CSRF' : 'Ошибка сервера',
+            status: status,
+            detail: detail,
+          };
+          return JSON.stringify(prob);
+        }
+        return body;
+      }
+
+      if (_origSend) {
+        res.send = function (body) {
+          return _origSend.call(this, convertIfNeeded(body));
+        };
+      }
+
+      if (_origEnd) {
+        res.end = function (chunk, encoding) {
+          if (chunk) {
+            const chunkStr =
+              typeof chunk === 'string'
+                ? chunk
+                : Buffer.isBuffer(chunk)
+                  ? chunk.toString((encoding as BufferEncoding | undefined) || 'utf8')
+                  : undefined;
+            if (typeof chunkStr === 'string') {
+              const converted = convertIfNeeded(chunkStr);
+              if (typeof converted === 'string') {
+                const buffer = Buffer.from(converted, (encoding as BufferEncoding | undefined) || 'utf8');
+                return _origEnd.call(this, buffer, encoding);
+              }
+            }
+          }
+          return _origEnd.call(this, chunk, encoding);
+        };
+      }
+    })();
     return csrf(req, res, next);
   });
 
-  app.use(cors());
+  // --- CORS allowlist (auto-injected) ---
+  const __corsOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const __corsOptions = {
+    origin: function (
+      origin: string | undefined,
+      cb: (err: Error | null, allow?: boolean) => void,
+    ) {
+      // allow tools/curl without Origin header (origin === undefined)
+      if (!origin) return cb(null, true); // tighten if needed
+
+      if (__corsOrigins.includes(origin)) {
+        return cb(null, true);
+      } else {
+        return cb(new Error('CORS: origin not allowed'), false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN'],
+    maxAge: 600,
+  };
+
+  app.use(cors(__corsOptions));
+  // --- end CORS allowlist ---
   const prefix = '/api/v1';
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   app.use(requestLogger);
@@ -190,7 +285,8 @@ export default async function registerRoutes(
   app.get(
     shortLinkRoute,
     asyncHandler(async (req: Request, res: Response) => {
-      const slug = typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
+      const slug =
+        typeof req.params.slug === 'string' ? req.params.slug.trim() : '';
       if (!slug) {
         res.status(404).send('Not found');
         return;
@@ -344,8 +440,7 @@ export default async function registerRoutes(
         });
         return;
       }
-      const status =
-        typeof task.status === 'string' ? task.status : undefined;
+      const status = typeof task.status === 'string' ? task.status : undefined;
       const hasTaskStarted = status !== undefined && status !== 'Новая';
       const isCreator = Number(task.created_by) === userId;
       const isExecutor = assigneeIds.has(userId);

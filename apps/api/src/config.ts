@@ -8,7 +8,9 @@ if (!process.env.TZ) {
   process.env.TZ = PROJECT_TIMEZONE;
 }
 
-const isMochaRun = process.argv.some((arg) => /(^|[\\/])mocha(?:\.c?js)?$/i.test(arg));
+const isMochaRun = process.argv.some((arg) =>
+  /(^|[\\/])mocha(?:\.c?js)?$/i.test(arg),
+);
 if (!process.env.NODE_ENV && isMochaRun) {
   process.env.NODE_ENV = 'test';
 }
@@ -234,14 +236,19 @@ try {
   parsed.hash = '';
   const normalizedPath = parsed.pathname.replace(/\/+$/, '');
   osrmBaseUrlValue = `${parsed.origin}${normalizedPath}`;
-  const routePath = `${normalizedPath}/route/v1/driving`.replace(/^\/+/, '/');
+  const routeTail = normalizedPath.endsWith('/route')
+    ? '/v1/driving'
+    : '/route/v1/driving';
+  const routePath = `${normalizedPath}${routeTail}`.replace(/^\/+/, '/');
   routingUrlEnv = new URL(routePath, `${parsed.origin}/`).toString();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   throw new Error(`OSRM_BASE_URL имеет неверный формат: ${message}`);
 }
 
-const graphhopperMatrixUrlRaw = (process.env.GRAPHHOPPER_MATRIX_URL || '').trim();
+const graphhopperMatrixUrlRaw = (
+  process.env.GRAPHHOPPER_MATRIX_URL || ''
+).trim();
 let graphhopperMatrixUrl: string | undefined;
 if (graphhopperMatrixUrlRaw) {
   try {
@@ -264,7 +271,9 @@ if (graphhopperMatrixUrlRaw) {
 }
 
 const graphhopperApiKeyRaw = (process.env.GRAPHHOPPER_API_KEY || '').trim();
-const graphhopperApiKey = graphhopperApiKeyRaw ? graphhopperApiKeyRaw : undefined;
+const graphhopperApiKey = graphhopperApiKeyRaw
+  ? graphhopperApiKeyRaw
+  : undefined;
 
 const graphhopperProfileRaw = (process.env.GRAPHHOPPER_PROFILE || '').trim();
 const graphhopperProfile = graphhopperProfileRaw || 'car';
@@ -381,8 +390,7 @@ const portFromRailway = parsePort(process.env.RAILWAY_TCP_PORT);
 const portFromEnv = parsePort(process.env.PORT);
 const portFromHostPort = parsePort(process.env.HOST_PORT);
 
-const selectedPort =
-  portFromRailway ?? portFromEnv ?? portFromHostPort ?? 3000;
+const selectedPort = portFromRailway ?? portFromEnv ?? portFromHostPort ?? 3000;
 
 if (
   portFromRailway !== undefined &&

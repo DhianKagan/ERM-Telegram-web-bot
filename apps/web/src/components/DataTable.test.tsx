@@ -1,13 +1,13 @@
 /** @jest-environment jsdom */
 // Назначение файла: тесты для DataTable с бейджами без текстовых детей
 // Основные модули: React Testing Library, DataTable
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import type { ColumnDef } from "@tanstack/react-table";
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import type { ColumnDef } from '@tanstack/react-table';
 
-import DataTable from "./DataTable";
+import DataTable from './DataTable';
 
-jest.mock("react-i18next", () => ({
+jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (value: string) => value }),
 }));
 
@@ -18,28 +18,28 @@ type SampleRow = {
 
 const columns: ColumnDef<SampleRow>[] = [
   {
-    accessorKey: "html",
-    header: "HTML",
+    accessorKey: 'html',
+    header: 'HTML',
     cell: ({ getValue }) => (
-      <span dangerouslySetInnerHTML={{ __html: getValue<string>() ?? "" }} />
+      <span dangerouslySetInnerHTML={{ __html: getValue<string>() ?? '' }} />
     ),
   },
   {
-    accessorKey: "titleOnly",
-    header: "Title",
-    cell: ({ getValue }) => <span title={getValue<string>() ?? ""} />,
+    accessorKey: 'titleOnly',
+    header: 'Title',
+    cell: ({ getValue }) => <span title={getValue<string>() ?? ''} />,
   },
 ];
 
-describe("DataTable", () => {
-  it("извлекает текст из dangerous HTML и из заголовка", () => {
+describe('DataTable', () => {
+  it('извлекает текст из dangerous HTML и из заголовка', () => {
     render(
       <DataTable
         columns={columns}
         data={[
           {
-            html: "<strong>Новый</strong> текст",
-            titleOnly: "Подпись",
+            html: '<strong>Новый</strong> текст',
+            titleOnly: 'Подпись',
           },
         ]}
         pageIndex={0}

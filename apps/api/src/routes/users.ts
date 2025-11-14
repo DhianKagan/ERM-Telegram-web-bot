@@ -16,18 +16,8 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const base: RequestHandler[] = [limiter, authMiddleware()];
 const ctrl = container.resolve(UsersController);
 
-router.get(
-  '/',
-  ...base,
-  Roles(ACCESS_MANAGER),
-  rolesGuard,
-  ctrl.list,
-);
-router.get<{ id: string }>(
-  '/:id',
-  ...base,
-  ctrl.get,
-);
+router.get('/', ...base, Roles(ACCESS_MANAGER), rolesGuard, ctrl.list);
+router.get<{ id: string }>('/:id', ...base, ctrl.get);
 router.post(
   '/',
   ...base,

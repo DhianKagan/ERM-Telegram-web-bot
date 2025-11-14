@@ -1,9 +1,9 @@
 // Назначение: модалка подтверждения действий
 // Основные модули: React, Modal
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import Modal from "./Modal";
+import { Button } from '@/components/ui/button';
+import Modal from './Modal';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -19,8 +19,8 @@ export default function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
-  confirmText = "Подтвердить",
-  cancelText = "Отмена",
+  confirmText = 'Подтвердить',
+  cancelText = 'Отмена',
 }: ConfirmDialogProps) {
   const [pending, setPending] = React.useState(false);
 
@@ -28,7 +28,7 @@ export default function ConfirmDialog({
     if (pending) return;
     try {
       const result = onConfirm();
-      if (result && typeof (result as Promise<unknown>).then === "function") {
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
         setPending(true);
         (result as Promise<unknown>)
           .catch((error) => {

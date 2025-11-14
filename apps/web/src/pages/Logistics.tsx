@@ -1,13 +1,13 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
 // Основные модули: React, MapLibre GL, i18next
-import React from "react";
-import fetchRouteGeometry from "../services/osrm";
-import { fetchTasks } from "../services/tasks";
-import optimizeRoute from "../services/optimizer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import TaskTable from "../components/TaskTable";
-import { useTranslation } from "react-i18next";
+import React from 'react';
+import fetchRouteGeometry from '../services/osrm';
+import { fetchTasks } from '../services/tasks';
+import optimizeRoute from '../services/optimizer';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import TaskTable from '../components/TaskTable';
+import { useTranslation } from 'react-i18next';
 import mapLibrary, {
   type ExpressionSpecification,
   type GeoJSONSource,
@@ -15,17 +15,17 @@ import mapLibrary, {
   type LngLatBoundsLike,
   type MapInstance,
   type MapLayerMouseEvent,
-} from "../utils/mapLibrary";
-import type * as GeoJSON from "geojson";
-import MapLibreDraw from "maplibre-gl-draw";
-import "maplibre-gl-draw/dist/mapbox-gl-draw.css";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
-import useTasks from "../context/useTasks";
-import useIntervalEffect from "../hooks/useIntervalEffect";
-import useI18nRef from "../hooks/useI18nRef";
-import { listFleetVehicles } from "../services/fleets";
-import { subscribeLogisticsEvents } from "../services/logisticsEvents";
+} from '../utils/mapLibrary';
+import type * as GeoJSON from 'geojson';
+import MapLibreDraw from 'maplibre-gl-draw';
+import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
+import useTasks from '../context/useTasks';
+import useIntervalEffect from '../hooks/useIntervalEffect';
+import useI18nRef from '../hooks/useI18nRef';
+import { listFleetVehicles } from '../services/fleets';
+import { subscribeLogisticsEvents } from '../services/logisticsEvents';
 import {
   MAP_ATTRIBUTION,
   MAP_ANIMATION_SPEED_KMH,
@@ -35,30 +35,30 @@ import {
   MAP_STYLE,
   MAP_STYLE_MODE,
   MAP_ADDRESSES_PMTILES_URL,
-} from "../config/map";
-import { insert3dBuildingsLayer } from "../utils/insert3dBuildingsLayer";
-import { customTheme } from "../utils/drawTheme";
+} from '../config/map';
+import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
+import { customTheme } from '../utils/drawTheme';
 import {
   TASK_STATUSES,
   type Coords,
   type FleetVehicleDto,
   type RoutePlan,
   type RoutePlanStatus,
-} from "shared";
+} from 'shared';
 import {
   listRoutePlans,
   updateRoutePlan,
   changeRoutePlanStatus,
   type RoutePlanUpdatePayload,
-} from "../services/routePlans";
-import type { TaskRow } from "../columns/taskColumns";
+} from '../services/routePlans';
+import type { TaskRow } from '../columns/taskColumns';
 import {
   computeGeoZoneMetrics,
   isPolygonGeometry,
   pointWithinGeometry,
   type GeoZoneFeature,
-} from "../utils/geozones";
-import haversine from "../utils/haversine";
+} from '../utils/geozones';
+import haversine from '../utils/haversine';
 
 type RouteTask = TaskRow & {
   startCoordinates?: Coords;
@@ -66,10 +66,10 @@ type RouteTask = TaskRow & {
 };
 
 const TASK_STATUS_COLORS: Record<string, string> = {
-  Новая: "#0ea5e9",
-  "В работе": "#f97316",
-  Выполнена: "#22c55e",
-  Отменена: "#ef4444",
+  Новая: '#0ea5e9',
+  'В работе': '#f97316',
+  Выполнена: '#22c55e',
+  Отменена: '#ef4444',
 };
 
 type LayerVisibilityState = {
@@ -84,7 +84,7 @@ type GlobalRuntime = {
 };
 
 const getNodeEnv = (): string | undefined => {
-  if (typeof globalThis !== "object" || globalThis === null) {
+  if (typeof globalThis !== 'object' || globalThis === null) {
     return undefined;
   }
   const runtime = globalThis as GlobalRuntime;
@@ -96,48 +96,48 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
   optimized: true,
 };
 
-const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === "test" ? 0 : 400;
+const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === 'test' ? 0 : 400;
 
 export const LOGISTICS_FLEET_POLL_INTERVAL_MS = 15_000;
 
-type TaskRouteStatusKey = RoutePlanStatus | "unassigned";
-type RouteStatusFilterKey = TaskRouteStatusKey | "vehicle";
+type TaskRouteStatusKey = RoutePlanStatus | 'unassigned';
+type RouteStatusFilterKey = TaskRouteStatusKey | 'vehicle';
 
 const ROUTE_STATUS_ORDER: RouteStatusFilterKey[] = [
-  "draft",
-  "approved",
-  "completed",
-  "unassigned",
-  "vehicle",
+  'draft',
+  'approved',
+  'completed',
+  'unassigned',
+  'vehicle',
 ];
 
 const ROUTE_STATUS_COLORS: Record<RouteStatusFilterKey, string> = {
-  draft: "#6366f1",
-  approved: "#22c55e",
-  completed: "#0f172a",
-  unassigned: "#f97316",
-  vehicle: "#0891b2",
+  draft: '#6366f1',
+  approved: '#22c55e',
+  completed: '#0f172a',
+  unassigned: '#f97316',
+  vehicle: '#0891b2',
 };
 
 const ROUTE_STATUS_LABELS: Record<RouteStatusFilterKey, string> = {
-  draft: "Черновик",
-  approved: "Утверждён",
-  completed: "Завершён",
-  unassigned: "Без маршрута",
-  vehicle: "Транспорт",
+  draft: 'Черновик',
+  approved: 'Утверждён',
+  completed: 'Завершён',
+  unassigned: 'Без маршрута',
+  vehicle: 'Транспорт',
 };
 
 const getRouteStatusColor = (status: RouteStatusFilterKey): string =>
-  ROUTE_STATUS_COLORS[status] ?? "#0f172a";
+  ROUTE_STATUS_COLORS[status] ?? '#0f172a';
 
 const buildClusterStatusExpression = (status: TaskRouteStatusKey) => [
-  "+",
+  '+',
   [
-    "case",
+    'case',
     [
-      "all",
-      ["==", ["get", "entity"], "task"],
-      ["==", ["get", "routeStatus"], status],
+      'all',
+      ['==', ['get', 'entity'], 'task'],
+      ['==', ['get', 'routeStatus'], status],
     ],
     1,
     0,
@@ -145,35 +145,38 @@ const buildClusterStatusExpression = (status: TaskRouteStatusKey) => [
   0,
 ];
 
-const CLUSTER_STATUS_PROPERTIES: Record<TaskRouteStatusKey, ExpressionSpecification> = {
-  draft: buildClusterStatusExpression("draft"),
-  approved: buildClusterStatusExpression("approved"),
-  completed: buildClusterStatusExpression("completed"),
-  unassigned: buildClusterStatusExpression("unassigned"),
+const CLUSTER_STATUS_PROPERTIES: Record<
+  TaskRouteStatusKey,
+  ExpressionSpecification
+> = {
+  draft: buildClusterStatusExpression('draft'),
+  approved: buildClusterStatusExpression('approved'),
+  completed: buildClusterStatusExpression('completed'),
+  unassigned: buildClusterStatusExpression('unassigned'),
 };
 
 const TRANSPORT_TYPE_COLORS: Record<string, string> = {
-  Легковой: "#0ea5e9",
-  Грузовой: "#f97316",
-  Спецтехника: "#7c3aed",
-  Пеший: "#22c55e",
-  "Без транспорта": "#9ca3af",
-  default: "#475569",
+  Легковой: '#0ea5e9',
+  Грузовой: '#f97316',
+  Спецтехника: '#7c3aed',
+  Пеший: '#22c55e',
+  'Без транспорта': '#9ca3af',
+  default: '#475569',
 };
 
 const TASK_TYPE_COLOR_PALETTE = [
-  "#7c3aed",
-  "#f97316",
-  "#06b6d4",
-  "#16a34a",
-  "#ec4899",
-  "#facc15",
-  "#9333ea",
-  "#0ea5e9",
+  '#7c3aed',
+  '#f97316',
+  '#06b6d4',
+  '#16a34a',
+  '#ec4899',
+  '#facc15',
+  '#9333ea',
+  '#0ea5e9',
 ];
 
-const VEHICLE_TASK_TYPE_KEY = "vehicle";
-const VEHICLE_TASK_TYPE_LABEL = "Транспорт";
+const VEHICLE_TASK_TYPE_KEY = 'vehicle';
+const VEHICLE_TASK_TYPE_LABEL = 'Транспорт';
 
 type GeoZoneMetricsState = {
   areaKm2: number | null;
@@ -191,73 +194,85 @@ type GeoZone = {
   createdAt: string;
 };
 
-const GEO_SOURCE_ID = "logistics-geozones";
-const GEO_FILL_LAYER_ID = "logistics-geozones-fill";
-const GEO_OUTLINE_LAYER_ID = "logistics-geozones-outline";
-const TASK_SOURCE_ID = "logistics-task-routes";
-const TASK_LAYER_ID = "logistics-task-routes-line";
-const TASK_CLUSTER_SOURCE_ID = "logistics-task-markers";
-const TASK_CLUSTER_LAYER_ID = "logistics-task-clusters";
-const TASK_CLUSTER_COUNT_LAYER_ID = "logistics-task-cluster-count";
-const TASK_POINTS_LAYER_ID = "logistics-task-points";
-const TASK_ANIMATION_SOURCE_ID = "logistics-task-animation";
-const TASK_ANIMATION_LAYER_ID = "logistics-task-animation-symbol";
-const OPT_SOURCE_ID = "logistics-optimized-routes";
-const OPT_LAYER_ID = "logistics-optimized-routes-line";
-const ADDRESS_SOURCE_ID = "logistics-addresses";
-const ADDRESS_LAYER_ID = "logistics-addresses-labels";
+const GEO_SOURCE_ID = 'logistics-geozones';
+const GEO_FILL_LAYER_ID = 'logistics-geozones-fill';
+const GEO_OUTLINE_LAYER_ID = 'logistics-geozones-outline';
+const TASK_SOURCE_ID = 'logistics-task-routes';
+const TASK_LAYER_ID = 'logistics-task-routes-line';
+const TASK_CLUSTER_SOURCE_ID = 'logistics-task-markers';
+const TASK_CLUSTER_LAYER_ID = 'logistics-task-clusters';
+const TASK_CLUSTER_COUNT_LAYER_ID = 'logistics-task-cluster-count';
+const TASK_POINTS_LAYER_ID = 'logistics-task-points';
+const TASK_ANIMATION_SOURCE_ID = 'logistics-task-animation';
+const TASK_ANIMATION_LAYER_ID = 'logistics-task-animation-symbol';
+const OPT_SOURCE_ID = 'logistics-optimized-routes';
+const OPT_LAYER_ID = 'logistics-optimized-routes-line';
+const ADDRESS_SOURCE_ID = 'logistics-addresses';
+const ADDRESS_LAYER_ID = 'logistics-addresses-labels';
 const ADDRESS_VECTOR_SOURCE_URL = MAP_ADDRESSES_PMTILES_URL;
 const HAS_ADDRESS_VECTOR_SOURCE = Boolean(ADDRESS_VECTOR_SOURCE_URL);
-const ADDRESS_VECTOR_SOURCE_LAYER = "addresses";
+const ADDRESS_VECTOR_SOURCE_LAYER = 'addresses';
 const MAJOR_LABEL_LAYER_CANDIDATES = [
-  "settlement-subdivision-label",
-  "settlement-major-label",
-  "settlement-neighbourhood-label",
-  "airport-label",
-  "poi-label",
-  "transit-label",
+  'settlement-subdivision-label',
+  'settlement-major-label',
+  'settlement-neighbourhood-label',
+  'airport-label',
+  'poi-label',
+  'transit-label',
 ];
 const ROAD_LABEL_LAYER_CANDIDATES = [
-  "road-label",
-  "road-number-shield",
-  "bridge-street-minor-label",
-  "street-label",
+  'road-label',
+  'road-number-shield',
+  'bridge-street-minor-label',
+  'street-label',
 ];
 
-type AnyLayerSpecification = Parameters<MapInstance["addLayer"]>[0];
-type LineLayerSpecification = Extract<AnyLayerSpecification, { type: "line" }>;
-type SymbolLayerSpecification = Extract<AnyLayerSpecification, { type: "symbol" }>;
-type CircleLayerSpecification = Extract<AnyLayerSpecification, { type: "circle" }>;
+type AnyLayerSpecification = Parameters<MapInstance['addLayer']>[0];
+type LineLayerSpecification = Extract<AnyLayerSpecification, { type: 'line' }>;
+type SymbolLayerSpecification = Extract<
+  AnyLayerSpecification,
+  { type: 'symbol' }
+>;
+type CircleLayerSpecification = Extract<
+  AnyLayerSpecification,
+  { type: 'circle' }
+>;
 
-const TASK_START_SYMBOL = "⬤";
-const TASK_FINISH_SYMBOL = "⦿";
-const ANIMATION_SYMBOL = "▶";
+const TASK_START_SYMBOL = '⬤';
+const TASK_FINISH_SYMBOL = '⦿';
+const ANIMATION_SYMBOL = '▶';
 const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
 
 const findExistingLayerId = (
   map: MapInstance,
   candidates: readonly string[],
 ): string | undefined => {
-  const style = typeof map.getStyle === "function" ? map.getStyle() : undefined;
+  const style = typeof map.getStyle === 'function' ? map.getStyle() : undefined;
   const layers = style?.layers ?? [];
-  return candidates.find((candidate) => layers.some((layer) => layer.id === candidate));
+  return candidates.find((candidate) =>
+    layers.some((layer) => layer.id === candidate),
+  );
 };
 
 const ensureAddressesLayerOrder = (map: MapInstance) => {
-  if (typeof map.getStyle !== "function") {
+  if (typeof map.getStyle !== 'function') {
     return;
   }
   const style = map.getStyle();
   const layers = style?.layers ?? [];
-  const addressLayerIndex = layers.findIndex((layer) => layer.id === ADDRESS_LAYER_ID);
+  const addressLayerIndex = layers.findIndex(
+    (layer) => layer.id === ADDRESS_LAYER_ID,
+  );
   if (addressLayerIndex === -1) {
     return;
   }
   const roadLayerId = findExistingLayerId(map, ROAD_LABEL_LAYER_CANDIDATES);
-  if (roadLayerId && typeof map.moveLayer === "function") {
+  if (roadLayerId && typeof map.moveLayer === 'function') {
     const refreshedStyle = map.getStyle();
     const refreshedLayers = refreshedStyle?.layers ?? [];
-    const roadIndex = refreshedLayers.findIndex((layer) => layer.id === roadLayerId);
+    const roadIndex = refreshedLayers.findIndex(
+      (layer) => layer.id === roadLayerId,
+    );
     if (roadIndex !== -1) {
       const nextLayer = refreshedLayers
         .slice(roadIndex + 1)
@@ -270,14 +285,16 @@ const ensureAddressesLayerOrder = (map: MapInstance) => {
     }
   }
   const majorLabelId = findExistingLayerId(map, MAJOR_LABEL_LAYER_CANDIDATES);
-  if (majorLabelId && typeof map.moveLayer === "function") {
+  if (majorLabelId && typeof map.moveLayer === 'function') {
     map.moveLayer(ADDRESS_LAYER_ID, majorLabelId);
   }
 };
 const MIN_ROUTE_DISTANCE_KM = 0.01;
 
-const createEmptyCollection = <T extends GeoJSON.Geometry = GeoJSON.Geometry>(): GeoJSON.FeatureCollection<T> => ({
-  type: "FeatureCollection",
+const createEmptyCollection = <
+  T extends GeoJSON.Geometry = GeoJSON.Geometry,
+>(): GeoJSON.FeatureCollection<T> => ({
+  type: 'FeatureCollection',
   features: [],
 });
 
@@ -285,18 +302,18 @@ const toKey = (value: string): string => value.trim().toLowerCase();
 
 const normalizeTransportType = (raw: string): string => {
   const value = raw.trim();
-  if (!value) return "Без транспорта";
+  if (!value) return 'Без транспорта';
   const lowered = value.toLowerCase();
-  if (lowered.startsWith("лег")) return "Легковой";
-  if (lowered.startsWith("груз")) return "Грузовой";
-  if (lowered.includes("спец")) return "Спецтехника";
-  if (lowered.includes("пеш")) return "Пеший";
+  if (lowered.startsWith('лег')) return 'Легковой';
+  if (lowered.startsWith('груз')) return 'Грузовой';
+  if (lowered.includes('спец')) return 'Спецтехника';
+  if (lowered.includes('пеш')) return 'Пеший';
   return value;
 };
 
 const normalizeTaskType = (raw: string): string => {
   const value = raw.trim();
-  if (!value) return "Задача";
+  if (!value) return 'Задача';
   if (value.length === 1) {
     return value.toUpperCase();
   }
@@ -307,16 +324,17 @@ const normalizeTaskType = (raw: string): string => {
 const getTransportColor = (transportType: string): string => {
   const normalized = normalizeTransportType(transportType);
   return (
-    TRANSPORT_TYPE_COLORS[
-      normalized as keyof typeof TRANSPORT_TYPE_COLORS
-    ] ?? TRANSPORT_TYPE_COLORS.default
+    TRANSPORT_TYPE_COLORS[normalized as keyof typeof TRANSPORT_TYPE_COLORS] ??
+    TRANSPORT_TYPE_COLORS.default
   );
 };
 
-const hexToRgb = (value: string): { r: number; g: number; b: number } | null => {
-  const normalized = value.startsWith("#") ? value.slice(1) : value;
+const hexToRgb = (
+  value: string,
+): { r: number; g: number; b: number } | null => {
+  const normalized = value.startsWith('#') ? value.slice(1) : value;
   if (normalized.length === 3) {
-    const [r, g, b] = normalized.split("");
+    const [r, g, b] = normalized.split('');
     return {
       r: parseInt(r + r, 16),
       g: parseInt(g + g, 16),
@@ -335,9 +353,9 @@ const hexToRgb = (value: string): { r: number; g: number; b: number } | null => 
 
 const getContrastTextColor = (background: string): string => {
   const rgb = hexToRgb(background);
-  if (!rgb) return "#ffffff";
+  if (!rgb) return '#ffffff';
   const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-  return luminance > 186 ? "#0f172a" : "#ffffff";
+  return luminance > 186 ? '#0f172a' : '#ffffff';
 };
 
 const createMarkerImage = (
@@ -347,19 +365,19 @@ const createMarkerImage = (
   textColor: string,
   accent?: string,
 ): ImageData | null => {
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return null;
   }
   const size = 96;
   const devicePixelRatio =
-    typeof window !== "undefined" && window.devicePixelRatio
+    typeof window !== 'undefined' && window.devicePixelRatio
       ? window.devicePixelRatio
       : 1;
   const scale = devicePixelRatio > 1 ? 2 : 1;
-  const canvas = document.createElement("canvas");
+  const canvas = document.createElement('canvas');
   canvas.width = size * scale;
   canvas.height = size * scale;
-  const context = canvas.getContext("2d");
+  const context = canvas.getContext('2d');
   if (!context) return null;
   context.scale(scale, scale);
   const center = size / 2;
@@ -382,8 +400,8 @@ const createMarkerImage = (
   if (text) {
     context.fillStyle = textColor;
     context.font = "bold 32px 'Open Sans', 'Arial Unicode MS', sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
     context.fillText(text.slice(0, 2), center, center);
   }
   return context.getImageData(0, 0, size * scale, size * scale);
@@ -395,9 +413,9 @@ const buildMarkerIconId = (
   transportKey: string,
   role: string,
 ): string =>
-  ["marker", taskTypeKey, routeStatusKey, transportKey, role]
-    .map((part) => part.replace(/\s+/g, "-").toLowerCase())
-    .join("-");
+  ['marker', taskTypeKey, routeStatusKey, transportKey, role]
+    .map((part) => part.replace(/\s+/g, '-').toLowerCase())
+    .join('-');
 
 const ensureMarkerIcon = (
   map: MapInstance,
@@ -446,58 +464,59 @@ type LogisticsDetails = {
 };
 
 const getTaskTransportType = (task: RouteTask): string => {
-  const details =
-    (task as Record<string, unknown>).logistics_details as
-      | LogisticsDetails
-      | undefined;
+  const details = (task as Record<string, unknown>).logistics_details as
+    | LogisticsDetails
+    | undefined;
   const detailValue =
-    typeof details?.transport_type === "string"
+    typeof details?.transport_type === 'string'
       ? details.transport_type.trim()
-      : "";
+      : '';
   const inlineValue =
-    typeof (task as Record<string, unknown>).transport_type === "string"
+    typeof (task as Record<string, unknown>).transport_type === 'string'
       ? ((task as Record<string, unknown>).transport_type as string).trim()
-      : "";
+      : '';
   const value = detailValue || inlineValue;
   return normalizeTransportType(value);
 };
 
 const getTaskTypeLabel = (task: RouteTask): string => {
   const raw =
-    typeof (task as Record<string, unknown>).task_type === "string"
+    typeof (task as Record<string, unknown>).task_type === 'string'
       ? ((task as Record<string, unknown>).task_type as string)
-      : typeof (task as Record<string, unknown>).type === "string"
+      : typeof (task as Record<string, unknown>).type === 'string'
         ? ((task as Record<string, unknown>).type as string)
-        : "";
+        : '';
   return normalizeTaskType(raw);
 };
 
 const getTaskTypeInitial = (label: string): string => {
-  if (!label) return "З";
+  if (!label) return 'З';
   const trimmed = label.trim();
-  if (!trimmed) return "З";
+  if (!trimmed) return 'З';
   return trimmed.charAt(0).toUpperCase();
 };
 
-const getVehicleCoordinates = (vehicle: FleetVehicleDto): [number, number] | null => {
+const getVehicleCoordinates = (
+  vehicle: FleetVehicleDto,
+): [number, number] | null => {
   const position = (vehicle as Record<string, unknown>).position as
     | { lat?: number; lon?: number; lng?: number; long?: number }
     | undefined;
   if (!position) return null;
   const latCandidate =
-    typeof position.lat === "number"
+    typeof position.lat === 'number'
       ? position.lat
-      : typeof (position as Record<string, unknown>).latitude === "number"
+      : typeof (position as Record<string, unknown>).latitude === 'number'
         ? ((position as Record<string, unknown>).latitude as number)
         : null;
   const lonCandidate =
-    typeof position.lon === "number"
+    typeof position.lon === 'number'
       ? position.lon
-      : typeof position.lng === "number"
+      : typeof position.lng === 'number'
         ? position.lng
-        : typeof position.long === "number"
+        : typeof position.long === 'number'
           ? position.long
-          : typeof (position as Record<string, unknown>).longitude === "number"
+          : typeof (position as Record<string, unknown>).longitude === 'number'
             ? ((position as Record<string, unknown>).longitude as number)
             : null;
   if (
@@ -548,12 +567,17 @@ const filterTasksByGeoZones = (
   });
 };
 
-const toLatLng = (position: GeoJSON.Position): { lat: number; lng: number } => ({
+const toLatLng = (
+  position: GeoJSON.Position,
+): { lat: number; lng: number } => ({
   lng: position[0],
   lat: position[1],
 });
 
-const computeBearing = (from: GeoJSON.Position, to: GeoJSON.Position): number => {
+const computeBearing = (
+  from: GeoJSON.Position,
+  to: GeoJSON.Position,
+): number => {
   const fromLat = (from[1] * Math.PI) / 180;
   const toLat = (to[1] * Math.PI) / 180;
   const deltaLng = ((to[0] - from[0]) * Math.PI) / 180;
@@ -652,7 +676,7 @@ const buildGeoZone = ({
     active,
   };
   const baseFeature: GeoZoneFeature = {
-    type: "Feature",
+    type: 'Feature',
     geometry,
     properties: baseProperties,
   };
@@ -664,12 +688,12 @@ const buildGeoZone = ({
     bufferMeters: metricsResult.bufferMeters,
   };
   const feature: GeoZoneFeature = {
-    type: "Feature",
+    type: 'Feature',
     geometry,
     properties: metricsProperties,
   };
   const bufferedFeature: GeoZoneFeature = {
-    type: "Feature",
+    type: 'Feature',
     geometry: metricsResult.bufferedGeometry,
     properties: metricsProperties,
   };
@@ -693,7 +717,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
   MAP_DEFAULT_CENTER[0],
 ];
 const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
-const isRasterFallback = MAP_STYLE_MODE !== "pmtiles";
+const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
@@ -702,33 +726,33 @@ export default function LogisticsPage() {
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
   const [allRouteTasks, setAllRouteTasks] = React.useState<RouteTask[]>([]);
   const [vehicles, setVehicles] = React.useState(1);
-  const [method, setMethod] = React.useState("angle");
+  const [method, setMethod] = React.useState('angle');
   const [links, setLinks] = React.useState<string[]>([]);
   const [plan, setPlan] = React.useState<RoutePlan | null>(null);
   const [planDraft, setPlanDraft] = React.useState<RoutePlan | null>(null);
-  const [planMessage, setPlanMessage] = React.useState("");
+  const [planMessage, setPlanMessage] = React.useState('');
   const [planMessageTone, setPlanMessageTone] = React.useState<
-    "neutral" | "error" | "success"
-  >("neutral");
+    'neutral' | 'error' | 'success'
+  >('neutral');
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
   React.useEffect(() => {
     if (isRasterFallback) {
       console.warn(
-        "Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль."
+        'Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль.',
       );
       return;
     }
     if (!HAS_ADDRESS_VECTOR_SOURCE) {
       console.warn(
-        "Адресные плитки не подключены. Слой домовых номеров будет пропущен."
+        'Адресные плитки не подключены. Слой домовых номеров будет пропущен.',
       );
     }
   }, []);
   const [mapViewMode, setMapViewMode] = React.useState<
-    "planar" | "perspective"
-  >("planar");
+    'planar' | 'perspective'
+  >('planar');
   const routeAnimationRef = React.useRef<{
     frameId: number | null;
     lastTimestamp: number | null;
@@ -737,32 +761,33 @@ export default function LogisticsPage() {
   const [availableVehicles, setAvailableVehicles] = React.useState<
     FleetVehicleDto[]
   >([]);
-  const [fleetError, setFleetError] = React.useState("");
-  const [vehiclesHint, setVehiclesHint] = React.useState("");
+  const [fleetError, setFleetError] = React.useState('');
+  const [vehiclesHint, setVehiclesHint] = React.useState('');
   const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
   const [selectedVehicleId, setSelectedVehicleIdState] = React.useState<
     string | null
   >(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return null;
     }
     try {
       const params = new URLSearchParams(window.location.search);
-      const initial = params.get("selectedVehicleId");
+      const initial = params.get('selectedVehicleId');
       return initial && initial.trim() ? initial.trim() : null;
     } catch {
       return null;
     }
   });
-  const [layerVisibility, setLayerVisibility] = React.useState<LayerVisibilityState>(
-    DEFAULT_LAYER_VISIBILITY,
-  );
+  const [layerVisibility, setLayerVisibility] =
+    React.useState<LayerVisibilityState>(DEFAULT_LAYER_VISIBILITY);
   const [mapReady, setMapReady] = React.useState(false);
   const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
   const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
     RouteStatusFilterKey[]
   >([]);
-  const [hiddenTransportTypes, setHiddenTransportTypes] = React.useState<string[]>([]);
+  const [hiddenTransportTypes, setHiddenTransportTypes] = React.useState<
+    string[]
+  >([]);
   const [clusterSelection, setClusterSelection] = React.useState<{
     ids: string[];
     center: GeoJSON.Position | null;
@@ -783,20 +808,20 @@ export default function LogisticsPage() {
   const withTrack = React.useMemo(() => {
     try {
       const searchParams = new URLSearchParams(location.search);
-      const raw = searchParams.get("withTrack");
-      return raw === "true" || raw === "1";
+      const raw = searchParams.get('withTrack');
+      return raw === 'true' || raw === '1';
     } catch {
       return false;
     }
   }, [location.search]);
-  const hasDialog = params.has("task") || params.has("newTask");
+  const hasDialog = params.has('task') || params.has('newTask');
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
   React.useEffect(() => {
     try {
       const searchParams = new URLSearchParams(location.search);
-      const raw = searchParams.get("selectedVehicleId");
+      const raw = searchParams.get('selectedVehicleId');
       const normalized = raw && raw.trim() ? raw.trim() : null;
       setSelectedVehicleIdState((current) =>
         current === normalized ? current : normalized,
@@ -814,19 +839,19 @@ export default function LogisticsPage() {
           return current;
         }
         if (
-          typeof window !== "undefined" &&
-          typeof window.history?.replaceState === "function"
+          typeof window !== 'undefined' &&
+          typeof window.history?.replaceState === 'function'
         ) {
           try {
             const url = new URL(window.location.href);
             if (next) {
-              url.searchParams.set("selectedVehicleId", next);
+              url.searchParams.set('selectedVehicleId', next);
             } else {
-              url.searchParams.delete("selectedVehicleId");
+              url.searchParams.delete('selectedVehicleId');
             }
             window.history.replaceState(
               window.history.state,
-              "",
+              '',
               `${url.pathname}${url.search}${url.hash}`,
             );
           } catch {
@@ -901,13 +926,13 @@ export default function LogisticsPage() {
     const map = new Map<string, TaskRouteStatusKey>();
     const registerPlan = (source: RoutePlan | null) => {
       if (!source) return;
-      const status: RoutePlanStatus = source.status ?? "draft";
+      const status: RoutePlanStatus = source.status ?? 'draft';
       source.routes.forEach((route) => {
         route.tasks.forEach((taskRef) => {
           const idCandidate =
-            typeof taskRef.taskId === "string"
+            typeof taskRef.taskId === 'string'
               ? taskRef.taskId
-              : typeof (taskRef as Record<string, unknown>).task_id === "string"
+              : typeof (taskRef as Record<string, unknown>).task_id === 'string'
                 ? ((taskRef as Record<string, unknown>).task_id as string)
                 : null;
           if (!idCandidate) return;
@@ -924,7 +949,8 @@ export default function LogisticsPage() {
 
   const categoryFilteredTasks = React.useMemo(() => {
     return filteredTasksByZone.filter((task) => {
-      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
+      const routeStatus = (taskRouteStatusMap.get(task._id) ??
+        'unassigned') as RouteStatusFilterKey;
       if (hiddenRouteStatusesSet.has(routeStatus)) {
         return false;
       }
@@ -952,21 +978,25 @@ export default function LogisticsPage() {
     const counts: Record<string, number> = {};
     categoryFilteredTasks.forEach((task) => {
       const rawStatus =
-        typeof task.status === "string" && task.status.trim()
+        typeof task.status === 'string' && task.status.trim()
           ? task.status.trim()
-          : "Новая";
+          : 'Новая';
       counts[rawStatus] = (counts[rawStatus] ?? 0) + 1;
     });
     return counts;
   }, [categoryFilteredTasks]);
 
   const routeStatusMetadata = React.useMemo(() => {
-    const entries = new Map<RouteStatusFilterKey, { count: number; color: string }>();
+    const entries = new Map<
+      RouteStatusFilterKey,
+      { count: number; color: string }
+    >();
     ROUTE_STATUS_ORDER.forEach((key) => {
       entries.set(key, { count: 0, color: getRouteStatusColor(key) });
     });
     filteredTasksByZone.forEach((task) => {
-      const statusKey = (taskRouteStatusMap.get(task._id) ?? "unassigned") as RouteStatusFilterKey;
+      const statusKey = (taskRouteStatusMap.get(task._id) ??
+        'unassigned') as RouteStatusFilterKey;
       const entry = entries.get(statusKey);
       if (entry) {
         entry.count += 1;
@@ -978,13 +1008,13 @@ export default function LogisticsPage() {
       }
     });
     if (vehiclesWithCoordinates.length) {
-      const entry = entries.get("vehicle");
+      const entry = entries.get('vehicle');
       if (entry) {
         entry.count += vehiclesWithCoordinates.length;
       } else {
-        entries.set("vehicle", {
+        entries.set('vehicle', {
           count: vehiclesWithCoordinates.length,
-          color: getRouteStatusColor("vehicle"),
+          color: getRouteStatusColor('vehicle'),
         });
       }
     }
@@ -992,7 +1022,10 @@ export default function LogisticsPage() {
   }, [filteredTasksByZone, taskRouteStatusMap, vehiclesWithCoordinates]);
 
   const transportMetadata = React.useMemo(() => {
-    const entries = new Map<string, { label: string; count: number; color: string }>();
+    const entries = new Map<
+      string,
+      { label: string; count: number; color: string }
+    >();
     filteredTasksByZone.forEach((task) => {
       const label = getTaskTransportType(task);
       const normalized = normalizeTransportType(label);
@@ -1006,7 +1039,7 @@ export default function LogisticsPage() {
       }
     });
     vehiclesWithCoordinates.forEach((vehicle) => {
-      const label = normalizeTransportType(vehicle.transportType ?? "");
+      const label = normalizeTransportType(vehicle.transportType ?? '');
       const key = toKey(label);
       const color = getTransportColor(label);
       const entry = entries.get(key);
@@ -1038,11 +1071,15 @@ export default function LogisticsPage() {
       });
     }
     const sortedKeys = Array.from(counts.keys()).sort();
-    const entries = new Map<string, { label: string; count: number; color: string }>();
+    const entries = new Map<
+      string,
+      { label: string; count: number; color: string }
+    >();
     sortedKeys.forEach((key, index) => {
       const meta = counts.get(key);
       if (!meta) return;
-      const color = TASK_TYPE_COLOR_PALETTE[index % TASK_TYPE_COLOR_PALETTE.length];
+      const color =
+        TASK_TYPE_COLOR_PALETTE[index % TASK_TYPE_COLOR_PALETTE.length];
       entries.set(key, { label: meta.label, count: meta.count, color });
     });
     return entries;
@@ -1067,7 +1104,11 @@ export default function LogisticsPage() {
   );
 
   const taskTypeEntries = React.useMemo(
-    () => Array.from(taskTypeMetadata.entries()).map(([key, value]) => ({ key, ...value })),
+    () =>
+      Array.from(taskTypeMetadata.entries()).map(([key, value]) => ({
+        key,
+        ...value,
+      })),
     [taskTypeMetadata],
   );
 
@@ -1078,13 +1119,14 @@ export default function LogisticsPage() {
       properties: GeoJSON.GeoJsonProperties,
     ) => {
       features.push({
-        type: "Feature",
-        geometry: { type: "Point", coordinates },
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates },
         properties,
       });
     };
     categoryFilteredTasks.forEach((task) => {
-      const routeStatus = (taskRouteStatusMap.get(task._id) ?? "unassigned") as TaskRouteStatusKey;
+      const routeStatus = (taskRouteStatusMap.get(task._id) ??
+        'unassigned') as TaskRouteStatusKey;
       const routeStatusKey: RouteStatusFilterKey = routeStatus;
       const routeColor = getRouteStatusColor(routeStatusKey);
       const transportLabel = getTaskTransportType(task);
@@ -1092,7 +1134,7 @@ export default function LogisticsPage() {
       const transportColor = getTransportColor(transportLabel);
       const typeLabel = getTaskTypeLabel(task);
       const typeKey = toKey(typeLabel);
-      const typeColor = taskTypeMetadata.get(typeKey)?.color ?? "#334155";
+      const typeColor = taskTypeMetadata.get(typeKey)?.color ?? '#334155';
       const iconText = getTaskTypeInitial(typeLabel);
       const textColor = getContrastTextColor(transportColor);
       const title = task.title ?? task._id;
@@ -1101,16 +1143,21 @@ export default function LogisticsPage() {
       const start = toPosition(task.startCoordinates);
       const finish = toPosition(task.finishCoordinates);
       if (start) {
-        const iconId = buildMarkerIconId(typeKey, routeStatusKey, transportKey, "start");
+        const iconId = buildMarkerIconId(
+          typeKey,
+          routeStatusKey,
+          transportKey,
+          'start',
+        );
         appendFeature(start, {
-          entity: "task",
+          entity: 'task',
           taskId: task._id,
           title,
           label,
           routeStatus: routeStatusKey,
           transportType: transportLabel,
           taskType: typeLabel,
-          pointRole: "start",
+          pointRole: 'start',
           iconId,
           iconFill: transportColor,
           iconStroke: routeColor,
@@ -1121,16 +1168,21 @@ export default function LogisticsPage() {
         });
       }
       if (finish) {
-        const iconId = buildMarkerIconId(typeKey, routeStatusKey, transportKey, "finish");
+        const iconId = buildMarkerIconId(
+          typeKey,
+          routeStatusKey,
+          transportKey,
+          'finish',
+        );
         appendFeature(finish, {
-          entity: "task",
+          entity: 'task',
           taskId: task._id,
           title,
           label,
           routeStatus: routeStatusKey,
           transportType: transportLabel,
           taskType: typeLabel,
-          pointRole: "finish",
+          pointRole: 'finish',
           iconId,
           iconFill: transportColor,
           iconStroke: routeColor,
@@ -1144,9 +1196,11 @@ export default function LogisticsPage() {
     vehiclesWithCoordinates.forEach((vehicle) => {
       const coordinates = getVehicleCoordinates(vehicle);
       if (!coordinates) return;
-      const transportLabel = normalizeTransportType(vehicle.transportType ?? "");
+      const transportLabel = normalizeTransportType(
+        vehicle.transportType ?? '',
+      );
       const transportKey = toKey(transportLabel);
-      const routeStatusKey: RouteStatusFilterKey = "vehicle";
+      const routeStatusKey: RouteStatusFilterKey = 'vehicle';
       if (hiddenRouteStatusesSet.has(routeStatusKey)) return;
       if (hiddenTransportTypesSet.has(transportKey)) return;
       if (hiddenTaskTypesSet.has(VEHICLE_TASK_TYPE_KEY)) return;
@@ -1154,24 +1208,24 @@ export default function LogisticsPage() {
       const iconText = getTaskTypeInitial(VEHICLE_TASK_TYPE_LABEL);
       const textColor = getContrastTextColor(transportColor);
       const typeColor =
-        taskTypeMetadata.get(VEHICLE_TASK_TYPE_KEY)?.color ?? "#0f172a";
+        taskTypeMetadata.get(VEHICLE_TASK_TYPE_KEY)?.color ?? '#0f172a';
       const iconId = buildMarkerIconId(
         VEHICLE_TASK_TYPE_KEY,
         routeStatusKey,
         transportKey,
-        "vehicle",
+        'vehicle',
       );
       const title = vehicle.name;
       const label = title.length > 28 ? `${title.slice(0, 25)}…` : title;
       appendFeature(coordinates, {
-        entity: "vehicle",
+        entity: 'vehicle',
         vehicleId: vehicle.id,
         title,
         label,
         routeStatus: routeStatusKey,
         transportType: transportLabel,
         taskType: VEHICLE_TASK_TYPE_LABEL,
-        pointRole: "vehicle",
+        pointRole: 'vehicle',
         iconId,
         iconFill: transportColor,
         iconStroke: getRouteStatusColor(routeStatusKey),
@@ -1182,7 +1236,7 @@ export default function LogisticsPage() {
       });
     });
     return {
-      type: "FeatureCollection" as const,
+      type: 'FeatureCollection' as const,
       features,
     } satisfies GeoJSON.FeatureCollection<GeoJSON.Point>;
   }, [
@@ -1207,25 +1261,25 @@ export default function LogisticsPage() {
     if (!source) return;
     taskPointsGeoJSON.features.forEach((feature) => {
       const iconId = feature.properties?.iconId;
-      if (typeof iconId !== "string" || !iconId) return;
+      if (typeof iconId !== 'string' || !iconId) return;
       const fill =
-        typeof feature.properties?.iconFill === "string"
+        typeof feature.properties?.iconFill === 'string'
           ? (feature.properties.iconFill as string)
-          : "#2563eb";
+          : '#2563eb';
       const stroke =
-        typeof feature.properties?.iconStroke === "string"
+        typeof feature.properties?.iconStroke === 'string'
           ? (feature.properties.iconStroke as string)
-          : "#0f172a";
+          : '#0f172a';
       const text =
-        typeof feature.properties?.iconText === "string"
+        typeof feature.properties?.iconText === 'string'
           ? (feature.properties.iconText as string)
-          : "";
+          : '';
       const textColor =
-        typeof feature.properties?.iconTextColor === "string"
+        typeof feature.properties?.iconTextColor === 'string'
           ? (feature.properties.iconTextColor as string)
           : getContrastTextColor(fill);
       const accent =
-        typeof feature.properties?.iconAccent === "string"
+        typeof feature.properties?.iconAccent === 'string'
           ? (feature.properties.iconAccent as string)
           : undefined;
       ensureMarkerIcon(
@@ -1249,7 +1303,7 @@ export default function LogisticsPage() {
     const base = TASK_STATUSES.map((status) => ({
       key: status,
       label: status,
-      color: TASK_STATUS_COLORS[status] ?? "#2563eb",
+      color: TASK_STATUS_COLORS[status] ?? '#2563eb',
       count: taskStatus[status] ?? 0,
     }));
     const extraStatuses = Object.keys(taskStatus).filter(
@@ -1260,7 +1314,7 @@ export default function LogisticsPage() {
         base.push({
           key: status,
           label: status,
-          color: TASK_STATUS_COLORS[status] ?? "#2563eb",
+          color: TASK_STATUS_COLORS[status] ?? '#2563eb',
           count: taskStatus[status] ?? 0,
         });
       });
@@ -1272,23 +1326,31 @@ export default function LogisticsPage() {
     if (!selectedTaskIdsSet.size) {
       return categoryFilteredTasks;
     }
-    return categoryFilteredTasks.filter((task) => selectedTaskIdsSet.has(task._id));
+    return categoryFilteredTasks.filter((task) =>
+      selectedTaskIdsSet.has(task._id),
+    );
   }, [categoryFilteredTasks, selectedTaskIdsSet]);
 
   const displayedSignature = React.useMemo(
     () =>
       JSON.stringify(
-        displayedTasks.map((task) => [task._id, task.status, task.updatedAt ?? null]),
+        displayedTasks.map((task) => [
+          task._id,
+          task.status,
+          task.updatedAt ?? null,
+        ]),
       ),
     [displayedTasks],
   );
 
-  const lastSyncedSignatureRef = React.useRef<string>("");
+  const lastSyncedSignatureRef = React.useRef<string>('');
 
   React.useEffect(() => {
     if (!clusterSelection) return;
     const ids = new Set(clusterSelection.ids);
-    const stillPresent = categoryFilteredTasks.some((task) => ids.has(task._id));
+    const stillPresent = categoryFilteredTasks.some((task) =>
+      ids.has(task._id),
+    );
     if (!stillPresent) {
       setClusterSelection(null);
     }
@@ -1325,8 +1387,8 @@ export default function LogisticsPage() {
     const initialFeatures = controller.routes.map((route) => {
       const { position, bearing } = getAnimationPoint(route, route.progress);
       return {
-        type: "Feature" as const,
-        geometry: { type: "Point" as const, coordinates: position },
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: position },
         properties: {
           color: route.color,
           taskId: route.taskId,
@@ -1337,7 +1399,7 @@ export default function LogisticsPage() {
       } satisfies GeoJSON.Feature<GeoJSON.Point>;
     });
     source.setData({
-      type: "FeatureCollection",
+      type: 'FeatureCollection',
       features: initialFeatures,
     });
     const step = (timestamp: number) => {
@@ -1356,7 +1418,8 @@ export default function LogisticsPage() {
       }
       const lastTimestamp = controllerState.lastTimestamp;
       controllerState.lastTimestamp = timestamp;
-      const delta = lastTimestamp != null ? (timestamp - lastTimestamp) / 1000 : 0;
+      const delta =
+        lastTimestamp != null ? (timestamp - lastTimestamp) / 1000 : 0;
       const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
       controllerState.routes.forEach((route) => {
         if (route.total <= 0) {
@@ -1366,8 +1429,8 @@ export default function LogisticsPage() {
           (route.progress + delta * ROUTE_SPEED_KM_PER_SEC) % route.total;
         const { position, bearing } = getAnimationPoint(route, route.progress);
         features.push({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: position },
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: position },
           properties: {
             color: route.color,
             taskId: route.taskId,
@@ -1378,7 +1441,7 @@ export default function LogisticsPage() {
         });
       });
       animationSource.setData({
-        type: "FeatureCollection",
+        type: 'FeatureCollection',
         features,
       });
       controllerState.frameId = requestAnimationFrame(step);
@@ -1397,13 +1460,13 @@ export default function LogisticsPage() {
       rawTelegramId === undefined || rawTelegramId === null
         ? undefined
         : Number(rawTelegramId) || undefined;
-    controller.setIndex("logistics:all", displayedTasks, {
-      kind: "task",
+    controller.setIndex('logistics:all', displayedTasks, {
+      kind: 'task',
       mine: false,
       userId,
       pageSize: displayedTasks.length,
       total: displayedTasks.length,
-      sort: "desc",
+      sort: 'desc',
     });
   }, [controller, displayedSignature, displayedTasks, user]);
 
@@ -1477,7 +1540,9 @@ export default function LogisticsPage() {
   const updateRouteDraft = React.useCallback(
     (
       routeIndex: number,
-      updater: (route: RoutePlan['routes'][number]) => RoutePlan['routes'][number],
+      updater: (
+        route: RoutePlan['routes'][number],
+      ) => RoutePlan['routes'][number],
     ) => {
       setPlanDraft((current) => {
         if (!current) return current;
@@ -1491,30 +1556,43 @@ export default function LogisticsPage() {
   );
 
   const handlePlanTitleChange = React.useCallback((value: string) => {
-    setPlanDraft((current) => (current ? { ...current, title: value } : current));
+    setPlanDraft((current) =>
+      current ? { ...current, title: value } : current,
+    );
   }, []);
 
   const handlePlanNotesChange = React.useCallback((value: string) => {
-    setPlanDraft((current) => (current ? { ...current, notes: value } : current));
+    setPlanDraft((current) =>
+      current ? { ...current, notes: value } : current,
+    );
   }, []);
 
   const handleDriverNameChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, driverName: value }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        driverName: value,
+      }));
     },
     [updateRouteDraft],
   );
 
   const handleVehicleNameChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, vehicleName: value }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        vehicleName: value,
+      }));
     },
     [updateRouteDraft],
   );
 
   const handleRouteNotesChange = React.useCallback(
     (routeIndex: number, value: string) => {
-      updateRouteDraft(routeIndex, (route) => ({ ...route, notes: value || null }));
+      updateRouteDraft(routeIndex, (route) => ({
+        ...route,
+        notes: value || null,
+      }));
     },
     [updateRouteDraft],
   );
@@ -1549,20 +1627,23 @@ export default function LogisticsPage() {
     }
     const draw = drawRef.current;
     if (!draw) return;
-    draw.changeMode("draw_polygon");
+    draw.changeMode('draw_polygon');
   }, [geoZonesEnabled]);
 
-  const handleToggleZone = React.useCallback((zoneId: string, checked: boolean) => {
-    setActiveGeoZoneIds((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(zoneId);
-      } else {
-        next.delete(zoneId);
-      }
-      return Array.from(next);
-    });
-  }, []);
+  const handleToggleZone = React.useCallback(
+    (zoneId: string, checked: boolean) => {
+      setActiveGeoZoneIds((prev) => {
+        const next = new Set(prev);
+        if (checked) {
+          next.add(zoneId);
+        } else {
+          next.delete(zoneId);
+        }
+        return Array.from(next);
+      });
+    },
+    [],
+  );
 
   const handleRouteStatusVisibilityChange = React.useCallback(
     (status: RouteStatusFilterKey, visible: boolean) => {
@@ -1717,14 +1798,14 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     const translate = tRef.current;
-    const title = translate("logistics.metaTitle");
-    const description = translate("logistics.metaDescription");
-    const image = "/hero/logistics.png";
+    const title = translate('logistics.metaTitle');
+    const description = translate('logistics.metaDescription');
+    const image = '/hero/logistics.png';
 
     document.title = title;
 
     const ensureMeta = (
-      attribute: "name" | "property",
+      attribute: 'name' | 'property',
       name: string,
       value: string,
     ) => {
@@ -1732,23 +1813,23 @@ export default function LogisticsPage() {
         `meta[${attribute}="${name}"]`,
       );
       if (!element) {
-        element = document.createElement("meta");
+        element = document.createElement('meta');
         element.setAttribute(attribute, name);
         document.head.appendChild(element);
       }
-      element.setAttribute("content", value);
+      element.setAttribute('content', value);
     };
 
-    ensureMeta("name", "description", description);
-    ensureMeta("property", "og:title", title);
-    ensureMeta("property", "og:description", description);
-    ensureMeta("property", "og:image", image);
+    ensureMeta('name', 'description', description);
+    ensureMeta('property', 'og:title', title);
+    ensureMeta('property', 'og:description', description);
+    ensureMeta('property', 'og:image', image);
   }, [language]);
 
   const openTask = React.useCallback(
     (id: string) => {
       const params = new URLSearchParams(location.search);
-      params.set("task", id);
+      params.set('task', id);
       navigate({ search: params.toString() }, { replace: true });
     },
     [location, navigate],
@@ -1756,32 +1837,33 @@ export default function LogisticsPage() {
 
   const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
     const hasPoint = (coords?: Coords | null) =>
-      typeof coords?.lat === "number" &&
+      typeof coords?.lat === 'number' &&
       Number.isFinite(coords.lat) &&
-      typeof coords?.lng === "number" &&
+      typeof coords?.lng === 'number' &&
       Number.isFinite(coords.lng);
 
     const result: RouteTask[] = [];
     input.forEach((task) => {
       const transportType = getTaskTransportType(task);
 
-      const details = (task as Record<string, unknown>)
-        .logistics_details as LogisticsDetails | undefined;
+      const details = (task as Record<string, unknown>).logistics_details as
+        | LogisticsDetails
+        | undefined;
 
       const resolveLocation = (primary: unknown, fallback: unknown): string => {
-        if (typeof primary === "string") {
+        if (typeof primary === 'string') {
           const value = primary.trim();
           if (value) {
             return value;
           }
         }
-        if (typeof fallback === "string") {
+        if (typeof fallback === 'string') {
           const value = fallback.trim();
           if (value) {
             return value;
           }
         }
-        return "";
+        return '';
       };
 
       const startLocation = resolveLocation(
@@ -1793,7 +1875,8 @@ export default function LogisticsPage() {
         (task as Record<string, unknown>).end_location,
       );
 
-      const hasCoordinates = hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
+      const hasCoordinates =
+        hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
       const hasAddresses = Boolean(startLocation) || Boolean(endLocation);
 
       if (!hasCoordinates && !hasAddresses) {
@@ -1842,20 +1925,20 @@ export default function LogisticsPage() {
     fetchTasks({}, userId, true).then((data: unknown) => {
       const listSource = Array.isArray(data)
         ? data
-        : typeof data === "object" && data !== null
+        : typeof data === 'object' && data !== null
           ? ((data as Record<string, unknown>).items ??
-              (data as Record<string, unknown>).tasks ??
-              (data as Record<string, unknown>).data ??
-              [])
+            (data as Record<string, unknown>).tasks ??
+            (data as Record<string, unknown>).data ??
+            [])
           : [];
       const raw = Array.isArray(listSource) ? listSource : [];
       const mapped: Array<RouteTask | null> = raw.map((item) => {
-        if (typeof item !== "object" || item === null) {
+        if (typeof item !== 'object' || item === null) {
           return null;
         }
         const task = item as Record<string, unknown> &
           RouteTask & { id?: string };
-        const identifier = String(task._id ?? task.id ?? "").trim();
+        const identifier = String(task._id ?? task.id ?? '').trim();
         if (!identifier) {
           return null;
         }
@@ -1865,31 +1948,29 @@ export default function LogisticsPage() {
           _id: identifier,
         } satisfies RouteTask;
       });
-      const list = mapped.filter(
-        (task): task is RouteTask => Boolean(task),
-      );
+      const list = mapped.filter((task): task is RouteTask => Boolean(task));
       const filtered = filterRouteTasks(list);
       setAllRouteTasks(filtered);
     });
   }, [controller, filterRouteTasks, user]);
 
   const loadFleetVehicles = React.useCallback(async () => {
-    if (role !== "admin") return;
+    if (role !== 'admin') return;
     setVehiclesLoading(true);
-    setVehiclesHint("");
-    setFleetError("");
+    setVehiclesHint('');
+    setFleetError('');
     try {
-      const data = await listFleetVehicles("", 1, 100);
+      const data = await listFleetVehicles('', 1, 100);
       setAvailableVehicles(data.items);
       if (!data.items.length) {
-        setVehiclesHint(tRef.current("logistics.noVehicles"));
+        setVehiclesHint(tRef.current('logistics.noVehicles'));
         return;
       }
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : tRef.current("logistics.loadError");
+          : tRef.current('logistics.loadError');
       setVehiclesHint(message);
       setAvailableVehicles([]);
       setFleetError(message);
@@ -1900,26 +1981,26 @@ export default function LogisticsPage() {
 
   const refreshAll = React.useCallback(() => {
     load();
-    if (role === "admin") {
+    if (role === 'admin') {
       void loadFleetVehicles();
     }
   }, [load, loadFleetVehicles, role]);
 
   const refreshFleet = React.useCallback(() => {
-    if (role === "admin") {
+    if (role === 'admin') {
       void loadFleetVehicles();
     }
   }, [loadFleetVehicles, role]);
 
   useIntervalEffect(
     () => {
-      if (role === "admin") {
+      if (role === 'admin') {
         void loadFleetVehicles();
       }
     },
     LOGISTICS_FLEET_POLL_INTERVAL_MS,
     {
-      enabled: role === "admin" && withTrack,
+      enabled: role === 'admin' && withTrack,
       deps: [loadFleetVehicles, role, withTrack],
     },
   );
@@ -1979,17 +2060,17 @@ export default function LogisticsPage() {
 
     const unsubscribe = subscribeLogisticsEvents((event) => {
       switch (event.type) {
-        case "logistics.init":
+        case 'logistics.init':
           pending.tasks = true;
           pending.plan = true;
           pending.fleet = true;
           break;
-        case "tasks.changed":
+        case 'tasks.changed':
           pending.tasks = true;
           pending.plan = true;
           break;
-        case "route-plan.updated":
-        case "route-plan.removed":
+        case 'route-plan.updated':
+        case 'route-plan.removed':
           pending.plan = true;
           break;
         default:
@@ -2140,7 +2221,8 @@ export default function LogisticsPage() {
     return 'text-sm text-muted-foreground';
   }, [planMessageTone]);
 
-  const planStatus: RoutePlanStatus = planDraft?.status ?? plan?.status ?? 'draft';
+  const planStatus: RoutePlanStatus =
+    planDraft?.status ?? plan?.status ?? 'draft';
   const planStatusLabel = t(`logistics.planStatusValue.${planStatus}`);
   const isPlanEditable = planStatus !== 'completed';
   const planRoutes = planDraft?.routes ?? [];
@@ -2154,7 +2236,8 @@ export default function LogisticsPage() {
     return planDraft.routes.reduce((acc, route) => acc + route.stops.length, 0);
   }, [planDraft]);
   const planTotalRoutes = planDraft?.metrics?.totalRoutes ?? planRoutes.length;
-  const planTotalTasks = planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
+  const planTotalTasks =
+    planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
 
   const reset = React.useCallback(() => {
     setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
@@ -2171,16 +2254,16 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     const translate = tRef.current;
-    if (role !== "admin") {
+    if (role !== 'admin') {
       hasLoadedFleetRef.current = false;
       setAvailableVehicles([]);
-      setFleetError(role === "manager" ? translate("logistics.adminOnly") : "");
-      setVehiclesHint(role ? translate("logistics.noAccess") : "");
+      setFleetError(role === 'manager' ? translate('logistics.adminOnly') : '');
+      setVehiclesHint(role ? translate('logistics.noAccess') : '');
       setSelectedVehicleId(null);
       return;
     }
-    setVehiclesHint("");
-    setFleetError("");
+    setVehiclesHint('');
+    setFleetError('');
     if (!hasLoadedFleetRef.current) {
       hasLoadedFleetRef.current = true;
       void loadFleetVehicles();
@@ -2189,11 +2272,11 @@ export default function LogisticsPage() {
 
   React.useEffect(() => {
     const translate = tRef.current;
-    if (role !== "admin") {
+    if (role !== 'admin') {
       return;
     }
     if (!availableVehicles.length && !fleetError && !vehiclesLoading) {
-      setVehiclesHint(translate("logistics.noVehicles"));
+      setVehiclesHint(translate('logistics.noVehicles'));
     }
   }, [availableVehicles.length, fleetError, role, vehiclesLoading]);
 
@@ -2201,7 +2284,7 @@ export default function LogisticsPage() {
     if (hasDialog) return;
     if (mapRef.current) return;
     const map = new mapLibrary.Map({
-      container: "logistics-map",
+      container: 'logistics-map',
       style: MAP_STYLE,
       center: MAP_CENTER_LNG_LAT,
       zoom: MAP_DEFAULT_ZOOM,
@@ -2210,29 +2293,29 @@ export default function LogisticsPage() {
       maxBounds: UKRAINE_BOUNDS,
     });
     mapRef.current = map;
-    if (typeof map.dragRotate?.disable === "function") {
+    if (typeof map.dragRotate?.disable === 'function') {
       map.dragRotate.disable();
     }
-    if (typeof map.touchZoomRotate?.disableRotation === "function") {
+    if (typeof map.touchZoomRotate?.disableRotation === 'function') {
       map.touchZoomRotate.disableRotation();
     }
     const navigation = new mapLibrary.NavigationControl({ showCompass: false });
-    map.addControl(navigation, "top-right");
+    map.addControl(navigation, 'top-right');
     const attribution = new mapLibrary.AttributionControl({
       compact: true,
       customAttribution: MAP_ATTRIBUTION,
     });
-    map.addControl(attribution, "bottom-right");
+    map.addControl(attribution, 'bottom-right');
     const draw = new MapLibreDraw({
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
-      defaultMode: "simple_select",
+      defaultMode: 'simple_select',
       styles: customTheme,
     });
     drawRef.current = draw;
-    map.addControl(draw, "top-left");
+    map.addControl(draw, 'top-left');
     const ensureBuildingsLayer = () => {
-      if (typeof map.isStyleLoaded === "function" && !map.isStyleLoaded()) {
+      if (typeof map.isStyleLoaded === 'function' && !map.isStyleLoaded()) {
         return;
       }
       insert3dBuildingsLayer(map);
@@ -2245,53 +2328,56 @@ export default function LogisticsPage() {
         !map.getSource(ADDRESS_SOURCE_ID)
       ) {
         map.addSource(ADDRESS_SOURCE_ID, {
-          type: "vector",
+          type: 'vector',
           url: ADDRESS_VECTOR_SOURCE_URL,
         });
         const addressLayer: SymbolLayerSpecification = {
           id: ADDRESS_LAYER_ID,
-          type: "symbol",
+          type: 'symbol',
           source: ADDRESS_SOURCE_ID,
-          "source-layer": ADDRESS_VECTOR_SOURCE_LAYER,
+          'source-layer': ADDRESS_VECTOR_SOURCE_LAYER,
           minzoom: 17,
           layout: {
-            "text-field": ["get", "housenumber"],
-            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 13,
-            "text-letter-spacing": 0.02,
-            "text-allow-overlap": false,
-            "text-ignore-placement": false,
-            "text-padding": 2,
+            'text-field': ['get', 'housenumber'],
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-size': 13,
+            'text-letter-spacing': 0.02,
+            'text-allow-overlap': false,
+            'text-ignore-placement': false,
+            'text-padding': 2,
           },
           paint: {
-            "text-color": "#0f172a",
-            "text-halo-color": "#f8fafc",
-            "text-halo-width": 1.2,
-            "text-halo-blur": 0.6,
+            'text-color': '#0f172a',
+            'text-halo-color': '#f8fafc',
+            'text-halo-width': 1.2,
+            'text-halo-blur': 0.6,
           },
         };
-        const beforeLayerId = findExistingLayerId(map, MAJOR_LABEL_LAYER_CANDIDATES);
+        const beforeLayerId = findExistingLayerId(
+          map,
+          MAJOR_LABEL_LAYER_CANDIDATES,
+        );
         map.addLayer(addressLayer, beforeLayerId);
         ensureAddressesLayerOrder(map);
       }
       map.addSource(GEO_SOURCE_ID, {
-        type: "geojson",
+        type: 'geojson',
         data: createEmptyCollection(),
       });
       map.addLayer({
         id: GEO_FILL_LAYER_ID,
-        type: "fill",
+        type: 'fill',
         source: GEO_SOURCE_ID,
         paint: {
-          "fill-color": [
-            "case",
-            ["boolean", ["get", "active"], false],
-            "rgba(37, 99, 235, 0.35)",
-            "rgba(148, 163, 184, 0.2)",
+          'fill-color': [
+            'case',
+            ['boolean', ['get', 'active'], false],
+            'rgba(37, 99, 235, 0.35)',
+            'rgba(148, 163, 184, 0.2)',
           ],
-          "fill-opacity": [
-            "case",
-            ["boolean", ["get", "active"], false],
+          'fill-opacity': [
+            'case',
+            ['boolean', ['get', 'active'], false],
             0.4,
             0.2,
           ],
@@ -2299,64 +2385,64 @@ export default function LogisticsPage() {
       });
       map.addLayer({
         id: GEO_OUTLINE_LAYER_ID,
-        type: "line",
+        type: 'line',
         source: GEO_SOURCE_ID,
         paint: {
-          "line-color": [
-            "case",
-            ["boolean", ["get", "active"], false],
-            "#2563eb",
-            "#94a3b8",
+          'line-color': [
+            'case',
+            ['boolean', ['get', 'active'], false],
+            '#2563eb',
+            '#94a3b8',
           ],
-          "line-width": [
-            "case",
-            ["boolean", ["get", "active"], false],
+          'line-width': [
+            'case',
+            ['boolean', ['get', 'active'], false],
             2.5,
             1.5,
           ],
         },
       });
       map.addSource(OPT_SOURCE_ID, {
-        type: "geojson",
+        type: 'geojson',
         data: createEmptyCollection(),
       });
       const optimizedLayer: LineLayerSpecification = {
         id: OPT_LAYER_ID,
-        type: "line",
+        type: 'line',
         source: OPT_SOURCE_ID,
         layout: {
-          "line-cap": "round",
-          "line-join": "round",
+          'line-cap': 'round',
+          'line-join': 'round',
         },
         paint: {
-          "line-color": ["get", "color"],
-          "line-width": 4,
-          "line-dasharray": [1.5, 1.5],
-          "line-opacity": 0.8,
+          'line-color': ['get', 'color'],
+          'line-width': 4,
+          'line-dasharray': [1.5, 1.5],
+          'line-opacity': 0.8,
         },
       };
       map.addLayer(optimizedLayer);
       map.addSource(TASK_SOURCE_ID, {
-        type: "geojson",
+        type: 'geojson',
         data: createEmptyCollection(),
       });
       const taskLineLayer: LineLayerSpecification = {
         id: TASK_LAYER_ID,
-        type: "line",
+        type: 'line',
         source: TASK_SOURCE_ID,
         layout: {
-          "line-cap": "round",
-          "line-join": "round",
+          'line-cap': 'round',
+          'line-join': 'round',
         },
         paint: {
-          "line-color": ["get", "color"],
-          "line-width": 3,
-          "line-opacity": 0.85,
+          'line-color': ['get', 'color'],
+          'line-width': 3,
+          'line-opacity': 0.85,
         },
       };
       map.addLayer(taskLineLayer);
       map.addSource(TASK_CLUSTER_SOURCE_ID, {
-        type: "geojson",
+        type: 'geojson',
         data: createEmptyCollection(),
         cluster: true,
         clusterRadius: 60,
@@ -2370,33 +2456,33 @@ export default function LogisticsPage() {
       });
       const clusterLayer: CircleLayerSpecification = {
         id: TASK_CLUSTER_LAYER_ID,
-        type: "circle",
+        type: 'circle',
         source: TASK_CLUSTER_SOURCE_ID,
-        filter: ["has", "point_count"],
+        filter: ['has', 'point_count'],
         paint: {
-          "circle-color": [
-            "case",
+          'circle-color': [
+            'case',
             [
-              "all",
-              [">=", ["get", "completed"], ["get", "approved"]],
-              [">=", ["get", "completed"], ["get", "draft"]],
-              [">=", ["get", "completed"], ["get", "unassigned"]],
+              'all',
+              ['>=', ['get', 'completed'], ['get', 'approved']],
+              ['>=', ['get', 'completed'], ['get', 'draft']],
+              ['>=', ['get', 'completed'], ['get', 'unassigned']],
             ],
             ROUTE_STATUS_COLORS.completed,
             [
-              "all",
-              [">=", ["get", "approved"], ["get", "draft"]],
-              [">=", ["get", "approved"], ["get", "unassigned"]],
+              'all',
+              ['>=', ['get', 'approved'], ['get', 'draft']],
+              ['>=', ['get', 'approved'], ['get', 'unassigned']],
             ],
             ROUTE_STATUS_COLORS.approved,
-            [">=", ["get", "draft"], ["get", "unassigned"]],
+            ['>=', ['get', 'draft'], ['get', 'unassigned']],
             ROUTE_STATUS_COLORS.draft,
             ROUTE_STATUS_COLORS.unassigned,
           ],
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
             8,
             16,
             12,
@@ -2404,90 +2490,90 @@ export default function LogisticsPage() {
             14,
             30,
           ],
-          "circle-opacity": 0.82,
-          "circle-stroke-width": 1.6,
-          "circle-stroke-color": "#f8fafc",
+          'circle-opacity': 0.82,
+          'circle-stroke-width': 1.6,
+          'circle-stroke-color': '#f8fafc',
         },
       };
       map.addLayer(clusterLayer);
       const clusterCountLayer: SymbolLayerSpecification = {
         id: TASK_CLUSTER_COUNT_LAYER_ID,
-        type: "symbol",
+        type: 'symbol',
         source: TASK_CLUSTER_SOURCE_ID,
-        filter: ["has", "point_count"],
+        filter: ['has', 'point_count'],
         layout: {
-          "text-field": ["get", "point_count_abbreviated"],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 12,
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 12,
         },
         paint: {
-          "text-color": "#0f172a",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 1.2,
+          'text-color': '#0f172a',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.2,
         },
       };
       map.addLayer(clusterCountLayer);
       const pointsLayer: SymbolLayerSpecification = {
         id: TASK_POINTS_LAYER_ID,
-        type: "symbol",
+        type: 'symbol',
         source: TASK_CLUSTER_SOURCE_ID,
-        filter: ["!", ["has", "point_count"]],
+        filter: ['!', ['has', 'point_count']],
         layout: {
-          "icon-image": ["get", "iconId"],
-          "icon-size": [
-            "case",
-            ["boolean", ["get", "selected"], false],
+          'icon-image': ['get', 'iconId'],
+          'icon-size': [
+            'case',
+            ['boolean', ['get', 'selected'], false],
             0.8,
             0.65,
           ],
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "text-field": ["coalesce", ["get", "label"], ""],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 10,
-          "text-offset": [0, 1.4],
-          "text-anchor": "top",
-          "text-optional": true,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'text-field': ['coalesce', ['get', 'label'], ''],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 10,
+          'text-offset': [0, 1.4],
+          'text-anchor': 'top',
+          'text-optional': true,
         },
         paint: {
-          "icon-opacity": 0.95,
-          "text-color": "#0f172a",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 0.9,
+          'icon-opacity': 0.95,
+          'text-color': '#0f172a',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 0.9,
         },
       };
       map.addLayer(pointsLayer);
       map.addSource(TASK_ANIMATION_SOURCE_ID, {
-        type: "geojson",
+        type: 'geojson',
         data: createEmptyCollection(),
       });
       const animationLayer: SymbolLayerSpecification = {
         id: TASK_ANIMATION_LAYER_ID,
-        type: "symbol",
+        type: 'symbol',
         source: TASK_ANIMATION_SOURCE_ID,
         layout: {
-          "text-field": ["get", "icon"],
-          "text-size": 20,
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
-          "text-rotate": ["get", "bearing"],
+          'text-field': ['get', 'icon'],
+          'text-size': 20,
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+          'text-rotate': ['get', 'bearing'],
         },
         paint: {
-          "text-color": ["get", "color"],
-          "text-halo-color": "rgba(17, 24, 39, 0.55)",
-          "text-halo-width": 1.2,
+          'text-color': ['get', 'color'],
+          'text-halo-color': 'rgba(17, 24, 39, 0.55)',
+          'text-halo-width': 1.2,
         },
       };
       map.addLayer(animationLayer);
       setMapReady(true);
     };
-    map.on("styledata", ensureBuildingsLayer);
-    map.on("load", handleLoad);
+    map.on('styledata', ensureBuildingsLayer);
+    map.on('load', handleLoad);
     return () => {
-      if (typeof map.off === "function") {
-        map.off("styledata", ensureBuildingsLayer);
-        map.off("load", handleLoad);
+      if (typeof map.off === 'function') {
+        map.off('styledata', ensureBuildingsLayer);
+        map.off('load', handleLoad);
       }
       setMapReady(false);
       setIsDrawing(false);
@@ -2503,31 +2589,31 @@ export default function LogisticsPage() {
     const map = mapRef.current;
     if (!map) return;
     const enableRotation = () => {
-      if (typeof map.dragRotate?.enable === "function") {
+      if (typeof map.dragRotate?.enable === 'function') {
         map.dragRotate.enable();
       }
-      if (typeof map.touchZoomRotate?.enableRotation === "function") {
+      if (typeof map.touchZoomRotate?.enableRotation === 'function') {
         map.touchZoomRotate.enableRotation();
       }
     };
     const disableRotation = () => {
-      if (typeof map.dragRotate?.disable === "function") {
+      if (typeof map.dragRotate?.disable === 'function') {
         map.dragRotate.disable();
       }
-      if (typeof map.touchZoomRotate?.disableRotation === "function") {
+      if (typeof map.touchZoomRotate?.disableRotation === 'function') {
         map.touchZoomRotate.disableRotation();
       }
     };
-    if (mapViewMode === "perspective") {
+    if (mapViewMode === 'perspective') {
       enableRotation();
-      if (typeof map.easeTo === "function") {
+      if (typeof map.easeTo === 'function') {
         map.easeTo({ pitch: 55, bearing: 28, duration: 600 });
       } else {
         map.setPitch(55);
         map.setBearing(28);
       }
     } else {
-      if (typeof map.easeTo === "function") {
+      if (typeof map.easeTo === 'function') {
         map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
       } else {
         map.setPitch(0);
@@ -2555,16 +2641,17 @@ export default function LogisticsPage() {
         for (const feature of features) {
           if (!feature || !isPolygonGeometry(feature.geometry)) continue;
           const drawId =
-            typeof feature.id === "string"
+            typeof feature.id === 'string'
               ? feature.id
               : feature.id != null
                 ? String(feature.id)
                 : `draw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
           const zoneId =
-            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            typeof crypto !== 'undefined' &&
+            typeof crypto.randomUUID === 'function'
               ? crypto.randomUUID()
               : `zone-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          const name = tRef.current("logistics.geozoneDefaultName", {
+          const name = tRef.current('logistics.geozoneDefaultName', {
             index: baseLength + createdZones.length + 1,
           });
           const zone = buildGeoZone({
@@ -2596,11 +2683,11 @@ export default function LogisticsPage() {
       for (const feature of features) {
         if (!feature) continue;
         const drawId =
-          typeof feature.id === "string"
+          typeof feature.id === 'string'
             ? feature.id
             : feature.id != null
               ? String(feature.id)
-              : "";
+              : '';
         if (drawId) {
           removedDrawIds.add(drawId);
         }
@@ -2620,7 +2707,9 @@ export default function LogisticsPage() {
         return next;
       });
       if (removedZoneIds.length) {
-        setActiveGeoZoneIds((prev) => prev.filter((id) => !removedZoneIds.includes(id)));
+        setActiveGeoZoneIds((prev) =>
+          prev.filter((id) => !removedZoneIds.includes(id)),
+        );
       }
     };
 
@@ -2630,14 +2719,14 @@ export default function LogisticsPage() {
       for (const feature of features) {
         if (!feature || !isPolygonGeometry(feature.geometry)) continue;
         const drawId =
-          typeof feature.id === "string"
+          typeof feature.id === 'string'
             ? feature.id
             : feature.id != null
               ? String(feature.id)
-              : "";
+              : '';
         if (!drawId) continue;
         updatedZones.set(drawId, {
-          type: "Feature",
+          type: 'Feature',
           geometry: feature.geometry,
           properties: { ...(feature.properties ?? {}) },
         });
@@ -2668,19 +2757,19 @@ export default function LogisticsPage() {
 
     const handleModeChange: Listener = (event) => {
       const { mode } = event as DrawModeChangeEvent;
-      setIsDrawing(mode === "draw_polygon");
+      setIsDrawing(mode === 'draw_polygon');
     };
 
-    map.on("draw.create", handleCreate);
-    map.on("draw.delete", handleDelete);
-    map.on("draw.update", handleUpdate);
-    map.on("draw.modechange", handleModeChange);
+    map.on('draw.create', handleCreate);
+    map.on('draw.delete', handleDelete);
+    map.on('draw.update', handleUpdate);
+    map.on('draw.modechange', handleModeChange);
 
     return () => {
-      map.off("draw.create", handleCreate);
-      map.off("draw.delete", handleDelete);
-      map.off("draw.update", handleUpdate);
-      map.off("draw.modechange", handleModeChange);
+      map.off('draw.create', handleCreate);
+      map.off('draw.delete', handleDelete);
+      map.off('draw.update', handleUpdate);
+      map.off('draw.modechange', handleModeChange);
     };
   }, [activeGeoZoneIds, mapReady]);
 
@@ -2689,7 +2778,7 @@ export default function LogisticsPage() {
     const draw = drawRef.current;
     if (!draw) return;
     if (!geoZonesEnabled) {
-      draw.changeMode("simple_select");
+      draw.changeMode('simple_select');
     }
   }, [geoZonesEnabled, mapReady]);
 
@@ -2712,7 +2801,7 @@ export default function LogisticsPage() {
         }))
       : [];
     source.setData({
-      type: "FeatureCollection",
+      type: 'FeatureCollection',
       features,
     });
   }, [activeGeoZoneIds, geoZones, geoZonesEnabled, mapReady]);
@@ -2752,13 +2841,13 @@ export default function LogisticsPage() {
         );
         if (!geometry || cancelled) continue;
         const statusKey =
-          typeof task.status === "string" ? task.status.trim() : "";
-        const routeColor = TASK_STATUS_COLORS[statusKey] ?? "#2563eb";
+          typeof task.status === 'string' ? task.status.trim() : '';
+        const routeColor = TASK_STATUS_COLORS[statusKey] ?? '#2563eb';
         const coordinates = geometry as GeoJSON.Position[];
         lineFeatures.push({
-          type: "Feature",
+          type: 'Feature',
           geometry: {
-            type: "LineString",
+            type: 'LineString',
             coordinates,
           },
           properties: {
@@ -2779,7 +2868,7 @@ export default function LogisticsPage() {
       }
       if (cancelled) return;
       routesSource.setData({
-        type: "FeatureCollection",
+        type: 'FeatureCollection',
         features: lineFeatures,
       });
       routeAnimationRef.current.routes = animationRoutes;
@@ -2808,7 +2897,7 @@ export default function LogisticsPage() {
       setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
       return;
     }
-    const colors = ["#ef4444", "#22c55e", "#f97316"];
+    const colors = ['#ef4444', '#22c55e', '#f97316'];
     const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     planDraft.routes.forEach((route, idx) => {
       const coordinates: GeoJSON.Position[] = [];
@@ -2826,9 +2915,9 @@ export default function LogisticsPage() {
         return;
       }
       features.push({
-        type: "Feature",
+        type: 'Feature',
         geometry: {
-          type: "LineString",
+          type: 'LineString',
           coordinates,
         },
         properties: {
@@ -2838,7 +2927,7 @@ export default function LogisticsPage() {
       });
     });
     setOptimizedRoutesGeoJSON({
-      type: "FeatureCollection",
+      type: 'FeatureCollection',
       features,
     });
   }, [layerVisibility.optimized, planDraft]);
@@ -2858,7 +2947,11 @@ export default function LogisticsPage() {
     if (!map) return;
     const setVisibility = (layerId: string, visible: boolean) => {
       if (!map.getLayer(layerId)) return;
-      map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+      map.setLayoutProperty(
+        layerId,
+        'visibility',
+        visible ? 'visible' : 'none',
+      );
     };
     setVisibility(TASK_LAYER_ID, layerVisibility.tasks);
     setVisibility(TASK_CLUSTER_LAYER_ID, layerVisibility.tasks);
@@ -2880,15 +2973,15 @@ export default function LogisticsPage() {
       const feature = event.features?.[0];
       if (!feature) return;
       const entity = feature.properties?.entity;
-      if (entity === "vehicle") {
+      if (entity === 'vehicle') {
         const vehicleId = feature.properties?.vehicleId;
-        if (typeof vehicleId === "string" && vehicleId) {
+        if (typeof vehicleId === 'string' && vehicleId) {
           toggleSelectedVehicleId(vehicleId);
         }
         return;
       }
       const taskId = feature.properties?.taskId;
-      if (typeof taskId === "string" && taskId) {
+      if (typeof taskId === 'string' && taskId) {
         openTask(taskId);
       }
     };
@@ -2898,23 +2991,23 @@ export default function LogisticsPage() {
       const feature = event.features?.[0];
       if (!feature) return;
       const clusterId = feature.properties?.cluster_id;
-      if (typeof clusterId !== "number") {
+      if (typeof clusterId !== 'number') {
         return;
       }
       const coordinates =
-        feature.geometry && feature.geometry.type === "Point"
+        feature.geometry && feature.geometry.type === 'Point'
           ? (feature.geometry.coordinates as GeoJSON.Position)
           : null;
       source.getClusterExpansionZoom(
         clusterId,
         (error: Error | null, zoom: number) => {
-          if (!error && typeof zoom === "number" && coordinates) {
+          if (!error && typeof zoom === 'number' && coordinates) {
             map.easeTo({ center: coordinates, zoom, duration: 600 });
           }
         },
       );
       const total =
-        typeof feature.properties?.point_count === "number"
+        typeof feature.properties?.point_count === 'number'
           ? (feature.properties.point_count as number)
           : 0;
       const limit = Math.min(Math.max(total, 1), 50);
@@ -2926,15 +3019,18 @@ export default function LogisticsPage() {
           offset,
           (
             err: Error | null,
-            features: GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>[],
+            features: GeoJSON.Feature<
+              GeoJSON.Geometry,
+              GeoJSON.GeoJsonProperties
+            >[],
           ) => {
             if (err || !features) {
               return;
             }
             features.forEach((item) => {
-              if (item.properties?.entity === "task") {
+              if (item.properties?.entity === 'task') {
                 const taskId = item.properties?.taskId;
-                if (typeof taskId === "string" && taskId) {
+                if (typeof taskId === 'string' && taskId) {
                   collected.add(taskId);
                 }
               }
@@ -2944,9 +3040,7 @@ export default function LogisticsPage() {
             } else {
               const ids = Array.from(collected);
               setClusterSelection(
-                ids.length
-                  ? { ids, center: coordinates ?? null }
-                  : null,
+                ids.length ? { ids, center: coordinates ?? null } : null,
               );
             }
           },
@@ -2960,21 +3054,21 @@ export default function LogisticsPage() {
       const canvas = map.getCanvas();
       canvas.style.cursor = cursor;
     };
-    const handleEnter: Listener = () => setCursor("pointer");
-    const handleLeave: Listener = () => setCursor("");
-    map.on("click", TASK_POINTS_LAYER_ID, handlePointClickListener);
-    map.on("mouseenter", TASK_POINTS_LAYER_ID, handleEnter);
-    map.on("mouseleave", TASK_POINTS_LAYER_ID, handleLeave);
-    map.on("click", TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
-    map.on("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter);
-    map.on("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave);
+    const handleEnter: Listener = () => setCursor('pointer');
+    const handleLeave: Listener = () => setCursor('');
+    map.on('click', TASK_POINTS_LAYER_ID, handlePointClickListener);
+    map.on('mouseenter', TASK_POINTS_LAYER_ID, handleEnter);
+    map.on('mouseleave', TASK_POINTS_LAYER_ID, handleLeave);
+    map.on('click', TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+    map.on('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
+    map.on('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
     return () => {
-      map.off("click", TASK_POINTS_LAYER_ID, handlePointClickListener);
-      map.off("mouseenter", TASK_POINTS_LAYER_ID, handleEnter);
-      map.off("mouseleave", TASK_POINTS_LAYER_ID, handleLeave);
-      map.off("click", TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
-      map.off("mouseenter", TASK_CLUSTER_LAYER_ID, handleEnter);
-      map.off("mouseleave", TASK_CLUSTER_LAYER_ID, handleLeave);
+      map.off('click', TASK_POINTS_LAYER_ID, handlePointClickListener);
+      map.off('mouseenter', TASK_POINTS_LAYER_ID, handleEnter);
+      map.off('mouseleave', TASK_POINTS_LAYER_ID, handleLeave);
+      map.off('click', TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+      map.off('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
+      map.off('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
     };
   }, [mapReady, openTask, toggleSelectedVehicleId]);
 
@@ -2983,7 +3077,7 @@ export default function LogisticsPage() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    if (typeof map.resize === "function") {
+    if (typeof map.resize === 'function') {
       map.resize();
     }
   }, [hasDialog, mapReady]);
@@ -2992,17 +3086,22 @@ export default function LogisticsPage() {
     <div className="space-y-4 lg:space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">{t("logistics.title")}</h2>
+          <h2 className="text-2xl font-semibold">{t('logistics.title')}</h2>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            {t("logistics.pageLead", {
+            {t('logistics.pageLead', {
               defaultValue:
-                "Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.",
+                'Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.',
             })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={refreshAll}>
-            {t("refresh")}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={refreshAll}
+          >
+            {t('refresh')}
           </Button>
           <Button
             type="button"
@@ -3011,15 +3110,15 @@ export default function LogisticsPage() {
             onClick={handleReloadPlan}
             disabled={planLoading}
           >
-            {planLoading ? t("loading") : t("logistics.planReload")}
+            {planLoading ? t('loading') : t('logistics.planReload')}
           </Button>
         </div>
       </header>
       {isRasterFallback ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          {t("logistics.mapFallbackWarning", {
+          {t('logistics.mapFallbackWarning', {
             defaultValue:
-              "Карта использует временные растровые тайлы OpenStreetMap. Подключите локальные PMTiles в public/tiles, чтобы активировать детализированный стиль.",
+              'Карта использует временные растровые тайлы OpenStreetMap. Подключите локальные PMTiles в public/tiles, чтобы активировать детализированный стиль.',
           })}
         </div>
       ) : null}
@@ -3029,22 +3128,22 @@ export default function LogisticsPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold">
-                  {t("logistics.planSectionTitle")}
+                  {t('logistics.planSectionTitle')}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {t("logistics.planSummary")}
+                  {t('logistics.planSummary')}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium">
-                  {t("logistics.planStatus")}
+                  {t('logistics.planStatus')}
                 </span>
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
                   {planStatusLabel}
                 </span>
                 {planLoading ? (
                   <span className="text-xs text-muted-foreground">
-                    {t("loading")}
+                    {t('loading')}
                   </span>
                 ) : null}
               </div>
@@ -3057,7 +3156,7 @@ export default function LogisticsPage() {
                 onClick={handleReloadPlan}
                 disabled={planLoading}
               >
-                {planLoading ? t("loading") : t("logistics.planReload")}
+                {planLoading ? t('loading') : t('logistics.planReload')}
               </Button>
               <Button
                 type="button"
@@ -3066,7 +3165,7 @@ export default function LogisticsPage() {
                 onClick={handleClearPlan}
                 disabled={planLoading}
               >
-                {t("logistics.planClear")}
+                {t('logistics.planClear')}
               </Button>
               <Button
                 type="button"
@@ -3074,9 +3173,9 @@ export default function LogisticsPage() {
                 onClick={handleSavePlan}
                 disabled={!planDraft || !isPlanEditable || planLoading}
               >
-                {t("save")}
+                {t('save')}
               </Button>
-              {planDraft?.status === "draft" ? (
+              {planDraft?.status === 'draft' ? (
                 <Button
                   type="button"
                   size="sm"
@@ -3084,10 +3183,10 @@ export default function LogisticsPage() {
                   onClick={handleApprovePlan}
                   disabled={planLoading}
                 >
-                  {t("logistics.planApprove")}
+                  {t('logistics.planApprove')}
                 </Button>
               ) : null}
-              {planDraft?.status === "approved" ? (
+              {planDraft?.status === 'approved' ? (
                 <Button
                   type="button"
                   size="sm"
@@ -3095,7 +3194,7 @@ export default function LogisticsPage() {
                   onClick={handleCompletePlan}
                   disabled={planLoading}
                 >
-                  {t("logistics.planComplete")}
+                  {t('logistics.planComplete')}
                 </Button>
               ) : null}
             </div>
@@ -3104,7 +3203,7 @@ export default function LogisticsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="font-medium">
-                      {t("logistics.planTitleLabel")}
+                      {t('logistics.planTitleLabel')}
                     </span>
                     <Input
                       value={planDraft.title}
@@ -3116,10 +3215,10 @@ export default function LogisticsPage() {
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="font-medium">
-                      {t("logistics.planNotesLabel")}
+                      {t('logistics.planNotesLabel')}
                     </span>
                     <textarea
-                      value={planDraft.notes ?? ""}
+                      value={planDraft.notes ?? ''}
                       onChange={(event) =>
                         handlePlanNotesChange(event.target.value)
                       }
@@ -3130,32 +3229,34 @@ export default function LogisticsPage() {
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold uppercase text-muted-foreground">
-                    {t("logistics.planSummary")}
+                    {t('logistics.planSummary')}
                   </h4>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
-                        {t("logistics.planTotalDistance")}
+                        {t('logistics.planTotalDistance')}
                       </div>
                       <div className="font-semibold">
-                        {formatDistance(planDraft.metrics?.totalDistanceKm ?? null)}
+                        {formatDistance(
+                          planDraft.metrics?.totalDistanceKm ?? null,
+                        )}
                       </div>
                     </div>
                     <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
-                        {t("logistics.planTotalRoutes")}
+                        {t('logistics.planTotalRoutes')}
                       </div>
                       <div className="font-semibold">{planTotalRoutes}</div>
                     </div>
                     <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
-                        {t("logistics.planTotalTasks")}
+                        {t('logistics.planTotalTasks')}
                       </div>
                       <div className="font-semibold">{planTotalTasks}</div>
                     </div>
                     <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
-                        {t("logistics.planTotalStops")}
+                        {t('logistics.planTotalStops')}
                       </div>
                       <div className="font-semibold">{totalStops}</div>
                     </div>
@@ -3164,10 +3265,12 @@ export default function LogisticsPage() {
                 <div className="space-y-3">
                   {planRoutes.map((route, routeIndex) => {
                     const displayIndex =
-                      typeof route.order === "number" && Number.isFinite(route.order)
+                      typeof route.order === 'number' &&
+                      Number.isFinite(route.order)
                         ? route.order + 1
                         : routeIndex + 1;
-                    const routeStops = route.metrics?.stops ?? route.stops.length;
+                    const routeStops =
+                      route.metrics?.stops ?? route.stops.length;
                     return (
                       <div
                         key={route.id || `${routeIndex}`}
@@ -3176,54 +3279,67 @@ export default function LogisticsPage() {
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <h4 className="text-base font-semibold">
-                              {t("logistics.planRouteTitle", { index: displayIndex })}
+                              {t('logistics.planRouteTitle', {
+                                index: displayIndex,
+                              })}
                             </h4>
                             <div className="text-xs text-muted-foreground">
-                              {t("logistics.planRouteSummary", {
+                              {t('logistics.planRouteSummary', {
                                 tasks: route.tasks.length,
                                 stops: routeStops,
                               })}
                             </div>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {t("logistics.planRouteDistance", {
-                              distance: formatDistance(route.metrics?.distanceKm ?? null),
+                            {t('logistics.planRouteDistance', {
+                              distance: formatDistance(
+                                route.metrics?.distanceKm ?? null,
+                              ),
                             })}
                           </div>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2">
                           <label className="flex flex-col gap-1 text-sm">
                             <span className="font-medium">
-                              {t("logistics.planDriver")}
+                              {t('logistics.planDriver')}
                             </span>
                             <Input
-                              value={route.driverName ?? ""}
+                              value={route.driverName ?? ''}
                               onChange={(event) =>
-                                handleDriverNameChange(routeIndex, event.target.value)
+                                handleDriverNameChange(
+                                  routeIndex,
+                                  event.target.value,
+                                )
                               }
                               disabled={!isPlanEditable || planLoading}
                             />
                           </label>
                           <label className="flex flex-col gap-1 text-sm">
                             <span className="font-medium">
-                              {t("logistics.planVehicle")}
+                              {t('logistics.planVehicle')}
                             </span>
                             <Input
-                              value={route.vehicleName ?? ""}
+                              value={route.vehicleName ?? ''}
                               onChange={(event) =>
-                                handleVehicleNameChange(routeIndex, event.target.value)
+                                handleVehicleNameChange(
+                                  routeIndex,
+                                  event.target.value,
+                                )
                               }
                               disabled={!isPlanEditable || planLoading}
                             />
                           </label>
                           <label className="md:col-span-2 flex flex-col gap-1 text-sm">
                             <span className="font-medium">
-                              {t("logistics.planRouteNotes")}
+                              {t('logistics.planRouteNotes')}
                             </span>
                             <textarea
-                              value={route.notes ?? ""}
+                              value={route.notes ?? ''}
                               onChange={(event) =>
-                                handleRouteNotesChange(routeIndex, event.target.value)
+                                handleRouteNotesChange(
+                                  routeIndex,
+                                  event.target.value,
+                                )
                               }
                               className="min-h-[80px] rounded border px-3 py-2 text-sm"
                               disabled={!isPlanEditable || planLoading}
@@ -3232,7 +3348,7 @@ export default function LogisticsPage() {
                         </div>
                         <div className="space-y-2">
                           <h5 className="text-sm font-semibold uppercase text-muted-foreground">
-                            {t("logistics.planTasksTitle")}
+                            {t('logistics.planTasksTitle')}
                           </h5>
                           <ul className="space-y-2">
                             {route.tasks.length ? (
@@ -3258,7 +3374,8 @@ export default function LogisticsPage() {
                                           {task.title || task._id}
                                         </button>
                                         <div className="text-xs text-muted-foreground">
-                                          {task.address || t("logistics.planRouteNoAddress")}
+                                          {task.address ||
+                                            t('logistics.planRouteNoAddress')}
                                         </div>
                                       </div>
                                       <div className="flex gap-1">
@@ -3266,31 +3383,49 @@ export default function LogisticsPage() {
                                           type="button"
                                           size="xs"
                                           variant="outline"
-                                          onClick={() => handleMoveTask(routeIndex, taskIndex, -1)}
+                                          onClick={() =>
+                                            handleMoveTask(
+                                              routeIndex,
+                                              taskIndex,
+                                              -1,
+                                            )
+                                          }
                                           disabled={taskIndex === 0}
                                         >
-                                          {t("logistics.planTaskUp")}
+                                          {t('logistics.planTaskUp')}
                                         </Button>
                                         <Button
                                           type="button"
                                           size="xs"
                                           variant="outline"
-                                          onClick={() => handleMoveTask(routeIndex, taskIndex, 1)}
-                                          disabled={taskIndex === route.tasks.length - 1}
+                                          onClick={() =>
+                                            handleMoveTask(
+                                              routeIndex,
+                                              taskIndex,
+                                              1,
+                                            )
+                                          }
+                                          disabled={
+                                            taskIndex === route.tasks.length - 1
+                                          }
                                         >
-                                          {t("logistics.planTaskDown")}
+                                          {t('logistics.planTaskDown')}
                                         </Button>
                                       </div>
                                     </div>
                                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                       <span>
-                                        {t("logistics.planRouteDistance", {
-                                          distance: formatDistance(taskRef.distanceKm ?? null),
+                                        {t('logistics.planRouteDistance', {
+                                          distance: formatDistance(
+                                            taskRef.distanceKm ?? null,
+                                          ),
                                         })}
                                       </span>
                                       <span>
-                                        {t("logistics.planRouteDuration", {
-                                          duration: formatDuration(taskRef.durationMinutes ?? null),
+                                        {t('logistics.planRouteDuration', {
+                                          duration: formatDuration(
+                                            taskRef.durationMinutes ?? null,
+                                          ),
                                         })}
                                       </span>
                                     </div>
@@ -3299,7 +3434,7 @@ export default function LogisticsPage() {
                               })
                             ) : (
                               <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
-                                {t("logistics.planRouteEmpty")}
+                                {t('logistics.planRouteEmpty')}
                               </li>
                             )}
                           </ul>
@@ -3315,8 +3450,8 @@ export default function LogisticsPage() {
             ) : (
               <div className={planMessageClass}>
                 {planLoading
-                  ? t("loading")
-                  : planMessage || t("logistics.planEmpty")}
+                  ? t('loading')
+                  : planMessage || t('logistics.planEmpty')}
               </div>
             )}
           </section>
@@ -3324,14 +3459,14 @@ export default function LogisticsPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold">
-                  {t("logistics.mapPanelTitle", {
-                    defaultValue: "Карта маршрутов",
+                  {t('logistics.mapPanelTitle', {
+                    defaultValue: 'Карта маршрутов',
                   })}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {t("logistics.mapPanelSummary", {
+                  {t('logistics.mapPanelSummary', {
                     defaultValue:
-                      "Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.",
+                      'Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.',
                   })}
                 </p>
               </div>
@@ -3348,7 +3483,7 @@ export default function LogisticsPage() {
                       }))
                     }
                   />
-                  <span>{t("logistics.layerTasks")}</span>
+                  <span>{t('logistics.layerTasks')}</span>
                 </label>
                 <label className="inline-flex items-center gap-2">
                   <input
@@ -3362,25 +3497,27 @@ export default function LogisticsPage() {
                       }))
                     }
                   />
-                  <span>{t("logistics.layerOptimization")}</span>
+                  <span>{t('logistics.layerOptimization')}</span>
                 </label>
               </div>
             </div>
             <div
               id="logistics-map"
-              className={`h-[320px] w-full rounded border ${hasDialog ? "hidden" : ""}`}
+              className={`h-[320px] w-full rounded border ${hasDialog ? 'hidden' : ''}`}
             />
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2">
                   <span className="text-xs font-medium uppercase text-muted-foreground">
-                    {t("logistics.vehicleCountLabel")}
+                    {t('logistics.vehicleCountLabel')}
                   </span>
                   <select
                     value={vehicles}
-                    onChange={(event) => setVehicles(Number(event.target.value))}
+                    onChange={(event) =>
+                      setVehicles(Number(event.target.value))
+                    }
                     className="h-8 rounded border px-2 text-sm"
-                    aria-label={t("logistics.vehicleCountAria")}
+                    aria-label={t('logistics.vehicleCountAria')}
                   >
                     <option value={1}>1</option>
                     <option value={2}>2</option>
@@ -3389,13 +3526,13 @@ export default function LogisticsPage() {
                 </label>
                 <label className="flex items-center gap-2">
                   <span className="text-xs font-medium uppercase text-muted-foreground">
-                    {t("logistics.optimizeMethodLabel")}
+                    {t('logistics.optimizeMethodLabel')}
                   </span>
                   <select
                     value={method}
                     onChange={(event) => setMethod(event.target.value)}
                     className="h-8 rounded border px-2 text-sm"
-                    aria-label={t("logistics.optimizeMethodAria")}
+                    aria-label={t('logistics.optimizeMethodAria')}
                   >
                     <option value="angle">angle</option>
                     <option value="trip">trip</option>
@@ -3404,20 +3541,20 @@ export default function LogisticsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" size="sm" onClick={calculate}>
-                  {t("logistics.optimize")}
+                  {t('logistics.optimize')}
                 </Button>
                 <Button type="button" size="sm" onClick={reset}>
-                  {t("reset")}
+                  {t('reset')}
                 </Button>
                 <Button type="button" size="sm" onClick={refreshAll}>
-                  {t("refresh")}
+                  {t('refresh')}
                 </Button>
               </div>
             </div>
             {clusterSelection?.ids.length ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
                 <span>
-                  {t("logistics.clusterSelectionSummary", {
+                  {t('logistics.clusterSelectionSummary', {
                     count: clusterSelection.ids.length,
                     defaultValue: `В кластере задач: ${clusterSelection.ids.length}`,
                   })}
@@ -3428,14 +3565,14 @@ export default function LogisticsPage() {
                   variant="outline"
                   onClick={handleClearClusterSelection}
                 >
-                  {t("clear")}
+                  {t('clear')}
                 </Button>
               </div>
             ) : null}
           </section>
           <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
             <h3 className="text-lg font-semibold">
-              {t("logistics.tasksHeading")}
+              {t('logistics.tasksHeading')}
             </h3>
             <TaskTable
               tasks={displayedTasks}
@@ -3448,10 +3585,10 @@ export default function LogisticsPage() {
           </section>
         </div>
         <aside className="space-y-4">
-          {role === "admin" ? (
+          {role === 'admin' ? (
             <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <h3 className="font-semibold">{t("logistics.transport")}</h3>
+                <h3 className="font-semibold">{t('logistics.transport')}</h3>
                 <Button
                   type="button"
                   size="sm"
@@ -3460,9 +3597,9 @@ export default function LogisticsPage() {
                   disabled={vehiclesLoading}
                 >
                   {vehiclesLoading
-                    ? t("loading")
-                    : t("logistics.refreshFleet", {
-                        defaultValue: "Обновить автопарк",
+                    ? t('loading')
+                    : t('logistics.refreshFleet', {
+                        defaultValue: 'Обновить автопарк',
                       })}
                 </Button>
               </div>
@@ -3470,7 +3607,9 @@ export default function LogisticsPage() {
                 <div className="text-sm text-red-600">{fleetError}</div>
               ) : null}
               {vehiclesHint && !availableVehicles.length ? (
-                <div className="text-sm text-muted-foreground">{vehiclesHint}</div>
+                <div className="text-sm text-muted-foreground">
+                  {vehiclesHint}
+                </div>
               ) : null}
               {availableVehicles.length ? (
                 <div className="overflow-x-auto">
@@ -3478,28 +3617,28 @@ export default function LogisticsPage() {
                     <thead>
                       <tr className="text-left text-muted-foreground">
                         <th className="rounded-l-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t("logistics.vehicleColumnName", {
-                            defaultValue: "Транспорт",
+                          {t('logistics.vehicleColumnName', {
+                            defaultValue: 'Транспорт',
                           })}
                         </th>
                         <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t("logistics.vehicleColumnPlate", {
-                            defaultValue: "Госномер",
+                          {t('logistics.vehicleColumnPlate', {
+                            defaultValue: 'Госномер',
                           })}
                         </th>
                         <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t("logistics.vehicleColumnType", {
-                            defaultValue: "Тип",
+                          {t('logistics.vehicleColumnType', {
+                            defaultValue: 'Тип',
                           })}
                         </th>
                         <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t("logistics.vehicleColumnTasks", {
-                            defaultValue: "Задачи",
+                          {t('logistics.vehicleColumnTasks', {
+                            defaultValue: 'Задачи',
                           })}
                         </th>
                         <th className="rounded-r-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t("logistics.vehicleColumnMileage", {
-                            defaultValue: "Пробег",
+                          {t('logistics.vehicleColumnMileage', {
+                            defaultValue: 'Пробег',
                           })}
                         </th>
                       </tr>
@@ -3511,7 +3650,7 @@ export default function LogisticsPage() {
                           ? vehicle.currentTasks.length
                           : null;
                         const mileageValue =
-                          typeof vehicle.odometerCurrent === "number" &&
+                          typeof vehicle.odometerCurrent === 'number' &&
                           Number.isFinite(vehicle.odometerCurrent)
                             ? vehicle.odometerCurrent
                             : null;
@@ -3521,48 +3660,48 @@ export default function LogisticsPage() {
                             onClick={() => toggleSelectedVehicleId(vehicle.id)}
                             className={`bg-white/80 text-sm shadow-sm transition dark:bg-slate-900/60 ${
                               isSelected
-                                ? "cursor-pointer ring-2 ring-sky-500"
-                                : "cursor-pointer hover:bg-slate-100/80"
+                                ? 'cursor-pointer ring-2 ring-sky-500'
+                                : 'cursor-pointer hover:bg-slate-100/80'
                             }`}
-                            data-state={isSelected ? "selected" : undefined}
+                            data-state={isSelected ? 'selected' : undefined}
                             aria-selected={isSelected}
                           >
                             <td className="rounded-l-md px-3 py-2 font-medium">
                               {vehicle.name ||
-                                t("logistics.unselectedVehicle", {
-                                  defaultValue: "Не выбран",
+                                t('logistics.unselectedVehicle', {
+                                  defaultValue: 'Не выбран',
                                 })}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
                               {vehicle.registrationNumber ||
-                                t("logistics.assignDialogUnknown", {
-                                  defaultValue: "нет данных",
+                                t('logistics.assignDialogUnknown', {
+                                  defaultValue: 'нет данных',
                                 })}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
                               {vehicle.transportType ||
-                                t("logistics.assignDialogUnknown", {
-                                  defaultValue: "нет данных",
+                                t('logistics.assignDialogUnknown', {
+                                  defaultValue: 'нет данных',
                                 })}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
-                              {typeof tasksCount === "number"
-                                ? t("logistics.vehicleTasksShort", {
+                              {typeof tasksCount === 'number'
+                                ? t('logistics.vehicleTasksShort', {
                                     count: tasksCount,
                                     defaultValue: `${tasksCount}`,
                                   })
-                                : t("logistics.assignDialogUnknown", {
-                                    defaultValue: "нет данных",
+                                : t('logistics.assignDialogUnknown', {
+                                    defaultValue: 'нет данных',
                                   })}
                             </td>
                             <td className="rounded-r-md px-3 py-2 text-xs text-muted-foreground">
                               {mileageValue !== null
-                                ? t("logistics.vehicleMileageShort", {
+                                ? t('logistics.vehicleMileageShort', {
                                     value: mileageValue,
                                     defaultValue: `${mileageValue} км`,
                                   })
-                                : t("logistics.assignDialogUnknown", {
-                                    defaultValue: "нет данных",
+                                : t('logistics.assignDialogUnknown', {
+                                    defaultValue: 'нет данных',
                                   })}
                             </td>
                           </tr>
@@ -3574,10 +3713,12 @@ export default function LogisticsPage() {
               ) : null}
               {selectedVehicle ? (
                 <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                  {t("logistics.selectedVehicle", {
+                  {t('logistics.selectedVehicle', {
                     name:
                       selectedVehicle.name ||
-                      t("logistics.unselectedVehicle", { defaultValue: "Не выбран" }),
+                      t('logistics.unselectedVehicle', {
+                        defaultValue: 'Не выбран',
+                      }),
                   })}
                 </div>
               ) : null}
@@ -3591,12 +3732,12 @@ export default function LogisticsPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-                  {t("logistics.geozonesTitle")}
+                  {t('logistics.geozonesTitle')}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {t("logistics.geozonesDescription", {
+                  {t('logistics.geozonesDescription', {
                     defaultValue:
-                      "Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.",
+                      'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
                   })}
                 </p>
               </div>
@@ -3608,8 +3749,8 @@ export default function LogisticsPage() {
                   onChange={(event) => setGeoZonesEnabled(event.target.checked)}
                 />
                 <span>
-                  {t("logistics.geozonesToggleLabel", {
-                    defaultValue: "Геозоны",
+                  {t('logistics.geozonesToggleLabel', {
+                    defaultValue: 'Геозоны',
                   })}
                 </span>
               </label>
@@ -3623,13 +3764,13 @@ export default function LogisticsPage() {
                 disabled={!mapReady || !geoZonesEnabled}
               >
                 {isDrawing
-                  ? t("logistics.geozonesDrawing")
-                  : t("logistics.geozonesDraw")}
+                  ? t('logistics.geozonesDrawing')
+                  : t('logistics.geozonesDraw')}
               </Button>
               {!geoZonesEnabled ? (
                 <span className="text-xs text-muted-foreground">
-                  {t("logistics.geozonesDisabled", {
-                    defaultValue: "Фильтрация по зонам выключена.",
+                  {t('logistics.geozonesDisabled', {
+                    defaultValue: 'Фильтрация по зонам выключена.',
                   })}
                 </span>
               ) : null}
@@ -3637,7 +3778,7 @@ export default function LogisticsPage() {
             {geoZonesEnabled ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  {t("logistics.geozonesHint")}
+                  {t('logistics.geozonesHint')}
                 </p>
                 {geoZones.length ? (
                   <ul className="space-y-2 text-sm">
@@ -3656,12 +3797,15 @@ export default function LogisticsPage() {
                                 checked={isActive}
                                 disabled={!geoZonesEnabled}
                                 onChange={(event) =>
-                                  handleToggleZone(zone.id, event.target.checked)
+                                  handleToggleZone(
+                                    zone.id,
+                                    event.target.checked,
+                                  )
                                 }
                               />
                               <span className="font-medium">
                                 {zone.name ||
-                                  t("logistics.geozoneDefaultName", {
+                                  t('logistics.geozoneDefaultName', {
                                     index: index + 1,
                                   })}
                               </span>
@@ -3672,28 +3816,32 @@ export default function LogisticsPage() {
                               variant="ghost"
                               onClick={() => handleRemoveZone(zone)}
                             >
-                              {t("logistics.geozoneRemove")}
+                              {t('logistics.geozoneRemove')}
                             </Button>
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {isActive
-                              ? t("logistics.geozoneStatusActive")
-                              : t("logistics.geozoneStatusInactive")}
+                              ? t('logistics.geozoneStatusActive')
+                              : t('logistics.geozoneStatusInactive')}
                           </div>
                           <div className="flex flex-wrap gap-2 text-[0.7rem] text-muted-foreground">
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t("logistics.geozoneArea", {
+                              {t('logistics.geozoneArea', {
                                 value: formatAreaMetric(zone.metrics?.areaKm2),
                               })}
                             </span>
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t("logistics.geozonePerimeter", {
-                                value: formatPerimeterMetric(zone.metrics?.perimeterKm),
+                              {t('logistics.geozonePerimeter', {
+                                value: formatPerimeterMetric(
+                                  zone.metrics?.perimeterKm,
+                                ),
                               })}
                             </span>
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t("logistics.geozoneBuffer", {
-                                value: formatBufferMetric(zone.metrics?.bufferMeters),
+                              {t('logistics.geozoneBuffer', {
+                                value: formatBufferMetric(
+                                  zone.metrics?.bufferMeters,
+                                ),
                               })}
                             </span>
                           </div>
@@ -3703,14 +3851,15 @@ export default function LogisticsPage() {
                   </ul>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    {t("logistics.geozonesEmpty")}
+                    {t('logistics.geozonesEmpty')}
                   </p>
                 )}
               </>
             ) : (
               <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                {t("logistics.geozonesDisabledHint", {
-                  defaultValue: "Включите переключатель выше, чтобы снова показывать зоны.",
+                {t('logistics.geozonesDisabledHint', {
+                  defaultValue:
+                    'Включите переключатель выше, чтобы снова показывать зоны.',
                 })}
               </p>
             )}
@@ -3718,19 +3867,20 @@ export default function LogisticsPage() {
           <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
             <div className="space-y-1">
               <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-                {t("logistics.layersTitle")}
+                {t('logistics.layersTitle')}
               </h3>
               <p className="text-xs text-muted-foreground">
-                {t("logistics.layersSummary", {
-                  defaultValue: "Настройте легенду карты по статусам, транспорту и типам задач.",
+                {t('logistics.layersSummary', {
+                  defaultValue:
+                    'Настройте легенду карты по статусам, транспорту и типам задач.',
                 })}
               </p>
             </div>
             <div className="space-y-3 border-t border-dashed border-slate-200 pt-3 text-sm">
               <fieldset className="space-y-2">
                 <legend className="text-xs font-semibold uppercase text-muted-foreground">
-                  {t("logistics.layerRouteStatuses", {
-                    defaultValue: "Статусы маршрутов",
+                  {t('logistics.layerRouteStatuses', {
+                    defaultValue: 'Статусы маршрутов',
                   })}
                 </legend>
                 <ul className="space-y-1">
@@ -3740,14 +3890,20 @@ export default function LogisticsPage() {
                       defaultValue: ROUTE_STATUS_LABELS[key],
                     });
                     return (
-                      <li key={key} className="flex items-center justify-between gap-2">
+                      <li
+                        key={key}
+                        className="flex items-center justify-between gap-2"
+                      >
                         <label className="flex flex-1 items-center gap-2">
                           <input
                             type="checkbox"
                             className="size-4"
                             checked={visible}
                             onChange={(event) =>
-                              handleRouteStatusVisibilityChange(key, event.target.checked)
+                              handleRouteStatusVisibilityChange(
+                                key,
+                                event.target.checked,
+                              )
                             }
                           />
                           <span className="flex items-center gap-2">
@@ -3760,7 +3916,7 @@ export default function LogisticsPage() {
                           </span>
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          {t("logistics.legendCount", {
+                          {t('logistics.legendCount', {
                             count,
                             defaultValue: `(${count})`,
                           })}
@@ -3772,22 +3928,28 @@ export default function LogisticsPage() {
               </fieldset>
               <fieldset className="space-y-2">
                 <legend className="text-xs font-semibold uppercase text-muted-foreground">
-                  {t("logistics.layerTransports", {
-                    defaultValue: "Типы транспорта",
+                  {t('logistics.layerTransports', {
+                    defaultValue: 'Типы транспорта',
                   })}
                 </legend>
                 <ul className="space-y-1">
                   {transportEntries.map(({ key, label, count, color }) => {
                     const visible = !hiddenTransportTypesSet.has(key);
                     return (
-                      <li key={key} className="flex items-center justify-between gap-2">
+                      <li
+                        key={key}
+                        className="flex items-center justify-between gap-2"
+                      >
                         <label className="flex flex-1 items-center gap-2">
                           <input
                             type="checkbox"
                             className="size-4"
                             checked={visible}
                             onChange={(event) =>
-                              handleTransportVisibilityChange(key, event.target.checked)
+                              handleTransportVisibilityChange(
+                                key,
+                                event.target.checked,
+                              )
                             }
                           />
                           <span className="flex items-center gap-2">
@@ -3800,7 +3962,7 @@ export default function LogisticsPage() {
                           </span>
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          {t("logistics.legendCount", {
+                          {t('logistics.legendCount', {
                             count,
                             defaultValue: `(${count})`,
                           })}
@@ -3812,22 +3974,28 @@ export default function LogisticsPage() {
               </fieldset>
               <fieldset className="space-y-2">
                 <legend className="text-xs font-semibold uppercase text-muted-foreground">
-                  {t("logistics.layerTaskTypes", {
-                    defaultValue: "Типы задач",
+                  {t('logistics.layerTaskTypes', {
+                    defaultValue: 'Типы задач',
                   })}
                 </legend>
                 <ul className="space-y-1">
                   {taskTypeEntries.map(({ key, label, count, color }) => {
                     const visible = !hiddenTaskTypesSet.has(key);
                     return (
-                      <li key={key} className="flex items-center justify-between gap-2">
+                      <li
+                        key={key}
+                        className="flex items-center justify-between gap-2"
+                      >
                         <label className="flex flex-1 items-center gap-2">
                           <input
                             type="checkbox"
                             className="size-4"
                             checked={visible}
                             onChange={(event) =>
-                              handleTaskTypeVisibilityChange(key, event.target.checked)
+                              handleTaskTypeVisibilityChange(
+                                key,
+                                event.target.checked,
+                              )
                             }
                           />
                           <span className="flex items-center gap-2">
@@ -3840,7 +4008,7 @@ export default function LogisticsPage() {
                           </span>
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          {t("logistics.legendCount", {
+                          {t('logistics.legendCount', {
                             count,
                             defaultValue: `(${count})`,
                           })}
@@ -3853,27 +4021,31 @@ export default function LogisticsPage() {
             </div>
             <div className="space-y-1 border-t border-dashed border-slate-200 pt-2">
               <span className="text-xs font-medium uppercase text-muted-foreground">
-                {t("logistics.viewModeLabel")}
+                {t('logistics.viewModeLabel')}
               </span>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   size="xs"
-                  variant={mapViewMode === "planar" ? "default" : "outline"}
-                  onClick={() => setMapViewMode("planar")}
-                  aria-pressed={mapViewMode === "planar"}
+                  variant={mapViewMode === 'planar' ? 'default' : 'outline'}
+                  onClick={() => setMapViewMode('planar')}
+                  aria-pressed={mapViewMode === 'planar'}
                 >
-                  {t("logistics.viewModePlanar")}
+                  {t('logistics.viewModePlanar')}
                 </Button>
                 <Button
                   type="button"
                   size="xs"
-                  variant={mapViewMode === "perspective" ? "default" : "outline"}
-                  onClick={() => !isRasterFallback && setMapViewMode("perspective")}
-                  aria-pressed={mapViewMode === "perspective"}
+                  variant={
+                    mapViewMode === 'perspective' ? 'default' : 'outline'
+                  }
+                  onClick={() =>
+                    !isRasterFallback && setMapViewMode('perspective')
+                  }
+                  aria-pressed={mapViewMode === 'perspective'}
                   disabled={isRasterFallback}
                 >
-                  {t("logistics.viewModeTilted")}
+                  {t('logistics.viewModeTilted')}
                 </Button>
               </div>
             </div>
@@ -3887,7 +4059,7 @@ export default function LogisticsPage() {
                     rel="noopener noreferrer"
                     className="text-accentPrimary underline"
                   >
-                    {t("logistics.linksLabel", { index: index + 1 })}
+                    {t('logistics.linksLabel', { index: index + 1 })}
                   </a>
                 ))}
               </div>
@@ -3895,44 +4067,56 @@ export default function LogisticsPage() {
           </section>
           <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
             <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-              {t("logistics.legendTitle")}
+              {t('logistics.legendTitle')}
             </h3>
             <div className="space-y-3 text-sm">
               <p className="text-xs text-muted-foreground">
-                {t("logistics.legendDescription", {
+                {t('logistics.legendDescription', {
                   defaultValue:
-                    "Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.",
+                    'Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.',
                 })}
               </p>
               <ul className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
                 <li className="flex items-center gap-2">
-                  <span className="legend-symbol legend-symbol--start" aria-hidden="true">
+                  <span
+                    className="legend-symbol legend-symbol--start"
+                    aria-hidden="true"
+                  >
                     {TASK_START_SYMBOL}
                   </span>
-                  <span>{t("logistics.legendStart")}</span>
+                  <span>{t('logistics.legendStart')}</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="legend-symbol legend-symbol--finish" aria-hidden="true">
+                  <span
+                    className="legend-symbol legend-symbol--finish"
+                    aria-hidden="true"
+                  >
                     {TASK_FINISH_SYMBOL}
                   </span>
-                  <span>{t("logistics.legendFinish")}</span>
+                  <span>{t('logistics.legendFinish')}</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="legend-symbol legend-symbol--movement" aria-hidden="true">
+                  <span
+                    className="legend-symbol legend-symbol--movement"
+                    aria-hidden="true"
+                  >
                     {ANIMATION_SYMBOL}
                   </span>
-                  <span>{t("logistics.legendMovement")}</span>
+                  <span>{t('logistics.legendMovement')}</span>
                 </li>
               </ul>
               <div className="space-y-1">
                 <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  {t("logistics.legendStatusesHeading", {
-                    defaultValue: "Статусы задач",
+                  {t('logistics.legendStatusesHeading', {
+                    defaultValue: 'Статусы задач',
                   })}
                 </div>
                 <ul className="space-y-2">
                   {legendItems.map((item) => (
-                    <li key={item.key} className="flex items-center justify-between gap-2">
+                    <li
+                      key={item.key}
+                      className="flex items-center justify-between gap-2"
+                    >
                       <span className="flex items-center gap-2">
                         <span
                           className="legend-color"
@@ -3943,7 +4127,7 @@ export default function LogisticsPage() {
                       </span>
                       {item.count ? (
                         <span className="text-xs text-muted-foreground">
-                          {t("logistics.legendCount", {
+                          {t('logistics.legendCount', {
                             count: item.count,
                             defaultValue: `(${item.count})`,
                           })}

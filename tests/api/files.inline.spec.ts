@@ -17,10 +17,7 @@ declare const before: (
 declare const after: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -54,7 +51,9 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
     uploadsDir = path.resolve(
       process.env.STORAGE_DIR || storageConfig.uploadsDir,
     );
-    const { default: filesRouter } = await import('../../apps/api/src/routes/files');
+    const { default: filesRouter } = await import(
+      '../../apps/api/src/routes/files'
+    );
     app = express();
     app.use('/api/v1/files', filesRouter);
   });
@@ -65,19 +64,21 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
       await mongod.stop();
     }
     if (uploadsDir) {
-      await fs.rm(uploadsDir, { recursive: true, force: true }).catch(() => undefined);
+      await fs
+        .rm(uploadsDir, { recursive: true, force: true })
+        .catch(() => undefined);
     }
   });
 
   beforeEach(async () => {
     await File.deleteMany({});
-    await fs.rm(uploadsDir, { recursive: true, force: true }).catch(() => undefined);
+    await fs
+      .rm(uploadsDir, { recursive: true, force: true })
+      .catch(() => undefined);
     await fs.mkdir(uploadsDir, { recursive: true });
   });
 
-  const createFileWithThumbnail = async (
-    userId: number,
-  ): Promise<string> => {
+  const createFileWithThumbnail = async (userId: number): Promise<string> => {
     const baseDir = path.join(uploadsDir, String(userId));
     await fs.mkdir(baseDir, { recursive: true });
     const filePath = path.join(baseDir, 'source.txt');
@@ -107,7 +108,10 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
   it('возвращает миниатюру авторизованному пользователю', async () => {
     const userId = 777;
     const fileId = await createFileWithThumbnail(userId);
-    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET ?? 'test-secret');
+    const token = jwt.sign(
+      { id: userId },
+      process.env.JWT_SECRET ?? 'test-secret',
+    );
     const response = await request(app)
       .get(`/api/v1/files/${fileId}?mode=inline&variant=thumbnail`)
       .set('Authorization', `Bearer ${token}`)

@@ -54,7 +54,9 @@ export default async function checkTaskAccess(
       .forEach((value) => controllerIds.add(value));
   }
   const status =
-    typeof task.status === 'string' ? (task.status as TaskInfo['status']) : undefined;
+    typeof task.status === 'string'
+      ? (task.status as TaskInfo['status'])
+      : undefined;
   const isTaskNew = !status || status === 'Новая';
   const hasTaskStarted = status !== undefined && status !== 'Новая';
   const isCreator = Number.isFinite(id) && task.created_by === id;

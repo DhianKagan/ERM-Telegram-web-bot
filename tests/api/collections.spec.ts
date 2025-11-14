@@ -5,7 +5,12 @@
 import express = require('express');
 import request = require('supertest');
 import { strict as assert } from 'assert';
-import { Collection, Fleet, Department, Employee } from '../../packages/shared/collection-lib';
+import {
+  Collection,
+  Fleet,
+  Department,
+  Employee,
+} from '../../packages/shared/collection-lib';
 
 const app = express();
 app.use(express.json());
@@ -69,13 +74,19 @@ describe('API коллекций', () => {
   });
 
   it('обновляет отдел', async () => {
-    await request(app).post('/departments').send({ id: 'd1', fleetId: 'f1', name: 'Отдел' });
-    const upd = await request(app).patch('/departments/d1').send({ name: 'Отдел-2' });
+    await request(app)
+      .post('/departments')
+      .send({ id: 'd1', fleetId: 'f1', name: 'Отдел' });
+    const upd = await request(app)
+      .patch('/departments/d1')
+      .send({ name: 'Отдел-2' });
     assert.equal(upd.body.name, 'Отдел-2');
   });
 
   it('удаляет сотрудника', async () => {
-    await request(app).post('/employees').send({ id: 'e1', departmentId: 'd1', name: 'Иван' });
+    await request(app)
+      .post('/employees')
+      .send({ id: 'e1', departmentId: 'd1', name: 'Иван' });
     const del = await request(app).delete('/employees/e1');
     assert.equal(del.status, 204);
   });

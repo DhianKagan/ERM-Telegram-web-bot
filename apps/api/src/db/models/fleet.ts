@@ -48,7 +48,10 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
       required: true,
       uppercase: true,
       trim: true,
-      match: [/^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u, 'Некорректный регистрационный номер'],
+      match: [
+        /^[A-ZА-ЯІЇЄ]{2} \d{4} [A-ZА-ЯІЇЄ]{2}$/u,
+        'Некорректный регистрационный номер',
+      ],
     },
     odometerInitial: { type: Number, required: true, min: 0 },
     odometerCurrent: { type: Number, required: true, min: 0 },

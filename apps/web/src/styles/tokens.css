@@ -114,8 +114,8 @@
       box-shadow var(--ui-transition-base);
   }
 
-  .ui-chip[data-state="active"],
-  .ui-chip[data-selected="true"],
+  .ui-chip[data-state='active'],
+  .ui-chip[data-selected='true'],
   .ui-chip.is-active {
     border-color: var(--color-brand-500);
     color: var(--ui-chip-color-active);
@@ -179,7 +179,7 @@
   }
 
   .table-sticky thead th,
-  table[data-ui="sticky"] thead th {
+  table[data-ui='sticky'] thead th {
     position: sticky;
     top: 0;
     z-index: var(--ui-table-sticky-z);

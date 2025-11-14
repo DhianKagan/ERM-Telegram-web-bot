@@ -1,6 +1,6 @@
 // Список задач для выбранного диапазона дат
-import React from "react";
-import type { Task } from "shared";
+import React from 'react';
+import type { Task } from 'shared';
 
 type RangeTask = Task & { task_number: string; createdAt: string };
 

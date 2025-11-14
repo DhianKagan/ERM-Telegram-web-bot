@@ -32,18 +32,22 @@ function ensureFetch(): typeof globalThis.fetch {
 async function getMenuButton(): Promise<MenuButton> {
   const fetchFn = ensureFetch();
   const params = chatId ? { chat_id: chatId } : {};
-  const res = await fetchFn(`https://api.telegram.org/bot${token}/getChatMenuButton`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
-  });
-  const data: { ok: boolean; result: MenuButton; description?: string } = await res.json();
+  const res = await fetchFn(
+    `https://api.telegram.org/bot${token}/getChatMenuButton`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+  );
+  const data: { ok: boolean; result: MenuButton; description?: string } =
+    await res.json();
   if (!data.ok) throw new Error(data.description || 'Неизвестная ошибка');
   return data.result;
 }
 
 getMenuButton()
-  .then(btn => {
+  .then((btn) => {
     if (btn.type === 'web_app' && btn.web_app) {
       console.log(btn.web_app.url);
     } else if (btn.type === 'commands' || btn.type === 'default') {
@@ -52,7 +56,7 @@ getMenuButton()
       console.log('unknown');
     }
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('Ошибка:', (err as Error).message);
     process.exit(1);
   });

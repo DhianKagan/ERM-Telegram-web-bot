@@ -51,5 +51,7 @@ test('listLogs учитывает traceId и диапазон дат', async () 
   const result = await listLogs({ from });
   expect(result).toHaveLength(1);
   expect(result[0].message).toBe('Новое сообщение');
-  expect(new Date(result[0].createdAt).getTime()).toBeGreaterThanOrEqual(new Date(from).getTime());
+  expect(new Date(result[0].createdAt).getTime()).toBeGreaterThanOrEqual(
+    new Date(from).getTime(),
+  );
 });

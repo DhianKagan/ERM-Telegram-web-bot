@@ -43,9 +43,7 @@ export class CreateTaskDto {
       body('title').isString().notEmpty(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
-      body('completed_at')
-        .optional({ nullable: true })
-        .isISO8601(),
+      body('completed_at').optional({ nullable: true }).isISO8601(),
       body('assigned_user_id')
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
@@ -97,9 +95,7 @@ export class UpdateTaskDto {
       body('title').optional().isString(),
       body('task_description').optional().isString().isLength({ max: 4096 }),
       body('status').optional().isString().isIn(statusList),
-      body('completed_at')
-        .optional({ nullable: true })
-        .isISO8601(),
+      body('completed_at').optional({ nullable: true }).isISO8601(),
       body('assigned_user_id')
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
@@ -123,7 +119,10 @@ export class UpdateTaskDto {
             assignees?: unknown;
             assigned_user_id?: unknown;
           };
-          if (typeof assignees === 'undefined' && typeof assignedUserId === 'undefined') {
+          if (
+            typeof assignees === 'undefined' &&
+            typeof assignedUserId === 'undefined'
+          ) {
             return true;
           }
           if (

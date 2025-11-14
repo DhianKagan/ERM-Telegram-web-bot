@@ -12,10 +12,7 @@ import type {
   LogisticsRoutePlanUpdatedEvent,
 } from '../../packages/shared/src/types';
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 
 declare const it: (
   name: string,
@@ -68,7 +65,9 @@ describe('routePlans service analytics', function () {
     updatePlan = services.updatePlan;
     updatePlanStatus = services.updatePlanStatus;
     removePlan = services.removePlan;
-    ({ subscribeLogisticsEvents } = await import('../../apps/api/src/services/logisticsEvents'));
+    ({ subscribeLogisticsEvents } = await import(
+      '../../apps/api/src/services/logisticsEvents'
+    ));
   });
 
   after(async () => {
@@ -123,21 +122,35 @@ describe('routePlans service analytics', function () {
     assert.equal(dropoff.load, 0);
     assert.equal(pickup.windowStartMinutes, 480);
     assert.equal(dropoff.windowEndMinutes, 540);
-    assert.ok(typeof dropoff.delayMinutes === 'number' && dropoff.delayMinutes > 0);
-    assert.ok(typeof dropoff.etaMinutes === 'number' && dropoff.etaMinutes > pickup.etaMinutes!);
+    assert.ok(
+      typeof dropoff.delayMinutes === 'number' && dropoff.delayMinutes > 0,
+    );
+    assert.ok(
+      typeof dropoff.etaMinutes === 'number' &&
+        dropoff.etaMinutes > pickup.etaMinutes!,
+    );
     assert.equal(plan.metrics.totalLoad, 12.3);
     assert.equal(plan.metrics.totalRoutes, 1);
-    assert.ok(plan.metrics.totalEtaMinutes && plan.metrics.totalEtaMinutes >= dropoff.etaMinutes!);
+    assert.ok(
+      plan.metrics.totalEtaMinutes &&
+        plan.metrics.totalEtaMinutes >= dropoff.etaMinutes!,
+    );
 
     const stored = await getPlan(plan.id);
     assert.ok(stored);
     assert.equal(stored?.metrics.totalLoad, 12.3);
-    assert.equal(stored?.routes[0]?.stops[1]?.delayMinutes, dropoff.delayMinutes);
+    assert.equal(
+      stored?.routes[0]?.stops[1]?.delayMinutes,
+      dropoff.delayMinutes,
+    );
 
     const listed = await listPlans();
     assert.equal(listed.total, 1);
     assert.equal(listed.items[0]?.metrics.totalLoad, 12.3);
-    assert.equal(listed.items[0]?.routes[0]?.stops[1]?.delayMinutes, dropoff.delayMinutes);
+    assert.equal(
+      listed.items[0]?.routes[0]?.stops[1]?.delayMinutes,
+      dropoff.delayMinutes,
+    );
   });
 
   it('публикует событие при обновлении маршрутного плана', async () => {
@@ -161,7 +174,8 @@ describe('routePlans service analytics', function () {
     }
 
     const message = events.find(
-      (event): event is LogisticsRoutePlanUpdatedEvent => event.type === 'route-plan.updated',
+      (event): event is LogisticsRoutePlanUpdatedEvent =>
+        event.type === 'route-plan.updated',
     );
     assert.ok(message, 'ожидалось событие обновления плана');
     assert.equal(message.reason, 'updated');
@@ -190,7 +204,8 @@ describe('routePlans service analytics', function () {
     }
 
     const message = events.find(
-      (event): event is LogisticsRoutePlanUpdatedEvent => event.type === 'route-plan.updated',
+      (event): event is LogisticsRoutePlanUpdatedEvent =>
+        event.type === 'route-plan.updated',
     );
     assert.ok(message, 'ожидалось событие обновления плана при смене статуса');
     assert.equal(message.reason, 'updated');
@@ -218,7 +233,8 @@ describe('routePlans service analytics', function () {
     }
 
     const message = events.find(
-      (event): event is LogisticsRoutePlanRemovedEvent => event.type === 'route-plan.removed',
+      (event): event is LogisticsRoutePlanRemovedEvent =>
+        event.type === 'route-plan.removed',
     );
     assert.ok(message, 'ожидалось событие удаления плана');
     assert.equal(message.planId, plan.id);

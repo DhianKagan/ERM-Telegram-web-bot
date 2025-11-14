@@ -8,7 +8,10 @@ import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import type { FeatureCollection, Polygon } from 'geojson';
-import { BUILDINGS_LAYER_ID, insert3dBuildingsLayer } from '../../apps/web/src/utils/insert3dBuildingsLayer';
+import {
+  BUILDINGS_LAYER_ID,
+  insert3dBuildingsLayer,
+} from '../../apps/web/src/utils/insert3dBuildingsLayer';
 
 type ViewPoint = {
   name: string;
@@ -96,9 +99,19 @@ const createBuildingPolygon = (
 const buildingFeatures: FeatureCollection<Polygon> = {
   type: 'FeatureCollection',
   features: [
-    createBuildingPolygon('Київ · Контрактова площа', [30.5234, 50.4501], 160, 120),
+    createBuildingPolygon(
+      'Київ · Контрактова площа',
+      [30.5234, 50.4501],
+      160,
+      120,
+    ),
     createBuildingPolygon('Львів · Площа Ринок', [24.0316, 49.842], 150, 90),
-    createBuildingPolygon('Одеса · Дерибасівська', [30.7233, 46.4825], 140, 110),
+    createBuildingPolygon(
+      'Одеса · Дерибасівська',
+      [30.7233, 46.4825],
+      140,
+      110,
+    ),
     createBuildingPolygon('Харків · Свободи', [36.2292, 49.9935], 130, 105),
   ],
 };
@@ -153,9 +166,7 @@ app.get('/style.json', (_req, res) => {
 });
 
 app.get('/', (_req, res) => {
-  res
-    .type('html')
-    .send(`<!DOCTYPE html>
+  res.type('html').send(`<!DOCTYPE html>
   <html lang="ru">
     <head>
       <meta charset="utf-8" />
@@ -625,15 +636,12 @@ test.afterAll(() => {
 });
 
 const waitForIdle = async (page: Page, prevIdle: number | null) => {
-  await page.waitForFunction(
-    (last) => {
-      if (typeof window.__ERM_IDLE__ !== 'number') {
-        return false;
-      }
-      return last === null || window.__ERM_IDLE__ > last;
-    },
-    prevIdle,
-  );
+  await page.waitForFunction((last) => {
+    if (typeof window.__ERM_IDLE__ !== 'number') {
+      return false;
+    }
+    return last === null || window.__ERM_IDLE__ > last;
+  }, prevIdle);
   const currentIdle = await page.evaluate(() => window.__ERM_IDLE__ ?? null);
   return typeof currentIdle === 'number' ? currentIdle : null;
 };
@@ -690,7 +698,9 @@ const captureMapSnapshot = async (page: Page): Promise<MapSnapshot> => {
         return {
           className: node.className,
           featureKey: node.dataset.featureKey ?? null,
-          textContent: node.textContent ? node.textContent.trim() || null : null,
+          textContent: node.textContent
+            ? node.textContent.trim() || null
+            : null,
           styles: {
             left: parsePx(node.style.left),
             top: parsePx(node.style.top),
@@ -712,9 +722,14 @@ const captureMapSnapshot = async (page: Page): Promise<MapSnapshot> => {
 };
 
 test.describe('3D слой зданий', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium', 'Детерминированный стенд доступен только в Chromium на CI');
+  test.skip(
+    ({ browserName }) => browserName !== 'chromium',
+    'Детерминированный стенд доступен только в Chromium на CI',
+  );
 
-  test('слой добавляется перед подписями и визуально отображается', async ({ page }) => {
+  test('слой добавляется перед подписями и визуально отображается', async ({
+    page,
+  }) => {
     const browserMessages: string[] = [];
     page.on('console', (msg) => {
       const entry = `[console:${msg.type()}] ${msg.text()}`;
@@ -732,8 +747,12 @@ test.describe('3D слой зданий', () => {
     await page.goto(`${baseURL}/`);
     await page.waitForFunction(() => window.__ERM_READY__ === true);
 
-    const layerOrder = await page.evaluate(() => window.__ERM_LAYER_ORDER__ ?? []);
-    const beforeId = await page.evaluate(() => window.__ERM_LAYER_BEFORE__ ?? null);
+    const layerOrder = await page.evaluate(
+      () => window.__ERM_LAYER_ORDER__ ?? [],
+    );
+    const beforeId = await page.evaluate(
+      () => window.__ERM_LAYER_BEFORE__ ?? null,
+    );
 
     expect(layerOrder).toContain(BUILDINGS_LAYER_ID);
     expect(beforeId).not.toBeNull();
@@ -756,9 +775,13 @@ test.describe('3D слой зданий', () => {
       lastIdle = await waitForIdle(page, lastIdle);
       const layoutSnapshot = await captureMapSnapshot(page);
       const snapshotName = view.name.replace('.png', '.json');
-      await expect(JSON.stringify(layoutSnapshot, null, 2)).toMatchSnapshot(snapshotName);
+      await expect(JSON.stringify(layoutSnapshot, null, 2)).toMatchSnapshot(
+        snapshotName,
+      );
     }
 
-    expect(browserMessages).not.toContain(expect.stringContaining('[pageerror]'));
+    expect(browserMessages).not.toContain(
+      expect.stringContaining('[pageerror]'),
+    );
   });
 });

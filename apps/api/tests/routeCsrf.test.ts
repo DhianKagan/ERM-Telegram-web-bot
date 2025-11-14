@@ -30,12 +30,24 @@ const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 jest.mock('../src/api/middleware', () => ({
   verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
   asyncHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  errorHandler: (err: Error, _req: Request, res: Response, _next: NextFunction) =>
-    res.status(500).json({ error: err.message }),
+  errorHandler: (
+    err: Error,
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) => res.status(500).json({ error: err.message }),
 }));
 
 jest.mock('../src/services/route', () => ({
   clearRouteCache: jest.fn(),
+  // Заглушки для эндпоинтов, чтобы роуты могли вызывать их без выполнения сетевых запросов
+  getRouteDistance: jest.fn(async () => ({ distance: 0, waypoints: [] })),
+  table: jest.fn(async () => ({})),
+  nearest: jest.fn(async () => ({})),
+  match: jest.fn(async () => ({})),
+  trip: jest.fn(async () => ({})),
+  // если где-то в тестах используется buildCacheKey/clearRouteCache — тоже заглушим
+  buildCacheKey: jest.fn(),
 }));
 
 jest.mock('../src/geo/osrm', () => ({

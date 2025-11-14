@@ -46,9 +46,7 @@ router.patch(
 router.patch(
   '/:id/status',
   authMiddleware(),
-  ...validate([
-    body('status').isIn(['draft', 'approved', 'completed']),
-  ]),
+  ...validate([body('status').isIn(['draft', 'approved', 'completed'])]),
   asyncHandler(ctrl.changeStatus),
 );
 

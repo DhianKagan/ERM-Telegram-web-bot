@@ -84,8 +84,11 @@ beforeAll(() => {
   });
   app.use('/api/v1/auth', authRouter);
   const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-  app.post('/api/protected', limiter, verifyToken, (_req: Request, res: Response) =>
-    res.json({ ok: true }),
+  app.post(
+    '/api/protected',
+    limiter,
+    verifyToken,
+    (_req: Request, res: Response) => res.json({ ok: true }),
   );
   app.use(errorMiddleware);
 });

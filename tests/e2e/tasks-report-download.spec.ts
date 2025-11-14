@@ -67,7 +67,11 @@ const tasksService = new TasksService(
 
 const usersMap: Record<number, UserDocument> = {
   101: { telegram_id: 101, name: 'Иван', access: 1 } as unknown as UserDocument,
-  202: { telegram_id: 202, name: 'Мария', access: 1 } as unknown as UserDocument,
+  202: {
+    telegram_id: 202,
+    name: 'Мария',
+    access: 1,
+  } as unknown as UserDocument,
 };
 
 const reportGenerator = new ReportGeneratorService(
@@ -141,7 +145,9 @@ test.afterAll(() => {
   server.close();
 });
 
-test('скачивание PDF отчёта возвращает корректный заголовок', async ({ request }) => {
+test('скачивание PDF отчёта возвращает корректный заголовок', async ({
+  request,
+}) => {
   const res = await request.get(`${baseURL}/api/v1/tasks/report.pdf`);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toContain('application/pdf');

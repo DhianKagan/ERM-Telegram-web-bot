@@ -79,9 +79,13 @@ const collections = ['tasks', 'archives'];
 
 (async () => {
   try {
-    const results = await Promise.all(collections.map((name) => syncCollection(name)));
+    const results = await Promise.all(
+      collections.map((name) => syncCollection(name)),
+    );
     results.forEach((count, index) => {
-      console.log(`Коллекция ${collections[index]}: обновлено документов ${count}`);
+      console.log(
+        `Коллекция ${collections[index]}: обновлено документов ${count}`,
+      );
     });
     await mongoose.disconnect();
     process.exit(0);

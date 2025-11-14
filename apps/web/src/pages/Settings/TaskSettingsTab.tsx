@@ -1,15 +1,15 @@
 // Назначение файла: вкладка настроек задач в разделе настроек.
 // Основные модули: React, Spinner, Button, Input.
 
-import React from "react";
+import React from 'react';
 
-import Spinner from "../../components/Spinner";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import type { CollectionItem } from "../../services/collections";
+import Spinner from '../../components/Spinner';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import type { CollectionItem } from '../../services/collections';
 
 type TaskFieldItem = CollectionItem & {
-  meta?: CollectionItem["meta"] & {
+  meta?: CollectionItem['meta'] & {
     defaultLabel?: string;
     fieldType?: string;
     required?: boolean;
@@ -19,7 +19,7 @@ type TaskFieldItem = CollectionItem & {
 };
 
 type TaskTypeItem = CollectionItem & {
-  meta?: CollectionItem["meta"] & {
+  meta?: CollectionItem['meta'] & {
     defaultLabel?: string;
     order?: number;
     virtual?: boolean;
@@ -46,9 +46,9 @@ interface TaskSettingsTabProps {
 }
 
 const CARD_CLASS =
-  "rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900";
+  'rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900';
 
-const SECTION_GAP = "space-y-4";
+const SECTION_GAP = 'space-y-4';
 
 const FieldCard: React.FC<{
   item: TaskFieldItem;
@@ -71,9 +71,7 @@ const FieldCard: React.FC<{
   deleting,
   error,
 }) => {
-  const [localError, setLocalError] = React.useState<string | undefined>(
-    error,
-  );
+  const [localError, setLocalError] = React.useState<string | undefined>(error);
 
   React.useEffect(() => {
     setLocalError(error);
@@ -117,11 +115,11 @@ const FieldCard: React.FC<{
           <div>
             <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {defaultLabel}
-              {item.meta?.required ? " *" : ""}
+              {item.meta?.required ? ' *' : ''}
             </h4>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Поле: <span className="font-mono">{item.name}</span>
-              {item.meta?.fieldType ? ` • Тип: ${item.meta.fieldType}` : ""}
+              {item.meta?.fieldType ? ` • Тип: ${item.meta.fieldType}` : ''}
             </p>
           </div>
         </div>
@@ -148,7 +146,7 @@ const FieldCard: React.FC<{
             onClick={handleSave}
             disabled={saving || deleting || !dirty || !trimmedValue}
           >
-            {saving ? <Spinner /> : "Сохранить"}
+            {saving ? <Spinner /> : 'Сохранить'}
           </Button>
           <Button
             type="button"
@@ -167,7 +165,7 @@ const FieldCard: React.FC<{
               onClick={handleDelete}
               disabled={saving || deleting}
             >
-              {deleting ? <Spinner /> : "Удалить"}
+              {deleting ? <Spinner /> : 'Удалить'}
             </Button>
           ) : null}
         </div>
@@ -205,9 +203,7 @@ const TypeCard: React.FC<{
   deleting,
   error,
 }) => {
-  const [localError, setLocalError] = React.useState<string | undefined>(
-    error,
-  );
+  const [localError, setLocalError] = React.useState<string | undefined>(error);
 
   React.useEffect(() => {
     setLocalError(error);
@@ -215,20 +211,17 @@ const TypeCard: React.FC<{
 
   const defaultLabel = item.meta?.defaultLabel ?? item.name;
   const storedLabel = item.value?.trim() || defaultLabel;
-  const storedUrl = typeof item.meta?.tg_theme_url === "string"
-    ? item.meta.tg_theme_url
-    : "";
+  const storedUrl =
+    typeof item.meta?.tg_theme_url === 'string' ? item.meta.tg_theme_url : '';
   const storedPhotosUrl =
-    typeof item.meta?.tg_photos_url === "string"
-      ? item.meta.tg_photos_url
-      : "";
+    typeof item.meta?.tg_photos_url === 'string' ? item.meta.tg_photos_url : '';
   const trimmedLabel = label.trim();
   const trimmedUrl = url.trim();
   const trimmedPhotosUrl = photosUrl.trim();
   const dirty =
     trimmedLabel !== storedLabel ||
-    trimmedUrl !== (storedUrl || "") ||
-    trimmedPhotosUrl !== (storedPhotosUrl || "");
+    trimmedUrl !== (storedUrl || '') ||
+    trimmedPhotosUrl !== (storedPhotosUrl || '');
 
   const handleSave = async () => {
     setLocalError(undefined);
@@ -336,7 +329,7 @@ const TypeCard: React.FC<{
             onClick={handleSave}
             disabled={saving || deleting || !trimmedLabel || !dirty}
           >
-            {saving ? <Spinner /> : "Сохранить"}
+            {saving ? <Spinner /> : 'Сохранить'}
           </Button>
           <Button
             type="button"
@@ -355,7 +348,7 @@ const TypeCard: React.FC<{
               onClick={handleDelete}
               disabled={saving || deleting}
             >
-              {deleting ? <Spinner /> : "Удалить"}
+              {deleting ? <Spinner /> : 'Удалить'}
             </Button>
           ) : null}
         </div>
@@ -364,10 +357,12 @@ const TypeCard: React.FC<{
   );
 };
 
-const sortByOrder = <T extends { meta?: { order?: number } }>(items: T[]): T[] =>
+const sortByOrder = <T extends { meta?: { order?: number } }>(
+  items: T[],
+): T[] =>
   [...items].sort((a, b) => {
-    const left = typeof a.meta?.order === "number" ? a.meta.order : 0;
-    const right = typeof b.meta?.order === "number" ? b.meta.order : 0;
+    const left = typeof a.meta?.order === 'number' ? a.meta.order : 0;
+    const right = typeof b.meta?.order === 'number' ? b.meta.order : 0;
     return left - right;
   });
 
@@ -423,13 +418,13 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     (item: TaskTypeItem) => ({
       label: item.value?.trim() || item.meta?.defaultLabel || item.name,
       url:
-        typeof item.meta?.tg_theme_url === "string"
+        typeof item.meta?.tg_theme_url === 'string'
           ? item.meta.tg_theme_url
-          : "",
+          : '',
       photosUrl:
-        typeof item.meta?.tg_photos_url === "string"
+        typeof item.meta?.tg_photos_url === 'string'
           ? item.meta.tg_photos_url
-          : "",
+          : '',
     }),
     [],
   );
@@ -440,15 +435,19 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   const [savingType, setSavingType] = React.useState<string | null>(null);
   const [deletingField, setDeletingField] = React.useState<string | null>(null);
   const [deletingType, setDeletingType] = React.useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
-  const [typeErrors, setTypeErrors] = React.useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
+    {},
+  );
+  const [typeErrors, setTypeErrors] = React.useState<Record<string, string>>(
+    {},
+  );
 
   const sortedFields = React.useMemo(() => sortByOrder(fields), [fields]);
   const sortedTypes = React.useMemo(() => sortByOrder(types), [types]);
 
   const handleFieldChange = (name: string, value: string) => {
     setFieldDrafts((prev) => ({ ...prev, [name]: value }));
-    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleTypeChange = (
@@ -458,19 +457,19 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     setTypeDrafts((prev) => ({
       ...prev,
       [name]: {
-        label: prev[name]?.label ?? "",
-        url: prev[name]?.url ?? "",
-        photosUrl: prev[name]?.photosUrl ?? "",
+        label: prev[name]?.label ?? '',
+        url: prev[name]?.url ?? '',
+        photosUrl: prev[name]?.photosUrl ?? '',
         ...patch,
       },
     }));
-    setTypeErrors((prev) => ({ ...prev, [name]: "" }));
+    setTypeErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const saveField = async (item: TaskFieldItem) => {
-    const value = fieldDrafts[item.name] ?? "";
+    const value = fieldDrafts[item.name] ?? '';
     setSavingField(item.name);
-    setFieldErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setFieldErrors((prev) => ({ ...prev, [item.name]: '' }));
     try {
       await onSaveField(item, value);
       setFieldDrafts((prev) => ({
@@ -491,7 +490,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       return;
     }
     setDeletingField(item.name);
-    setFieldErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setFieldErrors((prev) => ({ ...prev, [item.name]: '' }));
     try {
       await onDeleteField(item);
     } catch (err) {
@@ -508,17 +507,17 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       ...prev,
       [item.name]: selectFieldDraft(item),
     }));
-    setFieldErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setFieldErrors((prev) => ({ ...prev, [item.name]: '' }));
   };
 
   const saveType = async (item: TaskTypeItem) => {
     const draft = typeDrafts[item.name] ?? {
-      label: "",
-      url: "",
-      photosUrl: "",
+      label: '',
+      url: '',
+      photosUrl: '',
     };
     setSavingType(item.name);
-    setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setTypeErrors((prev) => ({ ...prev, [item.name]: '' }));
     try {
       await onSaveType(item, {
         label: draft.label,
@@ -547,7 +546,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       return;
     }
     setDeletingType(item.name);
-    setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setTypeErrors((prev) => ({ ...prev, [item.name]: '' }));
     try {
       await onDeleteType(item);
     } catch (err) {
@@ -564,7 +563,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       ...prev,
       [item.name]: selectTypeDraft(item),
     }));
-    setTypeErrors((prev) => ({ ...prev, [item.name]: "" }));
+    setTypeErrors((prev) => ({ ...prev, [item.name]: '' }));
   };
 
   return (
@@ -589,7 +588,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
               <FieldCard
                 key={item._id}
                 item={item}
-                value={fieldDrafts[item.name] ?? ""}
+                value={fieldDrafts[item.name] ?? ''}
                 onChange={(value) => handleFieldChange(item.name, value)}
                 onSave={() => saveField(item)}
                 onReset={() => revertFieldDraft(item)}
@@ -610,8 +609,8 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
             Типы задач и темы Telegram
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Для каждого типа задачи можно задать отображаемое название,
-            основную тему чата Telegram и отдельную тему для альбома фото.
+            Для каждого типа задачи можно задать отображаемое название, основную
+            тему чата Telegram и отдельную тему для альбома фото.
           </p>
         </header>
         {loading && !sortedTypes.length ? (
@@ -624,9 +623,9 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
               <TypeCard
                 key={item._id}
                 item={item}
-                label={typeDrafts[item.name]?.label ?? ""}
-                url={typeDrafts[item.name]?.url ?? ""}
-                photosUrl={typeDrafts[item.name]?.photosUrl ?? ""}
+                label={typeDrafts[item.name]?.label ?? ''}
+                url={typeDrafts[item.name]?.url ?? ''}
+                photosUrl={typeDrafts[item.name]?.photosUrl ?? ''}
                 onChangeLabel={(value) =>
                   handleTypeChange(item.name, { label: value })
                 }

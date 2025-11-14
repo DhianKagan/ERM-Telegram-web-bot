@@ -4,13 +4,17 @@
  */
 import { Types } from 'mongoose';
 
-const updateManyMock = jest.fn(() => ({ exec: jest.fn().mockResolvedValue({}) }));
+const updateManyMock = jest.fn(() => ({
+  exec: jest.fn().mockResolvedValue({}),
+}));
 const findMock = jest.fn(() => ({
   select: jest.fn(() => ({
     lean: jest.fn().mockResolvedValue([]),
   })),
 }));
-const updateOneMock = jest.fn(() => ({ exec: jest.fn().mockResolvedValue({}) }));
+const updateOneMock = jest.fn(() => ({
+  exec: jest.fn().mockResolvedValue({}),
+}));
 
 jest.mock('../apps/api/src/db/model', () => {
   const draftId = new Types.ObjectId();
@@ -60,7 +64,9 @@ jest.mock('../apps/api/src/services/wgLogEngine', () => ({
   writeLog: jest.fn(),
 }));
 
-const { deleteFile } = jest.requireMock('../apps/api/src/services/dataStorage') as {
+const { deleteFile } = jest.requireMock(
+  '../apps/api/src/services/dataStorage',
+) as {
   deleteFile: jest.Mock;
 };
 const models = jest.requireMock('../apps/api/src/db/model') as {
@@ -109,7 +115,9 @@ describe('TaskDraftsService — вложения черновиков', () => {
 
     expect(updateManyMock).toHaveBeenCalledTimes(1);
     const callArgs = updateManyMock.mock.calls[0] ?? [];
-    const update = (callArgs as unknown[])[1] as Record<string, unknown> | undefined;
+    const update = (callArgs as unknown[])[1] as
+      | Record<string, unknown>
+      | undefined;
     expect(update?.$set).toMatchObject({ draftId: expect.any(Types.ObjectId) });
     expect(update?.$unset).toBeUndefined();
   });
@@ -131,9 +139,9 @@ describe('TaskDraftsService — вложения черновиков', () => {
     }));
     findMock.mockImplementation(() => ({
       select: jest.fn(() => ({
-        lean: jest.fn().mockResolvedValue([
-          { _id: linkedId, taskId: new Types.ObjectId() },
-        ]),
+        lean: jest
+          .fn()
+          .mockResolvedValue([{ _id: linkedId, taskId: new Types.ObjectId() }]),
       })),
     }));
 

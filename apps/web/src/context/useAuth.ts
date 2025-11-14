@@ -1,8 +1,8 @@
 // Хук доступа к данным и действиям аутентификации
-import { useContext, useEffect } from "react";
-import { AuthContext } from "./AuthContext";
-import { AuthActionsContext } from "./AuthActionsContext";
-import { refresh } from "../services/auth";
+import { useContext, useEffect } from 'react';
+import { AuthContext } from './AuthContext';
+import { AuthActionsContext } from './AuthActionsContext';
+import { refresh } from '../services/auth';
 
 export function useAuth() {
   const state = useContext(AuthContext);

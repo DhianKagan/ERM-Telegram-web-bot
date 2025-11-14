@@ -92,7 +92,9 @@ type MatrixBuilder = (
   options: MatrixBuilderOptions,
 ) => Promise<TravelMatrixResult>;
 
-type OrToolsSolver = (payload: OrToolsSolveRequest) => Promise<OrToolsSolveResult>;
+type OrToolsSolver = (
+  payload: OrToolsSolveRequest,
+) => Promise<OrToolsSolveResult>;
 
 interface TripWaypoint {
   waypoint_index: number;
@@ -109,9 +111,11 @@ let currentMatrixBuilder: MatrixBuilder | undefined;
 let currentOrToolsSolver: OrToolsSolver | undefined;
 
 const getMatrixBuilder = (): MatrixBuilder =>
-  currentMatrixBuilder ?? ((points, options) => buildTravelMatrix(points, options));
+  currentMatrixBuilder ??
+  ((points, options) => buildTravelMatrix(points, options));
 
-const getOrToolsSolver = (): OrToolsSolver => currentOrToolsSolver ?? solveWithOrTools;
+const getOrToolsSolver = (): OrToolsSolver =>
+  currentOrToolsSolver ?? solveWithOrTools;
 
 const toFiniteNumber = (value: unknown, fallback = 0): number => {
   const numeric = Number(value);
@@ -121,12 +125,17 @@ const toFiniteNumber = (value: unknown, fallback = 0): number => {
   return numeric;
 };
 
-const ensureTimeWindow = (window: [number, number] | undefined): [number, number] => {
+const ensureTimeWindow = (
+  window: [number, number] | undefined,
+): [number, number] => {
   if (!window) {
     return DEFAULT_TIME_WINDOW;
   }
   const start = Math.max(0, Math.trunc(toFiniteNumber(window[0], 0)));
-  const endCandidate = Math.max(start, Math.trunc(toFiniteNumber(window[1], start)));
+  const endCandidate = Math.max(
+    start,
+    Math.trunc(toFiniteNumber(window[1], start)),
+  );
   return [start, endCandidate];
 };
 
@@ -150,7 +159,10 @@ const normalizeTasks = (inputs: OptimizeTaskInput[]): NormalizedTask[] => {
       continue;
     }
     const weight = toFiniteNumber(input.weight, 0);
-    const serviceMinutes = Math.max(0, Math.trunc(toFiniteNumber(input.serviceMinutes, 0)));
+    const serviceMinutes = Math.max(
+      0,
+      Math.trunc(toFiniteNumber(input.serviceMinutes, 0)),
+    );
     const timeWindow = ensureTimeWindow(input.timeWindow);
     normalized.push({
       id,
@@ -168,13 +180,25 @@ const normalizeDepot = (
   fallbackTask: NormalizedTask,
 ): NormalizedDepot => {
   if (depot && depot.coordinates) {
-    const lat = toFiniteNumber(depot.coordinates.lat, fallbackTask.coordinates.lat);
-    const lng = toFiniteNumber(depot.coordinates.lng, fallbackTask.coordinates.lng);
+    const lat = toFiniteNumber(
+      depot.coordinates.lat,
+      fallbackTask.coordinates.lat,
+    );
+    const lng = toFiniteNumber(
+      depot.coordinates.lng,
+      fallbackTask.coordinates.lng,
+    );
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       return {
-        id: typeof depot.id === 'string' && depot.id.trim() ? depot.id.trim() : DEFAULT_DEPOT_ID,
+        id:
+          typeof depot.id === 'string' && depot.id.trim()
+            ? depot.id.trim()
+            : DEFAULT_DEPOT_ID,
         coordinates: { lat, lng },
-        serviceMinutes: Math.max(0, Math.trunc(toFiniteNumber(depot.serviceMinutes, 0))),
+        serviceMinutes: Math.max(
+          0,
+          Math.trunc(toFiniteNumber(depot.serviceMinutes, 0)),
+        ),
         timeWindow: ensureTimeWindow(depot.timeWindow),
       };
     }
@@ -230,14 +254,19 @@ const buildSolverPayload = (
   return {
     tasks: solverTasks,
     distance_matrix: distanceMatrix,
-    vehicle_capacity: typeof options.vehicleCapacity === 'number' ? options.vehicleCapacity : undefined,
-    vehicle_count: typeof options.vehicleCount === 'number' && options.vehicleCount > 0
-      ? Math.trunc(options.vehicleCount)
-      : 1,
+    vehicle_capacity:
+      typeof options.vehicleCapacity === 'number'
+        ? options.vehicleCapacity
+        : undefined,
+    vehicle_count:
+      typeof options.vehicleCount === 'number' && options.vehicleCount > 0
+        ? Math.trunc(options.vehicleCount)
+        : 1,
     depot_index: 0,
     time_windows: timeWindows,
     time_limit_seconds:
-      typeof options.timeLimitSeconds === 'number' && options.timeLimitSeconds > 0
+      typeof options.timeLimitSeconds === 'number' &&
+      options.timeLimitSeconds > 0
         ? options.timeLimitSeconds
         : undefined,
   };
@@ -311,10 +340,22 @@ const buildHeuristicResult = (
   timeMatrix: number[][],
 ): OptimizeResult => {
   if (!tasks.length) {
-    return { routes: [], totalLoad: 0, totalEtaMinutes: 0, totalDistanceKm: 0, warnings: [] };
+    return {
+      routes: [],
+      totalLoad: 0,
+      totalEtaMinutes: 0,
+      totalDistanceKm: 0,
+      warnings: [],
+    };
   }
   const sequence = tasks.map((task) => task.id);
-  const routeMetrics = computeRouteMetrics(sequence, depot, tasks, distanceMatrix, timeMatrix);
+  const routeMetrics = computeRouteMetrics(
+    sequence,
+    depot,
+    tasks,
+    distanceMatrix,
+    timeMatrix,
+  );
   return {
     routes: [routeMetrics],
     totalLoad: routeMetrics.load,
@@ -341,10 +382,15 @@ async function optimizeVrp(
 
   const depot = normalizeDepot(options.depot, tasks[0]);
   const points = [depot.coordinates, ...tasks.map((task) => task.coordinates)];
-  const averageSpeed = Math.max(10, Math.min(150, toFiniteNumber(options.averageSpeedKmph, 30)));
+  const averageSpeed = Math.max(
+    10,
+    Math.min(150, toFiniteNumber(options.averageSpeedKmph, 30)),
+  );
 
   const matrixBuilder = getMatrixBuilder();
-  const matrix = await matrixBuilder(points, { averageSpeedKmph: averageSpeed });
+  const matrix = await matrixBuilder(points, {
+    averageSpeedKmph: averageSpeed,
+  });
   const warnings = Array.isArray(matrix.warnings) ? [...matrix.warnings] : [];
 
   const size = points.length;
@@ -374,9 +420,18 @@ async function optimizeVrp(
     const routes: OptimizeRouteResult[] = solverResult.routes.map((sequence) =>
       computeRouteMetrics(sequence, depot, tasks, distanceMatrix, timeMatrix),
     );
-    const totalLoad = routes.reduce((sum, routeResult) => sum + routeResult.load, 0);
-    const totalEta = routes.reduce((sum, routeResult) => sum + routeResult.etaMinutes, 0);
-    const totalDistance = routes.reduce((sum, routeResult) => sum + routeResult.distanceKm, 0);
+    const totalLoad = routes.reduce(
+      (sum, routeResult) => sum + routeResult.load,
+      0,
+    );
+    const totalEta = routes.reduce(
+      (sum, routeResult) => sum + routeResult.etaMinutes,
+      0,
+    );
+    const totalDistance = routes.reduce(
+      (sum, routeResult) => sum + routeResult.distanceKm,
+      0,
+    );
     return {
       routes,
       totalLoad,
@@ -390,7 +445,12 @@ async function optimizeVrp(
     };
   }
 
-  const heuristicResult = buildHeuristicResult(depot, tasks, distanceMatrix, timeMatrix);
+  const heuristicResult = buildHeuristicResult(
+    depot,
+    tasks,
+    distanceMatrix,
+    timeMatrix,
+  );
   heuristicResult.warnings = [
     ...warnings,
     'Используется эвристика построения маршрута.',
@@ -458,10 +518,12 @@ const optimizeLegacy = async (
     finalGroups = orderedGroups;
   }
 
-  const routeInputs: RoutePlanRouteInput[] = finalGroups.map((group, index) => ({
-    order: index,
-    tasks: group.map((task) => task._id.toString()),
-  }));
+  const routeInputs: RoutePlanRouteInput[] = finalGroups.map(
+    (group, index) => ({
+      order: index,
+      tasks: group.map((task) => task._id.toString()),
+    }),
+  );
 
   if (!routeInputs.length) {
     return null;
@@ -486,16 +548,6 @@ const isOptimizeTaskArray = (value: unknown[]): value is OptimizeTaskInput[] =>
 const isOptimizeOptions = (value: unknown): value is OptimizeOptions =>
   value != null && typeof value === 'object' && !Array.isArray(value);
 
-export async function optimize(
-  tasks: OptimizeTaskInput[],
-  options: OptimizeOptions,
-): Promise<OptimizeResult>;
-export async function optimize(
-  taskIds: string[],
-  count?: number,
-  method?: OptimizeMethod,
-  actorId?: number,
-): Promise<SharedRoutePlan | null>;
 export async function optimize(
   first: OptimizeTaskInput[] | string[],
   second?: number | OptimizeOptions,

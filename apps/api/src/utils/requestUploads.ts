@@ -50,7 +50,9 @@ export const getUploadedFileIds = (req: Request): string[] => {
   return Array.isArray(list) ? [...list] : [];
 };
 
-const getPendingMutableList = (req: RequestWithPending): PendingUploadEntry[] => {
+const getPendingMutableList = (
+  req: RequestWithPending,
+): PendingUploadEntry[] => {
   if (!req[PENDING_UPLOADS_FIELD]) {
     req[PENDING_UPLOADS_FIELD] = [];
   }

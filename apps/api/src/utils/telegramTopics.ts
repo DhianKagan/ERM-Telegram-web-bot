@@ -1,11 +1,7 @@
 // Назначение файла: парсинг ссылок на темы Telegram.
 // Основные модули: URL.
 
-const TELEGRAM_DOMAINS = new Set([
-  't.me',
-  'telegram.me',
-  'telegram.dog',
-]);
+const TELEGRAM_DOMAINS = new Set(['t.me', 'telegram.me', 'telegram.dog']);
 
 const TOPIC_PATH_REGEXP = /^\/c\/(\d{1,20})\/(\d{1,20})(?:\/?|$)/;
 

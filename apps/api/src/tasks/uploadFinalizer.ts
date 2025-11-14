@@ -5,7 +5,10 @@ import fs from 'node:fs/promises';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
 import type RequestWithUser from '../types/request';
-import { consumePendingUploads, clearPendingUploads } from '../utils/requestUploads';
+import {
+  consumePendingUploads,
+  clearPendingUploads,
+} from '../utils/requestUploads';
 import { clearUploadContext } from './uploadContext';
 import { uploadsDir } from '../config/storage';
 import { File, Task } from '../db/model';
@@ -66,7 +69,9 @@ const cleanupMovedFiles = async (paths: string[]): Promise<void> => {
 const cleanupDirectories = async (dirs: Iterable<string>): Promise<void> => {
   const unique = Array.from(new Set(Array.from(dirs).filter(Boolean)));
   await Promise.all(
-    unique.map((dir) => fs.rm(dir, { recursive: true, force: true }).catch(() => undefined)),
+    unique.map((dir) =>
+      fs.rm(dir, { recursive: true, force: true }).catch(() => undefined),
+    ),
   );
 };
 
@@ -122,11 +127,13 @@ export const finalizePendingUploads = async (
       directories.add(entry.tempDir);
       const userDir = path.resolve(uploadsDirAbs, String(entry.userId));
       await fs.mkdir(userDir, { recursive: true });
-      const finalPath = ensureWithin(userDir, path.join(userDir, path.basename(entry.tempPath)));
+      const finalPath = ensureWithin(
+        userDir,
+        path.join(userDir, path.basename(entry.tempPath)),
+      );
       await moveFile(entry.tempPath, finalPath);
       movedPaths.push(finalPath);
       let thumbnailRelative: string | undefined;
-      let thumbnailFinalPath: string | undefined;
       if (entry.tempThumbnailPath) {
         const thumbTarget = ensureWithin(
           userDir,
@@ -134,7 +141,6 @@ export const finalizePendingUploads = async (
         );
         try {
           await moveFile(entry.tempThumbnailPath, thumbTarget);
-          thumbnailFinalPath = thumbTarget;
           movedThumbnails.push(thumbTarget);
           thumbnailRelative = relativeToUploads(thumbTarget);
         } catch (error) {
@@ -162,7 +168,9 @@ export const finalizePendingUploads = async (
       const attachment: AttachmentLike = {
         name: entry.originalName,
         url: buildFileUrl(doc._id),
-        thumbnailUrl: thumbnailRelative ? buildThumbnailUrl(doc._id) : undefined,
+        thumbnailUrl: thumbnailRelative
+          ? buildThumbnailUrl(doc._id)
+          : undefined,
         uploadedBy: entry.userId,
         uploadedAt: new Date(),
         type: entry.mimeType,

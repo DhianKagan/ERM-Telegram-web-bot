@@ -45,7 +45,9 @@ const resolveIdentifier = (value: unknown): string | null => {
     return trimString(value);
   }
   if (value && typeof value === 'object' && 'toString' in value) {
-    const candidate = String((value as { toString(): unknown }).toString() ?? '');
+    const candidate = String(
+      (value as { toString(): unknown }).toString() ?? '',
+    );
     return candidate.trim() ? candidate.trim() : null;
   }
   return null;
@@ -59,8 +61,9 @@ const extractStatus = (value: unknown): string | null => {
   return trimString(record.status);
 };
 
-type TaskIdentifierSource =
-  Partial<Pick<TaskDocument, '_id' | 'request_id' | 'task_number'>> &
+type TaskIdentifierSource = Partial<
+  Pick<TaskDocument, '_id' | 'request_id' | 'task_number'>
+> &
   Record<string, unknown>;
 
 export function getTaskIdentifier(task: TaskIdentifierSource): string {
@@ -95,7 +98,9 @@ export async function buildActionMessage(
   return `Задача ${identifier} ${action} ${authorText} ${formatted} (${PROJECT_TIMEZONE_LABEL})`;
 }
 
-const resolveHistoryAction = (entry: HistoryEntry | undefined): string | null => {
+const resolveHistoryAction = (
+  entry: HistoryEntry | undefined,
+): string | null => {
   if (!entry) return null;
   const toStatus = extractStatus(entry.changes?.to);
   const fromStatus = extractStatus(entry.changes?.from);
@@ -128,7 +133,10 @@ const shouldSkipInitialStatusEntry = (
 };
 
 export async function buildLatestHistorySummary(
-  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<string, unknown>,
+  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<
+      string,
+      unknown
+    >,
 ): Promise<string | null> {
   const history = Array.isArray(task.history) ? task.history : [];
   if (!history.length) {
@@ -146,8 +154,8 @@ export async function buildLatestHistorySummary(
     latest.changed_at instanceof Date
       ? latest.changed_at
       : latest.changed_at
-      ? new Date(latest.changed_at)
-      : new Date();
+        ? new Date(latest.changed_at)
+        : new Date();
   if (Number.isNaN(changedAt.getTime())) {
     return null;
   }
@@ -161,7 +169,10 @@ export async function buildLatestHistorySummary(
 }
 
 export async function buildHistorySummaryLog(
-  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<string, unknown>,
+  task: TaskIdentifierSource & { history?: HistoryEntry[] } & Record<
+      string,
+      unknown
+    >,
 ): Promise<string | null> {
   const history = Array.isArray(task.history) ? task.history : [];
   if (!history.length) {
@@ -205,8 +216,8 @@ export async function buildHistorySummaryLog(
         entry.changed_at instanceof Date
           ? entry.changed_at
           : entry.changed_at
-          ? new Date(entry.changed_at)
-          : new Date();
+            ? new Date(entry.changed_at)
+            : new Date();
       if (Number.isNaN(changedAt.getTime())) {
         return null;
       }

@@ -1,13 +1,13 @@
 // Контекст аутентификации, запрашивает профиль и CSRF-токен, JWT не хранится
 // Модули: React, services/auth, AuthContext, AuthActionsContext, utils/csrfToken
-import { useEffect, useState, type ReactNode } from "react";
-import { getProfile, logout as apiLogout } from "../services/auth";
-import { clearAnonTasksCache } from "../services/tasks";
-import { taskStateController } from "../controllers/taskStateController";
-import { AuthContext } from "./AuthContext";
-import { AuthActionsContext } from "./AuthActionsContext";
-import { setCsrfToken } from "../utils/csrfToken";
-import type { User } from "../types/user";
+import { useEffect, useState, type ReactNode } from 'react';
+import { getProfile, logout as apiLogout } from '../services/auth';
+import { clearAnonTasksCache } from '../services/tasks';
+import { taskStateController } from '../controllers/taskStateController';
+import { AuthContext } from './AuthContext';
+import { AuthActionsContext } from './AuthActionsContext';
+import { setCsrfToken } from '../utils/csrfToken';
+import type { User } from '../types/user';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const loadCsrf = async () => {
       try {
-        const res = await fetch("/api/v1/csrf", { credentials: "include" });
+        const res = await fetch('/api/v1/csrf', { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         if (data.csrfToken) {
           setCsrfToken(data.csrfToken);
@@ -37,8 +37,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const onVisible = () => {
       if (!document.hidden) loadCsrf();
     };
-    window.addEventListener("focus", loadCsrf);
-    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener('focus', loadCsrf);
+    document.addEventListener('visibilitychange', onVisible);
     getProfile({ noRedirect: true })
       .then((u) => {
         setUser(u);
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setLoading(false);
       });
     return () => {
-      window.removeEventListener("focus", loadCsrf);
-      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener('focus', loadCsrf);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
   // logout полностью очищает кеш и закрывает мини-приложение
@@ -62,12 +62,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       taskStateController.clear();
       localStorage.clear();
       sessionStorage.clear();
-      if ("caches" in window) {
+      if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
-      document.cookie.split(";").forEach((c) => {
-        const eq = c.indexOf("=");
+      document.cookie.split(';').forEach((c) => {
+        const eq = c.indexOf('=');
         const name = (eq > -1 ? c.slice(0, eq) : c).trim();
         if (name)
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;

@@ -125,14 +125,21 @@ test.afterAll(() => {
 });
 
 test.describe('Логистика: потоковые события', () => {
-  test('стрим сообщает об изменениях задач и маршрутов', async ({ page, request }) => {
+  test('стрим сообщает об изменениях задач и маршрутов', async ({
+    page,
+    request,
+  }) => {
     await page.goto(`${baseUrl}/client`);
 
     await page.waitForFunction(
-      () => Array.isArray(window.events) && window.events.some((event) => event.type === 'logistics.init'),
+      () =>
+        Array.isArray(window.events) &&
+        window.events.some((event) => event.type === 'logistics.init'),
     );
 
-    const createResponse = await request.post(`${baseUrl}/tasks`, { data: { title: 'Новая' } });
+    const createResponse = await request.post(`${baseUrl}/tasks`, {
+      data: { title: 'Новая' },
+    });
     expect(createResponse.status()).toBe(201);
     const created = (await createResponse.json()) as { id: string };
 
@@ -140,19 +147,25 @@ test.describe('Логистика: потоковые события', () => {
       (taskId) =>
         window.events.some(
           (event) =>
-            event.type === 'tasks.changed' && event.action === 'created' && event.taskIds.includes(taskId),
+            event.type === 'tasks.changed' &&
+            event.action === 'created' &&
+            event.taskIds.includes(taskId),
         ),
       created.id,
     );
 
-    const deleteResponse = await request.delete(`${baseUrl}/tasks/${created.id}`);
+    const deleteResponse = await request.delete(
+      `${baseUrl}/tasks/${created.id}`,
+    );
     expect(deleteResponse.status()).toBe(204);
 
     await page.waitForFunction(
       (taskId) =>
         window.events.some(
           (event) =>
-            event.type === 'tasks.changed' && event.action === 'deleted' && event.taskIds.includes(taskId),
+            event.type === 'tasks.changed' &&
+            event.action === 'deleted' &&
+            event.taskIds.includes(taskId),
         ),
       created.id,
     );
@@ -161,9 +174,13 @@ test.describe('Логистика: потоковые события', () => {
       window.autoRecalcCount = 0;
     });
 
-    const first = await request.post(`${baseUrl}/tasks`, { data: { title: 'Первая' } });
+    const first = await request.post(`${baseUrl}/tasks`, {
+      data: { title: 'Первая' },
+    });
     expect(first.status()).toBe(201);
-    const second = await request.post(`${baseUrl}/tasks`, { data: { title: 'Вторая' } });
+    const second = await request.post(`${baseUrl}/tasks`, {
+      data: { title: 'Вторая' },
+    });
     expect(second.status()).toBe(201);
 
     await page.waitForTimeout(1200);
@@ -202,7 +219,8 @@ test.describe('Логистика: потоковые события', () => {
     await page.waitForFunction(
       (planId) =>
         window.events.some(
-          (event) => event.type === 'route-plan.removed' && event.planId === planId,
+          (event) =>
+            event.type === 'route-plan.removed' && event.planId === planId,
         ),
       plan.id,
     );

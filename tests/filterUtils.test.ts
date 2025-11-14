@@ -16,8 +16,16 @@ describe('task filter utilities', () => {
       'в работе',
       'завершена',
     ]);
-    expect(parseStringList(['новая', '  отменена  '])).toEqual(['новая', 'отменена']);
-    expect(parseStringList([[' a ', 'b'], 'c, d'])).toEqual(['a', 'b', 'c', 'd']);
+    expect(parseStringList(['новая', '  отменена  '])).toEqual([
+      'новая',
+      'отменена',
+    ]);
+    expect(parseStringList([[' a ', 'b'], 'c, d'])).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
   });
 
   it('корректно парсит идентификаторы исполнителей', () => {
@@ -27,17 +35,22 @@ describe('task filter utilities', () => {
   });
 
   it('нормализует фильтры задач и возвращает вспомогательные значения', () => {
-    const { normalized, statusValues, taskTypeValues, assigneeValues, kindFilter } =
-      normalizeTaskFilters({
-        status: 'new,in-progress , ,done',
-        taskType: ['delivery', ' pickup '],
-        assignees: '100,101',
-        assignee: ['102', 103],
-        from: '2024-01-01',
-        to: '2024-01-31',
-        kanban: '1',
-        kind: ' request ',
-      });
+    const {
+      normalized,
+      statusValues,
+      taskTypeValues,
+      assigneeValues,
+      kindFilter,
+    } = normalizeTaskFilters({
+      status: 'new,in-progress , ,done',
+      taskType: ['delivery', ' pickup '],
+      assignees: '100,101',
+      assignee: ['102', 103],
+      from: '2024-01-01',
+      to: '2024-01-31',
+      kanban: '1',
+      kind: ' request ',
+    });
 
     expect(statusValues).toEqual(['new', 'in-progress', 'done']);
     expect(taskTypeValues).toEqual(['delivery', 'pickup']);
@@ -55,12 +68,13 @@ describe('task filter utilities', () => {
   });
 
   it('поддерживает одиночные значения фильтров', () => {
-    const { normalized, statusValues, taskTypeValues, assigneeValues } = normalizeTaskFilters({
-      status: 'done',
-      taskType: 'maintenance',
-      assignees: [200],
-      kanban: false,
-    });
+    const { normalized, statusValues, taskTypeValues, assigneeValues } =
+      normalizeTaskFilters({
+        status: 'done',
+        taskType: 'maintenance',
+        assignees: [200],
+        kanban: false,
+      });
 
     expect(statusValues).toEqual(['done']);
     expect(taskTypeValues).toEqual(['maintenance']);

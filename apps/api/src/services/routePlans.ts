@@ -238,13 +238,21 @@ async function buildRoutesFromInput(
   const normalizedInputs = routesInput
     .map((route, idx) => {
       const tasks = Array.isArray(route.tasks)
-        ? route.tasks.map((id) => normalizeId(id)).filter((id): id is string => Boolean(id))
+        ? route.tasks
+            .map((id) => normalizeId(id))
+            .filter((id): id is string => Boolean(id))
         : [];
       return {
-        id: typeof route.id === 'string' && route.id.trim() ? route.id.trim() : undefined,
+        id:
+          typeof route.id === 'string' && route.id.trim()
+            ? route.id.trim()
+            : undefined,
         order: Number.isFinite(route.order) ? Number(route.order) : idx,
         vehicleId: parseObjectId(route.vehicleId),
-        vehicleName: normalizeString(route.vehicleName, VEHICLE_NAME_MAX_LENGTH),
+        vehicleName: normalizeString(
+          route.vehicleName,
+          VEHICLE_NAME_MAX_LENGTH,
+        ),
         driverId: parseNumeric(route.driverId),
         driverName: normalizeString(route.driverName, DRIVER_NAME_MAX_LENGTH),
         notes: normalizeString(route.notes, NOTES_MAX_LENGTH),
@@ -342,7 +350,8 @@ async function buildRoutesFromInput(
       .sort((a, b) => a.order - b.order)
       .map((task, index) => ({ ...task, order: index }));
 
-    const link = coordsForLink.length >= 2 ? generateMultiRouteLink(coordsForLink) : '';
+    const link =
+      coordsForLink.length >= 2 ? generateMultiRouteLink(coordsForLink) : '';
 
     routes.push({
       id: route.id ?? new Types.ObjectId().toHexString(),
@@ -360,7 +369,10 @@ async function buildRoutesFromInput(
   }
 
   const sortedRoutes = routes
-    .map((route, index) => ({ ...route, order: Number.isFinite(route.order) ? route.order : index }))
+    .map((route, index) => ({
+      ...route,
+      order: Number.isFinite(route.order) ? route.order : index,
+    }))
     .sort((a, b) => a.order - b.order)
     .map((route, index) => ({ ...route, order: index }));
 
@@ -387,7 +399,8 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
       finish: cloneCoords(task.finish ?? null),
       startAddress: sanitizeAddress(task.startAddress),
       finishAddress: sanitizeAddress(task.finishAddress),
-      distanceKm: typeof task.distanceKm === 'number' ? Number(task.distanceKm) : null,
+      distanceKm:
+        typeof task.distanceKm === 'number' ? Number(task.distanceKm) : null,
     }))
     .filter((task) => task.taskId)
     .sort((a, b) => a.order - b.order)
@@ -405,7 +418,9 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
   const stops: SharedRoutePlanRoute['stops'] = (route.stops || [])
     .map((stop) => ({
       order: Number.isFinite(stop.order) ? Number(stop.order) : 0,
-      kind: (stop.kind === 'finish' ? 'finish' : 'start') as RoutePlanStop['kind'],
+      kind: (stop.kind === 'finish'
+        ? 'finish'
+        : 'start') as RoutePlanStop['kind'],
       taskId: parseObjectId(stop.taskId) ?? undefined,
       coordinates: cloneCoords(stop.coordinates ?? null),
       address: sanitizeAddress(stop.address),
@@ -430,11 +445,15 @@ const serializeRoute = (route: RoutePlanRouteEntry): SharedRoutePlanRoute => {
   };
 
   return {
-    id: typeof route.id === 'string' && route.id ? route.id : new Types.ObjectId().toHexString(),
+    id:
+      typeof route.id === 'string' && route.id
+        ? route.id
+        : new Types.ObjectId().toHexString(),
     order: Number.isFinite(route.order) ? Number(route.order) : 0,
     vehicleId: vehicleId ? vehicleId.toHexString() : null,
     vehicleName: route.vehicleName ?? null,
-    driverId: typeof route.driverId === 'number' ? Number(route.driverId) : null,
+    driverId:
+      typeof route.driverId === 'number' ? Number(route.driverId) : null,
     driverName: route.driverName ?? null,
     notes: route.notes ?? null,
     tasks,
@@ -491,7 +510,10 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     ? rawRoutes.map((route) => serializeRoute(route))
     : [];
   const sortedRoutes = routes
-    .map((route, index) => ({ ...route, order: Number.isFinite(route.order) ? route.order : index }))
+    .map((route, index) => ({
+      ...route,
+      order: Number.isFinite(route.order) ? route.order : index,
+    }))
     .sort((a, b) => a.order - b.order)
     .map((route, index) => ({ ...route, order: index }));
 
@@ -499,7 +521,11 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     typeof rawMetrics?.totalDistanceKm === 'number'
       ? Number(rawMetrics.totalDistanceKm)
       : sortedRoutes.reduce(
-          (sum, route) => sum + (Number.isFinite(route.metrics?.distanceKm) ? Number(route.metrics?.distanceKm) : 0),
+          (sum, route) =>
+            sum +
+            (Number.isFinite(route.metrics?.distanceKm)
+              ? Number(route.metrics?.distanceKm)
+              : 0),
           0,
         );
   const totalTasks =
@@ -526,20 +552,33 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   };
 
-  const approvedAtIso = approvedAt ? toIso(approvedAt) ?? null : null;
-  const completedAtIso = completedAt ? toIso(completedAt) ?? null : null;
+  const approvedAtIso = approvedAt ? (toIso(approvedAt) ?? null) : null;
+  const completedAtIso = completedAt ? (toIso(completedAt) ?? null) : null;
 
   return {
-    id: plan._id instanceof Types.ObjectId ? plan._id.toHexString() : String(plan._id),
+    id:
+      plan._id instanceof Types.ObjectId
+        ? plan._id.toHexString()
+        : String(plan._id),
     title: typeof title === 'string' ? title : '',
     status,
     suggestedBy:
-      typeof suggestedBy === 'number' && Number.isFinite(suggestedBy) ? Number(suggestedBy) : null,
+      typeof suggestedBy === 'number' && Number.isFinite(suggestedBy)
+        ? Number(suggestedBy)
+        : null,
     method,
-    count: typeof count === 'number' && Number.isFinite(count) ? Number(count) : undefined,
-    notes: typeof notes === 'string' ? normalizeString(notes, NOTES_MAX_LENGTH) : null,
+    count:
+      typeof count === 'number' && Number.isFinite(count)
+        ? Number(count)
+        : undefined,
+    notes:
+      typeof notes === 'string'
+        ? normalizeString(notes, NOTES_MAX_LENGTH)
+        : null,
     approvedBy:
-      typeof approvedBy === 'number' && Number.isFinite(approvedBy) ? Number(approvedBy) : null,
+      typeof approvedBy === 'number' && Number.isFinite(approvedBy)
+        ? Number(approvedBy)
+        : null,
     approvedAt: approvedAtIso,
     completedBy:
       typeof completedBy === 'number' && Number.isFinite(completedBy)
@@ -575,8 +614,13 @@ export async function createDraftFromInputs(
     }
   }
 
-  const { routes: builtRoutes, metrics, taskIds } = await buildRoutesFromInput(routes, hintMap);
-  const title = normalizeString(options.title, TITLE_MAX_LENGTH) ?? defaultTitle();
+  const {
+    routes: builtRoutes,
+    metrics,
+    taskIds,
+  } = await buildRoutesFromInput(routes, hintMap);
+  const title =
+    normalizeString(options.title, TITLE_MAX_LENGTH) ?? defaultTitle();
   const notes = normalizeString(options.notes, NOTES_MAX_LENGTH);
   const plan = await RoutePlanModel.create({
     title,
@@ -646,7 +690,9 @@ export async function updatePlan(
   }
 
   if (Array.isArray(payload.routes)) {
-    const { routes, metrics, taskIds } = await buildRoutesFromInput(payload.routes);
+    const { routes, metrics, taskIds } = await buildRoutesFromInput(
+      payload.routes,
+    );
     plan.routes = routes;
     plan.metrics = metrics;
     plan.tasks = taskIds;
@@ -663,7 +709,9 @@ const updateTasksForStatus = async (
   status: RoutePlanStatus,
 ): Promise<void> => {
   if (!Array.isArray(taskIds) || !taskIds.length) return;
-  const ids = taskIds.filter((id): id is Types.ObjectId => id instanceof Types.ObjectId);
+  const ids = taskIds.filter(
+    (id): id is Types.ObjectId => id instanceof Types.ObjectId,
+  );
   if (!ids.length) return;
   if (status === 'approved') {
     await Task.updateMany(
@@ -699,14 +747,21 @@ const notifyPlanApproved = async (
 ): Promise<void> => {
   if (!chatId) return;
   const actor =
-    typeof actorId === 'number' && Number.isFinite(actorId) ? await getUser(actorId) : null;
-  const actorName = actor?.name || actor?.username || (actorId ? `ID ${actorId}` : 'неизвестно');
+    typeof actorId === 'number' && Number.isFinite(actorId)
+      ? await getUser(actorId)
+      : null;
+  const actorName =
+    actor?.name ||
+    actor?.username ||
+    (actorId ? `ID ${actorId}` : 'неизвестно');
   const lines: string[] = [
     `Маршрутный план "${plan.title}" утверждён диспетчером ${actorName}.`,
   ];
   plan.routes.forEach((route, routeIndex) => {
     const parts: string[] = [];
-    const vehicle = route.vehicleName || (route.vehicleId ? `ID ${route.vehicleId}` : 'без транспорта');
+    const vehicle =
+      route.vehicleName ||
+      (route.vehicleId ? `ID ${route.vehicleId}` : 'без транспорта');
     parts.push(`Маршрут ${routeIndex + 1} (${vehicle}`);
     if (route.driverName) {
       parts.push(`, водитель: ${route.driverName}`);
@@ -721,7 +776,10 @@ const notifyPlanApproved = async (
           : '';
       lines.push(`${taskIndex + 1}. ${title}${distance}`);
     });
-    if (route.metrics?.distanceKm && Number.isFinite(route.metrics.distanceKm)) {
+    if (
+      route.metrics?.distanceKm &&
+      Number.isFinite(route.metrics.distanceKm)
+    ) {
       lines.push(`Пробег: ${route.metrics.distanceKm.toFixed(1)} км.`);
     }
     if (route.routeLink) {
@@ -732,7 +790,10 @@ const notifyPlanApproved = async (
     `Всего задач: ${plan.metrics.totalTasks}`,
     `маршрутов: ${plan.metrics.totalRoutes}`,
   ];
-  if (plan.metrics.totalDistanceKm && Number.isFinite(plan.metrics.totalDistanceKm)) {
+  if (
+    plan.metrics.totalDistanceKm &&
+    Number.isFinite(plan.metrics.totalDistanceKm)
+  ) {
     summary.push(`расстояние: ${plan.metrics.totalDistanceKm.toFixed(1)} км`);
   }
   lines.push(summary.join(', '));

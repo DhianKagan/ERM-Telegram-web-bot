@@ -7,7 +7,9 @@ type NestedIdKey = (typeof NESTED_ID_KEYS)[number];
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const tryNormalizeFromRecord = (record: Record<string, unknown>): number | null => {
+const tryNormalizeFromRecord = (
+  record: Record<string, unknown>,
+): number | null => {
   for (const key of NESTED_ID_KEYS) {
     if (key in record) {
       const nested = normalizeUserId(record[key as NestedIdKey]);

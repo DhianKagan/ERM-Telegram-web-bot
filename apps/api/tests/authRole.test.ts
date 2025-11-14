@@ -24,10 +24,7 @@ function appWithRole(role) {
     (req, res, next) => {
       req.user = {
         role,
-        access:
-          role === 'admin'
-            ? ACCESS_ADMIN | ACCESS_MANAGER
-            : ACCESS_USER,
+        access: role === 'admin' ? ACCESS_ADMIN | ACCESS_MANAGER : ACCESS_USER,
         telegram_id: 1,
       };
       next();

@@ -18,10 +18,7 @@ declare const before: (
 declare const after: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -37,11 +34,13 @@ describe('Task drafts access', function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
 
-    const jestApi = (global as typeof globalThis & {
-      jest: {
-        mock: (moduleId: string, factory: () => unknown) => void;
-      };
-    }).jest;
+    const jestApi = (
+      global as typeof globalThis & {
+        jest: {
+          mock: (moduleId: string, factory: () => unknown) => void;
+        };
+      }
+    ).jest;
     const drafts = new Map<
       string,
       {
@@ -63,10 +62,16 @@ describe('Task drafts access', function () {
         async getDraft(userId: number, kind: 'task' | 'request') {
           const key = `${userId}:${kind}`;
           const draft = drafts.get(key);
-          return draft ? { ...draft, attachments: [...draft.attachments] } : null;
+          return draft
+            ? { ...draft, attachments: [...draft.attachments] }
+            : null;
         }
 
-        async saveDraft(userId: number, kind: 'task' | 'request', payload: unknown) {
+        async saveDraft(
+          userId: number,
+          kind: 'task' | 'request',
+          payload: unknown,
+        ) {
           const normalized =
             payload && typeof payload === 'object'
               ? { ...(payload as Record<string, unknown>) }
@@ -105,7 +110,11 @@ describe('Task drafts access', function () {
     jestApi.mock(authModulePath, () => ({
       __esModule: true,
       default: () =>
-        ((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+        ((
+          req: express.Request,
+          _res: express.Response,
+          next: express.NextFunction,
+        ) => {
           (req as express.Request & { user?: unknown }).user = {
             id: 101,
             username: 'user',
@@ -115,7 +124,8 @@ describe('Task drafts access', function () {
         }) as express.RequestHandler,
     }));
 
-    const router = (await import('../../apps/api/src/routes/taskDrafts')).default;
+    const router = (await import('../../apps/api/src/routes/taskDrafts'))
+      .default;
 
     app = express();
     app.use(express.json());

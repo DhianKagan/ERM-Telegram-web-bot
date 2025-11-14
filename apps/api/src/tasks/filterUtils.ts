@@ -15,7 +15,9 @@ export function parseStringList(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
       .flatMap((item) => parseStringList(item))
-      .filter((item): item is string => typeof item === 'string' && item.length > 0);
+      .filter(
+        (item): item is string => typeof item === 'string' && item.length > 0,
+      );
   }
   if (typeof value === 'string') {
     return value

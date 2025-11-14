@@ -1,5 +1,5 @@
 // Назначение: индикатор загрузки приложения, модули: React
-import Spinner from "./Spinner";
+import Spinner from './Spinner';
 
 export default function Loader() {
   return (

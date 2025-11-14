@@ -1,46 +1,46 @@
 /** @jest-environment jsdom */
 // Назначение файла: проверяет сброс поиска при переключении вкладок настроек.
 // Основные модули: React, @testing-library/react, CollectionsPage.
-import React from "react";
-import "@testing-library/jest-dom";
+import React from 'react';
+import '@testing-library/jest-dom';
 import {
   fireEvent,
   render,
   screen,
   waitFor,
   within,
-} from "@testing-library/react";
-import CollectionsPage from "./CollectionsPage";
-import { MemoryRouter } from "react-router-dom";
-import { I18nextProvider } from "react-i18next";
-import i18n from "../../i18n";
-import type { CollectionItem } from "../../services/collections";
+} from '@testing-library/react';
+import CollectionsPage from './CollectionsPage';
+import { MemoryRouter } from 'react-router-dom';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../../i18n';
+import type { CollectionItem } from '../../services/collections';
 import {
   fetchCollectionItems,
   fetchAllCollectionItems,
   createCollectionItem,
-} from "../../services/collections";
-import { settingsUserColumns } from "../../columns/settingsUserColumns";
-import { settingsEmployeeColumns } from "../../columns/settingsEmployeeColumns";
-import { fetchUsers } from "../../services/users";
-import type { User } from "../../types/user";
+} from '../../services/collections';
+import { settingsUserColumns } from '../../columns/settingsUserColumns';
+import { settingsEmployeeColumns } from '../../columns/settingsEmployeeColumns';
+import { fetchUsers } from '../../services/users';
+import type { User } from '../../types/user';
 
-jest.mock("../../services/roles", () => ({
+jest.mock('../../services/roles', () => ({
   fetchRoles: jest.fn().mockResolvedValue([]),
 }));
 
 const extractHeaderText = (header: unknown): string => {
-  if (typeof header === "string") return header;
+  if (typeof header === 'string') return header;
   if (React.isValidElement(header)) {
     const element = header as React.ReactElement;
     return React.Children.toArray(element.props.children)
-      .map((child) => (typeof child === "string" ? child : ""))
-      .join("");
+      .map((child) => (typeof child === 'string' ? child : ''))
+      .join('');
   }
-  return "";
+  return '';
 };
 
-jest.mock("../../services/collections", () => ({
+jest.mock('../../services/collections', () => ({
   fetchCollectionItems: jest.fn(),
   fetchAllCollectionItems: jest.fn(),
   createCollectionItem: jest.fn(),
@@ -48,15 +48,15 @@ jest.mock("../../services/collections", () => ({
   removeCollectionItem: jest.fn(),
 }));
 
-jest.mock("../../services/users", () => ({
+jest.mock('../../services/users', () => ({
   fetchUsers: jest.fn().mockResolvedValue([]),
   createUser: jest.fn(),
   updateUser: jest.fn(),
 }));
 
-jest.mock("./FleetVehiclesTab", () => () => <div data-testid="fleet-tab" />);
+jest.mock('./FleetVehiclesTab', () => () => <div data-testid="fleet-tab" />);
 
-jest.mock("../../components/DataTable", () => ({
+jest.mock('../../components/DataTable', () => ({
   __esModule: true,
   default: ({
     data,
@@ -91,7 +91,7 @@ jest.mock("../../components/DataTable", () => ({
             data-testid={`data-table-row-${rowIndex}`}
             onClick={() => onRowClick?.(row)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
+              if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 onRowClick?.(row);
               }
@@ -99,7 +99,7 @@ jest.mock("../../components/DataTable", () => ({
           >
             {columns.map((column, columnIndex) => {
               const key = `cell-${rowIndex}-${columnIndex}`;
-              if (typeof column.cell === "function") {
+              if (typeof column.cell === 'function') {
                 const value = column.cell({
                   row: { original: row },
                   getValue: () =>
@@ -116,9 +116,11 @@ jest.mock("../../components/DataTable", () => ({
               if (column.accessorKey) {
                 return (
                   <span data-testid={key} key={key}>
-                    {(row as Record<string, unknown>)[
-                      column.accessorKey
-                    ] as React.ReactNode}
+                    {
+                      (row as Record<string, unknown>)[
+                        column.accessorKey
+                      ] as React.ReactNode
+                    }
                   </span>
                 );
               }
@@ -131,14 +133,14 @@ jest.mock("../../components/DataTable", () => ({
   ),
 }));
 
-jest.mock("../../components/Tabs", () => {
+jest.mock('../../components/Tabs', () => {
   type TabsContextValue = {
     value: string;
     onValueChange: (next: string) => void;
   };
 
   const TabsContext = React.createContext<TabsContextValue>({
-    value: "",
+    value: '',
     onValueChange: () => {},
   });
 
@@ -200,9 +202,9 @@ jest.mock("../../components/Tabs", () => {
   return { Tabs, TabsList, TabsTrigger, TabsContent };
 });
 
-jest.mock("../../components/EmployeeCardForm", () => () => <div />);
+jest.mock('../../components/EmployeeCardForm', () => () => <div />);
 
-jest.mock("../../components/Modal", () => ({
+jest.mock('../../components/Modal', () => ({
   __esModule: true,
   default: ({
     open,
@@ -213,7 +215,7 @@ jest.mock("../../components/Modal", () => ({
   }) => (open ? <div data-testid="modal">{children}</div> : null),
 }));
 
-jest.mock("./CollectionForm", () => ({
+jest.mock('./CollectionForm', () => ({
   __esModule: true,
   default: ({
     form,
@@ -238,9 +240,12 @@ jest.mock("./CollectionForm", () => ({
         data-testid="collection-name"
         id="test-collection-name"
         name="collectionName"
-        value={form?.name ?? ""}
+        value={form?.name ?? ''}
         onChange={(event) =>
-          onChange({ ...(form ?? { name: "", value: "" }), name: event.target.value })
+          onChange({
+            ...(form ?? { name: '', value: '' }),
+            name: event.target.value,
+          })
         }
         disabled={readonly}
       />
@@ -248,9 +253,12 @@ jest.mock("./CollectionForm", () => ({
         data-testid="collection-value"
         id="test-collection-value"
         name="collectionValue"
-        value={form?.value ?? ""}
+        value={form?.value ?? ''}
         onChange={(event) =>
-          onChange({ ...(form ?? { name: "", value: "" }), value: event.target.value })
+          onChange({
+            ...(form ?? { name: '', value: '' }),
+            value: event.target.value,
+          })
         }
         disabled={readonly}
       />
@@ -259,11 +267,11 @@ jest.mock("./CollectionForm", () => ({
   ),
 }));
 
-jest.mock("./UserForm", () => ({ form }: { form: { name: string } }) => (
+jest.mock('./UserForm', () => ({ form }: { form: { name: string } }) => (
   <div data-testid="user-form">{form?.name}</div>
 ));
 
-describe("CollectionsPage", () => {
+describe('CollectionsPage', () => {
   const mockedFetch = fetchCollectionItems as jest.MockedFunction<
     typeof fetchCollectionItems
   >;
@@ -279,13 +287,13 @@ describe("CollectionsPage", () => {
     Record<string, { items: CollectionItem[]; total: number }>
   > = {
     departments: {
-      "": {
+      '': {
         items: [
           {
-            _id: "dep-1",
-            type: "departments",
-            name: "Главный департамент",
-            value: "",
+            _id: 'dep-1',
+            type: 'departments',
+            name: 'Главный департамент',
+            value: '',
           },
         ],
         total: 1,
@@ -293,23 +301,23 @@ describe("CollectionsPage", () => {
       финансы: {
         items: [
           {
-            _id: "dep-2",
-            type: "departments",
-            name: "Финансовый департамент",
-            value: "",
+            _id: 'dep-2',
+            type: 'departments',
+            name: 'Финансовый департамент',
+            value: '',
           },
         ],
         total: 1,
       },
     },
     divisions: {
-      "": {
+      '': {
         items: [
           {
-            _id: "div-1",
-            type: "divisions",
-            name: "Отдел снабжения",
-            value: "",
+            _id: 'div-1',
+            type: 'divisions',
+            name: 'Отдел снабжения',
+            value: '',
           },
         ],
         total: 1,
@@ -317,22 +325,22 @@ describe("CollectionsPage", () => {
       финансы: { items: [], total: 0 },
     },
     employees: {
-      "": {
+      '': {
         items: [
           {
-            _id: "emp-1",
-            type: "employees",
-            name: "Иван Тестовый",
+            _id: 'emp-1',
+            type: 'employees',
+            name: 'Иван Тестовый',
             value: JSON.stringify({
               telegram_id: 101,
-              telegram_username: "testuser",
-              phone: "+380000000000",
-              email: "test@example.com",
-              departmentId: "dep-1",
+              telegram_username: 'testuser',
+              phone: '+380000000000',
+              email: 'test@example.com',
+              departmentId: 'dep-1',
             }),
             meta: {
-              departmentId: "dep-1",
-              divisionId: "div-1",
+              departmentId: 'dep-1',
+              divisionId: 'div-1',
             },
           },
         ],
@@ -346,14 +354,14 @@ describe("CollectionsPage", () => {
     mockedFetchAll.mockReset();
     mockedCreate.mockReset();
     mockedFetchUsers.mockReset();
-    mockedFetch.mockImplementation(async (type: string, search = "") => {
+    mockedFetch.mockImplementation(async (type: string, search = '') => {
       const byType = dataset[type] ?? {};
-      const key = search || "";
-      return byType[key] ?? byType[""] ?? { items: [], total: 0 };
+      const key = search || '';
+      return byType[key] ?? byType[''] ?? { items: [], total: 0 };
     });
     mockedFetchAll.mockImplementation(async (type: string) => {
       const byType = dataset[type] ?? {};
-      const defaultEntry = byType[""] ?? { items: [] };
+      const defaultEntry = byType[''] ?? { items: [] };
       return (defaultEntry.items ?? []) as CollectionItem[];
     });
     mockedFetchUsers.mockResolvedValue([]);
@@ -366,64 +374,66 @@ describe("CollectionsPage", () => {
   const renderCollectionsPage = () =>
     render(
       <I18nextProvider i18n={i18n}>
-        <MemoryRouter initialEntries={["/cp/settings"]}>
+        <MemoryRouter initialEntries={['/cp/settings']}>
           <CollectionsPage />
         </MemoryRouter>
       </I18nextProvider>,
     );
 
-  it("возвращает список при смене вкладки, не перенося предыдущий фильтр", async () => {
+  it('возвращает список при смене вкладки, не перенося предыдущий фильтр', async () => {
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
     const searchInput = screen.getByPlaceholderText(
-      "Поиск по названию или значению",
+      'Поиск по названию или значению',
     );
-    fireEvent.change(searchInput, { target: { value: "финансы" } });
-    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
+    fireEvent.change(searchInput, { target: { value: 'финансы' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Искать' }));
 
     await waitFor(() =>
-      expect(mockedFetch).toHaveBeenCalledWith("departments", "финансы", 1, 10),
+      expect(mockedFetch).toHaveBeenCalledWith('departments', 'финансы', 1, 10),
     );
 
-    const divisionsTab = screen.getByRole("tab", { name: "Отдел" });
+    const divisionsTab = screen.getByRole('tab', { name: 'Отдел' });
     fireEvent.click(divisionsTab);
 
     await waitFor(() =>
-      expect(mockedFetch).toHaveBeenCalledWith("divisions", "", 1, 10),
+      expect(mockedFetch).toHaveBeenCalledWith('divisions', '', 1, 10),
     );
 
-    await screen.findByText("Отдел снабжения");
+    await screen.findByText('Отдел снабжения');
 
-    const divisionsPanel = screen.getByTestId("tab-content-divisions");
+    const divisionsPanel = screen.getByTestId('tab-content-divisions');
     const activeSearch = screen.getByPlaceholderText(
-      "Поиск по названию или значению",
+      'Поиск по названию или значению',
     ) as HTMLInputElement;
-    expect(activeSearch.value).toBe("");
+    expect(activeSearch.value).toBe('');
   });
 
-  it("отображает пустое состояние для справочника без элементов", async () => {
+  it('отображает пустое состояние для справочника без элементов', async () => {
     mockedFetch.mockImplementation(async () => ({ items: [], total: 0 }));
     mockedFetchAll.mockImplementation(async () => []);
 
     renderCollectionsPage();
 
-    const emptyTitle = await screen.findByText("Здесь пока пусто");
+    const emptyTitle = await screen.findByText('Здесь пока пусто');
     expect(emptyTitle).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Создайте первый элемент, чтобы начать работать со справочником.",
+        'Создайте первый элемент, чтобы начать работать со справочником.',
       ),
     ).toBeInTheDocument();
-    const addButtons = screen.getAllByRole("button", { name: "Добавить элемент" });
+    const addButtons = screen.getAllByRole('button', {
+      name: 'Добавить элемент',
+    });
     expect(addButtons.length).toBeGreaterThan(0);
   });
 
-  it("копирует идентификатор коллекции при клике по значку", async () => {
+  it('копирует идентификатор коллекции при клике по значку', async () => {
     const originalClipboard = (navigator as any).clipboard;
     const writeText = jest.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
+    Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText },
     });
@@ -431,65 +441,65 @@ describe("CollectionsPage", () => {
     try {
       renderCollectionsPage();
 
-      await screen.findByText("Главный департамент");
+      await screen.findByText('Главный департамент');
 
-      const copyButtons = await screen.findAllByTitle("Скопировать ID");
+      const copyButtons = await screen.findAllByTitle('Скопировать ID');
       const idButton = copyButtons.find((element) =>
-        element.textContent?.includes("dep-1"),
+        element.textContent?.includes('dep-1'),
       );
       expect(idButton).toBeDefined();
       fireEvent.click(idButton as HTMLElement);
 
-      await waitFor(() => expect(writeText).toHaveBeenCalledWith("dep-1"));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith('dep-1'));
       await waitFor(() =>
-        expect(idButton).toHaveAttribute("title", "ID скопирован"),
+        expect(idButton).toHaveAttribute('title', 'ID скопирован'),
       );
     } finally {
       if (originalClipboard !== undefined) {
-        Object.defineProperty(navigator, "clipboard", {
+        Object.defineProperty(navigator, 'clipboard', {
           configurable: true,
           value: originalClipboard,
         });
       } else {
         Reflect.deleteProperty(
           navigator as unknown as Record<string, unknown>,
-          "clipboard",
+          'clipboard',
         );
       }
     }
   });
 
-  it("сохраняет все отделы департамента после переключения вкладок", async () => {
+  it('сохраняет все отделы департамента после переключения вкладок', async () => {
     const department: CollectionItem = {
-      _id: "dep-full",
-      type: "departments",
-      name: "Департамент развития",
-      value: "div-legacy,div-new",
+      _id: 'dep-full',
+      type: 'departments',
+      name: 'Департамент развития',
+      value: 'div-legacy,div-new',
     };
     const legacyDivision: CollectionItem = {
-      _id: "div-legacy",
-      type: "divisions",
-      name: "Отдел Легаси",
-      value: "dep-full",
+      _id: 'div-legacy',
+      type: 'divisions',
+      name: 'Отдел Легаси',
+      value: 'dep-full',
       meta: { legacy: true },
     };
     const newDivision: CollectionItem = {
-      _id: "div-new",
-      type: "divisions",
-      name: "Отдел Новый",
-      value: "dep-full",
+      _id: 'div-new',
+      type: 'divisions',
+      name: 'Отдел Новый',
+      value: 'dep-full',
     };
     mockedFetchAll.mockImplementation(async (type: string) => {
-      if (type === "departments") return [department];
-      if (type === "divisions") return [legacyDivision, newDivision];
-      if (type === "positions") return [];
+      if (type === 'departments') return [department];
+      if (type === 'divisions') return [legacyDivision, newDivision];
+      if (type === 'positions') return [];
       return [];
     });
     mockedFetch.mockImplementation(async (type: string) => {
-      if (type === "departments") {
+      if (type === 'departments') {
         return { items: [department], total: 1 };
       }
-      if (type === "divisions") {
+      if (type === 'divisions') {
         return { items: [newDivision], total: 2 };
       }
       return { items: [], total: 0 };
@@ -498,92 +508,91 @@ describe("CollectionsPage", () => {
     renderCollectionsPage();
 
     const departmentsPanel = await screen.findByTestId(
-      "tab-content-departments",
+      'tab-content-departments',
     );
-    const departmentRow = within(departmentsPanel).getByTestId(
-      "data-table-row-0",
-    );
-    expect(departmentRow).toHaveTextContent("Отдел Легаси");
-    expect(departmentRow).toHaveTextContent("Отдел Новый");
+    const departmentRow =
+      within(departmentsPanel).getByTestId('data-table-row-0');
+    expect(departmentRow).toHaveTextContent('Отдел Легаси');
+    expect(departmentRow).toHaveTextContent('Отдел Новый');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Отдел" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Отдел' }));
 
-    await screen.findByText("Отдел Новый");
+    await screen.findByText('Отдел Новый');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Департамент" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Департамент' }));
 
     const departmentsPanelAfter = await screen.findByTestId(
-      "tab-content-departments",
+      'tab-content-departments',
     );
     const departmentRowAfter = within(departmentsPanelAfter).getByTestId(
-      "data-table-row-0",
+      'data-table-row-0',
     );
     expect(
-      within(departmentRowAfter).queryByText("div-legacy"),
+      within(departmentRowAfter).queryByText('div-legacy'),
     ).not.toBeInTheDocument();
-    expect(departmentRowAfter).toHaveTextContent("Отдел Легаси");
-    expect(departmentRowAfter).toHaveTextContent("Отдел Новый");
+    expect(departmentRowAfter).toHaveTextContent('Отдел Легаси');
+    expect(departmentRowAfter).toHaveTextContent('Отдел Новый');
 
     fireEvent.click(departmentRowAfter);
 
-    const modal = await screen.findByTestId("modal");
+    const modal = await screen.findByTestId('modal');
     const badgeTexts = within(modal)
-      .getAllByText(/Отдел/, { selector: "span" })
+      .getAllByText(/Отдел/, { selector: 'span' })
       .map((element) => element.textContent?.trim());
     expect(badgeTexts).toEqual(
-      expect.arrayContaining(["Отдел Легаси", "Отдел Новый"]),
+      expect.arrayContaining(['Отдел Легаси', 'Отдел Новый']),
     );
   });
 
-  it("отображает отделы из JSON-значения и предупреждает о дубликатах", async () => {
+  it('отображает отделы из JSON-значения и предупреждает о дубликатах', async () => {
     const jsonDepartment: CollectionItem = {
-      _id: "dep-json",
-      type: "departments",
-      name: "JSON департамент",
+      _id: 'dep-json',
+      type: 'departments',
+      name: 'JSON департамент',
       value: '["div-json-1","div-json-2"]',
     };
     const conflictingDepartment: CollectionItem = {
-      _id: "dep-conflict",
-      type: "departments",
-      name: "Конфликтующий департамент",
-      value: "div-json-2",
+      _id: 'dep-conflict',
+      type: 'departments',
+      name: 'Конфликтующий департамент',
+      value: 'div-json-2',
     };
     const divisions: CollectionItem[] = [
       {
-        _id: "div-json-1",
-        type: "divisions",
-        name: "Отдел JSON 1",
-        value: "dep-json",
+        _id: 'div-json-1',
+        type: 'divisions',
+        name: 'Отдел JSON 1',
+        value: 'dep-json',
       },
       {
-        _id: "div-json-2",
-        type: "divisions",
-        name: "Отдел JSON 2",
-        value: "dep-conflict",
+        _id: 'div-json-2',
+        type: 'divisions',
+        name: 'Отдел JSON 2',
+        value: 'dep-conflict',
       },
     ];
 
     mockedFetchAll.mockImplementation(async (type: string) => {
-      if (type === "departments") {
+      if (type === 'departments') {
         return [jsonDepartment, conflictingDepartment];
       }
-      if (type === "divisions") {
+      if (type === 'divisions') {
         return divisions;
       }
-      if (type === "positions") {
+      if (type === 'positions') {
         return [];
       }
       return [];
     });
 
     mockedFetch.mockImplementation(async (type: string) => {
-      if (type === "departments") {
+      if (type === 'departments') {
         return {
           items: [jsonDepartment, conflictingDepartment],
           total: 2,
         };
       }
-      if (type === "divisions") {
+      if (type === 'divisions') {
         return { items: divisions, total: divisions.length };
       }
       return { items: [], total: 0 };
@@ -592,77 +601,76 @@ describe("CollectionsPage", () => {
     renderCollectionsPage();
 
     const departmentsPanel = await screen.findByTestId(
-      "tab-content-departments",
+      'tab-content-departments',
     );
-    const departmentRow = within(departmentsPanel).getByTestId(
-      "data-table-row-0",
-    );
-    expect(departmentRow).toHaveTextContent("Отдел JSON 1");
-    expect(departmentRow).toHaveTextContent("Отдел JSON 2");
+    const departmentRow =
+      within(departmentsPanel).getByTestId('data-table-row-0');
+    expect(departmentRow).toHaveTextContent('Отдел JSON 1');
+    expect(departmentRow).toHaveTextContent('Отдел JSON 2');
 
     fireEvent.click(departmentRow);
 
-    const modal = await screen.findByTestId("modal");
+    const modal = await screen.findByTestId('modal');
     const badgeTexts = within(modal)
-      .getAllByText(/Отдел JSON/, { selector: "span" })
+      .getAllByText(/Отдел JSON/, { selector: 'span' })
       .map((element) => element.textContent?.trim());
     expect(badgeTexts).toEqual(
-      expect.arrayContaining(["Отдел JSON 1", "Отдел JSON 2"]),
+      expect.arrayContaining(['Отдел JSON 1', 'Отдел JSON 2']),
     );
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "Обнаружены дублирующиеся отделы: Отдел JSON 2.",
-        ),
+        screen.getByText('Обнаружены дублирующиеся отделы: Отдел JSON 2.'),
       ).toBeInTheDocument();
     });
   });
 
-  it("открывает вкладку автопарка", async () => {
-    mockedFetch.mockImplementation(async (type: string, search = "") => {
-      if (type === "fleets") {
-        throw new Error("Недостаточно прав для просмотра автопарка");
+  it('открывает вкладку автопарка', async () => {
+    mockedFetch.mockImplementation(async (type: string, search = '') => {
+      if (type === 'fleets') {
+        throw new Error('Недостаточно прав для просмотра автопарка');
       }
       const byType = dataset[type] ?? {};
-      const key = search || "";
-      return byType[key] ?? byType[""] ?? { items: [], total: 0 };
+      const key = search || '';
+      return byType[key] ?? byType[''] ?? { items: [], total: 0 };
     });
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    const fleetsTab = screen.getByRole("tab", { name: "Автопарк" });
+    const fleetsTab = screen.getByRole('tab', { name: 'Автопарк' });
     fireEvent.click(fleetsTab);
 
-    await screen.findByTestId("fleet-tab");
+    await screen.findByTestId('fleet-tab');
   });
 
   it("отображает колонки пользователей во вкладке 'Пользователь'", async () => {
     mockedFetchUsers.mockResolvedValue([
       {
         telegram_id: 101,
-        username: "operator",
-        role: "user",
+        username: 'operator',
+        role: 'user',
       } as User,
     ]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
 
-    const usersPanel = await screen.findByTestId("tab-content-users");
+    const usersPanel = await screen.findByTestId('tab-content-users');
 
     await waitFor(() =>
-      expect(within(usersPanel).getAllByTestId("column-header").length).toBeGreaterThan(0),
+      expect(
+        within(usersPanel).getAllByTestId('column-header').length,
+      ).toBeGreaterThan(0),
     );
 
     const headerTexts = within(usersPanel)
-      .getAllByTestId("column-header")
-      .map((element) => element.textContent ?? "");
+      .getAllByTestId('column-header')
+      .map((element) => element.textContent ?? '');
 
     const expectedHeaders = settingsUserColumns.map((column) =>
       extractHeaderText(column.header),
@@ -675,27 +683,29 @@ describe("CollectionsPage", () => {
     mockedFetchUsers.mockResolvedValue([
       {
         telegram_id: 101,
-        username: "operator",
-        role: "user",
-        name: "Оператор",
+        username: 'operator',
+        role: 'user',
+        name: 'Оператор',
       } as User,
     ]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Сотрудник' }));
 
-    const employeesPanel = await screen.findByTestId("tab-content-employees");
+    const employeesPanel = await screen.findByTestId('tab-content-employees');
 
     await waitFor(() =>
-      expect(within(employeesPanel).getAllByTestId("column-header").length).toBeGreaterThan(0),
+      expect(
+        within(employeesPanel).getAllByTestId('column-header').length,
+      ).toBeGreaterThan(0),
     );
 
     const headerTexts = within(employeesPanel)
-      .getAllByTestId("column-header")
-      .map((element) => element.textContent ?? "");
+      .getAllByTestId('column-header')
+      .map((element) => element.textContent ?? '');
 
     const expectedHeaders = settingsEmployeeColumns.map((column) =>
       extractHeaderText(column.header),
@@ -704,42 +714,40 @@ describe("CollectionsPage", () => {
     expect(headerTexts).toEqual(expectedHeaders);
   });
 
-  it("использует данные коллекции для заполнения карточки сотрудника", async () => {
+  it('использует данные коллекции для заполнения карточки сотрудника', async () => {
     mockedFetchUsers.mockResolvedValueOnce([
-      { telegram_id: 101, username: "101" } as User,
+      { telegram_id: 101, username: '101' } as User,
     ]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Сотрудник' }));
 
-    const employeesPanel = await screen.findByTestId("tab-content-employees");
+    const employeesPanel = await screen.findByTestId('tab-content-employees');
 
     await waitFor(() =>
-      expect(
-        within(employeesPanel).getByText("testuser"),
-      ).toBeInTheDocument(),
+      expect(within(employeesPanel).getByText('testuser')).toBeInTheDocument(),
     );
     expect(
-      within(employeesPanel).getByText("+380000000000"),
+      within(employeesPanel).getByText('+380000000000'),
     ).toBeInTheDocument();
     expect(
-      within(employeesPanel).getByText("test@example.com"),
+      within(employeesPanel).getByText('test@example.com'),
     ).toBeInTheDocument();
   });
 
   it("отображает настройки задач во вкладке 'Задачи'", async () => {
     const fieldItems: CollectionItem[] = [
       {
-        _id: "task-field-title",
-        type: "task_fields",
-        name: "title",
-        value: "Название",
+        _id: 'task-field-title',
+        type: 'task_fields',
+        name: 'title',
+        value: 'Название',
         meta: {
-          defaultLabel: "Название",
-          fieldType: "text",
+          defaultLabel: 'Название',
+          fieldType: 'text',
           order: 0,
           virtual: false,
         },
@@ -747,15 +755,15 @@ describe("CollectionsPage", () => {
     ];
     const typeItems: CollectionItem[] = [
       {
-        _id: "task-type-perform",
-        type: "task_types",
-        name: "Выполнить",
-        value: "Выполнить",
+        _id: 'task-type-perform',
+        type: 'task_types',
+        name: 'Выполнить',
+        value: 'Выполнить',
         meta: {
-          defaultLabel: "Выполнить",
+          defaultLabel: 'Выполнить',
           order: 0,
-          tg_theme_url: "https://t.me/c/2705661520/627",
-          tg_chat_id: "-1002705661520",
+          tg_theme_url: 'https://t.me/c/2705661520/627',
+          tg_chat_id: '-1002705661520',
           tg_topic_id: 627,
           virtual: false,
         },
@@ -763,166 +771,165 @@ describe("CollectionsPage", () => {
     ];
 
     mockedFetchAll.mockImplementation(async (type: string) => {
-      if (type === "task_fields") return fieldItems;
-      if (type === "task_types") return typeItems;
+      if (type === 'task_fields') return fieldItems;
+      if (type === 'task_types') return typeItems;
       const byType = dataset[type] ?? {};
-      const defaultEntry = byType[""] ?? { items: [] };
+      const defaultEntry = byType[''] ?? { items: [] };
       return (defaultEntry.items ?? []) as CollectionItem[];
     });
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Задачи" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Задачи' }));
 
     await waitFor(() =>
-      expect(mockedFetchAll).toHaveBeenCalledWith("task_fields"),
+      expect(mockedFetchAll).toHaveBeenCalledWith('task_fields'),
     );
 
-    const tasksPanel = await screen.findByTestId("tab-content-tasks");
+    const tasksPanel = await screen.findByTestId('tab-content-tasks');
     expect(
-      within(tasksPanel).getByLabelText("Название типа Выполнить"),
+      within(tasksPanel).getByLabelText('Название типа Выполнить'),
     ).toBeInTheDocument();
-    const themeInputs = within(tasksPanel).getAllByPlaceholderText(
-      "https://t.me/c/...",
-    );
+    const themeInputs =
+      within(tasksPanel).getAllByPlaceholderText('https://t.me/c/...');
     expect(themeInputs).toHaveLength(2);
   });
 
-  it("показывает фактический логин в таблице и карточке пользователя", async () => {
+  it('показывает фактический логин в таблице и карточке пользователя', async () => {
     const user: User = {
       telegram_id: 101,
-      telegram_username: "operator",
-      username: "101",
-      name: "Оператор",
-      role: "user",
+      telegram_username: 'operator',
+      username: '101',
+      name: 'Оператор',
+      role: 'user',
     };
     mockedFetchUsers.mockResolvedValueOnce([user]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
 
-    const row = await screen.findByTestId("data-table-row-0");
-    expect(within(row).getByText("operator")).toBeInTheDocument();
+    const row = await screen.findByTestId('data-table-row-0');
+    expect(within(row).getByText('operator')).toBeInTheDocument();
 
     fireEvent.click(row);
 
-    const modal = await screen.findByTestId("modal");
-    expect(within(modal).getByText("operator")).toBeInTheDocument();
+    const modal = await screen.findByTestId('modal');
+    expect(within(modal).getByText('operator')).toBeInTheDocument();
   });
 
-  it("возвращает пользователя при поиске по фактическому логину", async () => {
+  it('возвращает пользователя при поиске по фактическому логину', async () => {
     const user: User = {
       telegram_id: 202,
-      telegram_username: "operator",
-      username: "202",
-      name: "Оператор",
-      role: "user",
+      telegram_username: 'operator',
+      username: '202',
+      name: 'Оператор',
+      role: 'user',
     };
     mockedFetchUsers.mockResolvedValueOnce([user]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Пользователь" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
 
-    const usersPanel = await screen.findByTestId("tab-content-users");
-    const rowsContainer = within(usersPanel).getByTestId("data-table-rows");
-
-    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
-
-    const searchInput = screen.getByPlaceholderText("Имя, логин или ID");
-    fireEvent.change(searchInput, { target: { value: "202" } });
-
-    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
+    const usersPanel = await screen.findByTestId('tab-content-users');
+    const rowsContainer = within(usersPanel).getByTestId('data-table-rows');
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
-    expect(within(usersPanel).getByText("operator")).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText('Имя, логин или ID');
+    fireEvent.change(searchInput, { target: { value: '202' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Искать' }));
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+    expect(within(usersPanel).getByText('operator')).toBeInTheDocument();
   });
 
-  it("находит сотрудника по фамилии из карточки", async () => {
+  it('находит сотрудника по фамилии из карточки', async () => {
     mockedFetchAll.mockImplementation(async (type: string) => {
-      if (type === "employees") {
+      if (type === 'employees') {
         return [
           {
-            _id: "emp-card",
-            type: "employees",
-            name: "",
+            _id: 'emp-card',
+            type: 'employees',
+            name: '',
             value: JSON.stringify({
               telegram_id: 404,
-              username: "petrov",
-              firstName: "Иван",
-              lastName: "Петров",
+              username: 'petrov',
+              firstName: 'Иван',
+              lastName: 'Петров',
             }),
             meta: {
-              departmentId: "dep-1",
-              divisionId: "div-1",
+              departmentId: 'dep-1',
+              divisionId: 'div-1',
             },
           },
         ] as CollectionItem[];
       }
       const byType = dataset[type] ?? {};
-      const defaultEntry = byType[""] ?? { items: [] };
+      const defaultEntry = byType[''] ?? { items: [] };
       return (defaultEntry.items ?? []) as CollectionItem[];
     });
 
     mockedFetchUsers.mockResolvedValueOnce([
-      { telegram_id: 404, username: "404", role: "user" } as User,
+      { telegram_id: 404, username: '404', role: 'user' } as User,
     ]);
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    fireEvent.click(screen.getByRole("tab", { name: "Сотрудник" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Сотрудник' }));
 
-    const employeesPanel = await screen.findByTestId("tab-content-employees");
-    const rowsContainer = within(employeesPanel).getByTestId("data-table-rows");
-
-    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
-
-    const searchInput = screen.getByPlaceholderText(
-      "Имя, логин или должность",
-    );
-    fireEvent.change(searchInput, { target: { value: "Петров" } });
-
-    fireEvent.click(screen.getByRole("button", { name: "Искать" }));
+    const employeesPanel = await screen.findByTestId('tab-content-employees');
+    const rowsContainer = within(employeesPanel).getByTestId('data-table-rows');
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
-    expect(within(employeesPanel).getByText("Петров Иван")).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText('Имя, логин или должность');
+    fireEvent.change(searchInput, { target: { value: 'Петров' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Искать' }));
+
+    await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
+    expect(within(employeesPanel).getByText('Петров Иван')).toBeInTheDocument();
   });
 
-  it("показывает подсказку, если департамент сохраняют без отделов", async () => {
+  it('показывает подсказку, если департамент сохраняют без отделов', async () => {
     const { parseErrorMessage } = jest.requireActual(
-      "../../services/collections",
-    ) as typeof import("../../services/collections");
+      '../../services/collections',
+    ) as typeof import('../../services/collections');
     mockedCreate.mockImplementationOnce(async () => {
       const message = parseErrorMessage(
         400,
-        JSON.stringify({ errors: [{ msg: "Значение элемента обязательно" }] }),
-        { collectionType: "departments" },
+        JSON.stringify({ errors: [{ msg: 'Значение элемента обязательно' }] }),
+        { collectionType: 'departments' },
       );
       throw new Error(message);
     });
 
     renderCollectionsPage();
 
-    await screen.findByText("Главный департамент");
+    await screen.findByText('Главный департамент');
 
-    const addButtons = screen.getAllByRole("button", { name: "Добавить элемент" });
+    const addButtons = screen.getAllByRole('button', {
+      name: 'Добавить элемент',
+    });
     fireEvent.click(addButtons[0]);
 
-    const form = await screen.findByTestId("collection-form");
-    const nameInput = within(form).getByTestId("collection-name");
-    fireEvent.change(nameInput, { target: { value: "Новый департамент" } });
+    const form = await screen.findByTestId('collection-form');
+    const nameInput = within(form).getByTestId('collection-name');
+    fireEvent.change(nameInput, { target: { value: 'Новый департамент' } });
 
     fireEvent.submit(form);
 
-    await screen.findByText("Добавьте хотя бы один отдел в департамент");
+    await screen.findByText('Добавьте хотя бы один отдел в департамент');
   });
 });

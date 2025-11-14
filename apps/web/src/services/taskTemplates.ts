@@ -1,6 +1,6 @@
 // Назначение: клиентские запросы к API шаблонов задач
 // Основные модули: authFetch
-import authFetch from "../utils/authFetch";
+import authFetch from '../utils/authFetch';
 
 export interface TaskTemplate {
   _id: string;
@@ -14,21 +14,21 @@ export interface CreateTaskTemplatePayload {
 }
 
 const normalizeTemplate = (candidate: unknown): TaskTemplate | null => {
-  if (!candidate || typeof candidate !== "object") {
+  if (!candidate || typeof candidate !== 'object') {
     return null;
   }
   const record = candidate as Record<string, unknown>;
   const idRaw = record._id;
   const nameRaw = record.name;
-  if (typeof idRaw !== "string" || !idRaw.trim()) {
+  if (typeof idRaw !== 'string' || !idRaw.trim()) {
     return null;
   }
-  if (typeof nameRaw !== "string" || !nameRaw.trim()) {
+  if (typeof nameRaw !== 'string' || !nameRaw.trim()) {
     return null;
   }
   const dataRaw = record.data;
   const data =
-    dataRaw && typeof dataRaw === "object"
+    dataRaw && typeof dataRaw === 'object'
       ? (dataRaw as Record<string, unknown>)
       : {};
   return {
@@ -39,12 +39,10 @@ const normalizeTemplate = (candidate: unknown): TaskTemplate | null => {
 };
 
 export const list = async (): Promise<TaskTemplate[]> => {
-  const response = await authFetch("/api/v1/task-templates");
+  const response = await authFetch('/api/v1/task-templates');
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(
-      body.trim() || "Не удалось загрузить шаблоны задач",
-    );
+    const body = await response.text().catch(() => '');
+    throw new Error(body.trim() || 'Не удалось загрузить шаблоны задач');
   }
   const raw = await response.json().catch(() => []);
   if (!Array.isArray(raw)) {
@@ -58,23 +56,21 @@ export const list = async (): Promise<TaskTemplate[]> => {
 export const create = async (
   payload: CreateTaskTemplatePayload,
 ): Promise<TaskTemplate> => {
-  const response = await authFetch("/api/v1/task-templates", {
-    method: "POST",
+  const response = await authFetch('/api/v1/task-templates', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(
-      body.trim() || "Не удалось сохранить шаблон задачи",
-    );
+    const body = await response.text().catch(() => '');
+    throw new Error(body.trim() || 'Не удалось сохранить шаблон задачи');
   }
   const raw = await response.json().catch(() => ({}));
   const normalized = normalizeTemplate(raw);
   if (!normalized) {
-    throw new Error("Сервер вернул некорректный шаблон задачи");
+    throw new Error('Сервер вернул некорректный шаблон задачи');
   }
   return normalized;
 };

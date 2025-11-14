@@ -44,7 +44,10 @@ function validateSignature(
     throw new Error('hash отсутствует');
   }
   const dataString = buildDataCheckString(params);
-  const secret = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
+  const secret = crypto
+    .createHmac('sha256', 'WebAppData')
+    .update(token)
+    .digest();
   const calculated = crypto
     .createHmac('sha256', secret)
     .update(dataString)
@@ -70,7 +73,10 @@ function validateSignature(
   return authDate;
 }
 
-function parseInitData(params: URLSearchParams, authDate: number): InitDataRecord {
+function parseInitData(
+  params: URLSearchParams,
+  authDate: number,
+): InitDataRecord {
   const result: InitDataRecord = { auth_date: authDate, authDate };
   params.forEach((value, key) => {
     if (key === 'hash') {

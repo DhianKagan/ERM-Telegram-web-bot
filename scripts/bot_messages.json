@@ -1,7 +1,5 @@
 {
   "description": "Бот AgroTask помогает создавать и назначать задачи, а также открывать мини-приложение для их контроля.",
   "short_description": "AgroTask бот",
-  "commands": [
-    {"command": "start", "description": "Показать меню"}
-  ]
+  "commands": [{ "command": "start", "description": "Показать меню" }]
 }

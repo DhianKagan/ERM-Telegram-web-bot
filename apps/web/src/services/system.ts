@@ -1,6 +1,6 @@
 // Назначение: запросы к API оркестратора стека
 // Основные модули: authFetch
-import authFetch from "../utils/authFetch";
+import authFetch from '../utils/authFetch';
 
 export interface RailwayLogAnalysisSummary {
   generatedAt: string;
@@ -56,23 +56,34 @@ export interface CodexMaintenanceBrief {
 }
 
 export const fetchOverview = () =>
-  authFetch("/api/v1/system/overview").then((res) =>
+  authFetch('/api/v1/system/overview').then((res) =>
     res.ok ? (res.json() as Promise<StackOverview>) : Promise.reject(res),
   );
 
 export const executePlan = () =>
-  authFetch("/api/v1/system/coordinate", { method: "POST" }).then((res) =>
-    res.ok ? (res.json() as Promise<StackExecutionResult>) : Promise.reject(res),
+  authFetch('/api/v1/system/coordinate', { method: 'POST' }).then((res) =>
+    res.ok
+      ? (res.json() as Promise<StackExecutionResult>)
+      : Promise.reject(res),
   );
 
 export const fetchLatestLogAnalysis = () =>
-  authFetch("/api/v1/system/log-analysis/latest").then((res) =>
-    res.ok ? (res.json() as Promise<RailwayLogAnalysisSummary | null>) : Promise.reject(res),
+  authFetch('/api/v1/system/log-analysis/latest').then((res) =>
+    res.ok
+      ? (res.json() as Promise<RailwayLogAnalysisSummary | null>)
+      : Promise.reject(res),
   );
 
 export const fetchCodexBrief = () =>
-  authFetch("/api/v1/system/codex-brief").then((res) =>
-    res.ok ? (res.json() as Promise<CodexMaintenanceBrief>) : Promise.reject(res),
+  authFetch('/api/v1/system/codex-brief').then((res) =>
+    res.ok
+      ? (res.json() as Promise<CodexMaintenanceBrief>)
+      : Promise.reject(res),
   );
 
-export default { fetchOverview, executePlan, fetchLatestLogAnalysis, fetchCodexBrief };
+export default {
+  fetchOverview,
+  executePlan,
+  fetchLatestLogAnalysis,
+  fetchCodexBrief,
+};

@@ -1,19 +1,19 @@
 // Всплывающее уведомление о результате действия
-import React from "react";
+import React from 'react';
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   XMarkIcon,
-} from "@heroicons/react/24/solid";
+} from '@heroicons/react/24/solid';
 
 export default function NotificationBar({
   message,
-  type = "success",
+  type = 'success',
 
   onClose,
 }: {
   message: string;
-  type?: "success" | "error";
+  type?: 'success' | 'error';
   onClose?: () => void;
 }) {
   const [show, setShow] = React.useState(true);
@@ -26,9 +26,9 @@ export default function NotificationBar({
   }, [show, onClose]);
 
   if (!show) return null;
-  const base = "flex items-center rounded-lg px-4 py-2 text-white shadow-lg";
-  const color = type === "error" ? "bg-error-500" : "bg-success";
-  const Icon = type === "error" ? ExclamationCircleIcon : CheckCircleIcon;
+  const base = 'flex items-center rounded-lg px-4 py-2 text-white shadow-lg';
+  const color = type === 'error' ? 'bg-error-500' : 'bg-success';
+  const Icon = type === 'error' ? ExclamationCircleIcon : CheckCircleIcon;
   return (
     <div className={`${base} ${color}`}>
       <Icon className="mr-2 h-5 w-5" />

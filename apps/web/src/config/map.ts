@@ -7,7 +7,9 @@ declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 const DEFAULT_MAP_STYLE_URL =
   'https://api.protomaps.com/styles/v5/light/en.json?key=e2ee205f93bfd080';
 
-type ImportMetaWithEnv = { readonly env?: { readonly VITE_MAP_STYLE_URL?: string } };
+type ImportMetaWithEnv = {
+  readonly env?: { readonly VITE_MAP_STYLE_URL?: string };
+};
 
 const readMapStyleUrl = (): string => {
   const processValue =
@@ -34,9 +36,11 @@ const resolveMapStyleMode = (): MapStyleMode => {
     return __ERM_MAP_STYLE_MODE__;
   }
   if (typeof globalThis === 'object' && globalThis !== null) {
-    const candidate = (globalThis as {
-      __ERM_MAP_STYLE_MODE__?: unknown;
-    }).__ERM_MAP_STYLE_MODE__;
+    const candidate = (
+      globalThis as {
+        __ERM_MAP_STYLE_MODE__?: unknown;
+      }
+    ).__ERM_MAP_STYLE_MODE__;
     if (candidate === 'pmtiles' || candidate === 'raster') {
       return candidate;
     }
@@ -60,7 +64,10 @@ export const MAP_DEFAULT_CENTER: [number, number] = [30.5234, 50.4501];
 export const MAP_DEFAULT_ZOOM = 6;
 
 // Глобальные границы мира (чтобы не улетать за пределы проекции)
-export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [[-180, -85], [180, 85]];
+export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-180, -85],
+  [180, 85],
+];
 
 // Идентификатор векторного источника; для стиля Protomaps v5 чаще 'basemap'
 export const MAP_VECTOR_SOURCE_ID = 'basemap';

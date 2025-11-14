@@ -36,7 +36,10 @@ function parseSizeLimit(value: string | undefined, fallback: number): number {
   return parsed > 0 ? parsed : fallback;
 }
 
-function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
+function parseBooleanFlag(
+  value: string | undefined,
+  fallback: boolean,
+): boolean {
   if (value === undefined || value === '') return fallback;
   const lowered = value.toLowerCase();
   if (['0', 'false', 'no', 'off'].includes(lowered)) return false;
@@ -80,12 +83,16 @@ if (vendor === 'ClamAV') {
     chunkSize,
   };
 } else {
-  const maxFileSize = parseSizeLimit(process.env.ANTIVIRUS_SIGNATURE_MAX_SIZE, 20 * 1024 * 1024);
+  const maxFileSize = parseSizeLimit(
+    process.env.ANTIVIRUS_SIGNATURE_MAX_SIZE,
+    20 * 1024 * 1024,
+  );
   const customSignatures = parseSignatures(process.env.ANTIVIRUS_SIGNATURES);
   const defaultSignatures = [
     'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
   ];
-  const signatures = customSignatures.length > 0 ? customSignatures : defaultSignatures;
+  const signatures =
+    customSignatures.length > 0 ? customSignatures : defaultSignatures;
 
   resolvedConfig = {
     vendor,

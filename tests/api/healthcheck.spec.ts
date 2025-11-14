@@ -11,10 +11,7 @@ import healthcheck, {
   collectHealthStatus,
 } from '../../apps/api/src/api/healthcheck';
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,

@@ -48,9 +48,7 @@ const hasRenderableComment = (value: unknown): value is string => {
   return normalized.length > 0;
 };
 
-export const ensureCommentHtml = (
-  value: string | null | undefined,
-): string => {
+export const ensureCommentHtml = (value: string | null | undefined): string => {
   if (hasRenderableComment(value)) {
     return value;
   }
@@ -84,15 +82,21 @@ export const buildCommentHtml = (
       return;
     }
     const authorId = Number(entry.author_id);
-    const meta = authorId in (options.users || {}) ? options.users?.[authorId] : undefined;
-    const fallback = authorId in (options.fallbackNames || {}) ? options.fallbackNames?.[authorId] : undefined;
+    const meta =
+      authorId in (options.users || {}) ? options.users?.[authorId] : undefined;
+    const fallback =
+      authorId in (options.fallbackNames || {})
+        ? options.fallbackNames?.[authorId]
+        : undefined;
     const displayName =
       (typeof meta?.name === 'string' && meta.name.trim()) ||
       (typeof meta?.username === 'string' && meta.username.trim()) ||
       (typeof fallback === 'string' && fallback.trim()) ||
       `ID ${Number.isFinite(authorId) ? authorId : '-'} `;
     const timestamp = normalizeDate(entry.created_at);
-    const formattedTime = timestamp ? `${dateFormatter.format(timestamp)} (${DEFAULT_TIMEZONE_LABEL})` : '';
+    const formattedTime = timestamp
+      ? `${dateFormatter.format(timestamp)} (${DEFAULT_TIMEZONE_LABEL})`
+      : '';
     const safeName = escapeHtml(displayName);
     const safeText = escapeHtml(rawText).replace(/\r?\n/g, '<br>');
     const header = formattedTime
@@ -134,7 +138,9 @@ export interface CommentSyncOptions {
   detectors?: CommentSyncErrorDetectors;
 }
 
-type SendMessageOptions = Parameters<Telegraf<Context>['telegram']['sendMessage']>[2];
+type SendMessageOptions = Parameters<
+  Telegraf<Context>['telegram']['sendMessage']
+>[2];
 type EditMessageOptions = Parameters<
   Telegraf<Context>['telegram']['editMessageText']
 >[4];
@@ -142,7 +148,8 @@ type EditMessageOptions = Parameters<
 export const syncCommentMessage = async (
   options: CommentSyncOptions,
 ): Promise<number | undefined> => {
-  const { bot, chatId, topicId, replyTo, messageId, commentHtml, detectors } = options;
+  const { bot, chatId, topicId, replyTo, messageId, commentHtml, detectors } =
+    options;
   const payload = buildCommentTelegramMessage(commentHtml ?? '');
   if (!payload) {
     if (typeof messageId === 'number') {
@@ -192,6 +199,10 @@ export const syncCommentMessage = async (
       allow_sending_without_reply: true,
     };
   }
-  const response = await bot.telegram.sendMessage(chatId, payload.text, sendOptions);
+  const response = await bot.telegram.sendMessage(
+    chatId,
+    payload.text,
+    sendOptions,
+  );
   return response?.message_id ?? undefined;
 };

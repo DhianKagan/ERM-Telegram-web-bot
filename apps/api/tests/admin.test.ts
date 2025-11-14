@@ -30,13 +30,13 @@ jest.mock('../src/services/service', () => {
 
 jest.mock('../src/api/middleware', () => {
   const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
+      handler,
   );
-  const errorHandler = jest.fn(
-    (err: unknown, _req: Request, res: Response) =>
-      res.status(500).json({
-        error: err instanceof Error ? err.message : String(err),
-      }),
+  const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
+    res.status(500).json({
+      error: err instanceof Error ? err.message : String(err),
+    }),
   );
   return {
     verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
@@ -56,7 +56,8 @@ jest.mock('../src/api/middleware', () => {
       (req: RequestWithUser, res: Response, next: NextFunction) => {
         const user = req.user ?? { access: 0 };
         if (typeof expected === 'number') {
-          return user.access !== undefined && (user.access & expected) === expected
+          return user.access !== undefined &&
+            (user.access & expected) === expected
             ? next()
             : res.sendStatus(403);
         }

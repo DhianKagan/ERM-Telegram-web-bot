@@ -9,15 +9,11 @@ describe('userLink', () => {
   it('экранирует имя и формирует ссылку MarkdownV2', () => {
     const special = '_*[]()~`>#+-=|{}.!\\';
     const link = userLink(42, special);
-    expect(link).toBe(
-      `[${escapeMarkdownV2(special)}](tg://user?id=42)`,
-    );
+    expect(link).toBe(`[${escapeMarkdownV2(special)}](tg://user?id=42)`);
   });
 
   it('использует идентификатор при отсутствии имени', () => {
     const link = userLink('abc_def');
-    expect(link).toBe(
-      `[${escapeMarkdownV2('abc_def')}](tg://user?id=abc_def)`,
-    );
+    expect(link).toBe(`[${escapeMarkdownV2('abc_def')}](tg://user?id=abc_def)`);
   });
 });

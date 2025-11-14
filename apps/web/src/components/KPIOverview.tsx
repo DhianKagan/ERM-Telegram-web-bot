@@ -1,5 +1,5 @@
 // Блок KPI с общими метриками по задачам
-import React from "react";
+import React from 'react';
 
 interface KPIOverviewProps {
   count: number;

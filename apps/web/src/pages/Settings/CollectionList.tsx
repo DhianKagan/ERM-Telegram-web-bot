@@ -1,10 +1,10 @@
 // Назначение: список элементов коллекции с поиском и пагинацией
 // Основные модули: React, Pagination
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import Pagination from "../../components/Pagination";
-import type { CollectionItem } from "../../services/collections";
+import { Button } from '@/components/ui/button';
+import Pagination from '../../components/Pagination';
+import type { CollectionItem } from '../../services/collections';
 
 interface Props {
   items: CollectionItem[];
@@ -29,11 +29,11 @@ export default function CollectionList({
   renderValue,
   searchValue,
 }: Props) {
-  const [search, setSearch] = React.useState(searchValue ?? "");
+  const [search, setSearch] = React.useState(searchValue ?? '');
   const searchInputId = React.useId();
 
   React.useEffect(() => {
-    setSearch(searchValue ?? "");
+    setSearch(searchValue ?? '');
   }, [searchValue]);
 
   const submit = (e: React.FormEvent) => {
@@ -66,7 +66,7 @@ export default function CollectionList({
               type="button"
               onClick={() => onSelect(it)}
               className={`w-full cursor-pointer p-2 text-left ${
-                selectedId === it._id ? "bg-gray" : ""
+                selectedId === it._id ? 'bg-gray' : ''
               }`}
             >
               <div className="font-medium">{it.name}</div>

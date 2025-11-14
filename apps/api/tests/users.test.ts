@@ -19,13 +19,13 @@ const { ACCESS_ADMIN, ACCESS_MANAGER } = require('../src/utils/accessMask');
 
 jest.mock('../src/db/queries', () => ({
   listUsers: jest.fn(async () => [{ telegram_id: 1, username: 'test' }]),
-  generateUserCredentials: jest.fn(async (id?: string | number, username?: string) => ({
-    telegramId:
-      id !== undefined && id !== null && String(id) !== ''
-        ? Number(id)
-        : 2,
-    username: username && username.trim() ? username : 'generated_user',
-  })),
+  generateUserCredentials: jest.fn(
+    async (id?: string | number, username?: string) => ({
+      telegramId:
+        id !== undefined && id !== null && String(id) !== '' ? Number(id) : 2,
+      username: username && username.trim() ? username : 'generated_user',
+    }),
+  ),
   createUser: jest.fn(async () => ({ telegram_id: 1, username: 'test' })),
   updateUser: jest.fn(async () => ({ telegram_id: 1, username: 'new' })),
   getUser: jest.fn(async (id: string) =>
@@ -36,13 +36,13 @@ jest.mock('../src/db/queries', () => ({
 
 jest.mock('../src/api/middleware', () => {
   const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
+      handler,
   );
-  const errorHandler = jest.fn(
-    (err: unknown, _req: Request, res: Response) =>
-      res.status(500).json({
-        error: err instanceof Error ? err.message : String(err),
-      }),
+  const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
+    res.status(500).json({
+      error: err instanceof Error ? err.message : String(err),
+    }),
   );
   return {
     verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
@@ -62,7 +62,8 @@ jest.mock('../src/api/middleware', () => {
       (req: RequestWithUser, res: Response, next: NextFunction) => {
         const user = req.user ?? { access: 0 };
         if (typeof expected === 'number') {
-          return user.access !== undefined && (user.access & expected) === expected
+          return user.access !== undefined &&
+            (user.access & expected) === expected
             ? next()
             : res.sendStatus(403);
         }
@@ -130,20 +131,18 @@ app.post(
       typeof rawId === 'string'
         ? rawId.trim() || undefined
         : rawId !== undefined
-        ? rawId
-        : undefined;
+          ? rawId
+          : undefined;
 
     const normalizedUsername =
       typeof rawUsername === 'string'
         ? rawUsername.trim() || undefined
         : rawUsername !== undefined
-        ? String(rawUsername)
-        : undefined;
+          ? String(rawUsername)
+          : undefined;
 
     const normalizedRoleId =
-      typeof rawRoleId === 'string'
-        ? rawRoleId.trim() || undefined
-        : rawRoleId;
+      typeof rawRoleId === 'string' ? rawRoleId.trim() || undefined : rawRoleId;
 
     if (req.query.preview === 'true' || req.query.preview === '1') {
       const generatedPreview = await generateUserCredentials(

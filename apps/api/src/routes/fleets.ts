@@ -42,7 +42,9 @@ type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
 };
 
 function mapVehicle(
-  doc: (FleetVehicleAttrs & { _id: unknown; createdAt?: Date; updatedAt?: Date }) | null,
+  doc:
+    | (FleetVehicleAttrs & { _id: unknown; createdAt?: Date; updatedAt?: Date })
+    | null,
 ): FleetVehicleResponseDto | null {
   if (!doc) return null;
   const base: FleetVehicleResponseDto = {
@@ -66,24 +68,28 @@ function mapVehicle(
             entry.assignedAt instanceof Date
               ? entry.assignedAt.toISOString()
               : entry.assignedAt
-              ? String(entry.assignedAt)
-              : undefined,
+                ? String(entry.assignedAt)
+                : undefined,
           removedAt:
             entry.removedAt instanceof Date
               ? entry.removedAt.toISOString()
               : entry.removedAt
-              ? String(entry.removedAt)
-              : undefined,
+                ? String(entry.removedAt)
+                : undefined,
         }))
       : [],
   };
   if (doc.createdAt) {
     base.createdAt =
-      doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt);
+      doc.createdAt instanceof Date
+        ? doc.createdAt.toISOString()
+        : String(doc.createdAt);
   }
   if (doc.updatedAt) {
     base.updatedAt =
-      doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : String(doc.updatedAt);
+      doc.updatedAt instanceof Date
+        ? doc.updatedAt.toISOString()
+        : String(doc.updatedAt);
   }
   return base;
 }
@@ -96,7 +102,8 @@ router.get(
   async (req, res) => {
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
-    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const search =
+      typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const filter = search
       ? {
           $or: [
@@ -174,15 +181,21 @@ router.put(
       update.fuelRefilled = parseNumber(req.body.fuelRefilled);
     }
     if (req.body.fuelAverageConsumption !== undefined) {
-      update.fuelAverageConsumption = parseNumber(req.body.fuelAverageConsumption);
+      update.fuelAverageConsumption = parseNumber(
+        req.body.fuelAverageConsumption,
+      );
     }
     if (req.body.fuelSpentTotal !== undefined) {
       update.fuelSpentTotal = parseNumber(req.body.fuelSpentTotal);
     }
     if (Array.isArray(req.body.currentTasks)) {
-      update.currentTasks = (req.body.currentTasks as string[]).map((task) => String(task));
+      update.currentTasks = (req.body.currentTasks as string[]).map((task) =>
+        String(task),
+      );
     }
-    const updated = await FleetVehicle.findByIdAndUpdate(id, update, { new: true });
+    const updated = await FleetVehicle.findByIdAndUpdate(id, update, {
+      new: true,
+    });
     if (!updated) {
       res.sendStatus(404);
       return;

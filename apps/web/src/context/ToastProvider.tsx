@@ -1,6 +1,6 @@
 // Провайдер уведомлений, управляет списком тостов
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { ToastContext, type Toast, type ToastState } from "./ToastContext";
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { ToastContext, type Toast, type ToastState } from './ToastContext';
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -8,7 +8,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addToast = useCallback(
-    (message: string, type: "success" | "error" = "success") => {
+    (message: string, type: 'success' | 'error' = 'success') => {
       const id = Date.now();
       setToasts((t) => [...t, { id, message, type }]);
       timeoutId.current = setTimeout(
@@ -30,12 +30,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const handler = (e: Event) => {
       const { message, type } = (
-        e as CustomEvent<{ message: string; type?: "success" | "error" }>
+        e as CustomEvent<{ message: string; type?: 'success' | 'error' }>
       ).detail;
       addToast(message, type);
     };
-    window.addEventListener("toast", handler);
-    return () => window.removeEventListener("toast", handler);
+    window.addEventListener('toast', handler);
+    return () => window.removeEventListener('toast', handler);
   }, [addToast]);
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>

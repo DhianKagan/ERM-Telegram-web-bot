@@ -16,17 +16,24 @@ const lusca = require('lusca');
 
 jest.mock('../src/auth/auth.controller.ts', () => ({
   sendCode: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
-  verifyCode: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
-  verifyInitData: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  verifyCode: jest.fn((_req: Request, res: Response) =>
+    res.json({ token: 't' }),
+  ),
+  verifyInitData: jest.fn((_req: Request, res: Response) =>
+    res.json({ ok: true }),
+  ),
   profile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
-  updateProfile: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  updateProfile: jest.fn((_req: Request, res: Response) =>
+    res.json({ ok: true }),
+  ),
   logout: jest.fn((_req: Request, res: Response) => res.json({ status: 'ok' })),
   refresh: jest.fn((_req: Request, res: Response) => res.json({ token: 't' })),
 }));
 
 jest.mock('../src/api/middleware', () => {
   const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
+      handler,
   );
   const passNext = (_req: unknown, _res: unknown, next: NextFunction) => next();
   return {
@@ -113,7 +120,6 @@ test('валидная капча пропускает лимитер auth', asy
 });
 
 test('подтверждённый запрос обходит лимитер auth', async () => {
-
   await new Promise((resolve) => setTimeout(resolve, 250));
   for (let i = 0; i < 2; i++) {
     const res = await request(app)

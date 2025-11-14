@@ -1,7 +1,7 @@
 // Панель фильтров логов
 // Модули: React
-import React from "react";
-import { LogFilters } from "../hooks/useLogsQuery";
+import React from 'react';
+import { LogFilters } from '../hooks/useLogsQuery';
 
 interface Props {
   filters: LogFilters;
@@ -16,7 +16,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         aria-label="Уровень"
         name="level"
-        value={filters.level || ""}
+        value={filters.level || ''}
         onChange={(e) => onChange({ ...filters, level: e.target.value })}
       >
         <option value="">Все уровни</option>
@@ -31,7 +31,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         placeholder="Метод"
         aria-label="Метод"
         name="method"
-        value={filters.method || ""}
+        value={filters.method || ''}
         onChange={(e) => onChange({ ...filters, method: e.target.value })}
       />
       <input
@@ -39,7 +39,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         placeholder="Endpoint"
         aria-label="Endpoint"
         name="endpoint"
-        value={filters.endpoint || ""}
+        value={filters.endpoint || ''}
         onChange={(e) => onChange({ ...filters, endpoint: e.target.value })}
       />
       <input
@@ -47,7 +47,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         placeholder="Статус"
         aria-label="Статус"
         name="status"
-        value={filters.status || ""}
+        value={filters.status || ''}
         onChange={(e) =>
           onChange({ ...filters, status: Number(e.target.value) || undefined })
         }
@@ -57,7 +57,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         placeholder="Содержит текст"
         aria-label="Содержит текст"
         name="message"
-        value={filters.message || ""}
+        value={filters.message || ''}
         onChange={(e) => onChange({ ...filters, message: e.target.value })}
       />
       <input
@@ -65,7 +65,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         aria-label="От"
         name="from"
-        value={filters.from || ""}
+        value={filters.from || ''}
         onChange={(e) => onChange({ ...filters, from: e.target.value })}
       />
       <input
@@ -73,7 +73,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
         className="rounded border p-1"
         aria-label="До"
         name="to"
-        value={filters.to || ""}
+        value={filters.to || ''}
         onChange={(e) => onChange({ ...filters, to: e.target.value })}
       />
       <div className="flex items-center gap-1 text-sm">

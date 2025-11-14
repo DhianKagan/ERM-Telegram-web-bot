@@ -33,7 +33,11 @@ import {
   type TaskUserProfile,
 } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
-import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
+import {
+  getChatId,
+  chatId as staticChatId,
+  appUrl as baseAppUrl,
+} from '../config';
 import taskStatusKeyboard, {
   taskStatusInlineMarkup,
   type TaskStatusKeyboardExtras,
@@ -133,8 +137,7 @@ const detectTaskKind = (
     return 'task';
   }
   const source = task as Record<string, unknown>;
-  const rawKind =
-    typeof source.kind === 'string' ? source.kind.trim() : '';
+  const rawKind = typeof source.kind === 'string' ? source.kind.trim() : '';
   if (rawKind === 'request') return 'request';
   const typeValue =
     typeof source.task_type === 'string' ? source.task_type.trim() : '';
@@ -163,9 +166,7 @@ const toAbsoluteAttachmentUrl = (url: string): string | null => {
   if (!attachmentsBaseUrl) {
     return null;
   }
-  const normalizedPath = trimmed.startsWith('/')
-    ? trimmed.slice(1)
-    : trimmed;
+  const normalizedPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
   return `${attachmentsBaseUrl}/${normalizedPath}`;
 };
 
@@ -304,7 +305,10 @@ export default class TasksController {
     private reportGenerator: ReportGeneratorService,
   ) {}
 
-  private collectNotificationTargets(task: Partial<TaskDocument>, creatorId?: number) {
+  private collectNotificationTargets(
+    task: Partial<TaskDocument>,
+    creatorId?: number,
+  ) {
     const recipients = new Set<number>();
     const add = (value: unknown) => {
       const num = Number(value);
@@ -371,15 +375,19 @@ export default class TasksController {
     if (!error || typeof error !== 'object') {
       return false;
     }
-    const response = (error as {
-      response?: { error_code?: number; description?: unknown };
-    }).response;
+    const response = (
+      error as {
+        response?: { error_code?: number; description?: unknown };
+      }
+    ).response;
     if (!response || response.error_code !== 403) {
       return false;
     }
     const description =
       typeof response.description === 'string' ? response.description : '';
-    return description.toLowerCase().includes("bots can't send messages to bots");
+    return description
+      .toLowerCase()
+      .includes("bots can't send messages to bots");
   }
 
   private async markUserAsBot(userId: number): Promise<void> {
@@ -484,7 +492,8 @@ export default class TasksController {
       const url = hasInlineParam
         ? absolute
         : `${absolute}${absolute.includes('?') ? '&' : '?'}mode=inline`;
-      const caption = image.alt && image.alt.trim() ? image.alt.trim() : undefined;
+      const caption =
+        image.alt && image.alt.trim() ? image.alt.trim() : undefined;
       const payload: NormalizedImage = { kind: 'image', url };
       if (caption) {
         payload.caption = caption;
@@ -544,7 +553,8 @@ export default class TasksController {
             ? attachment.name.trim()
             : undefined;
         const size =
-          typeof attachment.size === 'number' && Number.isFinite(attachment.size)
+          typeof attachment.size === 'number' &&
+          Number.isFinite(attachment.size)
             ? attachment.size
             : undefined;
         if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
@@ -700,7 +710,9 @@ export default class TasksController {
           };
         };
         const mediaGroupOptions: SendMediaGroupOptions = {
-          ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+          ...(typeof topicId === 'number'
+            ? { message_thread_id: topicId }
+            : {}),
           ...mediaReplyParameters,
         };
         const selected = albumCandidates.slice(0, 10);
@@ -714,12 +726,10 @@ export default class TasksController {
               media: await this.resolvePhotoInputWithCache(item.url, cache),
             };
             const captionValue =
-              index === 0 ? albumCaption : item.caption ?? undefined;
+              index === 0 ? albumCaption : (item.caption ?? undefined);
             if (captionValue) {
               descriptor.caption =
-                index === 0
-                  ? captionValue
-                  : escapeMarkdownV2(captionValue);
+                index === 0 ? captionValue : escapeMarkdownV2(captionValue);
               descriptor.parse_mode = 'MarkdownV2';
             }
             return descriptor;
@@ -743,7 +753,9 @@ export default class TasksController {
     } else if (!skipAlbum && previewUrl) {
       try {
         const photoOptions: SendPhotoOptions = {
-          ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+          ...(typeof topicId === 'number'
+            ? { message_thread_id: topicId }
+            : {}),
           ...mediaReplyParameters,
           caption: albumCaption,
           parse_mode: 'MarkdownV2',
@@ -759,21 +771,25 @@ export default class TasksController {
         }
         consumedAlbumUrls.push(previewUrl);
       } catch (error) {
-        console.error('Не удалось отправить задачу с изображением превью', error);
+        console.error(
+          'Не удалось отправить задачу с изображением превью',
+          error,
+        );
       }
     }
 
-    const previewMessageIds = [
-      ...albumMessageIds,
-      ...supplementaryMessageIds,
-    ];
+    const previewMessageIds = [...albumMessageIds, ...supplementaryMessageIds];
 
     return {
       messageId: mainMessageId,
       usedPreview: albumMessageIds.length > 0,
       cache,
-      previewSourceUrls: consumedAlbumUrls.length ? consumedAlbumUrls : undefined,
-      previewMessageIds: previewMessageIds.length ? previewMessageIds : undefined,
+      previewSourceUrls: consumedAlbumUrls.length
+        ? consumedAlbumUrls
+        : undefined,
+      previewMessageIds: previewMessageIds.length
+        ? previewMessageIds
+        : undefined,
       consumedAttachmentUrls: consumedAlbumUrls,
     };
   }
@@ -961,12 +977,7 @@ export default class TasksController {
     if (!error || typeof error !== 'object') {
       return null;
     }
-    const {
-      response,
-      description,
-      message,
-      cause,
-    } = error as {
+    const { response, description, message, cause } = error as {
       response?: { description?: unknown };
       description?: unknown;
       message?: unknown;
@@ -1022,13 +1033,13 @@ export default class TasksController {
     };
     const descriptionText =
       typeof description === 'string' ? description.toLowerCase() : '';
-    const messageText = typeof message === 'string' ? message.toLowerCase() : '';
+    const messageText =
+      typeof message === 'string' ? message.toLowerCase() : '';
     return (
       descriptionText.includes('caption is too long') ||
       messageText.includes('caption is too long')
     );
   }
-
 
   private isMediaMessageTypeError(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
@@ -1038,15 +1049,17 @@ export default class TasksController {
     };
     const descriptionText =
       typeof description === 'string' ? description.toLowerCase() : '';
-    const messageText = typeof message === 'string' ? message.toLowerCase() : '';
+    const messageText =
+      typeof message === 'string' ? message.toLowerCase() : '';
     return (
       descriptionText.includes('message is not a media message') ||
       messageText.includes('message is not a media message')
     );
   }
 
-
-  private async resolveLocalPhotoInfo(url: string): Promise<LocalPhotoInfo | null> {
+  private async resolveLocalPhotoInfo(
+    url: string,
+  ): Promise<LocalPhotoInfo | null> {
     const fileId = this.extractLocalFileId(url);
     if (!fileId) return null;
     try {
@@ -1060,8 +1073,12 @@ export default class TasksController {
       }
       const query = fileModel.findById(fileId);
       const record =
-        query && typeof (query as unknown as { lean?: () => unknown }).lean === 'function'
-          ? await (query as unknown as { lean: () => Promise<FileDocument | null> }).lean()
+        query &&
+        typeof (query as unknown as { lean?: () => unknown }).lean ===
+          'function'
+          ? await (
+              query as unknown as { lean: () => Promise<FileDocument | null> }
+            ).lean()
           : ((await query) as unknown as FileDocument | null);
       if (!record || typeof record.path !== 'string' || !record.path.trim()) {
         return null;
@@ -1069,11 +1086,7 @@ export default class TasksController {
       const normalizedPath = record.path.trim();
       const target = path.resolve(uploadsAbsoluteDir, normalizedPath);
       const relative = path.relative(uploadsAbsoluteDir, target);
-      if (
-        !relative ||
-        relative.startsWith('..') ||
-        path.isAbsolute(relative)
-      ) {
+      if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
         return null;
       }
       await access(target);
@@ -1178,7 +1191,10 @@ export default class TasksController {
         if (!Number.isFinite(userId) || !Number.isFinite(messageId)) {
           return null;
         }
-        return { user_id: userId, message_id: messageId } satisfies DirectMessageEntry;
+        return {
+          user_id: userId,
+          message_id: messageId,
+        } satisfies DirectMessageEntry;
       })
       .filter((entry): entry is DirectMessageEntry => entry !== null);
   }
@@ -1203,7 +1219,9 @@ export default class TasksController {
       .filter((item): item is number => typeof item === 'number');
   }
 
-  private async deleteDirectMessages(entries: DirectMessageEntry[]): Promise<void> {
+  private async deleteDirectMessages(
+    entries: DirectMessageEntry[],
+  ): Promise<void> {
     if (!entries.length) return;
     await Promise.all(
       entries.map(async ({ user_id: userId, message_id: messageId }) => {
@@ -1277,11 +1295,8 @@ export default class TasksController {
     text: string;
     options: NonNullable<Parameters<typeof bot.telegram.sendMessage>[2]>;
   } {
-    const title =
-      typeof task.title === 'string' ? task.title.trim() : '';
-    const text = title
-      ? `*${escapeMarkdownV2(title)}*`
-      : 'Фото по задаче';
+    const title = typeof task.title === 'string' ? task.title.trim() : '';
+    const text = title ? `*${escapeMarkdownV2(title)}*` : 'Фото по задаче';
     const messageLink = options.messageLink ?? null;
     const inlineKeyboard = messageLink
       ? [[{ text: 'Перейти к задаче', url: messageLink }]]
@@ -1332,14 +1347,11 @@ export default class TasksController {
       return false;
     }
     if (!this.areTopicsEqual(expectedTopic, actualTopic)) {
-      console.warn(
-        'Пропускаем удаление сообщения задачи из другой темы',
-        {
-          expectedTopic,
-          actualTopic,
-          messageId,
-        },
-      );
+      console.warn('Пропускаем удаление сообщения задачи из другой темы', {
+        expectedTopic,
+        actualTopic,
+        messageId,
+      });
       return false;
     }
     try {
@@ -1347,9 +1359,7 @@ export default class TasksController {
       return true;
     } catch (error) {
       if (this.isMessageMissingOnDeleteError(error)) {
-        console.info(
-          `Сообщение ${messageId} задачи уже удалено в Telegram`,
-        );
+        console.info(`Сообщение ${messageId} задачи уже удалено в Telegram`);
         return true;
       }
       console.error(
@@ -1390,11 +1400,13 @@ export default class TasksController {
     try {
       const result = await Task.updateOne(filter, update).exec();
       const matched =
-        (typeof result === 'object' && result !== null && 'matchedCount' in result
+        (typeof result === 'object' &&
+        result !== null &&
+        'matchedCount' in result
           ? Number((result as { matchedCount: number }).matchedCount)
           : typeof result === 'object' && result !== null && 'n' in result
-          ? Number((result as { n: number }).n)
-          : 0) || 0;
+            ? Number((result as { n: number }).n)
+            : 0) || 0;
       if (guard && matched === 0) {
         console.warn(
           'Не удалось сохранить telegram_message_id из-за изменения состояния задачи',
@@ -1461,19 +1473,20 @@ export default class TasksController {
       return options;
     };
 
-    const localPhotoInfoCache = cache ?? new Map<string, LocalPhotoInfo | null>();
+    const localPhotoInfoCache =
+      cache ?? new Map<string, LocalPhotoInfo | null>();
     const resolvePhotoInput = (url: string) =>
       this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
 
     const pendingImages: { url: string; caption?: string }[] = [];
-    type SendMediaGroupOptions = (Parameters<
+    type SendMediaGroupOptions = Parameters<
       typeof bot.telegram.sendMediaGroup
     >[2] & {
       reply_parameters?: {
         message_id: number;
         allow_sending_without_reply?: boolean;
       };
-    });
+    };
     const mediaGroupOptionsBase = () => {
       const options: SendMediaGroupOptions = {};
       if (typeof topicId === 'number') {
@@ -1487,7 +1500,10 @@ export default class TasksController {
       }
       return options;
     };
-    const sendSingleImage = async (current: { url: string; caption?: string }) => {
+    const sendSingleImage = async (current: {
+      url: string;
+      caption?: string;
+    }) => {
       const caption = current.caption;
       const sendPhotoAttempt = async () => {
         const options = photoOptionsBase();
@@ -1582,7 +1598,10 @@ export default class TasksController {
 
     for (const attachment of attachments) {
       if (attachment.kind === 'image') {
-        pendingImages.push({ url: attachment.url, caption: attachment.caption });
+        pendingImages.push({
+          url: attachment.url,
+          caption: attachment.caption,
+        });
         continue;
       }
       await flushImages();
@@ -1642,16 +1661,22 @@ export default class TasksController {
     cacheOverride?: Map<string, LocalPhotoInfo | null>,
     previewMessageIds?: number[],
   ): Promise<number[] | null> {
-    const normalizedMessageIds = messageIds.filter((value): value is number =>
-      typeof value === 'number' && Number.isFinite(value),
+    const normalizedMessageIds = messageIds.filter(
+      (value): value is number =>
+        typeof value === 'number' && Number.isFinite(value),
     );
     const previewIdSet = new Set(
       (previewMessageIds ?? []).filter(
-        (value): value is number => typeof value === 'number' && Number.isFinite(value),
+        (value): value is number =>
+          typeof value === 'number' && Number.isFinite(value),
       ),
     );
-    const previewOnlyIds = normalizedMessageIds.filter((id) => previewIdSet.has(id));
-    const nonPreviewIds = normalizedMessageIds.filter((id) => !previewIdSet.has(id));
+    const previewOnlyIds = normalizedMessageIds.filter((id) =>
+      previewIdSet.has(id),
+    );
+    const nonPreviewIds = normalizedMessageIds.filter(
+      (id) => !previewIdSet.has(id),
+    );
     if (!next.length) {
       if (previewOnlyIds.length) {
         await this.deleteAttachmentMessages(chat, previewOnlyIds);
@@ -1690,7 +1715,7 @@ export default class TasksController {
             : null;
         const previousCaption =
           previousAttachment && previousAttachment.kind === 'image'
-            ? previousAttachment.caption ?? ''
+            ? (previousAttachment.caption ?? '')
             : '';
         const nextCaption = attachment.caption ?? '';
         const urlChanged = previousUrl !== attachment.url;
@@ -1741,7 +1766,8 @@ export default class TasksController {
         const nextName = attachment.name ?? '';
         const urlChanged = previousUrl !== attachment.url;
         const captionChanged = previousCaption !== nextCaption;
-        const metaChanged = previousMime !== nextMime || previousName !== nextName;
+        const metaChanged =
+          previousMime !== nextMime || previousName !== nextName;
         if (!urlChanged && !captionChanged && !metaChanged) {
           result.push(messageId);
           continue;
@@ -1757,7 +1783,12 @@ export default class TasksController {
           } else {
             media.caption = '';
           }
-          await bot.telegram.editMessageMedia(chat, messageId, undefined, media);
+          await bot.telegram.editMessageMedia(
+            chat,
+            messageId,
+            undefined,
+            media,
+          );
           result.push(messageId);
         } catch (error) {
           if (this.isMessageNotModifiedError(error)) {
@@ -1777,7 +1808,7 @@ export default class TasksController {
       if (attachment.kind === 'youtube') {
         const previousTitle =
           previousAttachment && previousAttachment.kind === 'youtube'
-            ? previousAttachment.title ?? ''
+            ? (previousAttachment.title ?? '')
             : '';
         const previousUrl =
           previousAttachment && previousAttachment.kind === 'youtube'
@@ -1837,8 +1868,8 @@ export default class TasksController {
         ? (rawResponse as { error_code?: number; description?: unknown })
         : null;
     const descriptionRaw =
-      (response?.description ??
-        (typeof record.description === 'string' ? record.description : null)) ??
+      response?.description ??
+      (typeof record.description === 'string' ? record.description : null) ??
       null;
     const description =
       typeof descriptionRaw === 'string' ? descriptionRaw.toLowerCase() : '';
@@ -1863,8 +1894,8 @@ export default class TasksController {
       return false;
     }
     const descriptionRaw =
-      (response?.description ??
-        (typeof record.description === 'string' ? record.description : null)) ??
+      response?.description ??
+      (typeof record.description === 'string' ? record.description : null) ??
       null;
     if (typeof descriptionRaw !== 'string') {
       return false;
@@ -1892,8 +1923,8 @@ export default class TasksController {
       return false;
     }
     const descriptionRaw =
-      (response?.description ??
-        (typeof record.description === 'string' ? record.description : null)) ??
+      response?.description ??
+      (typeof record.description === 'string' ? record.description : null) ??
       null;
     if (typeof descriptionRaw !== 'string') {
       return false;
@@ -1911,26 +1942,29 @@ export default class TasksController {
     },
   ) {
     const docId =
-      typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+      typeof task._id === 'object' &&
+      task._id !== null &&
+      'toString' in task._id
         ? (task._id as { toString(): string }).toString()
         : String(task._id ?? '');
     if (!docId) return;
 
     const plain = (
-      typeof task.toObject === 'function'
-        ? task.toObject()
-        : (task as unknown)
+      typeof task.toObject === 'function' ? task.toObject() : (task as unknown)
     ) as TaskWithMeta & Record<string, unknown>;
     const previousPlain = options?.previous ?? null;
     const action = options?.action ?? 'создана';
-    const noteRaw = typeof options?.note === 'string' ? options.note.trim() : '';
+    const noteRaw =
+      typeof options?.note === 'string' ? options.note.trim() : '';
     const dmNote = noteRaw || (action === 'обновлена' ? 'Задачу обновили' : '');
 
     const groupChatId = resolveGroupChatId();
     const normalizedGroupChatId = this.normalizeChatId(groupChatId);
     const photosTarget = await resolveTaskTypePhotosTarget(plain.task_type);
     const configuredPhotosChatId = this.normalizeChatId(photosTarget?.chatId);
-    const configuredPhotosTopicId = this.normalizeTopicId(photosTarget?.topicId);
+    const configuredPhotosTopicId = this.normalizeTopicId(
+      photosTarget?.topicId,
+    );
     const previousPhotosChatId = this.normalizeChatId(
       previousPlain?.telegram_photos_chat_id,
     );
@@ -1972,7 +2006,9 @@ export default class TasksController {
     const formatted = formatTask(plain as unknown as SharedTask, users);
     const message = formatted.text;
     const topicId = await this.resolveTaskTopicId(plain);
-    const previousTopicId = this.normalizeTopicId(previousPlain?.telegram_topic_id);
+    const previousTopicId = this.normalizeTopicId(
+      previousPlain?.telegram_topic_id,
+    );
     const normalizeMessageIds = (value: unknown): number[] =>
       Array.isArray(value)
         ? (value as unknown[])
@@ -2069,9 +2105,8 @@ export default class TasksController {
 
         const attachmentsChatValue =
           configuredPhotosChatId ?? groupChatId ?? normalizedGroupChatId;
-        const normalizedAttachmentsChatId = this.normalizeChatId(
-          attachmentsChatValue,
-        );
+        const normalizedAttachmentsChatId =
+          this.normalizeChatId(attachmentsChatValue);
         const attachmentsTopicIdForSend = (() => {
           if (typeof configuredPhotosTopicId === 'number') {
             return configuredPhotosTopicId;
@@ -2117,7 +2152,11 @@ export default class TasksController {
         );
         groupMessageId = sendResult.messageId;
         previewMessageIds = sendResult.previewMessageIds ?? [];
-        messageLink = buildChatMessageLink(groupChatId, groupMessageId, topicId);
+        messageLink = buildChatMessageLink(
+          groupChatId,
+          groupMessageId,
+          topicId,
+        );
         if (
           !shouldSendAttachmentsSeparately &&
           Array.isArray(sendResult.previewMessageIds) &&
@@ -2133,7 +2172,9 @@ export default class TasksController {
           }
         }
         const consumedUrls = new Set(
-          (sendResult.consumedAttachmentUrls ?? []).filter((url) => Boolean(url)),
+          (sendResult.consumedAttachmentUrls ?? []).filter((url) =>
+            Boolean(url),
+          ),
         );
         const extras = shouldSendAttachmentsSeparately
           ? media.extras
@@ -2222,11 +2263,11 @@ export default class TasksController {
           normalizedAttachmentsChatId
         ) {
           await delay(ALBUM_MESSAGE_DELAY_MS);
-      }
+        }
 
-      if (
-        groupMessageId &&
-        groupChatId &&
+        if (
+          groupMessageId &&
+          groupChatId &&
           docId &&
           typeof docId === 'string'
         ) {
@@ -2242,12 +2283,11 @@ export default class TasksController {
             kind,
             albumLinkForKeyboard,
           );
+        }
+      } catch (error) {
+        console.error('Не удалось отправить уведомление в группу', error);
       }
-
-    } catch (error) {
-      console.error('Не удалось отправить уведомление в группу', error);
     }
-  }
 
     if (groupChatId) {
       const baseMessageId =
@@ -2364,9 +2404,16 @@ export default class TasksController {
           continue;
         }
         try {
-          const sent = await bot.telegram.sendMessage(userId, dmText, dmOptions);
+          const sent = await bot.telegram.sendMessage(
+            userId,
+            dmText,
+            dmOptions,
+          );
           if (sent?.message_id) {
-            directMessages.push({ user_id: userId, message_id: sent.message_id });
+            directMessages.push({
+              user_id: userId,
+              message_id: sent.message_id,
+            });
           }
         } catch (error) {
           if (this.isBotRecipientError(error)) {
@@ -2446,7 +2493,10 @@ export default class TasksController {
       try {
         await Task.findByIdAndUpdate(docId, updatePayload).exec();
       } catch (error) {
-        console.error('Не удалось сохранить идентификаторы сообщений задачи', error);
+        console.error(
+          'Не удалось сохранить идентификаторы сообщений задачи',
+          error,
+        );
       }
     }
   }
@@ -2535,7 +2585,9 @@ export default class TasksController {
       if (statusValues.length) {
         const statusSet = new Set(statusValues);
         tasks = tasks.filter((task) =>
-          typeof task.status === 'string' ? statusSet.has(task.status.trim()) : false,
+          typeof task.status === 'string'
+            ? statusSet.has(task.status.trim())
+            : false,
         );
       }
       if (taskTypeValues.length) {
@@ -2566,7 +2618,9 @@ export default class TasksController {
             task.assignees.forEach(collect);
           }
           collect((task as Record<string, unknown>).assigned_user_id);
-          return Array.from(recipients).some((recipient) => assigneeSet.has(recipient));
+          return Array.from(recipients).some((recipient) =>
+            assigneeSet.has(recipient),
+          );
         });
       }
       total = tasks.length;
@@ -2576,7 +2630,8 @@ export default class TasksController {
       (t.assignees || []).forEach((id: number) => ids.add(id));
       (t.controllers || []).forEach((id: number) => ids.add(id));
       if (t.created_by) ids.add(t.created_by);
-      if (typeof t.transport_driver_id === 'number') ids.add(t.transport_driver_id);
+      if (typeof t.transport_driver_id === 'number')
+        ids.add(t.transport_driver_id);
       (t.history || []).forEach((h) => ids.add(h.changed_by));
     });
     const users = await getUsersMap(Array.from(ids));
@@ -2600,7 +2655,8 @@ export default class TasksController {
     (task.assignees || []).forEach((id: number) => ids.add(id));
     (task.controllers || []).forEach((id: number) => ids.add(id));
     if (task.created_by) ids.add(task.created_by);
-    if (typeof task.transport_driver_id === 'number') ids.add(task.transport_driver_id);
+    if (typeof task.transport_driver_id === 'number')
+      ids.add(task.transport_driver_id);
     (task.history || []).forEach((h) => ids.add(h.changed_by));
     const users = await getUsersMap(Array.from(ids));
     res.json({ task, users });
@@ -2678,7 +2734,10 @@ export default class TasksController {
       );
       res.status(201).json(task);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
-        console.error('Не удалось отправить уведомление о создании задачи', error);
+        console.error(
+          'Не удалось отправить уведомление о создании задачи',
+          error,
+        );
       });
     },
   ];
@@ -2739,7 +2798,10 @@ export default class TasksController {
       );
       res.status(201).json(task);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
-        console.error('Не удалось отправить уведомление о создании задачи', error);
+        console.error(
+          'Не удалось отправить уведомление о создании задачи',
+          error,
+        );
       });
     },
   ];
@@ -2751,7 +2813,8 @@ export default class TasksController {
       const previousTask = previousRaw
         ? ((typeof previousRaw.toObject === 'function'
             ? (previousRaw.toObject() as unknown)
-            : (previousRaw as unknown)) as TaskWithMeta & Record<string, unknown>)
+            : (previousRaw as unknown)) as TaskWithMeta &
+            Record<string, unknown>)
         : null;
       if (!previousTask) {
         await cleanupRequestUploads(req);
@@ -2905,7 +2968,8 @@ export default class TasksController {
             type: 'about:blank',
             title: 'Редактирование запрещено',
             status: 409,
-            detail: 'Редактирование доступно только для задач в статусе «Новая»',
+            detail:
+              'Редактирование доступно только для задач в статусе «Новая»',
           });
         } else {
           await cleanupRequestUploads(req);
@@ -2951,7 +3015,9 @@ export default class TasksController {
       );
       res.json(task);
       const docId =
-        typeof task._id === 'object' && task._id !== null && 'toString' in task._id
+        typeof task._id === 'object' &&
+        task._id !== null &&
+        'toString' in task._id
           ? (task._id as { toString(): string }).toString()
           : String(task._id ?? '');
       if (docId) {
@@ -3016,7 +3082,8 @@ export default class TasksController {
     const positionIds = positions
       .map((item) => (item?._id ? String(item._id) : null))
       .filter((id): id is string => typeof id === 'string' && id.length > 0);
-    let drivers: { telegram_id: number; name?: string; username?: string }[] = [];
+    let drivers: { telegram_id: number; name?: string; username?: string }[] =
+      [];
     if (positionIds.length > 0) {
       drivers = await User.find({ positionId: { $in: positionIds } })
         .select({ telegram_id: 1, name: 1, username: 1 })
@@ -3026,7 +3093,14 @@ export default class TasksController {
     const vehicles = await FleetVehicle.find()
       .select({ name: 1, registrationNumber: 1, transportType: 1 })
       .sort({ name: 1 })
-      .lean<{ _id: unknown; name: string; registrationNumber: string; transportType?: string }[]>();
+      .lean<
+        {
+          _id: unknown;
+          name: string;
+          registrationNumber: string;
+          transportType?: string;
+        }[]
+      >();
     res.json({
       drivers: drivers.map((driver) => ({
         id: driver.telegram_id,
@@ -3041,7 +3115,8 @@ export default class TasksController {
         name: vehicle.name,
         registrationNumber: vehicle.registrationNumber,
         transportType:
-          typeof vehicle.transportType === 'string' && vehicle.transportType.trim().length > 0
+          typeof vehicle.transportType === 'string' &&
+          vehicle.transportType.trim().length > 0
             ? vehicle.transportType
             : 'Легковой',
       })),
@@ -3136,9 +3211,7 @@ export default class TasksController {
     const groupChatId = resolveGroupChatId();
     const normalizedGroupChatId = this.normalizeChatId(groupChatId);
     const photosChatId = this.normalizeChatId(plain.telegram_photos_chat_id);
-    const photosTopicId = this.normalizeTopicId(
-      plain.telegram_photos_topic_id,
-    );
+    const photosTopicId = this.normalizeTopicId(plain.telegram_photos_topic_id);
     const photosMessageId = this.toMessageId(plain.telegram_photos_message_id);
     const messageTargets = new Map<
       number,
@@ -3157,7 +3230,11 @@ export default class TasksController {
         });
       }
     };
-    registerMessage(this.toMessageId(plain.telegram_message_id), topicId, topicId);
+    registerMessage(
+      this.toMessageId(plain.telegram_message_id),
+      topicId,
+      topicId,
+    );
     registerMessage(
       this.toMessageId(plain.telegram_history_message_id),
       topicId,
@@ -3206,8 +3283,10 @@ export default class TasksController {
       plain.telegram_dm_message_ids,
     );
 
-    const attachmentsChatValue = photosChatId ?? groupChatId ?? normalizedGroupChatId;
-    const normalizedAttachmentsChatId = this.normalizeChatId(attachmentsChatValue);
+    const attachmentsChatValue =
+      photosChatId ?? groupChatId ?? normalizedGroupChatId;
+    const normalizedAttachmentsChatId =
+      this.normalizeChatId(attachmentsChatValue);
     const uniquePreviewIds = Array.from(new Set(previewIds));
     const uniqueAttachmentIds = Array.from(new Set(attachmentIds));
     if (normalizedAttachmentsChatId) {

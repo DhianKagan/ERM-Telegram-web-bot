@@ -69,7 +69,9 @@ test.beforeEach(() => {
 });
 
 test.describe('Инлайн-загрузка файла через комментарий', () => {
-  test('назначает taskId файлу после обработки комментария', async ({ request }) => {
+  test('назначает taskId файлу после обработки комментария', async ({
+    request,
+  }) => {
     const fileId = '64d0a9f5a5b4c6d7e8f90123';
     const taskId = 'T-1024';
     files.set(fileId, { id: fileId, name: 'inline.png' });
@@ -81,11 +83,11 @@ test.describe('Инлайн-загрузка файла через коммен�
 
     expect(firstResponse.ok()).toBeTruthy();
     const firstBody = await firstResponse.json();
-    expect(firstBody.attachments).toEqual([
-      { url: `/api/v1/files/${fileId}` },
-    ]);
+    expect(firstBody.attachments).toEqual([{ url: `/api/v1/files/${fileId}` }]);
     expect(firstBody.assigned).toContain(fileId);
-    const stored = firstBody.files.find((entry: StoredFile) => entry.id === fileId);
+    const stored = firstBody.files.find(
+      (entry: StoredFile) => entry.id === fileId,
+    );
     expect(stored?.taskId).toBe(taskId);
 
     const secondResponse = await request.post(`${baseUrl}/bot/comment`, {

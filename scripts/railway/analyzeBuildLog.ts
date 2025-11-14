@@ -104,11 +104,13 @@ function parseCliArgs(argv: readonly string[]): CliOptions {
 }
 
 function printHelp(): void {
-  console.log(`Использование: pnpm ts-node scripts/railway/analyzeBuildLog.ts [опции] [файл]\n\n` +
-    `Опции:\n` +
-    `  --top <n>     Показать N самых долгих операций (по умолчанию 10).\n` +
-    `  -h, --help    Вывести эту справку.\n\n` +
-    `Если файл не указан, скрипт читает журнал из stdin.`);
+  console.log(
+    `Использование: pnpm ts-node scripts/railway/analyzeBuildLog.ts [опции] [файл]\n\n` +
+      `Опции:\n` +
+      `  --top <n>     Показать N самых долгих операций (по умолчанию 10).\n` +
+      `  -h, --help    Вывести эту справку.\n\n` +
+      `Если файл не указан, скрипт читает журнал из stdin.`,
+  );
 }
 
 async function readInput(inputPath?: string): Promise<string> {
@@ -164,7 +166,10 @@ function collectEntries(rawLog: string): RawEntry[] {
     if (tookMatch) {
       const duration = parseDurationToken(tookMatch[1]);
       if (duration !== null) {
-        const operation = trimmedLine.replace(/\s*\[took [^\]]+\]\s*/i, '').trim() || lastOperation || currentStage;
+        const operation =
+          trimmedLine.replace(/\s*\[took [^\]]+\]\s*/i, '').trim() ||
+          lastOperation ||
+          currentStage;
         entries.push({
           stage: currentStage,
           operation,
@@ -276,10 +281,14 @@ function aggregateEntries(entries: readonly RawEntry[]): AggregatedEntry[] {
     }
   }
 
-  return Array.from(grouped.values()).sort((left, right) => right.totalMs - left.totalMs);
+  return Array.from(grouped.values()).sort(
+    (left, right) => right.totalMs - left.totalMs,
+  );
 }
 
-function sumByStage(entries: readonly RawEntry[]): Array<{ stage: string; totalMs: number }> {
+function sumByStage(
+  entries: readonly RawEntry[],
+): Array<{ stage: string; totalMs: number }> {
   const totals = new Map<string, number>();
 
   for (const entry of entries) {
@@ -291,7 +300,10 @@ function sumByStage(entries: readonly RawEntry[]): Array<{ stage: string; totalM
     .map(([stage, totalMs]) => ({ stage, totalMs }));
 }
 
-function printAggregated(entries: readonly AggregatedEntry[], top: number): void {
+function printAggregated(
+  entries: readonly AggregatedEntry[],
+  top: number,
+): void {
   const limit = Math.min(top, entries.length);
   console.log(`ТОП-${limit} операций по суммарной длительности:`);
 
@@ -315,7 +327,9 @@ function printAggregated(entries: readonly AggregatedEntry[], top: number): void
   console.log('');
 }
 
-function printStageTotals(stageTotals: Array<{ stage: string; totalMs: number }>): void {
+function printStageTotals(
+  stageTotals: Array<{ stage: string; totalMs: number }>,
+): void {
   console.log('Суммарное время по стадиям:');
   for (const { stage, totalMs } of stageTotals) {
     console.log(`- ${stage}: ${formatDuration(totalMs)}`);

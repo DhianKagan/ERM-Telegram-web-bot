@@ -19,18 +19,28 @@
     "approve-builds": "pnpm approve-builds",
     "rebuild": "pnpm rebuild",
     "clean": "pnpm store prune && pnpm -r exec rimraf node_modules dist",
-    "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static mongodb-memory-server && pnpm rebuild"
+    "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static mongodb-memory-server && pnpm rebuild",
+    "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm audit",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "test:api": "pnpm --filter ./apps/api test --"
   },
   "devDependencies": {
+    "@eslint/js": "^9.14.0",
     "@tailwindcss/node": "^4.1.12",
     "@types/node": "24.10.0",
     "@typescript-eslint/eslint-plugin": "8.46.3",
     "@typescript-eslint/parser": "8.46.3",
     "eslint": "9.39.1",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "globals": "^13.24.0",
     "prettier": "3.6.2",
+    "ts-node": "^10.9.2",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
-    "vitest": "4.0.6"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "4.0.8",
+    "why-is-node-running": "^3.2.2"
   },
   "pnpm": {
     "overrides": {
@@ -51,7 +61,7 @@
       "tmp@<=0.2.3": ">=0.2.4",
       "@ckeditor/ckeditor5-clipboard@>=46.0.0 <46.0.3": ">=46.0.3",
       "ckeditor5@>=46.0.0 <46.0.3": ">=46.0.3",
-      "undici": "6.21.0"
+      "undici": "6.21.2"
     },
     "allowedBuiltDependencies": [
       "esbuild",
@@ -74,5 +84,14 @@
       "mongodb-memory-server",
       "sharp"
     ]
+  },
+  "dependencies": {
+    "validator": "^13.15.23"
+  },
+  "overrides": {
+    "@ckeditor/ckeditor5": "46.0.3",
+    "@ckeditor/ckeditor5-build-classic": "46.0.3",
+    "ckeditor5": "46.0.3",
+    "@ckeditor/ckeditor5-adapter-ckfinder>ckeditor5": "46.0.3"
   }
 }

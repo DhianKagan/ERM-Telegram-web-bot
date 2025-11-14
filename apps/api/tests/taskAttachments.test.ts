@@ -80,7 +80,8 @@ jest.mock('../src/services/tasks', () => ({
 }));
 
 const { createTask, updateTask } = require('../src/db/queries');
-const checkTaskAccess = require('../src/middleware/taskAccess').default as RequestHandler;
+const checkTaskAccess = require('../src/middleware/taskAccess')
+  .default as RequestHandler;
 const { ACCESS_USER } = require('../src/utils/accessMask');
 const tasksService = require('../src/services/tasks');
 const mockedGetById = tasksService.getById as jest.Mock;
@@ -166,7 +167,10 @@ describe('Привязка вложений к задачам', () => {
         _id: { $in: [fileId] },
         $or: [
           { taskId: createdTaskId },
-          { taskId: null, $or: [{ userId: null }, { userId: { $exists: false } }] },
+          {
+            taskId: null,
+            $or: [{ userId: null }, { userId: { $exists: false } }],
+          },
         ],
       },
       { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },

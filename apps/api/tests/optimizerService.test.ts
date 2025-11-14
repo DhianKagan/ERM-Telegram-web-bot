@@ -99,7 +99,9 @@ test('optimize распределяет задачи между машинами
   const plan = await optimize(ids, 2);
   expect(plan).not.toBeNull();
   expect(plan?.routes.length).toBe(2);
-  const all = plan ? plan.routes.flatMap((route) => route.tasks.map((task) => task.taskId)) : [];
+  const all = plan
+    ? plan.routes.flatMap((route) => route.tasks.map((task) => task.taskId))
+    : [];
   expect(new Set(all)).toEqual(new Set(ids));
 });
 

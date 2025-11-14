@@ -1,9 +1,9 @@
 // Панель изменения токенов темы
 // Модули: React, useTheme
-import { useState } from "react";
+import { useState } from 'react';
 
-import { Button } from "@/components/ui/button";
-import { useTheme } from "../context/useTheme";
+import { Button } from '@/components/ui/button';
+import { useTheme } from '../context/useTheme';
 
 export default function ThemePanel() {
   const { tokens, setTokens } = useTheme();
@@ -26,7 +26,7 @@ export default function ThemePanel() {
           id="theme-primary"
           name="themePrimary"
           value={local.primary}
-          onChange={(e) => change("primary", e.target.value)}
+          onChange={(e) => change('primary', e.target.value)}
         />
       </label>
       <label className="block">
@@ -36,12 +36,10 @@ export default function ThemePanel() {
           id="theme-background"
           name="themeBackground"
           value={local.background}
-          onChange={(e) => change("background", e.target.value)}
+          onChange={(e) => change('background', e.target.value)}
         />
       </label>
-      <Button onClick={save}>
-        Сохранить
-      </Button>
+      <Button onClick={save}>Сохранить</Button>
     </div>
   );
 }

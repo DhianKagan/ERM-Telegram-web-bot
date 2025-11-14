@@ -1,37 +1,41 @@
 // Назначение файла: контроллер состояния задач и их индексов для реактивного UI.
 // Основные модули: React, shared, taskColumns, coerceTaskId
-import { useSyncExternalStore } from "react";
-import type { Task } from "shared";
-import type { TaskRow } from "../columns/taskColumns";
-import coerceTaskId from "../utils/coerceTaskId";
+import { useSyncExternalStore } from 'react';
+import type { Task } from 'shared';
+import type { TaskRow } from '../columns/taskColumns';
+import coerceTaskId from '../utils/coerceTaskId';
 
 type Listener = () => void;
 
 type TaskInput =
-  | (Partial<TaskRow> & Partial<Task> & { _id?: string | number | null; id?: string | number | null })
+  | (Partial<TaskRow> &
+      Partial<Task> & {
+        _id?: string | number | null;
+        id?: string | number | null;
+      })
   | null
   | undefined;
 
 export interface TaskIndexMeta {
   key: string;
-  kind?: "task" | "request";
+  kind?: 'task' | 'request';
   mine?: boolean;
   userId?: number;
   pageSize?: number;
   total?: number;
-  sort?: "asc" | "desc";
+  sort?: 'asc' | 'desc';
   updatedAt: number;
 }
 
 const DEFAULT_PAGE_SIZE = 25;
 
-const REQUEST_TYPE_NAME = "Заявка";
+const REQUEST_TYPE_NAME = 'Заявка';
 
 const toNumber = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === "string" && value.trim()) {
+  if (typeof value === 'string' && value.trim()) {
     const parsed = Number(value.trim());
     if (Number.isFinite(parsed)) return parsed;
   }
@@ -48,10 +52,12 @@ const normalizeAssignees = (value: unknown): number[] => {
   return candidate !== null ? [candidate] : [];
 };
 
-const pickStringOrNull = (...candidates: unknown[]): string | null | undefined => {
+const pickStringOrNull = (
+  ...candidates: unknown[]
+): string | null | undefined => {
   let sawNull = false;
   for (const candidate of candidates) {
-    if (typeof candidate === "string") {
+    if (typeof candidate === 'string') {
       return candidate;
     }
     if (candidate === null) {
@@ -61,11 +67,14 @@ const pickStringOrNull = (...candidates: unknown[]): string | null | undefined =
   return sawNull ? null : undefined;
 };
 
-const resolveKind = (task: Partial<TaskRow> & Partial<Task>): "task" | "request" => {
-  if (task.kind === "request") return "request";
-  if (task.kind === "task") return "task";
-  const typeName = typeof task.task_type === "string" ? task.task_type.trim() : "";
-  return typeName === REQUEST_TYPE_NAME ? "request" : "task";
+const resolveKind = (
+  task: Partial<TaskRow> & Partial<Task>,
+): 'task' | 'request' => {
+  if (task.kind === 'request') return 'request';
+  if (task.kind === 'task') return 'task';
+  const typeName =
+    typeof task.task_type === 'string' ? task.task_type.trim() : '';
+  return typeName === REQUEST_TYPE_NAME ? 'request' : 'task';
 };
 
 const normalizeTask = (input: TaskInput): TaskRow | null => {
@@ -76,15 +85,18 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
     (input as Record<string, unknown>).task_id ??
     (input as Record<string, unknown>).taskId ??
     null;
-  const id = coerceTaskId(idCandidate) ??
-    (typeof idCandidate === "string" ? idCandidate.trim() : null);
+  const id =
+    coerceTaskId(idCandidate) ??
+    (typeof idCandidate === 'string' ? idCandidate.trim() : null);
   if (!id) return null;
   const statusRaw =
-    typeof input.status === "string" && input.status.trim() ? input.status.trim() : "Новая";
+    typeof input.status === 'string' && input.status.trim()
+      ? input.status.trim()
+      : 'Новая';
   const createdAt =
-    typeof (input as Record<string, unknown>).createdAt === "string"
+    typeof (input as Record<string, unknown>).createdAt === 'string'
       ? (input as Record<string, unknown>).createdAt
-      : typeof (input as Record<string, unknown>).created_at === "string"
+      : typeof (input as Record<string, unknown>).created_at === 'string'
         ? ((input as Record<string, unknown>).created_at as string)
         : undefined;
   const nextDueDate = pickStringOrNull(
@@ -110,7 +122,7 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
     ...(input as TaskRow),
     _id: id,
     id,
-    status: statusRaw as TaskRow["status"],
+    status: statusRaw as TaskRow['status'],
     assignees,
     createdAt: createdAt ?? (input as TaskRow).createdAt,
     dueDate: resolvedDueDate,
@@ -121,7 +133,10 @@ const normalizeTask = (input: TaskInput): TaskRow | null => {
   return normalized;
 };
 
-const matchesIndex = (meta: TaskIndexMeta | undefined, task: TaskRow): boolean => {
+const matchesIndex = (
+  meta: TaskIndexMeta | undefined,
+  task: TaskRow,
+): boolean => {
   if (!meta) return true;
   if (meta.kind && resolveKind(task) !== meta.kind) {
     return false;
@@ -145,7 +160,10 @@ const matchesIndex = (meta: TaskIndexMeta | undefined, task: TaskRow): boolean =
   return true;
 };
 
-const applyLimit = (ids: string[], meta: TaskIndexMeta | undefined): string[] => {
+const applyLimit = (
+  ids: string[],
+  meta: TaskIndexMeta | undefined,
+): string[] => {
   if (!meta) return ids;
   const limit = meta.pageSize && meta.pageSize > 0 ? meta.pageSize : 0;
   if (!limit) return ids;
@@ -210,7 +228,11 @@ export class TaskStateController {
     }
   }
 
-  setIndex(key: string, list: TaskInput[], meta?: Partial<Omit<TaskIndexMeta, "key" | "updatedAt">>) {
+  setIndex(
+    key: string,
+    list: TaskInput[],
+    meta?: Partial<Omit<TaskIndexMeta, 'key' | 'updatedAt'>>,
+  ) {
     const ids: string[] = [];
     list.forEach((item) => {
       const normalized = normalizeTask(item);
@@ -221,11 +243,12 @@ export class TaskStateController {
       ids.push(normalized.id);
     });
     this.indexes.set(key, ids);
-    const pageSize = meta?.pageSize ?? (ids.length ? ids.length : DEFAULT_PAGE_SIZE);
+    const pageSize =
+      meta?.pageSize ?? (ids.length ? ids.length : DEFAULT_PAGE_SIZE);
     const kind = meta?.kind;
     const mine = meta?.mine;
     const userId = meta?.userId;
-    const sort = meta?.sort ?? "desc";
+    const sort = meta?.sort ?? 'desc';
     const total = meta?.total ?? ids.length;
     this.storeMeta(key, {
       key,
@@ -254,7 +277,10 @@ export class TaskStateController {
       const has = ids.includes(normalized.id);
       const matches = matchesIndex(meta, next);
       if (matches && !has) {
-        const sorted = meta?.sort === "asc" ? [...ids, normalized.id] : [normalized.id, ...ids];
+        const sorted =
+          meta?.sort === 'asc'
+            ? [...ids, normalized.id]
+            : [normalized.id, ...ids];
         const limited = applyLimit(sorted, meta);
         this.indexes.set(key, limited);
         if (meta) {
@@ -293,8 +319,8 @@ export class TaskStateController {
   }
 
   remove(id: string | number | null | undefined) {
-    const normalizedId = coerceTaskId(id) ??
-      (typeof id === "string" ? id.trim() : null);
+    const normalizedId =
+      coerceTaskId(id) ?? (typeof id === 'string' ? id.trim() : null);
     if (!normalizedId) return;
     const existed = this.tasks.delete(normalizedId);
     let changed = existed;
@@ -335,7 +361,7 @@ export class TaskStateController {
         key,
         pageSize: DEFAULT_PAGE_SIZE,
         total: 0,
-        sort: "desc",
+        sort: 'desc',
         updatedAt: 0,
       });
       this.defaultMeta.set(key, fallback);

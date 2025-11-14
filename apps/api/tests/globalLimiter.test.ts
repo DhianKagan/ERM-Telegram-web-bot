@@ -17,7 +17,6 @@ test('превышение лимита возвращает 429', async () => {
   app.use(globalLimiter);
   app.get('/', (_req, res) => res.send('ok'));
   for (let i = 0; i < 100; i++) {
-    // eslint-disable-next-line no-await-in-loop
     await request(app).get('/');
   }
   const res = await request(app).get('/');

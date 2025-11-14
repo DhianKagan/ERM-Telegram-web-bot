@@ -1,59 +1,60 @@
 // Назначение: вкладка автопарка с ручным управлением транспортом
 // Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
-import DataTable from "../../components/DataTable";
-import Modal from "../../components/Modal";
-import { showToast } from "../../utils/toast";
+import { Button } from '@/components/ui/button';
+import DataTable from '../../components/DataTable';
+import Modal from '../../components/Modal';
+import { showToast } from '../../utils/toast';
 import {
   listFleetVehicles,
   createFleetVehicle,
   updateFleetVehicle,
   deleteFleetVehicle,
   type FleetVehiclePayload,
-} from "../../services/fleets";
-import type { FleetVehicleDto } from "shared";
-import FleetVehicleDialog from "./FleetVehicleDialog";
+} from '../../services/fleets';
+import type { FleetVehicleDto } from 'shared';
+import FleetVehicleDialog from './FleetVehicleDialog';
 import {
   fleetVehicleColumns,
   type FleetVehicleRow,
-} from "../../columns/fleetVehicleColumns";
+} from '../../columns/fleetVehicleColumns';
 import {
   SETTINGS_BADGE_CLASS,
   SETTINGS_BADGE_EMPTY,
   SETTINGS_BADGE_WRAPPER_CLASS,
-} from "./badgeStyles";
+} from './badgeStyles';
 
 const PAGE_LIMIT = 10;
 
-const transportHistoryFormatter = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
+const transportHistoryFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
 });
 
 const formatHistoryInstant = (value?: string): string => {
   if (!value) {
-    return "";
+    return '';
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "";
+    return '';
   }
   return transportHistoryFormatter.format(date);
 };
 
 const buildHistoryLabel = (
-  entry: NonNullable<FleetVehicleDto["transportHistory"]>[number],
+  entry: NonNullable<FleetVehicleDto['transportHistory']>[number],
 ): string => {
   const assigned = formatHistoryInstant(entry.assignedAt);
   const removed = formatHistoryInstant(entry.removedAt);
-  const title = entry.taskTitle && entry.taskTitle.trim().length
-    ? entry.taskTitle.trim()
-    : entry.taskId;
+  const title =
+    entry.taskTitle && entry.taskTitle.trim().length
+      ? entry.taskTitle.trim()
+      : entry.taskId;
   if (assigned && removed) {
     return `${assigned} — ${title} (до ${removed})`;
   }
@@ -67,12 +68,12 @@ const buildHistoryLabel = (
 };
 
 const formatTransportHistory = (
-  history?: FleetVehicleDto["transportHistory"],
+  history?: FleetVehicleDto['transportHistory'],
 ): string => {
   if (!history?.length) {
-    return "";
+    return '';
   }
-  return history.map(buildHistoryLabel).join("; ");
+  return history.map(buildHistoryLabel).join('; ');
 };
 
 type VehicleCardField = {
@@ -83,69 +84,69 @@ type VehicleCardField = {
 
 const vehicleCardFields: VehicleCardField[] = [
   {
-    id: "id",
-    label: "ID",
+    id: 'id',
+    label: 'ID',
     render: (vehicle) => vehicle.id,
   },
   {
-    id: "name",
-    label: "Название",
+    id: 'name',
+    label: 'Название',
     render: (vehicle) => vehicle.name,
   },
   {
-    id: "registrationNumber",
-    label: "Регистрационный номер",
+    id: 'registrationNumber',
+    label: 'Регистрационный номер',
     render: (vehicle) => vehicle.registrationNumber,
   },
   {
-    id: "odometerInitial",
-    label: "Одометр начальный",
+    id: 'odometerInitial',
+    label: 'Одометр начальный',
     render: (vehicle) => vehicle.odometerInitial,
   },
   {
-    id: "odometerCurrent",
-    label: "Одометр текущий",
+    id: 'odometerCurrent',
+    label: 'Одометр текущий',
     render: (vehicle) => vehicle.odometerCurrent,
   },
   {
-    id: "mileageTotal",
-    label: "Пробег",
+    id: 'mileageTotal',
+    label: 'Пробег',
     render: (vehicle) => vehicle.mileageTotal,
   },
   {
-    id: "transportType",
-    label: "Тип транспорта",
+    id: 'transportType',
+    label: 'Тип транспорта',
     render: (vehicle) => vehicle.transportType,
   },
   {
-    id: "fuelType",
-    label: "Тип топлива",
+    id: 'fuelType',
+    label: 'Тип топлива',
     render: (vehicle) => vehicle.fuelType,
   },
   {
-    id: "fuelRefilled",
-    label: "Заправлено",
+    id: 'fuelRefilled',
+    label: 'Заправлено',
     render: (vehicle) => vehicle.fuelRefilled,
   },
   {
-    id: "fuelAverageConsumption",
-    label: "Расход",
+    id: 'fuelAverageConsumption',
+    label: 'Расход',
     render: (vehicle) => vehicle.fuelAverageConsumption,
   },
   {
-    id: "fuelSpentTotal",
-    label: "Израсходовано",
+    id: 'fuelSpentTotal',
+    label: 'Израсходовано',
     render: (vehicle) => vehicle.fuelSpentTotal,
   },
   {
-    id: "currentTasks",
-    label: "Задачи",
+    id: 'currentTasks',
+    label: 'Задачи',
     render: (vehicle) =>
-      vehicle.currentTasks.length ? vehicle.currentTasks.join(", ") : "—",
+      vehicle.currentTasks.length ? vehicle.currentTasks.join(', ') : '—',
   },
   {
-    id: "transportHistory",
-    label: "История задач",
+    id: 'transportHistory',
+    label: 'История задач',
     render: (vehicle) =>
       vehicle.transportHistory?.length ? (
         <ul className="space-y-1 text-sm">
@@ -159,36 +160,36 @@ const vehicleCardFields: VehicleCardField[] = [
           ))}
         </ul>
       ) : (
-        "—"
+        '—'
       ),
   },
   {
-    id: "createdAt",
-    label: "Создан",
-    render: (vehicle) => vehicle.createdAt || "—",
+    id: 'createdAt',
+    label: 'Создан',
+    render: (vehicle) => vehicle.createdAt || '—',
   },
   {
-    id: "updatedAt",
-    label: "Обновлён",
-    render: (vehicle) => vehicle.updatedAt || "—",
+    id: 'updatedAt',
+    label: 'Обновлён',
+    render: (vehicle) => vehicle.updatedAt || '—',
   },
   {
-    id: "unitId",
-    label: "Устройство",
+    id: 'unitId',
+    label: 'Устройство',
     render: (vehicle) =>
       vehicle.unitId !== undefined && vehicle.unitId !== null
         ? vehicle.unitId
-        : "—",
+        : '—',
   },
   {
-    id: "remoteName",
-    label: "Удалённое имя",
-    render: (vehicle) => vehicle.remoteName || "—",
+    id: 'remoteName',
+    label: 'Удалённое имя',
+    render: (vehicle) => vehicle.remoteName || '—',
   },
   {
-    id: "notes",
-    label: "Примечания",
-    render: (vehicle) => vehicle.notes || "—",
+    id: 'notes',
+    label: 'Примечания',
+    render: (vehicle) => vehicle.notes || '—',
   },
 ];
 
@@ -196,18 +197,20 @@ export default function FleetVehiclesTab() {
   const [items, setItems] = useState<FleetVehicleDto[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [mode, setMode] = useState<"create" | "update">("create");
+  const [mode, setMode] = useState<'create' | 'update'>('create');
   const [saving, setSaving] = useState(false);
-  const [selectedVehicle, setSelectedVehicle] = useState<FleetVehicleDto | null>(
-    null,
-  );
+  const [selectedVehicle, setSelectedVehicle] =
+    useState<FleetVehicleDto | null>(null);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_LIMIT)), [total]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / PAGE_LIMIT)),
+    [total],
+  );
   const rows = useMemo<FleetVehicleRow[]>(
     () =>
       items.map((item) => ({
@@ -228,14 +231,16 @@ export default function FleetVehiclesTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
       const data = await listFleetVehicles(appliedSearch, page, PAGE_LIMIT);
       setItems(data.items);
       setTotal(data.total);
     } catch (loadError) {
       const message =
-        loadError instanceof Error ? loadError.message : "Не удалось загрузить транспорт";
+        loadError instanceof Error
+          ? loadError.message
+          : 'Не удалось загрузить транспорт';
       setError(message);
       setItems([]);
       setTotal(0);
@@ -249,13 +254,13 @@ export default function FleetVehiclesTab() {
   }, [load]);
 
   const openCreate = () => {
-    setMode("create");
+    setMode('create');
     setSelectedVehicle(null);
     setModalOpen(true);
   };
 
   const openEdit = (item: FleetVehicleDto) => {
-    setMode("update");
+    setMode('update');
     setSelectedVehicle(item);
     setModalOpen(true);
   };
@@ -269,12 +274,12 @@ export default function FleetVehiclesTab() {
   const submit = async (payload: FleetVehiclePayload, id?: string) => {
     setSaving(true);
     try {
-      if (mode === "create" || !id) {
+      if (mode === 'create' || !id) {
         await createFleetVehicle(payload);
-        showToast("Транспорт создан", "success");
+        showToast('Транспорт создан', 'success');
       } else {
         await updateFleetVehicle(id, payload);
-        showToast("Транспорт обновлён", "success");
+        showToast('Транспорт обновлён', 'success');
       }
       await load();
       setSelectedVehicle(null);
@@ -288,7 +293,7 @@ export default function FleetVehiclesTab() {
     setSaving(true);
     try {
       await deleteFleetVehicle(id);
-      showToast("Транспорт удалён", "success");
+      showToast('Транспорт удалён', 'success');
       await load();
       setSelectedVehicle(null);
       setModalOpen(false);
@@ -342,9 +347,13 @@ export default function FleetVehiclesTab() {
           Добавить
         </Button>
       </div>
-      {loading ? <p className="text-sm text-gray-500">Загрузка транспорта…</p> : null}
+      {loading ? (
+        <p className="text-sm text-gray-500">Загрузка транспорта…</p>
+      ) : null}
       {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </p>
       ) : null}
       {!loading && !error && !items.length ? (
         <p className="text-sm text-gray-500">Транспорт не найден.</p>
@@ -364,10 +373,7 @@ export default function FleetVehiclesTab() {
         badgeWrapperClassName={badgeWrapperClassName}
         badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
       />
-      <Modal
-        open={modalOpen}
-        onClose={closeModal}
-      >
+      <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-4">
           {selectedVehicle ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
@@ -376,7 +382,9 @@ export default function FleetVehiclesTab() {
                 {vehicleCardFields.map(({ id, label, render }) => (
                   <div key={id}>
                     <dt className="font-medium text-slate-500">{label}</dt>
-                    <dd className="text-slate-900">{render(selectedVehicle)}</dd>
+                    <dd className="text-slate-900">
+                      {render(selectedVehicle)}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -388,7 +396,7 @@ export default function FleetVehiclesTab() {
             vehicle={selectedVehicle}
             saving={saving}
             onSubmit={submit}
-            onDelete={mode === "update" ? remove : undefined}
+            onDelete={mode === 'update' ? remove : undefined}
             onClose={closeModal}
           />
         </div>

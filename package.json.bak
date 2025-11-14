@@ -1,0 +1,94 @@
+{
+  "name": "erm-workspace",
+  "private": true,
+  "description": "Монорепозиторий ERM Telegram Web Bot и связанных пакетов.",
+  "packageManager": "pnpm@10.20.0",
+  "workspaces": [
+    "ERM-Telegram-web-bot",
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "check": "pnpm -r run ci:fast",
+    "check:full": "pnpm -r run ci:full",
+    "approve-builds": "pnpm approve-builds",
+    "rebuild": "pnpm rebuild",
+    "clean": "pnpm store prune && pnpm -r exec rimraf node_modules dist",
+    "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static mongodb-memory-server && pnpm rebuild",
+    "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm audit",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@tailwindcss/node": "^4.1.12",
+    "@types/node": "24.10.0",
+    "@typescript-eslint/eslint-plugin": "8.46.3",
+    "@typescript-eslint/parser": "8.46.3",
+    "eslint": "9.39.1",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "globals": "^13.24.0",
+    "prettier": "3.6.2",
+    "ts-node": "^10.9.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "4.0.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "glob": "^7.2.3",
+      "rimraf": "^6.0.1",
+      "uuid": "^9.0.0",
+      "quill": "^2.0.3",
+      "jspdf@<=3.0.1": ">=3.0.2",
+      "@ckeditor/ckeditor5-clipboard@>=40.0.0 <43.1.1": ">=43.1.1",
+      "ckeditor5@>=40.0.0 <43.1.1": ">=43.1.1",
+      "zod": "^4.1.5",
+      "dompurify@<3.2.4": ">=3.2.4",
+      "react": "18.2.0",
+      "react-dom": "18.2.0",
+      "react-is": "18.3.1",
+      "hoist-non-react-statics": "3.3.2",
+      "use-sync-external-store": "1.5.0",
+      "tmp@<=0.2.3": ">=0.2.4",
+      "@ckeditor/ckeditor5-clipboard@>=46.0.0 <46.0.3": ">=46.0.3",
+      "ckeditor5@>=46.0.0 <46.0.3": ">=46.0.3",
+      "undici": "6.21.2"
+    },
+    "allowedBuiltDependencies": [
+      "esbuild",
+      "ffmpeg-static",
+      "mongodb-memory-server",
+      "sharp"
+    ],
+    "ignoredBuiltDependencies": [
+      "@scarf/scarf",
+      "@tailwindcss/oxide",
+      "chromedriver",
+      "core-js",
+      "ttf2woff2",
+      "unrs-resolver"
+    ],
+    "patchedDependencies": {},
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "ffmpeg-static",
+      "mongodb-memory-server",
+      "sharp"
+    ]
+  },
+  "dependencies": {
+    "validator": "^13.15.23"
+  },
+  "overrides": {
+    "@ckeditor/ckeditor5": "46.0.3",
+    "@ckeditor/ckeditor5-build-classic": "46.0.3",
+    "ckeditor5": "46.0.3"
+  }
+}

@@ -36,10 +36,9 @@ export default class StackOrchestratorService {
     private readonly logAnalysis: LogAnalysisService,
   ) {}
 
-  private async collectSnapshot(): Promise<[
-    FileSyncSnapshot,
-    RailwayLogAnalysisSummary | null,
-  ]> {
+  private async collectSnapshot(): Promise<
+    [FileSyncSnapshot, RailwayLogAnalysisSummary | null]
+  > {
     return Promise.all([
       getFileSyncSnapshot(),
       this.logAnalysis.getLatestSummary(),
@@ -79,9 +78,13 @@ export default class StackOrchestratorService {
       `- Всего файлов: ${fileSync.totalFiles}, связанных с задачами: ${fileSync.linkedFiles}, без задач: ${fileSync.detachedFiles}.`,
     );
     if (fileSync.detachedFiles === 0) {
-      lines.push('- Несвязанных вложений не обнаружено, синхронизация в норме.');
+      lines.push(
+        '- Несвязанных вложений не обнаружено, синхронизация в норме.',
+      );
     } else {
-      lines.push('- Обнаружены файлы без задач, требуется ручная проверка и очистка.');
+      lines.push(
+        '- Обнаружены файлы без задач, требуется ручная проверка и очистка.',
+      );
     }
 
     if (logAnalysis) {
@@ -107,7 +110,9 @@ export default class StackOrchestratorService {
       const autoCommands = logAnalysis.recommendations.filter(
         (rec) => rec.autoRun && rec.command,
       );
-      const manualRecs = logAnalysis.recommendations.filter((rec) => !rec.autoRun);
+      const manualRecs = logAnalysis.recommendations.filter(
+        (rec) => !rec.autoRun,
+      );
       if (autoCommands.length) {
         lines.push('- Автоматические команды:');
         autoCommands.forEach((rec) => {

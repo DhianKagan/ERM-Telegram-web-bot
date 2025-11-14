@@ -5,7 +5,7 @@ import { normalizeArrays } from '../apps/api/src/routes/tasks';
 
 describe('normalizeArrays', () => {
   const createReq = (body: Record<string, unknown>): Request =>
-    ({ body } as unknown as Request);
+    ({ body }) as unknown as Request;
   const res = {} as Response;
 
   it('парсит вложения из строки в формате JSON5', () => {
@@ -15,9 +15,9 @@ describe('normalizeArrays', () => {
     });
     const next = jest.fn() as unknown as NextFunction;
     normalizeArrays(req, res, next);
-    expect(Array.isArray((req.body as Record<string, unknown>).attachments)).toBe(
-      true,
-    );
+    expect(
+      Array.isArray((req.body as Record<string, unknown>).attachments),
+    ).toBe(true);
     const attachments = (req.body as { attachments: unknown[] }).attachments;
     expect(attachments).toHaveLength(1);
     expect(attachments[0]).toMatchObject({
@@ -41,12 +41,21 @@ describe('normalizeArrays', () => {
   });
 
   it('фильтрует посторонние значения в массиве вложений', () => {
-    const req = createReq({ attachments: ['строка', 5, { name: 'файл', url: '/api/v1/files/2', type: 'image/png', size: 2048 }] });
+    const req = createReq({
+      attachments: [
+        'строка',
+        5,
+        { name: 'файл', url: '/api/v1/files/2', type: 'image/png', size: 2048 },
+      ],
+    });
     const next = jest.fn() as unknown as NextFunction;
     normalizeArrays(req, res, next);
     const attachments = (req.body as { attachments?: unknown[] }).attachments;
     expect(attachments).toHaveLength(1);
-    expect(attachments?.[0]).toMatchObject({ name: 'файл', url: '/api/v1/files/2' });
+    expect(attachments?.[0]).toMatchObject({
+      name: 'файл',
+      url: '/api/v1/files/2',
+    });
     expect(next).toHaveBeenCalledTimes(1);
   });
 
@@ -54,7 +63,9 @@ describe('normalizeArrays', () => {
     const req = createReq({ assigned_user_id: ' 42 ' });
     const next = jest.fn() as unknown as NextFunction;
     normalizeArrays(req, res, next);
-    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBe('42');
+    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBe(
+      '42',
+    );
     expect((req.body as { assignees: unknown[] }).assignees).toEqual(['42']);
     expect(next).toHaveBeenCalledTimes(1);
   });
@@ -63,7 +74,9 @@ describe('normalizeArrays', () => {
     const req = createReq({ assigned_user_id: '' });
     const next = jest.fn() as unknown as NextFunction;
     normalizeArrays(req, res, next);
-    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBeNull();
+    expect(
+      (req.body as { assigned_user_id: unknown }).assigned_user_id,
+    ).toBeNull();
     expect((req.body as { assignees: unknown[] }).assignees).toEqual([]);
     expect(next).toHaveBeenCalledTimes(1);
   });

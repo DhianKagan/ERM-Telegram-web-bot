@@ -21,10 +21,7 @@ router.use(authMiddleware());
 router.use(Roles(ACCESS_USER) as unknown as RequestHandler);
 router.use(rolesGuard as unknown as RequestHandler);
 
-router.get(
-  '/:kind(task|request)',
-  asyncHandler(ctrl.get),
-);
+router.get('/:kind(task|request)', asyncHandler(ctrl.get));
 
 router.put(
   '/:kind(task|request)',
@@ -33,9 +30,6 @@ router.put(
   asyncHandler(ctrl.save),
 );
 
-router.delete(
-  '/:kind(task|request)',
-  asyncHandler(ctrl.remove),
-);
+router.delete('/:kind(task|request)', asyncHandler(ctrl.remove));
 
 export default router;

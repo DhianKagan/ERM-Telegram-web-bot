@@ -7,10 +7,7 @@ import type {
   Schema as MongooseSchema,
   Types as MongooseTypes,
 } from 'mongoose';
-import {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-} from './mongoUrl';
+import { getMongoUrlFromEnv, formatCredentialSources } from './mongoUrl';
 
 interface DotenvModule {
   config: (options: { path: string }) => void;
@@ -34,7 +31,9 @@ const mongoose: MongooseModule = (() => {
   try {
     return require('mongoose');
   } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'));
+    return require(
+      path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'),
+    );
   }
 })();
 
@@ -227,8 +226,9 @@ const toObjectId = (value: unknown): MongooseTypes.ObjectId | undefined => {
   return undefined;
 };
 
-const cloneMeta = (meta?: Record<string, unknown> | null): Record<string, unknown> | undefined =>
-  meta ? { ...meta } : undefined;
+const cloneMeta = (
+  meta?: Record<string, unknown> | null,
+): Record<string, unknown> | undefined => (meta ? { ...meta } : undefined);
 
 const describeContext = (doc: ReferenceDoc, entity: string): string => {
   const parts: string[] = [entity];
@@ -275,7 +275,8 @@ const normalizeCollectionItems = async (
     const id = toObjectIdHex(item._id);
     if (!id) return;
     const trimmedName = typeof item.name === 'string' ? item.name.trim() : '';
-    const trimmedValue = typeof item.value === 'string' ? item.value.trim() : '';
+    const trimmedValue =
+      typeof item.value === 'string' ? item.value.trim() : '';
     const finalName = trimmedName || `Элемент ${id}`;
     const finalValue = trimmedValue || finalName;
     const set: Record<string, unknown> = {};
@@ -409,8 +410,10 @@ export async function repairCollections(): Promise<RepairCounters> {
     const userResult = await processReferences(store, User, 'user');
     const taskResult = await processReferences(store, Task, 'task');
     const employeeResult = await processReferences(store, Employee, 'employee');
-    const restored = userResult.restored + taskResult.restored + employeeResult.restored;
-    const cleared = userResult.cleared + taskResult.cleared + employeeResult.cleared;
+    const restored =
+      userResult.restored + taskResult.restored + employeeResult.restored;
+    const cleared =
+      userResult.cleared + taskResult.cleared + employeeResult.cleared;
     if (normalized) {
       console.log(`Нормализовано элементов коллекций: ${normalized}`);
     }

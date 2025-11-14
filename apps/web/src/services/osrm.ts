@@ -15,7 +15,7 @@ export const fetchRouteGeometry = async (
   }
   const base =
     import.meta.env.VITE_ROUTING_URL ||
-    "https://router.project-osrm.org/route/v1/driving";
+    'https://router.project-osrm.org/route/v1/driving';
   const url = `${base}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
   const res = await fetch(url);
   if (!res.ok) return null;

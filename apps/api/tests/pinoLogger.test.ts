@@ -4,7 +4,12 @@ const express = require('express');
 const request = require('supertest');
 
 const info = jest.fn();
-const mockChild = { info, warn: jest.fn(), error: jest.fn(), child: () => mockChild };
+const mockChild = {
+  info,
+  warn: jest.fn(),
+  error: jest.fn(),
+  child: () => mockChild,
+};
 const mockLogger = { child: jest.fn(() => mockChild) };
 
 jest.mock('../src/services/wgLogEngine', () => ({

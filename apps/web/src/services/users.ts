@@ -1,8 +1,8 @@
 // Назначение: запросы к API пользователей
 // Основные модули: authFetch
-import authFetch from "../utils/authFetch";
-import type { User } from "../types/user";
-import { normalizeUser, normalizeUsers } from "./normalizeUser";
+import authFetch from '../utils/authFetch';
+import type { User } from '../types/user';
+import { normalizeUser, normalizeUsers } from './normalizeUser';
 
 export interface UserDetails extends User {
   email?: string;
@@ -11,11 +11,11 @@ export interface UserDetails extends User {
 }
 
 const referenceFields = new Set<
-  "roleId" | "departmentId" | "divisionId" | "positionId"
->(["roleId", "departmentId", "divisionId", "positionId"]);
+  'roleId' | 'departmentId' | 'divisionId' | 'positionId'
+>(['roleId', 'departmentId', 'divisionId', 'positionId']);
 
 const normalizeRoleId = (value?: string) => {
-  if (typeof value !== "string") return undefined;
+  if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
@@ -29,7 +29,7 @@ const buildCreateUserBody = (
   if (id !== undefined) {
     payload.id = id;
   }
-  if (typeof username === "string") {
+  if (typeof username === 'string') {
     const trimmed = username.trim();
     if (trimmed.length > 0) {
       payload.username = trimmed;
@@ -51,11 +51,11 @@ const sanitizeUserUpdatePayload = (data: Partial<User>): Partial<User> => {
       if (value === undefined || value === null) {
         return;
       }
-      if (typeof value === "string") {
+      if (typeof value === 'string') {
         const trimmed = value.trim();
         if (
           referenceFields.has(
-            key as "roleId" | "departmentId" | "divisionId" | "positionId",
+            key as 'roleId' | 'departmentId' | 'divisionId' | 'positionId',
           )
         ) {
           if (trimmed.length === 0) {
@@ -79,21 +79,21 @@ export const fetchUser = async (
   const res = await authFetch(`/api/v1/users/${id}`, { noRedirect: true });
   if (res.status === 404) return null;
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || "Не удалось загрузить пользователя");
+    const text = await res.text().catch(() => '');
+    throw new Error(text || 'Не удалось загрузить пользователя');
   }
   const data = await res.json();
   return normalizeUser(data) as UserDetails;
 };
 
 export const fetchUsers = async (): Promise<User[]> => {
-  const response = await authFetch("/api/v1/users");
+  const response = await authFetch('/api/v1/users');
   if (response.ok) {
     const data = await response.json();
     return Array.isArray(data) ? (normalizeUsers(data) as User[]) : [];
   }
-  const text = await response.text().catch(() => "");
-  throw new Error(text || "Не удалось загрузить пользователей");
+  const text = await response.text().catch(() => '');
+  throw new Error(text || 'Не удалось загрузить пользователей');
 };
 
 export const createUser = (
@@ -102,15 +102,15 @@ export const createUser = (
   roleId?: string,
 ) => {
   const body = buildCreateUserBody(id, username, roleId);
-  return authFetch("/api/v1/users", {
-    method: "POST",
+  return authFetch('/api/v1/users', {
+    method: 'POST',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then(async (r) => {
     if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      let message = "Не удалось создать пользователя";
+      const body = await r.text().catch(() => '');
+      let message = 'Не удалось создать пользователя';
       if (body) {
         try {
           const data = JSON.parse(body) as {
@@ -140,14 +140,14 @@ export const previewUserCredentials = (
   username?: string,
 ): Promise<GeneratedUserCredentials> =>
   authFetch(`/api/v1/users?preview=1`, {
-    method: "POST",
+    method: 'POST',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, username }),
   }).then(async (r) => {
     if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      let message = "Не удалось получить сгенерированные данные";
+      const body = await r.text().catch(() => '');
+      let message = 'Не удалось получить сгенерированные данные';
       if (body) {
         try {
           const parsed = JSON.parse(body) as {
@@ -171,14 +171,14 @@ export const updateUser = (
 ): Promise<UserDetails | null> => {
   const body = sanitizeUserUpdatePayload(data);
   return authFetch(`/api/v1/users/${id}`, {
-    method: "PATCH",
+    method: 'PATCH',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then(async (r) => {
     if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      let message = "Не удалось обновить пользователя";
+      const body = await r.text().catch(() => '');
+      let message = 'Не удалось обновить пользователя';
       if (body) {
         try {
           const parsed = JSON.parse(body) as {
@@ -200,14 +200,14 @@ export const updateUser = (
 
 export const deleteUser = async (id: number | string): Promise<void> => {
   const response = await authFetch(`/api/v1/users/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     confirmed: true,
   });
   if (response.status === 404) {
-    throw new Error("Пользователь не найден");
+    throw new Error('Пользователь не найден');
   }
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(body || "Не удалось удалить пользователя");
+    const body = await response.text().catch(() => '');
+    throw new Error(body || 'Не удалось удалить пользователя');
   }
 };

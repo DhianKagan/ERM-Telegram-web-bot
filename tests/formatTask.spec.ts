@@ -14,7 +14,9 @@ beforeAll(async () => {
     mongoDatabaseUrl: process.env.MONGO_DATABASE_URL!,
   }));
   ({ default: formatTask } = await import('../apps/api/src/utils/formatTask'));
-  ({ default: escapeMarkdownV2 } = await import('../apps/api/src/utils/mdEscape'));
+  ({ default: escapeMarkdownV2 } = await import(
+    '../apps/api/src/utils/mdEscape'
+  ));
 });
 
 describe('formatTask', () => {
@@ -295,7 +297,8 @@ describe('formatTask', () => {
     const task = {
       _id: '507f1f77bcf86cd799439077',
       task_number: 'OL-01',
-      task_description: '<ol><li>Первое действие</li><li>Второе действие</li></ol>',
+      task_description:
+        '<ol><li>Первое действие</li><li>Второе действие</li></ol>',
     };
 
     const { text } = formatTask(task as any, {});
@@ -305,4 +308,3 @@ describe('formatTask', () => {
     expect(descriptionSection).toContain('2\\. Второе действие');
   });
 });
-

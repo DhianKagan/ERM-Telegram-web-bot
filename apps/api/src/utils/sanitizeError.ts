@@ -1,9 +1,20 @@
 // Назначение: упрощённое представление ошибок без стека.
 // Основные модули: стандартные типы.
 
-export default function sanitizeError(err: unknown): string {
+export function sanitizeError(err: unknown): string {
   if (err instanceof Error) {
-    return `${err.name}: ${err.message}`;
+    const name = err.name || 'Error';
+    const message = err.message || '';
+    return message ? name + ': ' + message : name;
   }
-  return String(err);
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err);
+  } catch (jsonErr) {
+    return String(err);
+  }
 }
+
+export default sanitizeError;

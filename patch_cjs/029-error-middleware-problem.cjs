@@ -1,4 +1,20 @@
-/**
+#!/usr/bin/env node
+// patch: 029-error-middleware-problem.cjs
+// purpose: нормализовать errorMiddleware и sanitizeError для Problem Details ответов
+const fs = require('fs');
+const path = require('path');
+
+function writeFile(targetPath, content) {
+  let normalized = content;
+  if (normalized.endsWith('\\n')) {
+    normalized = normalized.slice(0, -2);
+  }
+  fs.writeFileSync(targetPath, normalized + '\n', 'utf8');
+  console.log('updated ' + path.relative(process.cwd(), targetPath));
+}
+
+const errorMiddlewarePath = path.resolve('apps/api/src/middleware/errorMiddleware.ts');
+const errorMiddlewareContent = `/**
  * Назначение файла: централизованный обработчик ошибок Express.
  * Основные модули: express, fs, path.
  */
@@ -37,7 +53,7 @@ function ensureLogDir(): void {
 function appendErrorLog(entry: string): void {
   try {
     ensureLogDir();
-    fs.appendFileSync(ERROR_LOG_FILE, entry + '\n', { encoding: 'utf8' });
+    fs.appendFileSync(ERROR_LOG_FILE, entry + '\\n', { encoding: 'utf8' });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('Не удалось записать в error.log:', e);
@@ -60,8 +76,7 @@ function isRequestAborted(err: unknown, req: Request): boolean {
   if (/AbortError/i.test(name)) {
     return true;
   }
-  const message =
-    typeof candidate.message === 'string' ? candidate.message : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
   return /aborted/i.test(message);
 }
 
@@ -79,8 +94,7 @@ function isCsrfError(err: unknown): boolean {
     return true;
   }
   const name = typeof candidate.name === 'string' ? candidate.name : '';
-  const message =
-    typeof candidate.message === 'string' ? candidate.message : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
   return /csrf/i.test(name) || /csrf/i.test(message);
 }
 
@@ -93,16 +107,10 @@ function resolveStatus(err: unknown, aborted: boolean, csrf: boolean): number {
   }
   if (err && typeof err === 'object') {
     const candidate = err as Partial<KnownError>;
-    if (
-      typeof candidate.status === 'number' &&
-      Number.isFinite(candidate.status)
-    ) {
+    if (typeof candidate.status === 'number' && Number.isFinite(candidate.status)) {
       return candidate.status;
     }
-    if (
-      typeof candidate.statusCode === 'number' &&
-      Number.isFinite(candidate.statusCode)
-    ) {
+    if (typeof candidate.statusCode === 'number' && Number.isFinite(candidate.statusCode)) {
       return candidate.statusCode;
     }
   }
@@ -169,21 +177,15 @@ export default function errorMiddleware(
   const csrfError = isCsrfError(err);
   const status = resolveStatus(err, aborted, csrfError);
   const clean = sanitizeError(err);
-  const traceId =
-    (res.locals && (res.locals.traceId || res.locals.trace)) || undefined;
-  const userId =
-    (res.locals && res.locals.user && res.locals.user.id) || undefined;
+  const traceId = (res.locals && (res.locals.traceId || res.locals.trace)) || undefined;
+  const userId = (res.locals && res.locals.user && res.locals.user.id) || undefined;
 
   const time = new Date().toISOString();
   const method = req.method;
   const url = req.originalUrl || req.url;
-  const ip =
-    req.ip ||
-    (req.connection && 'remoteAddress' in req.connection
-      ? String(
-          (req.connection as { remoteAddress?: unknown }).remoteAddress ?? '',
-        )
-      : undefined);
+  const ip = req.ip || (req.connection && 'remoteAddress' in req.connection
+    ? String((req.connection as { remoteAddress?: unknown }).remoteAddress ?? '')
+    : undefined);
 
   const body = getRequestBody(req);
   const stack = getStack(err, clean);
@@ -205,21 +207,7 @@ export default function errorMiddleware(
   };
 
   appendErrorLog(JSON.stringify(logObject));
-  appendErrorLog(
-    '--- ' +
-      time +
-      ' ' +
-      method +
-      ' ' +
-      url +
-      ' trace:' +
-      (traceId ?? '-') +
-      ' user:' +
-      (userId ?? '-') +
-      ' ip:' +
-      (ip ?? '-') +
-      ' ---',
-  );
+  appendErrorLog('--- ' + time + ' ' + method + ' ' + url + ' trace:' + (traceId ?? '-') + ' user:' + (userId ?? '-') + ' ip:' + (ip ?? '-') + ' ---');
   appendErrorLog(stack);
   appendErrorLog('');
 
@@ -227,14 +215,7 @@ export default function errorMiddleware(
   console.error('API error:', clean);
   try {
     writeLog(
-      'Ошибка ' +
-        clean +
-        ' path:' +
-        url +
-        ' ip:' +
-        (ip ?? '-') +
-        ' trace:' +
-        (traceId ?? '-'),
+      'Ошибка ' + clean + ' path:' + url + ' ip:' + (ip ?? '-') + ' trace:' + (traceId ?? '-'),
       'error',
     );
   } catch (writeErr) {
@@ -260,3 +241,31 @@ export default function errorMiddleware(
 
   res.status(problem.status).json(problem);
 }
+`;
+
+writeFile(errorMiddlewarePath, errorMiddlewareContent);
+
+const sanitizeErrorPath = path.resolve('apps/api/src/utils/sanitizeError.ts');
+const sanitizeErrorContent = `// Назначение: упрощённое представление ошибок без стека.
+// Основные модули: стандартные типы.
+
+export function sanitizeError(err: unknown): string {
+  if (err instanceof Error) {
+    const name = err.name || 'Error';
+    const message = err.message || '';
+    return message ? name + ': ' + message : name;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err);
+  } catch (jsonErr) {
+    return String(err);
+  }
+}
+
+export default sanitizeError;
+`;
+
+writeFile(sanitizeErrorPath, sanitizeErrorContent);

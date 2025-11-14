@@ -1,4 +1,20 @@
-/**
+#!/usr/bin/env node
+// patch: 029-error-middleware-problem.cjs
+// purpose: нормализовать errorMiddleware и sanitizeError для Problem Details ответов
+const fs = require('fs');
+const path = require('path');
+
+function writeFile(targetPath, content) {
+  let normalized = content;
+  if (normalized.endsWith('\\n')) {
+    normalized = normalized.slice(0, -2);
+  }
+  fs.writeFileSync(targetPath, normalized + '\n', 'utf8');
+  console.log('updated ' + path.relative(process.cwd(), targetPath));
+}
+
+const errorMiddlewarePath = path.resolve('apps/api/src/middleware/errorMiddleware.ts');
+const errorMiddlewareContent = `/**
  * Назначение файла: централизованный обработчик ошибок Express.
  * Основные модули: express, fs, path.
  */
@@ -37,7 +53,7 @@ function ensureLogDir(): void {
 function appendErrorLog(entry: string): void {
   try {
     ensureLogDir();
-    fs.appendFileSync(ERROR_LOG_FILE, entry + '\n', { encoding: 'utf8' });
+    fs.appendFileSync(ERROR_LOG_FILE, entry + '\\n', { encoding: 'utf8' });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('Не удалось записать в error.log:', e);
@@ -225,4 +241,31 @@ export default function errorMiddleware(
 
   res.status(problem.status).json(problem);
 }
+`;
 
+writeFile(errorMiddlewarePath, errorMiddlewareContent);
+
+const sanitizeErrorPath = path.resolve('apps/api/src/utils/sanitizeError.ts');
+const sanitizeErrorContent = `// Назначение: упрощённое представление ошибок без стека.
+// Основные модули: стандартные типы.
+
+export function sanitizeError(err: unknown): string {
+  if (err instanceof Error) {
+    const name = err.name || 'Error';
+    const message = err.message || '';
+    return message ? name + ': ' + message : name;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err);
+  } catch (jsonErr) {
+    return String(err);
+  }
+}
+
+export default sanitizeError;
+`;
+
+writeFile(sanitizeErrorPath, sanitizeErrorContent);

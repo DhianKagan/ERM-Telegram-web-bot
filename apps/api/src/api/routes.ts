@@ -133,8 +133,8 @@ export default async function registerRoutes(
       return next();
     // Wrap csrf: convert HTML error responses to application/problem+json for tests
     (function () {
-      const _origSend = res.send && res.send.bind(res);
-      const _origEnd = res.end && res.end.bind(res);
+      const _origSend: Response['send'] | undefined = res.send;
+      const _origEnd: Response['end'] | undefined = res.end;
       let __converted = false;
 
       function convertIfNeeded(body: unknown) {
@@ -170,30 +170,83 @@ export default async function registerRoutes(
       }
 
       if (_origSend) {
-        res.send = function (body) {
+        res.send = function (this: Response, body) {
           return _origSend.call(this, convertIfNeeded(body));
-        };
+        } as typeof res.send;
       }
 
       if (_origEnd) {
-        res.end = function (chunk, encoding) {
-          if (chunk) {
+        type EndCallback = (err?: Error) => void;
+        const endInvoker = _origEnd as (this: Response, ...args: unknown[]) => Response;
+        const invokeEnd = (context: Response, args: readonly unknown[]) =>
+          Reflect.apply(endInvoker, context, args as unknown[]);
+
+        res.end = function (
+          this: Response,
+          chunk?: string | Buffer,
+          encodingOrCallback?: BufferEncoding | EndCallback,
+          maybeCallback?: EndCallback,
+        ) {
+          const encoding: BufferEncoding | undefined =
+            typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined;
+          const callback: EndCallback | undefined =
+            typeof encodingOrCallback === 'function'
+              ? encodingOrCallback
+              : typeof maybeCallback === 'function'
+                ? maybeCallback
+                : undefined;
+
+          if (chunk !== undefined) {
             const chunkStr =
               typeof chunk === 'string'
                 ? chunk
                 : Buffer.isBuffer(chunk)
-                  ? chunk.toString((encoding as BufferEncoding | undefined) || 'utf8')
+                  ? chunk.toString(encoding ?? 'utf8')
                   : undefined;
+
             if (typeof chunkStr === 'string') {
               const converted = convertIfNeeded(chunkStr);
               if (typeof converted === 'string') {
-                const buffer = Buffer.from(converted, (encoding as BufferEncoding | undefined) || 'utf8');
-                return _origEnd.call(this, buffer, encoding);
+                const buffer = Buffer.from(converted, encoding ?? 'utf8');
+
+                if (encoding !== undefined && callback !== undefined) {
+                  return invokeEnd(this, [buffer, encoding, callback]);
+                }
+
+                if (encoding !== undefined) {
+                  return invokeEnd(this, [buffer, encoding]);
+                }
+
+                if (callback !== undefined) {
+                  return invokeEnd(this, [buffer, callback]);
+                }
+
+                return invokeEnd(this, [buffer]);
               }
             }
           }
-          return _origEnd.call(this, chunk, encoding);
-        };
+
+          if (typeof encodingOrCallback === 'function') {
+            return invokeEnd(this, [chunk, encodingOrCallback]);
+          }
+
+          if (typeof maybeCallback === 'function') {
+            if (typeof encodingOrCallback === 'string') {
+              return invokeEnd(this, [chunk, encodingOrCallback, maybeCallback]);
+            }
+            return invokeEnd(this, [chunk, maybeCallback]);
+          }
+
+          if (typeof encodingOrCallback === 'string') {
+            return invokeEnd(this, [chunk, encodingOrCallback]);
+          }
+
+          if (chunk !== undefined) {
+            return invokeEnd(this, [chunk]);
+          }
+
+          return invokeEnd(this, []);
+        } as typeof res.end;
       }
     })();
     return csrf(req, res, next);

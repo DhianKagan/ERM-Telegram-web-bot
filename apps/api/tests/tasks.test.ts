@@ -66,7 +66,7 @@ jest.mock('../src/bot/bot', () => ({
 jest.mock('../src/db/model', () => ({
   Task: {
     create: jest.fn(async (d) => ({
-      _id: '1',
+      _id: '507f191e810c19729de860ea',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
       ...d,
@@ -75,11 +75,11 @@ jest.mock('../src/db/model', () => ({
       time_spent: 0,
     })),
     findOneAndUpdate: jest.fn(async (query, d) => ({
-      _id: query._id,
+      _id: query._id || '507f191e810c19729de860ea',
       ...(d.$set || d),
     })),
     findById: jest.fn(async () => ({
-      _id: '1',
+      _id: '507f191e810c19729de860ea',
       time_spent: 0,
       save: jest.fn(),
       history: [],
@@ -118,9 +118,6 @@ jest.mock('../src/db/model', () => ({
   File: {
     find: jest.fn(() => ({
       lean: jest.fn().mockResolvedValue([]),
-    })),
-    deleteMany: jest.fn(() => ({
-      exec: jest.fn().mockResolvedValue(null),
     })),
   },
 }));

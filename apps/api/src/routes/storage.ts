@@ -17,11 +17,17 @@ import { asyncHandler } from '../api/middleware';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import type StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
+import TaskSyncController from '../controllers/taskSync.controller';
+import { syncTaskAttachments } from '../db/queries';
 
 const router: Router = Router();
 
 const diagnosticsController = container.resolve<StorageDiagnosticsController>(
   TOKENS.StorageDiagnosticsController,
+);
+
+const taskSyncController = container.resolve<TaskSyncController>(
+  TOKENS.TaskSyncController,
 );
 
 router.get(
@@ -67,7 +73,37 @@ router.delete(
   param('id').isMongoId() as unknown as RequestHandler,
   async (req, res, next: NextFunction) => {
     try {
-      await deleteFile(req.params.id);
+      const deletionResult = await deleteFile(req.params.id);
+      if (deletionResult?.taskId) {
+        const normalizedUserId =
+          typeof req.user?.id === 'number' && Number.isFinite(req.user.id)
+            ? req.user.id
+            : undefined;
+        const attachmentsForSync =
+          deletionResult.attachments !== undefined
+            ? deletionResult.attachments
+            : [];
+        try {
+          await syncTaskAttachments(
+            deletionResult.taskId,
+            attachmentsForSync,
+            normalizedUserId,
+          );
+        } catch (syncError) {
+          console.error(
+            'Не удалось обновить вложения задачи после удаления файла через Storage',
+            syncError,
+          );
+        }
+        try {
+          await taskSyncController.syncAfterChange(deletionResult.taskId);
+        } catch (telegramError) {
+          console.error(
+            'Не удалось синхронизировать задачу в Telegram после удаления файла через Storage',
+            telegramError,
+          );
+        }
+      }
       res.json({ ok: true });
     } catch (error: unknown) {
       const err = error as NodeJS.ErrnoException;

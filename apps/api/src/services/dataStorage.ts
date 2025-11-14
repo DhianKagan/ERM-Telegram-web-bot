@@ -391,7 +391,14 @@ export async function getFile(id: string): Promise<StoredFile | null> {
   } satisfies StoredFile;
 }
 
-export async function deleteFile(identifier: string): Promise<void> {
+export interface DeleteFileResult {
+  taskId?: string;
+  attachments?: Attachment[];
+}
+
+export async function deleteFile(
+  identifier: string,
+): Promise<DeleteFileResult | undefined> {
   const query: FilterQuery<FileDocument> = /^[0-9a-fA-F]{24}$/.test(identifier)
     ? { _id: identifier }
     : { path: identifier };
@@ -403,17 +410,40 @@ export async function deleteFile(identifier: string): Promise<void> {
   }
   await unlinkWithinUploads(file.path);
   await unlinkWithinUploads(file.thumbnailPath);
+  let updatedAttachments: Attachment[] | undefined;
+  let taskIdHex: string | undefined;
   if (file.taskId) {
-    await Task.updateOne(
-      { _id: file.taskId },
+    taskIdHex =
+      typeof file.taskId === 'string'
+        ? file.taskId
+        : file.taskId instanceof Types.ObjectId
+          ? file.taskId.toHexString()
+          : undefined;
+    const fileUrl = buildFileUrl(file._id);
+    const inlineUrl = buildInlineFileUrl(file._id);
+    const urlVariants = Array.from(
+      new Set([fileUrl, inlineUrl, `/api/v1/files/${file._id}`]),
+    );
+    const updatedTask = await Task.findByIdAndUpdate(
+      file.taskId,
       {
         $pull: {
-          attachments: { url: `/api/v1/files/${file._id}` },
-          files: `/api/v1/files/${file._id}`,
+          attachments: { url: { $in: urlVariants } },
+          files: { $in: urlVariants },
         },
       },
-    ).exec();
+      { new: true, projection: { attachments: 1 } },
+    )
+      .lean<{ attachments?: Attachment[] }>()
+      .exec();
+    if (updatedTask?.attachments && Array.isArray(updatedTask.attachments)) {
+      updatedAttachments = updatedTask.attachments;
+    }
   }
+  if (taskIdHex) {
+    return { taskId: taskIdHex, attachments: updatedAttachments };
+  }
+  return undefined;
 }
 
 export async function deleteFilesForTask(

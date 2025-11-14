@@ -14,8 +14,15 @@ import { deleteFile } from '../services/dataStorage';
 import { syncTaskAttachments } from '../db/queries';
 import { extractFileIdFromUrl } from '../utils/attachments';
 import validate from '../utils/validate';
+import container from '../di';
+import { TOKENS } from '../di/tokens';
+import TaskSyncController from '../controllers/taskSync.controller';
 
 const router: Router = Router();
+
+const taskSyncController = container.resolve<TaskSyncController>(
+  TOKENS.TaskSyncController,
+);
 
 router.get(
   '/:id',
@@ -175,8 +182,35 @@ router.delete(
           return;
         }
       }
-      await deleteFile(req.params.id);
+      const deletionResult = await deleteFile(req.params.id);
       void writeLog('Удалён файл', 'info', { userId: uid, name: file.name });
+      if (deletionResult?.taskId) {
+        const normalizedUserId = Number.isFinite(uid) ? Number(uid) : undefined;
+        const attachmentsForSync =
+          deletionResult.attachments !== undefined
+            ? deletionResult.attachments
+            : [];
+        try {
+          await syncTaskAttachments(
+            deletionResult.taskId,
+            attachmentsForSync,
+            normalizedUserId,
+          );
+        } catch (syncError) {
+          console.error(
+            'Не удалось обновить список вложений после удаления файла',
+            syncError,
+          );
+        }
+        try {
+          await taskSyncController.syncAfterChange(deletionResult.taskId);
+        } catch (telegramError) {
+          console.error(
+            'Не удалось синхронизировать задачу в Telegram после удаления файла',
+            telegramError,
+          );
+        }
+      }
       res.status(204).send();
     } catch (error) {
       const err = error as NodeJS.ErrnoException;

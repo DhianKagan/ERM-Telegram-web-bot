@@ -25,6 +25,101 @@ const INLINE_MIME_EXTENSION_MAP: Record<string, string> = {
   'image/heif': '.heif',
 };
 
+const ensureInlineFileUrl = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  if (!trimmed.includes('/api/v1/files/')) {
+    return trimmed;
+  }
+  if (/[?&]mode=inline(?:&|$)/.test(trimmed)) {
+    return trimmed;
+  }
+  const hashIndex = trimmed.indexOf('#');
+  const base = hashIndex === -1 ? trimmed : trimmed.slice(0, hashIndex);
+  const hash = hashIndex === -1 ? '' : trimmed.slice(hashIndex);
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}${separator}mode=inline${hash}`;
+};
+
+const normalizeSrcSet = (value: string | null | undefined): string | undefined => {
+  if (!value) return undefined;
+  const entries = value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => {
+      const [urlPart, ...rest] = entry.split(/\s+/);
+      const normalizedUrl = ensureInlineFileUrl(urlPart) ?? urlPart;
+      return rest.length ? `${normalizedUrl} ${rest.join(' ')}` : normalizedUrl;
+    })
+    .filter((entry) => entry.length > 0);
+  return entries.length > 0 ? entries.join(', ') : undefined;
+};
+
+const sanitizeWithInlineMode = (value: string): string => {
+  if (!value) return '';
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return DOMPurify.sanitize(value);
+  }
+  let fragment: DocumentFragment | null = null;
+  try {
+    const sanitized = DOMPurify.sanitize(value, {
+      RETURN_DOM_FRAGMENT: true,
+    }) as unknown;
+    fragment =
+      sanitized instanceof DocumentFragment
+        ? sanitized
+        : sanitized &&
+            typeof (sanitized as { cloneNode?: unknown }).cloneNode === 'function'
+          ? (sanitized as DocumentFragment)
+          : null;
+  } catch {
+    fragment = null;
+  }
+  if (!fragment) {
+    return DOMPurify.sanitize(value);
+  }
+  const images = fragment.querySelectorAll<HTMLImageElement>('img');
+  images.forEach((img) => {
+    const src = img.getAttribute('src');
+    const normalizedSrc = ensureInlineFileUrl(src);
+    if (normalizedSrc) {
+      img.setAttribute('src', normalizedSrc);
+    }
+    const srcset = normalizeSrcSet(img.getAttribute('srcset'));
+    if (srcset) {
+      img.setAttribute('srcset', srcset);
+    } else if (img.hasAttribute('srcset')) {
+      img.removeAttribute('srcset');
+    }
+  });
+  const sources = fragment.querySelectorAll<HTMLSourceElement>('source');
+  sources.forEach((source) => {
+    const srcset = normalizeSrcSet(source.getAttribute('srcset'));
+    if (srcset) {
+      source.setAttribute('srcset', srcset);
+    }
+    const src = ensureInlineFileUrl(source.getAttribute('src'));
+    if (src) {
+      source.setAttribute('src', src);
+    }
+  });
+  const anchors = fragment.querySelectorAll<HTMLAnchorElement>('a[href]');
+  anchors.forEach((anchor) => {
+    const href = ensureInlineFileUrl(anchor.getAttribute('href'));
+    if (href) {
+      anchor.setAttribute('href', href);
+    }
+  });
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(fragment);
+  return wrapper.innerHTML;
+};
+
 export function ensureInlineUploadFileName(file: File): string {
   const rawName = typeof file.name === 'string' ? file.name.trim() : '';
   const lowerName = rawName.toLowerCase();
@@ -121,7 +216,7 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const sanitizedPreview = useMemo(
-    () => (value ? DOMPurify.sanitize(value) : ''),
+    () => (value ? sanitizeWithInlineMode(value) : ''),
     [value],
   );
   const uploadAdapterPlugin = useMemo(

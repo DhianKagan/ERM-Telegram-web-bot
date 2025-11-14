@@ -1,22 +1,22 @@
 // Провайдер контекста задач, поиска и фильтров
-import React, { useState } from "react";
-import { taskStateController } from "../controllers/taskStateController";
+import React, { useState } from 'react';
+import { taskStateController } from '../controllers/taskStateController';
 import {
   TasksContext,
   type TaskFilters,
   type TaskFilterUser,
-} from "./TasksContext";
+} from './TasksContext';
 
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [version, setVersion] = useState(0);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<TaskFilters>({
     status: [],
     priority: [],
-    from: "",
-    to: "",
+    from: '',
+    to: '',
     taskTypes: [],
     assignees: [],
   });

@@ -147,7 +147,9 @@ test('логирует недоступность демона ClamAV', async ()
 test('ошибка сканирования ClamAV блокирует файл и пишет лог', async () => {
   mockPing.mockResolvedValue(true);
   mockIsCleanReply.mockReturnValue(true);
-  mockScanFile.mockImplementationOnce(() => Promise.reject(new Error('socket timeout')));
+  mockScanFile.mockImplementationOnce(() =>
+    Promise.reject(new Error('socket timeout')),
+  );
 
   const result = await scanFile('/tmp/file.txt');
 
@@ -218,7 +220,9 @@ describe('сигнатурный сканер', () => {
   });
 
   test('находит сигнатуру и отклоняет файл', async () => {
-    const file = await createTempFile('файл содержит EICAR-строку и должен быть отклонён');
+    const file = await createTempFile(
+      'файл содержит EICAR-строку и должен быть отклонён',
+    );
 
     const result = await scanFile(file);
 

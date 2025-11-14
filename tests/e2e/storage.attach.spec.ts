@@ -224,7 +224,9 @@ test.beforeEach(() => {
   files.splice(0, files.length, ...initialFiles.map((file) => ({ ...file })));
 });
 
-test('привязывает файл к задаче и показывает ошибку при запрете', async ({ page }) => {
+test('привязывает файл к задаче и показывает ошибку при запрете', async ({
+  page,
+}) => {
   await page.goto(`${baseUrl}/cp/storage`);
   await page.waitForSelector(`[data-row-id="${initialFiles[0].id}"]`);
 
@@ -236,10 +238,15 @@ test('привязывает файл к задаче и показывает о
   const request = await requestPromise;
   expect(request.postDataJSON()).toEqual({ taskId: tasks[0]._id });
   await expect(page.locator('#toast')).toHaveText(ru.storage.attach.success);
-  await expect(page.locator('#toast')).toHaveAttribute('data-status', 'success');
+  await expect(page.locator('#toast')).toHaveAttribute(
+    'data-status',
+    'success',
+  );
   await expect(
     page.locator(`[data-row-id="${initialFiles[0].id}"] .task`),
-  ).toHaveText(ru.storage.taskNumberLabel.replace('{{number}}', tasks[0].task_number));
+  ).toHaveText(
+    ru.storage.taskNumberLabel.replace('{{number}}', tasks[0].task_number),
+  );
 
   await page.selectOption(`#task-select-${initialFiles[1].id}`, tasks[0]._id);
   await page.click(`#attach-${initialFiles[1].id}`);

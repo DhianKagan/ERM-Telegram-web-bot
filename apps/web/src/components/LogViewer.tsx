@@ -1,10 +1,10 @@
 // Компонент просмотра логов на React Table
 // Модули: React, useLogsQuery, FiltersPanel, DataTable (лениво), logColumns
-import React, { lazy, Suspense } from "react";
-import useLogsQuery, { LogFilters } from "../hooks/useLogsQuery";
-import FiltersPanel from "./FiltersPanel";
-const DataTable = lazy(() => import("./DataTable"));
-import logColumns from "../columns/logColumns";
+import React, { lazy, Suspense } from 'react';
+import useLogsQuery, { LogFilters } from '../hooks/useLogsQuery';
+import FiltersPanel from './FiltersPanel';
+const DataTable = lazy(() => import('./DataTable'));
+import logColumns from '../columns/logColumns';
 
 export default function LogViewer() {
   const [filters, setFilters] = React.useState<LogFilters>({});

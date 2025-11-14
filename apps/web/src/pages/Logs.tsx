@@ -1,6 +1,6 @@
 // Страница просмотра логов
-import React from "react";
-import LogViewer from "../components/LogViewer";
+import React from 'react';
+import LogViewer from '../components/LogViewer';
 
 export default function Logs() {
   return (

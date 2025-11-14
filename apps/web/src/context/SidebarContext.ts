@@ -1,5 +1,5 @@
 // Контекст состояния боковой панели
-import { createContext } from "react";
+import { createContext } from 'react';
 
 export interface SidebarState {
   open: boolean;
@@ -11,4 +11,4 @@ export const SidebarContext = createContext<SidebarState | undefined>(
 );
 
 // Экспорт провайдера из соседнего файла
-export { SidebarProvider } from "./SidebarContext.tsx";
+export { SidebarProvider } from './SidebarContext.tsx';

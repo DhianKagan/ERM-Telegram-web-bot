@@ -1,9 +1,9 @@
 // Провайдер темы и токенов
 // Модули: React, next-themes, ThemeContext
-import { useState, useEffect, useRef, type ReactNode } from "react";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { ThemeContext, type ThemeTokens } from "./ThemeContext";
-import presets from "../theme/presets.json";
+import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { ThemeContext, type ThemeTokens } from './ThemeContext';
+import presets from '../theme/presets.json';
 
 function getCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -15,16 +15,18 @@ function setCookie(name: string, value: string) {
 }
 
 const presetMap = presets as Record<string, ThemeTokens>;
-const defaultTheme = "light";
+const defaultTheme = 'light';
 
 function sanitizeTokens(
   source: unknown,
   base: ThemeTokens,
 ): Partial<ThemeTokens> | null {
-  if (!source || typeof source !== "object") return null;
+  if (!source || typeof source !== 'object') return null;
   const sanitized: Partial<ThemeTokens> = {};
-  for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
-    if (typeof value === "string" && key in base) {
+  for (const [key, value] of Object.entries(
+    source as Record<string, unknown>,
+  )) {
+    if (typeof value === 'string' && key in base) {
       sanitized[key as keyof ThemeTokens] = value;
     }
   }
@@ -32,7 +34,7 @@ function sanitizeTokens(
 }
 
 function readThemeCookie(): string {
-  const cookieTheme = getCookie("theme");
+  const cookieTheme = getCookie('theme');
   return cookieTheme && presetMap[cookieTheme] ? cookieTheme : defaultTheme;
 }
 
@@ -40,14 +42,14 @@ function readTokensCookie(
   theme: string,
   base: ThemeTokens,
 ): Partial<ThemeTokens> | null {
-  const raw = getCookie("theme-tokens");
+  const raw = getCookie('theme-tokens');
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object") return null;
-    if ("theme" in parsed || "tokens" in parsed) {
+    if (!parsed || typeof parsed !== 'object') return null;
+    if ('theme' in parsed || 'tokens' in parsed) {
       const cookieTheme = (parsed as { theme?: unknown }).theme;
-      if (typeof cookieTheme === "string" && cookieTheme !== theme) {
+      if (typeof cookieTheme === 'string' && cookieTheme !== theme) {
         return null;
       }
       const cookieTokens = sanitizeTokens(
@@ -102,9 +104,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }
     appliedKeys.current = currentKeys;
-    root.classList.toggle("dark", theme === "dark");
-    setCookie("theme", theme);
-    setCookie("theme-tokens", JSON.stringify({ theme, tokens }));
+    root.classList.toggle('dark', theme === 'dark');
+    setCookie('theme', theme);
+    setCookie('theme-tokens', JSON.stringify({ theme, tokens }));
   }, [tokens, theme]);
 
   return (

@@ -13,7 +13,9 @@ export function publishTrackingEvent(event: TrackingEvent): void {
   emitter.emit('event', event);
 }
 
-export function subscribeTrackingEvents(listener: TrackingListener): () => void {
+export function subscribeTrackingEvents(
+  listener: TrackingListener,
+): () => void {
   emitter.on('event', listener);
   return () => {
     emitter.off('event', listener);

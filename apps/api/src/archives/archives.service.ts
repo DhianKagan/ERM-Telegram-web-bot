@@ -14,9 +14,7 @@ type LeanArchiveTask = (TaskAttrs & {
   Record<string, unknown>;
 
 interface ArchivesRepository {
-  listArchivedTasks(
-    params: ArchiveListParams,
-  ): Promise<{
+  listArchivedTasks(params: ArchiveListParams): Promise<{
     items: LeanArchiveTask[];
     total: number;
     page: number;

@@ -1,13 +1,16 @@
 // Назначение: запускает колбэк по таймеру с учётом видимости вкладки
 // Основные модули: React, document.visibilityState
-import React from "react";
+import React from 'react';
 
 interface UseIntervalEffectOptions {
   enabled?: boolean;
   immediate?: boolean;
   pauseOnHidden?: boolean;
   deps?: React.DependencyList;
-  document?: Pick<Document, "hidden" | "addEventListener" | "removeEventListener">;
+  document?: Pick<
+    Document,
+    'hidden' | 'addEventListener' | 'removeEventListener'
+  >;
 }
 
 const useIntervalEffect = (
@@ -34,7 +37,8 @@ const useIntervalEffect = (
     }
 
     const doc =
-      customDocument ?? (typeof document !== "undefined" ? document : undefined);
+      customDocument ??
+      (typeof document !== 'undefined' ? document : undefined);
 
     const isHidden = () => Boolean(pauseOnHidden && doc?.hidden);
 
@@ -78,7 +82,7 @@ const useIntervalEffect = (
     schedule();
 
     let handleVisibility: (() => void) | null = null;
-    if (doc && pauseOnHidden && typeof doc.addEventListener === "function") {
+    if (doc && pauseOnHidden && typeof doc.addEventListener === 'function') {
       handleVisibility = () => {
         if (disposed) {
           return;
@@ -90,14 +94,18 @@ const useIntervalEffect = (
           schedule();
         }
       };
-      doc.addEventListener("visibilitychange", handleVisibility);
+      doc.addEventListener('visibilitychange', handleVisibility);
     }
 
     return () => {
       disposed = true;
       clear();
-      if (handleVisibility && doc && typeof doc.removeEventListener === "function") {
-        doc.removeEventListener("visibilitychange", handleVisibility);
+      if (
+        handleVisibility &&
+        doc &&
+        typeof doc.removeEventListener === 'function'
+      ) {
+        doc.removeEventListener('visibilitychange', handleVisibility);
       }
     };
   }, [customDocument, delay, enabled, immediate, pauseOnHidden, ...deps]);

@@ -3,9 +3,9 @@
 let memoryToken: string | null;
 
 export function getCsrfToken(): string | null {
-  if (typeof localStorage !== "undefined") {
+  if (typeof localStorage !== 'undefined') {
     try {
-      return localStorage.getItem("csrfToken") || memoryToken || null;
+      return localStorage.getItem('csrfToken') || memoryToken || null;
     } catch {
       return memoryToken || null;
     }
@@ -14,9 +14,9 @@ export function getCsrfToken(): string | null {
 }
 
 export function setCsrfToken(t: string): void {
-  if (typeof localStorage !== "undefined") {
+  if (typeof localStorage !== 'undefined') {
     try {
-      localStorage.setItem("csrfToken", t);
+      localStorage.setItem('csrfToken', t);
       memoryToken = t;
       return;
     } catch {

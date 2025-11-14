@@ -88,7 +88,10 @@ const buildStatusRows = (
   ];
   if (options.kind !== 'request') {
     actionsRow.push(
-      Markup.button.callback('Запрос на отмену', `task_cancel_request_prompt:${id}`),
+      Markup.button.callback(
+        'Запрос на отмену',
+        `task_cancel_request_prompt:${id}`,
+      ),
     );
   }
   rows.push(actionsRow);
@@ -98,30 +101,36 @@ const buildStatusRows = (
 export function taskAcceptConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
-  const rows: InlineKeyboardMatrix = [[
-    Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_accept_cancel:${id}`),
-  ]];
+  const rows: InlineKeyboardMatrix = [
+    [
+      Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`),
+      Markup.button.callback('Отмена', `task_accept_cancel:${id}`),
+    ],
+  ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
 
 export function taskDoneConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
-  const rows: InlineKeyboardMatrix = [[
-    Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_done_cancel:${id}`),
-  ]];
+  const rows: InlineKeyboardMatrix = [
+    [
+      Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
+      Markup.button.callback('Отмена', `task_done_cancel:${id}`),
+    ],
+  ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
 
 export function taskCancelConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
-  const rows: InlineKeyboardMatrix = [[
-    Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`),
-    Markup.button.callback('Отмена', `task_cancel_cancel:${id}`),
-  ]];
+  const rows: InlineKeyboardMatrix = [
+    [
+      Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`),
+      Markup.button.callback('Отмена', `task_cancel_cancel:${id}`),
+    ],
+  ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
 
@@ -137,7 +146,9 @@ export default function taskStatusKeyboard(
     extraRow.push(Markup.button.url('Фотоальбом', extras.albumLink));
   }
   if (extras.showCommentButton !== false) {
-    extraRow.push(Markup.button.callback('Комментарий', `task_comment_prompt:${id}`));
+    extraRow.push(
+      Markup.button.callback('Комментарий', `task_comment_prompt:${id}`),
+    );
   }
   if (extraRow.length) {
     rows.unshift(extraRow);
@@ -157,7 +168,9 @@ export function taskStatusInlineMarkup(
     extraRow.push(Markup.button.url('Фотоальбом', extras.albumLink));
   }
   if (extras.showCommentButton !== false) {
-    extraRow.push(Markup.button.callback('Комментарий', `task_comment_prompt:${id}`));
+    extraRow.push(
+      Markup.button.callback('Комментарий', `task_comment_prompt:${id}`),
+    );
   }
   if (extraRow.length) {
     rows.unshift(extraRow);

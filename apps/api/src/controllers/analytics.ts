@@ -21,13 +21,20 @@ const parseStatus = (value: unknown): RoutePlanStatus | undefined => {
   if (typeof value !== 'string') return undefined;
   const normalized = value.trim();
   if (!normalized) return undefined;
-  if (normalized === 'draft' || normalized === 'approved' || normalized === 'completed') {
+  if (
+    normalized === 'draft' ||
+    normalized === 'approved' ||
+    normalized === 'completed'
+  ) {
     return normalized;
   }
   return undefined;
 };
 
-export async function routePlanSummary(req: Request, res: Response): Promise<void> {
+export async function routePlanSummary(
+  req: Request,
+  res: Response,
+): Promise<void> {
   try {
     const result = await fetchRoutePlanAnalytics({
       from: parseDate(req.query.from),

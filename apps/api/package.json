@@ -15,7 +15,8 @@
     "chaos": "ts-node ../../scripts/chaos.ts",
     "test:types": "tsd --cwd apps/api --project tsconfig.json --files tests/requestWithUser.test-d.ts --files src/types/request.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
-    "lint": "node --loader ts-node/esm ./node_modules/eslint/bin/eslint.js -c ../../eslint.config.ts src"
+    "lint": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.config.ts src",
+    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts src"
   },
   "author": "",
   "license": "ISC",
@@ -60,7 +61,7 @@
     "swagger-ui-express": "^5.0.1",
     "telegraf": "^4.16.3",
     "tsyringe": "^4.10.0",
-    "undici": "^6.21.0"
+    "undici": "6.22.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",

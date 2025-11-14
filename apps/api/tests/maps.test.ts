@@ -85,7 +85,10 @@ test('searchAddress нормализует подсказки', async () => {
       },
     ],
   });
-  const results = await searchAddress('шевченка', { limit: 7, language: 'uk-UA,uk' });
+  const results = await searchAddress('шевченка', {
+    limit: 7,
+    language: 'uk-UA,uk',
+  });
   expect(global.fetch).toHaveBeenCalledWith(
     expect.stringContaining('/search?'),
     expect.objectContaining({

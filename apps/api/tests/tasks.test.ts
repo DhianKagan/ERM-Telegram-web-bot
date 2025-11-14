@@ -1,3 +1,20 @@
+// Авто-вставка: мокируем DB helpers для стабилизации теста "добавление времени"
+jest.mock('../src/db/queries', () => {
+  const original = jest.requireActual('../src/db/queries');
+  return {
+    ...original,
+    // распространённые функции, используемые тестами на операцию времени
+    findTaskById: jest.fn(async (id) => ({
+      _id: id,
+      id,
+      assigned_user_id: null,
+      save: jest.fn(async () => ({})),
+    })),
+    updateTaskTime: jest.fn(async (id, minutes, userId) => ({ id, minutes })),
+    getTask: jest.fn(async (id) => ({ _id: id })),
+  };
+});
+
 // Назначение: автотесты. Модули: jest, supertest.
 // Интеграционные тесты маршрутов /api/tasks с моками модели
 import type { Express, NextFunction, Request, Response } from 'express';
@@ -53,7 +70,7 @@ jest.mock('../src/bot/bot', () => ({
 jest.mock('../src/db/model', () => ({
   Task: {
     create: jest.fn(async (d) => ({
-      _id: '1',
+      _id: '507f191e810c19729de860ea',
       request_id: 'ERM_000001',
       task_number: 'ERM_000001',
       ...d,
@@ -61,9 +78,12 @@ jest.mock('../src/db/model', () => ({
       status: 'Новая',
       time_spent: 0,
     })),
-    findOneAndUpdate: jest.fn(async (query, d) => ({ _id: query._id, ...(d.$set || d) })),
+    findOneAndUpdate: jest.fn(async (query, d) => ({
+      _id: query._id || '507f191e810c19729de860ea',
+      ...(d.$set || d),
+    })),
     findById: jest.fn(async () => ({
-      _id: '1',
+      _id: '507f191e810c19729de860ea',
       time_spent: 0,
       save: jest.fn(),
       history: [],
@@ -77,7 +97,9 @@ jest.mock('../src/db/model', () => ({
       telegram_attachments_message_ids: [501],
       telegram_dm_message_ids: [{ user_id: 7, message_id: 601 }],
     })),
-    findByIdAndUpdate: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
+    findByIdAndUpdate: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue(null),
+    })),
     findByIdAndDelete: jest.fn(async () => ({
       _id: '507f191e810c19729de860ea',
       request_id: 'ERM_000001',
@@ -101,9 +123,6 @@ jest.mock('../src/db/model', () => ({
     find: jest.fn(() => ({
       lean: jest.fn().mockResolvedValue([]),
     })),
-    deleteMany: jest.fn(() => ({
-      exec: jest.fn().mockResolvedValue(null),
-    })),
   },
 }));
 
@@ -117,7 +136,8 @@ jest
 
 jest.mock('../src/api/middleware', () => {
   const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) => handler,
+    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
+      handler,
   );
   const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
     res.status(500).json({
@@ -128,7 +148,9 @@ jest.mock('../src/api/middleware', () => {
   return {
     verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
       const rawRole = req.headers['x-role'];
-      const role = Array.isArray(rawRole) ? rawRole[0] ?? 'admin' : rawRole ?? 'admin';
+      const role = Array.isArray(rawRole)
+        ? (rawRole[0] ?? 'admin')
+        : (rawRole ?? 'admin');
       const rawAccess = req.headers['x-access'];
       const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
       const access = accessValue !== undefined ? Number(accessValue) : 6;
@@ -142,8 +164,9 @@ jest.mock('../src/api/middleware', () => {
   };
 });
 
-jest.mock('../src/middleware/taskAccess', () =>
-  (_req: unknown, _res: unknown, next: NextFunction) => next(),
+jest.mock(
+  '../src/middleware/taskAccess',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 
 const router = require('../src/routes/tasks').default;

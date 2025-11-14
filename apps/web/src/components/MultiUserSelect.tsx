@@ -1,7 +1,7 @@
 // Назначение файла: компонент выбора одного пользователя.
 // Модули: React, react-select
-import { useId, useMemo } from "react";
-import Select from "react-select";
+import { useId, useMemo } from 'react';
+import Select from 'react-select';
 
 interface Props {
   label: string;
@@ -43,7 +43,11 @@ export default function MultiUserSelect({
   );
   const selectId = useId();
   const selected = options.find((o) => o.value === value) ?? null;
-  const helperId = error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined;
+  const helperId = error
+    ? `${selectId}-error`
+    : hint
+      ? `${selectId}-hint`
+      : undefined;
   return (
     <div>
       <label className="block text-sm font-medium" htmlFor={selectId}>
@@ -55,7 +59,7 @@ export default function MultiUserSelect({
         options={options}
         value={selected}
         inputId={selectId}
-        placeholder={placeholder ?? "Выберите"}
+        placeholder={placeholder ?? 'Выберите'}
         onChange={(val) => {
           if (!val) {
             onChange(null);
@@ -70,7 +74,7 @@ export default function MultiUserSelect({
         aria-invalid={Boolean(error)}
         aria-describedby={helperId}
         aria-required={required}
-        noOptionsMessage={() => "Нет совпадений"}
+        noOptionsMessage={() => 'Нет совпадений'}
       />
       {hint && !error ? (
         <p id={helperId} className="mt-1 text-xs text-slate-500">

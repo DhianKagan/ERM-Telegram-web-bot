@@ -57,14 +57,14 @@ export default class UsersController {
         typeof rawId === 'string'
           ? rawId.trim() || undefined
           : rawId !== undefined
-          ? rawId
-          : undefined;
+            ? rawId
+            : undefined;
       const normalizedUsername =
         typeof rawUsername === 'string'
           ? rawUsername.trim() || undefined
           : rawUsername !== undefined
-          ? String(rawUsername)
-          : undefined;
+            ? String(rawUsername)
+            : undefined;
       const normalizedRoleId =
         typeof req.body.roleId === 'string'
           ? req.body.roleId.trim() || undefined
@@ -111,7 +111,10 @@ export default class UsersController {
     },
   ];
 
-  remove = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+  remove = async (
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> => {
     const removed = await this.service.remove(req.params.id);
     if (!removed) {
       sendProblem(req, res, {

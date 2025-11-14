@@ -6,17 +6,22 @@ process.env.APP_URL = 'https://localhost';
 import express from 'express';
 import request from 'supertest';
 
-jest.mock('../src/middleware/auth', () => () => (req: any, _res: any, next: () => void) => {
-  req.user = { id: 1, access: 1 };
-  next();
-});
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (req: any, _res: any, next: () => void) => {
+    req.user = { id: 1, access: 1 };
+    next();
+  },
+);
 
 jest.mock('../src/db/model', () => ({
   File: { findById: jest.fn() },
   Task: {
     findById: jest.fn(),
     updateOne: jest.fn(),
-    updateMany: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(undefined) })),
+    updateMany: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue(undefined),
+    })),
   },
 }));
 
@@ -91,7 +96,11 @@ describe('POST /api/v1/files/:id/attach', () => {
         },
       },
     );
-    expect(syncTaskAttachments).toHaveBeenCalledWith(taskId, expect.any(Array), 1);
+    expect(syncTaskAttachments).toHaveBeenCalledWith(
+      taskId,
+      expect.any(Array),
+      1,
+    );
   });
 
   it('отклоняет привязку чужого файла', async () => {

@@ -59,9 +59,7 @@ const toNumeric = (value: unknown): number | undefined => {
     if (!trimmed) {
       return undefined;
     }
-    const compact = trimmed
-      .replace(/\s+/g, '')
-      .replace(/[\u2018\u2019']/g, '');
+    const compact = trimmed.replace(/\s+/g, '').replace(/[\u2018\u2019']/g, '');
     if (!compact) {
       return undefined;
     }
@@ -122,7 +120,10 @@ const normalizeTaskId = (value: unknown): string | null => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? String(Math.trunc(value)) : null;
   }
-  if (typeof value === 'object' && 'toString' in (value as { toString(): unknown })) {
+  if (
+    typeof value === 'object' &&
+    'toString' in (value as { toString(): unknown })
+  ) {
     const str = (value as { toString(): unknown }).toString();
     return typeof str === 'string' && str ? str : null;
   }
@@ -184,7 +185,9 @@ class TasksService {
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     const normalizedUserId =
-      typeof userId === 'number' && Number.isFinite(userId) ? userId : undefined;
+      typeof userId === 'number' && Number.isFinite(userId)
+        ? userId
+        : undefined;
     const attachmentsList = Array.isArray(payload.attachments)
       ? payload.attachments
       : [];
@@ -236,7 +239,8 @@ class TasksService {
   async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
     const payload = data ?? {};
     if (Object.prototype.hasOwnProperty.call(payload, 'due_date')) {
-      (payload as Record<string, unknown>).deadline_reminder_sent_at = undefined;
+      (payload as Record<string, unknown>).deadline_reminder_sent_at =
+        undefined;
     }
     this.applyCargoMetrics(payload);
     await this.applyRouteInfo(payload);
@@ -273,27 +277,34 @@ class TasksService {
     const volume = toNumeric(data.cargo_volume_m3);
     const paymentAmount = toNumeric(data.payment_amount);
 
-    setMetric(target, 'cargo_length_m',
-      length !== undefined ? roundValue(length) : undefined);
-    setMetric(target, 'cargo_width_m',
-      width !== undefined ? roundValue(width) : undefined);
-    setMetric(target, 'cargo_height_m',
-      height !== undefined ? roundValue(height) : undefined);
-    setMetric(target, 'cargo_weight_kg',
-      weight !== undefined ? roundValue(weight, 2) : undefined);
-    setMetric(target, 'payment_amount',
-      paymentAmount !== undefined ? roundValue(paymentAmount, 2) : undefined);
+    setMetric(
+      target,
+      'cargo_length_m',
+      length !== undefined ? roundValue(length) : undefined,
+    );
+    setMetric(
+      target,
+      'cargo_width_m',
+      width !== undefined ? roundValue(width) : undefined,
+    );
+    setMetric(
+      target,
+      'cargo_height_m',
+      height !== undefined ? roundValue(height) : undefined,
+    );
+    setMetric(
+      target,
+      'cargo_weight_kg',
+      weight !== undefined ? roundValue(weight, 2) : undefined,
+    );
+    setMetric(
+      target,
+      'payment_amount',
+      paymentAmount !== undefined ? roundValue(paymentAmount, 2) : undefined,
+    );
 
-    if (
-      length !== undefined &&
-      width !== undefined &&
-      height !== undefined
-    ) {
-      setMetric(
-        target,
-        'cargo_volume_m3',
-        roundValue(length * width * height),
-      );
+    if (length !== undefined && width !== undefined && height !== undefined) {
+      setMetric(target, 'cargo_volume_m3', roundValue(length * width * height));
     } else {
       setMetric(
         target,

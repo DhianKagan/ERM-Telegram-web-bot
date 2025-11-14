@@ -41,6 +41,13 @@ jest.mock('../src/db/queries', () => ({
 }));
 jest.mock('../src/services/route', () => ({
   clearRouteCache: jest.fn(),
+  // Заглушки для эндпоинтов, чтобы роуты могли вызывать их без выполнения сетевых запросов
+  getRouteDistance: jest.fn(async () => ({ distance: 0, waypoints: [] })),
+  table: jest.fn(async () => ({})),
+  nearest: jest.fn(async () => ({})),
+  match: jest.fn(async () => ({})),
+  trip: jest.fn(async () => ({})),
+  buildCacheKey: jest.fn(),
 }));
 
 jest.mock('../src/geo/osrm', () => ({

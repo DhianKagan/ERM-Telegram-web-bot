@@ -23,15 +23,16 @@ const serviceMock = {
   purge: jest.fn(),
 };
 
-const requireAccess = (mask: number) => (req: Request, res: Response, next: NextFunction) => {
-  const accessHeader = req.headers['x-access'];
-  const access = accessHeader !== undefined ? Number(accessHeader) : 0;
-  if (!hasAccess(access, mask)) {
-    res.sendStatus(403);
-    return;
-  }
-  next();
-};
+const requireAccess =
+  (mask: number) => (req: Request, res: Response, next: NextFunction) => {
+    const accessHeader = req.headers['x-access'];
+    const access = accessHeader !== undefined ? Number(accessHeader) : 0;
+    if (!hasAccess(access, mask)) {
+      res.sendStatus(403);
+      return;
+    }
+    next();
+  };
 
 let app: Express;
 
@@ -46,7 +47,8 @@ beforeAll(() => {
       const data = await serviceMock.list({
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
-        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        search:
+          typeof req.query.search === 'string' ? req.query.search : undefined,
       });
       res.json(data);
     },
@@ -63,7 +65,10 @@ beforeAll(() => {
             )
             .filter((value: string) => value.length > 0)
         : [];
-      if (!ids.length || !ids.every((id: string) => Types.ObjectId.isValid(id))) {
+      if (
+        !ids.length ||
+        !ids.every((id: string) => Types.ObjectId.isValid(id))
+      ) {
         res.status(400).json({ error: 'invalid_ids' });
         return;
       }
@@ -76,25 +81,30 @@ beforeAll(() => {
 beforeEach(() => {
   serviceMock.list.mockReset();
   serviceMock.purge.mockReset();
-  serviceMock.list.mockResolvedValue({ items: [], total: 0, page: 1, pages: 1 });
+  serviceMock.list.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
   serviceMock.purge.mockResolvedValue(0);
 });
 
 test('архив доступен пользователям с маской 6', async () => {
   serviceMock.list.mockResolvedValueOnce({
-      items: [
-        {
-          _id: '507f1f77bcf86cd799439011',
-          task_number: 'ERM_000001-DEL',
-          title: 'Архивная задача',
-          status: 'Выполнена',
-          archived_at: new Date('2024-01-01T00:00:00.000Z'),
-        },
-      ],
-      total: 1,
-      page: 1,
-      pages: 1,
-    });
+    items: [
+      {
+        _id: '507f1f77bcf86cd799439011',
+        task_number: 'ERM_000001-DEL',
+        title: 'Архивная задача',
+        status: 'Выполнена',
+        archived_at: new Date('2024-01-01T00:00:00.000Z'),
+      },
+    ],
+    total: 1,
+    page: 1,
+    pages: 1,
+  });
   const res = await request(app)
     .get('/api/v1/archives')
     .set('x-access', String(ACCESS_ADMIN | ACCESS_MANAGER));
@@ -105,9 +115,7 @@ test('архив доступен пользователям с маской 6',
 });
 
 test('архив недоступен без прав 6', async () => {
-  const res = await request(app)
-    .get('/api/v1/archives')
-    .set('x-access', '4');
+  const res = await request(app).get('/api/v1/archives').set('x-access', '4');
   expect(res.status).toBe(403);
 });
 

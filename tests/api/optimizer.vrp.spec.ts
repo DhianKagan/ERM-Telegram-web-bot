@@ -12,10 +12,7 @@ import type {
   OptimizeOptions,
 } from '../../apps/api/src/services/optimizer';
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -44,7 +41,8 @@ describe('optimizer VRP', () => {
       getChatId: () => process.env.CHAT_ID ?? '0',
       chatId: process.env.CHAT_ID ?? '0',
       jwtSecret: process.env.JWT_SECRET ?? 'test-secret',
-      mongoUrl: process.env.MONGO_DATABASE_URL ?? 'mongodb://localhost:27017/ermdb',
+      mongoUrl:
+        process.env.MONGO_DATABASE_URL ?? 'mongodb://localhost:27017/ermdb',
       appUrl: process.env.APP_URL ?? 'https://example.com',
       vrpOrToolsEnabled: true,
       routingUrl: process.env.ROUTING_URL ?? 'https://localhost:8000/route',
@@ -63,7 +61,8 @@ describe('optimizer VRP', () => {
           return process.env.CHAT_ID ?? '0';
         },
         jwtSecret: process.env.JWT_SECRET ?? 'test-secret',
-        mongoUrl: process.env.MONGO_DATABASE_URL ?? 'mongodb://localhost:27017/ermdb',
+        mongoUrl:
+          process.env.MONGO_DATABASE_URL ?? 'mongodb://localhost:27017/ermdb',
         appUrl: process.env.APP_URL ?? 'https://example.com',
         port: 3000,
         locale: 'ru',
@@ -99,9 +98,12 @@ describe('optimizer VRP', () => {
   before(() => {
     // Диагностика окружения для корректного подключения конфигурации.
     if (!process.env.MONGO_DATABASE_URL) {
-      throw new Error('MONGO_DATABASE_URL отсутствует перед загрузкой оптимизатора');
+      throw new Error(
+        'MONGO_DATABASE_URL отсутствует перед загрузкой оптимизатора',
+      );
     }
-    const module = require('../../apps/api/src/services/optimizer') as typeof import('../../apps/api/src/services/optimizer');
+    const module =
+      require('../../apps/api/src/services/optimizer') as typeof import('../../apps/api/src/services/optimizer');
     optimize = module.optimize;
     optimizerTesting = module.__testing;
   });
@@ -213,11 +215,19 @@ describe('optimizer VRP', () => {
     assert.deepEqual(route.taskIds, ['task-3', 'task-4']);
     assert.ok(route.etaMinutes > 0);
     assert.ok(route.load > 0);
-    const hasEngineDrop = result.warnings.some((message) => message.includes('Падение VRP движка'));
+    const hasEngineDrop = result.warnings.some((message) =>
+      message.includes('Падение VRP движка'),
+    );
     const hasHeuristic = result.warnings.some((message) =>
       message.toLowerCase().includes('эвристик'),
     );
-    assert.ok(hasEngineDrop, `Ожидали предупреждение о падении движка, получили ${JSON.stringify(result.warnings)}`);
-    assert.ok(hasHeuristic, `Ожидали предупреждение об эвристике, получили ${JSON.stringify(result.warnings)}`);
+    assert.ok(
+      hasEngineDrop,
+      `Ожидали предупреждение о падении движка, получили ${JSON.stringify(result.warnings)}`,
+    );
+    assert.ok(
+      hasHeuristic,
+      `Ожидали предупреждение об эвристике, получили ${JSON.stringify(result.warnings)}`,
+    );
   });
 });

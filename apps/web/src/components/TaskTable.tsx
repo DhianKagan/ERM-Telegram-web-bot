@@ -1,14 +1,14 @@
 // Назначение файла: таблица задач на основе DataTable
 // Основные модули: React, DataTable (лениво), taskColumns, useTasks, coerceTaskId
-import React, { lazy, Suspense } from "react";
-const DataTable = lazy(() => import("./DataTable"));
-import taskColumns, { TaskRow } from "../columns/taskColumns";
-import type { User as AppUser } from "../types/user";
-import useTasks from "../context/useTasks";
-import coerceTaskId from "../utils/coerceTaskId";
-import matchTaskQuery from "../utils/matchTaskQuery";
+import React, { lazy, Suspense } from 'react';
+const DataTable = lazy(() => import('./DataTable'));
+import taskColumns, { TaskRow } from '../columns/taskColumns';
+import type { User as AppUser } from '../types/user';
+import useTasks from '../context/useTasks';
+import coerceTaskId from '../utils/coerceTaskId';
+import matchTaskQuery from '../utils/matchTaskQuery';
 
-type EntityKind = "task" | "request";
+type EntityKind = 'task' | 'request';
 
 interface TaskTableProps {
   tasks: TaskRow[];
@@ -30,7 +30,7 @@ export default function TaskTable({
   page,
   pageCount,
   mine = false,
-  entityKind = "task",
+  entityKind = 'task',
   onPageChange,
   onMineChange,
   onRowClick,
@@ -66,27 +66,32 @@ export default function TaskTable({
             return false;
           if (filters.taskTypes.length) {
             const taskType =
-              typeof (t as Record<string, unknown>).task_type === "string"
+              typeof (t as Record<string, unknown>).task_type === 'string'
                 ? ((t as Record<string, unknown>).task_type as string).trim()
-                : "";
-            if (!taskType || !filters.taskTypes.includes(taskType)) return false;
+                : '';
+            if (!taskType || !filters.taskTypes.includes(taskType))
+              return false;
           }
           if (filters.assignees.length) {
             const assigned = new Set<number>();
             const collect = (value: unknown) => {
-              if (typeof value === "number" && Number.isFinite(value)) {
+              if (typeof value === 'number' && Number.isFinite(value)) {
                 assigned.add(value);
-              } else if (typeof value === "string") {
+              } else if (typeof value === 'string') {
                 const parsed = Number(value.trim());
                 if (Number.isFinite(parsed)) assigned.add(parsed);
               }
             };
             if (Array.isArray((t as Record<string, unknown>).assignees)) {
-              ((t as Record<string, unknown>).assignees as unknown[]).forEach(collect);
+              ((t as Record<string, unknown>).assignees as unknown[]).forEach(
+                collect,
+              );
             }
             collect((t as Record<string, unknown>).assigned_user_id);
             if (
-              !filters.assignees.some((assignee) => assigned.has(Number(assignee)))
+              !filters.assignees.some((assignee) =>
+                assigned.has(Number(assignee)),
+              )
             ) {
               return false;
             }
@@ -112,7 +117,7 @@ export default function TaskTable({
         }}
         toolbarChildren={
           <>
-            {typeof onMineChange === "function" && (
+            {typeof onMineChange === 'function' && (
               <label
                 className="flex items-center gap-1 text-sm"
                 htmlFor="task-table-mine"

@@ -198,12 +198,14 @@ export function describeAction(
   entry: HistoryEntry,
   options: DescribeActionOptions = {},
 ): ActionDescription {
-  const to = (entry.changes?.to && isObject(entry.changes?.to))
-    ? (entry.changes?.to as Record<string, unknown>)
-    : emptyObject;
-  const from = (entry.changes?.from && isObject(entry.changes?.from))
-    ? (entry.changes?.from as Record<string, unknown>)
-    : emptyObject;
+  const to =
+    entry.changes?.to && isObject(entry.changes?.to)
+      ? (entry.changes?.to as Record<string, unknown>)
+      : emptyObject;
+  const from =
+    entry.changes?.from && isObject(entry.changes?.from)
+      ? (entry.changes?.from as Record<string, unknown>)
+      : emptyObject;
   const hasChanges = Object.keys(to).length > 0 || Object.keys(from).length > 0;
   if (!hasChanges) {
     return { kind: 'created', details: 'задача создана' };
@@ -229,8 +231,10 @@ export function describeAction(
     const fieldName = formatFieldName('status');
     const previous = formatFieldValue(from.status, options);
     const next = formatFieldValue(to.status, options);
-    return { kind: 'status', details: `${fieldName}: «${previous}» → «${next}»` };
+    return {
+      kind: 'status',
+      details: `${fieldName}: «${previous}» → «${next}»`,
+    };
   }
   return { kind: 'updated', details: null };
 }
-

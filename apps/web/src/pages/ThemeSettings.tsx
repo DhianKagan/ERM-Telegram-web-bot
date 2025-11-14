@@ -1,6 +1,6 @@
 // Страница настройки темы
 // Модули: React, ThemePanel
-import ThemePanel from "../components/ThemePanel";
+import ThemePanel from '../components/ThemePanel';
 
 export default function ThemeSettings() {
   return (

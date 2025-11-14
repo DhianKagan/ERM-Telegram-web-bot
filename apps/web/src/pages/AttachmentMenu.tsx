@@ -1,11 +1,11 @@
 // Страница выбора задачи для Attachment Menu
 // Модули: React, useToast, authFetch, shared
-import React, { useEffect, useState } from "react";
-import type { Task } from "shared";
+import React, { useEffect, useState } from 'react';
+import type { Task } from 'shared';
 
-import { Button } from "@/components/ui/button";
-import { useToast } from "../context/useToast";
-import authFetch from "../utils/authFetch";
+import { Button } from '@/components/ui/button';
+import { useToast } from '../context/useToast';
+import authFetch from '../utils/authFetch';
 
 type MenuTask = Task & { task_number: string; createdAt: string };
 
@@ -14,10 +14,10 @@ export default function AttachmentMenu() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    authFetch("/api/v1/tasks?limit=10", { noRedirect: true })
+    authFetch('/api/v1/tasks?limit=10', { noRedirect: true })
       .then((r) => {
         if (r.status === 401) {
-          addToast("Сессия истекла, войдите снова", "error");
+          addToast('Сессия истекла, войдите снова', 'error');
           return [];
         }
         return r.ok ? r.json() : [];
@@ -33,7 +33,9 @@ export default function AttachmentMenu() {
         sendData?: (data: string) => void;
       };
     };
-    const telegram = (globalThis as typeof globalThis & { Telegram?: TelegramApi }).Telegram;
+    const telegram = (
+      globalThis as typeof globalThis & { Telegram?: TelegramApi }
+    ).Telegram;
     telegram?.WebApp?.sendData?.(`task_selected:${id}`);
   }
 

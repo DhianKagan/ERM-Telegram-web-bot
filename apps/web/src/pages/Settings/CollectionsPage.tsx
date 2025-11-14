@@ -1,23 +1,29 @@
 // Назначение: страница управления коллекциями настроек
 // Основные модули: React, match-sorter, Tabs, services/collections
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { matchSorter, rankings } from "match-sorter";
-import { useTranslation } from "react-i18next";
-import { z } from "zod";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { matchSorter, rankings } from 'match-sorter';
+import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "../../components/Tabs";
-import ActionBar from "../../components/ActionBar";
-import Breadcrumbs from "../../components/Breadcrumbs";
-import CopyableId from "../../components/CopyableId";
-import DataTable from "../../components/DataTable";
-import Spinner from "../../components/Spinner";
+} from '../../components/Tabs';
+import ActionBar from '../../components/ActionBar';
+import Breadcrumbs from '../../components/Breadcrumbs';
+import CopyableId from '../../components/CopyableId';
+import DataTable from '../../components/DataTable';
+import Spinner from '../../components/Spinner';
 import {
   fetchCollectionItems,
   fetchAllCollectionItems,
@@ -25,46 +31,46 @@ import {
   updateCollectionItem,
   removeCollectionItem,
   CollectionItem,
-} from "../../services/collections";
-import CollectionForm from "./CollectionForm";
-import ConfirmDialog from "../../components/ConfirmDialog";
-import EmployeeCardForm from "../../components/EmployeeCardForm";
-import Modal from "../../components/Modal";
-import FleetVehiclesTab from "./FleetVehiclesTab";
-import TaskSettingsTab from "./TaskSettingsTab";
-import AnalyticsDashboard from "../AnalyticsDashboard";
-import ArchivePage from "../Archive";
-import LogsPage from "../Logs";
-import StoragePage from "../Storage";
+} from '../../services/collections';
+import CollectionForm from './CollectionForm';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import EmployeeCardForm from '../../components/EmployeeCardForm';
+import Modal from '../../components/Modal';
+import FleetVehiclesTab from './FleetVehiclesTab';
+import TaskSettingsTab from './TaskSettingsTab';
+import AnalyticsDashboard from '../AnalyticsDashboard';
+import ArchivePage from '../Archive';
+import LogsPage from '../Logs';
+import StoragePage from '../Storage';
 import {
   collectionColumns,
   type CollectionTableRow,
-} from "../../columns/collectionColumns";
-import { settingsUserColumns } from "../../columns/settingsUserColumns";
+} from '../../columns/collectionColumns';
+import { settingsUserColumns } from '../../columns/settingsUserColumns';
 import {
   settingsEmployeeColumns,
   type EmployeeRow,
-} from "../../columns/settingsEmployeeColumns";
+} from '../../columns/settingsEmployeeColumns';
 import {
   fetchUsers,
   createUser as createUserApi,
   updateUser as updateUserApi,
   deleteUser as deleteUserApi,
   type UserDetails,
-} from "../../services/users";
-import { fetchRoles, type Role } from "../../services/roles";
-import { formatRoleName } from "../../utils/roleDisplay";
-import { buildEmployeeRow } from "../../utils/employeeRow";
-import UserForm, { UserFormData } from "./UserForm";
-import type { User } from "../../types/user";
-import { useAuth } from "../../context/useAuth";
+} from '../../services/users';
+import { fetchRoles, type Role } from '../../services/roles';
+import { formatRoleName } from '../../utils/roleDisplay';
+import { buildEmployeeRow } from '../../utils/employeeRow';
+import UserForm, { UserFormData } from './UserForm';
+import type { User } from '../../types/user';
+import { useAuth } from '../../context/useAuth';
 import {
   SETTINGS_BADGE_CLASS,
   SETTINGS_BADGE_EMPTY,
   SETTINGS_BADGE_WRAPPER_CLASS,
-} from "./badgeStyles";
-import { hasAccess, ACCESS_ADMIN } from "../../utils/access";
-import { showToast } from "../../utils/toast";
+} from './badgeStyles';
+import { hasAccess, ACCESS_ADMIN } from '../../utils/access';
+import { showToast } from '../../utils/toast';
 import {
   BuildingOffice2Icon,
   Squares2X2Icon,
@@ -78,92 +84,90 @@ import {
   ArchiveBoxIcon,
   DocumentTextIcon,
   RectangleStackIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
 
 const moduleTabs = [
   {
-    key: "directories",
-    label: "Справочники",
-    description: "Структура компании и доступы",
+    key: 'directories',
+    label: 'Справочники',
+    description: 'Структура компании и доступы',
     icon: AdjustmentsHorizontalIcon,
   },
   {
-    key: "reports",
-    label: "Отчёты",
-    description: "Аналитика процессов и KPI",
+    key: 'reports',
+    label: 'Отчёты',
+    description: 'Аналитика процессов и KPI',
     icon: ChartPieIcon,
   },
   {
-    key: "archive",
-    label: "Архив",
-    description: "История задач и записей",
+    key: 'archive',
+    label: 'Архив',
+    description: 'История задач и записей',
     icon: ArchiveBoxIcon,
   },
   {
-    key: "logs",
-    label: "Логи",
-    description: "Журнал действий и событий",
+    key: 'logs',
+    label: 'Логи',
+    description: 'Журнал действий и событий',
     icon: DocumentTextIcon,
   },
   {
-    key: "storage",
-    label: "Файлы",
-    description: "Управление вложениями",
+    key: 'storage',
+    label: 'Файлы',
+    description: 'Управление вложениями',
     icon: RectangleStackIcon,
   },
 ] as const;
 
-type SettingsModuleKey = (typeof moduleTabs)[number]["key"];
+type SettingsModuleKey = (typeof moduleTabs)[number]['key'];
 
-const isValidModuleKey = (
-  value: string | null,
-): value is SettingsModuleKey =>
+const isValidModuleKey = (value: string | null): value is SettingsModuleKey =>
   moduleTabs.some((module) => module.key === value);
 
 const types = [
   {
-    key: "departments",
-    label: "Департамент",
-    description: "Структура компании и направления",
+    key: 'departments',
+    label: 'Департамент',
+    description: 'Структура компании и направления',
   },
   {
-    key: "divisions",
-    label: "Отдел",
-    description: "Команды внутри департаментов",
+    key: 'divisions',
+    label: 'Отдел',
+    description: 'Команды внутри департаментов',
   },
   {
-    key: "positions",
-    label: "Должность",
-    description: "Роли и рабочие позиции",
+    key: 'positions',
+    label: 'Должность',
+    description: 'Роли и рабочие позиции',
   },
   {
-    key: "employees",
-    label: "Сотрудник",
-    description: "Карточки и доступы сотрудников",
+    key: 'employees',
+    label: 'Сотрудник',
+    description: 'Карточки и доступы сотрудников',
   },
   {
-    key: "fleets",
-    label: "Автопарк",
-    description: "Транспорт и связанный состав",
+    key: 'fleets',
+    label: 'Автопарк',
+    description: 'Транспорт и связанный состав',
   },
   {
-    key: "users",
-    label: "Пользователь",
-    description: "Учётные записи в системе",
+    key: 'users',
+    label: 'Пользователь',
+    description: 'Учётные записи в системе',
   },
   {
-    key: "tasks",
-    label: "Задачи",
-    description: "Поля формы и темы публикаций",
+    key: 'tasks',
+    label: 'Задачи',
+    description: 'Поля формы и темы публикаций',
   },
 ] as const;
 
-type CollectionKey = (typeof types)[number]["key"];
+type CollectionKey = (typeof types)[number]['key'];
 
 const createInitialQueries = (): Record<CollectionKey, string> =>
   types.reduce(
     (acc, type) => {
-      acc[type.key as CollectionKey] = "";
+      acc[type.key as CollectionKey] = '';
       return acc;
     },
     {} as Record<CollectionKey, string>,
@@ -171,17 +175,17 @@ const createInitialQueries = (): Record<CollectionKey, string> =>
 
 const emptyUser: UserFormData = {
   telegram_id: undefined,
-  username: "",
-  name: "",
-  phone: "",
-  mobNumber: "",
-  email: "",
-  role: "user",
+  username: '',
+  name: '',
+  phone: '',
+  mobNumber: '',
+  email: '',
+  role: 'user',
   access: 1,
-  roleId: "",
-  departmentId: "",
-  divisionId: "",
-  positionId: "",
+  roleId: '',
+  departmentId: '',
+  divisionId: '',
+  positionId: '',
 };
 
 const tabIcons: Record<
@@ -228,38 +232,38 @@ interface ItemForm {
 
 const normalizeId = (value: string) => {
   const trimmed = value.trim();
-  if (!trimmed) return "";
-  const withoutQuotes = trimmed.replace(/^['"]+|['"]+$/g, "");
-  const withoutBrackets = withoutQuotes.replace(/^\[+|\]+$/g, "");
-  const withoutBraces = withoutBrackets.replace(/^[{}]+|[{}]+$/g, "");
-  const withoutTrailingComma = withoutBraces.replace(/,+$/g, "");
+  if (!trimmed) return '';
+  const withoutQuotes = trimmed.replace(/^['"]+|['"]+$/g, '');
+  const withoutBrackets = withoutQuotes.replace(/^\[+|\]+$/g, '');
+  const withoutBraces = withoutBrackets.replace(/^[{}]+|[{}]+$/g, '');
+  const withoutTrailingComma = withoutBraces.replace(/,+$/g, '');
   return withoutTrailingComma.trim();
 };
 
 const collectStringIds = (value: unknown): string[] => {
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return [value];
   }
   if (Array.isArray(value)) {
     return value.flatMap(collectStringIds);
   }
-  if (value && typeof value === "object") {
+  if (value && typeof value === 'object') {
     const result: string[] = [];
     Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
-      if (Array.isArray(entry) || (entry && typeof entry === "object")) {
+      if (Array.isArray(entry) || (entry && typeof entry === 'object')) {
         result.push(...collectStringIds(entry));
         return;
       }
-      if (typeof entry === "string") {
+      if (typeof entry === 'string') {
         const trimmed = entry.trim();
         if (!trimmed) return;
         const lowerKey = key.toLowerCase();
-        if (lowerKey.includes("id") || !/\s/.test(trimmed)) {
+        if (lowerKey.includes('id') || !/\s/.test(trimmed)) {
           result.push(trimmed);
         }
         return;
       }
-      if (typeof entry === "boolean" || typeof entry === "number") {
+      if (typeof entry === 'boolean' || typeof entry === 'number') {
         if (entry) {
           result.push(key);
         }
@@ -271,69 +275,69 @@ const collectStringIds = (value: unknown): string[] => {
 };
 
 const KEY_LABEL_OVERRIDES: Record<string, string> = {
-  telegram_id: "Telegram ID",
-  telegram_username: "Логин Telegram",
-  username: "Логин",
-  name: "Имя",
-  phone: "Телефон",
-  mobNumber: "Моб. номер",
-  email: "E-mail",
-  role: "Роль",
-  access: "Доступ",
-  roleId: "Роль ID",
-  departmentId: "Департамент",
-  departmentName: "Департамент",
-  divisionId: "Отдел",
-  divisionName: "Отдел",
-  positionId: "Должность",
-  positionName: "Должность",
-  permissions: "Права",
-  fleetId: "Автопарк",
-  source: "Источник",
-  sourceId: "ID источника",
-  readonly: "Только чтение",
-  readonlyReason: "Причина ограничения",
-  invalid: "Некорректен",
-  invalidReason: "Причина ошибки",
-  invalidCode: "Код ошибки",
-  invalidAt: "Ошибка от",
-  syncPending: "Ожидает синхронизации",
-  syncWarning: "Предупреждение",
-  syncError: "Ошибка синхронизации",
-  syncFailedAt: "Сбой синхронизации",
-  defaultLabel: "Название по умолчанию",
-  fieldType: "Тип поля",
-  required: "Обязательное",
-  order: "Порядок",
-  virtual: "Системный элемент",
-  tg_theme_url: "Тема Telegram",
-  tg_chat_id: "ID чата",
-  tg_topic_id: "ID темы",
-  tg_photos_url: "Тема для фото",
-  tg_photos_chat_id: "ID чата фото",
-  tg_photos_topic_id: "ID темы фото",
+  telegram_id: 'Telegram ID',
+  telegram_username: 'Логин Telegram',
+  username: 'Логин',
+  name: 'Имя',
+  phone: 'Телефон',
+  mobNumber: 'Моб. номер',
+  email: 'E-mail',
+  role: 'Роль',
+  access: 'Доступ',
+  roleId: 'Роль ID',
+  departmentId: 'Департамент',
+  departmentName: 'Департамент',
+  divisionId: 'Отдел',
+  divisionName: 'Отдел',
+  positionId: 'Должность',
+  positionName: 'Должность',
+  permissions: 'Права',
+  fleetId: 'Автопарк',
+  source: 'Источник',
+  sourceId: 'ID источника',
+  readonly: 'Только чтение',
+  readonlyReason: 'Причина ограничения',
+  invalid: 'Некорректен',
+  invalidReason: 'Причина ошибки',
+  invalidCode: 'Код ошибки',
+  invalidAt: 'Ошибка от',
+  syncPending: 'Ожидает синхронизации',
+  syncWarning: 'Предупреждение',
+  syncError: 'Ошибка синхронизации',
+  syncFailedAt: 'Сбой синхронизации',
+  defaultLabel: 'Название по умолчанию',
+  fieldType: 'Тип поля',
+  required: 'Обязательное',
+  order: 'Порядок',
+  virtual: 'Системный элемент',
+  tg_theme_url: 'Тема Telegram',
+  tg_chat_id: 'ID чата',
+  tg_topic_id: 'ID темы',
+  tg_photos_url: 'Тема для фото',
+  tg_photos_chat_id: 'ID чата фото',
+  tg_photos_topic_id: 'ID темы фото',
 };
 
 const formatKeyLabel = (key: string): string => {
   const override = KEY_LABEL_OVERRIDES[key];
   if (override) return override;
   const normalized = key
-    .replace(/[_-]+/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim();
   if (!normalized) return key;
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
 const formatSummaryValue = (value: unknown): string => {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") {
-    return value ? "Да" : "Нет";
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') {
+    return value ? 'Да' : 'Нет';
   }
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : '';
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     return trimmed;
   }
@@ -341,34 +345,34 @@ const formatSummaryValue = (value: unknown): string => {
     const formatted = value
       .map((item) => formatSummaryValue(item))
       .filter(Boolean);
-    return formatted.join(", ");
+    return formatted.join(', ');
   }
   if (value instanceof Date) {
     return value.toISOString();
   }
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
       .map(([key, nested]) => {
         const formatted = formatSummaryValue(nested);
-        if (!formatted) return "";
+        if (!formatted) return '';
         return `${formatKeyLabel(key)}=${formatted}`;
       })
       .filter(Boolean);
-    return entries.join("; ");
+    return entries.join('; ');
   }
-  return "";
+  return '';
 };
 
 const summarizeRecord = (record?: Record<string, unknown>): string => {
-  if (!record) return "";
+  if (!record) return '';
   const entries = Object.entries(record)
     .map(([key, value]) => {
       const formatted = formatSummaryValue(value);
-      if (!formatted) return "";
+      if (!formatted) return '';
       return `${formatKeyLabel(key)}: ${formatted}`;
     })
     .filter(Boolean);
-  return entries.join("\n");
+  return entries.join('\n');
 };
 
 const tryParseJsonValue = (raw: string): unknown => {
@@ -381,9 +385,9 @@ const tryParseJsonValue = (raw: string): unknown => {
 
 const formatCollectionRawValue = (raw: string): string => {
   const trimmed = raw.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return '';
   const parsed =
-    trimmed.startsWith("{") || trimmed.startsWith("[")
+    trimmed.startsWith('{') || trimmed.startsWith('[')
       ? tryParseJsonValue(trimmed)
       : undefined;
   if (Array.isArray(parsed)) {
@@ -391,21 +395,21 @@ const formatCollectionRawValue = (raw: string): string => {
       .map((item) => formatSummaryValue(item))
       .filter(Boolean);
     if (formatted.length) {
-      return formatted.join("\n");
+      return formatted.join('\n');
     }
-  } else if (parsed && typeof parsed === "object") {
+  } else if (parsed && typeof parsed === 'object') {
     const summary = summarizeRecord(parsed as Record<string, unknown>);
     if (summary) {
       return summary;
     }
   }
-  if (trimmed.includes(",")) {
+  if (trimmed.includes(',')) {
     const parts = trimmed
-      .split(",")
+      .split(',')
       .map((part) => part.trim())
       .filter(Boolean);
     if (parts.length > 1) {
-      return parts.join("\n");
+      return parts.join('\n');
     }
   }
   return trimmed;
@@ -416,12 +420,12 @@ const IdsSchema = z
     if (input === null || input === undefined) {
       return [];
     }
-    if (typeof input === "string") {
+    if (typeof input === 'string') {
       const trimmed = input.trim();
       if (!trimmed) {
         return [];
       }
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
         try {
           const parsed = JSON.parse(trimmed);
           return collectStringIds(parsed);
@@ -430,11 +434,11 @@ const IdsSchema = z
         }
       }
       return trimmed
-        .split(",")
+        .split(',')
         .map((part) => part.trim())
         .filter(Boolean);
     }
-    if (Array.isArray(input) || (input && typeof input === "object")) {
+    if (Array.isArray(input) || (input && typeof input === 'object')) {
       return collectStringIds(input);
     }
     return [String(input)];
@@ -466,7 +470,7 @@ const mergeById = <T extends { _id: string }>(
   let changed = false;
   incoming.forEach((item) => {
     const index = indexById.get(item._id);
-    if (typeof index === "number") {
+    if (typeof index === 'number') {
       if (merged[index] !== item) {
         merged[index] = item;
         changed = true;
@@ -486,13 +490,13 @@ const resolveReferenceName = (
   fallbackName?: string | null,
 ): string => {
   const directName =
-    typeof fallbackName === "string" && fallbackName.trim().length
+    typeof fallbackName === 'string' && fallbackName.trim().length
       ? fallbackName.trim()
-      : "";
+      : '';
   if (directName) return directName;
-  if (typeof id !== "string") return "";
+  if (typeof id !== 'string') return '';
   const trimmed = id.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return '';
   return map.get(trimmed) ?? trimmed;
 };
 
@@ -526,14 +530,14 @@ const pickString = (
   fallback?: string,
 ): string | undefined => {
   const raw = readValue(source, keys);
-  if (typeof raw === "string") {
+  if (typeof raw === 'string') {
     const trimmed = raw.trim();
     if (trimmed.length) return trimmed;
   }
-  if (typeof raw === "number" && Number.isFinite(raw)) {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
     return String(raw);
   }
-  if (typeof fallback === "string") {
+  if (typeof fallback === 'string') {
     const trimmed = fallback.trim();
     if (trimmed.length) return trimmed;
   }
@@ -545,10 +549,10 @@ const pickNumber = (
   keys: string[],
 ): number | undefined => {
   const raw = readValue(source, keys);
-  if (typeof raw === "number" && Number.isFinite(raw)) {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
     return raw;
   }
-  if (typeof raw === "string") {
+  if (typeof raw === 'string') {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
     const parsed = Number(trimmed);
@@ -566,7 +570,7 @@ const pickStringArray = (
   const raw = readValue(source, keys);
   if (!Array.isArray(raw)) return undefined;
   const normalized = raw
-    .filter((item): item is string => typeof item === "string")
+    .filter((item): item is string => typeof item === 'string')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
   return normalized.length ? normalized : undefined;
@@ -575,25 +579,29 @@ const pickStringArray = (
 const collectEmployeeDetails = (
   item: CollectionItem,
 ): Partial<User> | undefined => {
-  if (item.type !== "employees") return undefined;
+  if (item.type !== 'employees') return undefined;
   const parts: Record<string, unknown>[] = [];
-  if (item.meta && typeof item.meta === "object") {
+  if (item.meta && typeof item.meta === 'object') {
     parts.push(item.meta as Record<string, unknown>);
   }
   const rawValue = item.value;
-  if (typeof rawValue === "string") {
+  if (typeof rawValue === 'string') {
     const trimmed = rawValue.trim();
     if (trimmed) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           parts.push(parsed as Record<string, unknown>);
         }
       } catch {
         // игнорируем значения, которые не являются JSON
       }
     }
-  } else if (rawValue && typeof rawValue === "object" && !Array.isArray(rawValue)) {
+  } else if (
+    rawValue &&
+    typeof rawValue === 'object' &&
+    !Array.isArray(rawValue)
+  ) {
     parts.push(rawValue as Record<string, unknown>);
   }
 
@@ -608,104 +616,109 @@ const collectEmployeeDetails = (
   );
 
   const details: Partial<User> = {};
-  const telegramId = pickNumber(combined, ["telegram_id", "telegramId", "id"]);
-  if (typeof telegramId === "number") {
+  const telegramId = pickNumber(combined, ['telegram_id', 'telegramId', 'id']);
+  if (typeof telegramId === 'number') {
     details.telegram_id = telegramId;
   }
   const telegramUsername = pickString(combined, [
-    "telegram_username",
-    "telegramUsername",
-    "telegram_login",
-    "telegramLogin",
+    'telegram_username',
+    'telegramUsername',
+    'telegram_login',
+    'telegramLogin',
   ]);
   if (telegramUsername) {
     details.telegram_username = telegramUsername;
   }
-  const username = pickString(combined, ["username", "login"]);
+  const username = pickString(combined, ['username', 'login']);
   if (username) {
     details.username = username;
   }
-  const name = pickString(combined, ["name", "fullName"], item.name);
-  const firstName = pickString(combined, ["firstName", "first_name"]);
+  const name = pickString(combined, ['name', 'fullName'], item.name);
+  const firstName = pickString(combined, ['firstName', 'first_name']);
   const lastName = pickString(combined, [
-    "lastName",
-    "last_name",
-    "surname",
-    "familyName",
+    'lastName',
+    'last_name',
+    'surname',
+    'familyName',
   ]);
   const middleName = pickString(combined, [
-    "middleName",
-    "middle_name",
-    "patronymic",
+    'middleName',
+    'middle_name',
+    'patronymic',
   ]);
   if (name) {
     details.name = name;
   } else {
     const parts = [lastName, firstName, middleName].filter(
-      (part): part is string => typeof part === "string" && part.trim().length > 0,
+      (part): part is string =>
+        typeof part === 'string' && part.trim().length > 0,
     );
     if (parts.length) {
-      details.name = parts.join(" ");
+      details.name = parts.join(' ');
     }
   }
-  const phone = pickString(combined, ["phone", "phone_number", "phoneNumber"]);
+  const phone = pickString(combined, ['phone', 'phone_number', 'phoneNumber']);
   if (phone) {
     details.phone = phone;
   }
   const mobNumber = pickString(combined, [
-    "mobNumber",
-    "mobile",
-    "mobile_phone",
-    "mobilePhone",
+    'mobNumber',
+    'mobile',
+    'mobile_phone',
+    'mobilePhone',
   ]);
   if (mobNumber) {
     details.mobNumber = mobNumber;
   }
-  const email = pickString(combined, ["email", "mail"]);
+  const email = pickString(combined, ['email', 'mail']);
   if (email) {
     details.email = email;
   }
-  const role = pickString(combined, ["role", "roleName"]);
+  const role = pickString(combined, ['role', 'roleName']);
   if (role) {
     details.role = role;
   }
-  const access = pickNumber(combined, ["access", "access_level", "accessLevel"]);
-  if (typeof access === "number") {
+  const access = pickNumber(combined, [
+    'access',
+    'access_level',
+    'accessLevel',
+  ]);
+  if (typeof access === 'number') {
     details.access = access;
   }
-  const roleId = pickString(combined, ["roleId", "role_id"]);
+  const roleId = pickString(combined, ['roleId', 'role_id']);
   if (roleId) {
     details.roleId = roleId;
   }
-  const roleName = pickString(combined, ["roleName"]);
+  const roleName = pickString(combined, ['roleName']);
   if (roleName) {
     details.roleName = roleName;
   }
-  const departmentId = pickString(combined, ["departmentId", "department_id"]);
+  const departmentId = pickString(combined, ['departmentId', 'department_id']);
   if (departmentId) {
     details.departmentId = departmentId;
   }
-  const departmentName = pickString(combined, ["departmentName"]);
+  const departmentName = pickString(combined, ['departmentName']);
   if (departmentName) {
     details.departmentName = departmentName;
   }
-  const divisionId = pickString(combined, ["divisionId", "division_id"]);
+  const divisionId = pickString(combined, ['divisionId', 'division_id']);
   if (divisionId) {
     details.divisionId = divisionId;
   }
-  const divisionName = pickString(combined, ["divisionName"]);
+  const divisionName = pickString(combined, ['divisionName']);
   if (divisionName) {
     details.divisionName = divisionName;
   }
-  const positionId = pickString(combined, ["positionId", "position_id"]);
+  const positionId = pickString(combined, ['positionId', 'position_id']);
   if (positionId) {
     details.positionId = positionId;
   }
-  const positionName = pickString(combined, ["positionName"]);
+  const positionName = pickString(combined, ['positionName']);
   if (positionName) {
     details.positionName = positionName;
   }
-  const permissions = pickStringArray(combined, ["permissions"]);
+  const permissions = pickStringArray(combined, ['permissions']);
   if (permissions) {
     details.permissions = permissions;
   }
@@ -724,69 +737,69 @@ const buildEmployeeDetailsIndex = (
   items.forEach((item) => {
     const details = collectEmployeeDetails(item);
     if (!details) return;
-    if (typeof details.telegram_id === "number") {
+    if (typeof details.telegram_id === 'number') {
       index.byId.set(String(details.telegram_id), details);
     }
-    if (typeof details.telegram_username === "string") {
-      index.byTelegramUsername.set(details.telegram_username.toLowerCase(), details);
+    if (typeof details.telegram_username === 'string') {
+      index.byTelegramUsername.set(
+        details.telegram_username.toLowerCase(),
+        details,
+      );
     }
-    if (typeof details.username === "string") {
+    if (typeof details.username === 'string') {
       index.byUsername.set(details.username.toLowerCase(), details);
     }
   });
   return index;
 };
 
-const mergeEmployeeDetails = (
-  user: User,
-  details?: Partial<User>,
-): User => {
+const mergeEmployeeDetails = (user: User, details?: Partial<User>): User => {
   if (!details) return user;
   const result: User = { ...user };
   const assignNumber = <K extends keyof User>(key: K) => {
     const next = details[key];
-    if (typeof next !== "number" || !Number.isFinite(next)) return;
+    if (typeof next !== 'number' || !Number.isFinite(next)) return;
     const current = result[key];
-    if (typeof current === "number" && Number.isFinite(current)) return;
+    if (typeof current === 'number' && Number.isFinite(current)) return;
     result[key] = next as User[K];
   };
   const assignString = <K extends keyof User>(key: K) => {
     const next = details[key];
     if (next === undefined || next === null) return;
     const normalized =
-      typeof next === "string"
+      typeof next === 'string'
         ? next.trim()
-        : typeof next === "number" && Number.isFinite(next)
+        : typeof next === 'number' && Number.isFinite(next)
           ? String(next)
-          : "";
+          : '';
     if (!normalized) return;
     const current = result[key];
     if (
       current === undefined ||
       current === null ||
-      (typeof current === "string" && !current.trim())
+      (typeof current === 'string' && !current.trim())
     ) {
       result[key] = normalized as User[K];
     }
   };
 
-  assignNumber("telegram_id");
-  assignString("telegram_username");
-  assignString("username");
-  assignString("name");
-  assignString("phone");
-  assignString("mobNumber");
-  assignString("email");
-  assignString("role");
-  assignNumber("access");
-  assignString("roleId");
-  assignString("roleName");
-  assignString("departmentId");
-  assignString("departmentName");
-  assignString("divisionId");
-  assignString("divisionName");
-  assignString("positionId");
-  assignString("positionName");
+  assignNumber('telegram_id');
+  assignString('telegram_username');
+  assignString('username');
+  assignString('name');
+  assignString('phone');
+  assignString('mobNumber');
+  assignString('email');
+  assignString('role');
+  assignNumber('access');
+  assignString('roleId');
+  assignString('roleName');
+  assignString('departmentId');
+  assignString('departmentName');
+  assignString('divisionId');
+  assignString('divisionName');
+  assignString('positionId');
+  assignString('positionName');
   if (
     (!result.permissions || !result.permissions.length) &&
     Array.isArray(details.permissions) &&
@@ -804,10 +817,10 @@ const buildUserSearchTokens = (user: User): string[] => {
   const addValue = (value?: string | number | null) => {
     if (value === undefined || value === null) return;
     let text: string;
-    if (typeof value === "number") {
+    if (typeof value === 'number') {
       if (!Number.isFinite(value)) return;
       text = String(value);
-    } else if (typeof value === "string") {
+    } else if (typeof value === 'string') {
       text = value.trim();
     } else {
       return;
@@ -847,7 +860,7 @@ const findEmployeeDetails = (
 ): Partial<User> | undefined => {
   const candidateId = fallbackId
     ? fallbackId.trim()
-    : typeof user?.telegram_id === "number"
+    : typeof user?.telegram_id === 'number'
       ? String(user.telegram_id)
       : undefined;
   if (candidateId) {
@@ -855,7 +868,7 @@ const findEmployeeDetails = (
     if (direct) return direct;
   }
   const telegramUsername =
-    typeof user?.telegram_username === "string"
+    typeof user?.telegram_username === 'string'
       ? user.telegram_username.trim().toLowerCase()
       : undefined;
   if (telegramUsername) {
@@ -863,7 +876,7 @@ const findEmployeeDetails = (
     if (direct) return direct;
   }
   const username =
-    typeof user?.username === "string"
+    typeof user?.username === 'string'
       ? user.username.trim().toLowerCase()
       : undefined;
   if (username) {
@@ -873,32 +886,32 @@ const findEmployeeDetails = (
   return undefined;
 };
 
-const USERS_ERROR_HINT = "Не удалось загрузить пользователей";
-const DUPLICATE_DIVISION_HINT_PREFIX = "Обнаружены дублирующиеся отделы";
-const TASK_SETTINGS_ERROR_HINT = "Не удалось загрузить настройки задач";
-const TASK_FIELD_SAVE_ERROR = "Не удалось сохранить поле задачи";
-const TASK_TYPE_SAVE_ERROR = "Не удалось сохранить тип задачи";
-const TASK_SETTINGS_DELETE_ERROR = "Не удалось удалить настройку задачи";
-const USER_DELETE_SUCCESS = "Пользователь удалён";
-const USER_DELETE_ERROR = "Не удалось удалить пользователя";
-const EMPLOYEE_DELETE_SUCCESS = "Сотрудник удалён";
-const EMPLOYEE_DELETE_ERROR = "Не удалось удалить сотрудника";
+const USERS_ERROR_HINT = 'Не удалось загрузить пользователей';
+const DUPLICATE_DIVISION_HINT_PREFIX = 'Обнаружены дублирующиеся отделы';
+const TASK_SETTINGS_ERROR_HINT = 'Не удалось загрузить настройки задач';
+const TASK_FIELD_SAVE_ERROR = 'Не удалось сохранить поле задачи';
+const TASK_TYPE_SAVE_ERROR = 'Не удалось сохранить тип задачи';
+const TASK_SETTINGS_DELETE_ERROR = 'Не удалось удалить настройку задачи';
+const USER_DELETE_SUCCESS = 'Пользователь удалён';
+const USER_DELETE_ERROR = 'Не удалось удалить пользователя';
+const EMPLOYEE_DELETE_SUCCESS = 'Сотрудник удалён';
+const EMPLOYEE_DELETE_ERROR = 'Не удалось удалить сотрудника';
 
 type CollectionColumn = (typeof collectionColumns)[number];
 
 const hasAccessorKey = (
   column: CollectionColumn,
 ): column is CollectionColumn & { accessorKey: string } =>
-  typeof (column as { accessorKey?: unknown }).accessorKey === "string";
+  typeof (column as { accessorKey?: unknown }).accessorKey === 'string';
 
 export default function CollectionsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeModule, setActiveModule] = useState<SettingsModuleKey>(() => {
-    const param = searchParams.get("module");
-    return isValidModuleKey(param) ? param : "directories";
+    const param = searchParams.get('module');
+    return isValidModuleKey(param) ? param : 'directories';
   });
-  const [active, setActive] = useState<CollectionKey>("departments");
+  const [active, setActive] = useState<CollectionKey>('departments');
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -906,11 +919,11 @@ export default function CollectionsPage() {
   const [queries, setQueries] = useState<Record<CollectionKey, string>>(() =>
     createInitialQueries(),
   );
-  const [searchDrafts, setSearchDrafts] = useState<Record<CollectionKey, string>>(
-    () => createInitialQueries(),
-  );
-  const [form, setForm] = useState<ItemForm>({ name: "", value: "" });
-  const [hint, setHint] = useState("");
+  const [searchDrafts, setSearchDrafts] = useState<
+    Record<CollectionKey, string>
+  >(() => createInitialQueries());
+  const [form, setForm] = useState<ItemForm>({ name: '', value: '' });
+  const [hint, setHint] = useState('');
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
   const [allPositions, setAllPositions] = useState<CollectionItem[]>([]);
@@ -918,21 +931,20 @@ export default function CollectionsPage() {
   const limit = 10;
   const [users, setUsers] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
-  const [userQuery, setUserQuery] = useState("");
-  const [userSearchDraft, setUserSearchDraft] = useState("");
+  const [userQuery, setUserQuery] = useState('');
+  const [userSearchDraft, setUserSearchDraft] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState<
-    CollectionItem | null
-  >(null);
+  const [selectedCollection, setSelectedCollection] =
+    useState<CollectionItem | null>(null);
   const collectionSearchTimer = useRef<number>();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<
     string | undefined
   >(undefined);
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
-  const [employeeFormMode, setEmployeeFormMode] = useState<"create" | "update">(
-    "create",
+  const [employeeFormMode, setEmployeeFormMode] = useState<'create' | 'update'>(
+    'create',
   );
   const [taskFieldItems, setTaskFieldItems] = useState<CollectionItem[]>([]);
   const [taskTypeItems, setTaskTypeItems] = useState<CollectionItem[]>([]);
@@ -942,7 +954,7 @@ export default function CollectionsPage() {
   const [confirmEmployeeDelete, setConfirmEmployeeDelete] = useState(false);
   const canManageUsers = hasAccess(currentUser?.access, ACCESS_ADMIN);
   const actionButtonClass =
-    "h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs";
+    'h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs';
 
   useEffect(() => {
     return () => {
@@ -953,8 +965,8 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    const param = searchParams.get("module");
-    const next = isValidModuleKey(param) ? param : "directories";
+    const param = searchParams.get('module');
+    const next = isValidModuleKey(param) ? param : 'directories';
     if (next !== activeModule) {
       setActiveModule(next);
     }
@@ -964,17 +976,20 @@ export default function CollectionsPage() {
     (value: SettingsModuleKey) => {
       setActiveModule(value);
       const next = new URLSearchParams(searchParams.toString());
-      if (value === "directories") {
-        next.delete("module");
+      if (value === 'directories') {
+        next.delete('module');
       } else {
-        next.set("module", value);
+        next.set('module', value);
       }
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
   );
   const selectedCollectionInfo = useMemo(() => {
-    if (!selectedCollection?.meta || typeof selectedCollection.meta !== "object") {
+    if (
+      !selectedCollection?.meta ||
+      typeof selectedCollection.meta !== 'object'
+    ) {
       return { readonly: false, notice: undefined as string | undefined };
     }
     const meta = selectedCollection.meta as {
@@ -984,10 +999,10 @@ export default function CollectionsPage() {
     };
     const readonly = Boolean(meta.readonly ?? meta.legacy);
     const notice = readonly
-      ? typeof meta.readonlyReason === "string"
+      ? typeof meta.readonlyReason === 'string'
         ? meta.readonlyReason
         : meta.legacy
-          ? "Элемент перенесён из старой коллекции и доступен только для чтения."
+          ? 'Элемент перенесён из старой коллекции и доступен только для чтения.'
           : undefined
       : undefined;
     return { readonly, notice };
@@ -995,23 +1010,23 @@ export default function CollectionsPage() {
 
   const breadcrumbs = useMemo(
     () => [
-      { label: t("nav.settings"), href: "/settings" },
-      { label: t("collections.page.title") },
+      { label: t('nav.settings'), href: '/settings' },
+      { label: t('collections.page.title') },
     ],
     [t],
   );
 
-  const currentQuery = queries[active] ?? "";
-  const currentSearchDraft = searchDrafts[active] ?? "";
+  const currentQuery = queries[active] ?? '';
+  const currentSearchDraft = searchDrafts[active] ?? '';
   const isCollectionSearchSupported =
-    activeModule === "directories" &&
-    active !== "users" &&
-    active !== "fleets" &&
-    active !== "tasks";
+    activeModule === 'directories' &&
+    active !== 'users' &&
+    active !== 'fleets' &&
+    active !== 'tasks';
   const isUserSearchActive =
-    activeModule === "directories" && active === "users";
+    activeModule === 'directories' && active === 'users';
   const isEmployeeSearchActive =
-    activeModule === "directories" && active === "employees";
+    activeModule === 'directories' && active === 'employees';
 
   const applyCollectionSearch = useCallback(
     (raw: string) => {
@@ -1046,30 +1061,26 @@ export default function CollectionsPage() {
         window.clearTimeout(collectionSearchTimer.current);
       }
     };
-  }, [
-    applyCollectionSearch,
-    currentSearchDraft,
-    isCollectionSearchSupported,
-  ]);
+  }, [applyCollectionSearch, currentSearchDraft, isCollectionSearchSupported]);
 
   const load = useCallback(async () => {
-    if (active === "users" || active === "tasks") {
+    if (active === 'users' || active === 'tasks') {
       setIsLoading(false);
       return;
     }
     setIsLoading(true);
     try {
-      if (active === "fleets") {
+      if (active === 'fleets') {
         setItems([]);
         setTotal(0);
-        setHint("");
+        setHint('');
         return;
       }
-      if (active === "employees") {
-        const list = await fetchAllCollectionItems("employees");
+      if (active === 'employees') {
+        const list = await fetchAllCollectionItems('employees');
         setItems(list);
         setTotal(list.length);
-        setHint("");
+        setHint('');
         return;
       }
       const d = (await fetchCollectionItems(
@@ -1080,21 +1091,21 @@ export default function CollectionsPage() {
       )) as { items: CollectionItem[]; total: number };
       setItems(d.items);
       setTotal(d.total);
-      if (active === "departments") {
+      if (active === 'departments') {
         setAllDepartments((prev) => mergeById(prev, d.items));
       }
-      if (active === "divisions") {
+      if (active === 'divisions') {
         setAllDivisions((prev) => mergeById(prev, d.items));
       }
-      if (active === "positions") {
+      if (active === 'positions') {
         setAllPositions((prev) => mergeById(prev, d.items));
       }
-      setHint("");
+      setHint('');
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Не удалось загрузить элементы";
+          : 'Не удалось загрузить элементы';
       setItems([]);
       setTotal(0);
       setHint(message);
@@ -1107,10 +1118,9 @@ export default function CollectionsPage() {
     try {
       const list = await fetchUsers();
       setUsers(list);
-      setHint((prev) => (prev === USERS_ERROR_HINT ? "" : prev));
+      setHint((prev) => (prev === USERS_ERROR_HINT ? '' : prev));
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : USERS_ERROR_HINT;
+      const message = error instanceof Error ? error.message : USERS_ERROR_HINT;
       setUsers([]);
       setHint(message || USERS_ERROR_HINT);
     }
@@ -1120,12 +1130,12 @@ export default function CollectionsPage() {
     setTasksLoading(true);
     try {
       const [fields, types] = await Promise.all([
-        fetchAllCollectionItems("task_fields"),
-        fetchAllCollectionItems("task_types"),
+        fetchAllCollectionItems('task_fields'),
+        fetchAllCollectionItems('task_types'),
       ]);
       setTaskFieldItems(fields);
       setTaskTypeItems(types);
-      setHint((prev) => (prev === TASK_SETTINGS_ERROR_HINT ? "" : prev));
+      setHint((prev) => (prev === TASK_SETTINGS_ERROR_HINT ? '' : prev));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : TASK_SETTINGS_ERROR_HINT;
@@ -1138,7 +1148,7 @@ export default function CollectionsPage() {
   }, [setHint]);
 
   useEffect(() => {
-    if (active === "tasks") {
+    if (active === 'tasks') {
       void loadTaskSettings();
     }
   }, [active, loadTaskSettings]);
@@ -1147,11 +1157,11 @@ export default function CollectionsPage() {
     async (item: CollectionItem, label: string) => {
       const trimmed = label.trim();
       if (!trimmed) {
-        throw new Error("Название не может быть пустым");
+        throw new Error('Название не может быть пустым');
       }
       try {
         if (item.meta?.virtual) {
-          await createCollectionItem("task_fields", {
+          await createCollectionItem('task_fields', {
             name: item.name,
             value: trimmed,
           });
@@ -1159,7 +1169,7 @@ export default function CollectionsPage() {
           await updateCollectionItem(
             item._id,
             { name: item.name, value: trimmed },
-            { collectionType: "task_fields" },
+            { collectionType: 'task_fields' },
           );
         }
         await loadTaskSettings();
@@ -1196,7 +1206,7 @@ export default function CollectionsPage() {
     ) => {
       const trimmedLabel = payload.label.trim();
       if (!trimmedLabel) {
-        throw new Error("Название не может быть пустым");
+        throw new Error('Название не может быть пустым');
       }
       const trimmedUrl = payload.tg_theme_url.trim();
       const trimmedPhotosUrl = payload.tg_photos_url.trim();
@@ -1209,7 +1219,7 @@ export default function CollectionsPage() {
         };
         if (item.meta?.virtual) {
           const meta = buildMeta();
-          await createCollectionItem("task_types", {
+          await createCollectionItem('task_types', {
             name: item.name,
             value: trimmedLabel,
             ...(Object.keys(meta).length ? { meta } : {}),
@@ -1217,10 +1227,10 @@ export default function CollectionsPage() {
         } else {
           const meta = buildMeta();
           if (!trimmedUrl) {
-            meta.tg_theme_url = "";
+            meta.tg_theme_url = '';
           }
           if (!trimmedPhotosUrl) {
-            meta.tg_photos_url = "";
+            meta.tg_photos_url = '';
           }
           await updateCollectionItem(
             item._id,
@@ -1229,7 +1239,7 @@ export default function CollectionsPage() {
               value: trimmedLabel,
               meta,
             },
-            { collectionType: "task_types" },
+            { collectionType: 'task_types' },
           );
         }
         await loadTaskSettings();
@@ -1260,13 +1270,13 @@ export default function CollectionsPage() {
   );
 
   useEffect(() => {
-    if (active === "users" || active === "employees") {
+    if (active === 'users' || active === 'employees') {
       setUserSearchDraft(userQuery);
     }
   }, [active, userQuery]);
 
   useEffect(() => {
-    if (collectionModalOpen && selectedCollection?.type === "divisions") {
+    if (collectionModalOpen && selectedCollection?.type === 'divisions') {
       void loadUsers();
     }
   }, [collectionModalOpen, selectedCollection, loadUsers]);
@@ -1275,9 +1285,9 @@ export default function CollectionsPage() {
     const loadReferenceCollections = async () => {
       const [departmentsResult, divisionsResult, positionsResult] =
         await Promise.allSettled([
-          fetchAllCollectionItems("departments"),
-          fetchAllCollectionItems("divisions"),
-          fetchAllCollectionItems("positions"),
+          fetchAllCollectionItems('departments'),
+          fetchAllCollectionItems('divisions'),
+          fetchAllCollectionItems('positions'),
         ]);
 
       const applyResult = (
@@ -1285,7 +1295,7 @@ export default function CollectionsPage() {
         setter: React.Dispatch<React.SetStateAction<CollectionItem[]>>,
         fallbackMessage: string,
       ) => {
-        if (result.status === "fulfilled") {
+        if (result.status === 'fulfilled') {
           setter(result.value);
           return;
         }
@@ -1300,17 +1310,17 @@ export default function CollectionsPage() {
       applyResult(
         departmentsResult,
         setAllDepartments,
-        "Не удалось загрузить департаменты",
+        'Не удалось загрузить департаменты',
       );
       applyResult(
         divisionsResult,
         setAllDivisions,
-        "Не удалось загрузить отделы",
+        'Не удалось загрузить отделы',
       );
       applyResult(
         positionsResult,
         setAllPositions,
-        "Не удалось загрузить должности",
+        'Не удалось загрузить должности',
       );
     };
 
@@ -1320,48 +1330,46 @@ export default function CollectionsPage() {
       .catch((error) => {
         setAllRoles([]);
         const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось загрузить роли";
+          error instanceof Error ? error.message : 'Не удалось загрузить роли';
         setHint((prev) => prev || message);
       });
   }, []);
 
   useEffect(() => {
-    if (active !== "users" && active !== "tasks") {
+    if (active !== 'users' && active !== 'tasks') {
       void load();
-      if (active !== "fleets") {
-        setForm({ name: "", value: "" });
+      if (active !== 'fleets') {
+        setForm({ name: '', value: '' });
       }
     } else {
-      setHint("");
+      setHint('');
     }
   }, [load, active]);
 
   useEffect(() => {
-    if (active === "users") {
+    if (active === 'users') {
       void loadUsers();
       setUserForm(emptyUser);
       setSelectedEmployeeId(undefined);
     }
-    if (active === "employees") {
+    if (active === 'employees') {
       void loadUsers();
       setSelectedEmployeeId(undefined);
-      setEmployeeFormMode("create");
+      setEmployeeFormMode('create');
       setIsEmployeeModalOpen(false);
     }
-    if (active !== "employees") {
+    if (active !== 'employees') {
       setIsEmployeeModalOpen(false);
     }
     if (
-      active === "users" ||
-      active === "employees" ||
-      active === "fleets" ||
-      active === "tasks"
+      active === 'users' ||
+      active === 'employees' ||
+      active === 'fleets' ||
+      active === 'tasks'
     ) {
       setCollectionModalOpen(false);
     }
-    if (active !== "users") {
+    if (active !== 'users') {
       setUserModalOpen(false);
       setUserForm(emptyUser);
     }
@@ -1372,7 +1380,7 @@ export default function CollectionsPage() {
       setForm({ _id: item._id, name: item.name, value: item.value });
       setSelectedCollection(item);
     } else {
-      setForm({ name: "", value: "" });
+      setForm({ name: '', value: '' });
       setSelectedCollection(null);
     }
     setCollectionModalOpen(true);
@@ -1381,22 +1389,22 @@ export default function CollectionsPage() {
   const closeCollectionModal = () => {
     setCollectionModalOpen(false);
     setSelectedCollection(null);
-    setForm({ name: "", value: "" });
+    setForm({ name: '', value: '' });
   };
 
   const mapUserToForm = (user?: User): UserFormData => ({
     telegram_id: user?.telegram_id,
-    username: user?.telegram_username ?? user?.username ?? "",
-    name: user?.name ?? "",
-    phone: user?.phone ?? "",
-    mobNumber: user?.mobNumber ?? "",
-    email: user?.email ?? "",
-    role: user?.role ?? "user",
+    username: user?.telegram_username ?? user?.username ?? '',
+    name: user?.name ?? '',
+    phone: user?.phone ?? '',
+    mobNumber: user?.mobNumber ?? '',
+    email: user?.email ?? '',
+    role: user?.role ?? 'user',
     access: user?.access ?? 1,
-    roleId: user?.roleId ?? "",
-    departmentId: user?.departmentId ?? "",
-    divisionId: user?.divisionId ?? "",
-    positionId: user?.positionId ?? "",
+    roleId: user?.roleId ?? '',
+    departmentId: user?.departmentId ?? '',
+    divisionId: user?.divisionId ?? '',
+    positionId: user?.positionId ?? '',
   });
 
   const openUserModal = (user?: User) => {
@@ -1412,10 +1420,10 @@ export default function CollectionsPage() {
   const openEmployeeModal = (user?: User) => {
     if (user) {
       setSelectedEmployeeId(String(user.telegram_id));
-      setEmployeeFormMode("update");
+      setEmployeeFormMode('update');
     } else {
       setSelectedEmployeeId(undefined);
-      setEmployeeFormMode("create");
+      setEmployeeFormMode('create');
     }
     setIsEmployeeModalOpen(true);
   };
@@ -1442,14 +1450,14 @@ export default function CollectionsPage() {
       if (!isCollectionSearchSupported) {
         return;
       }
-      if (event.key === "Enter") {
+      if (event.key === 'Enter') {
         event.preventDefault();
         submitCollectionSearch(event.currentTarget.value);
       }
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        updateCollectionSearchDraft("");
-        submitCollectionSearch("");
+        updateCollectionSearchDraft('');
+        submitCollectionSearch('');
       }
     },
     [
@@ -1460,8 +1468,8 @@ export default function CollectionsPage() {
   );
 
   const resetCollectionSearch = useCallback(() => {
-    updateCollectionSearchDraft("");
-    submitCollectionSearch("");
+    updateCollectionSearchDraft('');
+    submitCollectionSearch('');
   }, [submitCollectionSearch, updateCollectionSearchDraft]);
 
   const submitUserSearch = useCallback(
@@ -1479,13 +1487,13 @@ export default function CollectionsPage() {
       if (!isUserSearchActive) {
         return;
       }
-      if (event.key === "Enter") {
+      if (event.key === 'Enter') {
         event.preventDefault();
         submitUserSearch();
       }
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        setUserSearchDraft("");
+        setUserSearchDraft('');
         submitUserSearch();
       }
     },
@@ -1496,7 +1504,7 @@ export default function CollectionsPage() {
     void loadUsers();
     if (updated.telegram_id !== undefined) {
       setSelectedEmployeeId(String(updated.telegram_id));
-      setEmployeeFormMode("update");
+      setEmployeeFormMode('update');
     }
   };
 
@@ -1507,7 +1515,7 @@ export default function CollectionsPage() {
     }
     try {
       await deleteUserApi(userForm.telegram_id);
-      showToast(USER_DELETE_SUCCESS, "success");
+      showToast(USER_DELETE_SUCCESS, 'success');
       setSelectedEmployeeId((prev) =>
         prev === String(userForm.telegram_id) ? undefined : prev,
       );
@@ -1516,16 +1524,11 @@ export default function CollectionsPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : USER_DELETE_ERROR;
-      showToast(message || USER_DELETE_ERROR, "error");
+      showToast(message || USER_DELETE_ERROR, 'error');
     } finally {
       setConfirmUserDelete(false);
     }
-  }, [
-    userForm.telegram_id,
-    closeUserModal,
-    loadUsers,
-    setSelectedEmployeeId,
-  ]);
+  }, [userForm.telegram_id, closeUserModal, loadUsers, setSelectedEmployeeId]);
 
   const executeEmployeeDelete = useCallback(async () => {
     if (!selectedEmployeeId) {
@@ -1534,51 +1537,52 @@ export default function CollectionsPage() {
     }
     try {
       await deleteUserApi(selectedEmployeeId);
-      showToast(EMPLOYEE_DELETE_SUCCESS, "success");
+      showToast(EMPLOYEE_DELETE_SUCCESS, 'success');
       setIsEmployeeModalOpen(false);
       setSelectedEmployeeId(undefined);
-      setEmployeeFormMode("create");
+      setEmployeeFormMode('create');
       await loadUsers();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : EMPLOYEE_DELETE_ERROR;
-      showToast(message || EMPLOYEE_DELETE_ERROR, "error");
+      showToast(message || EMPLOYEE_DELETE_ERROR, 'error');
     } finally {
       setConfirmEmployeeDelete(false);
     }
-  }, [
-    selectedEmployeeId,
-    loadUsers,
-  ]);
+  }, [selectedEmployeeId, loadUsers]);
 
   const submit = async () => {
-    if (active === "fleets") return;
+    if (active === 'fleets') return;
     const trimmedName = form.name.trim();
     if (!trimmedName) return;
     if (form._id && selectedCollectionInfo.readonly) {
       setHint(
         selectedCollectionInfo.notice ??
-          "Элемент перенесён из старой коллекции и доступен только для чтения.",
+          'Элемент перенесён из старой коллекции и доступен только для чтения.',
       );
       return;
     }
     let valueToSave = form.value;
-    if (active === "departments") {
-      valueToSave = safeParseIds(form.value).join(",");
+    if (active === 'departments') {
+      valueToSave = safeParseIds(form.value).join(',');
     } else {
       valueToSave = form.value.trim();
       if (!valueToSave) {
-        setHint("Заполните значение элемента.");
+        setHint('Заполните значение элемента.');
         return;
       }
     }
     try {
       let saved: CollectionItem | null = null;
       if (form._id) {
-        saved = await updateCollectionItem(form._id, {
-          name: trimmedName,
-          value: valueToSave,
-        }, { collectionType: active });
+        saved = await updateCollectionItem(
+          form._id,
+          {
+            name: trimmedName,
+            value: valueToSave,
+          },
+          { collectionType: active },
+        );
       } else {
         saved = await createCollectionItem(active, {
           name: trimmedName,
@@ -1586,14 +1590,14 @@ export default function CollectionsPage() {
         });
       }
       if (!saved) {
-        throw new Error("Сервер не вернул сохранённый элемент");
+        throw new Error('Сервер не вернул сохранённый элемент');
       }
-      setHint("");
+      setHint('');
       await load();
       closeCollectionModal();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Не удалось сохранить элемент";
+        error instanceof Error ? error.message : 'Не удалось сохранить элемент';
       setHint(message);
     }
   };
@@ -1603,17 +1607,17 @@ export default function CollectionsPage() {
     if (selectedCollectionInfo.readonly) {
       setHint(
         selectedCollectionInfo.notice ??
-          "Элемент перенесён из старой коллекции и доступен только для чтения.",
+          'Элемент перенесён из старой коллекции и доступен только для чтения.',
       );
       return;
     }
     try {
       await removeCollectionItem(form._id);
-      setHint("");
+      setHint('');
       await load();
       closeCollectionModal();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
+      const msg = e instanceof Error ? e.message : '';
       setHint(msg);
     }
   };
@@ -1655,7 +1659,10 @@ export default function CollectionsPage() {
 
   const enrichUserWithEmployeeDetails = useCallback(
     (user: User) =>
-      mergeEmployeeDetails(user, findEmployeeDetails(user, employeeDetailsIndex)),
+      mergeEmployeeDetails(
+        user,
+        findEmployeeDetails(user, employeeDetailsIndex),
+      ),
     [employeeDetailsIndex],
   );
 
@@ -1685,11 +1692,14 @@ export default function CollectionsPage() {
         }
       });
     });
-    return { divisionOwners: owners, duplicateDivisionIds: Array.from(duplicates) };
+    return {
+      divisionOwners: owners,
+      duplicateDivisionIds: Array.from(duplicates),
+    };
   }, [allDepartments]);
 
   const duplicateDivisionHint = useMemo(() => {
-    if (!duplicateDivisionIds.length) return "";
+    if (!duplicateDivisionIds.length) return '';
     const names = duplicateDivisionIds
       .map(
         (id) =>
@@ -1698,7 +1708,7 @@ export default function CollectionsPage() {
           id,
       )
       .filter((name): name is string => Boolean(name));
-    const suffix = names.length ? `: ${names.join(", ")}.` : ".";
+    const suffix = names.length ? `: ${names.join(', ')}.` : '.';
     return `${DUPLICATE_DIVISION_HINT_PREFIX}${suffix}`;
   }, [duplicateDivisionIds, divisionMap, allDivisions]);
 
@@ -1708,13 +1718,13 @@ export default function CollectionsPage() {
       return;
     }
     setHint((prev) =>
-      prev && prev.startsWith(DUPLICATE_DIVISION_HINT_PREFIX) ? "" : prev,
+      prev && prev.startsWith(DUPLICATE_DIVISION_HINT_PREFIX) ? '' : prev,
     );
   }, [duplicateDivisionHint]);
 
   const getItemDisplayValue = useCallback(
     (item: CollectionItem, type: CollectionKey) => {
-      if (type === "departments") {
+      if (type === 'departments') {
         const ids = safeParseIds(item.value);
         if (!ids.length) return SETTINGS_BADGE_EMPTY;
         const names = ids
@@ -1725,41 +1735,41 @@ export default function CollectionsPage() {
               id,
           )
           .filter((name): name is string => Boolean(name));
-        return names.length ? names.join("\n") : SETTINGS_BADGE_EMPTY;
+        return names.length ? names.join('\n') : SETTINGS_BADGE_EMPTY;
       }
-      if (type === "divisions") {
+      if (type === 'divisions') {
         const departmentName =
           departmentMap.get(item.value) ??
-          allDepartments.find((department) => department._id === item.value)?.name ??
+          allDepartments.find((department) => department._id === item.value)
+            ?.name ??
           item.value;
-        return departmentName ? formatCollectionRawValue(departmentName) : SETTINGS_BADGE_EMPTY;
+        return departmentName
+          ? formatCollectionRawValue(departmentName)
+          : SETTINGS_BADGE_EMPTY;
       }
-      if (type === "positions") {
+      if (type === 'positions') {
         const divisionName =
           divisionMap.get(item.value) ??
           allDivisions.find((division) => division._id === item.value)?.name ??
           item.value;
-        return divisionName ? formatCollectionRawValue(divisionName) : SETTINGS_BADGE_EMPTY;
+        return divisionName
+          ? formatCollectionRawValue(divisionName)
+          : SETTINGS_BADGE_EMPTY;
       }
-      const formatted = formatCollectionRawValue(item.value ?? "");
+      const formatted = formatCollectionRawValue(item.value ?? '');
       return formatted || SETTINGS_BADGE_EMPTY;
     },
-    [
-      allDepartments,
-      allDivisions,
-      departmentMap,
-      divisionMap,
-    ],
+    [allDepartments, allDivisions, departmentMap, divisionMap],
   );
 
-  const formatMetaSummary = useCallback((meta?: CollectionItem["meta"]) => {
+  const formatMetaSummary = useCallback((meta?: CollectionItem['meta']) => {
     if (!meta) return SETTINGS_BADGE_EMPTY;
     const summary = summarizeRecord(meta as Record<string, unknown>);
     return summary || SETTINGS_BADGE_EMPTY;
   }, []);
 
-  const copyIdLabel = t("collections.actions.copyId");
-  const copiedIdLabel = t("collections.actions.copiedId");
+  const copyIdLabel = t('collections.actions.copyId');
+  const copiedIdLabel = t('collections.actions.copiedId');
 
   const localizedCollectionColumns = useMemo(
     () =>
@@ -1768,24 +1778,24 @@ export default function CollectionsPage() {
           return column;
         }
         switch (column.accessorKey) {
-          case "name":
-            return { ...column, header: t("collections.table.columns.name") };
-          case "value":
-            return { ...column, header: t("collections.table.columns.value") };
-          case "displayValue":
+          case 'name':
+            return { ...column, header: t('collections.table.columns.name') };
+          case 'value':
+            return { ...column, header: t('collections.table.columns.value') };
+          case 'displayValue':
             return {
               ...column,
-              header: t("collections.table.columns.relations"),
+              header: t('collections.table.columns.relations'),
             };
-          case "type":
-            return { ...column, header: t("collections.table.columns.type") };
-          case "_id":
+          case 'type':
+            return { ...column, header: t('collections.table.columns.type') };
+          case '_id':
             return {
               ...column,
-              header: t("collections.table.columns.id"),
+              header: t('collections.table.columns.id'),
               cell: ({ getValue }) => {
                 const raw = getValue<string>();
-                const safeValue = typeof raw === "string" ? raw : "";
+                const safeValue = typeof raw === 'string' ? raw : '';
                 if (!safeValue) {
                   return (
                     <span className="text-xs text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
@@ -1802,10 +1812,10 @@ export default function CollectionsPage() {
                 );
               },
             };
-          case "metaSummary":
+          case 'metaSummary':
             return {
               ...column,
-              header: t("collections.table.columns.meta"),
+              header: t('collections.table.columns.meta'),
             };
           default:
             return column;
@@ -1814,41 +1824,42 @@ export default function CollectionsPage() {
     [copiedIdLabel, copyIdLabel, t],
   );
 
-  const collectionSearchPlaceholder = t("collections.search.placeholder");
-  const collectionSearchHint = t("collections.search.hint");
-  const collectionSearchCta = t("collections.actions.search");
-  const collectionResetCta = t("collections.actions.reset");
-  const collectionAddCta = t("collections.actions.add");
-  const collectionEmptyTitle = t("collections.table.empty.title");
-  const collectionEmptyDescription = t("collections.table.empty.description");
-  const collectionEmptyAction = t("collections.table.empty.action");
-  const userSearchPlaceholder = t("collections.users.searchPlaceholder");
-  const userAddCta = t("collections.users.add");
-  const employeeSearchPlaceholder = t("collections.employees.searchPlaceholder");
-  const employeeAddCta = t("collections.employees.add");
+  const collectionSearchPlaceholder = t('collections.search.placeholder');
+  const collectionSearchHint = t('collections.search.hint');
+  const collectionSearchCta = t('collections.actions.search');
+  const collectionResetCta = t('collections.actions.reset');
+  const collectionAddCta = t('collections.actions.add');
+  const collectionEmptyTitle = t('collections.table.empty.title');
+  const collectionEmptyDescription = t('collections.table.empty.description');
+  const collectionEmptyAction = t('collections.table.empty.action');
+  const userSearchPlaceholder = t('collections.users.searchPlaceholder');
+  const userAddCta = t('collections.users.add');
+  const employeeSearchPlaceholder = t(
+    'collections.employees.searchPlaceholder',
+  );
+  const employeeAddCta = t('collections.employees.add');
 
   const buildCollectionColumns = useCallback(
     (excludedKeys: string[]) =>
       localizedCollectionColumns.filter(
         (column) =>
-          !hasAccessorKey(column) ||
-          !excludedKeys.includes(column.accessorKey),
+          !hasAccessorKey(column) || !excludedKeys.includes(column.accessorKey),
       ),
     [localizedCollectionColumns],
   );
 
   const departmentColumns = useMemo(
-    () => buildCollectionColumns(["value", "type", "metaSummary"]),
+    () => buildCollectionColumns(['value', 'type', 'metaSummary']),
     [buildCollectionColumns],
   );
 
   const divisionColumns = useMemo(
-    () => buildCollectionColumns(["type", "metaSummary"]),
+    () => buildCollectionColumns(['type', 'metaSummary']),
     [buildCollectionColumns],
   );
 
   const positionColumns = useMemo(
-    () => buildCollectionColumns(["type", "metaSummary"]),
+    () => buildCollectionColumns(['type', 'metaSummary']),
     [buildCollectionColumns],
   );
 
@@ -1863,7 +1874,7 @@ export default function CollectionsPage() {
         const values = Array.from(event.target.selectedOptions).map(
           (option) => option.value,
         );
-        handleChange({ ...currentForm, value: values.join(",") });
+        handleChange({ ...currentForm, value: values.join(',') });
       };
       return (
         <select
@@ -1958,18 +1969,18 @@ export default function CollectionsPage() {
     return matchSorter<User>(enrichedUsers, trimmed, {
       keys: [
         {
-          key: (item: User) => item.username ?? "",
+          key: (item: User) => item.username ?? '',
           threshold: rankings.STARTS_WITH,
         },
         {
-          key: (item: User) => item.telegram_username ?? "",
+          key: (item: User) => item.telegram_username ?? '',
           threshold: rankings.STARTS_WITH,
         },
         {
           key: (item: User) =>
             item.telegram_id !== undefined && item.telegram_id !== null
               ? String(item.telegram_id)
-              : "",
+              : '',
           threshold: rankings.STARTS_WITH,
         },
         {
@@ -1985,27 +1996,24 @@ export default function CollectionsPage() {
     userPage * limit,
   );
 
-
   const employeeRows = useMemo<EmployeeRow[]>(
     () =>
       paginatedUsers.map((user) => {
         const mergedUser = enrichUserWithEmployeeDetails(user);
         const roleId =
-          typeof mergedUser.roleId === "string"
-            ? mergedUser.roleId.trim()
-            : "";
+          typeof mergedUser.roleId === 'string' ? mergedUser.roleId.trim() : '';
         const departmentId =
-          typeof mergedUser.departmentId === "string"
+          typeof mergedUser.departmentId === 'string'
             ? mergedUser.departmentId.trim()
-            : "";
+            : '';
         const divisionId =
-          typeof mergedUser.divisionId === "string"
+          typeof mergedUser.divisionId === 'string'
             ? mergedUser.divisionId.trim()
-            : "";
+            : '';
         const positionId =
-          typeof mergedUser.positionId === "string"
+          typeof mergedUser.positionId === 'string'
             ? mergedUser.positionId.trim()
-            : "";
+            : '';
         const roleNameFromMap = resolveReferenceName(
           roleMap,
           roleId,
@@ -2028,7 +2036,7 @@ export default function CollectionsPage() {
         );
         const roleLabel =
           roleNameFromMap ||
-          (mergedUser.role ? formatRoleName(mergedUser.role) : "");
+          (mergedUser.role ? formatRoleName(mergedUser.role) : '');
         return buildEmployeeRow({
           ...mergedUser,
           roleId,
@@ -2066,7 +2074,7 @@ export default function CollectionsPage() {
     );
     if (!fallbackDetails) return undefined;
     const fallbackUser: User = {};
-    if (typeof fallbackDetails.telegram_id === "number") {
+    if (typeof fallbackDetails.telegram_id === 'number') {
       fallbackUser.telegram_id = fallbackDetails.telegram_id;
     } else {
       const parsedId = Number(selectedEmployeeId);
@@ -2084,7 +2092,7 @@ export default function CollectionsPage() {
   }, [employeeDetailsIndex, enrichedUsers, selectedEmployeeId]);
 
   const selectedDepartmentDivisionNames = useMemo(() => {
-    if (!selectedCollection || selectedCollection.type !== "departments") {
+    if (!selectedCollection || selectedCollection.type !== 'departments') {
       return [] as string[];
     }
     const ids = safeParseIds(selectedCollection.value);
@@ -2099,20 +2107,21 @@ export default function CollectionsPage() {
   }, [selectedCollection, divisionMap, allDivisions]);
 
   const selectedDivisionDepartmentName = useMemo(() => {
-    if (!selectedCollection || selectedCollection.type !== "divisions") {
+    if (!selectedCollection || selectedCollection.type !== 'divisions') {
       return SETTINGS_BADGE_EMPTY;
     }
     const departmentId = selectedCollection.value;
     if (!departmentId) return SETTINGS_BADGE_EMPTY;
     return (
       departmentMap.get(departmentId) ??
-      allDepartments.find((department) => department._id === departmentId)?.name ??
+      allDepartments.find((department) => department._id === departmentId)
+        ?.name ??
       departmentId
     );
   }, [selectedCollection, departmentMap, allDepartments]);
 
   const selectedDivisionPositionNames = useMemo(() => {
-    if (!selectedCollection || selectedCollection.type !== "divisions") {
+    if (!selectedCollection || selectedCollection.type !== 'divisions') {
       return [] as string[];
     }
     return allPositions
@@ -2122,7 +2131,7 @@ export default function CollectionsPage() {
   }, [selectedCollection, allPositions]);
 
   const selectedDivisionEmployeeNames = useMemo(() => {
-    if (!selectedCollection || selectedCollection.type !== "divisions") {
+    if (!selectedCollection || selectedCollection.type !== 'divisions') {
       return [] as string[];
     }
     return enrichedUsers
@@ -2132,12 +2141,12 @@ export default function CollectionsPage() {
         if (user.username && user.username.trim()) return user.username.trim();
         if (user.telegram_id !== undefined && user.telegram_id !== null)
           return `ID ${user.telegram_id}`;
-        return "Без имени";
+        return 'Без имени';
       });
   }, [selectedCollection, enrichedUsers]);
 
   const directoriesToolbar = (() => {
-    if (activeModule !== "directories") {
+    if (activeModule !== 'directories') {
       return null;
     }
     if (isUserSearchActive || isEmployeeSearchActive) {
@@ -2175,7 +2184,7 @@ export default function CollectionsPage() {
               size="sm"
               variant="outline"
               onClick={() => {
-                setUserSearchDraft("");
+                setUserSearchDraft('');
                 submitUserSearch();
               }}
             >
@@ -2199,7 +2208,9 @@ export default function CollectionsPage() {
               id="settings-collections-search"
               className="h-10 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm text-[color:var(--color-gray-900)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
               value={currentSearchDraft}
-              onChange={(event) => updateCollectionSearchDraft(event.target.value)}
+              onChange={(event) =>
+                updateCollectionSearchDraft(event.target.value)
+              }
               onKeyDown={handleCollectionSearchKeyDown}
               placeholder={collectionSearchPlaceholder}
             />
@@ -2211,11 +2222,7 @@ export default function CollectionsPage() {
             <Button size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={resetCollectionSearch}
-            >
+            <Button size="sm" variant="outline" onClick={resetCollectionSearch}>
               {collectionResetCta}
             </Button>
             <Button
@@ -2246,25 +2253,29 @@ export default function CollectionsPage() {
     <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">
       <Tabs
         value={activeModule}
-        onValueChange={(value) => handleModuleChange(value as SettingsModuleKey)}
+        onValueChange={(value) =>
+          handleModuleChange(value as SettingsModuleKey)
+        }
         className="space-y-6"
       >
         <ActionBar
           breadcrumbs={<Breadcrumbs items={breadcrumbs} />}
-          title={t("collections.page.title")}
-          description={t("collections.page.description")}
+          title={t('collections.page.title')}
+          description={t('collections.page.description')}
           toolbar={directoriesToolbar}
         >
           <div className="flex flex-col gap-3">
             <div className="sm:hidden">
               <label htmlFor="settings-module-select" className="sr-only">
-                {t("collections.moduleSelectLabel")}
+                {t('collections.moduleSelectLabel')}
               </label>
               <select
                 id="settings-module-select"
                 className="h-11 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm font-semibold text-[color:var(--color-gray-800)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
                 value={activeModule}
-                onChange={(event) => handleModuleChange(event.target.value as SettingsModuleKey)}
+                onChange={(event) =>
+                  handleModuleChange(event.target.value as SettingsModuleKey)
+                }
               >
                 {moduleTabs.map((tab) => (
                   <option key={tab.key} value={tab.key}>
@@ -2318,7 +2329,7 @@ export default function CollectionsPage() {
           >
             <div className="sm:hidden">
               <label htmlFor="settings-section-select" className="sr-only">
-                {t("collections.directorySelectLabel")}
+                {t('collections.directorySelectLabel')}
               </label>
               <select
                 id="settings-section-select"
@@ -2373,23 +2384,30 @@ export default function CollectionsPage() {
               const rows: CollectionTableRow[] = isActiveTab
                 ? items.map((item) => ({
                     ...item,
-                    displayValue: getItemDisplayValue(item, type.key as CollectionKey),
+                    displayValue: getItemDisplayValue(
+                      item,
+                      type.key as CollectionKey,
+                    ),
                     metaSummary: formatMetaSummary(item.meta),
                   }))
                 : [];
               const columnsForType =
-                type.key === "departments"
+                type.key === 'departments'
                   ? departmentColumns
-                  : type.key === "divisions"
+                  : type.key === 'divisions'
                     ? divisionColumns
-                    : type.key === "positions"
+                    : type.key === 'positions'
                       ? positionColumns
                       : localizedCollectionColumns;
 
-              if (type.key === "users") {
+              if (type.key === 'users') {
                 const showEmpty = paginatedUsers.length === 0;
                 return (
-                  <TabsContent key={type.key} value={type.key} className="mt-0 flex flex-col gap-4">
+                  <TabsContent
+                    key={type.key}
+                    value={type.key}
+                    className="mt-0 flex flex-col gap-4"
+                  >
                     {showEmpty ? (
                       <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[color:var(--color-gray-200)] bg-white p-8 text-center shadow-sm dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]">
                         <h3 className="text-lg font-semibold text-[color:var(--color-gray-800)] dark:text-white">
@@ -2398,7 +2416,10 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <Button variant="success" onClick={() => openUserModal()}>
+                        <Button
+                          variant="success"
+                          onClick={() => openUserModal()}
+                        >
                           {userAddCta}
                         </Button>
                       </div>
@@ -2423,10 +2444,14 @@ export default function CollectionsPage() {
                 );
               }
 
-              if (type.key === "employees") {
+              if (type.key === 'employees') {
                 const showEmpty = employeeRows.length === 0;
                 return (
-                  <TabsContent key={type.key} value={type.key} className="mt-0 flex flex-col gap-4">
+                  <TabsContent
+                    key={type.key}
+                    value={type.key}
+                    className="mt-0 flex flex-col gap-4"
+                  >
                     {showEmpty ? (
                       <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[color:var(--color-gray-200)] bg-white p-8 text-center shadow-sm dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]">
                         <h3 className="text-lg font-semibold text-[color:var(--color-gray-800)] dark:text-white">
@@ -2435,7 +2460,10 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <Button variant="success" onClick={() => openEmployeeModal()}>
+                        <Button
+                          variant="success"
+                          onClick={() => openEmployeeModal()}
+                        >
                           {employeeAddCta}
                         </Button>
                       </div>
@@ -2460,7 +2488,7 @@ export default function CollectionsPage() {
                 );
               }
 
-              if (type.key === "tasks") {
+              if (type.key === 'tasks') {
                 return (
                   <TabsContent key={type.key} value={type.key} className="mt-0">
                     <TaskSettingsTab
@@ -2476,7 +2504,7 @@ export default function CollectionsPage() {
                 );
               }
 
-              if (type.key === "fleets") {
+              if (type.key === 'fleets') {
                 return (
                   <TabsContent key={type.key} value={type.key} className="mt-0">
                     <FleetVehiclesTab />
@@ -2486,7 +2514,11 @@ export default function CollectionsPage() {
 
               const showEmpty = rows.length === 0;
               return (
-                <TabsContent key={type.key} value={type.key} className="mt-0 flex flex-col gap-4">
+                <TabsContent
+                  key={type.key}
+                  value={type.key}
+                  className="mt-0 flex flex-col gap-4"
+                >
                   {isActiveTab && isLoading ? (
                     <div className="flex min-h-[12rem] items-center justify-center rounded-2xl border border-[color:var(--color-gray-200)] bg-white shadow-sm dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]">
                       <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
@@ -2499,7 +2531,10 @@ export default function CollectionsPage() {
                       <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                         {collectionEmptyDescription}
                       </p>
-                      <Button variant="success" onClick={() => openCollectionModal()}>
+                      <Button
+                        variant="success"
+                        onClick={() => openCollectionModal()}
+                      >
                         {collectionEmptyAction}
                       </Button>
                     </div>
@@ -2529,9 +2564,11 @@ export default function CollectionsPage() {
           <div className="space-y-4">
             {selectedCollection ? (
               <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                {selectedCollection.type === "departments" ? (
+                {selectedCollection.type === 'departments' ? (
                   <>
-                    <h3 className="text-base font-semibold">Информация о департаменте</h3>
+                    <h3 className="text-base font-semibold">
+                      Информация о департаменте
+                    </h3>
                     <dl className="mt-2 space-y-3 text-sm">
                       <div className="flex justify-between gap-4">
                         <dt className="font-medium text-slate-500">ID</dt>
@@ -2546,16 +2583,20 @@ export default function CollectionsPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-slate-500">Отделы департамента</dt>
+                        <dt className="font-medium text-slate-500">
+                          Отделы департамента
+                        </dt>
                         <dd className="mt-2">
                           {renderBadgeList(selectedDepartmentDivisionNames)}
                         </dd>
                       </div>
                     </dl>
                   </>
-                ) : selectedCollection.type === "divisions" ? (
+                ) : selectedCollection.type === 'divisions' ? (
                   <>
-                    <h3 className="text-base font-semibold">Информация о департаменте</h3>
+                    <h3 className="text-base font-semibold">
+                      Информация о департаменте
+                    </h3>
                     <dl className="mt-2 space-y-3 text-sm">
                       <div className="flex justify-between gap-4">
                         <dt className="font-medium text-slate-500">ID</dt>
@@ -2570,19 +2611,25 @@ export default function CollectionsPage() {
                         </dd>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <dt className="font-medium text-slate-500">Департамент</dt>
+                        <dt className="font-medium text-slate-500">
+                          Департамент
+                        </dt>
                         <dd className="text-right text-slate-900">
-                          {selectedDivisionDepartmentName || "—"}
+                          {selectedDivisionDepartmentName || '—'}
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-slate-500">Должности отдела</dt>
+                        <dt className="font-medium text-slate-500">
+                          Должности отдела
+                        </dt>
                         <dd className="mt-2">
                           {renderBadgeList(selectedDivisionPositionNames)}
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-slate-500">Сотрудники отдела</dt>
+                        <dt className="font-medium text-slate-500">
+                          Сотрудники отдела
+                        </dt>
                         <dd className="mt-2">
                           {renderBadgeList(selectedDivisionEmployeeNames)}
                         </dd>
@@ -2591,7 +2638,9 @@ export default function CollectionsPage() {
                   </>
                 ) : (
                   <>
-                    <h3 className="text-base font-semibold">Карточка элемента</h3>
+                    <h3 className="text-base font-semibold">
+                      Карточка элемента
+                    </h3>
                     <dl className="mt-2 space-y-1 text-sm">
                       <div className="flex justify-between gap-4">
                         <dt className="font-medium text-slate-500">ID</dt>
@@ -2614,7 +2663,7 @@ export default function CollectionsPage() {
                       <div>
                         <dt className="font-medium text-slate-500">Значение</dt>
                         <dd className="mt-1 rounded bg-white p-2 font-mono text-xs text-slate-900">
-                          {selectedCollection.value || "—"}
+                          {selectedCollection.value || '—'}
                         </dd>
                       </div>
                       <div>
@@ -2623,7 +2672,7 @@ export default function CollectionsPage() {
                           <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
                             {selectedCollection.meta
                               ? JSON.stringify(selectedCollection.meta, null, 2)
-                              : "{}"}
+                              : '{}'}
                           </pre>
                         </dd>
                       </div>
@@ -2637,22 +2686,22 @@ export default function CollectionsPage() {
               onChange={setForm}
               onSubmit={submit}
               onDelete={remove}
-              onReset={() => setForm({ name: "", value: "" })}
+              onReset={() => setForm({ name: '', value: '' })}
               valueLabel={
-                active === "departments"
-                  ? "Отделы"
-                  : active === "divisions"
-                    ? "Департамент"
-                    : active === "positions"
-                      ? "Отдел"
+                active === 'departments'
+                  ? 'Отделы'
+                  : active === 'divisions'
+                    ? 'Департамент'
+                    : active === 'positions'
+                      ? 'Отдел'
                       : undefined
               }
               renderValueField={
-                active === "departments"
+                active === 'departments'
                   ? renderDepartmentValueField
-                  : active === "divisions"
+                  : active === 'divisions'
                     ? renderDivisionValueField
-                    : active === "positions"
+                    : active === 'positions'
                       ? renderPositionValueField
                       : undefined
               }
@@ -2666,9 +2715,11 @@ export default function CollectionsPage() {
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
               <header className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-semibold">Карточка пользователя</h3>
+                  <h3 className="text-base font-semibold">
+                    Карточка пользователя
+                  </h3>
                   <p className="text-sm text-slate-500">
-                    Telegram ID: {userForm.telegram_id ?? "—"}
+                    Telegram ID: {userForm.telegram_id ?? '—'}
                   </p>
                 </div>
                 {canManageUsers && userForm.telegram_id ? (
@@ -2685,27 +2736,31 @@ export default function CollectionsPage() {
               <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="font-medium text-slate-500">Логин</dt>
-                  <dd className="text-slate-900">{userForm.username || "—"}</dd>
+                  <dd className="text-slate-900">{userForm.username || '—'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Имя</dt>
-                  <dd className="text-slate-900">{userForm.name || "—"}</dd>
+                  <dd className="text-slate-900">{userForm.name || '—'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Телефон</dt>
-                  <dd className="text-slate-900">{userForm.phone || "—"}</dd>
+                  <dd className="text-slate-900">{userForm.phone || '—'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Мобильный</dt>
-                  <dd className="text-slate-900">{userForm.mobNumber || "—"}</dd>
+                  <dd className="text-slate-900">
+                    {userForm.mobNumber || '—'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Email</dt>
-                  <dd className="text-slate-900">{userForm.email || "—"}</dd>
+                  <dd className="text-slate-900">{userForm.email || '—'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Роль</dt>
-                  <dd className="text-slate-900">{formatRoleName(userForm.role)}</dd>
+                  <dd className="text-slate-900">
+                    {formatRoleName(userForm.role)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Доступ</dt>
@@ -2715,32 +2770,37 @@ export default function CollectionsPage() {
                   <dt className="font-medium text-slate-500">Роль ID</dt>
                   <dd className="text-slate-900">
                     {userForm.roleId
-                      ? formatRoleName(roleMap.get(userForm.roleId) ?? userForm.roleId)
-                      : "—"}
+                      ? formatRoleName(
+                          roleMap.get(userForm.roleId) ?? userForm.roleId,
+                        )
+                      : '—'}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Департамент</dt>
                   <dd className="text-slate-900">
                     {userForm.departmentId
-                      ? departmentMap.get(userForm.departmentId) ?? userForm.departmentId
-                      : "—"}
+                      ? (departmentMap.get(userForm.departmentId) ??
+                        userForm.departmentId)
+                      : '—'}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Отдел</dt>
                   <dd className="text-slate-900">
                     {userForm.divisionId
-                      ? divisionMap.get(userForm.divisionId) ?? userForm.divisionId
-                      : "—"}
+                      ? (divisionMap.get(userForm.divisionId) ??
+                        userForm.divisionId)
+                      : '—'}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-slate-500">Должность</dt>
                   <dd className="text-slate-900">
                     {userForm.positionId
-                      ? positionMap.get(userForm.positionId) ?? userForm.positionId
-                      : "—"}
+                      ? (positionMap.get(userForm.positionId) ??
+                        userForm.positionId)
+                      : '—'}
                   </dd>
                 </div>
               </dl>
@@ -2762,9 +2822,11 @@ export default function CollectionsPage() {
               <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
                 <header className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-semibold">Карточка сотрудника</h3>
+                    <h3 className="text-base font-semibold">
+                      Карточка сотрудника
+                    </h3>
                     <p className="text-sm text-slate-500">
-                      ID: {selectedEmployee.telegram_id ?? "—"}
+                      ID: {selectedEmployee.telegram_id ?? '—'}
                     </p>
                   </div>
                   {canManageUsers && selectedEmployee.telegram_id ? (
@@ -2788,31 +2850,31 @@ export default function CollectionsPage() {
                   <div>
                     <dt className="font-medium text-slate-500">Логин</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.username || "—"}
+                      {selectedEmployee.username || '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Имя</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.name || "—"}
+                      {selectedEmployee.name || '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Телефон</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.phone || "—"}
+                      {selectedEmployee.phone || '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Мобильный</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.mobNumber || "—"}
+                      {selectedEmployee.mobNumber || '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Email</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.email || "—"}
+                      {selectedEmployee.email || '—'}
                     </dd>
                   </div>
                   <div>
@@ -2824,7 +2886,7 @@ export default function CollectionsPage() {
                   <div>
                     <dt className="font-medium text-slate-500">Доступ</dt>
                     <dd className="text-slate-900">
-                      {selectedEmployee.access ?? "—"}
+                      {selectedEmployee.access ?? '—'}
                     </dd>
                   </div>
                   <div>
@@ -2835,34 +2897,34 @@ export default function CollectionsPage() {
                             roleMap.get(selectedEmployee.roleId) ??
                               selectedEmployee.roleId,
                           )
-                        : "—"}
+                        : '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Департамент</dt>
                     <dd className="text-slate-900">
                       {selectedEmployee.departmentId
-                        ? departmentMap.get(selectedEmployee.departmentId) ??
-                          selectedEmployee.departmentId
-                        : "—"}
+                        ? (departmentMap.get(selectedEmployee.departmentId) ??
+                          selectedEmployee.departmentId)
+                        : '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Отдел</dt>
                     <dd className="text-slate-900">
                       {selectedEmployee.divisionId
-                        ? divisionMap.get(selectedEmployee.divisionId) ??
-                          selectedEmployee.divisionId
-                        : "—"}
+                        ? (divisionMap.get(selectedEmployee.divisionId) ??
+                          selectedEmployee.divisionId)
+                        : '—'}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-slate-500">Должность</dt>
                     <dd className="text-slate-900">
                       {selectedEmployee.positionId
-                        ? positionMap.get(selectedEmployee.positionId) ??
-                          selectedEmployee.positionId
-                        : "—"}
+                        ? (positionMap.get(selectedEmployee.positionId) ??
+                          selectedEmployee.positionId)
+                        : '—'}
                     </dd>
                   </div>
                 </dl>
@@ -2870,7 +2932,7 @@ export default function CollectionsPage() {
             ) : null}
             <EmployeeCardForm
               telegramId={
-                employeeFormMode === "update" ? selectedEmployeeId : undefined
+                employeeFormMode === 'update' ? selectedEmployeeId : undefined
               }
               mode={employeeFormMode}
               onSaved={handleEmployeeSaved}

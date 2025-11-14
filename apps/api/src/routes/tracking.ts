@@ -18,7 +18,10 @@ router.get('/stream', authMiddleware(), (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  if (typeof (res as Response & { flushHeaders?: () => void }).flushHeaders === 'function') {
+  if (
+    typeof (res as Response & { flushHeaders?: () => void }).flushHeaders ===
+    'function'
+  ) {
     (res as Response & { flushHeaders?: () => void }).flushHeaders();
   }
 

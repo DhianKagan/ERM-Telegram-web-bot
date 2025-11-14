@@ -1,9 +1,9 @@
 // Назначение: форма элемента коллекции с подтверждением действий
 // Основные модули: React, ConfirmDialog
-import React from "react";
+import React from 'react';
 
-import { Button } from "@/components/ui/button";
-import ConfirmDialog from "../../components/ConfirmDialog";
+import { Button } from '@/components/ui/button';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 interface ItemForm {
   _id?: string;
@@ -33,7 +33,7 @@ export default function CollectionForm({
   onSubmit,
   onDelete,
   onReset,
-  valueLabel = "Значение",
+  valueLabel = 'Значение',
   renderValueField,
   readonly = false,
   readonlyNotice,

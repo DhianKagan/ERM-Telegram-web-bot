@@ -81,7 +81,9 @@ router.get(
         });
         return;
       }
-      const relativePath = useThumbnail ? file.thumbnailPath ?? '' : file.path;
+      const relativePath = useThumbnail
+        ? (file.thumbnailPath ?? '')
+        : file.path;
       const uploadsTarget = path.resolve(uploadsAbs, relativePath);
       const relative = path.relative(uploadsAbs, uploadsTarget);
       if (
@@ -196,9 +198,7 @@ router.post(
   '/:id/attach',
   authMiddleware(),
   ...validate([
-    param('id')
-      .isMongoId()
-      .withMessage('Некорректный идентификатор файла'),
+    param('id').isMongoId().withMessage('Некорректный идентификатор файла'),
     body('taskId')
       .isString()
       .withMessage('Некорректный идентификатор задачи')
@@ -297,7 +297,8 @@ router.post(
             ? new Date(file.uploadedAt)
             : now;
       const uploadedAt =
-        uploadedAtSource instanceof Date && !Number.isNaN(uploadedAtSource.getTime())
+        uploadedAtSource instanceof Date &&
+        !Number.isNaN(uploadedAtSource.getTime())
           ? uploadedAtSource
           : now;
       const uploadedByRaw =
@@ -311,7 +312,8 @@ router.post(
           ? uploadedByRaw
           : 0;
       const thumbnailUrl =
-        typeof file.thumbnailPath === 'string' && file.thumbnailPath.trim().length > 0
+        typeof file.thumbnailPath === 'string' &&
+        file.thumbnailPath.trim().length > 0
           ? `/uploads/${file.thumbnailPath.trim()}`
           : undefined;
       const payload: Attachment = {
@@ -324,7 +326,9 @@ router.post(
             ? file.type
             : 'application/octet-stream',
         size:
-          typeof file.size === 'number' && Number.isFinite(file.size) && file.size >= 0
+          typeof file.size === 'number' &&
+          Number.isFinite(file.size) &&
+          file.size >= 0
             ? file.size
             : 0,
       };

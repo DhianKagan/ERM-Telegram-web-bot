@@ -6,7 +6,11 @@ import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
 import { TOKENS } from '../di/tokens';
 import { Task } from '../db/model';
-import { getChatId, chatId as staticChatId, appUrl as baseAppUrl } from '../config';
+import {
+  getChatId,
+  chatId as staticChatId,
+  appUrl as baseAppUrl,
+} from '../config';
 import { getTask, updateTaskStatus } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import formatTask from '../utils/formatTask';
@@ -39,9 +43,13 @@ const buildUsersIndex = async (ids: number[]): Promise<UsersIndex> => {
   try {
     const raw = await getUsersMap(ids);
     const entries = Object.entries(raw ?? {}).map(([key, value]) => {
-      const name = selectUserField(value?.name) || selectUserField(value?.username);
+      const name =
+        selectUserField(value?.name) || selectUserField(value?.username);
       const username = selectUserField(value?.username);
-      return [key, { name, username } satisfies Pick<User, 'name' | 'username'>];
+      return [
+        key,
+        { name, username } satisfies Pick<User, 'name' | 'username'>,
+      ];
     });
     return Object.fromEntries(entries) as UsersIndex;
   } catch (error) {
@@ -116,7 +124,9 @@ const isMessageMissingOnDeleteError = (error: unknown): boolean => {
       : typeof candidate.description === 'string'
         ? candidate.description
         : '';
-  return descriptionSource.toLowerCase().includes('message to delete not found');
+  return descriptionSource
+    .toLowerCase()
+    .includes('message to delete not found');
 };
 
 const toNumericId = (value: unknown): number | null => {
@@ -192,11 +202,8 @@ const buildPhotoAlbumIntro = (
     messageLink?: string | null;
   },
 ): { text: string; options: TelegramSendMessageOptions } => {
-  const title =
-    typeof task.title === 'string' ? task.title.trim() : '';
-  const text = title
-    ? `*${escapeMarkdownV2(title)}*`
-    : 'Фото по задаче';
+  const title = typeof task.title === 'string' ? task.title.trim() : '';
+  const text = title ? `*${escapeMarkdownV2(title)}*` : 'Фото по задаче';
   const messageLink = options.messageLink ?? null;
   const inlineKeyboard = messageLink
     ? [[{ text: 'Перейти к задаче', url: messageLink }]]
@@ -273,7 +280,9 @@ const loadTaskPlain = async (
   override?: TaskDocument | (TaskDocument & Record<string, unknown>) | null,
 ): Promise<PlainTask | null> => {
   if (override) {
-    if (typeof (override as { toObject?: () => unknown }).toObject === 'function') {
+    if (
+      typeof (override as { toObject?: () => unknown }).toObject === 'function'
+    ) {
       return (override as { toObject(): unknown }).toObject() as PlainTask;
     }
     return override as PlainTask;
@@ -285,7 +294,7 @@ const loadTaskPlain = async (
   if (typeof (fresh as { toObject?: () => unknown }).toObject === 'function') {
     return (fresh as { toObject(): unknown }).toObject() as PlainTask;
   }
-  return (fresh as unknown) as PlainTask;
+  return fresh as unknown as PlainTask;
 };
 
 @injectable()
@@ -343,8 +352,7 @@ export default class TaskSyncController {
     const topicId =
       toNumericId(task.telegram_topic_id) ??
       (typeof configuredTopicId === 'number' ? configuredTopicId : null);
-    const normalizedTopicId =
-      typeof topicId === 'number' ? topicId : undefined;
+    const normalizedTopicId = typeof topicId === 'number' ? topicId : undefined;
     const status =
       typeof task.status === 'string'
         ? (task.status as SharedTask['status'])
@@ -366,7 +374,8 @@ export default class TaskSyncController {
     });
     const photosTarget = await resolveTaskTypePhotosTarget(task.task_type);
     const configuredPhotosChatId = normalizeChatId(photosTarget?.chatId);
-    const configuredPhotosTopicId = toNumericId(photosTarget?.topicId) ?? undefined;
+    const configuredPhotosTopicId =
+      toNumericId(photosTarget?.topicId) ?? undefined;
     const previousPhotosChatId = normalizeChatId(task.telegram_photos_chat_id);
     const previousPhotosMessageId = toNumericId(
       task.telegram_photos_message_id,
@@ -374,7 +383,8 @@ export default class TaskSyncController {
     const previousCommentMessageId = toNumericId(
       task.telegram_comment_message_id,
     );
-    let commentMessageId: number | undefined = previousCommentMessageId ?? undefined;
+    let commentMessageId: number | undefined =
+      previousCommentMessageId ?? undefined;
     let shouldDeletePreviousComment = false;
     const resolvedKind = (() => {
       const rawKind =
@@ -535,9 +545,8 @@ export default class TaskSyncController {
       try {
         const attachmentsChatValue =
           configuredPhotosChatId ?? targetChatId ?? normalizedGroupChatId;
-        const normalizedAttachmentsChatId = normalizeChatId(
-          attachmentsChatValue,
-        );
+        const normalizedAttachmentsChatId =
+          normalizeChatId(attachmentsChatValue);
         const attachmentsTopicIdForSend = (() => {
           if (typeof configuredPhotosTopicId === 'number') {
             return configuredPhotosTopicId;
@@ -638,7 +647,10 @@ export default class TaskSyncController {
             }
             const shouldReplyToGroup = Boolean(
               normalizedAttachmentsChatId &&
-                areChatsEqual(normalizedAttachmentsChatId, normalizedGroupChatId) &&
+                areChatsEqual(
+                  normalizedAttachmentsChatId,
+                  normalizedGroupChatId,
+                ) &&
                 areTopicsEqual(
                   attachmentsTopicIdForSend,
                   typeof topicId === 'number' ? topicId : undefined,
@@ -693,7 +705,9 @@ export default class TaskSyncController {
               status,
               { kind: resolvedKind },
               {
-                ...(albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {}),
+                ...(albumLinkForKeyboard
+                  ? { albumLink: albumLinkForKeyboard }
+                  : {}),
                 showCommentButton: true,
               },
             );
@@ -715,7 +729,10 @@ export default class TaskSyncController {
           }
         }
       } catch (error) {
-        console.error('Не удалось отправить сообщение задачи в Telegram', error);
+        console.error(
+          'Не удалось отправить сообщение задачи в Telegram',
+          error,
+        );
         return;
       }
     } else {
@@ -740,14 +757,16 @@ export default class TaskSyncController {
       if (attachmentsToSend.length) {
         const attachmentsChatValue =
           configuredPhotosChatId ?? targetChatId ?? normalizedGroupChatId;
-        const normalizedAttachmentsChatId = normalizeChatId(
-          attachmentsChatValue,
-        );
+        const normalizedAttachmentsChatId =
+          normalizeChatId(attachmentsChatValue);
         const attachmentsTopicIdForSend =
           typeof configuredPhotosTopicId === 'number'
             ? configuredPhotosTopicId
             : normalizedAttachmentsChatId &&
-                !areChatsEqual(normalizedAttachmentsChatId, normalizedGroupChatId)
+                !areChatsEqual(
+                  normalizedAttachmentsChatId,
+                  normalizedGroupChatId,
+                )
               ? undefined
               : normalizedTopicId;
         const useSeparatePhotosChat = Boolean(
@@ -797,10 +816,7 @@ export default class TaskSyncController {
         const shouldReplyToGroup = Boolean(
           normalizedAttachmentsChatId &&
             areChatsEqual(normalizedAttachmentsChatId, normalizedGroupChatId) &&
-            areTopicsEqual(
-              attachmentsTopicIdForSend,
-              normalizedTopicId,
-            ),
+            areTopicsEqual(attachmentsTopicIdForSend, normalizedTopicId),
         );
         if (attachmentsChatValue) {
           try {
@@ -860,7 +876,9 @@ export default class TaskSyncController {
           status,
           { kind: resolvedKind },
           {
-            ...(albumLinkForKeyboard ? { albumLink: albumLinkForKeyboard } : {}),
+            ...(albumLinkForKeyboard
+              ? { albumLink: albumLinkForKeyboard }
+              : {}),
             showCommentButton: true,
           },
         );
@@ -882,7 +900,10 @@ export default class TaskSyncController {
       }
     }
 
-    if (shouldDeletePreviousComment && typeof previousCommentMessageId === 'number') {
+    if (
+      shouldDeletePreviousComment &&
+      typeof previousCommentMessageId === 'number'
+    ) {
       try {
         await syncCommentMessage({
           bot: this.bot,
@@ -896,7 +917,10 @@ export default class TaskSyncController {
         });
       } catch (error) {
         if (!isMessageMissingOnDeleteError(error)) {
-          console.error('Не удалось удалить устаревший комментарий задачи', error);
+          console.error(
+            'Не удалось удалить устаревший комментарий задачи',
+            error,
+          );
         }
       }
     }
@@ -907,8 +931,7 @@ export default class TaskSyncController {
         : typeof messageId === 'number'
           ? messageId
           : undefined;
-    const commentContent =
-      typeof task.comment === 'string' ? task.comment : '';
+    const commentContent = typeof task.comment === 'string' ? task.comment : '';
     if (typeof baseMessageId === 'number') {
       try {
         const commentHtml = ensureCommentHtml(commentContent);
@@ -946,7 +969,10 @@ export default class TaskSyncController {
         if (isMessageMissingOnDeleteError(error)) {
           commentMessageId = undefined;
         } else {
-          console.error('Не удалось удалить сообщение комментария задачи', error);
+          console.error(
+            'Не удалось удалить сообщение комментария задачи',
+            error,
+          );
           commentMessageId = previousCommentMessageId ?? commentMessageId;
         }
       }
@@ -1007,5 +1033,4 @@ export default class TaskSyncController {
       }
     }
   }
-
 }

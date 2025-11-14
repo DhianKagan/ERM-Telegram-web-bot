@@ -1,6 +1,6 @@
 // Компонент управления флотом, содержит форму с селекторами
 // Модули: React
-import React from "react";
+import React from 'react';
 
 export type FleetManagerProps = {
   onSubmit: (data: { name: string; token: string }) => void;
@@ -17,13 +17,13 @@ type FleetManagerComponent = React.FC<FleetManagerProps> & {
 };
 
 const FleetManager: FleetManagerComponent = ({ onSubmit }) => {
-  const [name, setName] = React.useState("");
-  const [token, setToken] = React.useState("");
+  const [name, setName] = React.useState('');
+  const [token, setToken] = React.useState('');
   const [showToken, setShowToken] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
   const canCopy = React.useMemo(
-    () => typeof navigator !== "undefined" && Boolean(navigator.clipboard),
+    () => typeof navigator !== 'undefined' && Boolean(navigator.clipboard),
     [],
   );
 
@@ -70,7 +70,7 @@ const FleetManager: FleetManagerComponent = ({ onSubmit }) => {
           name="fleetToken"
           data-testid="fleet-token"
           className="h-10 w-full rounded border px-3"
-          type={showToken ? "text" : "password"}
+          type={showToken ? 'text' : 'password'}
           value={token}
           onChange={(e) => setToken(e.target.value)}
           required
@@ -81,7 +81,7 @@ const FleetManager: FleetManagerComponent = ({ onSubmit }) => {
           className="h-10 rounded border px-3"
           onClick={() => setShowToken((prev) => !prev)}
         >
-          {showToken ? "Скрыть" : "Показать"}
+          {showToken ? 'Скрыть' : 'Показать'}
         </button>
         <button
           type="button"

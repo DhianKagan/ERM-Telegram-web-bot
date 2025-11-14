@@ -1,10 +1,10 @@
 // Таблица последних задач на React Table
 // Модули: React, authFetch, DataTable (лениво), recentTaskColumns
-import React, { useEffect, useState, lazy, Suspense } from "react";
-import authFetch from "../utils/authFetch";
-const DataTable = lazy(() => import("./DataTable"));
-import recentTaskColumns from "../columns/recentTaskColumns";
-import type { Task } from "shared";
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+import authFetch from '../utils/authFetch';
+const DataTable = lazy(() => import('./DataTable'));
+import recentTaskColumns from '../columns/recentTaskColumns';
+import type { Task } from 'shared';
 
 type RecentTask = Task & {
   status: string;
@@ -16,7 +16,7 @@ export default function RecentTasks() {
   const [tasks, setTasks] = useState<RecentTask[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    authFetch("/api/v1/tasks?limit=5")
+    authFetch('/api/v1/tasks?limit=5')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         const list = Array.isArray(data)

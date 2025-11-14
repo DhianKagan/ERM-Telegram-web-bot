@@ -16,8 +16,7 @@ describe('buildDirectTaskMessage', () => {
     const users = {
       101: { name: 'Исполнитель Тестов', username: 'tester', isBot: false },
     };
-    const appLink =
-      'https://example.com/tasks?task=507f1f77bcf86cd799439011';
+    const appLink = 'https://example.com/tasks?task=507f1f77bcf86cd799439011';
 
     const text = buildDirectTaskMessage(task as any, null, users, appLink);
 

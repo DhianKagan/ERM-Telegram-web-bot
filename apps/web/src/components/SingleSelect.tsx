@@ -1,7 +1,7 @@
 // Назначение файла: универсальный селект с одиночным выбором для форм
 // Основные модули: React, react-select
-import { useId, useMemo } from "react";
-import Select from "react-select";
+import { useId, useMemo } from 'react';
+import Select from 'react-select';
 
 export type SingleSelectOption = {
   value: string;
@@ -40,13 +40,13 @@ export default function SingleSelect({
   );
   const selectedOption =
     value !== null
-      ? normalizedOptions.find((option) => option.value === value) ?? null
+      ? (normalizedOptions.find((option) => option.value === value) ?? null)
       : null;
   const helperId = error
     ? `${selectId}-error`
     : hint
-    ? `${selectId}-hint`
-    : undefined;
+      ? `${selectId}-hint`
+      : undefined;
 
   return (
     <div>
@@ -59,7 +59,7 @@ export default function SingleSelect({
         value={selectedOption}
         inputId={selectId}
         isDisabled={disabled}
-        placeholder={placeholder ?? "Выберите"}
+        placeholder={placeholder ?? 'Выберите'}
         onChange={(option) =>
           onChange(option ? (option as SingleSelectOption) : null)
         }
@@ -69,7 +69,7 @@ export default function SingleSelect({
         aria-invalid={Boolean(error)}
         aria-describedby={helperId}
         aria-required={required}
-        noOptionsMessage={() => "Нет совпадений"}
+        noOptionsMessage={() => 'Нет совпадений'}
       />
       {hint && !error ? (
         <p id={helperId} className="mt-1 text-xs text-slate-500">

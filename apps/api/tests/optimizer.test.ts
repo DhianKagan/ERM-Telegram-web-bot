@@ -26,9 +26,7 @@ jest.mock('../src/services/optimizer', () => ({
       {
         id: 'route-1',
         order: 0,
-        tasks: [
-          { taskId: '1', order: 0, title: 'Задача 1' },
-        ],
+        tasks: [{ taskId: '1', order: 0, title: 'Задача 1' }],
       },
     ],
   })),

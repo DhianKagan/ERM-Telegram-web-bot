@@ -17,9 +17,18 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import fleetsRouter from '../src/routes/fleets';
 import { FleetVehicle } from '../src/db/models/fleet';
 
-jest.mock('../src/utils/rateLimiter', () => () => (_req: any, _res: any, next: () => void) => next());
-jest.mock('../src/middleware/auth', () => () => (_req: any, _res: any, next: () => void) => next());
-jest.mock('../src/auth/roles.guard', () => (_req: any, _res: any, next: () => void) => next());
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: any, _res: any, next: () => void) => next(),
+);
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: any, _res: any, next: () => void) => next(),
+);
+jest.mock(
+  '../src/auth/roles.guard',
+  () => (_req: any, _res: any, next: () => void) => next(),
+);
 jest.mock('../src/auth/roles.decorator', () => ({
   Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
@@ -71,9 +80,11 @@ describe('fleets router', () => {
 
   it('обновляет транспорт', async () => {
     const created = await FleetVehicle.create(payload);
-    const res = await request(app)
-      .put(`/api/v1/fleets/${created._id}`)
-      .send({ odometerCurrent: 1300, fuelType: 'Газ', transportType: 'Грузовой' });
+    const res = await request(app).put(`/api/v1/fleets/${created._id}`).send({
+      odometerCurrent: 1300,
+      fuelType: 'Газ',
+      transportType: 'Грузовой',
+    });
     expect(res.status).toBe(200);
     expect(res.body.odometerCurrent).toBe(1300);
     expect(res.body.fuelType).toBe('Газ');
@@ -91,8 +102,16 @@ describe('fleets router', () => {
 
   it('фильтрует список по поиску', async () => {
     await FleetVehicle.deleteMany({});
-    await FleetVehicle.create({ ...payload, name: 'Газель 1', registrationNumber: 'AA 1111 BB' });
-    await FleetVehicle.create({ ...payload, name: 'Манипулятор', registrationNumber: 'CC 2222 DD' });
+    await FleetVehicle.create({
+      ...payload,
+      name: 'Газель 1',
+      registrationNumber: 'AA 1111 BB',
+    });
+    await FleetVehicle.create({
+      ...payload,
+      name: 'Манипулятор',
+      registrationNumber: 'CC 2222 DD',
+    });
     const res = await request(app).get('/api/v1/fleets?search=Манипулятор');
     expect(res.status).toBe(200);
     expect(res.body.items).toHaveLength(1);

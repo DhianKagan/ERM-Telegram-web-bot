@@ -31,10 +31,7 @@ const DB_NAME_ENV_KEYS = [
   'MONGO_DB',
   'MONGODB_DB',
 ];
-const AUTH_SOURCE_ENV_KEYS = [
-  'MONGO_AUTH_SOURCE',
-  'MONGODB_AUTH_SOURCE',
-];
+const AUTH_SOURCE_ENV_KEYS = ['MONGO_AUTH_SOURCE', 'MONGODB_AUTH_SOURCE'];
 
 function pickFirstFilled(keys) {
   for (const key of keys) {
@@ -95,7 +92,10 @@ function applyMongoCredentialFallback(rawUrl) {
         const isRailwayInternal = /\.railway\.internal$/i.test(hostname);
         const isRailwayProxyHost = /\.proxy\.rlwy\.net$/i.test(hostname);
         const isRailwayAppHost = /\.railway\.app$/i.test(hostname);
-        if (username === 'mongo' && (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost)) {
+        if (
+          username === 'mongo' &&
+          (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost)
+        ) {
           parsed.searchParams.set('authSource', 'admin');
           messages.push('authSource=admin по умолчанию для Railway');
         }

@@ -77,7 +77,9 @@ jest.mock('../apps/api/src/services/service', () => serviceMock);
 
 const fleetLeanMock = jest.fn().mockResolvedValue([]);
 const fleetSortMock = jest.fn().mockReturnValue({ lean: fleetLeanMock });
-const fleetFindMock = jest.fn().mockReturnValue({ sort: fleetSortMock, lean: fleetLeanMock });
+const fleetFindMock = jest
+  .fn()
+  .mockReturnValue({ sort: fleetSortMock, lean: fleetLeanMock });
 
 jest.mock('../apps/api/src/db/models/fleet', () => ({
   FleetVehicle: { find: fleetFindMock },
@@ -101,9 +103,13 @@ jest.mock('../apps/api/src/utils/taskStatusIcons', () => ({
   },
 }));
 
-jest.mock('../apps/api/src/utils/messageLink', () => jest.fn(() => 'https://tg/link'));
+jest.mock('../apps/api/src/utils/messageLink', () =>
+  jest.fn(() => 'https://tg/link'),
+);
 
-jest.mock('../apps/api/src/utils/formatTask', () => jest.fn(() => 'formatted task'));
+jest.mock('../apps/api/src/utils/formatTask', () =>
+  jest.fn(() => 'formatted task'),
+);
 
 const queriesMock = {
   createTask: jest.fn(),
@@ -142,7 +148,9 @@ jest.mock('../apps/api/src/controllers/taskSync.controller', () => ({
   },
 }));
 
-jest.mock('../apps/api/src/utils/taskAlbumLink', () => ({ resolveTaskAlbumLink: jest.fn(() => null) }));
+jest.mock('../apps/api/src/utils/taskAlbumLink', () => ({
+  resolveTaskAlbumLink: jest.fn(() => null),
+}));
 
 jest.mock('../apps/api/src/tasks/taskComments', () => ({
   buildCommentHtml: jest.fn(() => '<p>Комментарий</p>'),
@@ -159,7 +167,9 @@ const loadBotModule = () => {
   deleteWebhookMock.mockResolvedValue(undefined);
   launchMock.mockResolvedValue(undefined);
   inlineKeyboardMock.mockImplementation(
-    (rows: InlineKeyboardMarkup['inline_keyboard']) => ({ inline_keyboard: rows }),
+    (rows: InlineKeyboardMarkup['inline_keyboard']) => ({
+      inline_keyboard: rows,
+    }),
   );
   process.env.NODE_ENV = 'test';
   process.env.BOT_TOKEN = 'test-token';
@@ -207,18 +217,27 @@ describe('helpers из bot.ts', () => {
     expect(message).toContain('Название: <b>Проверка</b>');
     expect(message).toContain('Статус: <b>🛠 В работе</b>');
     expect(message).toContain('Europe/Kyiv)');
-    expect(message).toContain('Старт: <a href="https://start">Склады</a> (<code>50.45000, 30.52300</code>)');
-    expect(message).toContain('Финиш: <a href="https://finish">Финиш</a> (<code>51.00000, 31.00000</code>)');
+    expect(message).toContain(
+      'Старт: <a href="https://start">Склады</a> (<code>50.45000, 30.52300</code>)',
+    );
+    expect(message).toContain(
+      'Финиш: <a href="https://finish">Финиш</a> (<code>51.00000, 31.00000</code>)',
+    );
     expect(message).toContain('Логистика: <b>15 км</b>');
     expect(message).toContain('Исполнители: Иван, maria');
-    expect(message).toContain('Веб-версия: <a href="https://app.local/tasks/1"');
+    expect(message).toContain(
+      'Веб-версия: <a href="https://app.local/tasks/1"',
+    );
   });
 
   test('buildDirectTaskKeyboard добавляет кнопки и дополняет reply_markup', () => {
     const { buildDirectTaskKeyboard } = loadBotModule();
     inlineKeyboardMock.mockImplementationOnce(() => ({}));
 
-    const keyboard = buildDirectTaskKeyboard('https://t.me/msg', 'https://app.local/tasks/1');
+    const keyboard = buildDirectTaskKeyboard(
+      'https://t.me/msg',
+      'https://app.local/tasks/1',
+    );
 
     expect(keyboard).toBeDefined();
     expect(inlineKeyboardMock).toHaveBeenCalledWith([
@@ -240,13 +259,17 @@ describe('helpers из bot.ts', () => {
   test('startBot запускает бота и сбрасывает вебхук', async () => {
     const { startBot } = loadBotModule();
     await expect(startBot()).resolves.toBeUndefined();
-    expect(deleteWebhookMock).toHaveBeenCalledWith({ drop_pending_updates: true });
+    expect(deleteWebhookMock).toHaveBeenCalledWith({
+      drop_pending_updates: true,
+    });
     expect(launchMock).toHaveBeenCalledWith({ dropPendingUpdates: true });
   });
 
   test('startBot пробрасывает неретрайную ошибку', async () => {
     const { startBot } = loadBotModule();
-    const failure = Object.assign(new Error('boom'), { response: { error_code: 400 } });
+    const failure = Object.assign(new Error('boom'), {
+      response: { error_code: 400 },
+    });
     launchMock.mockRejectedValueOnce(failure);
     await expect(startBot()).rejects.toBe(failure);
   });

@@ -172,13 +172,17 @@ test.beforeEach(() => {
   tempUploads.splice(0, tempUploads.length);
 });
 
-test('[cleanup] обновляет счётчик после имитации крон-очистки', async ({ page }) => {
+test('[cleanup] обновляет счётчик после имитации крон-очистки', async ({
+  page,
+}) => {
   await page.goto(`${baseUrl}/cp/storage`);
   const warningText = ru.storage.sync.warning.replace('{{count}}', '1');
   await expect(page.locator('#status')).toHaveText(warningText);
 
-  const requestPromise = page.waitForRequest((request) =>
-    request.method() === 'GET' && request.url().includes('/api/v1/storage/diagnostics'),
+  const requestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      request.url().includes('/api/v1/storage/diagnostics'),
   );
 
   await page.getByRole('button', { name: diagnosticsTexts.cta }).click();

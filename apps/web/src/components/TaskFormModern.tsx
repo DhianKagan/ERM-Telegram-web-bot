@@ -1,10 +1,10 @@
 // Современная форма задачи, генерируемая по схеме
 // Модули: React, shared
-import React, { useState, useEffect } from "react";
-import { taskFormSchema as formSchema } from "shared";
-import type { Field, FormSchema } from "../../../api/src/form";
-import authFetch from "../utils/authFetch";
-import { updateTaskStatus } from "../services/tasks";
+import React, { useState, useEffect } from 'react';
+import { taskFormSchema as formSchema } from 'shared';
+import type { Field, FormSchema } from '../../../api/src/form';
+import authFetch from '../utils/authFetch';
+import { updateTaskStatus } from '../services/tasks';
 
 type Template = { _id: string; name: string; data: Record<string, string> };
 const formSchemaTyped = formSchema as FormSchema;
@@ -22,7 +22,7 @@ const renderField = (
   inputId: string,
 ) => {
   switch (field.type) {
-    case "text":
+    case 'text':
       return (
         <input
           id={inputId}
@@ -33,7 +33,7 @@ const renderField = (
           required={field.required}
         />
       );
-    case "textarea":
+    case 'textarea':
       return (
         <textarea
           id={inputId}
@@ -43,7 +43,7 @@ const renderField = (
           onChange={(e) => setValue(e.target.value)}
         />
       );
-    case "datetime":
+    case 'datetime':
       return (
         <input
           type="datetime-local"
@@ -55,15 +55,15 @@ const renderField = (
           required={field.required}
         />
       );
-    case "segment":
+    case 'segment':
       return (
         <div className="flex gap-2">
           {field.options?.map((opt) => {
             const optionId = `${inputId}-${String(opt.value)
               .toLowerCase()
-              .replace(/[^a-z0-9а-яё]+/gi, "-")
-              .replace(/-+/g, "-")
-              .replace(/^-|-$/g, "")}`;
+              .replace(/[^a-z0-9а-яё]+/gi, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '')}`;
             return (
               <label
                 key={opt.value}
@@ -97,11 +97,11 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   customFields = [],
 }) => {
   const [data, setData] = useState<Record<string, string>>(defaultValues);
-  const [statusLoading, setStatusLoading] = useState<"В работе" | "Выполнена" | null>(
-    null,
-  );
+  const [statusLoading, setStatusLoading] = useState<
+    'В работе' | 'Выполнена' | null
+  >(null);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const setField = (name: string, v: string) =>
     setData((d) => ({ ...d, [name]: v }));
   useEffect(() => {
@@ -117,14 +117,14 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
     }));
   }, []);
   useEffect(() => {
-    authFetch("/api/v1/task-templates")
+    authFetch('/api/v1/task-templates')
       .then((r) => r.json())
       .then((t: Template[]) => setTemplates(t))
       .catch(() => setTemplates([]));
   }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const tplId = params.get("template");
+    const tplId = params.get('template');
     if (tplId) {
       const tpl = templates.find((t) => t._id === tplId);
       if (tpl) {
@@ -145,17 +145,17 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
   };
 
   const taskId =
-    data._id || data.id || defaultValues._id || defaultValues.id || "";
+    data._id || data.id || defaultValues._id || defaultValues.id || '';
 
-  const handleStatusClick = async (nextStatus: "В работе" | "Выполнена") => {
+  const handleStatusClick = async (nextStatus: 'В работе' | 'Выполнена') => {
     if (!taskId) return;
     setStatusLoading(nextStatus);
     try {
       const response = await updateTaskStatus(taskId, nextStatus);
-      if (!response.ok) throw new Error("STATUS_UPDATE_FAILED");
+      if (!response.ok) throw new Error('STATUS_UPDATE_FAILED');
       setData((prev) => ({ ...prev, status: nextStatus }));
     } catch (error) {
-      console.error("Не удалось обновить статус задачи", error);
+      console.error('Не удалось обновить статус задачи', error);
     } finally {
       setStatusLoading(null);
     }
@@ -190,8 +190,10 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
                 <label className="block text-sm font-medium" htmlFor={fieldId}>
                   {field.label}
                 </label>
-                {renderField(field, data[field.name] ?? "", (v) =>
-                  setField(field.name, v),
+                {renderField(
+                  field,
+                  data[field.name] ?? '',
+                  (v) => setField(field.name, v),
                   fieldId,
                 )}
               </div>
@@ -209,8 +211,10 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
                 <label className="block text-sm font-medium" htmlFor={fieldId}>
                   {field.label}
                 </label>
-                {renderField(field, data[field.name] ?? "", (v) =>
-                  setField(field.name, v),
+                {renderField(
+                  field,
+                  data[field.name] ?? '',
+                  (v) => setField(field.name, v),
                   fieldId,
                 )}
               </div>
@@ -223,7 +227,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
           <>
             <button
               type="button"
-              onClick={() => handleStatusClick("В работе")}
+              onClick={() => handleStatusClick('В работе')}
               disabled={statusLoading !== null}
               className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-60"
             >
@@ -231,7 +235,7 @@ const TaskFormModern: React.FC<TaskFormModernProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => handleStatusClick("Выполнена")}
+              onClick={() => handleStatusClick('Выполнена')}
               disabled={statusLoading !== null}
               className="rounded bg-lime-600 px-4 py-2 text-white disabled:opacity-60"
             >

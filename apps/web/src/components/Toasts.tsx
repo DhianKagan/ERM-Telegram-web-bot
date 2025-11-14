@@ -1,7 +1,7 @@
 // Назначение: показ всплывающих уведомлений, модули: React, Context
-import React from "react";
-import { useToast } from "../context/useToast";
-import NotificationBar from "./NotificationBar";
+import React from 'react';
+import { useToast } from '../context/useToast';
+import NotificationBar from './NotificationBar';
 
 export default function Toasts() {
   const { toasts, removeToast } = useToast();

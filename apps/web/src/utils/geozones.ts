@@ -7,7 +7,7 @@ import type {
   Polygon,
   MultiPolygon,
   Feature,
-} from "geojson";
+} from 'geojson';
 import {
   area as turfArea,
   buffer as turfBuffer,
@@ -16,7 +16,7 @@ import {
   point as turfPoint,
   polygonToLine as turfPolygonToLine,
   booleanPointInPolygon,
-} from "@turf/turf";
+} from '@turf/turf';
 
 export type GeoZoneGeometry = Polygon | MultiPolygon;
 export type GeoZoneFeature = Feature<GeoZoneGeometry>;
@@ -36,11 +36,12 @@ export const isPolygonGeometry = (
   geometry: Geometry | null | undefined,
 ): geometry is GeoZoneGeometry => {
   if (!geometry) return false;
-  return geometry.type === "Polygon" || geometry.type === "MultiPolygon";
+  return geometry.type === 'Polygon' || geometry.type === 'MultiPolygon';
 };
 
-const sumLineLength = (feature: Feature<LineString | MultiLineString>): number =>
-  turfLength(feature, { units: "kilometers" });
+const sumLineLength = (
+  feature: Feature<LineString | MultiLineString>,
+): number => turfLength(feature, { units: 'kilometers' });
 
 export const computeGeoZoneMetrics = (
   feature: GeoZoneFeature,
@@ -63,7 +64,7 @@ export const computeGeoZoneMetrics = (
     }
 
     const boundary = turfPolygonToLine(cleaned);
-    if (boundary.type === "FeatureCollection") {
+    if (boundary.type === 'FeatureCollection') {
       let total = 0;
       for (const item of boundary.features) {
         if (!item || !item.geometry) continue;
@@ -72,7 +73,7 @@ export const computeGeoZoneMetrics = (
       if (Number.isFinite(total)) {
         metrics.perimeterKm = total;
       }
-    } else if (boundary.type === "Feature" && boundary.geometry) {
+    } else if (boundary.type === 'Feature' && boundary.geometry) {
       const value = sumLineLength(
         boundary as Feature<LineString | MultiLineString>,
       );
@@ -81,7 +82,7 @@ export const computeGeoZoneMetrics = (
       }
     }
 
-    const buffered = turfBuffer(cleaned, bufferMeters, { units: "meters" });
+    const buffered = turfBuffer(cleaned, bufferMeters, { units: 'meters' });
     if (buffered && isPolygonGeometry(buffered.geometry)) {
       metrics.bufferedGeometry = buffered.geometry;
     }
@@ -98,7 +99,7 @@ export const pointWithinGeometry = (
 ): boolean => {
   try {
     return booleanPointInPolygon(turfPoint(coordinates), {
-      type: "Feature",
+      type: 'Feature',
       geometry,
       properties: {},
     });

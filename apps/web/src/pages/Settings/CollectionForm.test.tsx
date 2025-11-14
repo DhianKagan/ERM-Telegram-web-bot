@@ -1,12 +1,12 @@
 /** @jest-environment jsdom */
 // Назначение файла: проверка режима только чтение формы коллекций.
 // Основные модули: React, @testing-library/react, CollectionForm.
-import React from "react";
-import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
-import CollectionForm from "./CollectionForm";
+import React from 'react';
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import CollectionForm from './CollectionForm';
 
-jest.mock("../../components/ConfirmDialog", () => ({
+jest.mock('../../components/ConfirmDialog', () => ({
   __esModule: true,
   default: ({
     open,
@@ -34,8 +34,8 @@ jest.mock("../../components/ConfirmDialog", () => ({
     ) : null,
 }));
 
-describe("CollectionForm", () => {
-  it("отображает предупреждение и блокирует действия в режиме readonly", () => {
+describe('CollectionForm', () => {
+  it('отображает предупреждение и блокирует действия в режиме readonly', () => {
     const handleChange = jest.fn();
     const handleSubmit = jest.fn();
     const handleDelete = jest.fn();
@@ -43,7 +43,7 @@ describe("CollectionForm", () => {
 
     render(
       <CollectionForm
-        form={{ _id: "123", name: "Департамент", value: "val" }}
+        form={{ _id: '123', name: 'Департамент', value: 'val' }}
         onChange={handleChange}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
@@ -54,19 +54,19 @@ describe("CollectionForm", () => {
     );
 
     expect(
-      screen.getByText("Элемент доступен только для чтения"),
+      screen.getByText('Элемент доступен только для чтения'),
     ).toBeInTheDocument();
 
-    const [nameInput, valueInput] = screen.getAllByRole("textbox");
+    const [nameInput, valueInput] = screen.getAllByRole('textbox');
     expect(nameInput).toBeDisabled();
     expect(valueInput).toBeDisabled();
 
-    const saveButton = screen.getByRole("button", { name: "Сохранить" });
+    const saveButton = screen.getByRole('button', { name: 'Сохранить' });
     expect(saveButton).toBeDisabled();
-    const deleteButton = screen.getByRole("button", { name: "Удалить" });
+    const deleteButton = screen.getByRole('button', { name: 'Удалить' });
     expect(deleteButton).toBeDisabled();
 
-    const form = saveButton.closest("form");
+    const form = saveButton.closest('form');
     expect(form).not.toBeNull();
     if (form) {
       fireEvent.submit(form);

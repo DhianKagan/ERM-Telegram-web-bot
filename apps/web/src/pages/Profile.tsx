@@ -1,12 +1,15 @@
 // Назначение: страница профиля пользователя
 // Основные модули: React, React Router
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
-import { Button } from "@/components/ui/button";
-import { useAuth } from "../context/useAuth";
-import { updateProfile } from "../services/auth";
-import { fetchCollectionItems, type CollectionItem } from "../services/collections";
-import { showToast } from "../utils/toast";
+import { Button } from '@/components/ui/button';
+import { useAuth } from '../context/useAuth';
+import { updateProfile } from '../services/auth';
+import {
+  fetchCollectionItems,
+  type CollectionItem,
+} from '../services/collections';
+import { showToast } from '../utils/toast';
 
 interface EditableProfileForm {
   name: string;
@@ -15,15 +18,15 @@ interface EditableProfileForm {
 }
 
 const roleTitles: Record<string, string> = {
-  admin: "Администратор",
-  manager: "Менеджер",
-  user: "Пользователь",
+  admin: 'Администратор',
+  manager: 'Менеджер',
+  user: 'Пользователь',
 };
 
 const defaultForm: EditableProfileForm = {
-  name: "",
-  phone: "",
-  email: "",
+  name: '',
+  phone: '',
+  email: '',
 };
 
 const parseCollection = (items: CollectionItem[]) => {
@@ -47,72 +50,65 @@ export default function Profile() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCollectionItems("departments", "", 1, 200).then((d) =>
-      setDepartments(d.items),
-    ).catch(() => setDepartments([]));
-    fetchCollectionItems("divisions", "", 1, 200).then((d) =>
-      setDivisions(d.items),
-    ).catch(() => setDivisions([]));
-    fetchCollectionItems("positions", "", 1, 200).then((d) =>
-      setPositions(d.items),
-    ).catch(() => setPositions([]));
+    fetchCollectionItems('departments', '', 1, 200)
+      .then((d) => setDepartments(d.items))
+      .catch(() => setDepartments([]));
+    fetchCollectionItems('divisions', '', 1, 200)
+      .then((d) => setDivisions(d.items))
+      .catch(() => setDivisions([]));
+    fetchCollectionItems('positions', '', 1, 200)
+      .then((d) => setPositions(d.items))
+      .catch(() => setPositions([]));
   }, []);
 
   useEffect(() => {
     if (!user) return;
     const next: EditableProfileForm = {
-      name: user.name || user.telegram_username || "",
-      phone: user.phone || "",
-      email: user.email || "",
+      name: user.name || user.telegram_username || '',
+      phone: user.phone || '',
+      email: user.email || '',
     };
     setForm(next);
     setInitialForm(next);
     setError(null);
   }, [user]);
 
-  const departmentMap = useMemo(() => parseCollection(departments), [
-    departments,
-  ]);
+  const departmentMap = useMemo(
+    () => parseCollection(departments),
+    [departments],
+  );
   const divisionMap = useMemo(() => parseCollection(divisions), [divisions]);
   const positionMap = useMemo(() => parseCollection(positions), [positions]);
 
   const departmentName = useMemo(() => {
     const fallback =
-      typeof user?.departmentName === "string"
+      typeof user?.departmentName === 'string'
         ? user.departmentName.trim()
-        : "";
+        : '';
     if (fallback) return fallback;
     const id =
-      typeof user?.departmentId === "string"
-        ? user.departmentId.trim()
-        : "";
-    if (!id) return "";
+      typeof user?.departmentId === 'string' ? user.departmentId.trim() : '';
+    if (!id) return '';
     return departmentMap.get(id) || id;
   }, [departmentMap, user?.departmentId, user?.departmentName]);
 
   const divisionName = useMemo(() => {
     const fallback =
-      typeof user?.divisionName === "string"
-        ? user.divisionName.trim()
-        : "";
+      typeof user?.divisionName === 'string' ? user.divisionName.trim() : '';
     if (fallback) return fallback;
     const id =
-      typeof user?.divisionId === "string" ? user.divisionId.trim() : "";
-    if (!id) return "";
+      typeof user?.divisionId === 'string' ? user.divisionId.trim() : '';
+    if (!id) return '';
     return divisionMap.get(id) || id;
   }, [divisionMap, user?.divisionId, user?.divisionName]);
 
   const positionName = useMemo(() => {
     const fallback =
-      typeof user?.positionName === "string"
-        ? user.positionName.trim()
-        : "";
+      typeof user?.positionName === 'string' ? user.positionName.trim() : '';
     if (fallback) return fallback;
     const id =
-      typeof user?.positionId === "string"
-        ? user.positionId.trim()
-        : "";
-    if (!id) return "";
+      typeof user?.positionId === 'string' ? user.positionId.trim() : '';
+    if (!id) return '';
     return positionMap.get(id) || id;
   }, [positionMap, user?.positionId, user?.positionName]);
 
@@ -147,18 +143,18 @@ export default function Profile() {
       });
       setUser(data);
       const next: EditableProfileForm = {
-        name: data.name || data.telegram_username || "",
-        phone: data.phone || "",
-        email: data.email || "",
+        name: data.name || data.telegram_username || '',
+        phone: data.phone || '',
+        email: data.email || '',
       };
       setForm(next);
       setInitialForm(next);
-      showToast("Профиль обновлён", "success");
+      showToast('Профиль обновлён', 'success');
     } catch (e) {
       const message =
-        e instanceof Error ? e.message : "Не удалось обновить профиль";
+        e instanceof Error ? e.message : 'Не удалось обновить профиль';
       setError(message);
-      showToast(message, "error");
+      showToast(message, 'error');
     } finally {
       setSaving(false);
     }
@@ -172,12 +168,12 @@ export default function Profile() {
   if (loading) return <div>Загрузка...</div>;
   if (!user) return <div>Профиль недоступен</div>;
 
-  const roleLabel = user.role ? roleTitles[user.role] || user.role : "—";
+  const roleLabel = user.role ? roleTitles[user.role] || user.role : '—';
   const telegramId = user.telegram_id
     ? String(user.telegram_id)
-    : user.id || "";
-  const telegramUsername = user.telegram_username || "—";
-  const additionalPhone = user.mobNumber || "—";
+    : user.id || '';
+  const telegramUsername = user.telegram_username || '—';
+  const additionalPhone = user.mobNumber || '—';
 
   return (
     <div className="space-y-6">
@@ -199,7 +195,7 @@ export default function Profile() {
                 name="fullName"
                 className="h-10 w-full rounded border px-3"
                 value={form.name}
-                onChange={(e) => updateField("name", e.target.value)}
+                onChange={(e) => updateField('name', e.target.value)}
                 required
               />
             </label>
@@ -209,7 +205,7 @@ export default function Profile() {
                 name="phone"
                 className="h-10 w-full rounded border px-3"
                 value={form.phone}
-                onChange={(e) => updateField("phone", e.target.value)}
+                onChange={(e) => updateField('phone', e.target.value)}
                 type="tel"
                 placeholder=""
               />
@@ -220,7 +216,7 @@ export default function Profile() {
                 name="email"
                 className="h-10 w-full rounded border px-3"
                 value={form.email}
-                onChange={(e) => updateField("email", e.target.value)}
+                onChange={(e) => updateField('email', e.target.value)}
                 type="email"
                 required
               />
@@ -270,7 +266,7 @@ export default function Profile() {
               <input
                 name="department"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={departmentName || "—"}
+                value={departmentName || '—'}
                 readOnly
                 disabled
               />
@@ -280,7 +276,7 @@ export default function Profile() {
               <input
                 name="division"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={divisionName || "—"}
+                value={divisionName || '—'}
                 readOnly
                 disabled
               />
@@ -290,7 +286,7 @@ export default function Profile() {
               <input
                 name="position"
                 className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={positionName || "—"}
+                value={positionName || '—'}
                 readOnly
                 disabled
               />
@@ -298,7 +294,7 @@ export default function Profile() {
           </div>
           <div className="flex gap-3">
             <Button type="submit" disabled={!isDirty || saving}>
-              {saving ? "Сохранение..." : "Сохранить"}
+              {saving ? 'Сохранение...' : 'Сохранить'}
             </Button>
             <Button
               type="button"

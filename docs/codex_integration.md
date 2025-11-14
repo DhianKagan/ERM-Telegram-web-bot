@@ -32,7 +32,7 @@ name: Codex Autofix
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ['CI']
     types: [completed]
 
 jobs:

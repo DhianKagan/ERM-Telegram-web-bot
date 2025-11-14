@@ -9,10 +9,7 @@ import { strict as assert } from 'assert';
 import type { CookieOptions } from 'express-session';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 
-declare const describe: (
-  name: string,
-  suite: (this: unknown) => void,
-) => void;
+declare const describe: (name: string, suite: (this: unknown) => void) => void;
 declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
@@ -37,11 +34,13 @@ describe('API маршруты аналитики', function () {
 
     process.env.DISABLE_CSRF = '1';
 
-    const jestApi = (global as typeof globalThis & {
-      jest: {
-        mock: (moduleId: string, factory: () => unknown) => void;
-      };
-    }).jest;
+    const jestApi = (
+      global as typeof globalThis & {
+        jest: {
+          mock: (moduleId: string, factory: () => unknown) => void;
+        };
+      }
+    ).jest;
 
     const registerMock = (modulePath: string, factory: () => unknown): void => {
       jestApi.mock(modulePath, factory);
@@ -90,7 +89,8 @@ describe('API маршруты аналитики', function () {
       () => ({
         __esModule: true,
         default: () =>
-          ((_: Request, __: Response, next: NextFunction) => next()) as RequestHandler,
+          ((_: Request, __: Response, next: NextFunction) =>
+            next()) as RequestHandler,
       }),
     );
 
@@ -106,16 +106,20 @@ describe('API маршруты аналитики', function () {
     registerMock(
       path.resolve(__dirname, '../../apps/api/src/api/middleware'),
       () => {
-        const asyncHandler = <T extends RequestHandler>(handler: T): RequestHandler => {
+        const asyncHandler = <T extends RequestHandler>(
+          handler: T,
+        ): RequestHandler => {
           return (req: Request, res: Response, next: NextFunction) => {
             Promise.resolve(handler(req, res, next)).catch(next);
           };
         };
         return {
           __esModule: true,
-          verifyToken: (_req: Request, _res: Response, next: NextFunction) => next(),
+          verifyToken: (_req: Request, _res: Response, next: NextFunction) =>
+            next(),
           asyncHandler,
-          requestLogger: (_req: Request, _res: Response, next: NextFunction) => next(),
+          requestLogger: (_req: Request, _res: Response, next: NextFunction) =>
+            next(),
           apiErrors: { inc: () => undefined },
         };
       },
@@ -125,7 +129,8 @@ describe('API маршруты аналитики', function () {
       path.resolve(__dirname, '../../apps/api/src/middleware/auth'),
       () => ({
         __esModule: true,
-        default: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+        default: () => (_req: Request, _res: Response, next: NextFunction) =>
+          next(),
       }),
     );
 
@@ -137,26 +142,21 @@ describe('API маршруты аналитики', function () {
       }),
     );
 
-    registerMock(
-      path.resolve(__dirname, '../../apps/api/src/metrics'),
-      () => ({
-        __esModule: true,
-        register: {
-          contentType: 'text/plain',
-          metrics: async () => 'metrics',
-        },
-      }),
-    );
+    registerMock(path.resolve(__dirname, '../../apps/api/src/metrics'), () => ({
+      __esModule: true,
+      register: {
+        contentType: 'text/plain',
+        metrics: async () => 'metrics',
+      },
+    }));
 
-    registerMock(
-      path.resolve(__dirname, '../../apps/api/src/di'),
-      () => ({
-        __esModule: true,
-        default: {
-          resolve: () => (_req: Request, _res: Response, next: NextFunction) => next(),
-        },
-      }),
-    );
+    registerMock(path.resolve(__dirname, '../../apps/api/src/di'), () => ({
+      __esModule: true,
+      default: {
+        resolve: () => (_req: Request, _res: Response, next: NextFunction) =>
+          next(),
+      },
+    }));
 
     registerMock(
       path.resolve(__dirname, '../../apps/api/src/di/tokens'),
@@ -222,7 +222,8 @@ describe('API маршруты аналитики', function () {
         __esModule: true,
         swaggerUi: {
           serve: (_req: Request, _res: Response, next: NextFunction) => next(),
-          setup: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+          setup: () => (_req: Request, _res: Response, next: NextFunction) =>
+            next(),
         },
         specs: {},
       }),

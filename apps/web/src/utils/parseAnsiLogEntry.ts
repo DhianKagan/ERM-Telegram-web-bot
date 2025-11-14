@@ -11,14 +11,14 @@ export interface ParsedLog {
   message: string;
 }
 
-const ESC = "\u001b";
-const ansiRegex = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
+const ESC = '\u001b';
+const ansiRegex = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
 
 export default function parseAnsiLogEntry(line: string): ParsedLog {
-  const clean = line.replace(ansiRegex, "");
+  const clean = line.replace(ansiRegex, '');
   const match = clean.match(/^(\w+)\s+\[(.+?)\]\s+(.*)$/);
   const res: ParsedLog = {
-    level: match ? match[1].toLowerCase() : "info",
+    level: match ? match[1].toLowerCase() : 'info',
     time: match ? match[2] : undefined,
     message: match ? match[3] : clean,
   };
@@ -27,11 +27,11 @@ export default function parseAnsiLogEntry(line: string): ParsedLog {
   if ((m = msg.match(/API запрос (\w+) (\S+) token:([^ ]+) csrf:([^ ]+)/))) {
     res.method = m[1];
     res.endpoint = m[2];
-    res.csrf = m[4] !== "no-csrf";
+    res.csrf = m[4] !== 'no-csrf';
   } else if ((m = msg.match(/API запрос (\w+) (\S+) (\w+) (\w+)/))) {
     res.method = m[1];
     res.endpoint = m[2];
-    res.csrf = m[4] !== "no-csrf";
+    res.csrf = m[4] !== 'no-csrf';
   } else if ((m = msg.match(/API ответ (\w+) (\S+) (\d+)/))) {
     res.method = m[1];
     res.endpoint = m[2];

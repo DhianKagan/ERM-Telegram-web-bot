@@ -4,7 +4,7 @@
  * Возвращает строку по умолчанию без форматирования.
  */
 /* eslint react-refresh/only-export-components: off */
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export function IntlProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;

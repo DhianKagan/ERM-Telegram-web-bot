@@ -6,13 +6,11 @@ import type { FilterQuery } from 'mongoose';
 import { Types } from 'mongoose';
 
 import { uploadsDir } from '../config/storage';
+import { File, Task, type Attachment, type FileDocument } from '../db/model';
 import {
-  File,
-  Task,
-  type Attachment,
-  type FileDocument,
-} from '../db/model';
-import { extractAttachmentIds, extractFileIdFromUrl } from '../utils/attachments';
+  extractAttachmentIds,
+  extractFileIdFromUrl,
+} from '../utils/attachments';
 import {
   buildFileUrl,
   buildInlineFileUrl,
@@ -57,14 +55,12 @@ const TASK_URL_SUFFIX = '(?:[/?#].*|$)';
 
 const buildAttachmentQuery = (
   ids: string[],
-):
-  | {
-      $or: Array<
-        | { 'attachments.url': { $regex: RegExp } }
-        | { files: { $elemMatch: { $regex: RegExp } } }
-      >;
-    }
-  | null => {
+): {
+  $or: Array<
+    | { 'attachments.url': { $regex: RegExp } }
+    | { files: { $elemMatch: { $regex: RegExp } } }
+  >;
+} | null => {
   if (ids.length === 0) return null;
   const orConditions = ids.flatMap((id) => {
     const pattern = new RegExp(`/${id}${TASK_URL_SUFFIX}`, 'i');
@@ -140,12 +136,10 @@ const normalizeLookupId = (value: unknown): string | null => {
   return null;
 };
 
-const collectTaskFileReferences = (
-  task: {
-    attachments?: Attachment[] | null;
-    files?: unknown;
-  },
-): Set<string> => {
+const collectTaskFileReferences = (task: {
+  attachments?: Attachment[] | null;
+  files?: unknown;
+}): Set<string> => {
   const references = new Set<string>();
   const attachmentIds = extractAttachmentIds(
     (task.attachments as Attachment[] | undefined) ?? [],
@@ -166,9 +160,7 @@ const normalizeTitle = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const toObjectId = (
-  value: string | Types.ObjectId,
-): Types.ObjectId | null => {
+const toObjectId = (value: string | Types.ObjectId): Types.ObjectId | null => {
   if (value instanceof Types.ObjectId) {
     return value;
   }
@@ -242,10 +234,12 @@ export const collectAttachmentLinks = async (
   if (!tasks.length) return lookup;
   const available = new Set(pendingIds);
   tasks.forEach((task) => {
-    const references = collectTaskFileReferences(task as {
-      attachments?: Attachment[] | null;
-      files?: unknown;
-    });
+    const references = collectTaskFileReferences(
+      task as {
+        attachments?: Attachment[] | null;
+        files?: unknown;
+      },
+    );
     references.forEach((key) => {
       if (!available.has(key) || lookup.has(key)) return;
       lookup.set(key, {
@@ -326,9 +320,7 @@ export async function listFiles(
         userId: f.userId,
         name: f.name,
         path: f.path,
-        thumbnailUrl: f.thumbnailPath
-          ? buildThumbnailUrl(f._id)
-          : undefined,
+        thumbnailUrl: f.thumbnailPath ? buildThumbnailUrl(f._id) : undefined,
         type: f.type,
         size: f.size,
         uploadedAt: f.uploadedAt,
@@ -364,10 +356,12 @@ export async function getFile(id: string): Promise<StoredFile | null> {
         .select(['_id', 'task_number', 'title', 'attachments', 'files'])
         .lean();
       if (fallback) {
-        const references = collectTaskFileReferences(fallback as {
-          attachments?: Attachment[] | null;
-          files?: unknown;
-        });
+        const references = collectTaskFileReferences(
+          fallback as {
+            attachments?: Attachment[] | null;
+            files?: unknown;
+          },
+        );
         const key = normalizeLookupId(doc._id);
         if (key && references.has(key)) {
           taskId = String(fallback._id);
@@ -388,9 +382,7 @@ export async function getFile(id: string): Promise<StoredFile | null> {
     userId: doc.userId,
     name: doc.name,
     path: doc.path,
-    thumbnailUrl: doc.thumbnailPath
-      ? buildThumbnailUrl(doc._id)
-      : undefined,
+    thumbnailUrl: doc.thumbnailPath ? buildThumbnailUrl(doc._id) : undefined,
     type: doc.type,
     size: doc.size,
     uploadedAt: doc.uploadedAt,
@@ -400,10 +392,9 @@ export async function getFile(id: string): Promise<StoredFile | null> {
 }
 
 export async function deleteFile(identifier: string): Promise<void> {
-  const query: FilterQuery<FileDocument> =
-    /^[0-9a-fA-F]{24}$/.test(identifier)
-      ? { _id: identifier }
-      : { path: identifier };
+  const query: FilterQuery<FileDocument> = /^[0-9a-fA-F]{24}$/.test(identifier)
+    ? { _id: identifier }
+    : { path: identifier };
   const file = await File.findOneAndDelete(query).lean();
   if (!file) {
     const err = new Error('Файл не найден') as NodeJS.ErrnoException;
@@ -431,9 +422,9 @@ export async function deleteFilesForTask(
 ): Promise<void> {
   const normalizedTaskId =
     typeof taskId === 'string' ? new Types.ObjectId(taskId) : taskId;
-  const uniqueExtraIds = Array.from(new Set(extraFileIds.map((id) => id.toHexString()))).map(
-    (id) => new Types.ObjectId(id),
-  );
+  const uniqueExtraIds = Array.from(
+    new Set(extraFileIds.map((id) => id.toHexString())),
+  ).map((id) => new Types.ObjectId(id));
   const orConditions: FilterQuery<FileDocument>[] = [
     { taskId: normalizedTaskId },
   ];

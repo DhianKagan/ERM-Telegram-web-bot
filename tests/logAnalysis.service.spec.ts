@@ -23,7 +23,7 @@ const createDirent = (name: string, file: boolean): Dirent =>
   ({
     name,
     isFile: () => file,
-  } as unknown as Dirent);
+  }) as unknown as Dirent;
 
 describe('LogAnalysisService', () => {
   let service: LogAnalysisService;
@@ -55,7 +55,9 @@ describe('LogAnalysisService', () => {
     ]);
     mockedFs.stat
       .mockResolvedValueOnce({ mtimeMs: 100 } as unknown as { mtimeMs: number })
-      .mockResolvedValueOnce({ mtimeMs: 200 } as unknown as { mtimeMs: number });
+      .mockResolvedValueOnce({ mtimeMs: 200 } as unknown as {
+        mtimeMs: number;
+      });
     mockedFs.readFile.mockResolvedValueOnce(
       JSON.stringify({
         generatedAt: '2024-02-02T10:00:00.000Z',

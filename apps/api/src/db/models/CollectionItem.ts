@@ -18,11 +18,7 @@ export interface CollectionItemAttrs {
 }
 
 export interface CollectionItemDocument
-  extends Document<
-      Types.ObjectId,
-      Record<string, never>,
-      CollectionItemAttrs
-    >,
+  extends Document<Types.ObjectId, Record<string, never>, CollectionItemAttrs>,
     CollectionItemAttrs {}
 
 const collectionItemSchema = new Schema<CollectionItemDocument>({

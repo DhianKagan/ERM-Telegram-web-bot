@@ -18,7 +18,11 @@ const normalizeTasks = (value: unknown): string[] => {
   }
   return value
     .map((taskId) =>
-      typeof taskId === 'string' ? taskId.trim() : taskId != null ? String(taskId) : '',
+      typeof taskId === 'string'
+        ? taskId.trim()
+        : taskId != null
+          ? String(taskId)
+          : '',
     )
     .filter((taskId): taskId is string => Boolean(taskId));
 };
@@ -55,8 +59,8 @@ export async function optimize(
     typeof actorIdRaw === 'number' && Number.isFinite(actorIdRaw)
       ? actorIdRaw
       : typeof actorIdRaw === 'string' && actorIdRaw.trim()
-      ? Number(actorIdRaw)
-      : undefined;
+        ? Number(actorIdRaw)
+        : undefined;
   const tasks = normalizeTasks(req.body?.tasks);
   const count = normalizeCount(req.body?.count);
   const method = req.body?.method;

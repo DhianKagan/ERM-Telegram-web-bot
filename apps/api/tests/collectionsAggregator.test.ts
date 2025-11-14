@@ -18,9 +18,18 @@ import { Employee } from '../src/db/models/employee';
 import { CollectionItem } from '../src/db/models/CollectionItem';
 import collectionsRouter from '../src/routes/collections';
 
-jest.mock('../src/utils/rateLimiter', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/middleware/auth', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/middleware/requireRole', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+);
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+);
+jest.mock(
+  '../src/middleware/requireRole',
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+);
 
 let app: express.Express;
 let mongod: MongoMemoryServer;
@@ -62,12 +71,18 @@ afterAll(async () => {
 
 describe('Агрегация коллекций', () => {
   it('возвращает департаменты из CollectionItem и Department', async () => {
-    const res = await request(app).get('/api/v1/collections').query({ type: 'departments' });
+    const res = await request(app)
+      .get('/api/v1/collections')
+      .query({ type: 'departments' });
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(3);
     const names = res.body.items.map((item: { name: string }) => item.name);
     expect(names).toEqual(
-      expect.arrayContaining(['Каталог департаментов', 'Легаси департамент', 'Цех']),
+      expect.arrayContaining([
+        'Каталог департаментов',
+        'Легаси департамент',
+        'Цех',
+      ]),
     );
     const legacy = res.body.items.find(
       (item: { name: string }) => item.name === 'Легаси департамент',
@@ -78,11 +93,15 @@ describe('Агрегация коллекций', () => {
   });
 
   it('возвращает сотрудников из CollectionItem и Employee', async () => {
-    const res = await request(app).get('/api/v1/collections').query({ type: 'employees' });
+    const res = await request(app)
+      .get('/api/v1/collections')
+      .query({ type: 'employees' });
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(2);
     const names = res.body.items.map((item: { name: string }) => item.name);
-    expect(names).toEqual(expect.arrayContaining(['Сотрудник каталога', 'Иван Петров']));
+    expect(names).toEqual(
+      expect.arrayContaining(['Сотрудник каталога', 'Иван Петров']),
+    );
     const legacy = res.body.items.find(
       (item: { name: string }) => item.name === 'Иван Петров',
     );

@@ -27,7 +27,9 @@ jest.mock('../src/di', () => {
 });
 
 const mockFileFind = jest.fn(() => ({ lean: jest.fn().mockResolvedValue([]) }));
-const mockFileFindById = jest.fn(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+const mockFileFindById = jest.fn(() => ({
+  lean: jest.fn().mockResolvedValue(null),
+}));
 const mockFileFindOneAndDelete = jest.fn(() => ({
   lean: jest.fn().mockResolvedValue(null),
 }));
@@ -73,11 +75,13 @@ const { File } = require('../src/db/model');
 const { stopQueue } = require('../src/services/messageQueue');
 const { stopScheduler } = require('../src/services/scheduler');
 
-jest.mock('../src/middleware/auth', () =>
-  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
-jest.mock('../src/auth/roles.guard', () =>
-  (_req: unknown, _res: unknown, next: NextFunction) => next(),
+jest.mock(
+  '../src/auth/roles.guard',
+  () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
   Roles: () => (_req: unknown, _res: unknown, next: NextFunction) => next(),
@@ -141,7 +145,9 @@ describe('storage routes', () => {
     });
     mockTaskFindById.mockReturnValue({
       select: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
+        lean: jest
+          .fn()
+          .mockResolvedValue({ task_number: 'A-2', title: 'Task' }),
         select: jest.fn().mockReturnThis(),
       }),
       lean: jest.fn().mockResolvedValue(null),
@@ -182,7 +188,9 @@ describe('storage routes', () => {
     expect(res.body.taskNumber).toBe('ERM-55');
     expect(mockFileUpdateOne).toHaveBeenCalledWith(
       { _id: fileId },
-      expect.objectContaining({ $set: expect.objectContaining({ taskId: expect.anything() }) }),
+      expect.objectContaining({
+        $set: expect.objectContaining({ taskId: expect.anything() }),
+      }),
     );
   });
 

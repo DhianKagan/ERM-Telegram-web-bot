@@ -14,10 +14,7 @@ try {
 
 import { User } from '../apps/api/src/db/model';
 import { resolveRoleId } from '../apps/api/src/db/roleCache';
-import {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-} from './db/mongoUrl';
+import { getMongoUrlFromEnv, formatCredentialSources } from './db/mongoUrl';
 
 const [, , idArg, usernameArg] = process.argv;
 if (!idArg) {

@@ -49,7 +49,9 @@ export function notifyTasksChanged(
   action: LogisticsTasksChangedEvent['action'],
   taskIds: string[],
 ): void {
-  const uniqueIds = Array.from(new Set(taskIds.filter((id) => typeof id === 'string' && id)));
+  const uniqueIds = Array.from(
+    new Set(taskIds.filter((id) => typeof id === 'string' && id)),
+  );
   const event: LogisticsTasksChangedEvent = {
     type: 'tasks.changed',
     timestamp: nowIso(),

@@ -15,7 +15,8 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "shadcn": "shadcn",
     "bundle-report": "ANALYZE=true vite build",
-    "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts"
+    "test:types": "tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts",
+    "lint:lpt": "node -r ./node_modules/ts-node/register ./node_modules/eslint/bin/eslint.js -c ../../eslint.lpt.config.ts --ignore-pattern postcss.config.cjs --rule \"@typescript-eslint/no-unused-expressions: off\" --rule \"react-refresh/only-export-components: off\" ."
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",
@@ -36,6 +37,7 @@
     "apexcharts": "^4.7.0",
     "chart.js": "^4.5.0",
     "chonky": "2.3.2",
+    "ckeditor5": "46.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.6",
@@ -63,7 +65,7 @@
     "shared": "workspace:*",
     "tailwind-merge": "^3.3.1",
     "use-sync-external-store": "^1.5.0",
-    "validator": "^13.15.15",
+    "validator": "^13.15.23",
     "zod": "^4.1.5"
   },
   "devDependencies": {
@@ -98,7 +100,7 @@
     "ttf2woff2": "8.0.0",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5.4.5",
-    "vite": "^7.0.0",
+    "vite": "^7.2.2",
     "vite-plugin-image-optimizer": "^2.0.2"
   }
 }

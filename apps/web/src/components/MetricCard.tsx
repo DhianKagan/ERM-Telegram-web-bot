@@ -1,6 +1,6 @@
 // Карточка метрики для Dashboard
-import React from "react";
-import { type ElementType } from "react";
+import React from 'react';
+import { type ElementType } from 'react';
 
 interface Props {
   title: string;

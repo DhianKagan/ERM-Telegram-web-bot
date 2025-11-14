@@ -1,5 +1,5 @@
 // Хлебные крошки навигации
-import React from "react";
+import React from 'react';
 
 export interface Crumb {
   label: string;

@@ -146,7 +146,10 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
     completedBy: Number,
     completedAt: Date,
     routes: { type: [routeSchema], default: [] },
-    metrics: { type: metricsSchema, default: () => ({ totalRoutes: 0, totalTasks: 0 }) },
+    metrics: {
+      type: metricsSchema,
+      default: () => ({ totalRoutes: 0, totalTasks: 0 }),
+    },
     tasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
   },
   { timestamps: true },

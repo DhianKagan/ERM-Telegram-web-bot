@@ -29,8 +29,12 @@ declare module 'mongoose' {
     }
   }
 
-  export class Schema<T = unknown> {
-    constructor(definition?: Record<string, unknown>, options?: Record<string, unknown>);
+    export class Schema<T = unknown> {
+      readonly dummy?: T;
+      constructor(
+        definition?: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      );
     static Types: {
       Mixed: unknown;
       ObjectId: typeof Types.ObjectId;
@@ -70,7 +74,11 @@ declare module 'mongoose' {
 
   export const models: Record<string, Model<unknown>>;
 
-  export function model<T>(name: string, schema: Schema<T>, collection?: string): Model<T>;
+  export function model<T>(
+    name: string,
+    schema: Schema<T>,
+    collection?: string,
+  ): Model<T>;
 
   export function connect(uri: string, options?: ConnectOptions): Promise<void>;
 

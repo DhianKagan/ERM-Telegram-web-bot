@@ -47,7 +47,10 @@ const decodeMapsUrlCandidate = (candidate: string): string | null => {
     if (!isMapsHost) {
       return null;
     }
-    if (host.startsWith('www.google.') && !parsed.pathname.startsWith('/maps')) {
+    if (
+      host.startsWith('www.google.') &&
+      !parsed.pathname.startsWith('/maps')
+    ) {
       return null;
     }
     return parsed.toString();
@@ -261,7 +264,10 @@ let nominatimQueue: Promise<void> = Promise.resolve();
 const scheduleNominatim = <T>(task: () => Promise<T>): Promise<T> => {
   const run = async () => {
     const now = Date.now();
-    const wait = Math.max(0, NOMINATIM_MIN_INTERVAL_MS - (now - lastNominatimCall));
+    const wait = Math.max(
+      0,
+      NOMINATIM_MIN_INTERVAL_MS - (now - lastNominatimCall),
+    );
     if (wait > 0) {
       await delay(wait);
     }
@@ -289,12 +295,13 @@ const buildNominatimHeaders = (language?: string): Record<string, string> => {
     headers.Referer = appUrl;
   }
   if (language && language.trim()) {
-    headers['Accept-Language'] = language
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0)
-      .slice(0, 5)
-      .join(',') || DEFAULT_ACCEPT_LANGUAGE;
+    headers['Accept-Language'] =
+      language
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+        .slice(0, 5)
+        .join(',') || DEFAULT_ACCEPT_LANGUAGE;
   } else {
     headers['Accept-Language'] = DEFAULT_ACCEPT_LANGUAGE;
   }
@@ -450,8 +457,4 @@ const maps = {
 
 export default maps;
 
-export {
-  extractCoords,
-  generateRouteLink,
-  generateMultiRouteLink,
-};
+export { extractCoords, generateRouteLink, generateMultiRouteLink };

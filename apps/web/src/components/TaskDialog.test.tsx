@@ -1,32 +1,38 @@
 /** @jest-environment jsdom */
 // Назначение файла: проверяет сохранение задачи и повторное открытие формы.
 // Основные модули: React, @testing-library/react, TaskDialog.
-import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import TaskDialog from "./TaskDialog";
+import React from 'react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import TaskDialog from './TaskDialog';
 
-const mockUser = { telegram_id: 99, role: "admin", access: 8 } as const;
+const mockUser = { telegram_id: 99, role: 'admin', access: 8 } as const;
 const translate = (value: string) => value;
-const mockI18n = { language: "ru", changeLanguage: jest.fn() };
+const mockI18n = { language: 'ru', changeLanguage: jest.fn() };
 const alertMock = jest.fn();
 
-jest.mock("../context/useAuth", () => ({
+jest.mock('../context/useAuth', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-jest.mock("react-i18next", () => ({
+jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: translate, i18n: mockI18n }),
 }));
 
-jest.mock("./CKEditorPopup", () => () => <div />);
-jest.mock("./ConfirmDialog", () => ({ open, onConfirm }: any) => {
+jest.mock('./CKEditorPopup', () => () => <div />);
+jest.mock('./ConfirmDialog', () => ({ open, onConfirm }: any) => {
   React.useEffect(() => {
     if (open) onConfirm();
   }, [open, onConfirm]);
   return null;
 });
-jest.mock("./AlertDialog", () => ({
+jest.mock('./AlertDialog', () => ({
   __esModule: true,
   default: ({ open, message }: any) => {
     alertMock({ open, message });
@@ -34,36 +40,36 @@ jest.mock("./AlertDialog", () => ({
   },
 }));
 
-jest.mock("./MultiUserSelect", () => ({
-  users,
-  value,
-  onChange,
-  onBlur,
-  label,
-  error,
-}: any) => (
-  <label>
-    <span>{label}</span>
-    <select
-      data-testid="assignee"
-      value={value ?? ""}
-      onChange={(event) => onChange(event.target.value || null)}
-      onBlur={onBlur}
-    >
-      <option value="">—</option>
-      {users.map((user: any) => (
-        <option key={user.telegram_id} value={String(user.telegram_id)}>
-          {user.name || user.telegram_username || user.username || user.telegram_id}
-        </option>
-      ))}
-    </select>
-    {error ? <div role="alert">{error}</div> : null}
-  </label>
-));
+jest.mock(
+  './MultiUserSelect',
+  () =>
+    ({ users, value, onChange, onBlur, label, error }: any) => (
+      <label>
+        <span>{label}</span>
+        <select
+          data-testid="assignee"
+          value={value ?? ''}
+          onChange={(event) => onChange(event.target.value || null)}
+          onBlur={onBlur}
+        >
+          <option value="">—</option>
+          {users.map((user: any) => (
+            <option key={user.telegram_id} value={String(user.telegram_id)}>
+              {user.name ||
+                user.telegram_username ||
+                user.username ||
+                user.telegram_id}
+            </option>
+          ))}
+        </select>
+        {error ? <div role="alert">{error}</div> : null}
+      </label>
+    ),
+);
 
 const users = [
-  { telegram_id: 1, name: "Alice" },
-  { telegram_id: 2, name: "Bob" },
+  { telegram_id: 1, name: 'Alice' },
+  { telegram_id: 2, name: 'Bob' },
 ];
 const usersMap = users.reduce<Record<string, any>>((acc, u) => {
   acc[String(u.telegram_id)] = u;
@@ -71,42 +77,42 @@ const usersMap = users.reduce<Record<string, any>>((acc, u) => {
 }, {});
 
 const taskData = {
-  title: "Task",
-  task_description: "",
+  title: 'Task',
+  task_description: '',
   assignees: [1],
   assigned_user_id: 1,
-  start_date: "2024-01-01T00:00:00Z",
-  due_date: "2024-01-02T00:00:00Z",
+  start_date: '2024-01-01T00:00:00Z',
+  due_date: '2024-01-02T00:00:00Z',
   created_by: 99,
-  createdAt: "2024-01-01T00:00:00Z",
-  department: "",
+  createdAt: '2024-01-01T00:00:00Z',
+  department: '',
   attachments: [],
   history: [],
 };
 
 const defaultAuthFetch = (url: string, _options?: any) => {
-  if (url === "/api/v1/collections/departments") {
+  if (url === '/api/v1/collections/departments') {
     return Promise.resolve({ ok: true, json: async () => [] });
   }
-  if (url === "/api/v1/users") {
+  if (url === '/api/v1/users') {
     return Promise.resolve({ ok: true, json: async () => users });
   }
-  if (url === "/api/v1/tasks/1") {
+  if (url === '/api/v1/tasks/1') {
     return Promise.resolve({
       ok: true,
       json: async () => ({ task: taskData, users: usersMap }),
     });
   }
-  if (url === "/api/v1/tasks/report/summary") {
+  if (url === '/api/v1/tasks/report/summary') {
     return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
   }
-  if (url.startsWith("/api/v1/maps/search")) {
+  if (url.startsWith('/api/v1/maps/search')) {
     return Promise.resolve({ ok: true, json: async () => ({ items: [] }) });
   }
-  if (url.startsWith("/api/v1/maps/reverse")) {
+  if (url.startsWith('/api/v1/maps/reverse')) {
     return Promise.resolve({ ok: true, json: async () => ({ place: null }) });
   }
-  if (url.startsWith("/api/v1/task-drafts/")) {
+  if (url.startsWith('/api/v1/task-drafts/')) {
     return Promise.resolve({
       ok: false,
       status: 404,
@@ -118,13 +124,13 @@ const defaultAuthFetch = (url: string, _options?: any) => {
 
 const authFetchMock = jest.fn(defaultAuthFetch);
 
-jest.mock("../utils/authFetch", () => ({
+jest.mock('../utils/authFetch', () => ({
   __esModule: true,
   default: (url: string, options?: any) => authFetchMock(url, options),
 }));
 
-jest.mock("maplibre-gl/dist/maplibre-gl.css", () => "");
-jest.mock("pmtiles", () => ({
+jest.mock('maplibre-gl/dist/maplibre-gl.css', () => '');
+jest.mock('pmtiles', () => ({
   Protocol: jest.fn(() => ({ tile: jest.fn() })),
 }));
 
@@ -148,7 +154,7 @@ function markerMockFactory() {
   };
 }
 
-jest.mock("maplibre-gl", () => {
+jest.mock('maplibre-gl', () => {
   const mapMock = mapInstanceMock();
   const markerMock = markerMockFactory();
   const NavigationControl = jest.fn();
@@ -176,11 +182,11 @@ jest.mock("maplibre-gl", () => {
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({
   ok: true,
-  json: async () => ({ ...taskData, _id: "1" }),
+  json: async () => ({ ...taskData, _id: '1' }),
 });
 
 const findSubmitButton = () =>
-  screen.findByRole("button", {
+  screen.findByRole('button', {
     name: /^(create|save)$/,
   });
 
@@ -192,8 +198,8 @@ const clickSubmitButton = async () => {
   });
 };
 
-jest.mock("../services/tasks", () => {
-  const actual = jest.requireActual("../services/tasks");
+jest.mock('../services/tasks', () => {
+  const actual = jest.requireActual('../services/tasks');
   return {
     ...actual,
     createTask: (...args: any[]) => createTaskMock(...args),
@@ -203,22 +209,22 @@ jest.mock("../services/tasks", () => {
   };
 });
 
-describe("TaskDialog", () => {
+describe('TaskDialog', () => {
   beforeEach(() => {
     authFetchMock.mockReset();
     authFetchMock.mockImplementation(defaultAuthFetch);
     createTaskMock.mockReset();
-    createTaskMock.mockResolvedValue({ ...taskData, _id: "2", id: "2" });
+    createTaskMock.mockResolvedValue({ ...taskData, _id: '2', id: '2' });
     updateTaskMock.mockReset();
     updateTaskMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ ...taskData, _id: "1" }),
+      json: async () => ({ ...taskData, _id: '1' }),
     });
-    mockI18n.language = "ru";
+    mockI18n.language = 'ru';
     alertMock.mockReset();
   });
 
-  it("сохраняет задачу и повторно открывает форму", async () => {
+  it('сохраняет задачу и повторно открывает форму', async () => {
     const renderDialog = () =>
       render(
         <MemoryRouter>
@@ -226,22 +232,22 @@ describe("TaskDialog", () => {
         </MemoryRouter>,
       );
     const { unmount } = renderDialog();
-    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
 
     await clickSubmitButton();
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
-        "1",
+        '1',
         expect.objectContaining({ assigned_user_id: 1 }),
       ),
     );
 
     unmount();
     renderDialog();
-    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
   });
 
-  it("не дублирует запрос summary при редактировании черновика", async () => {
+  it('не дублирует запрос summary при редактировании черновика', async () => {
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} />
@@ -250,22 +256,22 @@ describe("TaskDialog", () => {
 
     const summaryCalls = () =>
       authFetchMock.mock.calls.filter(
-        ([url]) => url === "/api/v1/tasks/report/summary",
+        ([url]) => url === '/api/v1/tasks/report/summary',
       );
 
     await waitFor(() => expect(summaryCalls()).toHaveLength(1));
 
-    const titleField = await screen.findByPlaceholderText("title");
+    const titleField = await screen.findByPlaceholderText('title');
     await act(async () => {
-      fireEvent.change(titleField, { target: { value: "Новое название" } });
+      fireEvent.change(titleField, { target: { value: 'Новое название' } });
     });
 
     await waitFor(() => expect(summaryCalls()).toHaveLength(1));
   });
 
-  it("обновляет ObjectId после открытия по request_id", async () => {
-    const requestId = "ERM_000042";
-    const objectId = "507f1f77bcf86cd799439011";
+  it('обновляет ObjectId после открытия по request_id', async () => {
+    const requestId = 'ERM_000042';
+    const objectId = '507f1f77bcf86cd799439011';
     const taskWithIds = {
       ...taskData,
       _id: objectId,
@@ -295,76 +301,72 @@ describe("TaskDialog", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
 
-    fireEvent.click(screen.getByText("save"));
+    fireEvent.click(screen.getByText('save'));
 
     await waitFor(() =>
-      expect(updateTaskMock).toHaveBeenCalledWith(
-        objectId,
-        expect.any(Object),
-      ),
+      expect(updateTaskMock).toHaveBeenCalledWith(objectId, expect.any(Object)),
     );
   });
 
-  it("не меняет дату начала при сохранении без правок", async () => {
+  it('не меняет дату начала при сохранении без правок', async () => {
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} id="1" />
       </MemoryRouter>,
     );
 
-    const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
-    await waitFor(() => expect(startInput.value).not.toBe(""));
+    const startInput = (await screen.findByLabelText(
+      'startDate',
+    )) as HTMLInputElement;
+    await waitFor(() => expect(startInput.value).not.toBe(''));
     const initialStart = startInput.value;
-    const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
-    await waitFor(() => expect(dueInput.value).not.toBe(""));
+    const dueInput = screen.getByLabelText('dueDate') as HTMLInputElement;
+    await waitFor(() => expect(dueInput.value).not.toBe(''));
     const initialDue = dueInput.value;
 
-    fireEvent.click(screen.getByText("save"));
+    fireEvent.click(screen.getByText('save'));
 
     await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
-    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("start_date");
-    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty("due_date");
+    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty('start_date');
+    expect(updateTaskMock.mock.calls[0][1]).not.toHaveProperty('due_date');
     expect(startInput.value).toBe(initialStart);
     expect(dueInput.value).toBe(initialDue);
   });
 
-  it(
-    "не блокирует сохранение, если дата создания отличается только секундами",
-    async () => {
-      const withSeconds = {
-        ...taskData,
-        createdAt: "2024-01-01T00:00:30Z",
-        start_date: "2024-01-01T00:00:30Z",
-      };
-      authFetchMock.mockImplementation((url: string) => {
-        if (url === "/api/v1/tasks/1") {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ task: withSeconds, users: usersMap }),
-          });
-        }
-        return defaultAuthFetch(url);
-      });
+  it('не блокирует сохранение, если дата создания отличается только секундами', async () => {
+    const withSeconds = {
+      ...taskData,
+      createdAt: '2024-01-01T00:00:30Z',
+      start_date: '2024-01-01T00:00:30Z',
+    };
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/tasks/1') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ task: withSeconds, users: usersMap }),
+        });
+      }
+      return defaultAuthFetch(url);
+    });
 
-      render(
-        <MemoryRouter>
-          <TaskDialog onClose={() => {}} id="1" />
-        </MemoryRouter>,
-      );
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
 
-      expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
 
-      fireEvent.click(screen.getByText("save"));
+    fireEvent.click(screen.getByText('save'));
 
-      await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
-    },
-  );
+    await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
+  });
 
-  it("устанавливает срок на 5 часов позже даты начала по умолчанию", async () => {
+  it('устанавливает срок на 5 часов позже даты начала по умолчанию', async () => {
     try {
-      jest.useFakeTimers().setSystemTime(new Date("2024-03-01T10:00:00Z"));
+      jest.useFakeTimers().setSystemTime(new Date('2024-03-01T10:00:00Z'));
 
       render(
         <MemoryRouter>
@@ -372,11 +374,13 @@ describe("TaskDialog", () => {
         </MemoryRouter>,
       );
 
-      const startInput = (await screen.findByLabelText("startDate")) as HTMLInputElement;
-      const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+      const startInput = (await screen.findByLabelText(
+        'startDate',
+      )) as HTMLInputElement;
+      const dueInput = screen.getByLabelText('dueDate') as HTMLInputElement;
 
-      expect(startInput.value).not.toBe("");
-      expect(dueInput.value).not.toBe("");
+      expect(startInput.value).not.toBe('');
+      expect(dueInput.value).not.toBe('');
 
       const startMs = new Date(startInput.value).getTime();
       const dueMs = new Date(dueInput.value).getTime();
@@ -387,28 +391,30 @@ describe("TaskDialog", () => {
     }
   });
 
-  it("передаёт выбранный срок при создании задачи", async () => {
-    createTaskMock.mockResolvedValue({ _id: "new-task" });
+  it('передаёт выбранный срок при создании задачи', async () => {
+    createTaskMock.mockResolvedValue({ _id: 'new-task' });
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} />
       </MemoryRouter>,
     );
 
-    await screen.findByText("taskCreatedBy");
-    const assigneeSelect = (await screen.findByTestId("assignee")) as HTMLSelectElement;
-    await screen.findByText("Alice");
+    await screen.findByText('taskCreatedBy');
+    const assigneeSelect = (await screen.findByTestId(
+      'assignee',
+    )) as HTMLSelectElement;
+    await screen.findByText('Alice');
     await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: "1" } });
+      fireEvent.change(assigneeSelect, { target: { value: '1' } });
       await Promise.resolve();
     });
 
-    const titleInput = await screen.findByPlaceholderText("title");
-    fireEvent.change(titleInput, { target: { value: "Новая задача" } });
+    const titleInput = await screen.findByPlaceholderText('title');
+    fireEvent.change(titleInput, { target: { value: 'Новая задача' } });
 
-    const startInput = screen.getByLabelText("startDate") as HTMLInputElement;
+    const startInput = screen.getByLabelText('startDate') as HTMLInputElement;
     const toLocalInputValue = (date: Date) => {
-      const pad = (n: number) => `${n}`.padStart(2, "0");
+      const pad = (n: number) => `${n}`.padStart(2, '0');
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
         date.getMinutes(),
       )}`;
@@ -417,7 +423,7 @@ describe("TaskDialog", () => {
     const startValue = toLocalInputValue(new Date(now + 5 * 60_000));
     fireEvent.change(startInput, { target: { value: startValue } });
 
-    const dueInput = screen.getByLabelText("dueDate") as HTMLInputElement;
+    const dueInput = screen.getByLabelText('dueDate') as HTMLInputElement;
     const dueValueSource = toLocalInputValue(new Date(now + 65 * 60_000));
     fireEvent.change(dueInput, { target: { value: dueValueSource } });
 
@@ -429,52 +435,52 @@ describe("TaskDialog", () => {
     });
   });
 
-  it("отклоняет сохранение без исполнителя", async () => {
+  it('отклоняет сохранение без исполнителя', async () => {
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
 
-    const titleInput = screen.getByPlaceholderText("title");
-    fireEvent.change(titleInput, { target: { value: "New delivery" } });
+    const titleInput = screen.getByPlaceholderText('title');
+    fireEvent.change(titleInput, { target: { value: 'New delivery' } });
 
-    const assigneeSelect = await screen.findByTestId("assignee");
-    await screen.findByText("Alice");
+    const assigneeSelect = await screen.findByTestId('assignee');
+    await screen.findByText('Alice');
     expect(assigneeSelect).toBeTruthy();
 
     await clickSubmitButton();
 
-    const errorMessage = await screen.findByText("assigneeRequiredError");
-    expect(errorMessage.textContent ?? "").toContain("assigneeRequiredError");
+    const errorMessage = await screen.findByText('assigneeRequiredError');
+    expect(errorMessage.textContent ?? '').toContain('assigneeRequiredError');
     await waitFor(() =>
       expect(
         alertMock.mock.calls.some(
-          ([props]) => props.open && props.message === "assigneeRequiredError",
+          ([props]) => props.open && props.message === 'assigneeRequiredError',
         ),
       ).toBe(true),
     );
     await waitFor(() => expect(createTaskMock).not.toHaveBeenCalled());
   });
 
-  it("создаёт задачу с выбранным исполнителем", async () => {
+  it('создаёт задачу с выбранным исполнителем', async () => {
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("taskCreatedBy")).toBeTruthy();
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
 
-    const titleInput = screen.getByPlaceholderText("title");
-    fireEvent.change(titleInput, { target: { value: "Deliver docs" } });
+    const titleInput = screen.getByPlaceholderText('title');
+    fireEvent.change(titleInput, { target: { value: 'Deliver docs' } });
 
-    const assigneeSelect = await screen.findByTestId("assignee");
-    await screen.findByText("Alice");
+    const assigneeSelect = await screen.findByTestId('assignee');
+    await screen.findByText('Alice');
     await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: "2" } });
+      fireEvent.change(assigneeSelect, { target: { value: '2' } });
     });
 
     await clickSubmitButton();
@@ -482,39 +488,40 @@ describe("TaskDialog", () => {
     await waitFor(() =>
       expect(createTaskMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Deliver docs",
+          title: 'Deliver docs',
           assigned_user_id: 2,
         }),
       ),
     );
   });
 
-  it("запрашивает подсказки адреса с текущим языком", async () => {
+  it('запрашивает подсказки адреса с текущим языком', async () => {
     jest.useFakeTimers();
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} id="1" />
       </MemoryRouter>,
     );
-    const logisticsToggle = await screen.findByRole("checkbox", {
-      name: "logisticsToggle",
+    const logisticsToggle = await screen.findByRole('checkbox', {
+      name: 'logisticsToggle',
     });
     act(() => {
       fireEvent.click(logisticsToggle);
     });
-    const input = await screen.findByLabelText("startPoint");
+    const input = await screen.findByLabelText('startPoint');
     act(() => {
-      fireEvent.change(input, { target: { value: "Киев" } });
+      fireEvent.change(input, { target: { value: 'Киев' } });
       jest.advanceTimersByTime(400);
     });
     await waitFor(() => {
-      const searchCall = authFetchMock.mock.calls.find(([url]) =>
-        typeof url === "string" && url.startsWith("/api/v1/maps/search"),
+      const searchCall = authFetchMock.mock.calls.find(
+        ([url]) =>
+          typeof url === 'string' && url.startsWith('/api/v1/maps/search'),
       );
       expect(searchCall).toBeTruthy();
       expect(searchCall?.[1]).toEqual(
         expect.objectContaining({
-          headers: expect.objectContaining({ "Accept-Language": "ru" }),
+          headers: expect.objectContaining({ 'Accept-Language': 'ru' }),
         }),
       );
     });

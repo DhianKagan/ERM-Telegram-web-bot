@@ -57,7 +57,9 @@ function pickFirstFilled(keys: readonly string[]): EnvPick | undefined {
   return undefined;
 }
 
-export function applyMongoCredentialFallback(rawUrl: string): MongoUrlResolution {
+export function applyMongoCredentialFallback(
+  rawUrl: string,
+): MongoUrlResolution {
   if (!rawUrl) {
     return { url: rawUrl };
   }
@@ -105,7 +107,10 @@ export function applyMongoCredentialFallback(rawUrl: string): MongoUrlResolution
         const isRailwayInternal = /\.railway\.internal$/i.test(hostname);
         const isRailwayProxyHost = /\.proxy\.rlwy\.net$/i.test(hostname);
         const isRailwayAppHost = /\.railway\.app$/i.test(hostname);
-        if (username === 'mongo' && (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost)) {
+        if (
+          username === 'mongo' &&
+          (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost)
+        ) {
           parsed.searchParams.set('authSource', 'admin');
           messages.push('authSource=admin по умолчанию для Railway');
         }
@@ -123,7 +128,9 @@ export function applyMongoCredentialFallback(rawUrl: string): MongoUrlResolution
   }
 }
 
-export function getMongoUrlFromEnv(): MongoUrlResolution & { sourceKey?: string } {
+export function getMongoUrlFromEnv(): MongoUrlResolution & {
+  sourceKey?: string;
+} {
   const envPick = pickFirstFilled(URL_ENV_KEYS);
   const rawUrl = envPick ? envPick.value : '';
   const trimmed = rawUrl.trim();

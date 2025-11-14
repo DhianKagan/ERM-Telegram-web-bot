@@ -1,6 +1,6 @@
 // Контекст задач, глобального поиска и фильтров
-import { createContext } from "react";
-import type { TaskStateController } from "../controllers/taskStateController";
+import { createContext } from 'react';
+import type { TaskStateController } from '../controllers/taskStateController';
 
 // Фильтры поиска задач
 export interface TaskFilters {
@@ -33,4 +33,4 @@ export interface TasksState {
 export const TasksContext = createContext<TasksState | undefined>(undefined);
 
 // Экспорт провайдера
-export { TasksProvider } from "./TasksProvider";
+export { TasksProvider } from './TasksProvider';

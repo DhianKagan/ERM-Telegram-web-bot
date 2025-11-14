@@ -129,10 +129,7 @@ test('bulk сбрасывает completed_at при возврате стату�
   const repo = createRepo();
   const service = new TasksService(repo);
   const date = new Date();
-  await service.bulk(
-    ['1'],
-    { status: 'В работе', completed_at: date } as any,
-  );
+  await service.bulk(['1'], { status: 'В работе', completed_at: date } as any);
   expect(repo.bulkUpdate).toHaveBeenCalledTimes(1);
   const payload = repo.bulkUpdate.mock.calls[0][1];
   expect(payload.status).toBe('В работе');

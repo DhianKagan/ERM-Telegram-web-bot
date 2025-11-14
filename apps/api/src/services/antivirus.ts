@@ -5,7 +5,11 @@ import { readFile, stat } from 'node:fs/promises';
 import clamd from 'clamdjs';
 import path from 'path';
 import { uploadsDir } from '../config/storage';
-import type { AntivirusConfig, ClamAvConfig, SignatureConfig } from '../config/antivirus';
+import type {
+  AntivirusConfig,
+  ClamAvConfig,
+  SignatureConfig,
+} from '../config/antivirus';
 import { antivirusConfig } from '../config/antivirus';
 import { writeLog } from './wgLogEngine';
 
@@ -24,10 +28,12 @@ const toPosixAbs = (p: string) => {
 
 const signatureEntries =
   antivirusConfig.vendor === 'Signature'
-    ? Array.from(new Set((antivirusConfig as SignatureConfig).signatures)).map((value) => ({
-        value,
-        buffer: Buffer.from(value, 'utf-8'),
-      }))
+    ? Array.from(new Set((antivirusConfig as SignatureConfig).signatures)).map(
+        (value) => ({
+          value,
+          buffer: Buffer.from(value, 'utf-8'),
+        }),
+      )
     : [];
 
 const signatureVersion =
@@ -108,7 +114,11 @@ async function ensureScanner(): Promise<void> {
       }
       scanner = clamd.createScanner(antivirusConfig.host, antivirusConfig.port);
       versionInfo = await clamd
-        .version(antivirusConfig.host, antivirusConfig.port, antivirusConfig.timeout)
+        .version(
+          antivirusConfig.host,
+          antivirusConfig.port,
+          antivirusConfig.timeout,
+        )
         .catch(() => null);
       await logStatus('available');
     } catch (error) {
@@ -150,16 +160,22 @@ export async function scanFile(filePath: string): Promise<boolean> {
     try {
       const fileStat = await stat(normalizedPath);
       if (fileStat.size > (antivirusConfig as SignatureConfig).maxFileSize) {
-        await writeLog('Размер файла превышает лимит сигнатурного сканера', 'warn', {
-          path: posixPath,
-          vendor: antivirusConfig.vendor,
-          size: fileStat.size,
-          maxFileSize: (antivirusConfig as SignatureConfig).maxFileSize,
-        });
+        await writeLog(
+          'Размер файла превышает лимит сигнатурного сканера',
+          'warn',
+          {
+            path: posixPath,
+            vendor: antivirusConfig.vendor,
+            size: fileStat.size,
+            maxFileSize: (antivirusConfig as SignatureConfig).maxFileSize,
+          },
+        );
         return false;
       }
       const content = await readFile(normalizedPath);
-      const match = signatureEntries.find((entry) => content.includes(entry.buffer));
+      const match = signatureEntries.find((entry) =>
+        content.includes(entry.buffer),
+      );
       if (match) {
         await writeLog('Обнаружен вирус', 'warn', {
           path: posixPath,

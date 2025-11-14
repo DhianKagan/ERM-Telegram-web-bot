@@ -19,8 +19,14 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import analyticsRouter from '../src/routes/analytics';
 import { RoutePlan } from '../src/db/models/routePlan';
 
-jest.mock('../src/middleware/auth', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
-jest.mock('../src/utils/rateLimiter', () => () => (_req: unknown, _res: unknown, next: () => void) => next());
+jest.mock(
+  '../src/middleware/auth',
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+);
+jest.mock(
+  '../src/utils/rateLimiter',
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+);
 
 let mongod: MongoMemoryServer;
 let app: express.Express;

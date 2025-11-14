@@ -36,7 +36,9 @@ jest.mock('../apps/api/src/services/dataStorage', () => ({
 }));
 
 describe('StorageDiagnosticsService', () => {
-  const dataStorageMocks = jest.requireMock('../apps/api/src/services/dataStorage') as {
+  const dataStorageMocks = jest.requireMock(
+    '../apps/api/src/services/dataStorage',
+  ) as {
     collectAttachmentLinks: CollectAttachmentLinksMock;
     getFileSyncSnapshot: GetFileSyncSnapshotMock;
   };
@@ -83,7 +85,7 @@ describe('StorageDiagnosticsService', () => {
         if (
           filter &&
           typeof filter === 'object' &&
-          ('$or' in (filter as Record<string, unknown>))
+          '$or' in (filter as Record<string, unknown>)
         ) {
           return docs.filter((doc) => !doc.taskId);
         }
@@ -106,18 +108,22 @@ describe('StorageDiagnosticsService', () => {
       return { select };
     });
 
-    const updateOne = jest.fn((
-      filter: { _id: string | Types.ObjectId },
-      update: { $set?: { taskId?: Types.ObjectId } },
-    ) => {
-      const filterId =
-        typeof filter._id === 'string' ? new Types.ObjectId(filter._id) : filter._id;
-      const target = docs.find((doc) => doc._id.equals(filterId));
-      if (target && update?.$set?.taskId) {
-        target.taskId = update.$set.taskId;
-      }
-      return { exec: jest.fn().mockResolvedValue({}) };
-    });
+    const updateOne = jest.fn(
+      (
+        filter: { _id: string | Types.ObjectId },
+        update: { $set?: { taskId?: Types.ObjectId } },
+      ) => {
+        const filterId =
+          typeof filter._id === 'string'
+            ? new Types.ObjectId(filter._id)
+            : filter._id;
+        const target = docs.find((doc) => doc._id.equals(filterId));
+        if (target && update?.$set?.taskId) {
+          target.taskId = update.$set.taskId;
+        }
+        return { exec: jest.fn().mockResolvedValue({}) };
+      },
+    );
 
     return { find, updateOne };
   };
@@ -130,19 +136,27 @@ describe('StorageDiagnosticsService', () => {
     const docs = createDocs();
     const fileModel = buildFileModel(docs);
 
-    dataStorageMocks.collectAttachmentLinks.mockImplementation(async (candidates) => {
-      const map = new Map<string, { taskId: string; number?: string; title?: string }>();
-      candidates.forEach((candidate) => {
-        if (candidate.id === fallbackFileId.toHexString() && !candidate.hasTask) {
-          map.set(candidate.id, {
-            taskId: linkedTaskId.toHexString(),
-            number: 'ERM-1',
-            title: 'Задача с вложением',
-          });
-        }
-      });
-      return map;
-    });
+    dataStorageMocks.collectAttachmentLinks.mockImplementation(
+      async (candidates) => {
+        const map = new Map<
+          string,
+          { taskId: string; number?: string; title?: string }
+        >();
+        candidates.forEach((candidate) => {
+          if (
+            candidate.id === fallbackFileId.toHexString() &&
+            !candidate.hasTask
+          ) {
+            map.set(candidate.id, {
+              taskId: linkedTaskId.toHexString(),
+              number: 'ERM-1',
+              title: 'Задача с вложением',
+            });
+          }
+        });
+        return map;
+      },
+    );
 
     dataStorageMocks.getFileSyncSnapshot.mockImplementation(async () => {
       const totalFiles = docs.length;

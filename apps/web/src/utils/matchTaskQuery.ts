@@ -1,13 +1,13 @@
 // Назначение файла: сопоставление задач с текстовым запросом для глобального поиска
 // Модули: taskColumns (тип TaskRow)
-import type { TaskRow } from "../columns/taskColumns";
+import type { TaskRow } from '../columns/taskColumns';
 
 type UserLike = Record<string, unknown>;
 
 const normalizeCandidate = (value: string) => {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return [] as string[];
-  const collapsed = trimmed.replace(/[\s\-_/]+/g, "");
+  const collapsed = trimmed.replace(/[\s\-_/]+/g, '');
   if (collapsed && collapsed !== trimmed) {
     return [trimmed, collapsed];
   }
@@ -15,11 +15,11 @@ const normalizeCandidate = (value: string) => {
 };
 
 const pushCandidate = (target: Set<string>, value: unknown) => {
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     normalizeCandidate(value).forEach((candidate) => target.add(candidate));
     return;
   }
-  if (typeof value === "number" && Number.isFinite(value)) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     const text = String(value);
     normalizeCandidate(text).forEach((candidate) => target.add(candidate));
   }
@@ -39,7 +39,7 @@ const collectNestedValues = (
     pushCandidate(target, value.toISOString());
     return;
   }
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     Object.values(value as Record<string, unknown>).forEach((item) =>
       collectNestedValues(item, target, depth + 1),
     );
@@ -64,8 +64,8 @@ const addUserCandidates = (user: UserLike | undefined, target: Set<string>) => {
 };
 
 const toNumber = (value: unknown): number | undefined => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
     const parsed = Number(trimmed);
@@ -104,7 +104,7 @@ const collectTaskSearchValues = (
     if (parsed !== undefined) {
       userIds.add(parsed);
       pushCandidate(candidates, parsed);
-    } else if (typeof value === "string") {
+    } else if (typeof value === 'string') {
       pushCandidate(candidates, value);
     }
   };
@@ -113,9 +113,9 @@ const collectTaskSearchValues = (
   appendUserId(task.assigned_user_id);
   appendUserId((task as Record<string, unknown>).controller_user_id);
   (task.assignees || []).forEach((id) => appendUserId(id));
-  ((task as Record<string, unknown>).controllers as unknown[] | undefined)?.forEach(
-    (id) => appendUserId(id),
-  );
+  (
+    (task as Record<string, unknown>).controllers as unknown[] | undefined
+  )?.forEach((id) => appendUserId(id));
 
   userIds.forEach((id) => addUserCandidates(users[id], candidates));
 
@@ -138,11 +138,7 @@ const collectTaskSearchValues = (
 };
 
 const tokenize = (query: string): string[] =>
-  query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  query.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
 export default function matchTaskQuery(
   task: TaskRow,

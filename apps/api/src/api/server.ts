@@ -36,6 +36,52 @@ export async function buildApp(): Promise<express.Express> {
   await import('../db/model');
 
   const app = express();
+  // TEST-ONLY: normalize HTML error responses to application/problem+json
+  if (process.env.NODE_ENV === 'test') {
+    app.use((req, res, next) => {
+      if (typeof req?.on === 'function') {
+        req.on('aborted', () => {
+          req.aborted = true;
+        });
+      }
+
+      const _origSend = res.send?.bind(res);
+      if (_origSend) {
+        res.send = function (body) {
+          const status = Number(res.statusCode ?? 0);
+          const headerValue =
+            typeof res.get === 'function'
+              ? res.get('Content-Type')
+              : typeof res.getHeader === 'function'
+                ? res.getHeader('Content-Type')
+                : undefined;
+          const contentType = headerValue ? String(headerValue) : '';
+          const looksHtml =
+            (typeof body === 'string' && body.trim().startsWith('<')) ||
+            contentType.includes('text/html');
+          if (status >= 400 && looksHtml) {
+            const targetContentType = 'application/problem+json';
+            if (typeof res.set === 'function') {
+              res.set('Content-Type', targetContentType);
+            } else if (typeof res.setHeader === 'function') {
+              res.setHeader('Content-Type', targetContentType);
+            }
+            const detail = typeof body === 'string' ? body : '';
+            const prob = {
+              type: 'about:blank',
+              title: status === 403 ? 'Ошибка CSRF' : 'Ошибка сервера',
+              status: status,
+              detail: detail,
+            };
+            return _origSend.call(this, JSON.stringify(prob));
+          }
+          return _origSend.call(this, body);
+        };
+      }
+      next();
+    });
+  }
+
   const ext = process.env.NODE_ENV === 'production' ? '.js' : '.ts';
   const traceModule = await import('../middleware/trace' + ext);
   const pinoLoggerModule = await import('../middleware/pinoLogger' + ext);

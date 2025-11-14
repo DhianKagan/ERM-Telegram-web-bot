@@ -1,7 +1,7 @@
 // Назначение: запросы к API универсальных коллекций
 // Основные модули: authFetch, i18n
-import i18n from "../i18n";
-import authFetch from "../utils/authFetch";
+import i18n from '../i18n';
+import authFetch from '../utils/authFetch';
 
 export interface CollectionItemMeta {
   invalid?: boolean;
@@ -61,22 +61,22 @@ type ParseErrorOptions = {
 };
 
 const validationMessageKeys: Record<string, string> = {
-  "Некорректный тип коллекции": "collections.errors.invalidType",
-  "Тип коллекции обязателен": "collections.errors.typeRequired",
-  "Некорректное название элемента": "collections.errors.invalidName",
-  "Название элемента обязательно": "collections.errors.nameRequired",
-  "Некорректное значение элемента": "collections.errors.invalidValue",
-  "Значение элемента обязательно": "collections.errors.valueRequired",
-  "Значение элемента не может быть пустым": "collections.errors.valueRequired",
-  "Ошибка валидации": "collections.errors.generalValidation",
-  "Ссылка на тему Telegram должна иметь формат https://t.me/c/<id>/<topic>":
-    "collections.errors.invalidTelegramTopicUrl",
+  'Некорректный тип коллекции': 'collections.errors.invalidType',
+  'Тип коллекции обязателен': 'collections.errors.typeRequired',
+  'Некорректное название элемента': 'collections.errors.invalidName',
+  'Название элемента обязательно': 'collections.errors.nameRequired',
+  'Некорректное значение элемента': 'collections.errors.invalidValue',
+  'Значение элемента обязательно': 'collections.errors.valueRequired',
+  'Значение элемента не может быть пустым': 'collections.errors.valueRequired',
+  'Ошибка валидации': 'collections.errors.generalValidation',
+  'Ссылка на тему Telegram должна иметь формат https://t.me/c/<id>/<topic>':
+    'collections.errors.invalidTelegramTopicUrl',
 };
 
 const typeSpecificValidationKeys: Record<string, Record<string, string>> = {
   departments: {
-    "Значение элемента обязательно":
-      "collections.errors.departmentsMustHaveDivisions",
+    'Значение элемента обязательно':
+      'collections.errors.departmentsMustHaveDivisions',
   },
 };
 
@@ -92,9 +92,9 @@ const translateValidationMessage = (
   raw: string | undefined,
   options?: ParseErrorOptions,
 ): string => {
-  if (!raw) return "";
+  if (!raw) return '';
   const trimmed = raw.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return '';
   const collectionType = options?.collectionType;
   const specificKey =
     collectionType && typeSpecificValidationKeys[collectionType]?.[trimmed];
@@ -111,16 +111,16 @@ const translateValidationErrors = (
   const translated = errors
     .map((error) => {
       const base =
-        typeof error?.msg === "string"
+        typeof error?.msg === 'string'
           ? error.msg
-          : typeof error?.message === "string"
+          : typeof error?.message === 'string'
             ? error.message
-            : "";
+            : '';
       return translateValidationMessage(base, options);
     })
     .filter(Boolean);
   if (translated.length) return translated;
-  return [i18n.t("collections.errors.generalValidation")];
+  return [i18n.t('collections.errors.generalValidation')];
 };
 
 const extractMessagesFromPayload = (
@@ -129,21 +129,20 @@ const extractMessagesFromPayload = (
 ): string[] => {
   if (!payload) return [];
   if (Array.isArray(payload)) {
-    const asErrors = payload.filter(
-      (item): item is ProblemValidationError =>
-        Boolean(item && typeof item === "object" && "msg" in item),
+    const asErrors = payload.filter((item): item is ProblemValidationError =>
+      Boolean(item && typeof item === 'object' && 'msg' in item),
     );
     if (asErrors.length) return translateValidationErrors(asErrors, options);
     const directStrings = payload
       .map((item) =>
-        typeof item === "string"
+        typeof item === 'string'
           ? translateValidationMessage(item, options)
-          : "",
+          : '',
       )
       .filter(Boolean);
     if (directStrings.length) return directStrings;
   }
-  if (typeof payload === "string") {
+  if (typeof payload === 'string') {
     const parsed = tryParseJson(payload);
     if (parsed !== undefined) {
       const nested = extractMessagesFromPayload(parsed, options);
@@ -162,24 +161,21 @@ export const parseErrorMessage = (
 ): string => {
   const fallback =
     status === 429
-      ? i18n.t("collections.fallback.rateLimited")
+      ? i18n.t('collections.fallback.rateLimited')
       : status === 403
-        ? i18n.t("collections.fallback.forbidden")
-        : i18n.t("collections.fallback.loadFailed");
+        ? i18n.t('collections.fallback.forbidden')
+        : i18n.t('collections.fallback.loadFailed');
 
   if (body) {
     const parsed = tryParseJson(body) as ProblemResponse | undefined;
     if (parsed) {
       const errorMessages = translateValidationErrors(parsed.errors, options);
       if (errorMessages.length) {
-        return Array.from(new Set(errorMessages)).join(". ");
+        return Array.from(new Set(errorMessages)).join('. ');
       }
-      const detailMessages = extractMessagesFromPayload(
-        parsed.detail,
-        options,
-      );
+      const detailMessages = extractMessagesFromPayload(parsed.detail, options);
       if (detailMessages.length) {
-        return Array.from(new Set(detailMessages)).join(". ");
+        return Array.from(new Set(detailMessages)).join('. ');
       }
       const generalMessage =
         translateValidationMessage(parsed.error, options) ||
@@ -196,26 +192,28 @@ export const parseErrorMessage = (
 
 export const fetchCollectionItems = async (
   type: string,
-  search = "",
+  search = '',
   page = 1,
   limit = 10,
 ) => {
   const res = await authFetch(
-    `/api/v1/collections?type=${type}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+    `/api/v1/collections?type=${type}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
   );
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(parseErrorMessage(res.status, body, { collectionType: type }));
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      parseErrorMessage(res.status, body, { collectionType: type }),
+    );
   }
   return res.json();
 };
 
 const isFiniteNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
+  typeof value === 'number' && Number.isFinite(value);
 
 export const fetchAllCollectionItems = async (
   type: string,
-  search = "",
+  search = '',
   limit = 200,
 ): Promise<CollectionItem[]> => {
   const effectiveLimit = limit > 0 ? limit : 200;
@@ -232,7 +230,11 @@ export const fetchAllCollectionItems = async (
       effectiveLimit,
     )) as { items?: CollectionItem[]; total?: number };
     const items = Array.isArray(response.items) ? response.items : [];
-    if (!items.length && aggregated.length === 0 && !isFiniteNumber(response.total)) {
+    if (
+      !items.length &&
+      aggregated.length === 0 &&
+      !isFiniteNumber(response.total)
+    ) {
       return [];
     }
     aggregated.push(...items);
@@ -257,15 +259,17 @@ export const createCollectionItem = (
   type: string,
   data: { name: string; value: string; meta?: Record<string, unknown> },
 ) =>
-  authFetch("/api/v1/collections", {
-    method: "POST",
+  authFetch('/api/v1/collections', {
+    method: 'POST',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, ...data }),
   }).then(async (r) => {
     if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      throw new Error(parseErrorMessage(r.status, body, { collectionType: type }));
+      const body = await r.text().catch(() => '');
+      throw new Error(
+        parseErrorMessage(r.status, body, { collectionType: type }),
+      );
     }
     return r.json();
   });
@@ -276,13 +280,13 @@ export const updateCollectionItem = (
   options?: ParseErrorOptions,
 ) =>
   authFetch(`/api/v1/collections/${id}`, {
-    method: "PUT",
+    method: 'PUT',
     confirmed: true,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }).then(async (r) => {
     if (!r.ok) {
-      const body = await r.text().catch(() => "");
+      const body = await r.text().catch(() => '');
       throw new Error(parseErrorMessage(r.status, body, options));
     }
     return r.json();
@@ -290,11 +294,11 @@ export const updateCollectionItem = (
 
 export const removeCollectionItem = async (id: string) => {
   const r = await authFetch(`/api/v1/collections/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     confirmed: true,
   });
   if (!r.ok) {
-    const body = await r.text().catch(() => "");
+    const body = await r.text().catch(() => '');
     throw new Error(parseErrorMessage(r.status, body));
   }
   return r.json();

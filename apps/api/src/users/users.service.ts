@@ -41,12 +41,7 @@ class UsersService {
   ) {
     const { telegramId, username: resolvedUsername } =
       await this.repo.generateUserCredentials(id, username);
-    return this.repo.createUser(
-      telegramId,
-      resolvedUsername,
-      roleId,
-      data,
-    );
+    return this.repo.createUser(telegramId, resolvedUsername, roleId, data);
   }
 
   generate(id?: string | number, username?: string) {

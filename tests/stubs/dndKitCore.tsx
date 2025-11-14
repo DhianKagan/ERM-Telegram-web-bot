@@ -1,6 +1,6 @@
 // Назначение файла: Jest-заглушка для пакета @dnd-kit/core
 // Основные модули: React
-import React from "react";
+import React from 'react';
 
 export type DragEventBase = {
   id: string | number;
@@ -8,7 +8,10 @@ export type DragEventBase = {
 };
 
 export type DragStartEvent = { active: DragEventBase };
-export type DragEndEvent = { active: DragEventBase; over: DragEventBase | null };
+export type DragEndEvent = {
+  active: DragEventBase;
+  over: DragEventBase | null;
+};
 export type DragOverEvent = DragEndEvent;
 
 type Props = {
@@ -31,16 +34,16 @@ export const DndContext: React.FC<Props> = ({
   void sensors;
   void collisionDetection;
   const mockEvent: DragEndEvent = {
-    active: { id: "mock", data: { current: null } },
+    active: { id: 'mock', data: { current: null } },
     over: null,
   };
   const handleEvent = (handler?: (event: DragEndEvent) => void) => {
-    if (typeof handler === "function") {
+    if (typeof handler === 'function') {
       handler(mockEvent);
     }
   };
   React.useEffect(() => {
-    if (typeof onDragStart === "function") {
+    if (typeof onDragStart === 'function') {
       onDragStart({ active: mockEvent.active });
     }
     handleEvent(onDragOver);

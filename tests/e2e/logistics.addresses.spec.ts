@@ -128,8 +128,13 @@ test.afterAll(async () => {
 });
 
 test.describe('Логистика: визуальный слой адресов', () => {
-  test('текстовый снимок фиксирует номера домов и порядок слоёв', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium', 'Снимок сравниваем только в Chromium для стабильности.');
+  test('текстовый снимок фиксирует номера домов и порядок слоёв', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'chromium',
+      'Снимок сравниваем только в Chromium для стабильности.',
+    );
 
     await page.goto(`http://127.0.0.1:${port}/`);
     await page.waitForTimeout(200);
@@ -160,17 +165,17 @@ test.describe('Логистика: визуальный слой адресов'
           textShadow: styles.textShadow,
         };
       });
-      const labels = Array.from(map.querySelectorAll<HTMLElement>('.label')).map(
-        (element) => {
-          const styles = window.getComputedStyle(element);
-          return {
-            text: element.textContent?.trim() ?? '',
-            fontSize: styles.fontSize,
-            color: styles.color,
-            zIndex: styles.zIndex,
-          };
-        },
-      );
+      const labels = Array.from(
+        map.querySelectorAll<HTMLElement>('.label'),
+      ).map((element) => {
+        const styles = window.getComputedStyle(element);
+        return {
+          text: element.textContent?.trim() ?? '',
+          fontSize: styles.fontSize,
+          color: styles.color,
+          zIndex: styles.zIndex,
+        };
+      });
       return {
         map: {
           background: computed.backgroundImage || computed.backgroundColor,
@@ -183,10 +188,22 @@ test.describe('Логистика: визуальный слой адресов'
     });
 
     expect(summary).not.toBeNull();
-    expect(summary?.blocks.map((entry) => entry.text)).toEqual(['12', '14', '16', '18', '20']);
-    const firstRoadIndex = summary?.items.findIndex((entry) => entry.className.includes('road')) ?? -1;
-    const firstBlockIndex = summary?.items.findIndex((entry) => entry.className.includes('block')) ?? -1;
-    const firstLabelIndex = summary?.items.findIndex((entry) => entry.className.includes('label')) ?? -1;
+    expect(summary?.blocks.map((entry) => entry.text)).toEqual([
+      '12',
+      '14',
+      '16',
+      '18',
+      '20',
+    ]);
+    const firstRoadIndex =
+      summary?.items.findIndex((entry) => entry.className.includes('road')) ??
+      -1;
+    const firstBlockIndex =
+      summary?.items.findIndex((entry) => entry.className.includes('block')) ??
+      -1;
+    const firstLabelIndex =
+      summary?.items.findIndex((entry) => entry.className.includes('label')) ??
+      -1;
 
     expect(firstRoadIndex).toBeGreaterThanOrEqual(0);
     expect(firstBlockIndex).toBeGreaterThanOrEqual(0);
@@ -194,6 +211,8 @@ test.describe('Логистика: визуальный слой адресов'
     expect(firstRoadIndex).toBeLessThan(firstBlockIndex);
     expect(firstBlockIndex).toBeLessThan(firstLabelIndex);
 
-    await expect(JSON.stringify(summary, null, 2)).toMatchSnapshot('logistics-addresses.txt');
+    await expect(JSON.stringify(summary, null, 2)).toMatchSnapshot(
+      'logistics-addresses.txt',
+    );
   });
 });

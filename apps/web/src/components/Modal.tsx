@@ -1,8 +1,8 @@
 // Назначение: универсальная модалка с порталом в document.body
 // Основные модули: React, ReactDOM
-import React from "react";
-import { createPortal } from "react-dom";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ModalProps {
   open: boolean;
@@ -11,7 +11,7 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, children }: ModalProps) {
-  if (!open || typeof document === "undefined") return null;
+  if (!open || typeof document === 'undefined') return null;
   return createPortal(
     <div className="fixed inset-0 z-[1000]" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />

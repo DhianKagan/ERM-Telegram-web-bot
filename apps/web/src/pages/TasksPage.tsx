@@ -1,17 +1,17 @@
 // Назначение файла: список задач с таблицей DataTable
 // Модули: React, контексты, сервисы задач, shared
-import React from "react";
-import { useSearchParams } from "react-router-dom";
-import TaskTable from "../components/TaskTable";
-import useTasks from "../context/useTasks";
+import React from 'react';
+import { useSearchParams } from 'react-router-dom';
+import TaskTable from '../components/TaskTable';
+import useTasks from '../context/useTasks';
 import {
   useTaskIndex,
   useTaskIndexMeta,
-} from "../controllers/taskStateController";
-import { fetchTasks } from "../services/tasks";
-import authFetch from "../utils/authFetch";
-import { type Task, type User } from "shared";
-import { useAuth } from "../context/useAuth";
+} from '../controllers/taskStateController';
+import { fetchTasks } from '../services/tasks';
+import authFetch from '../utils/authFetch';
+import { type Task, type User } from 'shared';
+import { useAuth } from '../context/useAuth';
 
 type TaskExtra = Task & {
   assigned_user_id?: number;
@@ -23,12 +23,12 @@ export default function TasksPage() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
-  const [mine, setMine] = React.useState(params.get("mine") === "1");
+  const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller, filters, setFilterUsers } = useTasks();
   const { user, loading: authLoading } = useAuth();
-  const isAdmin = user?.role === "admin";
-  const isManager = user?.role === "manager";
-  const hasPermission = user?.permissions?.includes("tasks");
+  const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const hasPermission = user?.permissions?.includes('tasks');
   const permissionsList = Array.isArray(user?.permissions)
     ? user?.permissions
     : null;
@@ -39,10 +39,10 @@ export default function TasksPage() {
   const effectiveMine = isPrivileged ? mine : true;
 
   const filterSignature = React.useMemo(() => {
-    const statusKey = [...filters.status].sort().join(",");
-    const priorityKey = [...filters.priority].sort().join(",");
-    const typeKey = [...filters.taskTypes].sort().join(",");
-    const assigneeKey = [...filters.assignees].sort((a, b) => a - b).join(",");
+    const statusKey = [...filters.status].sort().join(',');
+    const priorityKey = [...filters.priority].sort().join(',');
+    const typeKey = [...filters.taskTypes].sort().join(',');
+    const assigneeKey = [...filters.assignees].sort((a, b) => a - b).join(',');
     return [
       statusKey,
       priorityKey,
@@ -50,12 +50,12 @@ export default function TasksPage() {
       assigneeKey,
       filters.from,
       filters.to,
-    ].join("|");
+    ].join('|');
   }, [filters]);
 
   const scopeKey = React.useMemo(() => {
-    const userKey = user?.telegram_id ? String(user.telegram_id) : "anon";
-    const mineKey = effectiveMine ? "mine" : "all";
+    const userKey = user?.telegram_id ? String(user.telegram_id) : 'anon';
+    const mineKey = effectiveMine ? 'mine' : 'all';
     return `tasks:task:${userKey}:${mineKey}:page=${page + 1}:filters=${filterSignature}`;
   }, [effectiveMine, filterSignature, page, user?.telegram_id]);
 
@@ -64,12 +64,15 @@ export default function TasksPage() {
 
   const updateFilterUserList = React.useCallback(
     (list: User[]) => {
-      const map = new Map<number, { id: number; name: string; username?: string | null }>();
+      const map = new Map<
+        number,
+        { id: number; name: string; username?: string | null }
+      >();
       list.forEach((item) => {
         const id = Number(item.telegram_id);
         if (!Number.isFinite(id)) return;
         const displayName =
-          (typeof item.name === "string" && item.name.trim().length > 0
+          (typeof item.name === 'string' && item.name.trim().length > 0
             ? item.name.trim()
             : item.username) ?? `ID ${id}`;
         map.set(id, {
@@ -78,7 +81,11 @@ export default function TasksPage() {
           username: item.username ?? null,
         });
       });
-      setFilterUsers(Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "ru")));
+      setFilterUsers(
+        Array.from(map.values()).sort((a, b) =>
+          a.name.localeCompare(b.name, 'ru'),
+        ),
+      );
     },
     [setFilterUsers],
   );
@@ -86,12 +93,12 @@ export default function TasksPage() {
   const load = React.useCallback(() => {
     if (!user?.telegram_id) {
       controller.setIndex(scopeKey, [], {
-        kind: "task",
+        kind: 'task',
         mine: effectiveMine,
         userId: undefined,
         pageSize: 25,
         total: 0,
-        sort: "desc",
+        sort: 'desc',
       });
       setLoading(false);
       return;
@@ -101,16 +108,16 @@ export default function TasksPage() {
       page: page + 1,
       limit: 25,
       mine: !isPrivileged || mine ? 1 : undefined,
-      kind: "task",
+      kind: 'task',
     };
     if (filters.status.length) {
-      queryParams.status = filters.status.join(",");
+      queryParams.status = filters.status.join(',');
     }
     if (filters.taskTypes.length) {
-      queryParams.taskType = filters.taskTypes.join(",");
+      queryParams.taskType = filters.taskTypes.join(',');
     }
     if (filters.assignees.length) {
-      queryParams.assignees = filters.assignees.join(",");
+      queryParams.assignees = filters.assignees.join(',');
     }
     fetchTasks(queryParams, user.telegram_id, true)
       .then((data) => {
@@ -124,12 +131,12 @@ export default function TasksPage() {
               return assigned.includes(uid) || t.created_by === uid;
             });
         controller.setIndex(scopeKey, filteredTasks, {
-          kind: "task",
+          kind: 'task',
           mine: effectiveMine,
           userId: user.telegram_id,
           pageSize: 25,
           total: data.total || filteredTasks.length,
-          sort: "desc",
+          sort: 'desc',
         });
         const list = Array.isArray(data.users)
           ? (data.users as User[])
@@ -139,7 +146,7 @@ export default function TasksPage() {
       })
       .finally(() => setLoading(false));
     if (isPrivileged) {
-      authFetch("/api/v1/users")
+      authFetch('/api/v1/users')
         .then((r) => (r.ok ? r.json() : []))
         .then((list) => {
           const normalized = Array.isArray(list)
@@ -168,9 +175,9 @@ export default function TasksPage() {
     if (!mine) {
       setMine(true);
     }
-    if (params.get("mine") !== "1") {
+    if (params.get('mine') !== '1') {
       const next = new URLSearchParams(params);
-      next.set("mine", "1");
+      next.set('mine', '1');
       setParams(next, { replace: true });
     }
   }, [authLoading, isPrivileged, mine, params, setParams]);
@@ -211,14 +218,14 @@ export default function TasksPage() {
           isPrivileged
             ? (v) => {
                 setMine(v);
-                if (v) params.set("mine", "1");
-                else params.delete("mine");
+                if (v) params.set('mine', '1');
+                else params.delete('mine');
                 setParams(params);
               }
             : undefined
         }
         onRowClick={(id) => {
-          params.set("task", id);
+          params.set('task', id);
           setParams(params);
         }}
         toolbarChildren={
@@ -231,7 +238,7 @@ export default function TasksPage() {
             </button>
             <button
               onClick={() => {
-                params.set("newTask", "1");
+                params.set('newTask', '1');
                 setParams(params);
               }}
               className="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700"

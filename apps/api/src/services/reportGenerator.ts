@@ -105,10 +105,11 @@ export default class ReportGeneratorService {
     filters: Record<string, unknown>,
     user: ReportUser,
   ): Promise<ReportPayload> {
-    const { tasks, users, filters: normalized } = await this.fetchTasks(
-      filters,
-      user,
-    );
+    const {
+      tasks,
+      users,
+      filters: normalized,
+    } = await this.fetchTasks(filters, user);
     const workbook = new ExcelJS.Workbook();
     workbook.created = new Date();
     workbook.creator = 'ERM Reports';
@@ -191,7 +192,9 @@ export default class ReportGeneratorService {
       );
     }
     if (filters.statusValues.length) {
-      const allowed = new Set(filters.statusValues.map((value) => value.trim()));
+      const allowed = new Set(
+        filters.statusValues.map((value) => value.trim()),
+      );
       result = result.filter((task) =>
         typeof task.status === 'string'
           ? allowed.has(task.status.trim())
@@ -199,7 +202,9 @@ export default class ReportGeneratorService {
       );
     }
     if (filters.taskTypeValues.length) {
-      const types = new Set(filters.taskTypeValues.map((value) => value.trim()));
+      const types = new Set(
+        filters.taskTypeValues.map((value) => value.trim()),
+      );
       result = result.filter((task) => {
         const plain = task as unknown as Record<string, unknown>;
         const raw = plain.task_type;
@@ -237,7 +242,8 @@ export default class ReportGeneratorService {
     if (Array.isArray(assignees)) {
       assignees.forEach(add);
     }
-    const rawAssigned = (task as unknown as Record<string, unknown>).assigned_user_id;
+    const rawAssigned = (task as unknown as Record<string, unknown>)
+      .assigned_user_id;
     add(rawAssigned);
     return Array.from(ids);
   }
@@ -316,7 +322,11 @@ export default class ReportGeneratorService {
       },
     ];
     if (filtersLabel) {
-      content.push({ text: filtersLabel, style: 'meta', margin: [0, 0, 0, 12] });
+      content.push({
+        text: filtersLabel,
+        style: 'meta',
+        margin: [0, 0, 0, 12],
+      });
     }
     content.push({
       table: {
@@ -442,14 +452,20 @@ export default class ReportGeneratorService {
   private formatDate(value: unknown): string {
     if (value instanceof Date) {
       if (!Number.isNaN(value.getTime())) {
-        return value.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+        return value
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.\d+Z$/, 'Z');
       }
       return '—';
     }
     if (typeof value === 'string') {
       const date = new Date(value);
       if (!Number.isNaN(date.getTime())) {
-        return date.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+        return date
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.\d+Z$/, 'Z');
       }
     }
     return '—';
@@ -470,8 +486,7 @@ export default class ReportGeneratorService {
       return 'task';
     }
     const source = task as Record<string, unknown>;
-    const rawKind =
-      typeof source.kind === 'string' ? source.kind.trim() : '';
+    const rawKind = typeof source.kind === 'string' ? source.kind.trim() : '';
     if (rawKind === 'request') {
       return 'request';
     }

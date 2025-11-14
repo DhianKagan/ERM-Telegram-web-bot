@@ -37,7 +37,9 @@ test.afterAll(() => {
   server.close();
 });
 
-test('inline-клавиатура завершения содержит prompt и подтверждение', async ({ request }) => {
+test('inline-клавиатура завершения содержит prompt и подтверждение', async ({
+  request,
+}) => {
   const status = await request.get(`${baseUrl}/tasks/77/status-keyboard`);
   expect(status.ok()).toBeTruthy();
   const statusMarkup = await status.json();

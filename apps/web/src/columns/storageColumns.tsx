@@ -1,13 +1,10 @@
 // Конфигурация колонок таблицы файлов хранилища
 // Основные модули: React, @tanstack/react-table, heroicons
-import React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDownTrayIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
-import EmployeeLink from "../components/EmployeeLink";
-import type { StoredFile } from "../services/storage";
+import React from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
+import EmployeeLink from '../components/EmployeeLink';
+import type { StoredFile } from '../services/storage';
 
 export interface StorageRow extends StoredFile {
   sizeLabel: string;
@@ -47,11 +44,11 @@ interface Labels {
 type TaskOption = { value: string; label: string };
 
 const userBadgeClass = [
-  "inline-flex max-w-full items-center gap-1",
-  "rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-xs",
-  "transition-colors duration-150 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-  "dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100",
-].join(" ");
+  'inline-flex max-w-full items-center gap-1',
+  'rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-xs',
+  'transition-colors duration-150 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+  'dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-100',
+].join(' ');
 
 export default function createStorageColumns(
   labels: Labels,
@@ -67,8 +64,8 @@ export default function createStorageColumns(
   return [
     {
       header: labels.name,
-      accessorKey: "name",
-      meta: { minWidth: "12rem", maxWidth: "20rem", renderAsBadges: false },
+      accessorKey: 'name',
+      meta: { minWidth: '12rem', maxWidth: '20rem', renderAsBadges: false },
       cell: ({ row }) => {
         const file = row.original;
         return (
@@ -134,13 +131,19 @@ export default function createStorageColumns(
                   className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                   disabled={file.attachDisabled}
                 >
-                  {file.attachLoading ? labels.attachProcessing : labels.attachAction}
+                  {file.attachLoading
+                    ? labels.attachProcessing
+                    : labels.attachAction}
                 </button>
               </div>
               {isTasksLoading ? (
-                <span className="block text-muted-foreground">{labels.attachLoading}</span>
+                <span className="block text-muted-foreground">
+                  {labels.attachLoading}
+                </span>
               ) : attachOptions.length === 0 ? (
-                <span className="block text-muted-foreground">{labels.attachEmpty}</span>
+                <span className="block text-muted-foreground">
+                  {labels.attachEmpty}
+                </span>
               ) : null}
             </div>
           </div>
@@ -149,8 +152,8 @@ export default function createStorageColumns(
     },
     {
       header: labels.user,
-      accessorKey: "userDisplay",
-      meta: { minWidth: "8rem", maxWidth: "12rem", renderAsBadges: false },
+      accessorKey: 'userDisplay',
+      meta: { minWidth: '8rem', maxWidth: '12rem', renderAsBadges: false },
       cell: ({ row }) => {
         const file = row.original;
         const label = file.userDisplay;
@@ -175,20 +178,20 @@ export default function createStorageColumns(
     },
     {
       header: labels.type,
-      accessorKey: "type",
-      meta: { minWidth: "8rem", maxWidth: "10rem" },
-      cell: ({ row }) => row.original.type || "",
+      accessorKey: 'type',
+      meta: { minWidth: '8rem', maxWidth: '10rem' },
+      cell: ({ row }) => row.original.type || '',
     },
     {
       header: labels.size,
-      accessorKey: "sizeLabel",
-      meta: { minWidth: "6rem", maxWidth: "8rem" },
+      accessorKey: 'sizeLabel',
+      meta: { minWidth: '6rem', maxWidth: '8rem' },
       cell: ({ row }) => row.original.sizeLabel,
     },
     {
       header: labels.task,
-      accessorKey: "taskDisplay",
-      meta: { minWidth: "10rem", maxWidth: "16rem", renderAsBadges: false },
+      accessorKey: 'taskDisplay',
+      meta: { minWidth: '10rem', maxWidth: '16rem', renderAsBadges: false },
       cell: ({ row }) => {
         const file = row.original;
         const content = (
@@ -244,8 +247,8 @@ export default function createStorageColumns(
     },
     {
       header: labels.uploaded,
-      accessorKey: "uploadedLabel",
-      meta: { minWidth: "10rem", maxWidth: "12rem" },
+      accessorKey: 'uploadedLabel',
+      meta: { minWidth: '10rem', maxWidth: '12rem' },
       cell: ({ row }) => row.original.uploadedLabel,
     },
   ];

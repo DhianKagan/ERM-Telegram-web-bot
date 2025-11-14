@@ -7,8 +7,14 @@ type Handler = (ctx: Record<string, unknown>) => Promise<void> | void;
 
 const commandHandlers: Record<string, Handler> = {};
 const keyboardMock = jest.fn(() => ({ resize: jest.fn(() => ({})) }));
-const generatePdfMock = jest.fn<Promise<ReportPayload>, [Record<string, unknown>, unknown]>();
-const generateExcelMock = jest.fn<Promise<ReportPayload>, [Record<string, unknown>, unknown]>();
+const generatePdfMock = jest.fn<
+  Promise<ReportPayload>,
+  [Record<string, unknown>, unknown]
+>();
+const generateExcelMock = jest.fn<
+  Promise<ReportPayload>,
+  [Record<string, unknown>, unknown]
+>();
 const getUserMock = jest.fn();
 
 jest.mock('../apps/api/src/config', () => ({
@@ -58,7 +64,9 @@ jest.mock('../apps/api/src/services/service', () => serviceMock);
 
 const fleetLeanMock = jest.fn().mockResolvedValue([]);
 const fleetSortMock = jest.fn().mockReturnValue({ lean: fleetLeanMock });
-const fleetFindMock = jest.fn().mockReturnValue({ sort: fleetSortMock, lean: fleetLeanMock });
+const fleetFindMock = jest
+  .fn()
+  .mockReturnValue({ sort: fleetSortMock, lean: fleetLeanMock });
 
 jest.mock('../apps/api/src/db/models/fleet', () => ({
   FleetVehicle: { find: fleetFindMock },
@@ -77,9 +85,13 @@ jest.mock('../apps/api/src/utils/taskStatusIcons', () => ({
   TASK_STATUS_ICON_MAP: {},
 }));
 
-jest.mock('../apps/api/src/utils/messageLink', () => jest.fn(() => 'https://tg/link'));
+jest.mock('../apps/api/src/utils/messageLink', () =>
+  jest.fn(() => 'https://tg/link'),
+);
 
-jest.mock('../apps/api/src/utils/formatTask', () => jest.fn(() => 'formatted task'));
+jest.mock('../apps/api/src/utils/formatTask', () =>
+  jest.fn(() => 'formatted task'),
+);
 
 const queriesMock = {
   createTask: jest.fn(),
@@ -204,12 +216,17 @@ describe('команда /report', () => {
     };
     const excelPayload: ReportPayload = {
       data: Buffer.from('xlsx'),
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       fileName: 'tasks-report-test.xlsx',
     };
     generatePdfMock.mockResolvedValue(pdfPayload);
     generateExcelMock.mockResolvedValue(excelPayload);
-    getUserMock.mockResolvedValue({ telegram_id: 100, role: 'admin', access: 8 });
+    getUserMock.mockResolvedValue({
+      telegram_id: 100,
+      role: 'admin',
+      access: 8,
+    });
 
     loadBotModule();
     const { __getCommandHandlers } = jest.requireMock('telegraf') as {
@@ -227,11 +244,14 @@ describe('команда /report', () => {
     await handler(ctx);
 
     expect(getUserMock).toHaveBeenCalledWith(100);
-    expect(generatePdfMock).toHaveBeenCalledWith({}, {
-      id: 100,
-      role: 'admin',
-      access: 8,
-    });
+    expect(generatePdfMock).toHaveBeenCalledWith(
+      {},
+      {
+        id: 100,
+        role: 'admin',
+        access: 8,
+      },
+    );
     expect(generateExcelMock).toHaveBeenCalledTimes(1);
     expect(ctx.replyWithDocument).toHaveBeenNthCalledWith(
       1,
@@ -252,10 +272,15 @@ describe('команда /report', () => {
     });
     generateExcelMock.mockResolvedValue({
       data: Buffer.from('xlsx'),
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       fileName: 'tasks-report-test.xlsx',
     });
-    getUserMock.mockResolvedValue({ telegram_id: 100, role: 'user', access: 1 });
+    getUserMock.mockResolvedValue({
+      telegram_id: 100,
+      role: 'user',
+      access: 1,
+    });
 
     loadBotModule();
     const { __getCommandHandlers } = jest.requireMock('telegraf') as {

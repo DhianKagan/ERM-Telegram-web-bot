@@ -93,13 +93,23 @@ describe('repairCollections', () => {
     const items = await CollectionItem.find().lean();
     const names = items.map((item: any) => item.name);
     expect(names).toContain('Финансовый отдел');
-    const restoredDivision = await CollectionItem.findOne({ _id: missingDivisionId });
+    const restoredDivision = await CollectionItem.findOne({
+      _id: missingDivisionId,
+    });
     expect(restoredDivision).not.toBeNull();
     expect(restoredDivision?.get('meta')).toMatchObject({ invalid: true });
-    const restoredPosition = await CollectionItem.findOne({ _id: missingPositionId });
-    expect(restoredPosition?.get('value')).toBe(missingPositionId.toHexString());
-    const restoredDepartment = await CollectionItem.findOne({ _id: missingTaskDepartmentId });
-    expect(restoredDepartment?.get('name')).toContain(missingTaskDepartmentId.toHexString());
+    const restoredPosition = await CollectionItem.findOne({
+      _id: missingPositionId,
+    });
+    expect(restoredPosition?.get('value')).toBe(
+      missingPositionId.toHexString(),
+    );
+    const restoredDepartment = await CollectionItem.findOne({
+      _id: missingTaskDepartmentId,
+    });
+    expect(restoredDepartment?.get('name')).toContain(
+      missingTaskDepartmentId.toHexString(),
+    );
   });
 
   test('очищает ссылки с недопустимыми идентификаторами', async () => {

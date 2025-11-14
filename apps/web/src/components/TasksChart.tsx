@@ -1,9 +1,9 @@
 // График количества задач за период
 // Модули: React, react-apexcharts, next-themes, authFetch
-import React, { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
-import authFetch from "../utils/authFetch";
-const ReactApexChart = React.lazy(() => import("react-apexcharts"));
+import React, { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
+import authFetch from '../utils/authFetch';
+const ReactApexChart = React.lazy(() => import('react-apexcharts'));
 
 interface ChartState {
   series: { data: number[] }[];
@@ -22,12 +22,12 @@ const buildQuery = (filters?: TasksChartProps['filters']) => {
   if (filters?.from) params.set('from', filters.from);
   if (filters?.to) params.set('to', filters.to);
   const query = params.toString();
-  return query ? `?${query}` : "";
+  return query ? `?${query}` : '';
 };
 
 export default function TasksChart({ filters }: TasksChartProps) {
-  const [series, setSeries] = useState<ChartState["series"]>([{ data: [] }]);
-  const [categories, setCategories] = useState<ChartState["categories"]>([]);
+  const [series, setSeries] = useState<ChartState['series']>([{ data: [] }]);
+  const [categories, setCategories] = useState<ChartState['categories']>([]);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -61,19 +61,19 @@ export default function TasksChart({ filters }: TasksChartProps) {
   const options = {
     chart: {
       height: 200,
-      type: "line",
-      fontFamily: "Inter, sans-serif",
+      type: 'line',
+      fontFamily: 'Inter, sans-serif',
       toolbar: { show: false },
-      background: theme === "dark" ? "#24303F" : undefined,
+      background: theme === 'dark' ? '#24303F' : undefined,
     },
-    colors: ["#2563EB"],
-    stroke: { width: 2, curve: "smooth" },
+    colors: ['#2563EB'],
+    stroke: { width: 2, curve: 'smooth' },
     xaxis: {
       categories,
-      labels: { style: { colors: theme === "dark" ? "#DEE4EE" : "#6B7280" } },
+      labels: { style: { colors: theme === 'dark' ? '#DEE4EE' : '#6B7280' } },
     },
     yaxis: {
-      labels: { style: { colors: theme === "dark" ? "#DEE4EE" : "#6B7280" } },
+      labels: { style: { colors: theme === 'dark' ? '#DEE4EE' : '#6B7280' } },
     },
   };
 

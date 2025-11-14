@@ -39,7 +39,8 @@
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.0.0",
-    "vitest": "4.0.8"
+    "vitest": "4.0.8",
+    "why-is-node-running": "^3.2.2"
   },
   "pnpm": {
     "overrides": {

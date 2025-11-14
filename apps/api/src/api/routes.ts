@@ -132,7 +132,7 @@ export default async function registerRoutes(
     )
       return next();
     // Wrap csrf: convert HTML error responses to application/problem+json for tests
-    (function() {
+    (function () {
       const _origSend = res.send && res.send.bind(res);
       const _origEnd = res.end && res.end.bind(res);
       let __converted = false;
@@ -140,30 +140,49 @@ export default async function registerRoutes(
       function convertIfNeeded(body) {
         try {
           const status = Number(res.statusCode || 0);
-          const ct = (typeof res.get === 'function' ? res.get('Content-Type') : (res.getHeader && res.getHeader('Content-Type'))) || '';
-          const looksHtml = (typeof body === 'string' && body.trim().startsWith('<')) || (ct && String(ct).includes('text/html'));
+          const ct =
+            (typeof res.get === 'function'
+              ? res.get('Content-Type')
+              : res.getHeader && res.getHeader('Content-Type')) || '';
+          const looksHtml =
+            (typeof body === 'string' && body.trim().startsWith('<')) ||
+            (ct && String(ct).includes('text/html'));
           if (!__converted && status >= 400 && looksHtml) {
             __converted = true;
-            try { res.setHeader('Content-Type','application/problem+json'); } catch(e){}
+            try {
+              res.setHeader('Content-Type', 'application/problem+json');
+            } catch (e) {}
             const detail = typeof body === 'string' ? body : '';
-            const prob = { type: 'about:blank', title: status === 403 ? 'Ошибка CSRF' : 'Ошибка сервера', status: status, detail: detail };
+            const prob = {
+              type: 'about:blank',
+              title: status === 403 ? 'Ошибка CSRF' : 'Ошибка сервера',
+              status: status,
+              detail: detail,
+            };
             return JSON.stringify(prob);
           }
-        } catch (e) { /* swallow */ }
+        } catch (e) {
+          /* swallow */
+        }
         return body;
       }
 
       if (_origSend) {
-        res.send = function(body) {
+        res.send = function (body) {
           return _origSend.call(this, convertIfNeeded(body));
         };
       }
 
       if (_origEnd) {
-        res.end = function(chunk, encoding) {
+        res.end = function (chunk, encoding) {
           try {
             if (chunk) {
-              const chunkStr = (typeof chunk === 'string') ? chunk : (Buffer.isBuffer(chunk) ? chunk.toString(encoding || 'utf8') : '');
+              const chunkStr =
+                typeof chunk === 'string'
+                  ? chunk
+                  : Buffer.isBuffer(chunk)
+                    ? chunk.toString(encoding || 'utf8')
+                    : '';
               const converted = convertIfNeeded(chunkStr);
               return _origEnd.call(this, Buffer.from(converted), encoding);
             }

@@ -49,6 +49,7 @@ import routePlansRouter from '../routes/routePlans';
 import analyticsRouter from '../routes/analytics';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
+import { uploadsDir } from '../config/storage';
 import {
   updateTaskStatus,
   writeLog,
@@ -374,6 +375,14 @@ export default async function registerRoutes(
           res.setHeader('Cache-Control', 'no-cache');
         }
       },
+    }),
+  );
+  app.use(
+    '/uploads',
+    express.static(uploadsDir, {
+      maxAge: '1y',
+      immutable: true,
+      index: false,
     }),
   );
   const initAdmin = (await import('../admin/customAdmin')).default;

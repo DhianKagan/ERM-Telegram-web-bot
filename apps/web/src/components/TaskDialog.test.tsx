@@ -364,6 +364,45 @@ describe('TaskDialog', () => {
     await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
   });
 
+  it('сохраняет вложения из текстового редактора', async () => {
+    const inlineId = '507f1f77bcf86cd799439011';
+    const inlineTask = {
+      ...taskData,
+      comment: `<p><img src="/api/v1/files/${inlineId}" /></p>`,
+    };
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/tasks/1') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ task: inlineTask, users: usersMap }),
+        });
+      }
+      return defaultAuthFetch(url);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
+
+    await clickSubmitButton();
+
+    await waitFor(() => expect(updateTaskMock).toHaveBeenCalled());
+    const payload = updateTaskMock.mock.calls[0][1] as Record<string, unknown>;
+    expect(Array.isArray(payload.attachments)).toBe(true);
+    expect(payload.attachments as unknown[]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining(inlineId),
+        }),
+      ]),
+    );
+    authFetchMock.mockImplementation(defaultAuthFetch);
+  });
+
   it('устанавливает срок на 5 часов позже даты начала по умолчанию', async () => {
     try {
       jest.useFakeTimers().setSystemTime(new Date('2024-03-01T10:00:00Z'));

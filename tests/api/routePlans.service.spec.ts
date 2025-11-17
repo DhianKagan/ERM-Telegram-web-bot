@@ -153,6 +153,30 @@ describe('routePlans service analytics', function () {
     );
   });
 
+  it('публикует событие при создании маршрутного плана', async () => {
+    const events: LogisticsEvent[] = [];
+    const unsubscribe = subscribeLogisticsEvents((event) => {
+      events.push(event);
+    });
+
+    try {
+      await createDraftFromInputs([
+        {
+          tasks: [],
+        },
+      ]);
+    } finally {
+      unsubscribe();
+    }
+
+    const message = events.find(
+      (event): event is LogisticsRoutePlanUpdatedEvent =>
+        event.type === 'route-plan.updated',
+    );
+    assert.ok(message, 'ожидалось событие создания маршрутного плана');
+    assert.equal(message.reason, 'created');
+  });
+
   it('публикует событие при обновлении маршрутного плана', async () => {
     const plan = await createDraftFromInputs([
       {

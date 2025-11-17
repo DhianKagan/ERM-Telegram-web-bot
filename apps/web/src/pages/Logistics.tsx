@@ -3667,7 +3667,7 @@ export default function LogisticsPage() {
                 </Button>
               </div>
             ) : null}
-          </CollapsibleCard>
+          </section>
           <CollapsibleCard
             title={t('logistics.tasksHeading')}
             description={t('logistics.tasksActiveOnly', {
@@ -4165,7 +4165,7 @@ export default function LogisticsPage() {
                 ))}
               </div>
             )}
-          </section>
+          </CollapsibleCard>
           <CollapsibleCard
             title={t('logistics.legendTitle')}
             description={t('logistics.legendDescription', {

@@ -5,6 +5,7 @@ import type { LogisticsEvent } from 'shared';
 
 type ImportMetaEnvLike = {
   readonly VITE_DISABLE_SSE?: string;
+  readonly VITE_LOGISTICS_POLL_INTERVAL_MS?: string;
 };
 
 const parseBooleanFlag = (value: string | undefined): boolean | undefined => {
@@ -45,6 +46,42 @@ const readDisableFlag = (): boolean => {
 
 const isSseDisabled = readDisableFlag();
 
+const parsePositiveInterval = (value?: string): number | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return undefined;
+};
+
+const readPollingInterval = (): number => {
+  const processEnv =
+    typeof process !== 'undefined' && typeof process.env === 'object'
+      ? process.env.VITE_LOGISTICS_POLL_INTERVAL_MS
+      : undefined;
+  const processHint = parsePositiveInterval(processEnv);
+  if (processHint !== undefined) {
+    return processHint;
+  }
+  try {
+    const meta = import.meta as unknown as { env?: ImportMetaEnvLike };
+    const metaHint = parsePositiveInterval(
+      meta?.env?.VITE_LOGISTICS_POLL_INTERVAL_MS,
+    );
+    if (metaHint !== undefined) {
+      return metaHint;
+    }
+  } catch {
+    // Ожидаемо в тестовой среде без import.meta
+  }
+  return 30_000;
+};
+
+const FALLBACK_POLL_INTERVAL_MS = readPollingInterval();
+
 export type LogisticsEventListener = (event: LogisticsEvent) => void;
 
 export function subscribeLogisticsEvents(
@@ -63,6 +100,39 @@ export function subscribeLogisticsEvents(
   const url = '/api/v1/logistics/events';
   let source: EventSource | null = null;
   let closed = false;
+  let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+  const stopFallback = () => {
+    if (fallbackTimer !== null) {
+      clearInterval(fallbackTimer);
+      fallbackTimer = null;
+    }
+  };
+
+  const emitSyntheticInit = () => {
+    const syntheticEvent: LogisticsEvent = {
+      type: 'logistics.init',
+      timestamp: new Date().toISOString(),
+    };
+    try {
+      listener(syntheticEvent);
+    } catch (error) {
+      console.error('Не удалось обработать синтетическое событие логистики', error);
+    }
+  };
+
+  const startFallback = () => {
+    if (FALLBACK_POLL_INTERVAL_MS <= 0 || fallbackTimer !== null) {
+      return;
+    }
+    console.warn(
+      `SSE логистики недоступен, включён опрос каждые ${Math.round(
+        FALLBACK_POLL_INTERVAL_MS / 1000,
+      )} с.`,
+    );
+    emitSyntheticInit();
+    fallbackTimer = setInterval(emitSyntheticInit, FALLBACK_POLL_INTERVAL_MS);
+  };
 
   const buildSyntheticEvent = (type: string): Event => {
     if (typeof Event === 'function') {
@@ -83,9 +153,14 @@ export function subscribeLogisticsEvents(
   };
 
   const handleError = (event: Event) => {
+    startFallback();
     if (onError) {
       onError(event);
     }
+  };
+
+  const handleOpen = () => {
+    stopFallback();
   };
 
   const attachSource = () => {
@@ -94,6 +169,7 @@ export function subscribeLogisticsEvents(
     }
     source = new EventSource(url, { withCredentials: true });
     source.addEventListener('message', handleMessage);
+    source.addEventListener('open', handleOpen);
     source.addEventListener('error', handleError);
   };
 
@@ -136,6 +212,8 @@ export function subscribeLogisticsEvents(
         if (onError) {
           onError(buildSyntheticEvent('logistics:eventstream-unavailable'));
         }
+        startFallback();
+        return;
       }
       attachSource();
     } catch (error) {
@@ -154,6 +232,7 @@ export function subscribeLogisticsEvents(
       if (onError) {
         onError(buildSyntheticEvent('logistics:eventstream-error'));
       }
+      startFallback();
       attachSource();
     } finally {
       if (timeout !== null) {
@@ -166,8 +245,10 @@ export function subscribeLogisticsEvents(
 
   return () => {
     closed = true;
+    stopFallback();
     if (source) {
       source.removeEventListener('message', handleMessage);
+      source.removeEventListener('open', handleOpen);
       source.removeEventListener('error', handleError);
       source.close();
       source = null;

@@ -124,7 +124,7 @@
 - `SESSION_SECRET` в `.env.example` пуст; создайте его через `./scripts/create_env_from_exports.sh` или `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`, `.env` не коммитим.
 - Страница «Настройки» содержит вкладки departments, divisions, roles, employees и fleets; слева список с поиском и пагинацией, справа форма {name,value};
   переменная `VITE_COLLECTIONS_READY` больше не используется.
-- Переменная `STORAGE_DIR` задаёт базовый каталог статических файлов и вложений (по умолчанию `apps/api/public`).
+- Переменная `STORAGE_DIR` задаёт базовый каталог вложений (по умолчанию `apps/api/uploads`).
 - Рекомендуется проверять базу командой `pnpm --dir bot check:mongo`.
 - Переменная `BOT_API_URL` позволяет использовать локальный `telegram-bot-api`.
 - Переменная `COOKIE_SECURE=false` отключает флаг `Secure` у cookie, используйте только локально.

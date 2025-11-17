@@ -68,7 +68,7 @@ jest.mock('../src/db/model', () => ({
   },
 }));
 
-process.env.STORAGE_DIR = path.resolve(__dirname, '../public/uploads');
+process.env.STORAGE_DIR = path.resolve(__dirname, '../uploads');
 const router = require('../src/routes/storage').default;
 const { uploadsDir } = require('../src/config/storage');
 const { File } = require('../src/db/model');

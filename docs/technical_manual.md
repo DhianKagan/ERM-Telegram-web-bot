@@ -280,7 +280,7 @@ API справочников постепенно переезжает с кол
 Секреты хранятся в HashiCorp Vault или AWS Secrets Manager,
 выбор задаётся переменной `SECRETS_MANAGER`.
 Планировщик `KEY_ROTATION_CRON` пересоздаёт ключи.
-Управление файлами выполняется через сервис `dataStorage`, файлы лежат в каталоге `STORAGE_DIR`.
+Управление файлами выполняется через сервис `dataStorage`, файлы лежат в каталоге `STORAGE_DIR` (по умолчанию `apps/api/uploads`, отдельном от `apps/api/public`).
 
 - Chunk-upload реализован маршрутом `POST /api/v1/tasks/upload-chunk` в `apps/api/src/routes/tasks.ts`; он собирает части, проверяет лимиты и возвращает ссылку вида `/api/v1/files/:id`.
 - Для небольших вложений используется `POST /api/v1/tasks/upload-inline` из того же файла, который обрабатывает обычную multipart-форму.

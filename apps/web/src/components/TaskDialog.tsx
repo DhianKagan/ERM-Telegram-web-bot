@@ -170,6 +170,18 @@ const mergeAttachmentLists = (
   return order.map((key) => map.get(key)!).filter(Boolean);
 };
 
+const areSetsEqual = (a: Set<string>, b: Set<string>): boolean => {
+  if (a.size !== b.size) {
+    return false;
+  }
+  for (const value of a.values()) {
+    if (!b.has(value)) {
+      return false;
+    }
+  }
+  return true;
+};
+
 const parseAttributeIds = (value: string | null): string[] => {
   if (!value) return [];
   return value
@@ -1306,6 +1318,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const statuses = fields.find((f) => f.name === 'status')?.options || [];
   const [users, setUsers] = React.useState<UserBrief[]>([]);
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+  const commentAttachmentKeysRef = React.useRef<Set<string>>(new Set());
   const [previewAttachment, setPreviewAttachment] = React.useState<{
     name: string;
     url: string;
@@ -1590,6 +1603,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setTaskType(DEFAULT_REQUEST_TYPE);
     }
   }, [DEFAULT_REQUEST_TYPE, entityKind, isEdit]);
+  React.useEffect(() => {
+    const derived = buildCommentAttachments(comment);
+    const nextKeys = new Set(
+      derived.map((attachment) => buildAttachmentKey(attachment.url)),
+    );
+    const prevKeys = commentAttachmentKeysRef.current;
+    if (areSetsEqual(prevKeys, nextKeys)) {
+      return;
+    }
+    setAttachments((prev) => {
+      const retained = prev.filter(
+        (attachment) => !prevKeys.has(buildAttachmentKey(attachment.url)),
+      );
+      return mergeAttachmentLists(retained, derived);
+    });
+    commentAttachmentKeysRef.current = nextKeys;
+  }, [comment]);
   const resolveUserName = React.useCallback(
     (id: number) => {
       const person = users.find((u) => u.telegram_id === id);

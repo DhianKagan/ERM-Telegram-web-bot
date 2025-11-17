@@ -1,6 +1,7 @@
 // Страница отображения логистики с картой, маршрутами и фильтрами
 // Основные модули: React, MapLibre GL, i18next
 import React from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import fetchRouteGeometry from '../services/osrm';
 import { fetchTasks } from '../services/tasks';
 import optimizeRoute from '../services/optimizer';
@@ -34,6 +35,7 @@ import {
   MAP_MAX_BOUNDS,
   MAP_STYLE,
   MAP_STYLE_MODE,
+  MAP_STYLE_IS_DEFAULT,
   MAP_ADDRESSES_PMTILES_URL,
 } from '../config/map';
 import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
@@ -242,6 +244,77 @@ const TASK_START_SYMBOL = '⬤';
 const TASK_FINISH_SYMBOL = '⦿';
 const ANIMATION_SYMBOL = '▶';
 const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
+
+const EXCLUDED_TASK_STATUSES = new Set(
+  ['Выполнена', 'Отменена', 'completed', 'cancelled', 'canceled', 'done'].map((value) =>
+    value.toLowerCase(),
+  ),
+);
+
+const shouldSkipTaskByStatus = (status: unknown): boolean => {
+  if (typeof status !== 'string') {
+    return false;
+  }
+  const normalized = status.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return EXCLUDED_TASK_STATUSES.has(normalized);
+};
+
+type CollapsibleCardProps = {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  defaultOpen?: boolean;
+  toggleLabels?: { collapse: string; expand: string };
+};
+
+const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
+  title,
+  description,
+  children,
+  actions,
+  defaultOpen = true,
+  toggleLabels,
+}) => {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const collapseLabel = toggleLabels?.collapse ?? 'Свернуть блок';
+  const expandLabel = toggleLabels?.expand ?? 'Развернуть блок';
+  const ariaLabel = open ? collapseLabel : expandLabel;
+
+  return (
+    <section className="rounded-lg border bg-white/85 shadow-sm">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold uppercase text-muted-foreground">{title}</h3>
+          {description ? (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-slate-50"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-label={ariaLabel}
+          >
+            <span className="sr-only">{ariaLabel}</span>
+            {open ? (
+              <ChevronUp className="size-4" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+      </header>
+      {open ? <div className="space-y-3 px-4 py-3">{children}</div> : null}
+    </section>
+  );
+};
 
 const findExistingLayerId = (
   map: MapInstance,
@@ -718,9 +791,21 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
 ];
 const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
 const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
+const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
+  const collapseToggleLabels = React.useMemo(
+    () => ({
+      collapse: t('logistics.collapseSection', {
+        defaultValue: 'Свернуть блок',
+      }),
+      expand: t('logistics.expandSection', {
+        defaultValue: 'Развернуть блок',
+      }),
+    }),
+    [t],
+  );
   const tRef = useI18nRef(t);
   const language = i18n.language;
   const [sorted, setSorted] = React.useState<RouteTask[]>([]);
@@ -1844,6 +1929,14 @@ export default function LogisticsPage() {
 
     const result: RouteTask[] = [];
     input.forEach((task) => {
+      const taskStatus =
+        (typeof task.status === 'string' ? task.status : undefined) ??
+        (typeof (task as Record<string, unknown>).status === 'string'
+          ? ((task as Record<string, unknown>).status as string)
+          : undefined);
+      if (shouldSkipTaskByStatus(taskStatus)) {
+        return;
+      }
       const transportType = getTaskTransportType(task);
 
       const details = (task as Record<string, unknown>).logistics_details as
@@ -3114,7 +3207,7 @@ export default function LogisticsPage() {
           </Button>
         </div>
       </header>
-      {isRasterFallback ? (
+      {shouldShowMapFallbackNotice ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           {t('logistics.mapFallbackWarning', {
             defaultValue:
@@ -3124,30 +3217,26 @@ export default function LogisticsPage() {
       ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          <section className="space-y-4 rounded-lg border bg-white/85 p-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">
-                  {t('logistics.planSectionTitle')}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('logistics.planSummary')}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">
-                  {t('logistics.planStatus')}
+        <CollapsibleCard
+          title={t('logistics.planSectionTitle')}
+          description={t('logistics.planSummary')}
+          actions={
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold uppercase text-muted-foreground">
+                {t('logistics.planStatus')}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                {planStatusLabel}
+              </span>
+              {planLoading ? (
+                <span className="text-xs text-muted-foreground">
+                  {t('loading')}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
-                  {planStatusLabel}
-                </span>
-                {planLoading ? (
-                  <span className="text-xs text-muted-foreground">
-                    {t('loading')}
-                  </span>
-                ) : null}
-              </div>
+              ) : null}
             </div>
+          }
+          toggleLabels={collapseToggleLabels}
+        >
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -3454,8 +3543,8 @@ export default function LogisticsPage() {
                   : planMessage || t('logistics.planEmpty')}
               </div>
             )}
-          </section>
-          <section className="space-y-4 rounded-lg border bg-white/85 p-4 shadow-sm">
+          </CollapsibleCard>
+          <section className="space-y-4 rounded-lg border bg-white/90 p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold">
@@ -3470,87 +3559,96 @@ export default function LogisticsPage() {
                   })}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={layerVisibility.tasks}
-                    onChange={(event) =>
-                      setLayerVisibility((prev) => ({
-                        ...prev,
-                        tasks: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>{t('logistics.layerTasks')}</span>
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={layerVisibility.optimized}
-                    onChange={(event) =>
-                      setLayerVisibility((prev) => ({
-                        ...prev,
-                        optimized: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>{t('logistics.layerOptimization')}</span>
-                </label>
-              </div>
             </div>
             <div
               id="logistics-map"
-              className={`h-[320px] w-full rounded border ${hasDialog ? 'hidden' : ''}`}
+              className={`min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 ${hasDialog ? 'hidden' : ''}`}
             />
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase text-muted-foreground">
-                    {t('logistics.vehicleCountLabel')}
-                  </span>
-                  <select
-                    value={vehicles}
-                    onChange={(event) =>
-                      setVehicles(Number(event.target.value))
-                    }
-                    className="h-8 rounded border px-2 text-sm"
-                    aria-label={t('logistics.vehicleCountAria')}
-                  >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase text-muted-foreground">
-                    {t('logistics.optimizeMethodLabel')}
-                  </span>
-                  <select
-                    value={method}
-                    onChange={(event) => setMethod(event.target.value)}
-                    className="h-8 rounded border px-2 text-sm"
-                    aria-label={t('logistics.optimizeMethodAria')}
-                  >
-                    <option value="angle">angle</option>
-                    <option value="trip">trip</option>
-                  </select>
-                </label>
+            <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm">
+              <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
+                {t('logistics.mapControlsTitle', {
+                  defaultValue: 'Настройки карты',
+                })}
+              </summary>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={layerVisibility.tasks}
+                      onChange={(event) =>
+                        setLayerVisibility((prev) => ({
+                          ...prev,
+                          tasks: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>{t('logistics.layerTasks')}</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={layerVisibility.optimized}
+                      onChange={(event) =>
+                        setLayerVisibility((prev) => ({
+                          ...prev,
+                          optimized: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>{t('logistics.layerOptimization')}</span>
+                  </label>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase text-muted-foreground">
+                        {t('logistics.vehicleCountLabel')}
+                      </span>
+                      <select
+                        value={vehicles}
+                        onChange={(event) =>
+                          setVehicles(Number(event.target.value))
+                        }
+                        className="h-8 rounded border px-2 text-sm"
+                        aria-label={t('logistics.vehicleCountAria')}
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase text-muted-foreground">
+                        {t('logistics.optimizeMethodLabel')}
+                      </span>
+                      <select
+                        value={method}
+                        onChange={(event) => setMethod(event.target.value)}
+                        className="h-8 rounded border px-2 text-sm"
+                        aria-label={t('logistics.optimizeMethodAria')}
+                      >
+                        <option value="angle">angle</option>
+                        <option value="trip">trip</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" onClick={calculate}>
+                      {t('logistics.optimize')}
+                    </Button>
+                    <Button type="button" size="sm" onClick={reset}>
+                      {t('reset')}
+                    </Button>
+                    <Button type="button" size="sm" onClick={refreshAll}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" onClick={calculate}>
-                  {t('logistics.optimize')}
-                </Button>
-                <Button type="button" size="sm" onClick={reset}>
-                  {t('reset')}
-                </Button>
-                <Button type="button" size="sm" onClick={refreshAll}>
-                  {t('refresh')}
-                </Button>
-              </div>
-            </div>
+            </details>
             {clusterSelection?.ids.length ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
                 <span>
@@ -3569,11 +3667,15 @@ export default function LogisticsPage() {
                 </Button>
               </div>
             ) : null}
-          </section>
-          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
-            <h3 className="text-lg font-semibold">
-              {t('logistics.tasksHeading')}
-            </h3>
+          </CollapsibleCard>
+          <CollapsibleCard
+            title={t('logistics.tasksHeading')}
+            description={t('logistics.tasksActiveOnly', {
+              defaultValue:
+                'Показываются только активные задачи без завершённых и отменённых статусов.',
+            })}
+            toggleLabels={collapseToggleLabels}
+          >
             <TaskTable
               tasks={displayedTasks}
               onDataChange={(rows) => setSorted(rows as RouteTask[])}
@@ -3582,13 +3684,16 @@ export default function LogisticsPage() {
               pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
               onPageChange={setPage}
             />
-          </section>
+          </CollapsibleCard>
         </div>
         <aside className="space-y-4">
           {role === 'admin' ? (
-            <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <h3 className="font-semibold">{t('logistics.transport')}</h3>
+            <CollapsibleCard
+              title={t('logistics.transport')}
+              description={t('logistics.transportHint', {
+                defaultValue: 'Автопарк с координатами транспорта и пробегом.',
+              })}
+              actions={
                 <Button
                   type="button"
                   size="sm"
@@ -3602,7 +3707,10 @@ export default function LogisticsPage() {
                         defaultValue: 'Обновить автопарк',
                       })}
                 </Button>
-              </div>
+              }
+              defaultOpen={availableVehicles.length > 0}
+              toggleLabels={collapseToggleLabels}
+            >
               {fleetError ? (
                 <div className="text-sm text-red-600">{fleetError}</div>
               ) : null}
@@ -3722,25 +3830,19 @@ export default function LogisticsPage() {
                   })}
                 </div>
               ) : null}
-            </section>
+            </CollapsibleCard>
           ) : fleetError ? (
             <p className="rounded-lg border border-dashed bg-white/40 p-3 text-xs text-muted-foreground">
               {fleetError}
             </p>
           ) : null}
-          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-                  {t('logistics.geozonesTitle')}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {t('logistics.geozonesDescription', {
-                    defaultValue:
-                      'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
-                  })}
-                </p>
-              </div>
+          <CollapsibleCard
+            title={t('logistics.geozonesTitle')}
+            description={t('logistics.geozonesDescription', {
+              defaultValue:
+                'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
+            })}
+            actions={
               <label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <input
                   type="checkbox"
@@ -3754,7 +3856,10 @@ export default function LogisticsPage() {
                   })}
                 </span>
               </label>
-            </div>
+            }
+            defaultOpen={geoZonesEnabled}
+            toggleLabels={collapseToggleLabels}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Button
                 type="button"
@@ -3863,19 +3968,15 @@ export default function LogisticsPage() {
                 })}
               </p>
             )}
-          </section>
-          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-                {t('logistics.layersTitle')}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {t('logistics.layersSummary', {
-                  defaultValue:
-                    'Настройте легенду карты по статусам, транспорту и типам задач.',
-                })}
-              </p>
-            </div>
+          </CollapsibleCard>
+          <CollapsibleCard
+            title={t('logistics.layersTitle')}
+            description={t('logistics.layersSummary', {
+              defaultValue:
+                'Настройте легенду карты по статусам, транспорту и типам задач.',
+            })}
+            toggleLabels={collapseToggleLabels}
+          >
             <div className="space-y-3 border-t border-dashed border-slate-200 pt-3 text-sm">
               <fieldset className="space-y-2">
                 <legend className="text-xs font-semibold uppercase text-muted-foreground">
@@ -4065,17 +4166,15 @@ export default function LogisticsPage() {
               </div>
             )}
           </section>
-          <section className="space-y-3 rounded-lg border bg-white/85 p-4 shadow-sm">
-            <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-              {t('logistics.legendTitle')}
-            </h3>
+          <CollapsibleCard
+            title={t('logistics.legendTitle')}
+            description={t('logistics.legendDescription', {
+              defaultValue:
+                'Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.',
+            })}
+            toggleLabels={collapseToggleLabels}
+          >
             <div className="space-y-3 text-sm">
-              <p className="text-xs text-muted-foreground">
-                {t('logistics.legendDescription', {
-                  defaultValue:
-                    'Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.',
-                })}
-              </p>
               <ul className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
                 <li className="flex items-center gap-2">
                   <span
@@ -4138,7 +4237,7 @@ export default function LogisticsPage() {
                 </ul>
               </div>
             </div>
-          </section>
+          </CollapsibleCard>
         </aside>
       </div>
     </div>

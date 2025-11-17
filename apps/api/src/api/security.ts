@@ -12,8 +12,7 @@ type CSPConfig = NonNullable<
   Exclude<HelmetOptions['contentSecurityPolicy'], boolean>
 >;
 
-const DEFAULT_MAP_STYLE_URL =
-  'https://api.protomaps.com/styles/v5/light/en.json?key=e2ee205f93bfd080';
+const DEFAULT_MAP_STYLE_URL = 'https://demotiles.maplibre.org/style.json';
 
 const ensureEntry = (bucket: string[], value: string) => {
   if (!bucket.includes(value)) bucket.push(value);

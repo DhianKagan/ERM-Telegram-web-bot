@@ -22,6 +22,7 @@ jest.mock('../config/map', () => {
   return {
     ...actual,
     MAP_STYLE_MODE: 'pmtiles',
+    MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
   };
 });
 jest.mock('react-i18next', () => {

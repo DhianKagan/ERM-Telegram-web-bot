@@ -4,6 +4,7 @@
 
 - Добавлен статический анализ `pnpm security:scan`, использующий `eslint-plugin-security`,
   скрипты `setup_and_test.sh` и `pre_pr_check.sh` выполняют проверку перед пулл-реквестом.
+- Каталог пользовательских вложений выделен в `apps/api/uploads`, значение `STORAGE_DIR` по умолчанию указывает на него, а статические ассеты остаются в `apps/api/public`.
 - Dockerfile переустанавливает production-зависимости через `pnpm install --prod`,
   чтобы `ensureDefaults` находил `mongoose` и старт контейнера не падал.
 - Скрипт `ensureDefaults` расширяет поиск `mongoose` и `dotenv`,

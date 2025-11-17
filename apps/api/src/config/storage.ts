@@ -15,7 +15,7 @@ const resolvePositiveInteger = (
 };
 
 export const uploadsDir = path.resolve(
-  process.env.STORAGE_DIR || path.join('apps', 'api', 'public', 'uploads'),
+  process.env.STORAGE_DIR || path.join('apps', 'api', 'uploads'),
 );
 
 export const storageCleanupRetentionDays = resolvePositiveInteger(

@@ -539,7 +539,11 @@ const optimizeLegacy = async (
     route_distance_km: task.route_distance_km,
   }));
 
-  return createDraftFromInputs(routeInputs, { actorId, method, count }, hints);
+  return createDraftFromInputs(
+    routeInputs,
+    { actorId, method, count, reason: 'recalculated' },
+    hints,
+  );
 };
 
 const isOptimizeTaskArray = (value: unknown[]): value is OptimizeTaskInput[] =>

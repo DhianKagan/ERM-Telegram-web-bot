@@ -5,6 +5,7 @@ import { Types } from 'mongoose';
 import {
   PROJECT_TIMEZONE,
   generateMultiRouteLink,
+  type LogisticsRoutePlanUpdateReason,
   type RoutePlan as SharedRoutePlan,
   type RoutePlanRoute as SharedRoutePlanRoute,
   type RoutePlanStop,
@@ -69,6 +70,7 @@ export interface CreateRoutePlanOptions {
   count?: number;
   title?: string;
   notes?: string | null;
+  reason?: LogisticsRoutePlanUpdateReason;
 }
 
 type TaskMap = Map<string, TaskSource>;
@@ -636,7 +638,10 @@ export async function createDraftFromInputs(
     metrics,
     tasks: taskIds,
   });
-  return serializePlan(plan);
+  const serialized = serializePlan(plan);
+  const reason: LogisticsRoutePlanUpdateReason = options.reason ?? 'created';
+  notifyRoutePlanUpdated(serialized, reason);
+  return serialized;
 }
 
 export async function listPlans(

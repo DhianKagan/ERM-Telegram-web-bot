@@ -20,7 +20,7 @@
   - Auth/guards — `apps/api/src/auth/*`, `roles.guard.ts`, `tmaAuth.guard.ts`
 - Конфигурация:
   - JWT_SECRET — `apps/api/src/config.ts`
-  - Примеры env — `apps/api/.env.local`, `.env.local.example`
+  - Примеры env — раздел «API» внутри `/.env.example`
 - Бот/TMA:
   - `apps/api/src/bot/bot.ts`, `apps/api/src/bot/runtime.ts`
 

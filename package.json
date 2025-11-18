@@ -23,19 +23,36 @@
     "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm audit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "test:api": "pnpm --filter ./apps/api test --"
+    "test:api": "pnpm --filter ./apps/api test --",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "pnpm exec prettier --write",
+      "pnpm exec eslint --fix",
+      "pnpm exec jest --bail --findRelatedTests --passWithNoTests"
+    ],
+    "*.{json,md,css,scss,yml,yaml}": [
+      "pnpm exec prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",
     "@tailwindcss/node": "^4.1.12",
+    "@types/jest": "^29.5.12",
     "@types/node": "24.10.0",
     "@typescript-eslint/eslint-plugin": "8.46.3",
     "@typescript-eslint/parser": "8.46.3",
+    "cross-env": "^10.1.0",
     "eslint": "9.39.1",
     "eslint-plugin-react-refresh": "^0.4.6",
     "globals": "^13.24.0",
+    "husky": "^9.0.11",
+    "jest": "^29.7.0",
+    "lint-staged": "^16.1.2",
     "prettier": "3.6.2",
     "ts-node": "^10.9.2",
+    "ts-jest": "^29.4.5",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.0.0",

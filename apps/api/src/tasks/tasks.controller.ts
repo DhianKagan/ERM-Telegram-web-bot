@@ -390,25 +390,6 @@ export default class TasksController {
       .includes("bots can't send messages to bots");
   }
 
-  private isConversationStartRequiredError(error: unknown): boolean {
-    if (!error || typeof error !== 'object') {
-      return false;
-    }
-    const response = (
-      error as {
-        response?: { error_code?: number; description?: unknown };
-      }
-    ).response;
-    if (!response || response.error_code !== 403) {
-      return false;
-    }
-    const description =
-      typeof response.description === 'string' ? response.description : '';
-    return description
-      .toLowerCase()
-      .includes("bot can't initiate conversation with a user");
-  }
-
   private async markUserAsBot(userId: number): Promise<void> {
     if (!Number.isFinite(userId)) {
       return;
@@ -2444,13 +2425,6 @@ export default class TasksController {
               profile.isBot = true;
             }
             await this.markUserAsBot(userId);
-            continue;
-          }
-          if (this.isConversationStartRequiredError(error)) {
-            console.warn(
-              `Пользователь ${userId} ещё не начал диалог с ботом, личное уведомление пропущено`,
-              error,
-            );
             continue;
           }
           console.error(

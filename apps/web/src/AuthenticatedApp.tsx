@@ -43,7 +43,7 @@ function AppShell() {
       {user && <Sidebar />}
       {user && open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           tabIndex={-1}
           ref={(el) => el?.focus()}
           onClick={() => {

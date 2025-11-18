@@ -141,7 +141,8 @@ const normalizeAttachment = (attachment: Attachment): Attachment => {
     type,
     size,
   };
-  const inlineThumb = ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
+  const inlineThumb =
+    ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
   if (inlineThumb) {
     normalized.thumbnailUrl = inlineThumb;
   } else if ('thumbnailUrl' in normalized) {
@@ -230,7 +231,9 @@ const collectCommentAttachmentIds = (html: string): string[] => {
       ];
       dataAttrs.forEach((attr) => {
         doc.querySelectorAll(`[${attr}]`).forEach((node) => {
-          parseAttributeIds(node.getAttribute(attr)).forEach((id) => ids.add(id));
+          parseAttributeIds(node.getAttribute(attr)).forEach((id) =>
+            ids.add(id),
+          );
         });
       });
     } catch {
@@ -266,8 +269,8 @@ const collectTaskAttachments = (
   commentHtml: string,
 ): Attachment[] => {
   const existing = Array.isArray(attachmentsInput)
-    ? (attachmentsInput as Attachment[]).filter(
-        (item): item is Attachment => Boolean(item && typeof item.url === 'string'),
+    ? (attachmentsInput as Attachment[]).filter((item): item is Attachment =>
+        Boolean(item && typeof item.url === 'string'),
       )
     : [];
   let result = mergeAttachmentLists([], existing);
@@ -561,7 +564,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
     if (!container) return;
     const center: [number, number] = initialValue
       ? [initialValue.lng, initialValue.lat]
-      : [MAP_DEFAULT_CENTER[1], MAP_DEFAULT_CENTER[0]];
+      : [MAP_DEFAULT_CENTER[0], MAP_DEFAULT_CENTER[1]];
     const map = new mapLibrary.Map({
       container,
       style: MAP_STYLE,

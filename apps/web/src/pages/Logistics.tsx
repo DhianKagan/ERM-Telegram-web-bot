@@ -247,8 +247,8 @@ const ANIMATION_SYMBOL = '▶';
 const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
 
 const EXCLUDED_TASK_STATUSES = new Set(
-  ['Выполнена', 'Отменена', 'completed', 'cancelled', 'canceled', 'done'].map((value) =>
-    value.toLowerCase(),
+  ['Выполнена', 'Отменена', 'completed', 'cancelled', 'canceled', 'done'].map(
+    (value) => value.toLowerCase(),
   ),
 );
 
@@ -289,7 +289,9 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
     <section className="rounded-lg border bg-white/85 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold uppercase text-muted-foreground">{title}</h3>
+          <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+            {title}
+          </h3>
           {description ? (
             <p className="text-xs text-muted-foreground">{description}</p>
           ) : null}
@@ -787,8 +789,8 @@ const buildGeoZone = ({
 };
 
 const MAP_CENTER_LNG_LAT: [number, number] = [
-  MAP_DEFAULT_CENTER[1],
   MAP_DEFAULT_CENTER[0],
+  MAP_DEFAULT_CENTER[1],
 ];
 const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
 const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
@@ -3222,26 +3224,26 @@ export default function LogisticsPage() {
       ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-        <CollapsibleCard
-          title={t('logistics.planSectionTitle')}
-          description={t('logistics.planSummary')}
-          actions={
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-semibold uppercase text-muted-foreground">
-                {t('logistics.planStatus')}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
-                {planStatusLabel}
-              </span>
-              {planLoading ? (
-                <span className="text-xs text-muted-foreground">
-                  {t('loading')}
+          <CollapsibleCard
+            title={t('logistics.planSectionTitle')}
+            description={t('logistics.planSummary')}
+            actions={
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-semibold uppercase text-muted-foreground">
+                  {t('logistics.planStatus')}
                 </span>
-              ) : null}
-            </div>
-          }
-          toggleLabels={collapseToggleLabels}
-        >
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  {planStatusLabel}
+                </span>
+                {planLoading ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t('loading')}
+                  </span>
+                ) : null}
+              </div>
+            }
+            toggleLabels={collapseToggleLabels}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"

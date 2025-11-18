@@ -35,7 +35,7 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
 
-const resolveMapStyleMode = (): MapStyleMode => {
+const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
   if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
     return __ERM_MAP_STYLE_MODE__;
   }
@@ -49,17 +49,21 @@ const resolveMapStyleMode = (): MapStyleMode => {
       return candidate;
     }
   }
-  return 'raster';
+  return undefined;
 };
 
 // URL стиля — можно переопределить через VITE_MAP_STYLE_URL
 const mapStyle = readMapStyle();
 export const MAP_STYLE_URL = mapStyle.url;
+const runtimeMode = readRuntimeMapStyleMode();
+const isCustomStyle = mapStyle.source === 'env';
 
 // Совместимость с существующими импортами:
 export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
 export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
-export const MAP_STYLE_MODE: MapStyleMode = resolveMapStyleMode();
+export const MAP_STYLE_MODE: MapStyleMode = isCustomStyle
+  ? (runtimeMode ?? 'pmtiles')
+  : 'raster';
 export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 
 // Атрибуция (Protomaps + OpenStreetMap contributors)

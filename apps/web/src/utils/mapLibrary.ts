@@ -45,6 +45,10 @@ type MapErrorEvent = {
   error?: MapStyleError | null;
 };
 
+type MapStyleImageMissingEvent = {
+  id?: string;
+};
+
 type MapStyleFallbackOptions = {
   initialStyle?: MapOptions['style'];
   fallbackUrl?: string;
@@ -72,31 +76,14 @@ export const attachMapStyleFallback = (
   const logger = options.logger ?? console;
   let fallbackApplied = false;
 
-  const handleError = (event: MapErrorEvent) => {
+  const applyFallback = (details?: unknown) => {
     if (fallbackApplied) {
-      return;
-    }
-    const error = event?.error;
-    if (!error) {
-      return;
-    }
-    const url = typeof error.url === 'string' ? error.url : '';
-    if (url && url !== initialStyle) {
-      return;
-    }
-    const status = typeof error.status === 'number' ? error.status : undefined;
-    const message = typeof error.message === 'string' ? error.message : '';
-    const isStyleFailure =
-      (message && message.toLowerCase().includes('style')) ||
-      url === initialStyle ||
-      (typeof status === 'number' && status >= 400);
-    if (!isStyleFailure) {
       return;
     }
     fallbackApplied = true;
     logger.warn(
       'Не удалось загрузить кастомный стиль карты, используем стиль по умолчанию.',
-      error,
+      details,
     );
     try {
       map.setStyle(fallbackUrl, { diff: false });
@@ -105,9 +92,44 @@ export const attachMapStyleFallback = (
     }
   };
 
+  const handleError = (event: MapErrorEvent) => {
+    if (fallbackApplied) {
+      return;
+    }
+    const error = event?.error;
+    if (!error) {
+      applyFallback();
+      return;
+    }
+    const url = typeof error.url === 'string' ? error.url : '';
+    if (url && initialStyle && url !== initialStyle) {
+      return;
+    }
+    const status = typeof error.status === 'number' ? error.status : undefined;
+    const message = typeof error.message === 'string' ? error.message : '';
+    const isStyleFailure =
+      (message && message.toLowerCase().includes('style')) ||
+      !url ||
+      url === initialStyle ||
+      (typeof status === 'number' && status >= 400);
+    if (!isStyleFailure) {
+      return;
+    }
+    applyFallback(error);
+  };
+
+  const handleMissingImage = (event: MapStyleImageMissingEvent) => {
+    if (fallbackApplied) {
+      return;
+    }
+    applyFallback(event);
+  };
+
   map.on('error', handleError);
+  map.on('styleimagemissing', handleMissingImage as unknown as Listener);
   return () => {
     map.off('error', handleError);
+    map.off('styleimagemissing', handleMissingImage as unknown as Listener);
   };
 };
 

@@ -45,7 +45,9 @@ const ensureInlineFileUrl = (value?: string | null): string | undefined => {
   return `${base}${separator}mode=inline${hash}`;
 };
 
-const normalizeSrcSet = (value: string | null | undefined): string | undefined => {
+const normalizeSrcSet = (
+  value: string | null | undefined,
+): string | undefined => {
   if (!value) return undefined;
   const entries = value
     .split(',')
@@ -74,7 +76,8 @@ const sanitizeWithInlineMode = (value: string): string => {
       sanitized instanceof DocumentFragment
         ? sanitized
         : sanitized &&
-            typeof (sanitized as { cloneNode?: unknown }).cloneNode === 'function'
+            typeof (sanitized as { cloneNode?: unknown }).cloneNode ===
+              'function'
           ? (sanitized as DocumentFragment)
           : null;
   } catch {
@@ -303,13 +306,39 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
     }
   }, [open, value]);
 
+  const previewContent = sanitizedPreview ? (
+    <div
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{ __html: sanitizedPreview }}
+    />
+  ) : (
+    <p className="flex items-center gap-2 text-slate-400">
+      <PhotoIcon className="h-5 w-5" /> Добавьте описание, изображения или
+      форматированный текст
+    </p>
+  );
+
+  const previewHeader = (
+    <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-50 via-white to-white px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <span className="flex items-center gap-1 text-indigo-600">
+        <SparklesIcon className="h-4 w-4" /> Расширенный редактор
+      </span>
+      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-1 text-[10px] font-medium text-indigo-700">
+        <PhotoIcon className="h-3 w-3" /> Drag & Drop
+      </span>
+    </div>
+  );
+
   if (readOnly) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-        <div
-          className="ql-snow"
-          dangerouslySetInnerHTML={{ __html: sanitizedPreview }}
-        />
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {previewHeader}
+        <div className="px-4 py-3 text-sm leading-relaxed text-slate-700">
+          {previewContent}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          Комментарий доступен только для чтения
+        </div>
       </div>
     );
   }
@@ -332,26 +361,9 @@ export default function CKEditorPopup({ value, onChange, readOnly }: Props) {
         }}
         className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring focus:ring-indigo-200"
       >
-        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-50 via-white to-white px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          <span className="flex items-center gap-1 text-indigo-600">
-            <SparklesIcon className="h-4 w-4" /> Расширенный редактор
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-1 text-[10px] font-medium text-indigo-700">
-            <PhotoIcon className="h-3 w-3" /> Drag & Drop
-          </span>
-        </div>
+        {previewHeader}
         <div className="px-4 py-3 text-sm leading-relaxed text-slate-700">
-          {sanitizedPreview ? (
-            <div
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: sanitizedPreview }}
-            />
-          ) : (
-            <p className="flex items-center gap-2 text-slate-400">
-              <PhotoIcon className="h-5 w-5" /> Добавьте описание, изображения
-              или форматированный текст
-            </p>
-          )}
+          {previewContent}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-2">
           <span className="hidden text-xs text-slate-500 sm:block">

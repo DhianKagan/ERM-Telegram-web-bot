@@ -719,7 +719,8 @@ const getCallbackData = (callback: Context['callbackQuery']): string | null => {
 const getTaskIdFromCallback = (data: string | null): string | null => {
   if (!data) return null;
   const [, taskId] = data.split(':');
-  return taskId || null;
+  const normalized = typeof taskId === 'string' ? taskId.trim() : '';
+  return normalized || null;
 };
 
 const directMessageDateFormatter = new Intl.DateTimeFormat('ru-RU', {

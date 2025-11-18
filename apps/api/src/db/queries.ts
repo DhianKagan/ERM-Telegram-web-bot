@@ -977,7 +977,11 @@ export async function createTask(
 }
 
 export async function getTask(id: string): Promise<TaskDocument | null> {
-  const task = await Task.findById(id);
+  const normalizedId = typeof id === 'string' ? id.trim() : '';
+  if (!normalizedId || !Types.ObjectId.isValid(normalizedId)) {
+    return null;
+  }
+  const task = await Task.findById(normalizedId);
   return hydrateTaskHistory(task);
 }
 

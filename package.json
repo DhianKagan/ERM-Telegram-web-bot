@@ -24,7 +24,7 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test:api": "pnpm --filter ./apps/api test --",
-    "prepare": "husky install"
+    "prepare": "node scripts/run_husky_install.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -73,6 +73,7 @@ import mapLibrary, {
   type MapInstance,
   type MapMouseEvent,
   type MapMarker,
+  attachMapStyleFallback,
 } from '../utils/mapLibrary';
 import {
   MAP_ATTRIBUTION,
@@ -570,6 +571,9 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       minZoom: 3,
     });
     mapRef.current = map;
+    const detachStyleFallback = attachMapStyleFallback(map, {
+      initialStyle: MAP_STYLE,
+    });
     const navigation = new mapLibrary.NavigationControl({ showCompass: false });
     map.addControl(navigation, 'top-right');
     const attribution = new mapLibrary.AttributionControl({
@@ -613,6 +617,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
     map.on('click', handleClick);
 
     return () => {
+      detachStyleFallback();
       map.off('click', handleClick);
       if (markerRef.current) {
         markerRef.current.remove();

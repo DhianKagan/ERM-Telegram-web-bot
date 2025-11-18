@@ -16,6 +16,7 @@ import mapLibrary, {
   type LngLatBoundsLike,
   type MapInstance,
   type MapLayerMouseEvent,
+  attachMapStyleFallback,
 } from '../utils/mapLibrary';
 import type * as GeoJSON from 'geojson';
 import MapLibreDraw from 'maplibre-gl-draw';
@@ -2386,6 +2387,9 @@ export default function LogisticsPage() {
       maxBounds: UKRAINE_BOUNDS,
     });
     mapRef.current = map;
+    const detachStyleFallback = attachMapStyleFallback(map, {
+      initialStyle: MAP_STYLE,
+    });
     if (typeof map.dragRotate?.disable === 'function') {
       map.dragRotate.disable();
     }
@@ -2664,6 +2668,7 @@ export default function LogisticsPage() {
     map.on('styledata', ensureBuildingsLayer);
     map.on('load', handleLoad);
     return () => {
+      detachStyleFallback();
       if (typeof map.off === 'function') {
         map.off('styledata', ensureBuildingsLayer);
         map.off('load', handleLoad);

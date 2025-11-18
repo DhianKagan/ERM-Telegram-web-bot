@@ -58,6 +58,7 @@ export const MAP_STYLE_URL = mapStyle.url;
 
 // Совместимость с существующими импортами:
 export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
+export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
 export const MAP_STYLE_MODE: MapStyleMode = resolveMapStyleMode();
 export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 

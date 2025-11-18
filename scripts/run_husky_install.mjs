@@ -7,7 +7,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const huskyBin = path.join(process.cwd(), 'node_modules', '.bin', 'husky');
+const huskyBase = path.join(process.cwd(), 'node_modules', '.bin', 'husky');
+const huskyBin = process.platform === 'win32' ? `${huskyBase}.cmd` : huskyBase;
 
 if (!existsSync(huskyBin)) {
   console.log('husky не найден, пропускаем установку git-хуков.');

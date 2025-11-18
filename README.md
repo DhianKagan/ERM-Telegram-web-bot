@@ -1,6 +1,6 @@
 <!-- Назначение файла: краткое описание возможностей проекта. Основные модули: api, web. -->
 
-# Task Manager Bot + Web App ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
+# Task Manager Bot + Web App ERM ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
 
 «О проекте»:
 

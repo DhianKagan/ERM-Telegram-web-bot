@@ -4,7 +4,9 @@ type MapStyleMode = 'pmtiles' | 'raster';
 
 declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 
-const DEFAULT_MAP_STYLE_URL = 'https://demotiles.maplibre.org/style.json';
+// По умолчанию берём стиль Protomaps (можно переопределить через переменную среды)
+const DEFAULT_MAP_STYLE_URL =
+  'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
 
 type MapStyleSource = 'default' | 'env';
 
@@ -15,6 +17,7 @@ type ImportMetaWithEnv = {
   };
 };
 
+// Читаем URL стиля: сначала пытаемся взять из process.env (сервер), потом из import.meta.env (клиент), иначе используем DEFAULT_MAP_STYLE_URL
 const readMapStyle = (): { url: string; source: MapStyleSource } => {
   const processValue =
     typeof process !== 'undefined' && typeof process.env === 'object'
@@ -30,11 +33,12 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
       return { url: metaValue, source: 'env' };
     }
   } catch {
-    // Игнорируем отсутствие import.meta в окружении тестов.
+    // Игнорируем отсутствие import.meta в окружении тестов
   }
   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
 
+// Считываем режим стиля, который можно установить через глобальную переменную __ERM_MAP_STYLE_MODE__
 const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
   if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
     return __ERM_MAP_STYLE_MODE__;
@@ -62,7 +66,7 @@ const isCustomStyle = mapStyle.source === 'env';
 export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
 export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
 export const MAP_STYLE_MODE: MapStyleMode = isCustomStyle
-  ? (runtimeMode ?? 'pmtiles')
+  ? runtimeMode ?? 'pmtiles'
   : 'raster';
 export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 
@@ -107,6 +111,7 @@ const readAddressTilesUrl = (): string => {
   return '';
 };
 
+// Экспортируем URL адресных плит (pmtiles://...), либо пустую строку
 export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
 
 // Дополнительные алиасы (если где-то использовались короткие имена)

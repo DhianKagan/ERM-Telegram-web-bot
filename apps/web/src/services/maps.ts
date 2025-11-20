@@ -1,15 +1,23 @@
-// Единый конфиг карты для MapLibre + ProtoMaps CDN + локальные PMTiles адресов
+// apps/web/src/config/map.ts
+/**
+ * Map configuration for MapLibre + Protomaps CDN + local PMTiles addresses.
+ *
+ * Обеспечивает считывание VITE_MAP_STYLE_URL и VITE_MAP_ADDRESSES_PMTILES_URL
+ * как из process.env (SSR / server) так и из import.meta.env (Vite).
+ *
+ * MAP_STYLE_MODE выводится как:
+ * - 'pmtiles' для векторных стилей (включая Protomaps CDN)
+ * - 'raster' для tile.openstreetmap.org
+ *
+ * При использовании кастомного стиля из env, по умолчанию режим — 'pmtiles'
+ * (если не задано __ERM_MAP_STYLE_MODE__ глобально).
+ */
 
-// Режим карты:
-// - 'pmtiles'  — “полноценный” векторный стиль (в нашем случае ProtoMaps CDN
-//                или локальные pmtiles, если когда-нибудь появятся)
-// - 'raster'   — временный растровый слой OSM (fallback)
-export type MapStyleMode = 'pmtiles' | 'raster';
+type MapStyleMode = 'pmtiles' | 'raster';
 
-// В проде сюда может положиться значение через definePlugin / globalThis
 declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 
-// Базовый стиль: ProtoMaps light для Украины
+// По умолчанию берём стиль Protomaps (можно переопределить через переменную среды)
 const DEFAULT_MAP_STYLE_URL =
   'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
 
@@ -22,22 +30,15 @@ type ImportMetaWithEnv = {
   };
 };
 
-/**
- * Читаем URL стиля карты:
- * 1) process.env.VITE_MAP_STYLE_URL (SSR / тесты)
- * 2) import.meta.env.VITE_MAP_STYLE_URL (Vite)
- * 3) DEFAULT_MAP_STYLE_URL (ProtoMaps CDN)
- */
+// Читаем URL стиля: сначала process.env (сервер), потом import.meta.env (клиент), иначе DEFAULT_MAP_STYLE_URL
 const readMapStyle = (): { url: string; source: MapStyleSource } => {
   const processValue =
     typeof process !== 'undefined' && typeof process.env === 'object'
       ? process.env.VITE_MAP_STYLE_URL
       : undefined;
-
   if (typeof processValue === 'string' && processValue.trim() !== '') {
     return { url: processValue.trim(), source: 'env' };
   }
-
   try {
     const meta = import.meta as unknown as ImportMetaWithEnv;
     const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
@@ -45,61 +46,52 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
       return { url: metaValue.trim(), source: 'env' };
     }
   } catch {
-    // import.meta может отсутствовать в тестах — это нормально
+    // Игнорируем отсутствие import.meta в окружении тестов/SSR
   }
-
   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
 
-/**
- * Читаем режим карты из глобальной переменной, если он задан билд-таймом.
- * (используется только если кто-то явно проставил __ERM_MAP_STYLE_MODE__).
- */
+// Считываем режим стиля, который можно установить глобально __ERM_MAP_STYLE_MODE__
 const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
   if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
     return __ERM_MAP_STYLE_MODE__;
   }
-
   if (typeof globalThis === 'object' && globalThis !== null) {
     const candidate = (
       globalThis as {
         __ERM_MAP_STYLE_MODE__?: unknown;
       }
     ).__ERM_MAP_STYLE_MODE__;
-
     if (candidate === 'pmtiles' || candidate === 'raster') {
       return candidate;
     }
   }
-
   return undefined;
 };
-
-// ---- Публичные константы, которые используют остальные файлы ----
 
 // URL стиля (по умолчанию — ProtoMaps CDN)
 const mapStyle = readMapStyle();
 export const MAP_STYLE_URL = mapStyle.url;
 
-// “Полноценный” режим — всё, что НЕ tile.openstreetmap.org.
-// Т.е. ProtoMaps CDN тоже считаем как полноценный векторный стиль.
+const runtimeMode = readRuntimeMapStyleMode();
+const isCustomStyle = mapStyle.source === 'env';
+
+// Итоговый режим:
+// - если есть глобальный __ERM_MAP_STYLE_MODE__ -> берём его
+// - иначе если стиль был задан из env -> runtimeMode ?? 'pmtiles'
+// - иначе определяем по URL (tile.openstreetmap.org -> raster, иначе pmtiles)
 const autoModeFromUrl = (url: string): MapStyleMode =>
   url.includes('tile.openstreetmap.org') ? 'raster' : 'pmtiles';
 
-const runtimeMode = readRuntimeMapStyleMode();
+export const MAP_STYLE_MODE: MapStyleMode = (() => {
+  if (runtimeMode) return runtimeMode;
+  if (isCustomStyle) return runtimeMode ?? 'pmtiles';
+  return autoModeFromUrl(MAP_STYLE_URL);
+})();
 
-// Итоговый режим:
-//   - если есть глобальный __ERM_MAP_STYLE_MODE__ → берём его
-//   - иначе определяем по URL (ProtoMaps → 'pmtiles', OSM raster → 'raster')
-export const MAP_STYLE_MODE: MapStyleMode =
-  runtimeMode ?? autoModeFromUrl(MAP_STYLE_URL);
-
-// Флаг: используется ли именно наш дефолтный CDN-стиль ProtoMaps
-export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
-
-// Совместимость со старыми импортами:
-export const MAP_STYLE = MAP_STYLE_URL; // могли импортировать как MAP_STYLE
+export const MAP_STYLE = MAP_STYLE_URL; // backward compatibility
 export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
+export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 
 // Атрибуция (Protomaps + OSM)
 export const MAP_ATTRIBUTION =
@@ -109,30 +101,28 @@ export const MAP_ATTRIBUTION =
 export const MAP_DEFAULT_CENTER: [number, number] = [30.5234, 50.4501];
 export const MAP_DEFAULT_ZOOM = 6;
 
-// Глобальные границы мира (чтобы не улетать за пределы проекции)
+// Границы мира
 export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
   [-180, -85],
   [180, 85],
 ];
 
-// Идентификатор векторного источника; для стиля Protomaps v5 — 'basemap'
+// Идентификатор векторного источника; для Protomaps v5 — 'basemap'
 export const MAP_VECTOR_SOURCE_ID = 'basemap';
 
-// Скорость анимации (если используется для пробегов транспорта)
+// Скорость анимации для пробегов транспорта
 export const MAP_ANIMATION_SPEED_KMH = 50;
 
-// ---- Локальный PMTiles с адресами (оставляем как есть) ----
+/* ---------- Локальные PMTiles (addresses) ---------- */
 
 const readAddressTilesUrl = (): string => {
   const processValue =
     typeof process !== 'undefined' && typeof process.env === 'object'
       ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
       : undefined;
-
   if (typeof processValue === 'string' && processValue.trim() !== '') {
     return processValue.trim();
   }
-
   try {
     const meta = import.meta as unknown as ImportMetaWithEnv;
     const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
@@ -140,14 +130,13 @@ const readAddressTilesUrl = (): string => {
       return metaValue.trim();
     }
   } catch {
-    // отсутствие import.meta в тестах игнорируем
+    // Игнорируем отсутствие import.meta в тестах/SSR
   }
-
   return '';
 };
 
 export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
 
-// Дополнительные алиасы
+// Алиасы
 export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;
 export const DEFAULT_ZOOM = MAP_DEFAULT_ZOOM;

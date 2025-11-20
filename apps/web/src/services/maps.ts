@@ -1,90 +1,153 @@
-// Назначение: запросы к API карт
-// Основные модули: authFetch
-import authFetch from '../utils/authFetch';
+// Единый конфиг карты для MapLibre + ProtoMaps CDN + локальные PMTiles адресов
 
-export const expandLink = (url: string) =>
-  authFetch('/api/v1/maps/expand', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  }).then((r) => (r.ok ? r.json() : null));
+// Режим карты:
+// - 'pmtiles'  — “полноценный” векторный стиль (в нашем случае ProtoMaps CDN
+//                или локальные pmtiles, если когда-нибудь появятся)
+// - 'raster'   — временный растровый слой OSM (fallback)
+export type MapStyleMode = 'pmtiles' | 'raster';
 
-export type AddressSuggestion = {
-  id: string;
-  label: string;
-  description?: string;
-  lat: number;
-  lng: number;
-  source: string;
+// В проде сюда может положиться значение через definePlugin / globalThis
+declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
+
+// Базовый стиль: ProtoMaps light для Украины
+const DEFAULT_MAP_STYLE_URL =
+  'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
+
+type MapStyleSource = 'default' | 'env';
+
+type ImportMetaWithEnv = {
+  readonly env?: {
+    readonly VITE_MAP_STYLE_URL?: string;
+    readonly VITE_MAP_ADDRESSES_PMTILES_URL?: string;
+  };
 };
 
-const buildQuery = (params: Record<string, string | number>): string => {
-  const search = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    search.set(key, String(value));
-  });
-  const query = search.toString();
-  return query ? `?${query}` : '';
+/**
+ * Читаем URL стиля карты:
+ * 1) process.env.VITE_MAP_STYLE_URL (SSR / тесты)
+ * 2) import.meta.env.VITE_MAP_STYLE_URL (Vite)
+ * 3) DEFAULT_MAP_STYLE_URL (ProtoMaps CDN)
+ */
+const readMapStyle = (): { url: string; source: MapStyleSource } => {
+  const processValue =
+    typeof process !== 'undefined' && typeof process.env === 'object'
+      ? process.env.VITE_MAP_STYLE_URL
+      : undefined;
+
+  if (typeof processValue === 'string' && processValue.trim() !== '') {
+    return { url: processValue.trim(), source: 'env' };
+  }
+
+  try {
+    const meta = import.meta as unknown as ImportMetaWithEnv;
+    const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
+    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+      return { url: metaValue.trim(), source: 'env' };
+    }
+  } catch {
+    // import.meta может отсутствовать в тестах — это нормально
+  }
+
+  return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
 
-export const searchAddress = async (
-  query: string,
-  options: { signal?: AbortSignal; limit?: number; language?: string } = {},
-): Promise<AddressSuggestion[]> => {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    return [];
+/**
+ * Читаем режим карты из глобальной переменной, если он задан билд-таймом.
+ * (используется только если кто-то явно проставил __ERM_MAP_STYLE_MODE__).
+ */
+const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
+  if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
+    return __ERM_MAP_STYLE_MODE__;
   }
-  const limit = Math.min(Math.max(options.limit ?? 5, 1), 10);
-  const headers: Record<string, string> = {};
-  if (options.language && options.language.trim()) {
-    headers['Accept-Language'] = options.language;
+
+  if (typeof globalThis === 'object' && globalThis !== null) {
+    const candidate = (
+      globalThis as {
+        __ERM_MAP_STYLE_MODE__?: unknown;
+      }
+    ).__ERM_MAP_STYLE_MODE__;
+
+    if (candidate === 'pmtiles' || candidate === 'raster') {
+      return candidate;
+    }
   }
-  const res = await authFetch(
-    `/api/v1/maps/search${buildQuery({ q: trimmed, limit })}`,
-    {
-      signal: options.signal,
-      ...(Object.keys(headers).length ? { headers } : {}),
-    },
-  );
-  if (!res.ok) {
-    throw new Error('MAPS_SEARCH_FAILED');
-  }
-  const data = (await res.json().catch(() => null)) as {
-    items?: AddressSuggestion[];
-  } | null;
-  if (!data || !Array.isArray(data.items)) {
-    return [];
-  }
-  return data.items;
+
+  return undefined;
 };
 
-export const reverseGeocode = async (
-  coords: { lat: number; lng: number },
-  options: { signal?: AbortSignal; language?: string } = {},
-): Promise<AddressSuggestion | null> => {
-  if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
-    return null;
+// ---- Публичные константы, которые используют остальные файлы ----
+
+// URL стиля (по умолчанию — ProtoMaps CDN)
+const mapStyle = readMapStyle();
+export const MAP_STYLE_URL = mapStyle.url;
+
+// “Полноценный” режим — всё, что НЕ tile.openstreetmap.org.
+// Т.е. ProtoMaps CDN тоже считаем как полноценный векторный стиль.
+const autoModeFromUrl = (url: string): MapStyleMode =>
+  url.includes('tile.openstreetmap.org') ? 'raster' : 'pmtiles';
+
+const runtimeMode = readRuntimeMapStyleMode();
+
+// Итоговый режим:
+//   - если есть глобальный __ERM_MAP_STYLE_MODE__ → берём его
+//   - иначе определяем по URL (ProtoMaps → 'pmtiles', OSM raster → 'raster')
+export const MAP_STYLE_MODE: MapStyleMode =
+  runtimeMode ?? autoModeFromUrl(MAP_STYLE_URL);
+
+// Флаг: используется ли именно наш дефолтный CDN-стиль ProtoMaps
+export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
+
+// Совместимость со старыми импортами:
+export const MAP_STYLE = MAP_STYLE_URL; // могли импортировать как MAP_STYLE
+export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
+
+// Атрибуция (Protomaps + OSM)
+export const MAP_ATTRIBUTION =
+  '© <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM contributors</a>';
+
+// Центр/зум по умолчанию — Киев
+export const MAP_DEFAULT_CENTER: [number, number] = [30.5234, 50.4501];
+export const MAP_DEFAULT_ZOOM = 6;
+
+// Глобальные границы мира (чтобы не улетать за пределы проекции)
+export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-180, -85],
+  [180, 85],
+];
+
+// Идентификатор векторного источника; для стиля Protomaps v5 — 'basemap'
+export const MAP_VECTOR_SOURCE_ID = 'basemap';
+
+// Скорость анимации (если используется для пробегов транспорта)
+export const MAP_ANIMATION_SPEED_KMH = 50;
+
+// ---- Локальный PMTiles с адресами (оставляем как есть) ----
+
+const readAddressTilesUrl = (): string => {
+  const processValue =
+    typeof process !== 'undefined' && typeof process.env === 'object'
+      ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
+      : undefined;
+
+  if (typeof processValue === 'string' && processValue.trim() !== '') {
+    return processValue.trim();
   }
-  const headers: Record<string, string> = {};
-  if (options.language && options.language.trim()) {
-    headers['Accept-Language'] = options.language;
+
+  try {
+    const meta = import.meta as unknown as ImportMetaWithEnv;
+    const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
+    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+      return metaValue.trim();
+    }
+  } catch {
+    // отсутствие import.meta в тестах игнорируем
   }
-  const res = await authFetch(
-    `/api/v1/maps/reverse${buildQuery({ lat: coords.lat, lng: coords.lng })}`,
-    {
-      signal: options.signal,
-      ...(Object.keys(headers).length ? { headers } : {}),
-    },
-  );
-  if (!res.ok) {
-    throw new Error('MAPS_REVERSE_FAILED');
-  }
-  const data = (await res.json().catch(() => null)) as {
-    place?: AddressSuggestion | null;
-  } | null;
-  if (!data) {
-    return null;
-  }
-  return data.place ?? null;
+
+  return '';
 };
+
+export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
+
+// Дополнительные алиасы
+export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;
+export const DEFAULT_ZOOM = MAP_DEFAULT_ZOOM;

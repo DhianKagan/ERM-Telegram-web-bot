@@ -1,9 +1,18 @@
+// apps/web/src/main.tsx
 // Точка входа: выбирает режим приложения (браузер или Telegram)
+
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import ErrorBoundary from './components/ErrorBoundary';
 import i18n from './i18n';
+
+// Глобальные стили приложения
 import './index.css';
+
+// Импорт CSS MapLibre здесь — только в клиентском entry.
+// Это предотвращает попытки сборщика/SSR обрабатывать CSS из maplibre в серверной среде.
+import 'maplibre-gl/dist/maplibre-gl.css';
+
 import { ensureWebpackNonce } from './utils/ensureWebpackNonce';
 
 ensureWebpackNonce();
@@ -17,7 +26,7 @@ function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   const forceBrowser = params.get('browser') === '1';
 
-  const webApp = window.Telegram?.WebApp;
+  const webApp = (window as any).Telegram?.WebApp;
   const supportedPlatforms = ['android', 'ios', 'web', 'macos', 'tdesktop'];
   const minVersion = '6.0';
 
@@ -39,7 +48,7 @@ function bootstrap() {
       supportedPlatforms.includes(webApp.platform) &&
       versionAtLeast(webApp.version, minVersion);
     if (!isTelegram) {
-      window.__ALERT_MESSAGE__ =
+      (window as any).__ALERT_MESSAGE__ =
         'Требуется обновление Telegram. Загружается браузерная версия.';
     }
   }

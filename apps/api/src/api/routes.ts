@@ -404,6 +404,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/auth`, authUserRouter);
   app.use(`${prefix}/maps`, mapsRouter);
   app.use(`${prefix}/route`, routeRouter);
+  app.use(`${prefix}/osrm`, routeRouter);
   app.use(`${prefix}/optimizer`, optimizerRouter);
   app.use(`${prefix}/route-plans`, routePlansRouter);
   app.use(`${prefix}/logistics`, logisticsRouter);

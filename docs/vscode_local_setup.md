@@ -19,7 +19,7 @@ pnpm install --frozen-lockfile || pnpm install
 ./scripts/create_env_from_exports.sh # создаёт .env, если его нет
 pnpm dlx playwright install --with-deps chromium firefox
 pnpm --filter web run build:dist
-pnpm pretest:e2e        # проверка playwright doctor и установка браузеров, если их нет
+pnpm dlx playwright doctor || pnpm dlx playwright install --list  # диагностика Playwright и проверка браузеров
 ```
 
 Если на Linux не стоят системные библиотеки для браузеров, запустите `pnpm dlx playwright install-deps chromium firefox`.
@@ -43,5 +43,5 @@ pnpm dlx lhci autorun --upload.target=filesystem
 
 - «command not found pnpm» — выполните `corepack enable` и перезапустите терминал.
 - Ошибки сборки `sharp`/`esbuild` — запустите `pnpm rebuild` в корне.
-- Playwright не находит браузер — повторите `pnpm pretest:e2e` или `pnpm dlx playwright install --with-deps chromium firefox`.
+- Playwright не находит браузер — повторите `pnpm dlx playwright doctor || pnpm dlx playwright install --list` или `pnpm dlx playwright install --with-deps chromium firefox`.
 - Нет доступа к порту 5173/3000 — завершите старые процессы (`lsof -i :3000`) или смените порт через переменную `PORT`.

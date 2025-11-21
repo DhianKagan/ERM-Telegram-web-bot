@@ -21,6 +21,6 @@ if command -v pnpm >/dev/null; then
 fi
 
 pnpm --filter web run build:dist
-pnpm pretest:e2e
+pnpm dlx playwright doctor || pnpm dlx playwright install --list
 
 echo "VS Code окружение готово: зависимости установлены, браузеры Playwright добавлены, сборка web выполнена."

@@ -46,6 +46,7 @@ import collectionsRouter from '../routes/collections';
 import archivesRouter from '../routes/archives';
 import systemRouter from '../routes/system';
 import routePlansRouter from '../routes/routePlans';
+import logisticsRouter from '../routes/logistics';
 import analyticsRouter from '../routes/analytics';
 import checkTaskAccess from '../middleware/taskAccess';
 import { sendProblem } from '../utils/problem';
@@ -178,7 +179,10 @@ export default async function registerRoutes(
 
       if (_origEnd) {
         type EndCallback = (err?: Error) => void;
-        const endInvoker = _origEnd as (this: Response, ...args: unknown[]) => Response;
+        const endInvoker = _origEnd as (
+          this: Response,
+          ...args: unknown[]
+        ) => Response;
         const invokeEnd = (context: Response, args: readonly unknown[]) =>
           Reflect.apply(endInvoker, context, args as unknown[]);
 
@@ -189,7 +193,9 @@ export default async function registerRoutes(
           maybeCallback?: EndCallback,
         ) {
           const encoding: BufferEncoding | undefined =
-            typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined;
+            typeof encodingOrCallback === 'string'
+              ? encodingOrCallback
+              : undefined;
           const callback: EndCallback | undefined =
             typeof encodingOrCallback === 'function'
               ? encodingOrCallback
@@ -233,7 +239,11 @@ export default async function registerRoutes(
 
           if (typeof maybeCallback === 'function') {
             if (typeof encodingOrCallback === 'string') {
-              return invokeEnd(this, [chunk, encodingOrCallback, maybeCallback]);
+              return invokeEnd(this, [
+                chunk,
+                encodingOrCallback,
+                maybeCallback,
+              ]);
             }
             return invokeEnd(this, [chunk, maybeCallback]);
           }
@@ -396,6 +406,7 @@ export default async function registerRoutes(
   app.use(`${prefix}/route`, routeRouter);
   app.use(`${prefix}/optimizer`, optimizerRouter);
   app.use(`${prefix}/route-plans`, routePlansRouter);
+  app.use(`${prefix}/logistics`, logisticsRouter);
   app.use(`${prefix}/analytics`, analyticsRouter);
   app.use(`${prefix}/routes`, routesRouter);
   app.use(`${prefix}/tasks`, tasksRouter);

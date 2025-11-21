@@ -5,7 +5,7 @@ SHELL := /bin/bash
 export DOCKER_BUILDKIT := 1
 export BUILDKIT_PROGRESS := plain
 
-.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local lpt
+.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local lpt lpt-local
 
 # ---- Utility ----
 clean:
@@ -65,6 +65,10 @@ lpt:
 	CI=true pnpm test:e2e || (echo "❌ e2e tests failed" && exit 1)
 	@mkdir -p codex/reports && echo "# ✅ LPT passed – all checks OK." > codex/reports/lpt-summary.md
 	@echo "✅ Local Production Test passed."
+
+lpt-local:
+	# полный локальный прогон через pre_pr_check.sh
+	./scripts/pre_pr_check.sh
 
 
 .PHONY: lpt-fix

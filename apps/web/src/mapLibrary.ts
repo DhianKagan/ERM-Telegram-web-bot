@@ -32,7 +32,10 @@ if (typeof document !== 'undefined') {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       // В большинстве случаев это будет работать; это fallback если динамический импорт css не сработал.
-      link.href = new URL('maplibre-gl/dist/maplibre-gl.css', location.href).href;
+      link.href = new URL(
+        'maplibre-gl/dist/maplibre-gl.css',
+        location.href,
+      ).href;
       document.head.appendChild(link);
     } catch {
       // бессильно — просто игнорируем
@@ -52,35 +55,70 @@ const registerPmtilesProtocol = async (): Promise<void> => {
 
   try {
     // Динамически загружаем пакет pmtiles
-    const mod = await import('pmtiles');
+    type PmtilesProtocol = { tile: (request: unknown) => unknown };
+    type PmtilesModule = {
+      Protocol?: new () => PmtilesProtocol;
+      default?: new () =>
+        | PmtilesProtocol
+        | { Protocol?: new () => PmtilesProtocol };
+    };
+    const mod = (await import('pmtiles')) as PmtilesModule;
 
-    // Поддерживаем разные варианты экспорта (named/default)
-    // pmtiles v3 обычно экспортирует { Protocol }
-    const ProtocolCandidate =
-      (mod as any).Protocol ?? (mod as any).default?.Protocol ?? (mod as any).default ?? mod;
+    const resolveProtocolCtor = (
+      module: PmtilesModule,
+    ): (new () => PmtilesProtocol) | null => {
+      if (typeof module.Protocol === 'function') {
+        return module.Protocol;
+      }
+      const fallback = module.default;
+      if (typeof fallback === 'function') {
+        return fallback;
+      }
+      if (
+        fallback &&
+        typeof fallback === 'object' &&
+        typeof (fallback as { Protocol?: unknown }).Protocol === 'function'
+      ) {
+        return (fallback as { Protocol: new () => PmtilesProtocol }).Protocol;
+      }
+      return null;
+    };
 
-    // Найдём конструктора Protocol
-    const ProtocolCtor =
-      typeof ProtocolCandidate === 'function'
-        ? ProtocolCandidate
-        : ProtocolCandidate?.Protocol ?? null;
+    const ProtocolCtor = resolveProtocolCtor(mod);
 
     if (typeof ProtocolCtor !== 'function') {
-      console.error('pmtiles Protocol constructor not found in dynamic import', mod);
+      console.error(
+        'pmtiles Protocol constructor not found in dynamic import',
+        mod,
+      );
       return;
     }
 
     const protocol = new ProtocolCtor();
 
     // maplibregl может не иметь addProtocol в некоторых сборках — защитимся
-    if (typeof (maplibregl as any).addProtocol === 'function') {
-      (maplibregl as any).addProtocol('pmtiles', (request: any) => protocol.tile(request));
+    type MaplibreWithProtocol = {
+      addProtocol?: (
+        name: string,
+        handler: (request: unknown) => unknown,
+      ) => void;
+    };
+    const candidate = maplibregl as MaplibreWithProtocol;
+    if (typeof candidate.addProtocol === 'function') {
+      candidate.addProtocol('pmtiles', (request: unknown) =>
+        protocol.tile(request),
+      );
       pmtilesProtocolRegistered = true;
     } else {
-      console.warn('maplibregl.addProtocol is not available; pmtiles protocol not registered');
+      console.warn(
+        'maplibregl.addProtocol is not available; pmtiles protocol not registered',
+      );
     }
   } catch (error) {
-    console.error('Не удалось зарегистрировать протокол PMTiles (динамический импорт)', error);
+    console.error(
+      'Не удалось зарегистрировать протокол PMTiles (динамический импорт)',
+      error,
+    );
   }
 };
 
@@ -129,9 +167,12 @@ export const attachMapStyleFallback = (
   if (!map) {
     return noopDetach;
   }
-  const initialStyle = typeof options.initialStyle === 'string' ? options.initialStyle : '';
+  const initialStyle =
+    typeof options.initialStyle === 'string' ? options.initialStyle : '';
   const fallbackUrl =
-    typeof options.fallbackUrl === 'string' ? options.fallbackUrl : MAP_STYLE_DEFAULT_URL;
+    typeof options.fallbackUrl === 'string'
+      ? options.fallbackUrl
+      : MAP_STYLE_DEFAULT_URL;
   if (!initialStyle || !fallbackUrl || initialStyle === fallbackUrl) {
     return noopDetach;
   }
@@ -143,7 +184,10 @@ export const attachMapStyleFallback = (
       return;
     }
     fallbackApplied = true;
-    logger.warn('Не удалось загрузить кастомный стиль карты, используем стиль по умолчанию.', details);
+    logger.warn(
+      'Не удалось загрузить кастомный стиль карты, используем стиль по умолчанию.',
+      details,
+    );
     try {
       // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
       map.setStyle(fallbackUrl, { diff: false });

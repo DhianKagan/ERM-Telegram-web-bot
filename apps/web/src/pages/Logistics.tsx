@@ -825,6 +825,7 @@ export default function LogisticsPage() {
   >('neutral');
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
+  const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
   React.useEffect(() => {
     if (isRasterFallback) {
@@ -2394,8 +2395,12 @@ export default function LogisticsPage() {
       if (cancelled || mapRef.current) {
         return;
       }
+      const container = mapContainerRef.current;
+      if (!container) {
+        return;
+      }
       const mapInstance = new mapLibrary.Map({
-        container: 'logistics-map',
+        container,
         style: MAP_STYLE,
         center: MAP_CENTER_LNG_LAT,
         zoom: MAP_DEFAULT_ZOOM,
@@ -3208,15 +3213,43 @@ export default function LogisticsPage() {
     if (hasDialog) return;
     if (!mapReady) return;
     const map = mapRef.current;
+    const container = mapContainerRef.current;
     if (!map) return;
     if (typeof map.resize === 'function') {
       map.resize();
     }
+    if (!container || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    let frameId: number | null = null;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry || typeof map.resize !== 'function') {
+        return;
+      }
+      const { width, height } = entry.contentRect;
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(() => {
+        map.resize();
+      });
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+    };
   }, [hasDialog, mapReady]);
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold">{t('logistics.title')}</h2>
           <p className="max-w-3xl text-sm text-muted-foreground">
@@ -3404,7 +3437,7 @@ export default function LogisticsPage() {
                         key={route.id || `${routeIndex}`}
                         className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
                       >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
                             <h4 className="text-base font-semibold">
                               {t('logistics.planRouteTitle', {
@@ -3600,8 +3633,9 @@ export default function LogisticsPage() {
               </div>
             </div>
             <div
+              ref={mapContainerRef}
               id="logistics-map"
-              className={`min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 ${hasDialog ? 'hidden' : ''}`}
+              className={`block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner ${hasDialog ? 'hidden' : ''} min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh]`}
             />
             <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm">
               <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
@@ -3610,7 +3644,7 @@ export default function LogisticsPage() {
                 })}
               </summary>
               <div className="mt-3 space-y-3 text-sm">
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <label className="inline-flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -3640,8 +3674,8 @@ export default function LogisticsPage() {
                     <span>{t('logistics.layerOptimization')}</span>
                   </label>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <label className="flex items-center gap-2">
                       <span className="text-xs font-medium uppercase text-muted-foreground">
                         {t('logistics.vehicleCountLabel')}
@@ -3674,7 +3708,7 @@ export default function LogisticsPage() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
                     <Button type="button" size="sm" onClick={calculate}>
                       {t('logistics.optimize')}
                     </Button>

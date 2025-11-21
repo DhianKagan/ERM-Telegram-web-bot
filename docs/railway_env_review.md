@@ -6,40 +6,32 @@
 
 ## Обязательные переменные
 
-- `BOT_TOKEN`, `CHAT_ID`, `JWT_SECRET`, `APP_URL` заданы и соответствуют требованиям `config.ts`.
-- `SESSION_SECRET` присутствует, что обязательно для сессий Express.
-- `NODE_ENV=production` соответствует чек-листу деплоя на Railway.
+- Все ключевые секреты присутствуют (BOT_TOKEN, CHAT_ID, JWT_SECRET, SESSION_SECRET) и должны оставаться секретами в Railway.
+- NODE_ENV=production и LOCALE=ru соответствуют настройкам продакшена.
+- ADMIN_ROLE_ID и USER_ROLE_ID совпадают с актуальными значениями.
 
 ## MongoDB
 
-- Текущее значение `MONGO_DATABASE_URL` (`mongodb://mongo:***@shinkansen.proxy.rlwy.net:43551`) не содержит имени базы и параметра `authSource`. Конфиг API теперь валидирует обе части и остановит запуск без них, поэтому используйте строку формата `mongodb://<user>:<pass>@<host>:<port>/<db>?authSource=<база_аутентификации>`, как в `.env.example`, чтобы исключить ошибки авторизации при рестарте Railway. Если вы не можете добавить сегменты напрямую (например, при копировании публичной ссылки Railway), задайте `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит строку автоматически.
-- Проверка конфигурации также распространяется на публичный прокси Railway (`*.proxy.rlwy.net`) и пользовательский домен `*.railway.app`: без `authSource=admin` приложение не запустится, чтобы предотвратить ошибку `Authentication failed`.
-- Если логин и пароль вынесены в отдельные секреты Railway, задайте `MONGO_USERNAME` и `MONGO_PASSWORD` — они будут автоматически подставлены в `MONGO_DATABASE_URL`. Дополнительно можно указать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE`, чтобы публичный прокси Railway был доступен для тестовых сред без ручного редактирования URI.
-- Если база размещена в проекте Railway, включите Private Networking и вместо публичного прокси укажите внутренний DNS `erm-mongodb.railway.internal`. В стандартной конфигурации образа Railway с переменными `MONGO_INITDB_ROOT_USERNAME=mongo` и `MONGO_INITDB_ROOT_PASSWORD=…` корневой пользователь создаётся в базе `admin`, поэтому рекомендуемая строка подключения выглядит так: `mongodb://mongo:<пароль>@erm-mongodb.railway.internal:27017/ermdb?authSource=admin&directConnection=true`. Меняйте `authSource` только если вы вручную создали пользователя в другой базе. Внутренний адрес резолвится в IPv6 и доступен только из сервисов того же проекта, что исключает внешние задержки и лимиты по трафику.
+- Используется внутренний адрес Railway "erm-mongodb.railway.internal" с указанием базы "test" и параметра "authSource=admin", что проходит валидацию конфигурации.
+- Пароль хранится в Railway; при необходимости можно добавить параметр "directConnection=true", но текущая строка уже валидна для приватной сети Railway.
 
-## URL-адреса
+## URL-адреса и карта
 
-- `APP_URL=https://agromarket.up.railway.app` и `COOKIE_DOMAIN=agromarket.up.railway.app` согласованы. Если потребуется доступ по поддоменам, задайте `COOKIE_DOMAIN=.agromarket.up.railway.app`.
-- `ROUTING_URL` и `VITE_ROUTING_URL` указывают на OSRM `/route`, что соответствует требованиям клиентского и серверного кода.
-- `BOT_API_URL` необязателен, но значение `https://api.telegram.org` корректно.
+- APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS включает домен клиента и протокольный источник Protomaps.
+- ROUTING_URL и VITE_ROUTING_URL направлены на OSRM "/route", карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
+- CSP allowlist дополнен источниками "https://protomaps.github.io" и разрешением "blob:" для скриптов, поэтому загрузка стиля и шрифтов Protomaps не должна блокироваться.
 
 ## Порты
 
-- На Railway не задавайте `PORT` и `HOST_PORT` вручную: платформа назначает собственный порт и передаёт его через переменную `PORT`. Жёсткое значение `3001` мешает привязке. Удалите обе переменные из Railway, чтобы использовать порт, который выставляет платформа.
-- Конфиг API теперь распознаёт `RAILWAY_TCP_PORT` и будет слушать именно его, даже если вы задали своё `PORT`. В логах появится предупреждение `Railway принудительно использует порт …`, а `HOST_PORT` будет проигнорирован. Это помогает поймать неправильную настройку ещё до появления `502 Bad Gateway`.
-
-## Расписания и роли
-
-- `SCHEDULE_CRON=*/1 * * * *` задействует ежеминутный запуск планировщика — проверьте, что такой частоты достаточно.
-- `ADMIN_ROLE_ID` и `USER_ROLE_ID` соответствуют значениям из примера окружения; дополнительной настройки не требуется.
+- Переменные PORT=3001 и HOST_PORT=3001, использовавшиеся ранее, конфликтуют с автоматической выдачей порта Railway. Оставьте их пустыми или удалите — сервер возьмёт значение из RAILWAY_TCP_PORT/PORT, что исключит 502 при деплое.
 
 ## Дополнительные параметры
 
-- `LOCALE=ru`, `VITE_BOT_USERNAME`, `VITE_CHAT_ID`, `STORAGE_DIR=/storage` — значения валидны.
-- `LHCI_GITHUB_APP_TOKEN` и другие токены храните в секрете Railway, чтобы ими не пользовались посторонние.
+- SCHEDULE*CRON=*/1 \_ \* \* \* запускает планировщик ежеминутно; STORAGE_DIR=/storage и RAILWAY_DOCKERFILE_PATH=Dockerfile совпадают с инфраструктурой.
+- VITE\_\* значения для бота и карты синхронизированы между API и клиентом, что исключает рассинхронизацию CSP и фронтенда.
 
 ## Итог
 
-1. Удалите переменные `PORT` и `HOST_PORT` из Railway.
-2. Приведите `MONGO_DATABASE_URL` к виду `mongodb://<user>:<pass>@<host>:<port>/<db>?authSource=admin`.
-3. Остальные значения соответствуют требованиям репозитория.
+1. Очистите PORT и HOST_PORT в настройках Railway, чтобы использовался порт платформы.
+2. Оставьте текущую строку MONGO_DATABASE_URL с authSource=admin и внутренним хостом; при переносе в публичный прокси добавьте "directConnection=true".
+3. Убедитесь, что карта использует те же URL и allowlist (Protomaps, pmtiles), а секреты заданы в панели Railway.

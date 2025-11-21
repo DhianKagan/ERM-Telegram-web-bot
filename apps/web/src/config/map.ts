@@ -24,7 +24,7 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
       ? process.env.VITE_MAP_STYLE_URL
       : undefined;
   if (typeof processValue === 'string' && processValue.trim() !== '') {
-    return { url: processValue, source: 'env' };
+    return { url: processValue.trim(), source: 'env' };
   }
   try {
     const meta = import.meta as unknown as ImportMetaWithEnv;
@@ -62,12 +62,17 @@ export const MAP_STYLE_URL = mapStyle.url;
 const runtimeMode = readRuntimeMapStyleMode();
 const isCustomStyle = mapStyle.source === 'env';
 
+const autoModeFromUrl = (url: string): MapStyleMode =>
+  url.includes('tile.openstreetmap.org') ? 'raster' : 'pmtiles';
+
 // Совместимость с существующими импортами:
 export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
 export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
-export const MAP_STYLE_MODE: MapStyleMode = isCustomStyle
-  ? runtimeMode ?? 'pmtiles'
-  : 'raster';
+export const MAP_STYLE_MODE: MapStyleMode = (() => {
+  if (runtimeMode) return runtimeMode;
+  if (isCustomStyle) return 'pmtiles';
+  return autoModeFromUrl(MAP_STYLE_URL);
+})();
 export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 
 // Атрибуция (Protomaps + OpenStreetMap contributors)
